@@ -27,6 +27,7 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.changes.PlanChangeCapturedEvent;
 import de.planmarshall.api.changes.PlanChangeFile;
 import de.planmarshall.api.changes.PlanChangeLineKind;
 import de.planmarshall.api.changes.PlanChangedFile;
@@ -107,6 +108,8 @@ public class ScenarioLoader {
     /** The member a fixture entry uses to name its plan. */
     private static final String FIELD_PLAN_ID = "plan_id";
     private static final String FIXTURE_CONTENTS = "contents";
+    /** The member a {@code plan.change_captured} payload uses to carry the capture it announces. */
+    private static final String FIELD_CAPTURE = "capture";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -447,8 +450,35 @@ public class ScenarioLoader {
         return entries;
     }
 
-    private static void validateOnePlansChanges(Map<String, Object> entry,
-            Map<String, List<ChangeSize>> sizes, String scenario) {
+    /**
+     * One decoded capture of a plan: the answer the plan serves, and the hunks of each of its files
+     * by path.
+     *
+     * @param answer   the plan's changes as the {@code pm-api} codec reads them
+     * @param contents the answer's contents by path, empty for a refusal
+     */
+    public record DecodedCapture(PlanChangesAnswer answer, Map<String, PlanChangeFile> contents) {
+
+        public DecodedCapture {
+            Objects.requireNonNull(answer, "answer");
+            contents = Map.copyOf(contents);
+        }
+    }
+
+    /**
+     * Decodes one plan's changes entry and holds its files and contents to the contract: the files
+     * stand in path order, every content names a path of the list, and every file is answered by
+     * contents whose lines match its counts. A capture's list and its file answers are therefore one
+     * measurement, and a client never reads a row the file route cannot answer.
+     *
+     * @param entry    the entry, as a {@code plan_changes} fixture or as the {@code capture} member of
+     *                 a {@code plan.change_captured} payload spells one
+     * @param scenario the scenario identifier for error reporting
+     * @return the decoded capture
+     * @throws ScenarioValidationException when the entry, a hunk or the contents contradict the
+     *                                     contract
+     */
+    public static DecodedCapture readCapture(Map<String, Object> entry, String scenario) {
         final PlanChangesAnswer answer;
         try {
             answer = PlanChangesAnswer.fromMap(entry);
@@ -456,6 +486,34 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the plan's changes do not decode with the pm-api codec: " + e.getMessage());
         }
+        var contents = new LinkedHashMap<String, PlanChangeFile>();
+        if (answer instanceof PlanChangesCaptured captured) {
+            requirePathOrder(captured, scenario);
+            try {
+                if (entry.containsKey(FIXTURE_CONTENTS)) {
+                    for (var contentEntry : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
+                        var content = PlanChangeFile.fromMap(contentEntry);
+                        if (contents.put(content.path(), content) != null) {
+                            throw new ScenarioValidationException(scenario, null,
+                                    "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                                    "the contents of " + captured.planId() + " name " + content.path()
+                                            + " twice");
+                        }
+                    }
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
+            }
+            requireContentsForEveryFile(captured, contents, scenario);
+        }
+        return new DecodedCapture(answer, contents);
+    }
+
+    private static void validateOnePlansChanges(Map<String, Object> entry,
+            Map<String, List<ChangeSize>> sizes, String scenario) {
+        var decoded = readCapture(entry, scenario);
+        var answer = decoded.answer();
         var declared = sizes.get(answer.planId());
         if (!(answer instanceof PlanChangesCaptured captured)) {
             // Before the first capture the plan carries no size, and a capture that is gone carries
@@ -467,25 +525,6 @@ public class ScenarioLoader {
             }
             return;
         }
-        requirePathOrder(captured, scenario);
-        var contents = new LinkedHashMap<String, PlanChangeFile>();
-        try {
-            if (entry.containsKey(FIXTURE_CONTENTS)) {
-                for (var contentEntry : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
-                    var content = PlanChangeFile.fromMap(contentEntry);
-                    if (contents.put(content.path(), content) != null) {
-                        throw new ScenarioValidationException(scenario, null,
-                                "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                                "the contents of " + captured.planId() + " name " + content.path()
-                                        + " twice");
-                    }
-                }
-            }
-        } catch (IOException | IllegalArgumentException e) {
-            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                    "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
-        }
-        requireContentsForEveryFile(captured, contents, scenario);
         if (declared == null) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the plan " + captured.planId() + " carries no size of change for its list to agree with");
@@ -864,6 +903,65 @@ public class ScenarioLoader {
         }
         if (name.startsWith(CHAT_EVENT_PREFIX)) {
             validateChatEvent(name, read.payload(), index, scenario, stateId);
+        }
+        if (PlanChangeCapturedEvent.EVENT_NAME.equals(name)) {
+            validatePlanChangeCaptured(read.payload(), index, scenario, stateId);
+        }
+    }
+
+    /**
+     * Validates a scheduled {@code plan.change_captured}: the payload reads through its {@code pm-api}
+     * record, and the capture it carries — its {@code capture} member — holds its files, contents and
+     * size to the contract and agrees with the announced plan, head and size. A scheduled capture the
+     * mock could not serve is refused at the load, never played into a list that contradicts it.
+     *
+     * @param payload  the event's payload
+     * @param index    the event's position in the state's events
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void validatePlanChangeCaptured(Map<String, Object> payload, int index, String scenario,
+            String stateId) {
+        var field = "events[" + index + "].data";
+        final PlanChangeCapturedEvent announced;
+        try {
+            announced = PlanChangeCapturedEvent.fromMap(payload);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": " + e.getMessage());
+        }
+        var capture = JsonTree.asObject(payload.get(FIELD_CAPTURE));
+        if (capture == null) {
+            return;
+        }
+        var answer = readCapture(capture, scenario).answer();
+        if (!announced.planId().equals(answer.planId())) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the announcement of " + announced.planId() + " carries the capture of " + answer.planId());
+        }
+        if (answer instanceof PlanChangesCaptured captured) {
+            if (!announced.head().equals(captured.head())) {
+                throw new ScenarioValidationException(scenario, stateId, field,
+                        "the announcement of " + announced.planId() + " names the head " + announced.head()
+                                + ", its capture " + captured.head());
+            }
+            if (!captured.totals().equals(announced.size())) {
+                var totals = captured.totals();
+                throw new ScenarioValidationException(scenario, stateId, field,
+                        "the changes of " + captured.planId()
+                                + " do not add up to the size the announcement names:"
+                                + " files " + totals.files() + "/" + announced.filesTotal()
+                                + ", insertions " + totals.insertions() + "/" + announced.insertionsTotal()
+                                + ", deletions " + totals.deletions() + "/" + announced.deletionsTotal()
+                                + ", unplanned " + totals.unplanned() + "/" + announced.unplannedTotal());
+            }
+            return;
+        }
+        if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
+                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the announcement of " + announced.planId() + " names a size of change beside "
+                            + answer.state());
         }
     }
 
