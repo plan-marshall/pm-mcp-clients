@@ -1527,6 +1527,11 @@
               "model_id": "qwen-coder-32b",
               "effort": "",
               "origin": "steward",
+              "default": {
+                "harness_id": "claude",
+                "model_id": "sonnet-5.5",
+                "effort": "medium"
+              },
               "departure": {
                 "harness_id": "opencode",
                 "model_id": "qwen-coder-32b",
@@ -2800,11 +2805,29 @@
         },
         "facts": {
           "summary": "The role assignments run again with the recorded values as the proposal",
-          "aspect": "roles"
-          ,"set": "",
+          "aspect": "roles",
+          "set": "",
           "reset": "",
           "reset_all": "false",
-          "defaults": "false"
+          "defaults": "false",
+          "roles": [
+            {
+              "role": "outline",
+              "class": "read_only",
+              "phase": "planning",
+              "harness_id": "claude",
+              "model_id": "opus-5.5",
+              "effort": "high",
+              "origin": "default",
+              "advisory": {
+                "does": "Turns the refined request into deliverables and the plan's lane; reads the whole affected codebase.",
+                "needs": "Deep reasoning over a large context; few tool calls.",
+                "why": "A weak outline makes more work later than a frontier model takes here: every later phase builds on it.",
+                "lower_tier": "More loop-backs from the Q-Gate; the standard tier passed 71 % of the qualification items, the frontier tier 92 %.",
+                "steward": "no departure"
+              }
+            }
+          ]
         },
         "links": [
           {
@@ -3046,7 +3069,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "posture": "standard"
         },
         "links": [
           {
@@ -3239,7 +3262,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard",
+          "posture": "standard",
           "runtime": {
             "status": "ready",
             "onboarded": true,

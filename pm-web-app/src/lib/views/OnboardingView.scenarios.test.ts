@@ -464,6 +464,25 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { posture: 'full' }));
   });
 
+  it('preselects the posture the state records on a later run', () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.reconfigure',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        posture: 'standard',
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'settings.record' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('radio', { name: /^Standard/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Not set: each plan asks/ })).not.toBeChecked();
+  });
+
   it('groups the roles by phase, marks a departure and shows the advisory of a role', async () => {
     arrange(
       onboardingState({
@@ -553,11 +572,22 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(outline).toHaveTextContent('high');
     expect(outline).toHaveTextContent('Default');
 
-    // A departure is marked, and it carries its own accept and reject.
+    // A departure is marked, names what the steward proposes, and carries its own accept and reject.
     const qgate = screen.getByTestId('role-row-qgate');
     expect(qgate).toHaveTextContent('Departure from the steward');
+    expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
+      'Proposed: opencode · qwen-coder-32b',
+    );
+    expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
+      'reads only; a fast model suffices',
+    );
     expect(screen.getByTestId('role-departure-accept-qgate')).toBeInTheDocument();
     expect(screen.getByTestId('role-departure-reject-qgate')).toBeInTheDocument();
+    // The overview counts the roles the default assignment covers.
+    expect(card).toHaveTextContent('The default assignment is applied to all 3 roles.');
+    // The class of each role is a word, never the state's own enum.
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('reads only');
+    expect(card).not.toHaveTextContent('read_only');
 
     // The advisory of a role opens in place, with what it does and what it needs.
     await fireEvent.click(screen.getByTestId('role-advisory-outline'));
@@ -708,6 +738,54 @@ describe('OnboardingView against the mock runtime states', () => {
     // Storing a token under a guessed key would put it where the check never looks.
     expect(screen.getByTestId('providers-failed')).toHaveTextContent('SonarCloud');
     expect(screen.queryByTestId('providers-failed-enter-token')).not.toBeInTheDocument();
+  });
+
+  it('rejects a departure and returns the row to the default of the role', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        roles: [
+          {
+            role: 'qgate',
+            class: 'read_only',
+            phase: 'review',
+            harness_id: 'opencode',
+            model_id: 'qwen-coder-32b',
+            effort: '',
+            origin: 'steward',
+            default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
+            departure: {
+              harness_id: 'opencode',
+              model_id: 'qwen-coder-32b',
+              effort: '',
+              reason: 'reads only; a fast model suffices',
+            },
+          },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'store.choose' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('role-departure-reject-qgate'));
+
+    const row = screen.getByTestId('role-row-qgate');
+    expect(row).toHaveTextContent('Departure rejected');
+    expect(row).toHaveTextContent('claude · sonnet-5.5');
+
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    // The decision is the record; the row is no hand change of its own.
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('accept', {
+        departures: [{ role: 'qgate', decision: 'reject' }],
+      }),
+    );
   });
 
   it('shows the provider that failed with its cause and fix, and tries again by its link', async () => {

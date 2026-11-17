@@ -36,7 +36,7 @@ The step opens with the default assignment applied, the roles grouped by the pha
   [ Ask the steward to refine… ]                        [ Assign the 2 open roles first ]
 ----
 
-* Each row names the role, its class, the harness and model it runs on, its effort, and where the value comes from: `Default`, `Departure from the steward` (a proposal to accept or reject on that row), `Changed` (the operator's), or `Open` because no chosen model meets the class the role needs.
+* Each row names the role, its class, the harness and model it runs on, its effort, and where the value comes from: `Default`, `Departure from the steward` (a proposal to accept or reject on that row), `Changed` (the operator's), or `Open` because no chosen model meets the class the role needs. The sample shows four of the 31 roles.
 * The advisory of a role opens in place below its row: what it does, what it needs, why this tier, what a lower tier costs, and what the steward proposed.
 * *Change* edits that row in place: its harness, its model and its effort. The values are sent with the recorded assignment, only for the rows that changed.
 * *Ask the steward to refine…* goes through its consent screen (`roles.consent`, consent kind `model_advice`); the steward then works as every model at work (xref:onboarding.adoc#model-at-work[model-at-work]), and the proposed departures appear in the list, marked, each to accept or reject.
@@ -74,6 +74,7 @@ The advisory of a role, opened in place below its row:
 
 * The advisory always shows the default's what and why, also when the value departs from it; the steward's proposal and its reason stand on its last line.
 * The record button is disabled while any row is open; its place says `Assign the N open roles first`. `roles.validate` that refuses a role returns to the list with the row marked and the reason beside it.
+* The state reports per role its `role`, `class`, `phase`, the entry it runs on (`harness_id`, `model_id`, `effort`), its `origin` (`default`, `steward`, `changed`, `unmet`), the assignment it holds by `default`, a `departure` (`harness_id`, `model_id`, `effort`, `reason`) when the steward proposed another one, and its `advisory` (`does`, `needs`, `why`, `lower_tier`, `steward`). The record sends `roles[]` for the rows changed by hand and `departures[]` (`role`, `decision`) for the decisions; a row with a decision is not also sent as a change.
 
 [#speech]
 === The Speech Role (`roles.speech`, `roles.speech-consent`, `roles.speech-check`, `roles.speech-write`)
@@ -276,7 +277,7 @@ Before the providers are called, the consent kind `verify_providers` (the patter
 ----
 
 * Every provider and every check has its own line; a provider is ✓ only when all its checks are. A ✗ shows the provider's answer and the fix.
-* *Enter the token again* opens the token entry for that provider in place (`CredentialEntry`, keyed by the provider's id), so the token is stored without leaving the state; the terminal's route is `providers.credentials`, and *Check again* re-runs the check from here. A state that names no provider id offers no entry: a token stored under a guessed key would be one the check never finds.
+* *Enter the token again* opens the token entry for that provider in place (`CredentialEntry`, keyed by the provider's id), so the token is stored without leaving the state; the terminal's route is `providers.credentials`, and *Check again* re-runs the check from here. The state reports the provider's `provider`, its `provider_id` (the key its token is stored under), the `cause` and the `fix`; a state without `provider_id` offers no token entry, because a token stored under a guessed key would be one the check never finds.
 * *Continue without* follows the state's own link: the provider is recorded as not available, and projects can still set it up on their own (`providers.record`).
 * With every provider ✓ the state passes on its own to `providers.record`, which shows `Providers recorded: GitHub (gh)`, and the onboarding goes on to <<plan-defaults>>.
 
@@ -329,6 +330,7 @@ The validation (`defaults.validate`) shows one line per axis:
 
 * At machine level only what the machine can know is checked: that a provider is available for `Branch and Pull Request`; the machine default is never checked against a repository. Whether a base branch is protected is known only where a project is known; `Commit on the base branch` is checked at a project's setup and at a plan's start, which refuse a machine default that does not fit the project with the reason, and here reads `✓  Commit on the base branch: checked for each project, where its base branch is known`.
 * A refused line returns to `defaults.review` with the axis marked `✗ <reason>` and the button disabled until it is changed.
+* The state reports `landing`, `method` and `asking`, the posture on a later run only (bare `minimal`, `standard`, `full`; absent while it is unset), and optionally `unavailable`: one entry `{axis, value, reason}` per variant the machine cannot offer. The record sends only the lines that changed (`{landing?, method?, asking?, posture?}`), with `posture: null` when *Not set* is chosen over a recorded posture.
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-defaults[Terminal Client, transcript].
 

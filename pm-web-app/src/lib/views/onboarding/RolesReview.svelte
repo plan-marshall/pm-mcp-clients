@@ -43,6 +43,8 @@
     model_id?: string;
     effort?: string;
     origin?: string;
+    /** The assignment the role holds by default; the row's own values when the state names none. */
+    default?: Departure;
     departure?: Departure;
     advisory?: Advisory;
   }
@@ -70,6 +72,14 @@
 
   /** The effort levels a role can carry, and the words the catalogue has for them. */
   const EFFORTS: readonly string[] = ['low', 'medium', 'high'];
+
+  /** The catalogue key of each class of role; a class the catalogue does not name reads as Other. */
+  const CLASS_KEYS: Record<string, string> = {
+    read_only: 'onboard.roles.class.read_only',
+    write: 'onboard.roles.class.write',
+    zero_tool: 'onboard.roles.class.zero_tool',
+    other: 'onboard.roles.class.other',
+  };
 
   const roles = $derived(view.arrayField<RoleRow>('roles'));
 
@@ -144,6 +154,11 @@
     return `onboard.roles.origin.${kind}`;
   }
 
+  /** @param roleClass the class the state reports @returns the catalogue key of its word */
+  function classKey(roleClass: string | undefined): string {
+    return CLASS_KEYS[roleClass ?? 'other'] ?? CLASS_KEYS.other;
+  }
+
   /**
    * @param role the role's id
    * @param field the part of the assignment to set
@@ -154,8 +169,15 @@
   }
 
   /** @param role the role's id @param decision the decision to take on its departure */
-  function decide(role: string, decision: 'accept' | 'reject'): void {
-    decisions[role] = decision;
+  function decide(role: RoleRow, decision: 'accept' | 'reject'): void {
+    decisions[role.role] = decision;
+    // Accepting takes the steward's proposal; rejecting returns the row to the role's default.
+    const target = decision === 'accept' ? role.departure : role.default;
+    drafts[role.role] = {
+      harness_id: target?.harness_id ?? role.harness_id ?? '',
+      model_id: target?.model_id ?? role.model_id ?? '',
+      effort: target?.effort ?? role.effort ?? '',
+    };
   }
 
   /** The harnesses a role can be assigned to, by their names. */
@@ -179,13 +201,13 @@
     return view.harnessNames()[id] ?? id;
   }
 
-  const effortOptions: SelectOption[] = [
+  const effortOptions = $derived<SelectOption[]>([
     { value: '', label: $t('onboard.roles.effort.none') },
     ...EFFORTS.map((effort) => ({
       value: effort,
       label: $t(`onboard.roles.effort.${effort}`),
     })),
-  ];
+  ]);
 
   /** The roles of one phase, in the runtime's order. */
   interface PhaseGroup {
@@ -210,13 +232,28 @@
 
   /** The roles nothing assigns yet: the run waits for each of them. */
   const openRoles = $derived(roles.filter(isOpen));
-  /** The rows the operator changed or decided, which the record carries. */
-  const changedRows = $derived(roles.filter(isChanged));
+  /**
+   * The rows the operator changed by hand. A row with a departure decision travels as that
+   * decision, never as a second assignment: `departures[]` is the record of the change proposed.
+   */
+  const changedRows = $derived(
+    roles.filter((role) => isChanged(role) && decisions[role.role] === undefined),
+  );
 
   /** @param role the role's id @returns the word beside its effort, from the catalogue */
   function effortLabel(role: RoleRow): string {
     const effort = draftOf(role).effort;
     return effort === '' ? $t('onboard.roles.effort.none') : $t(`onboard.roles.effort.${effort}`);
+  }
+
+  /** @param role the role's id @returns the assignment the steward proposes, in the row's words */
+  function departureLabel(role: RoleRow): string {
+    const departure = role.departure;
+    if (!departure) return '';
+    const harness = harnessLabel(departure.harness_id ?? '');
+    const model = departure.model_id ?? '';
+    const effort = departure.effort ? ` · ${$t(`onboard.roles.effort.${departure.effort}`)}` : '';
+    return `${harness} · ${model}${effort}`;
   }
 
   /** @returns the link that records the assignment: the state's accept, its set, or its last link */
@@ -273,7 +310,7 @@
             <li class="roles-row" data-testid={`role-row-${role.role}`}>
               <div class="roles-row__main">
                 <span class="roles-row__role">{role.role}</span>
-                <span class="roles-row__class mono">{role.class ?? ''}</span>
+                <span class="roles-row__class mono">{$t(classKey(role.class))}</span>
                 <span class="roles-row__assignment mono">
                   {#if draftOf(role).harness_id}
                     {harnessLabel(draftOf(role).harness_id)} · {draftOf(role).model_id}
@@ -285,13 +322,20 @@
                 <StatusLabel tone={toneOf(kind)} label={$t(originKey(kind))} />
               </div>
 
+              {#if role.departure}
+                <p class="roles-row__proposed" data-testid={`role-departure-proposed-${role.role}`}>
+                  {$t('onboard.roles.review.proposed', { assignment: departureLabel(role) })}
+                  {#if role.departure.reason}— {role.departure.reason}{/if}
+                </p>
+              {/if}
+
               <div class="roles-row__acts">
                 {#if role.departure}
                   <Button
                     variant="secondary"
                     size="sm"
                     loading={view.busy}
-                    onclick={() => decide(role.role, 'accept')}
+                    onclick={() => decide(role, 'accept')}
                     data-testid={`role-departure-accept-${role.role}`}
                   >
                     {$t('onboard.roles.review.accept_departure')}
@@ -300,7 +344,7 @@
                     variant="ghost"
                     size="sm"
                     loading={view.busy}
-                    onclick={() => decide(role.role, 'reject')}
+                    onclick={() => decide(role, 'reject')}
                     data-testid={`role-departure-reject-${role.role}`}
                   >
                     {$t('onboard.roles.review.reject_departure')}
@@ -431,7 +475,7 @@
       {:else if changedRows.length > 0 || Object.keys(decisions).length > 0}
         {$t('onboard.roles.review.save', { count: roles.length })}
       {:else}
-        {$t('onboard.roles.review.use_defaults')}
+        {$t('onboard.roles.review.action')}
       {/if}
     </Button>
   </div>
@@ -494,6 +538,12 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
+  }
+
+  .roles-row__proposed {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
   }
 
   .roles-row__edit {
