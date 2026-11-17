@@ -51,7 +51,9 @@ test.describe('A plan’s changes (PLAN-164)', () => {
     await expect(page.locator('[data-testid="change-row"]')).toHaveCount(12);
 
     // The special rows the fixture carries: a renamed file, a binary one and an unplanned one.
-    await expect(changes).toContainText('Packet.java');
+    await expect(changes).toContainText(
+      '← pm-api/src/test/java/de/planmarshall/api/overview/PlanChangesContractTest.java',
+    );
     await expect(changes).toContainText('binary');
     await expect(changes).toContainText('unplanned');
 
