@@ -57,6 +57,15 @@ public record PlanChangedFile(
         if (added < 0 || removed < 0) {
             throw new IllegalArgumentException("A count of changed lines is never negative");
         }
+        if (status == ChangedFileStatus.RENAMED && renamedFrom == null) {
+            throw new IllegalArgumentException("A renamed file names the path it came from");
+        }
+        if (status != ChangedFileStatus.RENAMED && renamedFrom != null) {
+            throw new IllegalArgumentException("Only a renamed file names the path it came from");
+        }
+        if (binary && (added > 0 || removed > 0)) {
+            throw new IllegalArgumentException("A binary file carries no counts of lines");
+        }
     }
 
     /**
@@ -104,13 +113,44 @@ public record PlanChangedFile(
         }
         var added = JsonTree.integralNumber(map, FIELD_ADDED, 0, Integer.MAX_VALUE);
         var removed = JsonTree.integralNumber(map, FIELD_REMOVED, 0, Integer.MAX_VALUE);
-        return new PlanChangedFile(
-                path,
-                JsonTree.string(map, FIELD_RENAMED_FROM),
-                status,
-                (int) added,
-                (int) removed,
-                Boolean.TRUE.equals(map.get(FIELD_BINARY)),
-                Boolean.TRUE.equals(map.get(FIELD_UNPLANNED)));
+        try {
+            return new PlanChangedFile(
+                    path,
+                    JsonTree.string(map, FIELD_RENAMED_FROM),
+                    status,
+                    (int) added,
+                    (int) removed,
+                    requireBoolean(map, FIELD_BINARY),
+                    requireBoolean(map, FIELD_UNPLANNED));
+        } catch (IllegalArgumentException incoherent) {
+            // A wire answer that contradicts itself is no answer: it is refused like a malformed one.
+            throw new JsonFormatException(incoherent.getMessage(), incoherent);
+        }
+    }
+
+    /**
+     * @param map   the map representation
+     * @param field the mark's field
+     * @return the mark, which the wire must carry as a JSON boolean
+     * @throws IOException when the mark is missing or is no boolean
+     */
+    static boolean requireBoolean(Map<String, Object> map, String field) throws IOException {
+        if (map.get(field) instanceof Boolean mark) {
+            return mark;
+        }
+        throw new JsonFormatException("Missing or non-boolean " + field + " in a change");
+    }
+
+    /**
+     * @param json the JSON object
+     * @return the parsed file
+     * @throws IOException on parse failure or a missing member
+     */
+    public static PlanChangedFile fromJson(String json) throws IOException {
+        var map = JsonTree.asObject(JsonTree.parse(json));
+        if (map == null) {
+            throw new JsonFormatException("Expected a JSON object for a changed file");
+        }
+        return fromMap(map);
     }
 }

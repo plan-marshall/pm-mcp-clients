@@ -213,6 +213,7 @@ public final class PlanViewLevel {
         parts.add("* " + MessageCatalogue.format(locale, "operator.plan.keys.all", Map.of()));
         parts.add("n " + MessageCatalogue.format(locale, "operator.plan.keys.not_in_plan", Map.of()));
         parts.add("t " + MessageCatalogue.format(locale, "operator.plan.keys.tokens", Map.of()));
+        parts.add("d " + MessageCatalogue.format(locale, "operator.plan.keys.changes", Map.of()));
         return String.join("   ", parts);
     }
 

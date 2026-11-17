@@ -486,8 +486,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String FIXTURE_SNAPSHOT = "snapshot";
     /** The state-specific route overrides a state's runtime fixture may carry ("METHOD /path"). */
     private static final String FIXTURE_ROUTES = "routes";
-    /** The state whose runtime fixture is the base every other state of the scenario inherits. */
-    private static final String BASE_FIXTURE_STATE = "running_work.active";
+    /**
+     * The state a case scenario's fixture is merged onto: a state declares only what differs from it,
+     * and the engine applies this state's {@code facts.runtime} below the state's own.
+     */
+    public static final String BASE_FIXTURE_STATE = "running_work.active";
     private static final String FIXTURE_CONTROL = "control";
     private static final String KNOWS_DESCRIPTION = "chat.knows.description";
     private static final String KNOWS_TASKS = "chat.knows.tasks";
@@ -1919,6 +1922,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
+        // A state that declares its own captures serves them as soon as it is entered, whatever the
+        // transition that entered it: the fixture is the state's own answer for that state.
+        applyStateCaptures(stateDef);
+
         // The chat failures the state names, each played once by the next chat request or reply.
         chatRegistry.arm(stateDef.chatFailures());
 
@@ -1944,6 +1951,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 }
             }, auto.afterMs(), TimeUnit.MILLISECONDS);
             pendingTasks.add(task);
+        }
+    }
+
+    /**
+     * Seeds a state's own captures when the state declares them: an auto or link transition enters a
+     * state the same way {@code goToState} does, so the changes route answers that state's fixture.
+     *
+     * @param stateDef the state that was entered
+     */
+    private void applyStateCaptures(StateDefinition stateDef) {
+        var representation = JsonTree.asObject(stateDef.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(FIXTURE_RUNTIME));
+        if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+            return;
+        }
+        synchronized (planChangesLock) {
+            planChanges.clear();
+            planChangeFiles.clear();
+            for (var entry : fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)) {
+                seedPlanChanges(entry);
+            }
         }
     }
 
@@ -2659,13 +2690,23 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         PlanChangeFile file;
+        boolean hasCapture;
         synchronized (planChangesLock) {
+            hasCapture = planChanges.containsKey(planId);
             var files = planChangeFiles.get(planId);
             file = files != null ? files.get(filePath) : null;
         }
+        if (!hasCapture && !knowsPlan(planId)) {
+            // An unknown plan is a missing scope on both routes, so a client maps the two the same way.
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+            return;
+        }
         if (file == null) {
+            // A plan whose changes were never captured, or whose capture is gone, holds no file:
+            // the list route answers that state, and the file route names the missing path.
             response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(),
-                    KEY_MESSAGE, "No such file in the plan's changes: " + planId));
+                    KEY_MESSAGE, "No such file in the plan's changes: " + planId + ": " + filePath));
             return;
         }
         response.json(200, file.toMap());

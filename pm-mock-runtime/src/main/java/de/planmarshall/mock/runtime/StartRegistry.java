@@ -176,7 +176,6 @@ final class StartRegistry {
     private static final long DEFAULT_RESET_EPOCH = 1_792_507_200L;
     private static final String FIXTURE_RUNTIME = "runtime";
     private static final String FIXTURE_START = "start";
-    private static final String FIXTURE_BASE_STATE = "running_work.active";
     private static final String TYPE = "start fixture";
     private static final String DESCRIPTION_REFERENCE = "A description";
     private static final String DEFAULT_DOCUMENT = "doc/concepts/forgejo.adoc";
@@ -309,7 +308,7 @@ final class StartRegistry {
      */
     private static Map<String, Object> startFixtureOf(Scenario scenario, @Nullable String stateId) {
         var fixture = new LinkedHashMap<String, Object>();
-        mergeStartFixture(runtimeFixtureOf(scenario, FIXTURE_BASE_STATE), fixture);
+        mergeStartFixture(runtimeFixtureOf(scenario, MockRuntimeEngine.BASE_FIXTURE_STATE), fixture);
         mergeStartFixture(runtimeFixtureOf(scenario, stateId), fixture);
         return fixture;
     }
