@@ -1129,7 +1129,9 @@ function decisionNotifyPermission(): 'granted' | 'denied' | 'default' {
       return 'denied';
     }
     const permission = Notification.permission;
-    return permission === 'granted' ? 'granted' : permission === 'denied' ? 'denied' : 'default';
+    if (permission === 'granted') return 'granted';
+    if (permission === 'denied') return 'denied';
+    return 'default';
   } catch {
     return 'denied';
   }
