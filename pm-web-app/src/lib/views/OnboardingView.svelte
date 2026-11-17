@@ -340,6 +340,11 @@
   }
 
   @media (max-width: 767px) {
+    /* The frame's bottom bar is sticky; the content ends above it, never under it. */
+    .onboarding {
+      padding-block-end: var(--space-16);
+    }
+
     .onboarding__brand {
       display: flex;
     }
