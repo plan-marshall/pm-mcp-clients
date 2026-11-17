@@ -62,7 +62,9 @@ test.describe('A plan’s changes (PLAN-164)', () => {
       .locator('[data-testid="change-row"]')
       .filter({ hasText: 'changes/PlanChanges.java' });
     await row.click();
-    await expect(page).toHaveURL(/file=pm-api%2Fsrc%2Fmain%2Fjava%2Fde%2Fplanmarshall%2Fapi%2Fchanges%2FPlanChanges.java/);
+    await expect(page).toHaveURL(
+      /\/plans\/fix-relay\?tab=changes&file=pm-api\/src\/main\/java\/de\/planmarshall\/api\/changes\/PlanChanges\.java/,
+    );
     const hunks = page.locator('[data-testid="change-hunks"]');
     await expect(hunks).toBeVisible();
     await expect(hunks.locator('[data-testid="diff-line"]').first()).toBeVisible();
