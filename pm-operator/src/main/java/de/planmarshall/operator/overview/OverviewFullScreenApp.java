@@ -2543,7 +2543,8 @@ public final class OverviewFullScreenApp {
                 return true;
             }
             if (kind == TuiLevel.Kind.PLAN_CHANGES) {
-                return changesOpenSelected(selectedId);
+                changesOpenSelected(selectedId);
+                return true;
             }
             if (kind == TuiLevel.Kind.REPORTS) {
                 openSelectedReport(selectedId);
@@ -2782,21 +2783,21 @@ public final class OverviewFullScreenApp {
             return true;
         }
 
-        private boolean changesOpenSelected(String selectedId) {
+        private void changesOpenSelected(String selectedId) {
             var changes = currentChanges.get();
             if (changes == null) {
-                return true;
+                return;
             }
             var path = changes.fileOf(selectedId);
             if (path == null) {
-                return true;
+                return;
             }
             try {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
                 if (response.status() != 200) {
                     statusMessage = fileRefusalOf(response);
-                    return true;
+                    return;
                 }
                 synchronized (OverviewFullScreenApp.this) {
                     if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()))) {
@@ -2806,7 +2807,6 @@ public final class OverviewFullScreenApp {
             } catch (IOException refused) {
                 statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
             }
-            return true;
         }
 
         /**

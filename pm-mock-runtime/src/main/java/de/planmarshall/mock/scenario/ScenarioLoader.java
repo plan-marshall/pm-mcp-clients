@@ -28,6 +28,7 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangeLineKind;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
@@ -435,42 +436,68 @@ public class ScenarioLoader {
      */
     private static void requireContentsForEveryFile(PlanChangesCaptured captured,
             Map<String, PlanChangeFile> contents, String scenario) {
-        for (var content : contents.values()) {
-            var row = captured.files().stream()
-                    .filter(file -> file.path().equals(content.path()))
-                    .findFirst().orElse(null);
-            if (row == null) {
-                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                        "the contents of " + captured.planId() + " name a path the list does not: "
-                                + content.path());
-            }
-            if (row.binary() != content.binary()) {
-                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                        "the contents of " + content.path() + " answer binary " + content.binary()
-                                + ", the list says " + row.binary());
-            }
+        contents.values().forEach(content -> requireNamedByTheList(captured, content, scenario));
+        captured.files().forEach(file -> requireContentsOf(file, contents, captured, scenario));
+    }
+
+    /**
+     * @param captured the decoded capture
+     * @param content  one of its contents
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireNamedByTheList(PlanChangesCaptured captured, PlanChangeFile content,
+            String scenario) {
+        var row = rowOf(captured, content.path());
+        if (row == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the contents of " + captured.planId() + " name a path the list does not: "
+                            + content.path());
         }
-        for (var file : captured.files()) {
-            if (file.binary()) {
-                continue;
-            }
-            var content = contents.get(file.path());
-            if (content == null) {
-                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                        "the non-binary file " + file.path() + " of " + captured.planId()
-                                + " has no contents");
-            }
-            var added = countLines(content, PlanChangeLineKind.ADDED);
-            var removed = countLines(content, PlanChangeLineKind.REMOVED);
-            var agrees = content.truncated()
-                    ? added <= file.added() && removed <= file.removed()
-                    : added == file.added() && removed == file.removed();
-            if (!agrees) {
-                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                        "the hunks of " + file.path() + " add " + added + " and remove " + removed
-                                + ", the list says " + file.added() + " and " + file.removed());
-            }
+        if (row.binary() != content.binary()) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the contents of " + content.path() + " answer binary " + content.binary()
+                            + ", the list says " + row.binary());
         }
+    }
+
+    /**
+     * @param file     one file of the list
+     * @param contents the decoded contents by path
+     * @param captured the decoded capture
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireContentsOf(PlanChangedFile file, Map<String, PlanChangeFile> contents,
+            PlanChangesCaptured captured, String scenario) {
+        if (file.binary()) {
+            return;
+        }
+        var content = contents.get(file.path());
+        if (content == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the non-binary file " + file.path() + " of " + captured.planId() + " has no contents");
+        }
+        var added = countLines(content, PlanChangeLineKind.ADDED);
+        var removed = countLines(content, PlanChangeLineKind.REMOVED);
+        var agrees = content.truncated()
+                            ? added <= file.added() && removed <= file.removed()
+                            : added == file.added() && removed == file.removed();
+        if (!agrees) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the hunks of " + file.path() + " add " + added + " and remove " + removed
+                            + ", the list says " + file.added() + " and " + file.removed());
+        }
+    }
+
+    /**
+     * @param captured the decoded capture
+     * @param path     a path
+     * @return the file the list serves for the path, or {@code null} when it names none
+     */
+    private static @Nullable PlanChangedFile rowOf(PlanChangesCaptured captured, String path) {
+        return captured.files().stream()
+                            .filter(file -> file.path().equals(path))
+                            .findFirst()
+                            .orElse(null);
     }
 
     private static int countLines(PlanChangeFile file, PlanChangeLineKind kind) {

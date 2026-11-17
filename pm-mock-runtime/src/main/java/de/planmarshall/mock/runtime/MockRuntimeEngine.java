@@ -486,7 +486,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String FIXTURE_SNAPSHOT = "snapshot";
     /** The state-specific route overrides a state's runtime fixture may carry ("METHOD /path"). */
     private static final String FIXTURE_ROUTES = "routes";
-    /** The state whose runtime fixture is the base every other state of the scenario inherits. */
     /**
      * The state a case scenario's fixture is merged onto: a state declares only what differs from it,
      * and the engine applies this state's {@code facts.runtime} below the state's own.

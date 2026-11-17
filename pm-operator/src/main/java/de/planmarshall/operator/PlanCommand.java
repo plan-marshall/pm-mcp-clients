@@ -58,6 +58,7 @@ import de.planmarshall.operator.planview.ChangesLevel;
 import de.planmarshall.operator.planview.PlanChangeSizes;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
@@ -299,51 +300,62 @@ public final class PlanCommand implements Callable<Integer> {
         var answer = PlanChangesAnswer.fromJson(response.bodyText());
         var level = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
         out.println(level.breadcrumb(locale));
-        if (changesFile == null || changesFile.isBlank()) {
-            for (var row : level.rows(locale)) {
-                out.println("  " + row.line());
-            }
-            out.flush();
+        if (changesFile == null || changesFile.isBlank() || !(answer instanceof PlanChangesCaptured captured)) {
+            // The whole list, or the refusal's own text: a plan without a capture holds no file.
+            printRows(out, level.rows(locale));
             return 0;
         }
-        // A plan whose changes were never captured, or whose capture is gone, holds no file: the
-        // list's own text is the answer, never a transport error.
-        if (!(answer instanceof PlanChangesCaptured)) {
-            for (var row : level.rows(locale)) {
-                out.println("  " + row.line());
-            }
-            out.flush();
-            return 0;
-        }
-        // A binary file answers no lines: its row is the whole answer (plan-view.adoc § The Changes).
+        return printOneFile(out, runtime, planId, locale, level, captured);
+    }
+
+    /**
+     * Prints one file's hunks, its row alone when it is binary, or the text that says the file is not
+     * in the plan's changes ({@code plan <id> --changes --file <path>}).
+     *
+     * @param out       the writer of the console
+     * @param runtime   the runtime client
+     * @param planId    the plan
+     * @param locale    the interface locale
+     * @param level     the plan's changes
+     * @param captured  the list the runtime answered
+     * @return {@code 0} when the file or its row was printed, {@code 1} when it is not in the list
+     * @throws IOException when the runtime cannot be read
+     */
+    private int printOneFile(PrintWriter out, RuntimeClient runtime, String planId, String locale,
+                        ChangesLevel level, PlanChangesCaptured captured) throws IOException {
         var binaryRow = level.fileRowOf(changesFile, locale);
-        if (binaryRow != null && isBinary((PlanChangesCaptured) answer, changesFile)) {
-            out.println("  " + binaryRow.line());
-            out.flush();
+        if (binaryRow != null && isBinary(captured, changesFile)) {
+            // A binary file answers no lines: its row is the whole answer.
+            printRows(out, List.of(binaryRow));
             return 0;
         }
         var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
         if (fileResponse.status() == 404) {
-            out.printf("No such file in the plan's changes: %s%n",
-                                OutputSafety.stripControlSequences(changesFile));
-            out.flush();
-            return 1;
+            return noSuchFile(out);
         }
         if (fileResponse.status() != 200) {
             throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
         }
-        if (level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
-            for (var row : level.openFileRows(locale)) {
-                out.println("  " + row.line());
-            }
-            out.flush();
-            return 0;
+        if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
+            // The list moved between the two reads: the file it answered is no longer one of its rows.
+            return noSuchFile(out);
         }
-        // The list moved between the two reads: the file it answered is no longer one of its rows.
+        printRows(out, level.openFileRows(locale));
+        return 0;
+    }
+
+    private int noSuchFile(PrintWriter out) {
         out.printf("No such file in the plan's changes: %s%n",
                             OutputSafety.stripControlSequences(changesFile));
         out.flush();
         return 1;
+    }
+
+    private static void printRows(PrintWriter out, List<TuiRow> rows) {
+        for (var row : rows) {
+            out.println("  " + row.line());
+        }
+        out.flush();
     }
 
     /**
