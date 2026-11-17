@@ -2,10 +2,10 @@
   "id": "PLAN-49",
   "slug": "web-attention-inbox",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-49-web-attention-inbox",
+  "pr": "461",
+  "landing": "landings/PLAN-49.md",
   "seq": 49
 }
