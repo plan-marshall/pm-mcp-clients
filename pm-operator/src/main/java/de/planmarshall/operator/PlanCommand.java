@@ -35,7 +35,6 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.ProcessNode;
