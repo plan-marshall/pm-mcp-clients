@@ -364,22 +364,6 @@ const sessionMessages: Record<Locale, Record<string, string>> = {
   de: Object.create(null),
 };
 
-/**
- * The catalogue areas this session already holds per locale.
- *
- * A deferred reload may only render what is already held: see {@link holdsPack}.
- */
-const heldAreas: Record<Locale, Set<string>> = { en: new Set(), de: new Set() };
-
-/**
- * @param locale the locale @param area the catalogue area
- * @returns whether the area's pack is already in hand, so a deferred reload may use it
- */
-function holdsPack(locale: Locale, area: string): boolean {
-  if (area === 'all') return loadCachedCatalogue(locale) !== null;
-  return heldAreas[locale].has(area);
-}
-
 /** The English catalogue, the fallback of every other locale. */
 let englishMessages: Record<string, string> | null = null;
 let englishLookupAttempted = false;
@@ -419,7 +403,6 @@ function englishCatalogue(): Record<string, string> | null {
 function hydrateFromCache(locale: Locale): boolean {
   const cached = loadCachedCatalogue(locale);
   if (!cached) return false;
-  heldAreas[locale].add('all');
   if (locale === get(currentLocale)) {
     messagesStore.set(cached);
     messagesLocale = locale;
@@ -493,6 +476,9 @@ async function readCatalogueVersion(): Promise<void> {
  * then replaces or extends it in the background. When the runtime is unreachable the error is
  * swallowed and the cached labels stay on screen.
  *
+ * While the reload is deferred this fetches nothing: it hydrates from the cache and returns, and
+ * the reload it waits for runs the load again against the release it loads.
+ *
  * @param locale the locale to load
  * @param area the catalogue area, `all` for the complete catalogue
  */
@@ -500,14 +486,14 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   if (area === 'all') {
     hydrateFromCache(locale);
   }
-  if (get(reloadDeferred) && !holdsPack(locale, area)) {
-    // The page is still the old release's code: a pack it does not hold waits for the reload,
-    // because the newer runtime may have retired the keys the old code asks for.
+  if (get(reloadDeferred)) {
+    // The page is still the old release's code. It renders only what it already holds, and the
+    // reload it waits for runs this load again against the release it loads
+    // (texts-and-languages.adoc, Keys and Packs, Delivery).
     return;
   }
   try {
     const msgs = await apiClient.getMessages(locale, area);
-    heldAreas[locale].add(area);
     const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
     // A slow response must not replace the catalogue of a locale the person has switched to
     // since the request began: the store follows the active locale only.
@@ -545,11 +531,17 @@ function baseFor(locale: Locale): Record<string, string> {
  * locale on the operator's decision; a missing one is fetched from the runtime, not restored from
  * an older copy (2026-11-05).
  *
+ * While the reload is deferred, a pack that is not in hand is not fetched: the page is the old
+ * release's code, so the choice is kept as a pending one and applied when the reload is released.
+ *
  * @param locale the locale to switch to
  */
 export async function setLocale(locale: Locale): Promise<void> {
   const generation = ++switchGeneration;
   if (locale === get(currentLocale) && messagesLocale === locale) {
+    // The language the screen shows is the one asked for, so a pending choice an earlier deferred
+    // request left behind is superseded by this one.
+    pendingLocale = null;
     rememberLocaleChoice(locale);
     return;
   }
@@ -604,21 +596,18 @@ function rememberLocaleChoice(locale: Locale): void {
 async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
   const cached = loadCachedCatalogue(locale);
   if (cached && catalogueVersion !== null) {
-    heldAreas[locale].add('all');
     rememberMessages(locale, cached);
     rememberEnglish(locale, cached);
     return cached;
   }
   try {
     const messages = await apiClient.getMessages(locale, 'all');
-    heldAreas[locale].add('all');
     rememberMessages(locale, messages);
     rememberEnglish(locale, messages);
     persistCatalogue(locale, messages);
     return messages;
   } catch {
     if (cached) {
-      heldAreas[locale].add('all');
       rememberMessages(locale, cached);
       rememberEnglish(locale, cached);
       return cached;

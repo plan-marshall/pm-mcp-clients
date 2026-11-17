@@ -242,14 +242,17 @@
       return;
     }
     reloadWaitsForInput = false;
-    setReloadDeferred(false);
     try {
       window.location.reload();
     } catch {
       // A browser that refuses the reload keeps the notice with its own Load again button.
       reloadWaitsForInput = true;
       setReloadDeferred(true);
+      return;
     }
+    // Only a reload that returned without navigating leaves the page running the old code: the
+    // held catalogue is released then, never before the call that unloads the page.
+    setReloadDeferred(false);
   }
 
   // The reload waits while a field holds text; once the operator sends or clears it, the wait
