@@ -53,8 +53,9 @@
    *
    * Until the machine is onboarded the onboarding fills the whole app (onboarding.adoc, Frame): the
    * header carries the machine beside the frame's own brand, language and theme, and offers no
-   * path, no search and no live indicator. A machine that is not paired yet shows no header at all;
-   * its page carries its own head.
+   * path, no search and no live indicator. A machine that has not been paired yet shows no header
+   * at all; its page carries its own head. A paired browser that was revoked or lost its listener
+   * is onboarded, so it keeps the full header like every other page.
    */
   const frameOnly = $derived(!$runtimeStore.isOnboarded);
 

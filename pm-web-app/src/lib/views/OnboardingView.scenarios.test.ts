@@ -464,6 +464,30 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { posture: 'full' }));
   });
 
+  it('waits for an available variant when a refresh greys the chosen one', () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.review',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.main',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        unavailable: [
+          { axis: 'landing', value: 'landing.main', reason: 'needs a protected base branch' },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' } },
+      } as Partial<OnboardingState>),
+    );
+
+    render(OnboardingView);
+
+    // The chosen line is greyed now: the screen says why it cannot record it.
+    expect(screen.getByTestId('defaults-record')).toBeDisabled();
+    expect(screen.getByTestId('defaults-blocked')).toHaveTextContent(
+      'Choose an available variant for Landing first.',
+    );
+  });
+
   it('preselects the posture the state records on a later run', () => {
     arrange(
       onboardingState({
@@ -791,6 +815,85 @@ describe('OnboardingView against the mock runtime states', () => {
         departures: [{ role: 'qgate', decision: 'reject' }],
       }),
     );
+  });
+
+  it('marks a role the validation refused with its reason', () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        roles: [
+          {
+            role: 'outline',
+            class: 'read_only',
+            phase: 'planning',
+            harness_id: 'claude',
+            model_id: 'opus-5.5',
+            effort: 'high',
+            validation: 'no model of that tier on this harness',
+          },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-validation-outline')).toHaveTextContent(
+      'Not accepted: no model of that tier on this harness',
+    );
+  });
+
+  it('drops a decision whose proposal the state reports differently', async () => {
+    const rolesWith = (reason: string) => [
+      {
+        role: 'qgate',
+        class: 'read_only',
+        phase: 'review',
+        harness_id: 'opencode',
+        model_id: 'qwen-coder-32b',
+        effort: '',
+        origin: 'steward',
+        default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
+        departure: {
+          harness_id: 'opencode',
+          model_id: 'qwen-coder-32b',
+          effort: '',
+          reason,
+        },
+      },
+    ];
+    const first = onboardingState({
+      state: 'roles.review',
+      summary: 'Give every role a harness and a model',
+      roles: rolesWith('reads only; a fast model suffices'),
+      links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+    });
+    arrange(first);
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(first);
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('role-departure-accept-qgate'));
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('Departure accepted');
+
+    // A refresh reports another proposal for the same role: the old decision no longer holds.
+    const refreshed = onboardingState({
+      state: 'roles.review',
+      summary: 'Give every role a harness and a model',
+      roles: rolesWith('the checks grew; a stronger model is needed'),
+      links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+    });
+    runtimeStore.update((store) => ({
+      ...store,
+      onboarding: refreshed,
+      currentState: refreshed as never,
+    }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('role-row-qgate')).not.toHaveTextContent('Departure accepted'),
+    );
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('Departure from the steward');
   });
 
   it('shows the provider that failed with its cause and fix, and tries again by its link', async () => {

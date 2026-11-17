@@ -1,5 +1,6 @@
 <script lang="ts">
   import Button from '../../components/Button.svelte';
+  import Icon from '../../components/Icon.svelte';
   import SelectField, { type SelectOption } from '../../components/SelectField.svelte';
   import StatusLabel from '../../components/StatusLabel.svelte';
   import TextField from '../../components/TextField.svelte';
@@ -46,6 +47,8 @@
     /** The assignment the role holds by default; the row's own values when the state names none. */
     default?: Departure;
     departure?: Departure;
+    /** Why `roles.validate` refused this role, when it did. */
+    validation?: string;
     advisory?: Advisory;
   }
 
@@ -59,16 +62,10 @@
   /** The phases in the order the design draws them. */
   const PHASES = ['planning', 'execution', 'review', 'finalize', 'decisions', 'speech'] as const;
 
-  /** The catalogue key of each phase's heading. */
-  const PHASE_KEYS: Record<string, string> = {
-    planning: 'onboard.roles.phase.planning',
-    execution: 'onboard.roles.phase.execution',
-    review: 'onboard.roles.phase.review',
-    finalize: 'onboard.roles.phase.finalize',
-    decisions: 'onboard.roles.phase.decisions',
-    speech: 'onboard.roles.phase.speech',
-    other: 'onboard.roles.phase.other',
-  };
+  /** @param phase the phase id @returns the catalogue key of its heading; `other` for an unknown one */
+  function phaseKey(phase: string): string {
+    return `onboard.roles.phase.${phase}`;
+  }
 
   /** The effort levels a role can carry, and the words the catalogue has for them. */
   const EFFORTS: readonly string[] = ['low', 'medium', 'high'];
@@ -91,6 +88,25 @@
   let openAdvisory = $state<Record<string, boolean>>({});
   /** The operator's decision on a departure, per role. */
   let decisions = $state<Record<string, 'accept' | 'reject'>>({});
+  /** The departure each decision was taken against, so a proposal that changes clears the decision. */
+  let decidedOn = $state<Record<string, string>>({});
+
+  // A refreshed proposal for the same role makes the decision and its draft stale: the row starts
+  // again from the proposal the state reports, and no stale assignment travels with the decision.
+  $effect(() => {
+    for (const role of roles) {
+      const seen = decidedOn[role.role];
+      if (seen === undefined || seen === departureSnapshot(role)) continue;
+      delete decisions[role.role];
+      delete drafts[role.role];
+      delete decidedOn[role.role];
+    }
+  });
+
+  /** @param role the role's id @returns the proposal the state reports, as the decision records it */
+  function departureSnapshot(role: RoleRow): string {
+    return JSON.stringify(role.departure ?? null);
+  }
 
   /** @param role the role's id @returns the assignment the row shows: the operator's, else the runtime's */
   function draftOf(role: RoleRow): Draft {
@@ -171,6 +187,7 @@
   /** @param role the role's id @param decision the decision to take on its departure */
   function decide(role: RoleRow, decision: 'accept' | 'reject'): void {
     decisions[role.role] = decision;
+    decidedOn[role.role] = departureSnapshot(role);
     // Accepting takes the steward's proposal; rejecting returns the row to the role's default.
     const target = decision === 'accept' ? role.departure : role.default;
     drafts[role.role] = {
@@ -224,7 +241,7 @@
           (PHASES.includes(role.phase as (typeof PHASES)[number]) ? role.phase : 'other') === phase,
       );
       if (members.length > 0) {
-        found.push({ phase, title: PHASE_KEYS[phase] ?? PHASE_KEYS.other, roles: members });
+        found.push({ phase, title: phaseKey(phase), roles: members });
       }
     }
     return found;
@@ -354,6 +371,13 @@
                 <p class="roles-row__proposed" data-testid={`role-departure-proposed-${role.role}`}>
                   {$t('onboard.roles.review.proposed', { assignment: departureLabel(role) })}
                   {#if role.departure.reason}— {role.departure.reason}{/if}
+                </p>
+              {/if}
+
+              {#if role.validation}
+                <p class="roles-row__validation" data-testid={`role-validation-${role.role}`}>
+                  <Icon name="state.alert" size={16} />
+                  <span>{$t('onboard.roles.review.refused')} {role.validation}</span>
                 </p>
               {/if}
 
@@ -572,6 +596,15 @@
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+  }
+
+  .roles-row__validation {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-danger);
   }
 
   .roles-row__edit {

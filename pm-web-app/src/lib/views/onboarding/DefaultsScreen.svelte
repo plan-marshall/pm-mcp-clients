@@ -166,6 +166,19 @@
 
   const changedAxes = $derived(axes.filter(isChanged));
 
+  /**
+   * The axis whose chosen value the state now names as unavailable, if any.
+   *
+   * A refresh can grey the very variant the screen holds: recording it would send a value the
+   * machine says it cannot run, so the record waits until an available variant is chosen.
+   */
+  const blockedAxis = $derived(
+    axes.find((axis) => {
+      const value = valueOf(axis);
+      return unavailable.some((entry) => entry.axis === axis.key && entry.value === value);
+    }),
+  );
+
   /** @param axis the axis @returns its variants as the radio group's options, the impossible ones greyed */
   function optionsOf(axis: Axis): RadioOption[] {
     return axis.variants.map((variant) => {
@@ -227,6 +240,11 @@
   </div>
 
   <div class="state-card__actions">
+    {#if blockedAxis}
+      <p class="defaults-blocked" role="alert" data-testid="defaults-blocked">
+        {$t('onboard.defaults.review.choose_available', { axis: $t(blockedAxis.title) })}
+      </p>
+    {/if}
     {#each otherLinks as link (link.id)}
       <Button
         variant="secondary"
@@ -240,6 +258,7 @@
     <Button
       variant="primary"
       loading={view.busy}
+      disabled={blockedAxis !== undefined}
       onclick={record}
       data-testid="defaults-record"
     >
@@ -271,5 +290,11 @@
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+  }
+
+  .defaults-blocked {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-danger);
   }
 </style>

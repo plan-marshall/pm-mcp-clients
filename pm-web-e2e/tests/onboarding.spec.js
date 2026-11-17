@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 import { openPairingCode } from './helpers/pairing.js';
 
@@ -7,6 +9,15 @@ import { openPairingCode } from './helpers/pairing.js';
  *
  * One route renders the state the runtime reports; the done steps are read-only summaries.
  */
+
+/** The shell's destinations, read from the one list that defines them (`nav.ts`). */
+function destinationTestIds() {
+  const source = fs.readFileSync(
+    fileURLToPath(new URL('../../pm-web-app/src/lib/shell/nav.ts', import.meta.url)),
+    'utf8',
+  );
+  return [...source.matchAll(/testId:\s*'([^']+)'/g)].map((match) => match[1]);
+}
 
 async function openOnboarding(page, request, scenario = 'onboarding') {
   const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
@@ -42,18 +53,13 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
 
     // No destination, no way into the pages of the app and no search before onboarding is done.
+    const destinations = destinationTestIds();
+    expect(destinations.length).toBeGreaterThan(0);
     for (const control of [
       'brand-home',
-      'nav-inbox-btn',
-      'nav-overview-btn',
-      'nav-projects-btn',
-      'nav-decisions-btn',
-      'nav-reports-btn',
-      'nav-system-btn',
-      'nav-designer-btn',
-      'nav-settings-btn',
       'search-trigger',
       'live-indicator',
+      ...destinations,
     ]) {
       await expect(page.getByTestId(control)).toHaveCount(0);
     }

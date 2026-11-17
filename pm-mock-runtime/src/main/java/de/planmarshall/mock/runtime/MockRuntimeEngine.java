@@ -8341,6 +8341,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     machinePlanDefaults.put(key, chosen);
                 }
             }
+            // The posture is the later run's own line: an absent key keeps what is stored, and a
+            // null clears it, which is what *Not set* sends.
+            if (body.containsKey(KEY_POSTURE)) {
+                var posture = JsonTree.string(body, KEY_POSTURE);
+                if (posture == null || posture.isBlank()) {
+                    machinePlanDefaults.remove(KEY_POSTURE);
+                } else {
+                    machinePlanDefaults.put(KEY_POSTURE, posture);
+                }
+            }
             return;
         }
         if (state.startsWith("store.reconfigure")) {
