@@ -276,8 +276,10 @@ public class ScenarioLoader {
         // Every size is a measurement, in every scenario, whether or not it models captures.
         var sizesByState = sizesOfEveryState(routes, states, scenario);
         // A scenario that models no captures at all serves sizes without a changes fixture: its
-        // plans' changes are simply not part of what that scenario demonstrates.
+        // plans' changes are simply not part of what that scenario demonstrates. A scheduled capture
+        // is still held to the captures of its state, which then has none.
         if (!modelsCaptures(baseEntries, states, scenario)) {
+            states.forEach((stateId, state) -> requireHeadOnlyCapturesApply(state, List.of(), scenario, stateId));
             return;
         }
         states.forEach((stateId, state) -> validateCapturesOf(state, stateId, baseEntries, sizesByState, scenario));
@@ -340,6 +342,57 @@ public class ScenarioLoader {
         requireEachPlanOnce(effective, scenario);
         effective.forEach(entry -> validateOnePlansChanges(entry, sizes, scenario));
         requireEverySizeHasACapture(effective, sizes, scenario);
+        requireHeadOnlyCapturesApply(state, effective, scenario, stateId);
+    }
+
+    /**
+     * Holds a scheduled {@code plan.change_captured} that carries no capture to the capture its state
+     * serves: such an announcement may only move the head of a capture the state holds, at the size
+     * that capture adds up to. A notice the mock could not play fails the load instead of being
+     * dropped at play time.
+     *
+     * @param state     the state whose events are validated
+     * @param effective the capture entries the state serves
+     * @param scenario  the scenario identifier for error reporting
+     * @param stateId   the state identifier
+     */
+    private static void requireHeadOnlyCapturesApply(StateDefinition state,
+            List<Map<String, Object>> effective, String scenario, String stateId) {
+        for (var index = 0; index < state.events().size(); index++) {
+            var event = state.events().get(index);
+            if (!PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
+                continue;
+            }
+            var payload = JsonTree.asObject(event.data());
+            if (payload == null || JsonTree.asObject(payload.get(FIELD_CAPTURE)) != null) {
+                continue;
+            }
+            final PlanChangeCapturedEvent announced;
+            try {
+                announced = PlanChangeCapturedEvent.fromMap(payload);
+            } catch (IOException | IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+                        "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": "
+                                + e.getMessage());
+            }
+            var entry = effective.stream()
+                    .filter(candidate -> announced.planId().equals(JsonTree.string(candidate, FIELD_PLAN_ID)))
+                    .findFirst()
+                    .orElse(null);
+            var totals = entry != null && PlanChangesAnswer.CAPTURED.equals(JsonTree.string(entry, "state"))
+                    ? ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals()
+                    : null;
+            if (totals == null) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+                        "the plan " + announced.planId()
+                                + " has no capture in the state for the announcement to move");
+            }
+            if (!totals.equals(announced.size())) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+                        "the announced size of " + announced.planId()
+                                + " contradicts the files the state serves");
+            }
+        }
     }
 
     /**

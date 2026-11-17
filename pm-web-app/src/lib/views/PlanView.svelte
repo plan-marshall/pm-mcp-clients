@@ -43,7 +43,7 @@
   } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
-  import { displayState } from '../display';
+  import { displayState, formatChangeSize } from '../display';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
@@ -133,12 +133,7 @@
    * @returns the catalogue's one-line form of it
    */
   function changeText(size: ChangeSizeRecord): string {
-    return $t('plan.change.size', {
-      files: size.files,
-      insertions: size.insertions,
-      deletions: size.deletions,
-      unplanned: size.unplanned ?? 0,
-    });
+    return formatChangeSize(size, $t);
   }
 
   /**
@@ -324,11 +319,20 @@
     changesReloadToken += 1;
   }
 
-  // The address may name the Changes tab before the plan's first capture: the view opens Process
-  // and replaces the address, so the tab is never shown where it is absent
+  // The address may name a tab this view does not draw — Changes before the plan's first capture,
+  // or Intent, which PLAN-55's tab set carries into this view. The view then opens Process and
+  // replaces the address, so the address never names a panel that is not there
   // (`plan-view-interaction.adoc#changes`).
   $effect(() => {
-    if (plan !== null && activeTab === 'changes' && changeSize === null) {
+    if (plan === null) {
+      return;
+    }
+    if (activeTab === 'changes' && changeSize === null) {
+      selectObjectTab('process');
+      return;
+    }
+    const named = $runtimeStore.objectTab;
+    if (named !== null && named !== undefined && named !== 'process' && named !== 'changes') {
       selectObjectTab('process');
     }
   });
@@ -1037,9 +1041,10 @@
     </div>
 
     {#if activeTab === 'changes' && changeSize}
-      <section
+      <div
         class="plan-changes-panel"
         id="plan-panel-changes"
+        role="tabpanel"
         aria-label={$t('plan.tab.changes')}
         data-testid="plan-changes-panel"
       >
@@ -1050,10 +1055,15 @@
           onSelectFile={selectPlanChangeFile}
           reloadToken={changesReloadToken}
         />
-      </section>
+      </div>
     {:else}
       <!-- Two-Panel Main Layout -->
-      <div class="plan-content" id="plan-panel-process">
+      <div
+        class="plan-content"
+        id="plan-panel-process"
+        role="tabpanel"
+        aria-label={$t('plan.tab.process')}
+      >
       <!-- Left: Process Tree -->
       <section
         class="plan-tree-panel"
@@ -1209,7 +1219,9 @@
                 <div class="task-headline">
                   <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
                   <span class="task-role-tag">{taskActivity.role}</span>
-                  <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
+                  <span class="task-meta" data-testid="activity-model"
+                    >{taskActivity.harness} {taskActivity.model}</span
+                  >
                   <span class="task-meta" data-testid="activity-attempt"
                     >{$t('plan.node.attempt', { attempt: taskActivity.attempt })}</span
                   >

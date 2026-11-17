@@ -154,6 +154,10 @@ Keys of the area `plan`; English and German carry every key. The label of the In
 |Changes
 |Änderungen
 
+|`plan.tabs`
+|Tabs
+|Registerkarten
+
 |`plan.node.select`
 |Inspect this part
 |Diesen Teil ansehen

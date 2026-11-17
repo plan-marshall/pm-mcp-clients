@@ -14,6 +14,7 @@ import { formatTime } from '../display/format';
 import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
+import { tick } from 'svelte';
 
 describe('PlanView component', () => {
   const mockPlan: ProcessTree = {
@@ -1586,6 +1587,60 @@ describe('PlanView’s Changes tab', () => {
     expect(await screen.findByTestId('model-differs')).toHaveTextContent(
       'answered by sonnet-5.5 instead of sonnet',
     );
-    expect(screen.getByTestId('activity-feed')).toHaveTextContent('claude sonnet');
+    // The head keeps the launch model, and only it: the served model stands in the entry alone.
+    expect(screen.getByTestId('activity-model')).toHaveTextContent(/^claude sonnet$/);
+  });
+
+  it('shows both models of a model_differs entry the live stream reports', async () => {
+    // Arrange: the activity's live stream carries the entry's own fields, not the fetched list's.
+    runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
+    let emit: ((event: string, data: unknown) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
+      (_planId, _taskId, handler) => {
+        emit = handler;
+        return () => {};
+      },
+    );
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [],
+    });
+    render(PlanView);
+    await screen.findByTestId('activity-feed');
+
+    // Act
+    emit!('task.activity', {
+      kind: 'model_differs',
+      timestamp: '14:03:30',
+      launch_model: 'sonnet',
+      served_model: 'sonnet-5.5',
+    });
+    await tick();
+
+    // Assert
+    expect(await screen.findByTestId('model-differs')).toHaveTextContent(
+      'answered by sonnet-5.5 instead of sonnet',
+    );
+  });
+
+  it('opens Process and replaces an address that names a tab this view does not draw', async () => {
+    // Arrange: `intent` belongs to PLAN-55's tab set, which is not in this view yet.
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    // Act
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    // Assert
+    await waitFor(() => expect(get(runtimeStore).objectTab).toBe('process'));
+    expect(window.location.search).not.toContain('tab=intent');
+    expect(screen.queryByTestId('plan-changes')).toBeNull();
   });
 });

@@ -1215,9 +1215,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * Patches a plan's representation with what its chats moved on: its instance version, the
-     * {@code queued_revision} waiting for its boundary, and the origin of the version a chat's
-     * revision made ({@code state-catalogue.adoc#chat-proposal-states}, {@code #chat-origin}).
+     * Patches a plan's representation with what its chats moved on and with the size of its change:
+     * its instance version, the {@code queued_revision} waiting for its boundary, the origin of the
+     * version a chat's revision made ({@code state-catalogue.adoc#chat-proposal-states},
+     * {@code #chat-origin}), and the {@code change} of the capture the changes route serves.
+     * <p>
+     * The size follows the served capture rather than the scenario's static figure, so a broadcast
+     * capture that replaced the list also moved the head's line: the list and the size stay one
+     * measurement ({@code plan-view.adoc}, Change So Far).
      *
      * @param planId         the plan's id
      * @param representation the representation the scenario serves
@@ -1245,7 +1250,27 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 copy.put("origin", origin.toMap());
             }
         }
+        applyServedChange(planId, copy);
         return copy;
+    }
+
+    /**
+     * Writes the size of the capture the changes route serves onto a plan's representation: the
+     * capture's own totals where the plan is captured, and no size where its capture is gone or
+     * absent. A plan the fixture names no capture for keeps the size its scenario serves.
+     *
+     * @param planId the plan's id
+     * @param copy   the representation to patch
+     */
+    private void applyServedChange(String planId, Map<String, Object> copy) {
+        synchronized (planChangesLock) {
+            var answer = planChanges.get(planId);
+            if (answer instanceof PlanChangesCaptured captured) {
+                copy.put("change", captured.totals().toMap());
+            } else if (answer != null) {
+                copy.remove("change");
+            }
+        }
     }
 
     /**
@@ -1994,13 +2019,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void broadcastScheduledEvent(String event, Object data, long generation) {
         if (!EVENT_RUNTIME_DRAINING.equals(event) || namesDrainGeneration(data)) {
-            applyScheduledStateEffect(event, data);
-            broadcastEvent(event, data);
+            if (applyScheduledStateEffect(event, data)) {
+                broadcastEvent(event, data);
+            }
             return;
         }
         synchronized (systemLock) {
-            if (generation == drainGeneration.get()) {
-                applyScheduledStateEffect(event, data);
+            if (generation == drainGeneration.get() && applyScheduledStateEffect(event, data)) {
                 broadcastEvent(event, data);
             }
         }
@@ -2009,16 +2034,19 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * Applies the state effect a scheduled event announces before the notice goes out, so the read
      * that follows a scenario's own event serves what the event announced. The scenario's load holds
-     * such an event to its codecs ({@link ScenarioLoader#readCapture}), so a capture that cannot be
-     * served is refused there and never played here.
+     * such an event to its codecs ({@link ScenarioLoader#readCapture}) and to the capture its state
+     * serves, so a capture that cannot be applied is refused there; should one still arrive, it is
+     * dropped with its notice rather than announced against a list that contradicts it.
      *
      * @param event the event name
      * @param data  the event payload
+     * @return whether the event is coherent and may be broadcast
      */
-    private void applyScheduledStateEffect(String event, Object data) {
+    private boolean applyScheduledStateEffect(String event, Object data) {
         if (PlanChangeCapturedEvent.EVENT_NAME.equals(event)) {
-            applyCapturedChange(data);
+            return applyCapturedChange(data) == null;
         }
+        return true;
     }
 
     /**
@@ -7913,9 +7941,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
      * an opened decision joins the open ones, an answer or a close removes it, the console's badge
-     * therefore follows, and a captured change moves the head a client then reads — but only where
-     * the announcement agrees with the files the mock serves, because the list and the size the plan
-     * carries must be one measurement ({@code 01-processes-and-transport.adoc#plan-changes}).
+     * therefore follows, and a captured change replaces the answer a client then reads — the list,
+     * its files and the size the plan carries ({@code 01-processes-and-transport.adoc#plan-changes}).
      *
      * @param event the event name
      * @param data  the event payload
@@ -8067,6 +8094,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     + answer.state();
         }
         synchronized (planChangesLock) {
+            var previous = planChanges.get(answer.planId());
+            if (previous instanceof PlanChangesCaptured && answer instanceof PlanChangesNotCaptured) {
+                // A capture moves on to a new capture or to a capture that is gone; it never goes back
+                // to the plan's first capture, which no event of the contract announces.
+                return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+            }
             planChanges.put(answer.planId(), answer);
             planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
         }

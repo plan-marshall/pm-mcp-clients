@@ -12,6 +12,7 @@
   } from '../api/client';
   import { stripControlSequences } from '../utils/outputSafety';
   import { errorCodeOf } from '../api/errors';
+  import { formatChangeSize } from '../display';
   import ErrorState from './ErrorState.svelte';
   import Spinner from './Spinner.svelte';
 
@@ -51,6 +52,8 @@
   let failedIdentity = $state<string | null>(null);
   /** The row whose read is open, so a re-render does not open a second read of the same hunks. */
   let inFlightIdentity = $state<string | null>(null);
+  /** A count a person's retry raises, so a failed row is read again rather than staying failed. */
+  let fileRetryToken = $state(0);
   /** Whether the view is gone, so an answer still on its way is not written onto dead state. */
   let disposed = false;
   /**
@@ -86,12 +89,7 @@
    * @returns the catalogue's one-line form of it
    */
   function changeText(size: ChangeSizeRecord): string {
-    return $t('plan.change.size', {
-      files: size.files,
-      insertions: size.insertions,
-      deletions: size.deletions,
-      unplanned: size.unplanned ?? 0,
-    });
+    return formatChangeSize(size, $t);
   }
 
   /**
@@ -177,10 +175,19 @@
     return ' ';
   }
 
+  /** The plan whose list the current answer belongs to; a plain field, so an effect never tracks it. */
+  let loadedPlanId: string | null = null;
+
   /** Reads the list of the capture, keeping the selected file when the list still names it. */
   async function readList(): Promise<void> {
     const generation = ++listGeneration;
     const plan = planId;
+    if (loadedPlanId !== null && loadedPlanId !== plan) {
+      // Another plan is open: its predecessor's list must not stand under the new plan's head.
+      answer = null;
+      currentFile = null;
+    }
+    loadedPlanId = plan;
     isLoading = true;
     listError = null;
     try {
@@ -214,6 +221,8 @@
 
   $effect(() => {
     const path = selectedFile;
+    // A person's retry clears the failed row and reads it again.
+    void fileRetryToken;
     if (path === null || answer === null) {
       currentFile = null;
       loadedIdentity = null;
@@ -271,6 +280,13 @@
     // A read a view still owes leaves its answer on the floor: the view it would fill is gone.
     disposed = true;
   });
+
+  /** Reads the selected file again after a failed read, instead of leaving the row failed for good. */
+  function retryFile(): void {
+    failedIdentity = null;
+    fileError = null;
+    fileRetryToken += 1;
+  }
 </script>
 
 <div class="plan-changes" data-testid="plan-changes">
@@ -342,7 +358,12 @@
               <Spinner size="1.25rem" label={$t('plan.view.loading')} />
             </div>
           {:else if fileError !== null}
-            <ErrorState code={fileError} titleLevel={4} />
+            <ErrorState
+              code={fileError}
+              actionLabel={$t('common.action.retry')}
+              onAct={retryFile}
+              titleLevel={4}
+            />
           {:else if currentFile?.binary}
             <p class="change-file__binary text-muted" data-testid="change-file-binary">
               {$t('plan.changes.binary')}
@@ -359,7 +380,7 @@
                     <div class="diff-line diff-line--{line.kind}" data-testid="diff-line">
                       <span class="diff-num mono" data-testid="line-old">{line.old ?? ''}</span>
                       <span class="diff-num mono" data-testid="line-new">{line.next ?? ''}</span>
-                      <span class="diff-mark mono" aria-hidden="true">{markOf(line.kind)}</span>
+                      <span class="diff-mark mono">{markOf(line.kind)}</span>
                       <span class="diff-text mono">{stripControlSequences(line.text)}</span>
                     </div>
                   {/each}
@@ -409,10 +430,10 @@
   }
 
   /*
-   * The list and the hunks stand side by side while the object column is at least 720 px wide (the
-   * rule of the Process tab); a narrower column stacks them, the hunks below the list.
+   * The list and the hunks stand side by side while the object column is wide enough, the same
+   * breakpoint the Process tab stacks at; a narrower column stacks them, the hunks below the list.
    */
-  @media (min-width: 720px) {
+  @media (min-width: 769px) {
     .plan-changes__body {
       grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
       align-items: start;
@@ -543,11 +564,11 @@
   }
 
   .diff-line--added {
-    background-color: var(--color-success-subtle, var(--color-bg-subtle));
+    background-color: var(--color-diff-added);
   }
 
   .diff-line--removed {
-    background-color: var(--color-danger-subtle, var(--color-bg-subtle));
+    background-color: var(--color-diff-removed);
   }
 
   .diff-num {

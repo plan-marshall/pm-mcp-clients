@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import PlanChanges from './PlanChanges.svelte';
 import { apiClient } from '../api/client';
 import type { ChangeSizeRecord, PlanChangesAnswer, PlanChangeFile } from '../api/client';
@@ -307,13 +308,92 @@ describe('PlanChanges', () => {
     });
     await waitFor(() => expect(readFile).toHaveBeenCalledTimes(2));
 
-    // The answer of the row the list no longer holds arrives last: it must be dropped.
+    // The answer of the row the list no longer holds arrives while the new row's read is still open:
+    // it must be dropped, or it would show hunks the list has already replaced.
     firstFile.resolve(fileAnswer({ hunks: [hunkWith('stale line')] }));
+    await Promise.resolve();
+    await tick();
+
+    // Assert the stale answer was never shown
+    expect(screen.queryByText('stale line')).toBeNull();
+
+    // The new row's answer is the one the view shows.
     secondFile.resolve(fileAnswer({ hunks: [hunkWith('fresh line')] }));
+    expect(await screen.findByText('fresh line')).toBeInTheDocument();
+  });
+
+  it('offers a retry when a file read fails, and reads the row again', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(CAPTURED);
+    vi.spyOn(apiClient, 'getPlanChangeFile')
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(fileAnswer());
+
+    // Act
+    render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'pm-relay/src/main/java/Transport.java',
+      onSelectFile: () => {},
+    });
+    const retry = await screen.findByRole('button', { name: 'Try again' });
+    retry.click();
 
     // Assert
-    expect(await screen.findByText('fresh line')).toBeInTheDocument();
-    expect(screen.queryByText('stale line')).toBeNull();
+    expect(await screen.findByTestId('change-hunks')).toHaveTextContent(
+      'return transport.send(newRequest);',
+    );
+  });
+
+  it('reads the list once for one plan, however the answer objects differ', async () => {
+    // Arrange: each read answers a fresh object, as a real response parse does.
+    const readList = vi
+      .spyOn(apiClient, 'getPlanChanges')
+      .mockImplementation(async () => ({ ...CAPTURED }));
+
+    // Act
+    render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: null,
+      onSelectFile: () => {},
+    });
+    await screen.findByTestId('changes-title');
+
+    // Assert
+    expect(readList).toHaveBeenCalledTimes(1);
+  });
+
+  it('drops the previous plan’s list when another plan is opened', async () => {
+    // Arrange: the first plan's list is served, then the view is asked for another plan.
+    const readList = vi
+      .spyOn(apiClient, 'getPlanChanges')
+      .mockResolvedValueOnce(CAPTURED)
+      .mockResolvedValueOnce({
+        plan_id: 'relay-metrics',
+        state: 'not_captured',
+      });
+
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: null,
+      onSelectFile: () => {},
+    });
+    expect(await screen.findByTestId('changes-title')).toBeInTheDocument();
+
+    // Act
+    await view.rerender({
+      planId: 'relay-metrics',
+      change: CHANGE,
+      selectedFile: null,
+      onSelectFile: () => {},
+    });
+
+    // Assert
+    expect(await screen.findByTestId('changes-not-captured')).toBeInTheDocument();
+    expect(screen.queryByTestId('changes-title')).toBeNull();
+    expect(readList).toHaveBeenCalledTimes(2);
   });
 });
 

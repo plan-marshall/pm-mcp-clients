@@ -656,13 +656,36 @@ class PlanChangesScenarioTest {
                 assertEquals(200, broadcast.status(), broadcast.bodyText());
                 var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
                 var gone = get(runtime, PlanChangesRoutes.plan(FIX_RELAY).file(TRUNCATED_FILE));
+                var process = get(runtime, "/api/v1/plans/" + FIX_RELAY + "/process");
+                var tree = ProcessTree.fromMap(JsonTree.asObject(JsonTree.parse(process.body())));
                 assertAll(
                         () -> assertEquals(new ChangeSize(1, 2, 0, 0), captured.totals()),
                         () -> assertEquals(List.of("pm-api/src/A.java"),
                                 captured.files().stream().map(file -> file.path()).toList()),
                         () -> assertEquals("pm-api/src/A.java",
                                 readFile(runtime, FIX_RELAY, "pm-api/src/A.java").path()),
-                        () -> assertEquals(404, gone.status(), "a file of the old list is gone with it"));
+                        () -> assertEquals(404, gone.status(), "a file of the old list is gone with it"),
+                        () -> assertEquals(captured.totals(), tree.change(),
+                                "the plan carries the size of the capture its list serves"));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a carried capture that would send a captured plan back to its first capture")
+        void refusesGoingBackToNotCaptured() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+                var back = new LinkedHashMap<String, Object>();
+                back.put("plan_id", FIX_RELAY);
+                back.put("state", "not_captured");
+
+                var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0), back));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertEquals(CAPTURED_HEAD,
+                        assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY)).head(),
+                        "a capture moves on to a new capture or to a gone one, never back");
             }
         }
 
@@ -1098,6 +1121,16 @@ class PlanChangesScenarioTest {
                     new ChangeSize(1, 2, 0, 0), oneFileCapture("drop-legacy-api")));
             withoutHead.remove("head");
             refusesTheLoad(withScheduledCapture(valid, withoutHead), "head");
+
+            // An announcement that only moves the head is held to the capture its state serves.
+            var headOnly = withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(12, 340, 27, 2), null));
+            assertDoesNotThrow(() -> ScenarioLoader.load(headOnly, StandardScenarios.RUNNING_WORK),
+                    "the head-only announcement agrees with the capture the state serves");
+            refusesTheLoad(withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(13, 340, 27, 2), null)), FIX_RELAY);
+            refusesTheLoad(withScheduledCapture(valid, announcement("relay-metrics", "a1b2c3d4e5f6",
+                    new ChangeSize(0, 0, 0, 0), null)), "relay-metrics");
         }
 
         @Test
