@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { apiClient, type ReportsPage, type StatusResponse, type ProjectOverviewResponse } from '../api/client';
+import {
+  apiClient,
+  type ProjectOverviewResponse,
+  type ReportsPage,
+  type StatusResponse,
+} from '../api/client';
 import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
@@ -692,6 +697,51 @@ describe('the remembered place at the start', () => {
       '',
       '/overview?project=p-1',
     );
+  });
+
+  it('keeps a destination opened while the projects are read over Running work', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, and another destination opens before the read answers.
+    const running = openRunningWork();
+    navigateTo('reports');
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the newer destination stands; the late Running work navigation was dropped.
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+    expect(window.location.pathname).toBe('/reports');
+  });
+
+  it('keeps a return navigation that lands on the address Running work started from', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, another destination opens, and Back returns to the entry
+    // Running work started from — the same address, but a newer navigation.
+    const running = openRunningWork();
+    navigateTo('reports');
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+    adoptRouteFromLocation();
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the return navigation stands; Running work did not push the remembered project.
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).lensProject).toBeNull();
   });
 });
 

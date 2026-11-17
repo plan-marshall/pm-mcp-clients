@@ -277,7 +277,7 @@ const GUARD_JOURNEYS = [
       await page.getByRole('radio', { name: LABELS.byEpic }).click({ force: true });
       const epicCard = page.getByTestId('epic-card').first();
       await expect(epicCard).toBeVisible();
-      await epicCard.click();
+      await epicCard.locator('.work-card__header .work-card__open').click();
       await expect(page.getByTestId('epic-view')).toBeVisible();
       // A static loading placeholder passes the quiet check and would be recorded as the view.
       await expect(page.getByTestId('epic-loading')).toHaveCount(0, { timeout: 15000 });
@@ -676,7 +676,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await expect(epicCard).toBeVisible();
 
           // 3. Open epic
-          await epicCard.click();
+          await epicCard.locator('.work-card__header .work-card__open').click();
           await expect(page.getByTestId('epic-view')).toBeVisible();
 
           // 4. Open the Reviews tab and assert the findings review button ("Review" / "Prüfen")
@@ -795,7 +795,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await byEpicRadio.click({ force: true });
           const epicCard = page.getByTestId('epic-card').first();
           await expect(epicCard).toBeVisible();
-          await epicCard.click();
+          await epicCard.locator('.work-card__header .work-card__open').click();
 
           await expect(page.getByTestId('epic-view')).toBeVisible();
           await auditView(page, testInfo, { view: 'EpicView', theme, viewport: vp });

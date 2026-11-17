@@ -1180,6 +1180,16 @@ function beginNavigation(): number {
 }
 
 /**
+ * Records that the store adopted a route it did not begin — the browser's own back or forward.
+ *
+ * It is a route application like any other, so a call that waits on a read before it navigates
+ * sees it and leaves the adopted route in place.
+ */
+function noteNavigationAdopted(): void {
+  navigationEpoch += 1;
+}
+
+/**
  * The project whose id a route's path carries, if any.
  *
  * The designer names the project it shows, the one project page names the selected project, and
@@ -1433,6 +1443,10 @@ export function adoptRouteFromLocation(): AppRoute | null {
       chatOpen: address?.chat ?? false,
       chatTurn: address?.turn ?? null,
     }));
+    // The store adopted a route the browser's own back or forward named: a navigation that was
+    // awaiting a read while this happened must see it, so a later return to the same address is
+    // not mistaken for no movement at all.
+    noteNavigationAdopted();
   }
   return match?.route ?? null;
 }
