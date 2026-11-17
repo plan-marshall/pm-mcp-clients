@@ -98,10 +98,9 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await useScenario(request, 'reports');
       await pair(page);
 
-      await page
-        .locator('.bottom-bar')
-        .getByRole('button', { name: /Reports/i })
-        .click();
+      // The reports sit in the More sheet on a phone (needs-and-find.adoc, The Route and the Rail).
+      await page.getByTestId('bottom-more').click();
+      await page.getByTestId('sheet-reports').click();
       await expect(page.locator('.reports-view')).toBeVisible();
       await expect(page.locator('[data-testid="triage-page"]')).toBeVisible();
 
@@ -136,7 +135,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
     const bar = page.getByTestId('bottom-bar');
     await expect(bar).toBeVisible();
     await expect(bar.getByRole('button')).toHaveCount(4);
-    for (const name of [/Running work/i, /Decisions/i, /Reports/i, /More/i]) {
+    for (const name of [/What waits/i, /Running work/i, /Decisions/i, /More/i]) {
       const item = bar.getByRole('button', { name });
       await expect(item).toBeVisible();
       await expect(item).toHaveText(/\S/);
@@ -145,8 +144,9 @@ test.describe('Mobile viewports (WEB-1)', () => {
     await expect(page.getByTestId('nav-rail')).toBeHidden();
 
     // The rail is hidden on a phone, so the counts it carries must stand beside the labels here.
+    // The reports moved into the More sheet, so More carries their unread count.
     await expect(page.getByTestId('bottom-decisions-count')).toHaveText('3');
-    await expect(page.getByTestId('bottom-reports-count')).toHaveText('5');
+    await expect(page.getByTestId('bottom-more-count')).toHaveText('5');
 
     await bar.getByRole('button', { name: /More/i }).click();
     const sheet = page.getByTestId('dialog');
@@ -182,7 +182,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       { path: '/system', view: '[data-testid="system-view"]' },
       { path: '/system/cleanup', view: '[data-testid="cleanup-view"]' },
       { path: '/settings', view: '[data-testid="settings-view"]' },
-      { path: '/settings/machine', view: '[data-testid="machine-settings-view"]' },
+      { path: '/settings?tab=setup', view: '[data-testid="settings-panel-setup"]' },
       { path: '/projects/onboard', view: '[data-testid="project-onboarding-view"]' },
     ];
 

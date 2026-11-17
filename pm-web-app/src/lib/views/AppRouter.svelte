@@ -3,11 +3,11 @@
   import PairingView from './PairingView.svelte';
   import OnboardingView from './OnboardingView.svelte';
   import SettingsView from './SettingsView.svelte';
-  import MachineSettingsView from './MachineSettingsView.svelte';
   import ProcessDesigner from './ProcessDesigner.svelte';
   import RevokedView from './RevokedView.svelte';
   import ListenerOffView from './ListenerOffView.svelte';
   import OverviewView from './OverviewView.svelte';
+  import InboxView from './InboxView.svelte';
   import ReportsView from './ReportsView.svelte';
   import DecisionView from './DecisionView.svelte';
   import SystemView from './SystemView.svelte';
@@ -44,6 +44,8 @@
 {:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding' || (!$runtimeStore.isOnboarded && !$runtimeStore.isOffline)}
   <!-- The onboarding routes, and every route of a machine that is not onboarded while it answers. -->
   <OnboardingView />
+{:else if $runtimeStore.currentRoute === 'inbox'}
+  <InboxView />
 {:else if $runtimeStore.currentRoute === 'projects' || $runtimeStore.currentRoute === 'project'}
   <ProjectExplorerView />
 {:else if $runtimeStore.currentRoute === 'reports' || $runtimeStore.currentRoute === 'report'}
@@ -52,8 +54,6 @@
   <DecisionView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
-{:else if $runtimeStore.currentRoute === 'machine-settings'}
-  <MachineSettingsView />
 {:else if $runtimeStore.currentRoute === 'system'}
   <SystemView />
 {:else if $runtimeStore.currentRoute === 'cleanup'}

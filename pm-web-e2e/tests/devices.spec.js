@@ -16,11 +16,13 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-    // Open Settings view
+    // Open Settings view on the tab that carries the paired devices.
     const settingsBtn = page.getByRole('button', { name: /Settings/i });
     await expect(settingsBtn).toBeVisible();
     await settingsBtn.click();
-    await expect(page.locator('.settings-view')).toBeVisible();
+    await expect(page.getByTestId('settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Access' }).click();
+    await expect(page.getByTestId('settings-panel-access')).toBeVisible();
   });
 
   test('displays paired devices table with columns and network listener status', async ({

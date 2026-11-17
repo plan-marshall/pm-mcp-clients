@@ -5,6 +5,7 @@ import { render, screen } from '@testing-library/svelte';
 import NavRail from './NavRail.svelte';
 import MascotFigure from '../components/MascotFigure.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { attentionStore } from '../stores/attention';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { blockOf, ruleOf, stylesheetOf } from '../test/stylesheet';
@@ -40,6 +41,29 @@ describe('NavRail component', () => {
       isInitialized: true,
       currentRoute: 'projects',
     }));
+    attentionStore.update((state) => ({ ...state, total: 0 }));
+  });
+
+  it('draws the list of what waits first, carrying the attention store’s total', () => {
+    useCatalogue('en');
+    attentionStore.update((state) => ({ ...state, total: 4 }));
+
+    renderRail(false);
+
+    const entries = Array.from(screen.getByTestId('nav-rail').querySelectorAll('.nav-rail__item'));
+    expect(entries[0]).toHaveTextContent('What waits');
+    const count = screen.getByTestId('nav-inbox-btn-count');
+    expect(count).toHaveTextContent('4');
+    expect(count).toHaveAttribute('aria-label', '! 4');
+  });
+
+  it('keeps the entry visible without a count while nothing waits', () => {
+    useCatalogue('en');
+
+    renderRail(false);
+
+    expect(screen.getByTestId('nav-inbox-btn')).toHaveTextContent('What waits');
+    expect(screen.queryByTestId('nav-inbox-btn-count')).not.toBeInTheDocument();
   });
 
   it('renders Settings in English and Einstellungen in German for the machine settings rail button', () => {

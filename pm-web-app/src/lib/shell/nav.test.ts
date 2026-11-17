@@ -32,6 +32,7 @@ describe('the shell navigation model', () => {
 
     const ids = ALL_NAV_ITEMS.map((item) => item.id);
     expect(ids).toEqual([
+      'needs',
       'running',
       'projects',
       'decisions',
@@ -44,8 +45,18 @@ describe('the shell navigation model', () => {
     expect(ALL_NAV_ITEMS.every((item) => item.icon.startsWith('nav.'))).toBe(true);
   });
 
-  it('keeps the three phone destinations, the rest in the More sheet', () => {
-    expect(BOTTOM_ITEMS.map((item) => item.id)).toEqual(['running', 'decisions', 'reports']);
+  it('makes the list of what waits the first destination, with the attention total', () => {
+    const first = RAIL_GROUPS[0]?.items[0];
+    expect(first?.id).toBe('needs');
+    expect(first?.route).toBe('inbox');
+    expect(first?.labelKey).toBe('web.rail.needs');
+    expect(first?.count).toBe('attention');
+    expect(first?.testId).toBe('nav-inbox-btn');
+  });
+
+  it('keeps three phone destinations, and the reports in the More sheet', () => {
+    expect(BOTTOM_ITEMS.map((item) => item.id)).toEqual(['needs', 'running', 'decisions']);
+    expect(BOTTOM_ITEMS.some((item) => item.id === 'reports')).toBe(false);
   });
 
   it('keeps the destination of a detail page selected', () => {
@@ -53,14 +64,15 @@ describe('the shell navigation model', () => {
     expect(activeNavRoute('epic')).toBe('overview');
     expect(activeNavRoute('decomposition')).toBe('overview');
     expect(activeNavRoute('start')).toBe('overview');
+    expect(activeNavRoute('inbox')).toBe('inbox');
     expect(activeNavRoute('cleanup')).toBe('system');
-    expect(activeNavRoute('machine-settings')).toBe('settings');
     expect(activeNavRoute('project-onboarding')).toBe('projects');
     expect(activeNavRoute('reports')).toBe('reports');
   });
 
   it('places a route in its group, and a page outside the navigation in none', () => {
     expect(navGroupOf('plan')?.id).toBe('work');
+    expect(navGroupOf('inbox')?.id).toBe('work');
     expect(navGroupOf('cleanup')?.id).toBe('machine');
     expect(navGroupOf('pair')).toBeUndefined();
     expect(navGroupOf('onboarding')).toBeUndefined();
@@ -70,6 +82,17 @@ describe('the shell navigation model', () => {
     expect(pathOf('overview', state)).toEqual([
       { key: 'web.frame.rail.groups.work' },
       { key: 'overview.running.title' },
+    ]);
+
+    expect(pathOf('inbox', { attentionTotal: 4 })).toEqual([
+      { key: 'web.frame.rail.groups.work' },
+      { key: 'web.inbox.title', args: { count: '4' } },
+    ]);
+    // The top bar hands the store's own state, which carries no attention total: the trail names
+    // the page, and the count is the tab title's and the rail's.
+    expect(pathOf('inbox', {})).toEqual([
+      { key: 'web.frame.rail.groups.work' },
+      { key: 'overview.needs.title' },
     ]);
 
     expect(pathOf('plan', state)).toEqual([

@@ -33,6 +33,8 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('nav-decisions-btn-count')).toHaveText('3');
     await expect(page.getByTestId('nav-reports-btn-count')).toHaveText('5');
 
+    // The app opens on what waits; the running work is one step away, from the rail.
+    await page.getByTestId('nav-overview-btn').click();
     await expect(page.locator('.overview')).toBeVisible();
     await expect(page.locator('.project-list')).toBeVisible();
     await expect(
@@ -72,7 +74,8 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('source-src-lesson-1')).toBeVisible();
 
     // The confined file picker lists the checkout's files.
-    await page.getByTestId('add-documents').click();
+    await page.getByTestId('source-add-menu').click();
+    await page.getByTestId('action-documents').click();
     await expect(page.getByTestId('confined-file-picker')).toBeVisible();
     await expect(page.getByTestId('picker-row-doc')).toBeVisible();
     await expect(page.getByTestId('picker-row-pom.xml')).toBeVisible();
@@ -94,6 +97,8 @@ test.describe('Fully onboarded showroom', () => {
   });
 
   test('walks the six-phase process tree of the running plan', async ({ page }) => {
+    // The app opens on what waits; the plan is opened from the running work beside it.
+    await page.goto('/overview');
     // The runtime serves the plans that need the operator first, so the plan is named, not its
     // position: this walk is about fix-relay's six phases.
     const planCard = page
@@ -122,8 +127,11 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('epic-tokens')).toContainText('Tokens');
     await expect(page.getByTestId('epic-workstreams')).toBeVisible();
     await expect(page.getByTestId('workstream-WS-1')).toBeVisible();
+    // The split sits one step behind the tokens line (D6-1).
+    await page.getByTestId('epic-tokens-disclosure').click();
     await expect(page.getByTestId('epic-token-breakdown')).toBeVisible();
     await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.getByTestId('epic-events')).toBeVisible();
   });
 
@@ -177,12 +185,13 @@ test.describe('Fully onboarded showroom', () => {
   test('verifies the machine settings and the paired devices', async ({ page }) => {
     await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByTestId('settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Access' }).click();
     await expect(page.getByTestId('devices-table')).toBeVisible();
     await expect(page.getByText('Primary Desktop Browser')).toBeVisible();
     await expect(page.getByText('Terminal Companion')).toBeVisible();
 
-    await page.getByTestId('machine-settings-button').click();
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await page.getByRole('tab', { name: 'Setup' }).click();
+    await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
     await expect(page.getByTestId('aspect-list')).toContainText('31 roles');
     await expect(page.getByTestId('aspect-list')).toContainText('Claude Code');
   });

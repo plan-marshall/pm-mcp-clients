@@ -34,6 +34,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param status            the queue row's status
  * @param waitReason        what the staged plan waits for, or {@code null}
  * @param waitPlanId        the plan a dependency or overlap waits for, or {@code null}
+ * @param waitSince         the instant the row began to wait, or {@code null}
  * @param overlapFiles      the files in common with the plan it overlaps, when a wait is an overlap
  * @param pullRequestNumber a shipped plan's pull request number, or {@code null}
  * @param pullRequestUrl    the pull request's web address, or {@code null}
@@ -49,6 +50,7 @@ public record WorkRow(
         String status,
         @Nullable String waitReason,
         @Nullable String waitPlanId,
+        @Nullable String waitSince,
         List<String> overlapFiles,
         @Nullable Integer pullRequestNumber,
         @Nullable String pullRequestUrl,
@@ -97,6 +99,9 @@ public record WorkRow(
         }
         if (waitPlanId != null) {
             map.put("wait_plan_id", waitPlanId);
+        }
+        if (waitSince != null) {
+            map.put("wait_since", waitSince);
         }
         if (!overlapFiles.isEmpty()) {
             map.put("overlap_files", overlapFiles);
@@ -149,6 +154,7 @@ public record WorkRow(
                 JsonTree.string(map, "status"),
                 JsonTree.string(map, "wait_reason"),
                 JsonTree.string(map, "wait_plan_id"),
+                JsonTree.string(map, "wait_since"),
                 ControlJson.readStrings(map, "overlap_files"),
                 ControlJson.optInteger(map, "pull_request_number"),
                 JsonTree.string(map, "pull_request_url"),

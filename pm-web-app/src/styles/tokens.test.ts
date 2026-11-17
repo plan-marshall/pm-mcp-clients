@@ -55,7 +55,6 @@ const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
   [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',
   [path.normalize('lib/views/ProjectOnboardingView.svelte')]: 'PLAN-59',
   [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
-  [path.normalize('lib/views/MachineSettingsView.svelte')]: 'PLAN-60',
   [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
   [path.normalize('lib/templates/SideColumn.svelte')]: 'the V parts',
 };

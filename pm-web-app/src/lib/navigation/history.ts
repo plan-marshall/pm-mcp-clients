@@ -184,7 +184,6 @@ export function lensOf(address: Address): string {
     case 'report':
       return 'reports';
     case 'settings':
-    case 'machine-settings':
       return 'settings';
     case 'system':
     case 'cleanup':
@@ -240,28 +239,7 @@ export function writeAddress(address: Address, intent: WriteIntent): boolean {
   } else {
     window.history.replaceState(state, '', path);
   }
-  addressRevision += 1;
   return true;
-}
-
-/** Counts every change of the address this load made or adopted. */
-let addressRevision = 0;
-
-/**
- * How many times the address changed in this load, so an awaited navigation can tell it was
- * overtaken by another one.
- *
- * @returns the number of writes and adoptions so far
- */
-export function addressRevisionCount(): number {
-  return addressRevision;
-}
-
-/**
- * Records that the app adopted an address it did not write — a Back or a Forward.
- */
-export function noteAddressAdopted(): void {
-  addressRevision += 1;
 }
 
 /**

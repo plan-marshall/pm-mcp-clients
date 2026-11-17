@@ -4,13 +4,11 @@ import { formatAddress, parseAddress } from '../routes';
 import {
   APP_MARK,
   addressOf,
-  addressRevisionCount,
   carriesAppMark,
   currentAddress,
   intentFor,
   levelOf,
   lensOf,
-  noteAddressAdopted,
   parentOf,
   switchTab,
   writeAddress,
@@ -42,20 +40,6 @@ describe('the writer of the address', () => {
     expect(carriesAppMark()).toBe(false);
     expect(carriesAppMark({ path: '/plans/fix-relay' })).toBe(false);
     expect(carriesAppMark({ [APP_MARK]: true })).toBe(true);
-  });
-
-  it('counts every change of the address, and every adoption of one', () => {
-    const before = addressRevisionCount();
-
-    expect(writeAddress(PLAN, 'push')).toBe(true);
-    expect(addressRevisionCount()).toBe(before + 1);
-
-    // The bar already shows it: no change, no count.
-    expect(writeAddress(PLAN, 'push')).toBe(false);
-    expect(addressRevisionCount()).toBe(before + 1);
-
-    noteAddressAdopted();
-    expect(addressRevisionCount()).toBe(before + 2);
   });
 
   it('leaves the bar alone when it already shows the address', () => {
@@ -96,7 +80,10 @@ describe('the writer of the address', () => {
   it('reports the address the bar shows', () => {
     window.history.replaceState(null, '', '/plans/fix-relay?tab=intent');
     expect(currentAddress()).toEqual({ route: 'plan', planId: 'fix-relay', tab: 'intent' });
+    // The root is the list of what waits, an address of the scheme like any other.
     window.history.replaceState(null, '', '/');
+    expect(currentAddress()).toEqual({ route: 'inbox' });
+    window.history.replaceState(null, '', '/nowhere');
     expect(currentAddress()).toBeNull();
   });
 });

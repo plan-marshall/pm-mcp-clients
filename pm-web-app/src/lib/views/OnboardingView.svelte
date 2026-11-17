@@ -2,24 +2,33 @@
   import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import BrandMark from '../components/BrandMark.svelte';
   import StepBar from '../components/StepBar.svelte';
-  import ConsentBox from '../components/ConsentBox.svelte';
-  import LanguageChoice from '../components/LanguageChoice.svelte';
-  import HarnessChoice from '../components/HarnessChoice.svelte';
-  import ModelsChoice from '../components/ModelsChoice.svelte';
-  import AspectChoice from '../components/AspectChoice.svelte';
   import ProjectOnboardingView from './ProjectOnboardingView.svelte';
+  import ScreenHost from './onboarding/ScreenHost.svelte';
+  import {
+    screenFor,
+    type OfferedLink,
+    type OnboardingScreenContext,
+    type OnboardingState,
+  } from './onboarding/screens';
   import {
     runtimeStore,
-    navigateTo,
     loadOnboardingState,
     stepOnboarding,
     startOnboardingAuto,
     completedStepNumbers,
     requestedOnboardingStep,
   } from '../stores/runtime';
+
+  /**
+   * The onboarding frame: the step bar, the frame's own header on a phone, and the one screen the
+   * registry names for the current state (`./onboarding/screens.ts`). A state no screen claims
+   * draws the fallback, which names the terminal command and never prints the state's id.
+   *
+   * This view holds no chain of `{:else if}` per state any more: a new state is a new screen in the
+   * registry, and the registry test fails the build for a state of the mock no screen claims.
+   */
 
   let isSubmitting = false;
   let selectedStep: number | null = null;
@@ -45,32 +54,19 @@
   $: currentState = onboardingState ?? $runtimeStore.currentState;
   $: stateId = currentState?.state || 'onboard.mode';
   $: activeStep = $runtimeStore.activeStep;
-  $: isCompleted = stateId === 'onboard.completed';
   $: doneSteps = completedStepNumbers($runtimeStore.completedSteps);
 
-  // A consent is any state whose id names one: `<step>.consent` or `<step>.<action>-consent`.
-  $: isConsentState = /\.consent$/.test(stateId) || /-consent$/.test(stateId);
-
-  // A model working state reports the role, the harness, the model and the tokens expected.
-  $: isModelWorking =
-    stateId.endsWith('.probe') ||
-    stateId.endsWith('.working') ||
-    stateId === 'catalogue.advise' ||
-    stateId === 'harness.verify-profile' ||
-    stateId === 'auto.run';
+  // The one screen of the current state; `null` draws the fallback.
+  $: screen = screenFor(stateId);
 
   $: offeredLinks = getLinks(currentState);
 
   /**
-   * A link the state offers. A step is taken by naming the link's id on the onboarding's one
-   * step resource, so the link's own href is never followed and not kept.
+   * Reads the links a state offers, keeping the order the runtime reported.
+   *
+   * @param state the state to read
+   * @returns the links, the last one being the primary act
    */
-  interface OfferedLink {
-    id: string;
-    isPrimary: boolean;
-  }
-
-  /** Reads the links a state offers, keeping the order the runtime reported. */
   function getLinks(state: typeof currentState): OfferedLink[] {
     if (!state) return [];
     const rawLinks = onboardingState?.links ?? state.links ?? state._links;
@@ -89,6 +85,10 @@
     return label === key ? id.replaceAll('_', ' ') : label;
   }
 
+  /**
+   * @param ids the link ids, in the order they are preferred
+   * @returns the first of them the state offers, or `undefined`
+   */
   function linkBy(...ids: string[]): OfferedLink | undefined {
     for (const id of ids) {
       const found = offeredLinks.find((l) => l.id === id);
@@ -123,20 +123,13 @@
     }
   }
 
-  function handleConsentAccept(remember: boolean) {
-    const target = remember
-      ? (linkBy('remember', 'yes') ?? offeredLinks[offeredLinks.length - 1])
-      : (linkBy('yes', 'remember') ?? offeredLinks[offeredLinks.length - 1]);
-    if (target) {
-      void handleLinkClick(target.id, { remember });
+  /** Leaves a state the app cannot draw: back in the history, or the state read again. */
+  function goBack(): void {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      window.history.back();
+      return;
     }
-  }
-
-  function handleConsentDecline() {
-    const target = linkBy('no', 'decline') ?? offeredLinks[0];
-    if (target) {
-      void handleLinkClick(target.id, { remember: false });
-    }
+    void loadOnboardingState();
   }
 
   /** The summaries of the done steps, as the runtime reports them per aspect. */
@@ -242,6 +235,27 @@
   function stepKey(step: number): string {
     return STEP_KEYS[step - 1] ?? 'done';
   }
+
+  // Everything a screen reads and reports: the runtime conversation stays with this view.
+  $: view = {
+    state: (currentState ?? null) as OnboardingState | null,
+    links: offeredLinks,
+    busy: isSubmitting,
+    doneSteps,
+    summaries: stepSummaries,
+    machineSteps: MACHINE_STEPS,
+    onLink: (id: string, body: Record<string, unknown> = {}) => void handleLinkClick(id, body),
+    onAuto: () => void handleAuto(),
+    onBack: goBack,
+    stepKey,
+    field: stringField,
+    arrayField,
+    linkLabel,
+    consentAction,
+    completedSummary,
+    harnessNames,
+    linkBy,
+  } satisfies OnboardingScreenContext;
 </script>
 
 {#if isProjectOnboarding}
@@ -251,6 +265,15 @@
   />
 {:else}
   <div class="onboarding" data-testid="onboarding-view">
+    <!--
+      The rail head carries the mark from 768 px up; below that the rail is hidden, so the
+      onboarding's own header carries it — one mark per screen at every width (PLAN-130 residue).
+    -->
+    <header class="onboarding__brand" data-testid="onboarding-brand">
+      <BrandMark rendering="colour" size={28} />
+      <span class="onboarding__wordmark">{$t('web.frame.brand')}</span>
+    </header>
+
     <StepBar
       {activeStep}
       completedSteps={doneSteps}
@@ -276,451 +299,8 @@
               </Button>
             </div>
           </div>
-        {:else if isCompleted}
-          <div class="state-card">
-            <div class="state-card__header">
-              <span class="badge-success" aria-hidden="true"
-                ><Icon name="state.check" size={16} /></span
-              >
-              <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
-              <p class="state-card__summary" data-testid="completed-summary">
-                {completedSummary()}
-              </p>
-            </div>
-
-            {#if doneSteps.length > 0}
-              <ul class="completed-list" data-testid="completed-steps">
-                {#each doneSteps as step}
-                  <li class="completed-row">
-                    <span class="completed-row__check" aria-hidden="true"
-                      ><Icon name="state.check" size={16} /></span
-                    >
-                    <span class="completed-row__name">{$t(`onboard.step.${stepKey(step)}`)}</span>
-                    <span class="completed-row__value">
-                      {stepSummaries[String(step)] ?? $t('onboard.completed.no_summary')}
-                    </span>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-
-            <p class="state-card__next">{$t('onboard.completed.next')}</p>
-
-            <div class="state-card__actions state-card__actions--center">
-              <Button variant="secondary" on:click={() => navigateTo('machine-settings')}>
-                {$t('onboard.completed.machine_settings')}
-              </Button>
-              <Button variant="primary" on:click={() => navigateTo('projects')}>
-                {$t('onboard.completed.to_projects')}
-              </Button>
-            </div>
-          </div>
-        {:else if isConsentState}
-          <ConsentBox
-            title={stringField('summary') ?? $t('common.consent.yes')}
-            looksFor={stringField('looks_for')}
-            inDir={stringField('in')}
-            runs={stringField('runs')}
-            never={stringField('never')}
-            tokens={stringField('tokens')}
-            canRemember={currentState?.kind !== 'auto_run' &&
-              currentState?.kind !== 'verify_harness_profile'}
-            busy={isSubmitting}
-            primaryLabel={consentAction()}
-            onAccept={handleConsentAccept}
-            onDecline={handleConsentDecline}
-          />
-        {:else if isModelWorking}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.step.models')}
-              </h1>
-            </div>
-            <div class="model-working">
-              <Spinner size="2rem" />
-              <div class="model-working__details">
-                <p class="model-working__status">
-                  {$t('common.model.working', {
-                    role: stringField('role') ?? 'steward',
-                    harness: stringField('harness') ?? '',
-                    model: stringField('model') ?? '',
-                  })}
-                </p>
-                {#if stringField('tokens')}
-                  <p class="model-working__estimate">{stringField('tokens')}</p>
-                {/if}
-              </div>
-            </div>
-            <p class="model-working__note">{$t('common.model.leave_note')}</p>
-            {#if offeredLinks.length > 0}
-              <div class="state-card__actions">
-                {#each offeredLinks as { id }}
-                  <Button
-                    variant="secondary"
-                    loading={isSubmitting}
-                    on:click={() => handleLinkClick(id)}
-                  >
-                    {$t('common.model.continue_without')}
-                  </Button>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        {:else if stateId === 'onboard.mode' || stateId === 'onboard.entry'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">{$t('onboard.entry.title')}</h1>
-              <p class="state-card__summary">
-                {$t('onboard.entry.intro', { total: MACHINE_STEPS.length })}
-              </p>
-            </div>
-
-            <ol class="steps-overview" data-testid="steps-overview">
-              {#each MACHINE_STEPS as step}
-                <li>
-                  <strong>{step}. {$t(`onboard.step.${stepKey(step)}`)}</strong>
-                  ─ {$t(`onboard.entry.step.${stepKey(step)}`)}
-                </li>
-              {/each}
-            </ol>
-
-            <div class="state-card__actions">
-              {#if offeredLinks.length > 0}
-                {#each offeredLinks as { id, isPrimary }}
-                  <Button
-                    variant={isPrimary ? 'primary' : 'secondary'}
-                    loading={isSubmitting}
-                    on:click={() => handleLinkClick(id)}
-                  >
-                    {#if id === 'auto'}
-                      {$t('onboard.mode.auto')}
-                    {:else if id === 'begin'}
-                      {$t('onboard.mode.guided')}
-                    {:else}
-                      {linkLabel(id)}
-                    {/if}
-                  </Button>
-                {/each}
-              {:else}
-                <Button variant="secondary" loading={isSubmitting} on:click={handleAuto}>
-                  {$t('onboard.mode.auto')}
-                </Button>
-                <Button
-                  variant="primary"
-                  loading={isSubmitting}
-                  on:click={() => void handleLinkClick('begin')}
-                >
-                  {$t('onboard.mode.guided')}
-                </Button>
-              {/if}
-            </div>
-          </div>
-        {:else if stateId === 'language.choose'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.language.choose.title')}
-              </h1>
-              <p class="state-card__summary">{$t('onboard.language.choose.intro')}</p>
-            </div>
-            <LanguageChoice
-              current={{
-                interface: stringField('interface') ?? 'en',
-                model: stringField('model') ?? 'same',
-              }}
-              busy={isSubmitting}
-              onRecord={(choice) => {
-                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) {
-                  void handleLinkClick(target.id, {
-                    language_interface: choice.interface,
-                    language_model: choice.model === 'same' ? choice.interface : choice.model,
-                  });
-                }
-              }}
-            />
-          </div>
-        {:else if stateId === 'harness.choose'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.harness.choose.title')}
-              </h1>
-            </div>
-            <HarnessChoice
-              harnesses={arrayField('harnesses')}
-              busy={isSubmitting}
-              onCheck={() => {
-                const target = linkBy('choose', 'check') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'harness.blocked'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.harness.blocked.title', { name: '' })}
-              </h1>
-            </div>
-            <dl class="detail-list">
-              {#if stringField('cause')}
-                <div class="detail-row">
-                  <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
-                  <dd>{stringField('cause')}</dd>
-                </div>
-              {/if}
-              {#if stringField('fix')}
-                <div class="detail-row">
-                  <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
-                  <dd class="mono">{stringField('fix')}</dd>
-                </div>
-              {/if}
-            </dl>
-            <div class="state-card__actions">
-              {#each offeredLinks as { id, isPrimary }}
-                <Button
-                  variant={isPrimary ? 'primary' : 'secondary'}
-                  loading={isSubmitting}
-                  on:click={() => handleLinkClick(id)}
-                >
-                  {linkLabel(id)}
-                </Button>
-              {/each}
-            </div>
-          </div>
-        {:else if stateId === 'harness.confirm' || stateId === 'harness.add-confirm'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.harness.confirm.title', { count: 0 })}
-              </h1>
-            </div>
-            {#if stringField('default')}
-              <p class="state-card__summary">
-                {$t('onboard.harness.choose.default_label')}:
-                <span class="mono">
-                  {stringField('default')}
-                </span>
-              </p>
-            {/if}
-            <div class="state-card__actions">
-              {#each offeredLinks as { id, isPrimary }}
-                <Button
-                  variant={isPrimary ? 'primary' : 'secondary'}
-                  loading={isSubmitting}
-                  on:click={() => handleLinkClick(id)}
-                >
-                  {linkLabel(id)}
-                </Button>
-              {/each}
-            </div>
-          </div>
-        {:else if stateId === 'catalogue.select'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.catalogue.select.title')}
-              </h1>
-            </div>
-            <ModelsChoice
-              models={arrayField('models')}
-              harnessNames={harnessNames()}
-              busy={isSubmitting}
-              onRecord={() => {
-                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'roles.review'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.roles.review.title')}
-              </h1>
-            </div>
-            <AspectChoice
-              kind="roles"
-              roles={arrayField('roles')}
-              busy={isSubmitting}
-              onRecord={() => {
-                const target = linkBy('accept', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'store.choose'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.store.choose.title')}
-              </h1>
-            </div>
-            <AspectChoice
-              kind="store"
-              stores={arrayField('stores')}
-              busy={isSubmitting}
-              onRecord={(choice) => {
-                const target = linkBy(String(choice), 'os', 'file') ?? offeredLinks[0];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'providers.select'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.providers.select.title')}
-              </h1>
-            </div>
-            <AspectChoice
-              kind="providers"
-              providers={arrayField('providers')}
-              busy={isSubmitting}
-              onRecord={() => {
-                const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'providers.failed'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.providers.failed.title')}
-              </h1>
-            </div>
-            <dl class="detail-list">
-              {#if stringField('provider')}
-                <div class="detail-row">
-                  <dt>{$t('onboard.providers.field')}</dt>
-                  <dd>{stringField('provider')}</dd>
-                </div>
-              {/if}
-              {#if stringField('cause')}
-                <div class="detail-row">
-                  <dt>{$t('onboard.harness.probe.cause', { cause: '' }).replace(/:?\s*$/, '')}</dt>
-                  <dd>{stringField('cause')}</dd>
-                </div>
-              {/if}
-              {#if stringField('fix')}
-                <div class="detail-row">
-                  <dt>{$t('onboard.harness.probe.fix', { fix: '' }).replace(/:?\s*$/, '')}</dt>
-                  <dd class="mono">{stringField('fix')}</dd>
-                </div>
-              {/if}
-            </dl>
-            <div class="state-card__actions">
-              {#each offeredLinks as { id, isPrimary }}
-                <Button
-                  variant={isPrimary ? 'primary' : 'secondary'}
-                  loading={isSubmitting}
-                  on:click={() => handleLinkClick(id)}
-                >
-                  {linkLabel(id)}
-                </Button>
-              {/each}
-            </div>
-          </div>
-        {:else if stateId === 'defaults.review'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.defaults.review.title')}
-              </h1>
-            </div>
-            <AspectChoice
-              kind="defaults"
-              planDefaults={{
-                landing: stringField('landing') ?? '',
-                method: stringField('method') ?? '',
-                asking: stringField('asking') ?? '',
-                posture: stringField('posture'),
-              }}
-              busy={isSubmitting}
-              onRecord={() => {
-                const target = linkBy('accept', 'set') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id);
-              }}
-            />
-          </div>
-        {:else if stateId === 'auto.result'}
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.auto.result.title')}
-              </h1>
-            </div>
-            <table class="result-table" data-testid="auto-result">
-              <thead>
-                <tr>
-                  <th>{$t('onboard.auto.result.aspect')}</th>
-                  <th>{$t('onboard.auto.result.value')}</th>
-                  <th>{$t('onboard.auto.result.reason')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each arrayField<Record<string, string>>('results') as result}
-                  <tr>
-                    <td>{$t(`onboard.step.${result.aspect ?? ''}`)}</td>
-                    <td>{result.value}</td>
-                    <td>{$t(`onboard.auto.reason.${result.reason ?? 'default'}`)}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-            <div class="state-card__actions">
-              {#each offeredLinks as { id, isPrimary }}
-                <Button
-                  variant={isPrimary ? 'primary' : 'secondary'}
-                  loading={isSubmitting}
-                  on:click={() => handleLinkClick(id)}
-                >
-                  {linkLabel(id)}
-                </Button>
-              {/each}
-            </div>
-          </div>
         {:else}
-          <!-- A state without a screen of its own: what it reports, and one control per link. -->
-          <div class="state-card">
-            <div class="state-card__header">
-              <h1 class="state-card__title">
-                {stringField('summary') || $t('onboard.state.details')}
-              </h1>
-              {#if stringField('scope')}
-                <p class="state-card__scope mono">
-                  {$t(`onboard.scope.${stringField('scope')}`)} · {stateId}
-                </p>
-              {/if}
-            </div>
-
-            <div class="state-card__body">
-              {#each Object.entries(currentState ?? {}) as [key, value]}
-                {#if !['state', 'scope', 'summary', 'links', '_links', 'completed_steps', 'auto'].includes(key) && typeof value === 'string'}
-                  <p class="state-card__text">{value}</p>
-                {/if}
-              {/each}
-            </div>
-
-            <div class="state-card__actions">
-              {#if offeredLinks.length === 0}
-                <p class="state-card__next">{$t('onboard.state.no_links')}</p>
-              {:else}
-                {#each offeredLinks as { id, isPrimary }}
-                  <Button
-                    variant={isPrimary ? 'primary' : 'secondary'}
-                    loading={isSubmitting}
-                    on:click={() => handleLinkClick(id)}
-                  >
-                    {linkLabel(id)}
-                  </Button>
-                {/each}
-              {/if}
-            </div>
-          </div>
+          <ScreenHost {screen} {view} />
         {/if}
       </div>
     </main>
@@ -735,6 +315,20 @@
     background-color: var(--color-bg-app);
   }
 
+  /* The mark stands beside the wordmark below 768 px only: from there the rail head carries it. */
+  .onboarding__brand {
+    display: none;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4) 0;
+  }
+
+  .onboarding__wordmark {
+    color: var(--color-text-primary);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+  }
+
   .onboarding__main {
     flex: 1;
     padding: var(--space-8) var(--space-4);
@@ -745,216 +339,18 @@
     margin: 0 auto;
   }
 
-  .state-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    box-shadow: var(--shadow-sm);
-  }
+  @media (max-width: 767px) {
+    /* The frame's bottom bar is sticky; the content ends above it, never under it. */
+    .onboarding {
+      padding-block-end: var(--space-16);
+    }
 
-  .state-card__header {
-    margin-bottom: var(--space-6);
-  }
+    .onboarding__brand {
+      display: flex;
+    }
 
-  .state-card__title {
-    font-size: var(--text-2xl);
-    font-weight: 700;
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-  }
-
-  .state-card__summary,
-  .state-card__next {
-    font-size: var(--text-base);
-    color: var(--color-text-secondary);
-  }
-
-  .state-card__next {
-    margin-top: var(--space-4);
-    font-size: var(--text-sm);
-  }
-
-  .state-card__scope {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-  }
-
-  .state-card__text {
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-    overflow-wrap: anywhere;
-  }
-
-  .state-card__actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    margin-top: var(--space-6);
-    border-top: 1px solid var(--color-border-subtle);
-    padding-top: var(--space-4);
-  }
-
-  .state-card__actions--center {
-    justify-content: center;
-  }
-
-  .steps-overview {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    margin-bottom: var(--space-6);
-    padding: var(--space-4);
-    background-color: var(--color-bg-subtle);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-  }
-
-  .steps-overview strong {
-    color: var(--color-text-primary);
-  }
-
-  .completed-list {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .completed-row {
-    display: grid;
-    grid-template-columns: auto 8rem 1fr;
-    gap: var(--space-3);
-    align-items: baseline;
-    padding: var(--space-2) var(--space-3);
-    background-color: var(--color-bg-subtle);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .completed-row__check {
-    color: var(--color-success);
-  }
-
-  .completed-row__name {
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .completed-row__value {
-    color: var(--color-text-secondary);
-  }
-
-  .model-working {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    background-color: var(--color-bg-subtle);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--space-4);
-  }
-
-  .model-working__status {
-    font-weight: 600;
-    font-size: var(--text-base);
-    color: var(--color-text-primary);
-  }
-
-  .model-working__estimate {
-    font-size: var(--text-sm);
-    color: var(--color-text-muted);
-  }
-
-  .model-working__note {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    font-style: italic;
-  }
-
-  .detail-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .detail-row {
-    display: grid;
-    grid-template-columns: 8rem 1fr;
-    gap: var(--space-4);
-    font-size: var(--text-sm);
-  }
-
-  .detail-row dt {
-    color: var(--color-text-secondary);
-    font-weight: 600;
-  }
-
-  .detail-row dd {
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-  }
-
-  .result-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-  }
-
-  .result-table th,
-  .result-table td {
-    padding: var(--space-2) var(--space-3);
-    text-align: left;
-    border-bottom: 1px solid var(--color-border-subtle);
-    vertical-align: top;
-  }
-
-  .result-table th {
-    color: var(--color-text-secondary);
-    font-weight: 600;
-    background-color: var(--color-bg-subtle);
-  }
-
-  .badge-success {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 3rem;
-    height: 3rem;
-    border-radius: 50%;
-    background-color: var(--color-success);
-    color: var(--color-text-inverse);
-    font-size: 1.5rem;
-    font-weight: bold;
-    margin-bottom: var(--space-3);
-  }
-
-  @media (max-width: 768px) {
     .onboarding__main {
       padding: var(--space-4) var(--space-3);
-    }
-
-    .state-card {
-      padding: var(--space-4);
-    }
-
-    .state-card__title {
-      font-size: var(--text-xl);
-    }
-
-    .completed-row,
-    .detail-row {
-      grid-template-columns: 1fr;
-      gap: var(--space-1);
-    }
-
-    .state-card__actions {
-      flex-direction: column-reverse;
-      align-items: stretch;
     }
   }
 </style>

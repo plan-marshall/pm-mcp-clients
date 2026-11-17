@@ -85,6 +85,51 @@ export interface ProjectOverviewResponse {
   projects: ProjectSummary[];
 }
 
+/** Where an item of what waits belongs: a project, an epic or a plan (`WorkLocation`). */
+export interface NeedsOperatorLocation {
+  id: string;
+  title?: string | null;
+}
+
+/**
+ * One item of the one list of everything that waits (UC-PLN-7, `NeedsOperatorItem`).
+ *
+ * The runtime derives it on read and serves it in its own order; a client keeps that order and
+ * sorts nothing.
+ */
+export interface NeedsOperatorItem {
+  /** The closed kind of the wait (`NeedsOperatorKind`); an unknown one reads as `other`. */
+  kind: string;
+  /** The path of the item itself, an absolute path of the local API, or absent. */
+  link?: string | null;
+  /** The project it belongs to, or absent for the machine's own items. */
+  project?: NeedsOperatorLocation | null;
+  /** The epic it belongs to, or absent. */
+  epic?: NeedsOperatorLocation | null;
+  /** The plan it belongs to, or absent. */
+  plan?: NeedsOperatorLocation | null;
+  /** When it started to wait, or absent when the runtime measures none. */
+  since?: string | null;
+  /** What it blocks: `plan`, `epic` or `project`; absent when it blocks no work. */
+  blocks?: string | null;
+}
+
+/** One page of the list of what waits (`GET /api/v1/machine/needs-operator`). */
+export interface NeedsOperatorPage {
+  /** The page number, 1-based. */
+  page: number;
+  /** How many pages the list has. */
+  total_pages: number;
+  /** Whether a newer page exists. */
+  has_newer: boolean;
+  /** Whether an older page exists; it is what `Show more` reads. */
+  has_older: boolean;
+  /** The number of items of every page. */
+  total: number;
+  /** The items of this page, in the runtime's order. */
+  items: NeedsOperatorItem[];
+}
+
 export type ProjectReadiness = 'ready' | 'setup_needs' | 'released';
 
 export interface EnrolledProject {
@@ -530,6 +575,8 @@ export interface EpicWorkRow {
   status: string;
   wait_reason?: string | null;
   wait_plan_id?: string | null;
+  /** The instant the row began to wait, so the view can say since when. */
+  wait_since?: string | null;
   overlap_files?: string[];
   pull_request_number?: number | null;
   pull_request_url?: string | null;
@@ -3089,18 +3136,28 @@ export class ApiClient {
   /**
    * Opens an entry under its project, addressed by its id from then on.
    *
+   * The setup gate is the opening call, so the view brings its own bound
+   * (`AbortSignal.timeout`): the client's own limit applies beside it, and the one that fires
+   * decides the failure both report.
+   *
    * @param projectId the project the entry starts in
    * @param request the kind of work and what the operator already said
+   * @param signal the caller's bound, where the gate brings one
+   * @param timeoutMs the client's own bound for this call
    * @returns the entry's representation
    */
   public async openEntry(
     projectId: string,
     request: EntryOpenRequest,
+    signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
   ): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
       `/api/v1/projects/${encodeURIComponent(projectId)}/entries`,
       request,
+      signal,
+      timeoutMs,
     );
   }
 
@@ -3443,6 +3500,23 @@ export class ApiClient {
 
   public async getProjects(): Promise<ProjectOverviewResponse> {
     return this.request<ProjectOverviewResponse>('GET', '/api/v1/projects');
+  }
+
+  /**
+   * Reads one page of the one list of everything that waits (UC-PLN-7).
+   *
+   * The runtime serves the items in its own order — the items that block running work first, then
+   * the oldest — and the client keeps it. `has_older` is what `Show more` (`overview.needs.more`)
+   * reads; `total` is the count the rail entry and the tab title carry.
+   *
+   * @param page the page to read, 1-based
+   * @returns the page with its items, its total and whether an older page exists
+   */
+  public async getNeedsOperator(page = 1): Promise<NeedsOperatorPage> {
+    return this.request<NeedsOperatorPage>(
+      'GET',
+      `/api/v1/machine/needs-operator?page=${encodeURIComponent(String(page))}`,
+    );
   }
 
   public async getProjectExplorer(): Promise<ProjectExplorer> {

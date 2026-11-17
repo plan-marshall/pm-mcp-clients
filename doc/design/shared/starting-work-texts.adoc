@@ -50,6 +50,30 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Continue the project's onboarding
 |Setze die Einrichtung des Projekts fort
 
+|`start.gate.checking`
+|Checking the project's setup…
+|Die Einrichtung des Projekts wird geprüft…
+
+|`start.gate.slow`
+|The project's setup did not answer within 20 seconds.
+|Die Einrichtung des Projekts hat innerhalb von 20 Sekunden nicht geantwortet.
+
+|`start.gate.choose_project`
+|Choose a project
+|Wähle ein Projekt
+
+|`start.action.add_source`
+|Add a source
+|Quelle hinzufügen
+
+|`start.entry.abandon_title`
+|Abandon this start?
+|Diesen Start verwerfen?
+
+|`start.entry.abandon_consequence`
+|The entry and its sources are deleted. Nothing is created.
+|Der Eintrag und seine Quellen werden gelöscht. Nichts wird erstellt.
+
 |`start.step.sources`
 |Sources
 |Quellen
@@ -77,6 +101,14 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.choose.recipe`
 |A recipe
 |Ein Rezept
+
+|`start.choose.sources_act`
+|Start from sources
+|Aus Quellen starten
+
+|`start.choose.recipe_act`
+|Choose a recipe
+|Ein Rezept wählen
 
 |`start.choose.no_recipe`
 |no recipe is offered in {project}
@@ -129,6 +161,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.source.add`
 |+ {kind}
 |+ {kind}
+
+|`start.source.add_act`
+|Add
+|Hinzufügen
 
 |`start.source.remove`
 |Remove

@@ -103,7 +103,7 @@ class PlanDetailTest {
 
             assertAll("the row's own facts",
                     () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "plan_id")),
-                    () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "title")),
+                    () -> assertEquals("Reconnect backoff", JsonTree.string(process, "title")),
                     () -> assertEquals("pm-mcp-clients",
                             JsonTree.string(JsonTree.object(process, "project"), "project_id")),
                     () -> assertEquals("relay-hardening",

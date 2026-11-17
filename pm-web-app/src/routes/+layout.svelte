@@ -15,6 +15,7 @@
     stopRuntimeRecovery,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
+  import { attentionStore } from '../lib/stores/attention';
   import { ROUTE_TITLES, parseAddress, replaceLegacyAddress, type AppRoute } from '../lib/routes';
   import { writeAddress } from '../lib/navigation/history';
   import {
@@ -288,17 +289,24 @@
     applyTheme(choice);
   }
 
-  // The tab title counts the open decisions, so an operator in another tab sees them without
-  // opening the app; the list and the badge carry the same count. The route supplies the key and
-  // the name it carries, so no title is ever formatted without its argument.
+  // The tab title counts what waits, so an operator in another tab sees it without opening the
+  // app; the rail's entry, the tab title and the tab icon read the same total. The route supplies
+  // the key and the name it carries, so no title is ever formatted without its argument; the start
+  // page's own title is the count's words, every other route prefixes the base title with it.
   $effect(() => {
     if (typeof document === 'undefined') return;
-    const count = $runtimeStore.openDecisionsCount;
-    const { key, args } = ROUTE_TITLES[$runtimeStore.currentRoute]($runtimeStore);
+    const count = $attentionStore.total;
+    const { key, args } = ROUTE_TITLES[$runtimeStore.currentRoute]({
+      ...$runtimeStore,
+      attentionTotal: count,
+    });
     // The address bar never shows a raw key: the title waits for the catalogue to arrive.
     if (!$messagesStore[key]) return;
     const base = $t(key, args);
-    document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+    document.title =
+      count > 0 && $runtimeStore.currentRoute !== 'inbox'
+        ? $t('decision.notify.tab_title', { count, title: base })
+        : base;
   });
 
   // Once the app has started and reaches its origin, it fetches the figure of the disconnected
@@ -309,10 +317,10 @@
     }
   });
 
-  // The tab icon carries the attention dot while items wait; it reads the same count the rail
-  // badge and the tab title carry, so the three never disagree.
+  // The tab icon carries the attention dot while items wait; it reads the same total the rail's
+  // entry and the tab title carry, so the three never disagree.
   $effect(() => {
-    applyFavicon($runtimeStore.openDecisionsCount);
+    applyFavicon($attentionStore.total);
   });
 </script>
 
@@ -396,6 +404,11 @@
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}
+    {#if $attentionStore.leftNotice}
+      {$t('overview.needs.left', {
+        kind: $t(`overview.needs.${$attentionStore.leftNotice}`),
+      })}{$attentionStore.leftSeq % 2 === 0 ? '' : '\u200B'}
+    {/if}
   </div>
 
   <div class="sr-only" aria-live="polite">

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import fs from 'node:fs';
 import path from 'node:path';
 import EpicView from './EpicView.svelte';
@@ -203,6 +203,9 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
 
       it('renders the epic findings action button ("Prüfen" / Review) with the primary action role', async () => {
         render(EpicView);
+
+        // The findings and watches reviews live on the Reviews tab of the epic's object column.
+        await fireEvent.click(await screen.findByRole('tab', { name: /Reviews|Prüfungen/ }));
 
         const reviewBtn = await screen.findByTestId('open-findings-review');
         expect(reviewBtn).toBeInTheDocument();

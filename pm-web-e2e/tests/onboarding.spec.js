@@ -143,18 +143,43 @@ test.describe('The recorded interface language', () => {
   });
 });
 
-test.describe('Machine settings route', () => {
-  test('opens /settings/machine and shows every aspect', async ({ page, request }) => {
+test.describe('The one settings view', () => {
+  test('replaces the old machine settings address with the setup tab', async ({ page, request }) => {
     // The settings are reachable once the machine is onboarded.
     await openOnboarding(page, request, 'entry-device-lifecycle');
 
     await page.goto('/settings/machine');
 
-    await expect(page).toHaveURL(/\/settings\/machine$/);
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\?tab=setup$/);
+    await expect(page.getByTestId('settings-view')).toBeVisible();
+    await expect(page.getByTestId('settings-panel-setup')).toBeVisible();
+  });
+
+  test('shows every tab of the one settings view', async ({ page, request }) => {
+    await openOnboarding(page, request, 'entry-device-lifecycle');
+    await page.goto('/settings');
+    await expect(page.getByTestId('settings-view')).toBeVisible();
+
+    for (const tab of ['Setup', 'Access', 'Credentials', 'Consents', 'Retention']) {
+      await page.getByRole('tab', { name: tab }).click();
+      await expect(page.getByTestId(`settings-panel-${tab.toLowerCase()}`)).toBeVisible();
+      await expect(page).toHaveURL(new RegExp(`tab=${tab.toLowerCase()}$`));
+    }
+  });
+
+  test('keeps the recorded setup on the setup tab', async ({ page, request }) => {
+    await openOnboarding(page, request, 'entry-device-lifecycle');
+    await page.goto('/settings');
+
     await expect(page.getByTestId('aspect-list')).toBeVisible();
     await expect(page.locator('[data-aspect="language"]')).toBeVisible();
     await expect(page.locator('[data-aspect="defaults"]')).toBeVisible();
+  });
+
+  test('withdraws a remembered consent on the consents tab', async ({ page, request }) => {
+    await openOnboarding(page, request, 'entry-device-lifecycle');
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Consents' }).click();
 
     await page.getByTestId('withdraw-scan_harnesses').click();
     await expect(page.getByText('Withdrawn: you will be asked again next time.')).toBeVisible();
@@ -162,8 +187,9 @@ test.describe('Machine settings route', () => {
 
   test('opens the onboarding at the aspect whose Change was clicked', async ({ page, request }) => {
     await openOnboarding(page, request, 'entry-device-lifecycle');
-    await page.goto('/settings/machine');
-    await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+    await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Credentials' }).click();
+    await expect(page.getByTestId('settings-panel-credentials')).toBeVisible();
 
     await page.getByTestId('change-aspect-providers').click();
 
@@ -177,7 +203,7 @@ test.describe('Machine settings route', () => {
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
 
     await page.getByRole('button', { name: /Settings/i }).click();
-    await expect(page.locator('.settings-view')).toBeVisible();
+    await expect(page.getByTestId('settings-view')).toBeVisible();
 
     await page.getByTestId('settings-back-button').click();
     await expect(page).toHaveURL(/\/projects$/);

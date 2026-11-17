@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { runtimeStore, navigateTo, openRunningWork } from '../stores/runtime';
-  import { currentLocale, setLocale, t } from '../i18n';
+import { runtimeStore, navigateTo, openAttention, openRunningWork } from '../stores/runtime';
+import { attentionStore } from '../stores/attention';
+import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
   import { RAIL_GROUPS, BOTTOM_ITEMS, activeNavRoute, type ShellNavItem } from './nav';
   import Dialog from '../components/Dialog.svelte';
@@ -15,16 +16,20 @@
   }
 
   /**
-   * The phone's bottom bar (UX-P-02): Running, Decisions, Reports and "More".
+   * The phone's bottom bar (UX-P-02): What waits, Running work, Decisions and "More".
    *
-   * Below 768 px the rail has no room, so the four destinations a person opens most stand at the
-   * foot of the page; "More" opens a sheet with every destination, the same three groups the rail
-   * carries, and the language and theme controls the rail's foot offers on a desktop. Each item
-   * keeps a visible label: a phone has no hover for a tooltip.
+   * Below 768 px the rail has no room, so the destinations a person opens most stand at the foot
+   * of the page; "More" opens a sheet with every destination, the same three groups the rail
+   * carries, and the language and theme controls the rail's foot offers on a desktop. The reports
+   * moved into the sheet, so "More" carries their unread count; each item keeps a visible label: a
+   * phone has no hover for a tooltip.
    */
   let { themeChoice, onChooseTheme }: Props = $props();
 
   const active = $derived(activeNavRoute($runtimeStore.currentRoute));
+
+  /** Whether the route's destination is one the sheet holds, so More stands selected for it. */
+  const moreActive = $derived(!BOTTOM_ITEMS.some((item) => active === item.route));
 
   /** The same condition the rail uses: a destination is offered only where it can open. */
   const canNavigate = $derived(
@@ -38,9 +43,12 @@
    * The count a destination carries, as the rail shows it at desktop width.
    *
    * @param item the destination
-   * @returns the open decisions or the unread reports, or `0` when it carries none
+   * @returns the items that wait, the open decisions or the unread reports, or `0` for none
    */
   function countOf(item: ShellNavItem): number {
+    if (item.count === 'attention') {
+      return $attentionStore.total;
+    }
     if (item.count === 'decisions') {
       return $runtimeStore.openDecisionsCount;
     }
@@ -58,6 +66,9 @@
    * @returns the catalogue text the badge carries
    */
   function countLabel(item: ShellNavItem, count: number): string {
+    if (item.count === 'attention') {
+      return $t('overview.needs.count', { count });
+    }
     return item.count === 'decisions'
       ? $t('decisions.list.open', { count })
       : $t('report.list.unread', { count });
@@ -97,6 +108,10 @@
    */
   function open(item: ShellNavItem): void {
     sheetOpen = false;
+    if (item.id === 'needs') {
+      openAttention();
+      return;
+    }
     if (item.id === 'running') {
       void openRunningWork();
       return;
@@ -133,13 +148,24 @@
     <button
       type="button"
       class="bottom-bar__item"
+      class:bottom-bar__item--active={moreActive}
       data-testid="bottom-more"
       aria-haspopup="dialog"
       aria-expanded={sheetOpen}
+      aria-current={moreActive ? 'page' : undefined}
       onclick={() => (sheetOpen = true)}
     >
       <Icon name="act.more" size={20} />
       <span class="bottom-bar__label">{$t('web.frame.bottom.more')}</span>
+      {#if $runtimeStore.unreadReportsCount > 0}
+        <span
+          class="bottom-bar__count"
+          data-testid="bottom-more-count"
+          aria-label={$t('report.list.unread', { count: $runtimeStore.unreadReportsCount })}
+        >
+          {$runtimeStore.unreadReportsCount}
+        </span>
+      {/if}
     </button>
   </nav>
 

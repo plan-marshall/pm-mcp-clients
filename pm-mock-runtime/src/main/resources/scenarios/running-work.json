@@ -1869,7 +1869,7 @@
                         "rows": [
                           {
                             "plan_id": "relay-reconnect-backoff",
-                            "title": "relay-reconnect-backoff",
+                            "title": "Reconnect backoff",
                             "status": "shipped",
                             "pull_request_number": 211,
                             "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/211"
@@ -1914,7 +1914,8 @@
                             "title": "relay-token-rotation",
                             "status": "staged",
                             "wait_reason": "dependency",
-                            "wait_plan_id": "relay-auth-v2"
+                            "wait_plan_id": "relay-auth-v2",
+                            "wait_since": "2026-10-16T09:28:00Z"
                           },
                           {
                             "plan_id": "relay-docs",
@@ -1922,6 +1923,7 @@
                             "status": "staged",
                             "wait_reason": "overlap",
                             "wait_plan_id": "relay-auth-v2",
+                            "wait_since": "2026-10-16T09:40:00Z",
                             "overlap_files": [
                               "pm-api/src/store/Docs.java"
                             ]

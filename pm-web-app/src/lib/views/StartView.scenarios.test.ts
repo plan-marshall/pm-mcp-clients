@@ -17,6 +17,16 @@ import {
  * UC-STA-9): every screen reads the representation the mock runtime serves.
  */
 
+/**
+ * Opens the one "Add a source" menu and picks a kind.
+ *
+ * @param kind the source kind the operator adds
+ */
+async function pickSource(kind: string): Promise<void> {
+  await fireEvent.click(screen.getByTestId('source-add-menu'));
+  await fireEvent.click(screen.getByTestId(`action-${kind}`));
+}
+
 function arrangeOpen(repr: ReturnType<typeof sources>): void {
   vi.spyOn(apiClient, 'openEntry').mockResolvedValue(repr);
   vi.spyOn(apiClient, 'getEntry').mockResolvedValue(repr);
@@ -115,7 +125,7 @@ describe('start-sources: a plan from a description and from an issue of another 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
 
     await screen.findByTestId('source-list');
-    await fireEvent.click(screen.getByTestId('add-issue'));
+    await pickSource('issue');
     await fireEvent.input(screen.getByTestId('issue-input'), {
       target: { value: 'https://codeberg.org/forgejo/forgejo/issues/4711' },
     });
@@ -205,7 +215,7 @@ describe('start-documents: copied, moved, a directory, a tracked file and a refu
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
 
     await screen.findByTestId('source-list');
-    await fireEvent.click(screen.getByTestId('add-documents'));
+    await pickSource('documents');
     expect(await screen.findByTestId('confined-file-picker')).toBeInTheDocument();
     expect(apiClient.listProjectFiles).toHaveBeenCalledWith(PROJECT, 'checkout', '');
 
@@ -427,10 +437,13 @@ describe('start-local-changes: offered only with a landing that commits', () => 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
 
-    expect(screen.getByTestId('add-local_changes')).toBeDisabled();
-    expect(screen.getByTestId('offer-local_changes-reason')).toHaveTextContent(
-      "Local changes need a landing that commits; this project's landing is landing.files",
-    );
+    await fireEvent.click(screen.getByTestId('source-add-menu'));
+    expect(screen.getByTestId('action-local_changes')).toHaveAttribute('aria-disabled', 'true');
+    expect(
+      screen.getByText(
+        "Local changes need a landing that commits; this project's landing is landing.files",
+      ),
+    ).toBeInTheDocument();
   });
 
   it('previews the changes and captures them when the landing commits', async () => {
@@ -456,7 +469,7 @@ describe('start-local-changes: offered only with a landing that commits', () => 
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
-    await fireEvent.click(screen.getByTestId('add-local_changes'));
+    await pickSource('local_changes');
 
     expect(await screen.findByTestId('local-changes-panel')).toBeInTheDocument();
     expect(screen.getByTestId('local-changes-summary')).toHaveTextContent('main');
@@ -482,7 +495,7 @@ describe('start-local-changes: offered only with a landing that commits', () => 
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
-    await fireEvent.click(screen.getByTestId('add-local_changes'));
+    await pickSource('local_changes');
 
     expect(await screen.findByTestId('local-changes-ineligible')).toHaveTextContent(
       'landing.files',
@@ -528,7 +541,7 @@ describe('start-pull-request: the changed files stay untrusted', () => {
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
-    await fireEvent.click(screen.getByTestId('add-pull_request'));
+    await pickSource('pull_request');
     await fireEvent.input(screen.getByTestId('pr-input'), {
       target: { value: 'https://github.com/plan-marshall/pm-mcp-clients/pull/214' },
     });
@@ -590,7 +603,7 @@ describe('start-lesson: a claimed, retired and usable lesson', () => {
     expect(screen.getByTestId('state-src-lesson-2')).toHaveTextContent('claimed by another plan');
     expect(screen.getByTestId('state-src-lesson-3')).toHaveTextContent('retired');
 
-    await fireEvent.click(screen.getByTestId('add-lesson'));
+    await pickSource('lesson');
     await fireEvent.click(await screen.findByTestId('lesson-select-les-0009'));
     expect(add).toHaveBeenCalledWith('ent-3f9a2c41', 'add_lesson', {
       lesson_id: 'les-0009',
@@ -729,6 +742,12 @@ describe('start-epic-adopt: adopting an epic and its failure', () => {
     expect(screen.getByTestId('adopt-retry')).toBeInTheDocument();
     expect(screen.getByTestId('adopt-back')).toBeInTheDocument();
     expect(screen.getByTestId('adopt-abandon')).toBeInTheDocument();
+
+    // Abandon asks first, as it does at the sources step: the failure route is not an exemption.
+    const act = vi.spyOn(apiClient, 'actEntry');
+    await fireEvent.click(screen.getByTestId('adopt-abandon'));
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+    expect(act).not.toHaveBeenCalled();
   });
 });
 
@@ -1000,7 +1019,7 @@ describe('start-chat: the one chat panel', () => {
 
     render(StartView, { props: { projectId: PROJECT, kind: 'plan' } });
     await screen.findByTestId('source-list');
-    expect(screen.getByTestId('source-chat')).toBeDisabled();
+    expect(screen.getByTestId('source-chat')).toHaveAttribute('aria-disabled', 'true');
     expect(screen.getByTestId('source-chat')).toHaveAttribute(
       'title',
       'available once a source is stored and every source from outside the machine is screened',

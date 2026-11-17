@@ -5,17 +5,16 @@
       "de": [],
       "en": []
     },
+    "InboxView": {
+      "de": [],
+      "en": []
+    },
     "PlanView": {
       "de": [],
       "en": []
     },
     "EpicView": {
-      "de": [
-        {
-          "rule": "foreign-word",
-          "word": "paused"
-        }
-      ],
+      "de": [],
       "en": []
     },
     "ReportsView": {
@@ -49,10 +48,6 @@
       "en": []
     },
     "SettingsView": {
-      "de": [],
-      "en": []
-    },
-    "MachineSettingsView": {
       "de": [],
       "en": []
     },

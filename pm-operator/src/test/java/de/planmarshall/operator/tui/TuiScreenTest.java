@@ -64,14 +64,21 @@ class TuiScreenTest {
                 }
             });
             thread.start();
-            await(() -> virtual.alternateScreenActive()
-                                && String.join("\n", virtual.screen().lines()).contains("OVERVIEW-ROW-a"));
+            await(() -> {
+                var frame = String.join("\n", virtual.screen().lines());
+                return virtual.alternateScreenActive()
+                                    && frame.contains("OVERVIEW-ROW-a")
+                                    && frame.contains("E ended work");
+            });
 
             var before = String.join("\n", virtual.screen().lines());
             assertTrue(before.contains("E ended work"), before);
 
             virtual.type("j");
-            await(() -> String.join("\n", virtual.screen().lines()).contains("ACTIVITY-ROW-a"));
+            await(() -> {
+                var frame = String.join("\n", virtual.screen().lines());
+                return frame.contains("ACTIVITY-ROW-a") && !frame.contains("OVERVIEW-ROW");
+            });
 
             var after = String.join("\n", virtual.screen().lines());
             assertFalse(after.contains("OVERVIEW-ROW"), "the previous level's rows remain:\n" + after);

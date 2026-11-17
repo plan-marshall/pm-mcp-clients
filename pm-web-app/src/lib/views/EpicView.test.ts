@@ -3,8 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess, type EpicResource, type ReviewResource } from '../api/client';
 import { ClientError } from '../api/errors';
-import { workflowIconUrl } from '../icons/workflowIcons';
-import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
+import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 
@@ -50,135 +49,6 @@ describe('EpicView component', () => {
     },
   };
 
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    runtimeStore.set(
-      makeRuntimeState({
-        isInitialized: true,
-        isPaired: true,
-        isOnboarded: true,
-        deviceLabel: 'test',
-        machineName: 'test-mac',
-        currentRoute: 'epic',
-        currentState: null,
-        isRevoked: false,
-        revokedReason: '',
-        isOffline: false,
-        isListenerClosed: false,
-        completedSteps: 0,
-        isDraining: false,
-        isStopped: false,
-        activeStep: 1,
-        unreadReportsCount: 0,
-        openDecisionsCount: 0,
-        selectedPlanId: null,
-        selectedEpicId: 'relay-hardening',
-        selectedTaskId: null,
-      }),
-    );
-
-    vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
-    vi.spyOn(apiClient, 'getEpicResource').mockRejectedValue(new Error('no resource'));
-    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
-  });
-
-  it('draws the error pattern when the epic process cannot be read', async () => {
-    const process = vi
-      .spyOn(apiClient, 'getEpicProcess')
-      .mockRejectedValue(new ClientError('network_offline'));
-
-    render(EpicView);
-
-    const error = await screen.findByTestId('epic-error');
-    expect(error).toHaveTextContent('The machine is not reachable');
-    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(process).toHaveBeenCalledTimes(2));
-  });
-
-  it('renders epic header, breadcrumb, title, state, tokens, and review badge', async () => {
-    render(EpicView);
-
-    expect(await screen.findByTestId('epic-title')).toHaveTextContent('relay-hardening');
-    expect(screen.getByTestId('breadcrumb-project')).toHaveTextContent('pm-mcp-clients');
-    expect(screen.getByTestId('breadcrumb-epic')).toHaveTextContent('relay-hardening');
-
-    expect(screen.getByTestId('epic-state')).toHaveTextContent('running');
-    expect(screen.getByTestId('review-ready-badge')).toHaveTextContent(
-      /completion review is ready/i,
-    );
-
-    expect(screen.getByTestId('epic-tokens')).toHaveTextContent(/3.86 M/);
-  });
-
-  it('renders running plans and staged plans with task counts', async () => {
-    render(EpicView);
-
-    const runningPlan = await screen.findByTestId('running-plan-fix-relay');
-    expect(runningPlan).toBeInTheDocument();
-    expect(runningPlan).toHaveTextContent('fix-relay');
-    expect(runningPlan).toHaveTextContent('execute');
-    expect(runningPlan).toHaveTextContent('4 of 10 tasks');
-    expect(
-      runningPlan.querySelector('.badge--phase .workflow-icon')?.getAttribute('style'),
-    ).toContain(workflowIconUrl('phase.execute'));
-
-    const stagedPlan = await screen.findByTestId('staged-plan-relay-metrics');
-    expect(stagedPlan).toBeInTheDocument();
-    expect(stagedPlan).toHaveTextContent('relay-metrics');
-    expect(stagedPlan).toHaveTextContent('0 of 6 tasks');
-  });
-
-  it('renders alongside landings list', async () => {
-    render(EpicView);
-
-    const landingsSection = await screen.findByTestId('epic-alongside-section');
-    expect(landingsSection).toBeInTheDocument();
-    const items = screen.getAllByTestId('alongside-item');
-    expect(items.length).toBe(2);
-    expect(items[0]).toHaveTextContent('landing doc/update.md · done');
-  });
-
-  it('clicking a plan card opens the plan view with selectedPlanId', async () => {
-    render(EpicView);
-
-    const runningPlan = await screen.findByTestId('running-plan-fix-relay');
-    await fireEvent.click(runningPlan);
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('plan');
-    expect(state.selectedPlanId).toBe('fix-relay');
-  });
-
-  it('returns to the plan it was opened from, then to the overview', async () => {
-    navigateTo('overview');
-    openPlanView('fix-relay');
-    openEpicView('relay-hardening');
-
-    render(EpicView);
-    await screen.findByTestId('epic-title');
-
-    await fireEvent.click(screen.getByTestId('back-btn'));
-    expect(get(runtimeStore).currentRoute).toBe('plan');
-    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
-
-    await fireEvent.click(screen.getByTestId('back-btn'));
-    expect(get(runtimeStore).currentRoute).toBe('overview');
-  });
-
-  it('opens the project in the explorer in one step', async () => {
-    render(EpicView);
-
-    await screen.findByTestId('epic-title');
-    await fireEvent.click(screen.getByTestId('breadcrumb-project'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('project');
-    expect(state.selectedProjectId).toBe('pm-mcp-clients');
-    // The project opens at its one page address, not the old `?project=` query.
-    expect(window.location.pathname).toBe('/projects/pm-mcp-clients');
-    expect(window.location.search).toBe('');
-  });
-
   const mockResource: EpicResource = {
     epic_id: 'relay-hardening',
     project_id: 'pm-mcp-clients',
@@ -195,23 +65,32 @@ describe('EpicView component', () => {
         open: true,
         rows: [
           {
-            plan_id: 'relay-cursor-order',
-            title: 'relay-cursor-order',
-            status: 'running',
+            plan_id: 'relay-reconnect-backoff',
+            title: 'Reconnect backoff',
+            status: 'shipped',
             pull_request_number: 211,
             pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
           },
           {
+            // A running row that carries a pull request is no landing: only a shipped row is.
+            plan_id: 'relay-cursor-order',
+            title: 'Cursor order',
+            status: 'running',
+            pull_request_number: 300,
+            pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/300',
+          },
+          {
             plan_id: 'relay-docs',
-            title: 'relay-docs',
+            title: 'Relay docs',
             status: 'staged',
             wait_reason: 'overlap',
             wait_plan_id: 'relay-auth-v2',
+            wait_since: '2026-10-16T09:40:00Z',
             overlap_files: ['pm-api/src/store/Docs.java'],
           },
           {
             plan_id: 'relay-reconnect-metrics',
-            title: 'relay-reconnect-metrics',
+            title: 'Reconnect metrics',
             status: 'staged',
             wait_reason: 'none',
           },
@@ -219,8 +98,10 @@ describe('EpicView component', () => {
       },
     ],
     sources: ['2 documents', '1 issue'],
-    landings: 2,
-    findings: { new: 3, open: 4, kept: 2 },
+    // The resource's own landing counter disagrees with the rows on purpose: the view counts the
+    // rows it lists, never the served figure (deliverable 3).
+    landings: 9,
+    findings: { new: 0, open: 2, kept: 1 },
     watches: { new: 1, open: 4, kept: 0 },
     tokens: {
       total: {
@@ -268,10 +149,19 @@ describe('EpicView component', () => {
     review_id: 'R-0001',
     epic_id: 'relay-hardening',
     register: 'findings',
-    decided: 2,
+    decided: 1,
     total: 3,
     state: 'item',
     items: [
+      {
+        item_id: 'F-0003',
+        register: 'findings',
+        statement: 'The retry count is not bounded',
+        rules: [],
+        origin: 'review comment of #212',
+        trust: 'trusted',
+        state: 'kept',
+      },
       {
         item_id: 'F-0004',
         register: 'findings',
@@ -285,62 +175,284 @@ describe('EpicView component', () => {
       {
         item_id: 'F-0005',
         register: 'findings',
-        statement: 'The retry count is not bounded',
+        statement: 'The cursor order is asserted too weakly',
         rules: [],
-        origin: 'review comment of #212',
+        origin: 'review comment of #213',
         trust: 'untrusted',
-        state: 'kept',
+        state: 'open',
       },
     ],
   };
 
-  it('renders the workstreams, sources, landings, registers, tokens, and events', async () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/epics/relay-hardening');
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'test',
+        machineName: 'test-mac',
+        currentRoute: 'epic',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        isDraining: false,
+        isStopped: false,
+        activeStep: 1,
+        unreadReportsCount: 0,
+        openDecisionsCount: 0,
+        selectedPlanId: null,
+        selectedEpicId: 'relay-hardening',
+        selectedTaskId: null,
+      }),
+    );
+
+    vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
+    vi.spyOn(apiClient, 'getEpicResource').mockRejectedValue(new Error('no resource'));
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getEpicIntent').mockResolvedValue({
+      epic_id: 'relay-hardening',
+      destination: 'the relay reconnects without losing an event',
+      done_when: [],
+      non_goals: [],
+      not_yet_specified: [],
+      plans: [],
+    });
+  });
+
+  it('draws the error pattern when the epic process cannot be read', async () => {
+    const process = vi
+      .spyOn(apiClient, 'getEpicProcess')
+      .mockRejectedValue(new ClientError('network_offline'));
+
+    render(EpicView);
+
+    const error = await screen.findByTestId('epic-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() => expect(process).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows the error of a failed epic-resource read, retries it, and stops claiming the read runs', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    const epicResource = vi
+      .spyOn(apiClient, 'getEpicResource')
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockResolvedValueOnce(mockResource);
+
+    render(EpicView);
+
+    const error = await screen.findByTestId('epic-resource-error');
+    expect(error).toHaveTextContent('The machine is not reachable');
+    expect(error).toBeInTheDocument();
+    // The bar says the read failed rather than that the epic is still being read.
+    const next = await screen.findByTestId('action-next');
+    expect(next).toHaveAttribute(
+      'title',
+      'The epic could not be read; try again before the next plan starts.',
+    );
+    expect(next.getAttribute('title')).not.toContain('still being read');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByTestId('epic-workstreams')).toBeInTheDocument();
+    expect(screen.queryByTestId('epic-resource-error')).not.toBeInTheDocument();
+    expect(epicResource).toHaveBeenCalledTimes(2);
+  });
+
+  it('renders the epic head on the object page: kind, title, id chip, state and tokens', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
 
-    expect(await screen.findByTestId('epic-workstreams')).toBeInTheDocument();
-    expect(screen.getByTestId('workstream-WS-1')).toHaveTextContent('Reconnect');
-    expect(screen.getByTestId(`workstream-WS-1`)).toHaveTextContent('WS-1');
-    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 running · 2 staged');
-    expect(screen.getByTestId('epic-row-relay-cursor-order')).toHaveTextContent(
-      'relay-cursor-order',
+    expect(await screen.findByTestId('epic-title')).toHaveTextContent('relay-hardening');
+    expect(screen.getByTestId('object-page')).toBeInTheDocument();
+    expect(screen.getByTestId('object-page-kind')).toHaveTextContent('epic');
+    expect(screen.getByTestId('object-page-id')).toHaveTextContent('relay-hardening');
+    // The head draws no path: the top bar's breadcrumb is the only one (`navigation.adoc#up`).
+    expect(screen.queryByTestId('epic-breadcrumb')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('back-btn')).not.toBeInTheDocument();
+
+    expect(screen.getByTestId('epic-state')).toHaveTextContent('running');
+    expect(screen.getByTestId('review-ready-badge')).toHaveTextContent(
+      /completion review is ready/i,
     );
-    expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveTextContent('#211');
-    expect(screen.getByTestId('epic-pr-relay-cursor-order')).toHaveAttribute(
-      'href',
-      'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
-    );
+    expect(screen.getByTestId('epic-tokens')).toHaveTextContent(/3.86 M/);
+  });
+
+  it('draws the workstream plans: title first, the id as a chip, the state, the wait and its since', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+
+    const row = await screen.findByTestId('epic-row-relay-docs');
+    // The plan's title comes first — here a title that differs from its id, so the order shows.
+    expect(row.textContent?.trim()).toMatch(/^Relay docs/);
+    expect(screen.getByTestId('epic-plan-chip-relay-docs')).toHaveTextContent('relay-docs');
+    expect(screen.getByTestId('epic-plan-status-relay-docs')).toHaveTextContent('staged');
     expect(screen.getByTestId('wait-relay-docs')).toHaveTextContent(
       'relay-docs waits: overlap with relay-auth-v2',
+    );
+
+    const since = screen.getByTestId('wait-since-relay-docs');
+    expect(since).toHaveAttribute('datetime', '2026-10-16T09:40:00Z');
+    expect(since.textContent ?? '').toMatch(/last|ago|since|\d/);
+
+    expect(screen.getByTestId('epic-pr-relay-reconnect-backoff')).toHaveTextContent('#211');
+    expect(screen.getByTestId('epic-pr-relay-reconnect-backoff')).toHaveAttribute(
+      'href',
+      'https://github.com/plan-marshall/pm-mcp-clients/pull/211',
     );
     expect(screen.getByTestId('epic-next-plan')).toHaveTextContent(
       'Next plan: relay-reconnect-metrics',
     );
+  });
 
-    expect(screen.getByTestId('epic-sources')).toHaveTextContent('2 documents');
-    expect(screen.getByTestId('epic-landing-count')).toHaveTextContent('2 landings');
-    expect(screen.getByTestId('epic-landing-relay-cursor-order')).toHaveTextContent('#211');
+  it('counts the landings from the shipped rows it lists, not from the served figure', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Landings' }));
+
+    // Two rows carry a pull request; only the shipped one is a landing.
+    expect(await screen.findByTestId('epic-landing-count')).toHaveTextContent('1 landing');
+    expect(screen.getByTestId('epic-landing-relay-reconnect-backoff')).toHaveTextContent('#211');
     expect(
-      screen.getByTestId('epic-landing-relay-cursor-order').querySelector('a'),
+      screen.getByTestId('epic-landing-relay-reconnect-backoff').querySelector('a'),
     ).toHaveAttribute('href', 'https://github.com/plan-marshall/pm-mcp-clients/pull/211');
-    expect(screen.getByTestId('epic-findings')).toHaveTextContent('3 new · 4 open · 2 kept');
-    expect(screen.getByTestId('epic-watches')).toHaveTextContent('4 open · 0 kept');
+    expect(screen.queryByTestId('epic-landing-relay-cursor-order')).not.toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId('epic-mode')).toHaveTextContent('Automatic: on');
+  it('draws the landings that stand alongside the epic beside its landings', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Landings' }));
+
+    const alongside = await screen.findByTestId('epic-alongside');
+    const items = screen.getAllByTestId('alongside-item');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('landing doc/update.md · done');
+    expect(alongside).toBeInTheDocument();
+  });
+
+  it('draws five tabs with Plans as the default and no Tokens tab', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    const tabs = screen.getAllByRole('tab').map((tab) => tab.textContent?.trim());
+    expect(tabs).toEqual(['Plans', 'Intent', 'Landings', 'Reviews', 'Events']);
+    expect(tabs).not.toContain('Tokens');
+
+    expect(screen.getByRole('tab', { name: 'Plans' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Plans' })).toHaveAttribute(
+      'aria-controls',
+      'epic-panel-plans',
+    );
+    // Only the shown tab names a panel: the others' panels are not in the document.
+    expect(screen.getByRole('tab', { name: 'Intent' })).not.toHaveAttribute('aria-controls');
+    expect(screen.getByTestId('epic-panel-plans')).toBeInTheDocument();
+    // The tokens are the head line with its one-step disclosure, never a tab.
+    expect(screen.getByTestId('epic-tokens')).toBeInTheDocument();
+  });
+
+  it('reveals the tokens line plan by plan in one step', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
     expect(screen.getByTestId('epic-tokens')).toHaveTextContent('≥ 3.86 M');
+    expect(screen.getByTestId('epic-tokens')).toHaveTextContent('3.52 M in');
+    expect(screen.getByTestId('epic-tokens')).toHaveTextContent('0.34 M out');
     expect(screen.getByTestId('epic-tokens-unmeasured')).toHaveTextContent('1 task not measured');
+    expect(screen.queryByTestId('epic-plan-tokens-relay-reconnect-backoff')).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('epic-tokens-disclosure'));
+
     expect(screen.getByTestId('epic-own-tokens')).toHaveTextContent('120 k');
     expect(screen.getByTestId('epic-plan-tokens-relay-reconnect-backoff')).toHaveTextContent(
       '1.40 M',
     );
-    expect(screen.getByTestId('epic-events')).toHaveTextContent('relay-auth-v2 asks a decision');
   });
 
-  it('opens the findings review from the register', async () => {
+  it('writes the chosen tab into the address by a replace', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+    const entriesBefore = window.history.length;
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Intent' }));
+
+    expect(window.location.pathname).toBe('/epics/relay-hardening');
+    expect(window.location.search).toBe('?tab=intent');
+    // A tab is not a level: it replaces the entry instead of adding one.
+    const entriesAfter = window.history.length;
+    expect(entriesAfter).toBe(entriesBefore);
+    expect(get(runtimeStore).objectTab).toBe('intent');
+  });
+
+  it('opens the Intent tab with the sources first and the intent panel below', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Intent' }));
+
+    const panel = await screen.findByTestId('epic-panel-intent');
+    const sources = screen.getByTestId('epic-intent-sources');
+    expect(sources).toHaveTextContent('2 documents');
+    expect(await screen.findByTestId('epic-intent-panel')).toBeInTheDocument();
+    // The sources stand before the intent panel in the same tab.
+    expect(panel.textContent?.indexOf('2 documents')).toBeLessThan(
+      panel.textContent?.indexOf('the relay reconnects without losing an event') ?? -1,
+    );
+  });
+
+  it('shows the Reviews tab counts and its `! n` badge while findings are new', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
+      ...mockResource,
+      findings: { new: 3, open: 4, kept: 2 },
+    });
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    const reviews = screen.getByRole('tab', { name: /Reviews/ });
+    expect(reviews).toHaveTextContent('3');
+    expect(reviews.querySelector('[data-testid="count-badge"]')).toHaveTextContent('! 3');
+
+    await fireEvent.click(reviews);
+
+    expect(await screen.findByTestId('epic-findings')).toHaveTextContent('3 new · 4 open · 2 kept');
+    expect(screen.getByTestId('epic-watches')).toHaveTextContent('4 open · 0 kept');
+  });
+
+  it('leaves the Reviews tab without a badge where no finding is new', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    const reviews = screen.getByRole('tab', { name: /Reviews/ });
+    expect(reviews.querySelector('[data-testid="count-badge"]')).not.toBeInTheDocument();
+  });
+
+  it('opens the findings review on its first open item, with the counts the card shows', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     const review = vi.spyOn(apiClient, 'getEpicReview').mockResolvedValue(mockReview);
     render(EpicView);
+    await screen.findByTestId('epic-title');
 
+    await fireEvent.click(screen.getByRole('tab', { name: /Reviews/ }));
     await fireEvent.click(await screen.findByTestId('open-findings-review'));
 
     expect(review).toHaveBeenCalledWith('relay-hardening', 'findings');
@@ -348,19 +460,25 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('review-title')).toHaveTextContent(
       'relay-hardening · findings review',
     );
-    expect(screen.getByTestId('review-progress')).toHaveTextContent('2 of 3 decided');
-    expect(screen.getByTestId('review-item-F-0004')).toHaveTextContent(
+    // F-0003 is decided; the review opens on F-0004, the first item still open.
+    expect(screen.getByTestId('review-statement')).toHaveTextContent(
       'Reconnect loses the last event',
     );
+    expect(screen.getByTestId('review-progress')).toHaveTextContent('1 of 3 decided');
+    // The modal's open figure is the card's `open` figure.
+    expect(screen.getByTestId('review-open-count')).toHaveTextContent('2 open');
+    expect(screen.getByTestId('epic-findings')).toHaveTextContent('0 new · 2 open · 1 kept');
   });
 
   it('marks an item from outside the machine as untrusted text', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     vi.spyOn(apiClient, 'getEpicReview').mockResolvedValue(mockReview);
     render(EpicView);
+    await screen.findByTestId('epic-title');
 
+    await fireEvent.click(screen.getByRole('tab', { name: /Reviews/ }));
     await fireEvent.click(await screen.findByTestId('open-findings-review'));
-    await fireEvent.click(await screen.findByTestId('review-item-F-0005'));
+    await fireEvent.click(screen.getByTestId('review-item-F-0005'));
 
     expect(screen.getByTestId('review-untrusted')).toHaveTextContent('untrusted');
   });
@@ -382,64 +500,28 @@ describe('EpicView component', () => {
           at: '2026-10-16T12:00:00Z',
           untrusted: false,
         },
-        {
-          role: 'decompose',
-          text: 'I would split it in two rows.',
-          at: '2026-10-16T12:00:05Z',
-          untrusted: false,
-        },
       ],
       proposal: {
         turn_id: 'T-0500',
-        summary: 'two rows',
-        before: 'one row',
-        after: 'two rows: transport and ordering',
-        applies: 'chat.applies.after_task',
+        summary: 'Two plans',
+        after: 'split the epic in two plans',
+        untrusted: false,
       },
     };
-    const open = vi.spyOn(apiClient, 'getChat').mockResolvedValue(chatReadBack);
-    const send = vi.spyOn(apiClient, 'chatWithSubject').mockResolvedValue({
+    const chat = vi.spyOn(apiClient, 'getChat').mockResolvedValue(chatReadBack);
+    const accept = vi.spyOn(apiClient, 'answerSubjectChatProposal').mockResolvedValue({
       ...chatReadBack,
-      turns: [
-        ...chatReadBack.turns,
-        {
-          role: 'decompose',
-          text: 'Split in two rows then.',
-          at: '2026-10-16T12:00:09Z',
-          untrusted: false,
-        },
-      ],
+      proposal: null,
     });
-    const accept = vi
-      .spyOn(apiClient, 'answerSubjectChatProposal')
-      .mockResolvedValue({ ...chatReadBack, state: 'chat.turn', proposal: null });
-
     render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Reviews/ }));
     await fireEvent.click(await screen.findByTestId('open-findings-review'));
-    await fireEvent.click(await screen.findByTestId('review-item-F-0004'));
     await fireEvent.click(screen.getByTestId('review-chat'));
 
-    expect(await screen.findByTestId('chat-panel')).toBeInTheDocument();
-    expect(open).toHaveBeenCalledWith('epic:relay-hardening');
-    expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
-      'I would split it in two rows.',
-    );
-    expect(screen.getByTestId('chat-proposal')).toHaveTextContent(
-      'two rows: transport and ordering',
-    );
-
-    await fireEvent.input(screen.getByTestId('chat-input'), {
-      target: { value: 'Then split it in two rows.' },
-    });
-    await fireEvent.click(screen.getByTestId('chat-send'));
-    await waitFor(() => {
-      expect(send).toHaveBeenCalledWith('epic:relay-hardening', 'Then split it in two rows.');
-    });
-    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent(
-      'Split in two rows then.',
-    );
-
-    await fireEvent.click(screen.getByTestId('chat-accept'));
+    await waitFor(() => expect(chat).toHaveBeenCalledWith('epic:relay-hardening'));
+    await fireEvent.click(await screen.findByTestId('chat-accept'));
     await waitFor(() => {
       expect(accept).toHaveBeenCalledWith('epic:relay-hardening', 'T-0500', true);
     });
@@ -474,9 +556,7 @@ describe('EpicView component', () => {
     });
     render(EpicView);
 
-    expect(await screen.findByTestId('epic-tokens-not-measured')).toHaveTextContent(
-      'no task measured yet',
-    );
+    expect(await screen.findByTestId('epic-tokens')).toHaveTextContent('not measured');
   });
 
   it('folds and unfolds a workstream, keeping its counts in the folded row', async () => {
@@ -489,7 +569,9 @@ describe('EpicView component', () => {
     await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
 
     expect(screen.queryByTestId('epic-row-relay-cursor-order')).not.toBeInTheDocument();
-    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 running · 2 staged');
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent(
+      '1 shipped · 1 running · 2 staged',
+    );
 
     await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
     expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
@@ -498,6 +580,9 @@ describe('EpicView component', () => {
   it('writes an event at its wall time, not as an ISO timestamp', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Events' }));
 
     const events = await screen.findByTestId('epic-events');
     expect(events).toHaveTextContent('relay-auth-v2 asks a decision');
@@ -507,11 +592,14 @@ describe('EpicView component', () => {
   it('says that an epic has no sources instead of borrowing the plan-empty text', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({ ...mockResource, sources: [] });
     render(EpicView);
+    await screen.findByTestId('epic-title');
+
+    await fireEvent.click(screen.getByRole('tab', { name: 'Intent' }));
 
     expect(await screen.findByTestId('epic-sources-empty')).toHaveTextContent('no sources');
   });
 
-  it('maps a two-word wire status to its catalogue key and badge class', async () => {
+  it('maps a two-word wire status to its catalogue key and dot', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
       ...mockResource,
       workstreams: [
@@ -526,22 +614,26 @@ describe('EpicView component', () => {
               title: 'relay-auth-v2',
               status: 'waiting for you',
             },
+            // The queue's own word for a landed plan is `merged`: the row reads and counts as shipped.
+            { plan_id: 'relay-landed', title: 'relay-landed', status: 'merged' },
           ],
         },
       ],
     });
     render(EpicView);
 
-    const handedBack = await screen.findByTestId('epic-row-relay-docs');
-    expect(handedBack.querySelector('.badge--state')).toHaveClass('badge--state-handed_back');
+    const handedBack = await screen.findByTestId('epic-plan-status-relay-docs');
     expect(handedBack).toHaveTextContent('handed back');
-    expect(screen.getByTestId('epic-row-relay-auth-v2').querySelector('.badge--state')).toHaveClass(
-      'badge--state-waiting',
+    expect(screen.getByTestId('epic-plan-status-relay-auth-v2')).toHaveTextContent(
+      'waiting for you',
     );
-    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent('1 waiting for you');
+    expect(screen.getByTestId('epic-plan-status-relay-landed')).toHaveTextContent('shipped');
+    expect(screen.getByTestId('workstream-counts-WS-1')).toHaveTextContent(
+      '1 shipped · 1 waiting for you',
+    );
   });
 
-  it('marks an ended epic with how it ended', async () => {
+  it('marks an ended epic with how it ended, and keeps its tabs read-only', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue({
       ...mockResource,
       state: 'ended',
@@ -551,6 +643,58 @@ describe('EpicView component', () => {
 
     expect(await screen.findByTestId('epic-state')).toHaveTextContent('ended');
     expect(screen.getByTestId('epic-end')).toHaveTextContent('completed');
+    // The same five tabs, read-only: no act of the running epic's bar, and no way into a review
+    // that would offer the review's acts (`epic-view.adoc#tabs`).
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
+    expect(screen.queryByTestId('action-next')).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Reviews/ }));
+
+    expect(await screen.findByTestId('epic-findings')).toHaveTextContent('0 new · 2 open · 1 kept');
+    expect(screen.queryByTestId('open-findings-review')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('open-watches-review')).not.toBeInTheDocument();
+  });
+
+  it('draws the list-column form with only the plans grouped by workstream', async () => {
+    runtimeStore.update((state) => ({
+      ...state,
+      openObject: { kind: 'plan', id: 'relay-cursor-order' },
+    }));
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+
+    expect(await screen.findByTestId('epic-list-column')).toBeInTheDocument();
+    expect(screen.getByTestId('workstream-WS-1')).toHaveTextContent('Reconnect');
+    expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
+    // Nothing of the other tabs: no tab list, no tokens line, no panel.
+    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    expect(screen.queryByTestId('epic-tokens')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('epic-panel-plans')).not.toBeInTheDocument();
+    // Its head is the compact one.
+    expect(screen.getByTestId('object-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('object-page-id')).not.toBeInTheDocument();
+  });
+
+  it('says a rejected refresh failed while the last read stays on screen', async () => {
+    let deliver: ((event: string) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((onEvent) => {
+      deliver = onEvent as (event: string) => void;
+      return () => {};
+    });
+    vi.spyOn(apiClient, 'getEpicResource')
+      .mockResolvedValueOnce(mockResource)
+      .mockRejectedValueOnce(new ClientError('network_offline'));
+
+    render(EpicView);
+    await screen.findByTestId('epic-workstreams');
+
+    deliver!('epic.row_changed');
+
+    const stale = await screen.findByTestId('epic-resource-stale');
+    expect(stale).toHaveTextContent('The epic could not be read; what stands below is the last read.');
+    // The last read stays on screen rather than being replaced by a blank page.
+    expect(screen.getByTestId('epic-workstreams')).toBeInTheDocument();
+    expect(screen.getByTestId('epic-resource-retry')).toBeInTheDocument();
   });
 
   it('reloads the epic on a row change and ignores an event it does not show', async () => {
@@ -593,6 +737,7 @@ describe('EpicView component', () => {
     render(EpicView);
 
     await screen.findByTestId('epic-title');
+    await fireEvent.click(screen.getByRole('tab', { name: 'Events' }));
     deliver!('epic.row_changed');
 
     await waitFor(() =>
@@ -613,7 +758,7 @@ describe('EpicView component', () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);
     await screen.findByTestId('workstream-WS-1');
-    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(4);
 
     await typeFilter('relay-docs');
     expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(1);
@@ -625,7 +770,7 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('epic-row-relay-cursor-order')).toBeInTheDocument();
 
     await typeFilter('Reconnect');
-    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/epic-row-/)).toHaveLength(4);
   });
 
   it('filters the workstream plans by a wait reason and its overlap file', async () => {
@@ -707,7 +852,7 @@ describe('EpicView component', () => {
     );
   });
 
-  it('renders unknown count badge when running is undefined and opens the raise dialogue', async () => {
+  it('renders the unknown count badge when running is undefined and opens the raise dialogue', async () => {
     vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
       subject_id: 'relay-hardening',
       subject_kind: 'epic',

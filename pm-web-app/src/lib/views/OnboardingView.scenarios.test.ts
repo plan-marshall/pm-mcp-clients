@@ -519,4 +519,107 @@ describe('OnboardingView against the mock runtime states', () => {
     });
     expect(screen.getByRole('button', { name: /mit schritt 1 beginnen/i })).toBeInTheDocument();
   });
+
+  it('draws the missing-screen pattern for a state no screen claims, never its id', () => {
+    arrange(
+      onboardingState({
+        state: 'unknown.mystery',
+        summary: 'Something the app does not know',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'This screen is not available in the web app',
+    );
+    // The terminal command that shows the state is named, and a way back is offered.
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    // The state's id is never printed as content.
+    expect(document.body.textContent).not.toContain('unknown.mystery');
+  });
+
+  it('sends every entry state to the fallback with the terminal command', () => {
+    arrange(
+      onboardingState({
+        state: 'entry.lan-open',
+        summary: 'Network listener open with its fingerprint',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(document.body.textContent).not.toContain('entry.lan-open');
+  });
+
+  it('takes the probe-only answer of a consent that offers one', async () => {
+    const state = onboardingState({
+      state: 'catalogue.consent',
+      summary: 'Ask the harnesses for their models, and a model for advice?',
+      kind: 'probe_harness_models',
+      links: {
+        no: { href: '/api/v1/onboarding/catalogue/decline', next: 'catalogue.consent' },
+        no_advice: { href: '/api/v1/onboarding/catalogue/no-advice', next: 'catalogue.select' },
+        yes: { href: '/api/v1/onboarding/catalogue/advice', next: 'catalogue.models' },
+      },
+    });
+    arrange(state);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.select' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(await screen.findByTestId('consent-no-advice'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('no_advice', {}));
+  });
+
+  it('offers no third answer on a consent that states only yes and no', async () => {
+    arrange(
+      onboardingState({
+        state: 'harness.consent',
+        summary: 'Look for harnesses on this machine?',
+        links: {
+          no: { href: '/api/v1/onboarding/harness/decline', next: 'harness.consent' },
+          yes: { href: '/api/v1/onboarding/harness/scan', next: 'harness.choose' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(await screen.findByTestId('consent-box')).toBeInTheDocument();
+    expect(screen.queryByTestId('consent-no-advice')).not.toBeInTheDocument();
+  });
+
+  it('reviews the recorded setup of every step on the summary screen', () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.summary',
+        summary: 'Review the setup of this machine',
+        aspects: [
+          { aspect: 'language', step: 1, summary: 'Deutsch, models English' },
+          { aspect: 'roles', step: 4, summary: '31 roles assigned' },
+        ],
+        links: { done: { href: '/api/v1/onboarding/summary/done', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Review the setup of this machine',
+    );
+    const summary = screen.getByTestId('setup-summary');
+    expect(summary).toHaveTextContent('Deutsch, models English');
+    expect(summary).toHaveTextContent('31 roles assigned');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
 });

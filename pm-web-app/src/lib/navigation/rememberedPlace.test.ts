@@ -95,7 +95,7 @@ describe('the remembered place', () => {
 
 describe('the start rule', () => {
   it('fills a mark-less load at / and at the bare /overview from the place', () => {
-    for (const requested of [{ route: null } as Address, { route: 'overview' } as Address]) {
+    for (const requested of [{ route: 'inbox' } as Address, { route: 'overview' } as Address]) {
       expect(
         startAddress({
           fromOutside: true,
@@ -132,7 +132,7 @@ describe('the start rule', () => {
       }),
     ).toEqual(scoped);
 
-    const waits: Address = { route: null, lens: 'waits' };
+    const waits: Address = { route: 'inbox', lens: 'waits' };
     expect(
       startAddress({
         fromOutside: true,
@@ -143,6 +143,22 @@ describe('the start rule', () => {
       }),
     ).toEqual(waits);
     expect(isFillableStart(waits)).toBe(false);
+  });
+
+  it('never fills an inbox address that carries anything else of the scheme', () => {
+    const withOpen: Address = { route: 'inbox', open: { kind: 'plan', id: 'fix-relay' } };
+
+    expect(isFillableStart(withOpen)).toBe(false);
+    // The address opens what it names; the remembered place does not replace its object.
+    expect(
+      startAddress({
+        fromOutside: true,
+        requested: withOpen,
+        onboarded: true,
+        place: PLACE,
+        facts: RUNNING,
+      }),
+    ).toEqual(withOpen);
   });
 
   it('never fills the lens’s own list pushed by Up or the lens segment on a reload', () => {
@@ -158,32 +174,42 @@ describe('the start rule', () => {
     ).toEqual({ route: 'overview' });
   });
 
-  it('keeps the present rule without a place: the overview while work runs, else the projects', () => {
+  it('opens what waits without a place, and keeps a bare /overview', () => {
     expect(
       startAddress({
         fromOutside: true,
-        requested: { route: null },
+        requested: { route: 'inbox' },
+        onboarded: true,
+        place: {},
+        facts: RUNNING,
+      }),
+    ).toEqual({ route: 'inbox' });
+    expect(
+      startAddress({
+        fromOutside: true,
+        requested: { route: 'inbox' },
+        onboarded: true,
+        place: {},
+        facts: IDLE,
+      }),
+    ).toEqual({ route: 'inbox' });
+    // A bare `/overview` names the lens, so an operator who opened it stays there.
+    expect(
+      startAddress({
+        fromOutside: true,
+        requested: { route: 'overview' },
         onboarded: true,
         place: {},
         facts: RUNNING,
       }),
     ).toEqual({ route: 'overview' });
-    expect(
-      startAddress({
-        fromOutside: true,
-        requested: { route: null },
-        onboarded: true,
-        place: {},
-        facts: IDLE,
-      }),
-    ).toEqual({ route: 'projects' });
   });
 
-  it('sends an onboarded machine to the onboarding and leaves the entry alone', () => {
+  it('sends an unonboarded machine to the onboarding and leaves the entry alone', () => {
     expect(
       startAddress({
         fromOutside: true,
-        requested: { route: null },
+        requested: { route: 'inbox' },
         onboarded: false,
         place: PLACE,
         facts: RUNNING,
@@ -197,7 +223,7 @@ describe('the start rule', () => {
         place: {},
         facts: RUNNING,
       }),
-    ).toEqual({ route: 'overview' });
+    ).toEqual({ route: 'inbox' });
   });
 
   it('opens the filled lens from a click on Running work, and the plain lens without a place', () => {

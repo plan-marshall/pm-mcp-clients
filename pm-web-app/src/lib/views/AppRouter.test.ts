@@ -61,7 +61,6 @@ describe('AppRouter', () => {
     ['reports', 'ReportsView'],
     ['decisions', 'DecisionView'],
     ['settings', 'SettingsView'],
-    ['machine-settings', 'MachineSettingsView'],
     ['system', 'SystemView'],
     ['cleanup', 'CleanupView'],
     ['plan', 'PlanView'],

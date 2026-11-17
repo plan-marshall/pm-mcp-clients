@@ -53,17 +53,16 @@ test.describe('the row menu of the data table', () => {
         page,
       }) => {
         await page.setViewportSize(size);
-        // The visible word beside the glyph is the thing the column must hold: it is longer in
-        // German, so both locales are measured.
+        // The row menu is an icon button since PLAN-149: its visible word is gone and the name it
+        // carries for a screen reader is the localised one. Waiting for that name keeps the guard
+        // from measuring a catalogue that has not arrived yet.
         await page.evaluate((value) => localStorage.setItem('pm_locale', value), locale);
         await page.goto('/dev/components');
-        // The word beside the glyph is what the column has to hold; wait for the localised one,
-        // so a catalogue that has not arrived cannot be measured as the humanised key.
         await expect(
           page
             .locator('[data-testid="data-table"] tbody tr:first-child td.data-table__menu button')
             .first(),
-        ).toContainText(locale === 'de' ? 'Zeilenmenü' : 'Row menu');
+        ).toHaveAttribute('aria-label', locale === 'de' ? /^Zeilenmenü/ : /^Row menu/);
 
         const overhang = await overhangOf(
           page,
@@ -87,6 +86,7 @@ test.describe('the row menu of a product view', () => {
     expect(switched.ok()).toBeTruthy();
     await pair(page, request);
     await page.goto('/settings');
+    await page.getByRole('tab', { name: 'Access' }).click();
     await expect(page.locator('.devices-table')).toBeVisible();
   });
 
@@ -97,7 +97,7 @@ test.describe('the row menu of a product view', () => {
       }) => {
         await page.setViewportSize(size);
         await page.evaluate((value) => localStorage.setItem('pm_locale', value), locale);
-        await page.goto('/settings');
+        await page.goto('/settings?tab=access');
         await expect(page.locator('.devices-table')).toBeVisible();
         // A hidden control would measure zero on both sides: it must be visible before it is
         // measured, or the check would pass on nothing.
