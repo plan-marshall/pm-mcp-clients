@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import { apiClient } from '../api/client';
+import { reloadDeferred } from '../stores/reloadDeferred';
 
 export type Locale = 'en' | 'de';
 
@@ -38,6 +39,34 @@ interface CachedCatalogue {
 
 export const currentLocale = writable<Locale>('en');
 export const messagesStore = writable<Record<string, string>>({});
+
+/**
+ * Keeps the document's declared language on the language it shows.
+ *
+ * `src/app.html` declares English for the first paint; every page after it — the pairing page
+ * included, which the root layout initialises — declares the locale the screen is written in, so a
+ * screen reader never reads German text as English.
+ */
+currentLocale.subscribe((locale) => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = locale;
+});
+
+/**
+ * The language the operator asked for while the reload was deferred, applied when it is released.
+ *
+ * The page is then the old release's code and its request could ask for keys the newer runtime has
+ * retired, so the choice waits for the reload instead of fetching a pack now
+ * (texts-and-languages.adoc, Keys and Packs, Delivery).
+ */
+let pendingLocale: Locale | null = null;
+
+reloadDeferred.subscribe((deferred) => {
+  if (deferred || pendingLocale === null) return;
+  const requested = pendingLocale;
+  pendingLocale = null;
+  void setLocale(requested);
+});
 
 function skipWhitespace(text: string, startIndex: number): number {
   let i = startIndex;
@@ -447,6 +476,9 @@ async function readCatalogueVersion(): Promise<void> {
  * then replaces or extends it in the background. When the runtime is unreachable the error is
  * swallowed and the cached labels stay on screen.
  *
+ * While the reload is deferred this fetches nothing: it hydrates from the cache and returns, and
+ * the reload it waits for runs the load again against the release it loads.
+ *
  * @param locale the locale to load
  * @param area the catalogue area, `all` for the complete catalogue
  */
@@ -454,8 +486,20 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   if (area === 'all') {
     hydrateFromCache(locale);
   }
+  if (get(reloadDeferred)) {
+    // The page is still the old release's code. It renders only what it already holds, and the
+    // reload it waits for runs this load again against the release it loads
+    // (texts-and-languages.adoc, Keys and Packs, Delivery).
+    return;
+  }
   try {
     const msgs = await apiClient.getMessages(locale, area);
+    if (get(reloadDeferred)) {
+      // The reload started waiting while this response was in flight: writing it now would put the
+      // newer runtime's pack on the old release's page, so it is dropped and read again after the
+      // reload.
+      return;
+    }
     const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
     // A slow response must not replace the catalogue of a locale the person has switched to
     // since the request began: the store follows the active locale only.
@@ -493,11 +537,26 @@ function baseFor(locale: Locale): Record<string, string> {
  * locale on the operator's decision; a missing one is fetched from the runtime, not restored from
  * an older copy (2026-11-05).
  *
+ * While the reload is deferred, a pack that is not in hand is not fetched: the page is the old
+ * release's code, so the choice is kept as a pending one and applied when the reload is released.
+ *
  * @param locale the locale to switch to
  */
 export async function setLocale(locale: Locale): Promise<void> {
   const generation = ++switchGeneration;
   if (locale === get(currentLocale) && messagesLocale === locale) {
+    // The language the screen shows is the one asked for, so a pending choice an earlier deferred
+    // request left behind is superseded by this one.
+    pendingLocale = null;
+    rememberLocaleChoice(locale);
+    return;
+  }
+
+  if (get(reloadDeferred) && loadCachedCatalogue(locale) === null) {
+    // The reload waits for unsent input and the page is the old release's code: a pack that is not
+    // in hand is not fetched now, because the newer runtime may have retired the keys this code
+    // asks for. The choice is kept and applied when the reload is released.
+    pendingLocale = locale;
     rememberLocaleChoice(locale);
     return;
   }
@@ -535,14 +594,16 @@ function rememberLocaleChoice(locale: Locale): void {
  *
  * A cached catalogue of the runtime version this browser already knows is current by construction
  * (the pack changes only with the runtime), so it is used at once and the switch is instantaneous.
- * Before the version is known the runtime is asked first, and the cache is the offline fallback.
+ * Before the version is known the runtime is asked first, and the cache is the offline fallback —
+ * except while the reload is deferred, where the held pack is what the old page renders and nothing
+ * is fetched at all.
  *
  * @param locale the locale to load
  * @returns its catalogue, or null when neither the cache nor the runtime answered
  */
 async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
   const cached = loadCachedCatalogue(locale);
-  if (cached && catalogueVersion !== null) {
+  if (cached && (catalogueVersion !== null || get(reloadDeferred))) {
     rememberMessages(locale, cached);
     rememberEnglish(locale, cached);
     return cached;

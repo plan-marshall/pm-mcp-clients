@@ -725,9 +725,9 @@
             variant="ghost"
             onclick={goBackToCaller}
             data-testid="back-btn"
-            data-advisory={$t('common.actions.back.title')}
+            data-advisory={$t('common.action.back.title')}
           >
-            {$t('common.actions.back')}
+            {$t('common.action.back')}
           </Button>
         </div>
       </div>

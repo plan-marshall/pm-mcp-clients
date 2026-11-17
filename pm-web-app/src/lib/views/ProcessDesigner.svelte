@@ -1393,7 +1393,7 @@
           })}
         </h2>
         <Button variant="ghost" on:click={() => (previewOpen = false)} data-testid="preview-close">
-          {$t('web.common.close')}
+          {$t('common.action.close')}
         </Button>
       </div>
       <ol class="designer__preview-nodes">
@@ -1539,7 +1539,7 @@
           {/if}
         </p>
         <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>
+          <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
           <Button
             variant="primary"
             loading={isPlacing}
@@ -1558,7 +1558,7 @@
           {@render diffTable(conflictDiff.rows, 'designer-conflict-diff')}
         </div>
         <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('web.common.close')}</Button>
+          <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
           <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare-again">
             {$t('designer.place.compare')}
           </Button>
@@ -1579,7 +1579,7 @@
         </ul>
         <p class="designer__placed" data-testid="designer-place-done">{placeMessage}</p>
         <div class="designer__modal-actions">
-          <Button variant="primary" onclick={closePlace}>{$t('web.common.close')}</Button>
+          <Button variant="primary" onclick={closePlace}>{$t('common.action.close')}</Button>
         </div>
       {/if}
     </div>

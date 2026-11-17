@@ -218,7 +218,7 @@
               adding = false;
             }}
           >
-            {$t('web.common.close')}
+            {$t('common.action.close')}
           </Button>
         </div>
       </section>

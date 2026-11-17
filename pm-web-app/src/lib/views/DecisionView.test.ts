@@ -394,7 +394,7 @@ describe('DecisionView component', () => {
       render(DecisionView);
       await screen.findByText('Select merge strategy');
 
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: query } });
 
       expect(rowOf('dec-101')).not.toBeNull();
@@ -405,7 +405,7 @@ describe('DecisionView component', () => {
       render(DecisionView);
       await screen.findByText('Select merge strategy');
 
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'pm-mcp-clients' } });
 
       expect(rowOf('dec-101')).not.toBeNull();
@@ -415,7 +415,7 @@ describe('DecisionView component', () => {
     it('filters waiver decisions by the gate and the reason', async () => {
       render(DecisionView);
       await screen.findByText('Select merge strategy');
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
 
       await fireEvent.input(filter, { target: { value: 'Coverage of pm-relay' } });
       expect(rowOf('WR-001')).not.toBeNull();
@@ -430,7 +430,7 @@ describe('DecisionView component', () => {
       render(DecisionView);
       await screen.findByText('Select merge strategy');
 
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'nothing-matches-this' } });
 
       expect(await screen.findByTestId('decisions-filter-empty')).toHaveTextContent(
@@ -451,7 +451,7 @@ describe('DecisionView component', () => {
       captured.handler?.('decision.opened', { decision: mockDecision });
       expect(await screen.findByTestId('notify-banner')).toBeInTheDocument();
 
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'nothing-matches-this' } });
 
       expect(screen.getByTestId('notify-banner')).toBeInTheDocument();

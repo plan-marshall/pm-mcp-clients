@@ -1083,7 +1083,7 @@
         <div class="reports-filter" data-testid="reports-filter">
           <FilterInput
             value={query}
-            label={$t('report.filter.label')}
+            label={$t('common.filter.label', { what: $t('report.list.title') })}
             placeholder={$t('report.filter.placeholder')}
             resultCount={isFiltered ? matchingItems.length : undefined}
             onchange={(value) => (query = value)}

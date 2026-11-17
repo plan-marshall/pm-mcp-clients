@@ -146,7 +146,7 @@
                   on:click={() => apply(entry.aspect)}
                   disabled={busy}
                 >
-                  {$t('common.save')}
+                  {$t('common.action.save')}
                 </button>
               </div>
             {/each}

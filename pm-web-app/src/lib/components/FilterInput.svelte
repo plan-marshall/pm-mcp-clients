@@ -15,7 +15,11 @@
     testid = 'filter-input',
   }: {
     value?: string;
-    label?: string;
+    /**
+     * The field's label: the shared `common.filter.label` with the list's name as its argument
+     * (`texts-and-languages.adoc`, Keys), so no view needs a filter label of its own.
+     */
+    label: string;
     placeholder?: string;
     resultCount?: number;
     onchange: (value: string) => void;
@@ -68,7 +72,7 @@
 
 <div class="filter" role="search">
   <label class="filter__label" for={inputId}>
-    {label ?? $t('common.filter.label')}
+    {label}
   </label>
   <div class="filter__field">
     <input

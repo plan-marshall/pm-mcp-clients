@@ -75,7 +75,7 @@
   <FormStatus message={statusMessage} tone={statusTone} />
   <div class="dev__row dev__row--end">
     <Button type="button" variant="ghost" onclick={handleCancel} testid="demo-form-cancel">
-      {$t('web.common.cancel')}
+      {$t('common.action.cancel')}
     </Button>
     <Button
       type="submit"

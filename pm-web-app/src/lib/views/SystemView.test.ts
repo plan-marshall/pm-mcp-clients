@@ -6,6 +6,7 @@ import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot, type StatusResponse } from '../api/client';
 import { ClientError } from '../api/errors';
 import { currentLocale, messagesStore } from '../i18n';
+import { reloadDeferred, setReloadDeferred } from '../stores/reloadDeferred';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { get } from 'svelte/store';
 
@@ -155,6 +156,7 @@ describe('SystemView component', () => {
     );
     vi.restoreAllMocks();
     eventHandler = null;
+    setReloadDeferred(false);
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
       favourites: [],
       recent: [],
@@ -547,6 +549,46 @@ describe('SystemView component', () => {
     const reload = await screen.findByTestId('upgrade-reload');
     expect(reload).toHaveTextContent('0.10.0');
     expect(reload).toHaveTextContent('waits until the text');
+    field.remove();
+  });
+
+  it('holds the catalogue while the reload waits for text and releases it when the text is sent', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    render(SystemView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    const field = document.createElement('textarea');
+    document.body.appendChild(field);
+    field.value = 'a half-written answer';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+
+    eventHandler?.('runtime.upgraded', { version: '0.10.0' });
+
+    await screen.findByTestId('upgrade-reload');
+    expect(get(reloadDeferred)).toBe(true);
+
+    field.value = '';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+
+    await waitFor(() => expect(get(reloadDeferred)).toBe(false));
+    field.remove();
+  });
+
+  it('releases the held catalogue when the system view goes', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    const { unmount } = render(SystemView);
+    await waitFor(() => expect(eventHandler).not.toBeNull());
+
+    const field = document.createElement('textarea');
+    document.body.appendChild(field);
+    field.value = 'a half-written answer';
+    eventHandler?.('runtime.upgraded', { version: '0.10.0' });
+    await screen.findByTestId('upgrade-reload');
+    expect(get(reloadDeferred)).toBe(true);
+
+    unmount();
+
+    expect(get(reloadDeferred)).toBe(false);
     field.remove();
   });
 

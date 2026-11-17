@@ -13,17 +13,17 @@ describe('FilterInput', () => {
     expect(screen.getByTestId('filter-results')).toHaveTextContent('1 match');
   });
 
-  it('names the filter and shows no count where the caller gives none', () => {
-    render(FilterInput, { onchange: vi.fn() });
+  it('names the filter by the label the caller passes and shows no count where it gives none', () => {
+    render(FilterInput, { label: 'Filter Decisions', onchange: vi.fn() });
 
-    expect(screen.getByLabelText('Filter')).toBeInTheDocument();
+    expect(screen.getByLabelText('Filter Decisions')).toBeInTheDocument();
     expect(screen.queryByTestId('filter-results')).toBeNull();
     expect(screen.queryByTestId('filter-clear')).toBeNull();
   });
 
   it('clears a set filter with its button and with Esc, and keeps the focus in the field', async () => {
     const onchange = vi.fn();
-    render(FilterInput, { value: 'relay', onchange });
+    render(FilterInput, { value: 'relay', label: 'Filter plans', onchange });
     const input = screen.getByTestId('filter-input');
 
     await fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
@@ -38,7 +38,7 @@ describe('FilterInput', () => {
   });
 
   it('takes the focus on / pressed outside a field', async () => {
-    render(FilterInput, { onchange: vi.fn() });
+    render(FilterInput, { label: 'Filter plans', onchange: vi.fn() });
 
     const pressed = await fireEvent.keyDown(document.body, { key: '/' });
 
@@ -50,7 +50,7 @@ describe('FilterInput', () => {
     ['with a modifier', { key: '/', ctrlKey: true }],
     ['another key', { key: 'f' }],
   ])('leaves the focus where it is for / %s', async (_case, init) => {
-    render(FilterInput, { onchange: vi.fn() });
+    render(FilterInput, { label: 'Filter plans', onchange: vi.fn() });
 
     await fireEvent.keyDown(document.body, init);
 
@@ -60,7 +60,7 @@ describe('FilterInput', () => {
   it.each(['input', 'textarea', 'select'])(
     'lets / reach a %s the operator types in',
     async (tag) => {
-      render(FilterInput, { onchange: vi.fn() });
+      render(FilterInput, { label: 'Filter plans', onchange: vi.fn() });
       const other = document.createElement(tag);
       document.body.appendChild(other);
       other.focus();
@@ -74,7 +74,7 @@ describe('FilterInput', () => {
   );
 
   it('leaves a / that another handler already took', async () => {
-    render(FilterInput, { onchange: vi.fn() });
+    render(FilterInput, { label: 'Filter plans', onchange: vi.fn() });
     const taken = new KeyboardEvent('keydown', { key: '/', bubbles: true, cancelable: true });
     taken.preventDefault();
 

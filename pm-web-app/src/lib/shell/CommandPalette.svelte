@@ -385,7 +385,7 @@
         <h2 class="command-palette__title" id={titleId}>{$t('overview.find.title')}</h2>
 
         <Button variant="ghost" size="sm" data-testid="command-palette-close" onclick={close}>
-          {$t('web.common.close')}
+          {$t('common.action.close')}
         </Button>
       </div>
 
@@ -426,7 +426,7 @@
               id={groupTitleId(index)}
               role="presentation"
             >
-              {$t(`overview.find.kind.${group.kind}`)}
+              {$t(`common.kind.${group.kind}`)}
             </h3>
             <div class="command-palette__list">
               {#each group.matches as match (matchKey(match))}
