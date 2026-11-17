@@ -100,6 +100,15 @@ Read first:
 - Check whether PLAN-55, 142, 143 or 145 changed `PlanView`'s tab handling.
 - Settle the HYPOTHESIS.
 
+## Emit Amendment 2026-11-17 (PLAN-163 landed)
+
+Source: `landings/PLAN-163.md` (PR #463, `ae410264`). The dependency "`PLAN-163` landed" is met. It supersedes nothing above; it adds what the landing shows.
+
+- **Re-ground first.** This spec was written before PLAN-163's D0. Re-read at the outline, at the then-current HEAD, the shipped contract: `PlanChangeFile`, `PlanChangedFile`, `PlanChangeHunk`, `PlanChanges` and their coherence rules (`pm-api/.../changes/`), the six `plan.changes.*` keys in the `plan_view` pack (en and de; this plan adds none), the fixtures at `pm-mock-runtime/src/main/resources/scenarios/running-work.json` (totals 12 files, +340, −27, 2 binary), and the file route's refusals (`scope_not_found` for an unknown plan, `target_not_found` for a gone or never-captured file). A claim of this spec the shipped contract contradicts is re-scoped and reported, never worked around.
+- **A file answer carries no head** (decided in PLAN-163 D0, `PlanChangeFile.java:30-32`). The terminal client has an open race because of it: a capture that lands between a file read and its display leaves old hunks under new counts (`landings/PLAN-163.md` L3-2). This plan's web client reads a list and a file the same way: state in the outline how the tab avoids the race (re-read the list and compare the row's counts, or discard a file answer whose list identity changed), and pin it with a test that fails on a revert.
+- **Paths.** The terminal one-shot abbreviates paths and so cannot feed `--file` (`landings/PLAN-163.md` L3-1). The web tab shows the full path in the row (an abbreviation only as a visual truncation with the full path as its text content), so a path can be copied.
+- **Overlap with running PLAN-51 (operator, 2026-11-17, `AskUserQuestion`: emit now).** Two files are shared: `pm-web-app/src/lib/api/client.ts` and `pm-web-app/src/lib/api/client.test.ts`. Whichever pull request lands second merges `main` into its branch and keeps both sides' methods and tests; never overwrite the other plan's client methods. `PLAN-52`, `PLAN-49` and `PLAN-64` landed since this spec was written (`OverviewView.svelte`, the attention store and the route model changed): re-read `client.ts` and the address helpers (`?tab=changes`) at HEAD.
+
 ## Hand-Off Command
 
 Lane: `runbook`.
