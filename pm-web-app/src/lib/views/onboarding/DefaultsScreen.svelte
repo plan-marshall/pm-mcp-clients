@@ -66,7 +66,7 @@
       detail: 'onboard.defaults.method.test_first_detail',
     },
     {
-      value: 'method.test-after',
+      value: 'method.tests-after',
       label: 'onboard.defaults.method.test_after',
       detail: 'onboard.defaults.method.test_after_detail',
     },
@@ -84,30 +84,31 @@
       detail: 'onboard.defaults.asking.key_points_detail',
     },
     {
-      value: 'ask.questions',
+      value: 'ask.questions-only',
       label: 'onboard.defaults.asking.questions',
       detail: 'onboard.defaults.asking.questions_detail',
     },
   ];
 
+  /** The posture's wire values are bare (`minimal`, `standard`, `full`); unset is the empty value. */
   const POSTURE: readonly Variant[] = [
     {
-      value: 'posture.unset',
+      value: '',
       label: 'onboard.defaults.posture.unset',
       detail: 'onboard.defaults.posture.unset_detail',
     },
     {
-      value: 'posture.minimal',
+      value: 'minimal',
       label: 'onboard.defaults.posture.minimal',
       detail: 'onboard.defaults.posture.minimal_detail',
     },
     {
-      value: 'posture.standard',
+      value: 'standard',
       label: 'onboard.defaults.posture.standard',
       detail: 'onboard.defaults.posture.standard_detail',
     },
     {
-      value: 'posture.full',
+      value: 'full',
       label: 'onboard.defaults.posture.full',
       detail: 'onboard.defaults.posture.full_detail',
     },
@@ -185,7 +186,9 @@
     if (!target) return;
     const body: Record<string, unknown> = {};
     for (const axis of changedAxes) {
-      body[axis.key] = changes[axis.key];
+      const value = changes[axis.key];
+      // An unset posture is the absence of the key, never an empty string: a plan asks it then.
+      body[axis.key] = axis.key === 'posture' && value === '' ? null : value;
     }
     view.onLink(target.id, body);
   }

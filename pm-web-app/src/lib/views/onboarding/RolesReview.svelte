@@ -174,6 +174,11 @@
     return options;
   });
 
+  /** @param id the harness's id @returns the name the runtime reports for it, or the id */
+  function harnessLabel(id: string): string {
+    return view.harnessNames()[id] ?? id;
+  }
+
   const effortOptions: SelectOption[] = [
     { value: '', label: $t('onboard.roles.effort.none') },
     ...EFFORTS.map((effort) => ({
@@ -251,9 +256,11 @@
     <h1 class="state-card__title">
       {view.field('summary') || $t('onboard.roles.review.title')}
     </h1>
-    <p class="state-card__summary">
-      {$t('onboard.roles.review.defaults', { count: roles.length })}
-    </p>
+    {#if view.state?.state === 'roles.review'}
+      <p class="state-card__summary">
+        {$t('onboard.roles.review.defaults', { count: roles.length })}
+      </p>
+    {/if}
   </div>
 
   <div class="roles-groups">
@@ -269,7 +276,7 @@
                 <span class="roles-row__class mono">{role.class ?? ''}</span>
                 <span class="roles-row__assignment mono">
                   {#if draftOf(role).harness_id}
-                    {draftOf(role).harness_id} · {draftOf(role).model_id}
+                    {harnessLabel(draftOf(role).harness_id)} · {draftOf(role).model_id}
                   {:else}
                     {$t('onboard.roles.review.no_harness')}
                   {/if}

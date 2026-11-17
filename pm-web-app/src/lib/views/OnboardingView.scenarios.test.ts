@@ -330,9 +330,9 @@ describe('OnboardingView against the mock runtime states', () => {
       'the plan defaults by their accept link',
       {
         state: 'defaults.review',
-        landing: 'pull_request',
-        method: 'squash',
-        asking: 'ask',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
         links: {
           back: { href: '/api/v1/onboarding/defaults/back', next: 'providers.select' },
           accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' },
@@ -435,7 +435,7 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { landing: 'landing.files' }));
   });
 
-  it('offers the posture on a later run only, preselected at Not set while it is unset', () => {
+  it('offers the posture on a later run only, preselected at Not set while it is unset', async () => {
     arrange(
       onboardingState({
         state: 'defaults.reconfigure',
@@ -443,10 +443,12 @@ describe('OnboardingView against the mock runtime states', () => {
         landing: 'landing.pull-request',
         method: 'method.test-first',
         asking: 'ask.key-points',
-        posture: 'posture.unset',
         links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'settings.record' } },
       }),
     );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'settings.record' }));
 
     render(OnboardingView);
 
@@ -455,6 +457,11 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(card).toHaveTextContent('How full the plan');
     expect(screen.getByRole('radio', { name: /Not set: each plan asks/ })).toBeChecked();
     expect(card).not.toHaveTextContent('posture.unset');
+
+    // The posture travels as its own bare value, and only because this line changed.
+    await fireEvent.click(screen.getByRole('radio', { name: /^Full/ }));
+    await fireEvent.click(screen.getByTestId('defaults-record'));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { posture: 'full' }));
   });
 
   it('groups the roles by phase, marks a departure and shows the advisory of a role', async () => {
@@ -681,6 +688,26 @@ describe('OnboardingView against the mock runtime states', () => {
     // The other two acts are the state's own links, in its words.
     expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue without' })).toBeInTheDocument();
+  });
+
+  it('offers no token entry for a provider whose state names no id', () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be verified',
+        provider: 'SonarCloud',
+        cause: '401 "Invalid token"',
+        links: {
+          check_again: { href: '/api/v1/onboarding/providers/check-again', next: 'providers.verify' },
+        },
+      } as Partial<OnboardingState>),
+    );
+
+    render(OnboardingView);
+
+    // Storing a token under a guessed key would put it where the check never looks.
+    expect(screen.getByTestId('providers-failed')).toHaveTextContent('SonarCloud');
+    expect(screen.queryByTestId('providers-failed-enter-token')).not.toBeInTheDocument();
   });
 
   it('shows the provider that failed with its cause and fix, and tries again by its link', async () => {

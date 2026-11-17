@@ -22,8 +22,6 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 ----
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ [icon] plan-marshall                                   Machine: mbp-oliver    │
-│                                                                              │
-│  DE  (•) Light ( ) Dark ( ) System                                           │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  ① Language ─ ② Harnesses ─ ③ Models ─ ④ Roles ─ ⑤ Credentials ─ ⑥ Providers │
 │  ─ ⑦ Plans ─ ✓ Done                                                          │
@@ -40,7 +38,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 └──────────────────────────────────────────────────────────────────────────────┘
 ----
 
-* *Frame*: until the machine is onboarded the frame carries the brand, the machine, the language and the theme, and nothing else: no path, no search, no live indicator and no destination of the app. The rail's head carries the brand at `768` px up and its foot carries the language and the theme; below that width the onboarding's own head carries the brand and the phone's bar carries the language and the theme. The brand opens nothing while the onboarding runs.
+* *Frame*: until the machine is onboarded the frame carries the brand, the machine, the language and the theme, and the rail's own collapse control, and nothing else: no path, no search, no live indicator and no destination of the app. The rail's head carries the brand at `768` px up and its foot carries the language and the theme; below that width the onboarding's own head carries the brand and the phone's bar carries the language and the theme. The brand opens nothing while the onboarding runs.
 * *Step bar*: the seven sub-workflows of `onboard.*`; done steps are ticked and can be opened to look at, never re-run from the bar (a re-run is a later change from the settings). The bar shows where the process is; it does not navigate ahead. The mode screen (`onboard.mode`) stands before step 1 and marks no step at all.
 * *One route*: the onboarding is one route of the app (`/onboarding`) that renders whichever state the server reports; the app has no route per state, so it cannot show a state the server is not in. A done step opened from the step bar is shown read-only beside the current one.
 * *Header*: the brand icon at `28` px beside the wordmark, as in the rail head (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]). From `768` px up the rail head carries it; below that width the rail is hidden and the onboarding's own header carries it, so every screen shows one mark.

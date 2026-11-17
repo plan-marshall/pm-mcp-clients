@@ -164,6 +164,8 @@ test.describe('The recorded interface language', () => {
     // The frame carries the brand, and the brand opens nothing before onboarding is done.
     await expect(freshPage.getByTestId('brand-inert')).toBeVisible({ timeout: 20000 });
     await expect(freshPage.getByRole('button', { name: 'Sprache wechseln' })).toBeVisible();
+    // The frame's own text is German too, not only the control's accessible name.
+    await expect(freshPage.locator('.step-bar')).toContainText('Sprache');
     const stored = await freshPage.evaluate(() => localStorage.getItem('pm_locale'));
     expect(stored).toBeNull();
     await freshContext.close();

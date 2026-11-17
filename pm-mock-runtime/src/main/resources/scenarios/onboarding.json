@@ -2267,7 +2267,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "posture": "standard"
         },
         "links": [
           {

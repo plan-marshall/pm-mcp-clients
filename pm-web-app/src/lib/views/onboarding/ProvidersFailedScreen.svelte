@@ -19,8 +19,14 @@
   /** The provider's name, as the state reports it. */
   const provider = $derived(view.field('provider') ?? '');
 
-  /** The key of the provider's token: the provider's id, or its name when it reports no id. */
-  const credentialKey = $derived(view.field('provider_id') ?? provider);
+  /**
+   * The key of the provider's token: the provider's id, which the state names for this purpose.
+   *
+   * The entry is offered only with a key: storing a token under the provider's display name would
+   * put it where the verification never looks, so a state that names no id gets no entry rather
+   * than a guessed one.
+   */
+  const credentialKey = $derived(view.field('provider_id'));
 </script>
 
 <div class="state-card" data-testid="providers-failed">
@@ -51,17 +57,19 @@
   </dl>
 
   <div class="providers-failed__token">
-    <Button
-      variant="secondary"
-      loading={view.busy}
-      aria-expanded={entering}
-      onclick={() => (entering = !entering)}
-      data-testid="providers-failed-enter-token"
-    >
-      {$t('onboard.providers.failed.enter_token')}
-    </Button>
-    {#if entering}
-      <CredentialEntry credentialKey={credentialKey} label={provider} />
+    {#if credentialKey}
+      <Button
+        variant="secondary"
+        loading={view.busy}
+        aria-expanded={entering}
+        onclick={() => (entering = !entering)}
+        data-testid="providers-failed-enter-token"
+      >
+        {$t('onboard.providers.failed.enter_token')}
+      </Button>
+      {#if entering}
+        <CredentialEntry credentialKey={credentialKey} label={provider} />
+      {/if}
     {/if}
   </div>
 
