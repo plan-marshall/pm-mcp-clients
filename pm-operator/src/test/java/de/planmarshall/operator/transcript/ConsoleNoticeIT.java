@@ -20,6 +20,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -87,8 +88,11 @@ class ConsoleNoticeIT {
 
             broadcastUntilDrawn(runtime, DECISION_OPENED, session, "◆ Question Q-042 · plan fix-relay · blocks the plan");
 
+            // The notice stands above the prompt on the frame that drew it; the dialogue opened next
+            // repaints the screen, so the check comes before it and waits for the frame rather than
+            // sampling whatever happens to be drawn.
+            awaitAboveThePrompt(session, "◆ Question Q-042");
             assertTrue(session.awaitText("Recommended: 2) Rebase onto main", TIMEOUT), session.rawOutput());
-            assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-042"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-042"),
                                 "the notice is printed once, not once per redraw");
             // Enter takes the open project onboarding first; leaving it with q returns to the console
@@ -112,7 +116,7 @@ class ConsoleNoticeIT {
                                 "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.");
 
             assertTrue(session.awaitText("– Q-007 was answered", TIMEOUT), session.rawOutput());
-            assertTrue(aboveThePrompt(session.screenText(), "– Q-007 was answered"), session.screenText());
+            awaitAboveThePrompt(session, "– Q-007 was answered");
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "– Q-007 was answered"),
                                 "the notice is printed once, not once per redraw");
             // Enter takes the open project onboarding first; leaving it with q returns to the console
@@ -142,6 +146,29 @@ class ConsoleNoticeIT {
             }
         }
         return noticeAt >= 0 && promptAt >= 0 && noticeAt < promptAt;
+    }
+
+    /**
+     * Waits until the notice stands above the prompt on the drawn screen, so the check reads a frame
+     * rather than whatever the terminal happens to hold at the moment of the call.
+     *
+     * @param session the running session
+     * @param notice  the notice's text
+     * @throws InterruptedException if interrupted while waiting
+     */
+    private static void awaitAboveThePrompt(PtySession session, String notice)
+                        throws InterruptedException {
+        var deadline = System.nanoTime() + TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (aboveThePrompt(session.screenText(), notice)) {
+                return;
+            }
+            LockSupport.parkNanos(20_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        fail("the notice never stood above the prompt: " + notice + "\n" + session.screenText());
     }
 
     /**
