@@ -151,7 +151,7 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     // the button is the design's "Use Deutsch for both".
     await page.locator('input[name="interface-language"][value="de"]').check();
     await page.locator('input[name="model-language"][value="same"]').check();
-    await expect(page.getByTestId('language-record')).toHaveTextContent('Use Deutsch for both');
+    await expect(page.getByTestId('language-record')).toHaveText('Use Deutsch for both');
     await page.getByTestId('language-record').click();
 
     // The next screen is the harness-scan consent, in the language the step just recorded — no
