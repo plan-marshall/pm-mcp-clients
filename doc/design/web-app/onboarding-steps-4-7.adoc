@@ -74,7 +74,7 @@ The advisory of a role, opened in place below its row:
 
 * The advisory always shows the default's what and why, also when the value departs from it; the steward's proposal and its reason stand on its last line.
 * The record button is disabled while any row is open; its place says `Assign the N open roles first`. `roles.validate` that refuses a role returns to the list with the row marked and the reason beside it.
-* The state reports per role its `role`, `class`, `phase`, the entry it runs on (`harness_id`, `model_id`, `effort`), its `origin` (`default`, `steward`, `changed`, `unmet`), the assignment it holds by `default`, a `departure` (`harness_id`, `model_id`, `effort`, `reason`) when the steward proposed another one, and its `advisory` (`does`, `needs`, `why`, `lower_tier`, `steward`). The record sends `roles[]` for the rows changed by hand and `departures[]` (`role`, `decision`) for the decisions; a row with a decision is not also sent as a change.
+* The state reports per role its `role`, `class`, `phase`, the entry it runs on (`harness_id`, `model_id`, `effort`), its `origin` (`default`, `steward`, `changed`, `unmet`), the assignment it holds by `default`, a `departure` (`harness_id`, `model_id`, `effort`, `reason`) when the steward proposed another one, and its `advisory` (`does`, `needs`, `why`, `lower_tier`, `steward`). The record sends `roles[]` for the rows the operator changed by hand and `departures[]` (`role`, `decision`) for the decisions; a hand change made after a decision travels as an assignment beside it, so the decision says what was taken and the assignment what the operator set last.
 
 [#speech]
 === The Speech Role (`roles.speech`, `roles.speech-consent`, `roles.speech-check`, `roles.speech-write`)
@@ -273,7 +273,8 @@ Before the providers are called, the consent kind `verify_providers` (the patter
     ✗  token refused: 401 "Invalid token"
        → enter the token again
 
-  [ Continue without ]   [ Check again ]   [ Enter the token again ]
+  [ Enter the token again ]
+  [ Continue without ]   [ Check again ]
 ----
 
 * Every provider and every check has its own line; a provider is ✓ only when all its checks are. A ✗ shows the provider's answer and the fix.
@@ -406,7 +407,8 @@ The run shows the step bar moving and each step's check lines as they report:
     ✗  token refused: 401 "Invalid token"
        → enter the token again
 
-  [ Continue without ]   [ Check again ]   [ Enter the token again ]
+  [ Enter the token again ]
+  [ Continue without ]   [ Check again ]
 ----
 
 * A provider whose token is missing stops the run in `providers.credentials` (<<providers-credentials>>) the same way; the automatic run never skips a step for want of a token.

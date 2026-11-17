@@ -21,7 +21,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 [source,text]
 ----
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ [icon] plan-marshall                            Machine: mbp-oliver           │
+│ [icon] plan-marshall                            Machine: mbp-oliver          │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  ① Language ─ ② Harnesses ─ ③ Models ─ ④ Roles ─ ⑤ Credentials ─ ⑥ Providers │
 │  ─ ⑦ Plans ─ ✓ Done                                                          │

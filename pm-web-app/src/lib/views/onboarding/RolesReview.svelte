@@ -233,12 +233,40 @@
   /** The roles nothing assigns yet: the run waits for each of them. */
   const openRoles = $derived(roles.filter(isOpen));
   /**
-   * The rows the operator changed by hand. A row with a departure decision travels as that
-   * decision, never as a second assignment: `departures[]` is the record of the change proposed.
+   * The rows the operator changed by hand.
+   *
+   * A row with a departure decision travels as that decision, and a hand change after it travels
+   * as an assignment beside it: the decision says what was taken, the assignment what the operator
+   * set last.
    */
-  const changedRows = $derived(
-    roles.filter((role) => isChanged(role) && decisions[role.role] === undefined),
-  );
+  const changedRows = $derived(roles.filter(isHandChanged));
+
+  /** @param role the role's id @returns the assignment the operator's decision settles on, if any */
+  function decidedTarget(role: RoleRow): Draft | undefined {
+    const decision = decisions[role.role];
+    const target = decision === 'accept' ? role.departure : decision === 'reject' ? role.default : undefined;
+    if (!target) return undefined;
+    return {
+      harness_id: target.harness_id ?? role.harness_id ?? '',
+      model_id: target.model_id ?? role.model_id ?? '',
+      effort: target.effort ?? role.effort ?? '',
+    };
+  }
+
+  /** @param role the role's id @returns whether the draft differs from the assignment it starts at */
+  function isHandChanged(role: RoleRow): boolean {
+    const start = decidedTarget(role) ?? {
+      harness_id: role.harness_id ?? '',
+      model_id: role.model_id ?? '',
+      effort: role.effort ?? '',
+    };
+    const draft = draftOf(role);
+    return (
+      draft.harness_id !== start.harness_id ||
+      draft.model_id !== start.model_id ||
+      draft.effort !== start.effort
+    );
+  }
 
   /** @param role the role's id @returns the word beside its effort, from the catalogue */
   function effortLabel(role: RoleRow): string {

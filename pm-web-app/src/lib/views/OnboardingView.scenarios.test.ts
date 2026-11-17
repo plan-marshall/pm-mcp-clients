@@ -488,6 +488,10 @@ describe('OnboardingView against the mock runtime states', () => {
       onboardingState({
         state: 'roles.review',
         summary: 'Give every role a harness and a model',
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code' },
+          { harness_id: 'opencode', name: 'OpenCode' },
+        ],
         roles: [
           {
             role: 'outline',
@@ -513,6 +517,7 @@ describe('OnboardingView against the mock runtime states', () => {
             model_id: 'qwen-coder-32b',
             effort: '',
             origin: 'steward',
+            default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
             departure: {
               harness_id: 'opencode',
               model_id: 'qwen-coder-32b',
@@ -564,10 +569,10 @@ describe('OnboardingView against the mock runtime states', () => {
       screen.getByTestId('role-row-qgate'),
     );
 
-    // Each row names its harness, model and effort, and where the value comes from.
+    // Each row names its harness (by the name the state reports), model and effort.
     const outline = screen.getByTestId('role-row-outline');
     expect(outline).toHaveTextContent('outline');
-    expect(outline).toHaveTextContent('claude');
+    expect(outline).toHaveTextContent('Claude Code');
     expect(outline).toHaveTextContent('opus-5.5');
     expect(outline).toHaveTextContent('high');
     expect(outline).toHaveTextContent('Default');
@@ -576,7 +581,7 @@ describe('OnboardingView against the mock runtime states', () => {
     const qgate = screen.getByTestId('role-row-qgate');
     expect(qgate).toHaveTextContent('Departure from the steward');
     expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
-      'Proposed: opencode · qwen-coder-32b',
+      'Proposed: OpenCode · qwen-coder-32b',
     );
     expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
       'reads only; a fast model suffices',

@@ -1486,6 +1486,16 @@
         },
         "facts": {
           "summary": "Give every role a harness and a model",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
           "roles": [
             {
               "role": "outline",
@@ -2271,8 +2281,7 @@
           "summary": "How should plans run on this machine?",
           "landing": "landing.pull-request",
           "method": "method.test-first",
-          "asking": "ask.key-points",
-          "posture": "standard"
+          "asking": "ask.key-points"
         },
         "links": [
           {
@@ -2810,6 +2819,16 @@
           "reset": "",
           "reset_all": "false",
           "defaults": "false",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
           "roles": [
             {
               "role": "outline",
