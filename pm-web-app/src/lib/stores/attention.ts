@@ -283,7 +283,9 @@ export interface AttentionActLabel {
  * @returns the id its last segment names, decoded, or the path itself
  */
 function segmentOf(target: string): string {
-  const segment = /([^/]+)\/?$/.exec(target)?.[1] ?? '';
+  const end = target.endsWith('/') ? target.length - 1 : target.length;
+  const start = target.lastIndexOf('/', Math.max(0, end - 1));
+  const segment = target.slice(start + 1, end);
   try {
     return decodeURIComponent(segment);
   } catch {
