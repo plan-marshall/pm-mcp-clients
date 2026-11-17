@@ -1665,6 +1665,28 @@ export function selectObjectTab(tab: ObjectTab): void {
 }
 
 /**
+ * Opens one file of the plan's changes, or drops the file when a caller passes `null`, and writes
+ * the file into the address beside the tab.
+ *
+ * A file is a selection inside the tab, so it replaces the entry rather than pushing one: Back
+ * leaves the plan rather than walking through the files of its change (`navigation.adoc#url`).
+ *
+ * @param path the file's path, or `null` to show the list alone
+ */
+export function selectPlanChangeFile(path: string | null): void {
+  runtimeStore.update((s) => ({ ...s, changeFile: path }));
+  const current = currentAddress();
+  if (!current || current.route !== 'plan') {
+    return;
+  }
+  const address: Address = switchTab(current, 'changes');
+  if (path) {
+    address.file = path;
+  }
+  writeAddress(address, 'replace');
+}
+
+/**
  * Opens a plan's completion report in one step, on the reports route.
  *
  * @param planId the plan whose completion report to show

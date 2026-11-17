@@ -433,6 +433,8 @@ export interface ProcessTree {
   duration_seconds: number;
   /** How the plan ended, when the process resource carries it. */
   ended?: ProcessEndedInfo | null;
+  /** The size of the plan's change at its last capture; a plan with none carries no field. */
+  change?: ChangeSizeRecord | null;
 }
 
 export interface ActivityEntry {
@@ -445,6 +447,10 @@ export interface ActivityEntry {
   size?: string | null;
   files?: string[];
   questions?: string[];
+  /** The worker's launch model, on a `model_differs` entry. */
+  launch_model?: string | null;
+  /** The model that answered, on a `model_differs` entry. */
+  served_model?: string | null;
 }
 
 export interface TaskActivity {
@@ -458,6 +464,66 @@ export interface TaskActivity {
   entries: ActivityEntry[];
   off_track?: OffTrackInfo | null;
 }
+
+/** The status of one changed file of a plan's change, as git reports it. */
+export type ChangedFileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+
+/**
+ * One changed file of a plan's change, at the plan's last capture (`plan-changes`).
+ *
+ * The path and the path the file was renamed from come from the project: a view shows them as
+ * plain text, never as markup and never as a link it follows.
+ */
+export interface PlanChangedFile {
+  path: string;
+  renamed_from?: string | null;
+  status: ChangedFileStatus;
+  added: number;
+  removed: number;
+  binary: boolean;
+  unplanned: boolean;
+}
+
+/** One line of a hunk: context of both sides, removed from the base, or added by the capture. */
+export interface PlanChangeLine {
+  kind: 'context' | 'removed' | 'added';
+  text: string;
+}
+
+/** One hunk of a file's change, with its position on both sides. */
+export interface PlanChangeHunk {
+  old_start: number;
+  old_len: number;
+  new_start: number;
+  new_len: number;
+  lines: PlanChangeLine[];
+}
+
+/**
+ * One file of a plan's change with its hunks, as the file route answers it.
+ *
+ * The answer carries no `head`: it belongs to the row of the list the caller holds, and a list
+ * that moved makes the answer stale (`plan-view.adoc`, `#changes`).
+ */
+export interface PlanChangeFile {
+  path: string;
+  hunks: PlanChangeHunk[];
+  binary: boolean;
+  truncated: boolean;
+  lines_omitted?: number;
+}
+
+/**
+ * What a plan's changes answer: the list of the last capture, or one of the two refusals.
+ *
+ * The `state` member names which answer this is, so a view branches on it instead of on the
+ * presence of a list: before the first capture there is no list, and a capture whose commit is
+ * gone answers `unavailable` with its reason.
+ */
+export type PlanChangesAnswer =
+  | { plan_id: string; state: 'captured'; head: string; base_ref: string; files: PlanChangedFile[] }
+  | { plan_id: string; state: 'not_captured' }
+  | { plan_id: string; state: 'unavailable'; reason: string };
 
 export interface EpicProcessPlan {
   plan_id: string;
@@ -2236,6 +2302,17 @@ function httpError(message: string, status: number): Error {
   const error = new Error(message) as Error & { status?: number };
   error.status = status;
   return error;
+}
+
+/**
+ * The path of a plan's changes, with the plan id as one encoded segment — the same encoding
+ * `PlanChangesRoutes` of `pm-api` applies (`URLEncoder`, and `%20` for a space).
+ *
+ * @param planId the plan
+ * @returns the list's path
+ */
+function planChangesPath(planId: string): string {
+  return `/api/v1/plans/${encodeURIComponent(planId)}/changes`;
 }
 
 /**
@@ -4123,6 +4200,32 @@ export class ApiClient {
 
   public async getPlanProcess(planId: string): Promise<ProcessTree> {
     return this.request<ProcessTree>('GET', `/api/v1/plans/${encodeURIComponent(planId)}/process`);
+  }
+
+  /**
+   * Reads a plan's changes: the list of its last capture, or the answer that says why there is
+   * none (design `plan-view.adoc#changes`).
+   *
+   * @param planId the plan
+   * @returns the list or its refusal; the answer's `state` names which
+   */
+  public async getPlanChanges(planId: string): Promise<PlanChangesAnswer> {
+    return this.request<PlanChangesAnswer>('GET', planChangesPath(planId));
+  }
+
+  /**
+   * Reads one file's hunks of a plan's last capture. The answer carries no head: it belongs to the
+   * row of the list the caller holds at that head (design `plan-view.adoc#changes`).
+   *
+   * @param planId the plan
+   * @param path the file's path in the capture
+   * @returns the file's hunks, or its binary mark
+   */
+  public async getPlanChangeFile(planId: string, path: string): Promise<PlanChangeFile> {
+    return this.request<PlanChangeFile>(
+      'GET',
+      `${planChangesPath(planId)}/file?path=${encodeURIComponent(path)}`,
+    );
   }
 
   public async getTaskActivity(planId: string, taskId: string): Promise<TaskActivity> {
