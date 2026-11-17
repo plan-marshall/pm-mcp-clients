@@ -155,10 +155,11 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     await page.getByTestId('language-record').click();
 
     // The next screen is the harness-scan consent, in the language the step just recorded — no
-    // reload, and no frame still in English.
-    await expect(
-      page.getByRole('heading', { name: 'Auf dieser Maschine nach Harnesses suchen?' }),
-    ).toBeVisible();
+    // reload, and no frame still in English. The runtime's own sentence in the card is its
+    // fixture's, so the check reads the words the app itself supplies: the frame's step bar, the
+    // page title and the consent's acts.
+    await expect(page.getByRole('button', { name: 'Nicht jetzt' })).toBeVisible();
+    await expect(page).toHaveTitle('Maschine für plan-marshall einrichten');
     await expect(page.locator('.step-bar')).toContainText('Sprache');
   });
 });
