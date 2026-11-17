@@ -272,27 +272,29 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     await openDecisions(page);
     await openDecision(page, 'Q-007');
 
-    // Two decisions arrive inside one second.
-    for (const id of ['Q-098', 'Q-099']) {
-      const opened = await page.request.post(`${BASE}/mock/broadcast`, {
-        data: {
-          event: 'decision.opened',
+    // Two decisions arrive inside one second: the posts go together, so they share the window.
+    const opened = await Promise.all(
+      ['Q-098', 'Q-099'].map((id) =>
+        page.request.post(`${BASE}/mock/broadcast`, {
           data: {
-            id,
-            revision: 1,
-            title: `A decision that arrived (${id})`,
-            subject: 'plan fix-relay',
-            scope: 'plan',
-            asking_phase: 'execute',
-            asking_role: 'implement',
-            blocks: 'plan',
-            reversibility: 'reversible',
-            parts: [],
+            event: 'decision.opened',
+            data: {
+              id,
+              revision: 1,
+              title: `A decision that arrived (${id})`,
+              subject: 'plan fix-relay',
+              scope: 'plan',
+              asking_phase: 'execute',
+              asking_role: 'implement',
+              blocks: 'plan',
+              reversibility: 'reversible',
+              parts: [],
+            },
           },
-        },
-      });
-      expect(opened.ok()).toBeTruthy();
-    }
+        }),
+      ),
+    );
+    for (const response of opened) expect(response.ok()).toBeTruthy();
 
     await page.waitForFunction(() => window.__notifications.length === 1);
     expect(await page.evaluate(() => window.__notifications)).toEqual([

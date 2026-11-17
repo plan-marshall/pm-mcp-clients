@@ -179,6 +179,9 @@
     }));
   });
 
+  /** The decisions in the order the list draws them: group after group, as the page shows them. */
+  const displayedDecisions = $derived.by(() => groups.flatMap((group) => group.items));
+
   /** The decision the object column shows, or `null` while the list stands alone. */
   const activeDecision = $derived(decisions.find((dec) => dec.id === activeId) ?? null);
 
@@ -518,10 +521,17 @@
   /**
    * @param dec a decision
    * @param optionKey the option key an answer names
+   * @param part the part the option belongs to, where the caller knows it
    * @returns the option's own label, or the key where the decision does not carry it
    */
-  function optionLabelOf(dec: DecisionEnvelope | undefined, optionKey: string): string {
-    const option = dec?.parts.flatMap((part) => part.options).find((entry) => entry.key === optionKey);
+  function optionLabelOf(
+    dec: DecisionEnvelope | undefined,
+    optionKey: string,
+    part?: DecisionPart,
+  ): string {
+    const scoped = part?.options.find((entry) => entry.key === optionKey)?.label;
+    if (scoped) return scoped;
+    const option = dec?.parts.flatMap((entry) => entry.options).find((e) => e.key === optionKey);
     return option?.label || optionKey;
   }
 
@@ -530,7 +540,9 @@
    * @param requestId the request id the answering client sent, where it sent one
    * @returns whether this client sent that answer
    */
-  function isOwnAnswer(id: string, requestId?: string | null): boolean {
+  function isOwnAnswer(id: string, requestId?: string | null, channel?: string): boolean {
+    // An answer the runtime names as the console's is never this client's, whatever the id says.
+    if (channel === 'cli') return false;
     const pending = ownRequests.get(id);
     if (pending === undefined) return false;
     return requestId ? pending === requestId : true;
@@ -581,7 +593,7 @@
         const answered = decisions.find((decision) => decision.id === id);
         const optionKey = answer.answer || '';
         const label = optionLabelOf(answered, optionKey);
-        if (isOwnAnswer(id, answer.request_id)) {
+        if (isOwnAnswer(id, answer.request_id, answer.channel)) {
           outcome = { tone: 'success', text: $t('decision.outcome.answered', { answer: label }) };
         } else {
           outcome = {
@@ -653,12 +665,20 @@
     errorMessage = '';
   }
 
-  async function loadDecisions() {
+  /**
+   * Reads the open decisions again.
+   *
+   * @param keepBanner whether another act's failure stays on screen; the reload that follows a
+   *   successful answer reconciles the list and is not news about that failure
+   */
+  async function loadDecisions(keepBanner = false) {
     isLoading = true;
     loadError = null;
     // A reload answers for the act the banner reported too: the act's failure is no longer news.
-    errorMessage = '';
-    errorOwner = null;
+    if (!keepBanner) {
+      errorMessage = '';
+      errorOwner = null;
+    }
     try {
       decisions = await apiClient.getDecisions();
       for (const dec of decisions) seenIds.add(dec.id);
@@ -718,7 +738,7 @@
     const earlier = dec.parts[dependency - 1];
     if (!earlier) return '';
     const answer = answerOf(dec, earlier, dependency - 1);
-    return optionLabelOf(dec, answer);
+    return optionLabelOf(dec, answer, earlier);
   }
 
   function selectOption(
@@ -778,6 +798,8 @@
     try {
       await apiClient.answerDecision(id, { action, reason, request_id: requestId });
       clearActFailure(`waiver:${id}`);
+      // The list follows the answer even when the stream is down: the runtime no longer lists it.
+      void loadDecisions(true);
     } catch (err: unknown) {
       ownRequests.delete(id);
       showActFailure(`waiver:${id}`, actFailureText(err, $t('decision.waiver.failed')));
@@ -838,6 +860,7 @@
       });
       clearActFailure(`answer:${key}`);
       setAnswer(dec, part, index, option);
+      void loadDecisions(true);
     } catch (err: unknown) {
       ownRequests.delete(dec.id);
       showActFailure(`answer:${key}`, actFailureText(err, $t('decision.answer.failed')));
@@ -876,6 +899,7 @@
         });
       }
       clearActFailure(`answer:${submittingKey}`);
+      void loadDecisions(true);
     } catch (err: unknown) {
       ownRequests.delete(dec.id);
       showActFailure(`answer:${submittingKey}`, actFailureText(err, $t('decision.answer.failed')));
@@ -889,6 +913,7 @@
     try {
       await apiClient.withdrawDecision(dec.id);
       clearActFailure(`withdraw:${dec.id}`);
+      void loadDecisions(true);
     } catch (err: unknown) {
       showActFailure(`withdraw:${dec.id}`, actFailureText(err, $t('decision.withdraw.failed')));
     } finally {
@@ -907,7 +932,7 @@
    * @param id the decision that left
    */
   function removeDecision(id: string): void {
-    const ordered = orderedDecisions;
+    const ordered = displayedDecisions;
     const index = ordered.findIndex((dec) => dec.id === id);
     const successor =
       index >= 0
@@ -1101,7 +1126,7 @@
   function recommendationSentence(dec: DecisionEnvelope, part: DecisionPart): string {
     return $t('decision.recommendation.by', {
       role: part.recommending_role || dec.asking_role || 'reviewer',
-      option: optionLabelOf(dec, part.recommendation ?? ''),
+      option: optionLabelOf(dec, part.recommendation ?? '', part),
     });
   }
 
@@ -1337,7 +1362,7 @@
     {#if errorMessage}
       <div class="error-banner" role="alert">
         <p>{errorMessage}</p>
-        <Button variant="secondary" size="sm" onclick={loadDecisions}
+        <Button variant="secondary" size="sm" onclick={() => void loadDecisions()}
           >{$t('common.action.retry')}</Button
         >
       </div>
@@ -1348,7 +1373,7 @@
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
-          onAct={loadDecisions}
+          onAct={() => void loadDecisions()}
         />
       </div>
     {/if}
@@ -1362,7 +1387,7 @@
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
-          onAct={loadDecisions}
+          onAct={() => void loadDecisions()}
           announce={hasShownDecisions}
         />
       </div>
@@ -1706,21 +1731,33 @@
                   {/if}
                 {:else}
                   <div class="readback-box">
-                    <p class="readback-text">
-                      {$t('decision.readback.understood', {
-                        reading: interpretations[keyOf(dec, part, pIdx)]?.read_back_text || '',
-                      })}
-                    </p>
+                    {#if interpretations[keyOf(dec, part, pIdx)]?.interpretation_type === 'UNCLEAR'}
+                      <p class="readback-text">
+                        {$t('decision.interpret.unclear_bound', {
+                          reason:
+                            interpretations[keyOf(dec, part, pIdx)]?.clarification_question ||
+                            $t('decision.interpret.unclear_reason'),
+                        })}
+                      </p>
+                    {:else}
+                      <p class="readback-text">
+                        {$t('decision.readback.understood', {
+                          reading: interpretations[keyOf(dec, part, pIdx)]?.read_back_text || '',
+                        })}
+                      </p>
+                    {/if}
                     <div class="readback-actions">
-                      <Button
-                        size="sm"
-                        variant="primary"
-                        data-advisory={$t('decision.readback.confirm.title')}
-                        disabled={isChatting(dec)}
-                        onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
-                      >
-                        {$t('decision.readback.confirm')}
-                      </Button>
+                      {#if interpretations[keyOf(dec, part, pIdx)]?.interpretation_type !== 'UNCLEAR'}
+                        <Button
+                          size="sm"
+                          variant="primary"
+                          data-advisory={$t('decision.readback.confirm.title')}
+                          disabled={isChatting(dec)}
+                          onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
+                        >
+                          {$t('decision.readback.confirm')}
+                        </Button>
+                      {/if}
                       <Button
                         size="sm"
                         variant="secondary"

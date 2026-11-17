@@ -1390,6 +1390,73 @@ describe('DecisionView component', () => {
       expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
     });
 
+    it('asks again when the words could not be read clearly', async () => {
+      const detail = await renderOpen();
+      vi.spyOn(apiClient, 'interpretDecision').mockResolvedValue({
+        interpretation_type: 'UNCLEAR',
+        clarification_question: 'Which branch do you mean?',
+      });
+
+      await fireEvent.click(within(detail).getByText('in my own words'));
+      await fireEvent.input(screen.getByTestId('own-words-dec-101-0'), {
+        target: { value: 'do whatever the reviewer would do' },
+      });
+      await fireEvent.click(within(detail).getByRole('button', { name: 'Read back' }));
+
+      expect(await screen.findByText(/Which branch do you mean\?/)).toBeInTheDocument();
+      // An unclear reading is answered with a question, never confirmed as an answer.
+      expect(within(detail).queryByRole('button', { name: 'Correct' })).toBeNull();
+    });
+
+    it('reads the list again after an answer, so a disconnected stream cannot keep it', async () => {
+      const detail = await renderOpen();
+      await fireEvent.click(within(detail).getByText('Rebase onto main', { exact: true }));
+
+      await fireEvent.click(within(detail).getByRole('button', { name: 'Decide' }));
+
+      await waitFor(() => expect(apiClient.getDecisions).toHaveBeenCalledTimes(2));
+    });
+
+    it('names the console even while this client’s own answer is pending', async () => {
+      const emit = captureEvents();
+      let finishAnswer: (result: { status: string }) => void = () => {};
+      vi.spyOn(apiClient, 'answerDecision').mockImplementation(
+        () => new Promise((resolve) => (finishAnswer = resolve)),
+      );
+      const detail = await renderOpen();
+      await fireEvent.click(within(detail).getByText('Rebase onto main', { exact: true }));
+      await fireEvent.click(within(detail).getByRole('button', { name: 'Decide' }));
+
+      await emit('decision.answered', {
+        id: 'dec-101',
+        answer: 'rebase',
+        channel: 'cli',
+        device: 'terminal-01',
+      });
+
+      expect(await screen.findByTestId('decision-outcome')).toHaveTextContent(
+        'answered in the console',
+      );
+      await act(() => finishAnswer({ status: 'answered' }));
+    });
+
+    it('selects the next decision the list shows, across the project groups', async () => {
+      const alphaOne = { ...mockDecision, id: 'A-1', project: 'alpha', delivered_at: '2026-10-14T10:00:00Z' };
+      const betaOne = { ...mockDecision, id: 'B-1', project: 'beta', title: 'B one', delivered_at: '2026-10-14T11:00:00Z' };
+      const alphaTwo = { ...mockDecision, id: 'A-2', project: 'alpha', title: 'A two', delivered_at: '2026-10-14T12:00:00Z' };
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([alphaOne, betaOne, alphaTwo]);
+      const emit = captureEvents();
+      await renderOpen('A-1');
+
+      await emit('decision.closed', { id: 'A-1', outcome: 'answered' });
+
+      // The order served is A-1, B-1, A-2; the list draws alpha (A-1, A-2) then beta (B-1), so the
+      // row after A-1 is A-2, not the beta decision between them.
+      await waitFor(() =>
+        expect(screen.getByTestId('decision-detail')).toHaveAttribute('data-decision-id', 'A-2'),
+      );
+    });
+
     it('drops an interpretation that answers after a revision replaced the question it read', async () => {
       const emit = captureEvents();
       let finish: (reading: {

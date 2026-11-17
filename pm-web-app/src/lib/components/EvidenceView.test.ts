@@ -48,6 +48,30 @@ describe('EvidenceView', () => {
     expect(view.textContent).not.toContain('\u001b');
   });
 
+  it('keeps two keys that differ only by control sequences apart', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: { evidence: { gate: 'one', '\u001b[35mgate\u001b[0m': 'two' } },
+    });
+
+    // The raw key is the identity, so the keyed list never receives a duplicate; the test id is
+    // the readable one.
+    expect(screen.getAllByTestId('evidence-field-gate')).toHaveLength(2);
+  });
+
+  it('folds a file record that carries more than the shortcut draws', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: { bug: { file: 'A.java', lines: [12, 20], reason: 'Unsafe access' } },
+      },
+    });
+
+    const fold = screen.getByTestId('evidence-structure-bug');
+    expect(fold).toHaveTextContent('"reason"');
+    expect(fold).toHaveTextContent('Unsafe access');
+  });
+
   it('shows a file with the lines it names', () => {
     useCatalogue('en');
     render(EvidenceView, {

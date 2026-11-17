@@ -63,7 +63,10 @@
 
   /** One field of the evidence: its key, its label and what it found. */
   interface Field {
+    /** The runtime's own key, the identity of the field in the list. */
     key: string;
+    /** The key as a test id: the control sequences removed, so an attribute stays readable. */
+    slot: string;
     label: string;
     /** The value of a sentence-like field. */
     text?: string;
@@ -107,18 +110,25 @@
    * @returns the field
    */
   function fieldOf(key: string, value: unknown): Field {
-    const cleanKey = stripControlSequences(key);
-    const label = stripControlSequences(plainLabel(cleanKey));
+    const slot = stripControlSequences(key);
+    const label = stripControlSequences(plainLabel(key));
     if (isScalar(value)) {
-      return { key: cleanKey, label, text: textOf(value) };
+      return { key, slot, label, text: textOf(value) };
     }
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const record = value as Record<string, unknown>;
       const fileKey = FILE_KEYS.find((name) => typeof record[name] === 'string');
-      if (fileKey !== undefined) {
+      // The file shortcut shows the file, its lines and its link, and nothing else: a record that
+      // carries more would lose what the shortcut does not draw, so it is folded instead.
+      const represented = [fileKey, 'lines', ...LINK_KEYS].filter(
+        (name): name is string => typeof name === 'string',
+      );
+      const known = Object.keys(record).every((name) => represented.includes(name));
+      if (fileKey !== undefined && known) {
         const lines = record['lines'];
         return {
-          key: cleanKey,
+          key,
+          slot,
           label,
           file: stripControlSequences(String(record[fileKey])),
           lines:
@@ -129,7 +139,7 @@
         };
       }
     }
-    return { key: cleanKey, label, structure: value };
+    return { key, slot, label, structure: value };
   }
 
   const fields = $derived.by<Field[]>(() =>
@@ -166,14 +176,14 @@
       {#each fields as field (field.key)}
         {#if field.structure !== undefined}
           <div class="evidence__structure">
-            <details class="evidence__fold" open data-testid="evidence-structure-{field.key}">
+            <details class="evidence__fold" open data-testid="evidence-structure-{field.slot}">
               <summary class="evidence__summary">{field.label}</summary>
               <pre class="evidence__json" data-model-text
                 >{jsonText(field.structure)}</pre>
             </details>
           </div>
         {:else}
-          <div class="evidence__field" data-testid="evidence-field-{field.key}">
+          <div class="evidence__field" data-testid="evidence-field-{field.slot}">
             <dt class="evidence__label">{field.label}</dt>
             <dd class="evidence__value">
               {#if field.file !== undefined}
