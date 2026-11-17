@@ -1553,7 +1553,7 @@
       onclick={() => handleLater(dec.id)}
       data-advisory={$t('decision.waiver.later.title')}
     >
-      {$t('decision.waiver.later')}
+      {$t('common.action.later')}
     </Button>
     <Button
       variant="secondary"
