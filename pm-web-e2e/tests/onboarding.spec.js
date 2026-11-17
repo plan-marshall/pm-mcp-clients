@@ -34,6 +34,34 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     await expect(page.getByRole('button', { name: /Decide everything for me/i })).toBeVisible();
   });
 
+  test('offers no navigation and marks no step before the machine is onboarded', async ({ page }) => {
+    // The frame carries the brand, the machine, the language and the theme, and nothing else.
+    await expect(page.getByTestId('brand-inert')).toBeVisible();
+    await expect(page.getByTestId('header-machine')).toBeVisible();
+    await expect(page.getByTestId('language-toggle')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+
+    // No destination, no way into the pages of the app and no search before onboarding is done.
+    for (const control of [
+      'brand-home',
+      'nav-inbox-btn',
+      'nav-overview-btn',
+      'nav-projects-btn',
+      'nav-decisions-btn',
+      'nav-reports-btn',
+      'nav-system-btn',
+      'nav-designer-btn',
+      'nav-settings-btn',
+      'search-trigger',
+      'live-indicator',
+    ]) {
+      await expect(page.getByTestId(control)).toHaveCount(0);
+    }
+
+    // The mode screen is the onboarding's step 0: the bar marks no step at all.
+    await expect(page.locator('.step-bar__item--active')).toHaveCount(0);
+  });
+
   test('walks from the mode choice into the language step', async ({ page }) => {
     await page.getByRole('button', { name: /Begin with step 1/i }).click();
 
