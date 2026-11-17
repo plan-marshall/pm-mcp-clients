@@ -342,7 +342,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/decisions');
       await expect(page.locator('.decisions-view')).toBeVisible();
-      await expect(page.locator('.decision-card, .standard-decision-card').first()).toBeVisible({
+      await expect(page.locator('.decisions-row').first()).toBeVisible({
         timeout: 15000,
       });
       await record('DecisionView');

@@ -141,15 +141,18 @@ test.describe('Fully onboarded showroom', () => {
     await page.getByTestId('nav-decisions-btn').click();
     await expect(page.locator('.decisions-view')).toBeVisible();
 
-    const cards = page.locator('.decision-card');
-    await expect(cards).toHaveCount(3);
+    const rows = page.locator('.decisions-row');
+    await expect(rows).toHaveCount(3);
 
-    const conflict = page.locator('[data-decision-id="Q-007"]');
+    // The decision opens beside the list, with its recommendation standing out.
+    await page.locator('.decisions-row[data-decision-id="Q-007"] a.row-link__title').click();
+    const conflict = page.getByTestId('decision-detail');
     await expect(conflict).toContainText('Resolve rebase conflict');
-    await expect(conflict.locator('.recommendation-banner')).toBeVisible();
-    await expect(conflict.locator('.recommended-tag')).toBeVisible();
+    await expect(conflict.getByTestId('recommendation-Q-007')).toContainText('Recommended by');
 
-    const multiPart = page.locator('[data-decision-id="Q-012"]');
+    // The three-part decision shows its parts, one position line each.
+    await page.locator('.decisions-row[data-decision-id="Q-012"] a.row-link__title').click();
+    const multiPart = page.getByTestId('decision-detail');
     await expect(multiPart.locator('.decision-part')).toHaveCount(3);
     await expect(multiPart.locator('.part-position')).toHaveCount(3);
     await expect(multiPart).toContainText(/part 1 of 3/i);

@@ -55,16 +55,38 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
       .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-decision-id')));
   }
 
+  /**
+   * @param page the Playwright page
+   * @param index the group's position in the list
+   * @returns the decision ids of that group's rows, in the order the group draws them
+   */
+  async function groupRowIds(page, index) {
+    return page
+      .getByTestId('decisions-group')
+      .nth(index)
+      .locator('.decisions-row')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-decision-id')));
+  }
+
   test('lists the eight open decisions, blocking first and grouped by project', async ({ page }) => {
     await openDecisions(page);
 
     await expect(page.locator('.decisions-header').getByTestId('count-badge')).toContainText('8');
 
-    // Blocking first and oldest within that; the only non-blocking decision is the last row.
     const ids = await rowIds(page);
     expect(ids).toHaveLength(8);
+    // The oldest blocking decision stands first; within its project group the blocking decisions
+    // come before the one that blocks nothing, and oldest first among themselves.
     expect(ids[0]).toBe('WR-2');
-    expect(ids[ids.length - 1]).toBe('Q-016');
+    expect(await groupRowIds(page, 0)).toEqual([
+      'WR-2',
+      'Q-007',
+      'Q-009',
+      'Q-012',
+      'Q-031',
+      'Q-015',
+      'Q-016',
+    ]);
 
     const groups = page.getByTestId('decisions-group');
     await expect(groups).toHaveCount(2);
