@@ -27,7 +27,15 @@
     fix?: string;
   }
 
-  const failed = $derived(view.arrayField<FailedHarness>('checks'));
+  /**
+   * The checks that failed: a runtime that reports a passing check does not list it under "none
+   * passed".
+   */
+  const failed = $derived(
+    view
+      .arrayField<FailedHarness>('checks')
+      .filter((entry) => entry.result === undefined || entry.result !== 'pass'),
+  );
 
   const title = $derived(
     view.field('summary') ||
@@ -35,6 +43,18 @@
         ? $t('onboard.harness.none.unusable_title')
         : $t('onboard.harness.none.title')),
   );
+
+  /**
+   * The sentence of what was looked for, when the state names both halves of it and reports no
+   * failed check; a state that names neither gets no sentence rather than one with two holes.
+   */
+  const lookedForText = $derived.by(() => {
+    if (failed.length > 0) return null;
+    const harnesses = view.field('harnesses');
+    const locations = view.field('locations');
+    if (!harnesses || !locations) return null;
+    return $t('onboard.harness.none.looked_for', { harnesses, locations });
+  });
 
   /**
    * @param check the check id the runtime reports
@@ -48,13 +68,8 @@
 <div class="state-card" data-testid="harness-none">
   <div class="state-card__header">
     <h1 class="state-card__title">{title}</h1>
-    {#if failed.length === 0}
-      <p class="state-card__summary">
-        {$t('onboard.harness.none.looked_for', {
-          harnesses: view.field('harnesses') ?? '',
-          locations: view.field('locations') ?? '',
-        })}
-      </p>
+    {#if lookedForText}
+      <p class="state-card__summary">{lookedForText}</p>
     {/if}
   </div>
 

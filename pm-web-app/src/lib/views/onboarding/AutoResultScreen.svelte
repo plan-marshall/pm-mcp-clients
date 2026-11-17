@@ -7,70 +7,56 @@
    * The automatic run's result (`auto.result`), per aspect, with the reason the runtime names.
    *
    * Every line the state can run again carries *Change* (`onboarding-steps-4-7.adoc` § The Result):
-   * the state offers one `reconfigure:<aspect>` link per line, the same link the machine settings
-   * offer, and *Change* takes it — the step opens again as a later run with its current value as the
-   * proposal. A line the state carries no link for stands without a *Change*.
+   * the state offers the catalogue's `change` link per aspect — `change:<aspect>`, as the machine
+   * settings offer `reconfigure:<aspect>` — and *Change* takes it, so the step opens again as a
+   * later run with its current value as the proposal. A line the state carries no link for stands
+   * without a *Change*, and a link whose line is missing from `results` keeps its own button.
+   *
+   * The line's name is the catalogue's `onboard.auto.aspect.<aspect>`, the same words the terminal
+   * client prints for the row; the facts are `AutoResultItem` of the published contract
+   * (`aspect`, `value`, `reason`).
    */
   let { view }: ScreenProps = $props();
 
-  /** One line of the result, as the runtime reports it. */
+  /** One line of the result, as the runtime reports it (`AutoResultItem`). */
   interface AspectResult {
     aspect?: string;
     value?: string;
     reason?: string;
   }
 
-  /**
-   * The step each reported aspect is, from the aspect's own name to the step the run walked: the
-   * catalogue's step word names the line, never the wire token.
-   */
-  const ASPECT_STEP: Record<string, string> = {
-    language: 'language',
-    harness: 'harnesses',
-    catalogue: 'models',
-    roles: 'roles',
-    store: 'credentials',
-    providers: 'providers',
-    defaults: 'plans',
-  };
-
-  /**
-   * The link id each aspect runs again. The state carries the link; the map only names the aspect's
-   * own id, because the settings call the credentials' line `credentials` and the plans' line
-   * `plan-defaults`.
-   */
-  const ASPECT_LINK: Record<string, string> = {
-    language: 'reconfigure:language',
-    harness: 'reconfigure:harnesses',
-    catalogue: 'reconfigure:models',
-    roles: 'reconfigure:roles',
-    store: 'reconfigure:credentials',
-    providers: 'reconfigure:providers',
-    defaults: 'reconfigure:plan-defaults',
-  };
-
   const results = $derived(view.arrayField<AspectResult>('results'));
 
-  /** @param aspect the reported aspect @returns the catalogue key of the step's name */
-  function stepKey(aspect: string | undefined): string {
-    const step = ASPECT_STEP[aspect ?? ''] ?? aspect ?? '';
-    return `onboard.step.${step}`;
+  /** @param aspect the reported aspect @returns the catalogue key of the line's name */
+  function aspectKey(aspect: string | undefined): string {
+    return `onboard.auto.aspect.${aspect ?? ''}`;
+  }
+
+  /** @param aspect the reported aspect @returns the id of the state's link that runs it again */
+  function changeLinkId(aspect: string | undefined): string {
+    return `change:${aspect ?? ''}`;
   }
 
   /**
    * @param aspect the reported aspect
-   * @returns the id of the state's link that runs the aspect again, or `null` when it offers none
+   * @returns the state's link that runs the aspect again, when it offers one
    */
-  function changeLink(aspect: string | undefined): string | null {
-    const id = ASPECT_LINK[aspect ?? ''];
-    if (!id) return null;
-    return view.links.some((link) => link.id === id) ? id : null;
+  function hasChangeLink(aspect: string | undefined): boolean {
+    return view.links.some((link) => link.id === changeLinkId(aspect));
   }
 
-  /** @param aspect the reported aspect @returns the step's name, in the catalogue's words */
-  function aspectLabel(aspect: string | undefined): string {
-    return $t(stepKey(aspect));
-  }
+  /**
+   * The links no line took: the way on, and a `change:<aspect>` link whose line `results` does not
+   * report, so no act the state offers is left unreachable.
+   *
+   * @returns the links the footer draws
+   */
+  const footerLinks = $derived(
+    view.links.filter((link) => {
+      if (!link.id.startsWith('change:')) return true;
+      return !results.some((result) => changeLinkId(result.aspect) === link.id);
+    }),
+  );
 </script>
 
 <div class="state-card">
@@ -90,21 +76,21 @@
     </thead>
     <tbody>
       {#each results as result}
-        {@const link = changeLink(result.aspect)}
+        {@const aspect = $t(aspectKey(result.aspect))}
         <tr>
-          <td>{aspectLabel(result.aspect)}</td>
+          <td>{aspect}</td>
           <td>{result.value}</td>
           <td>{$t(`onboard.auto.reason.${result.reason ?? 'default'}`)}</td>
           <td class="result-table__act">
-            {#if link}
+            {#if hasChangeLink(result.aspect)}
               <Button
                 variant="secondary"
                 loading={view.busy}
-                aria-label={`${$t('web.onboard.auto_result.change')} ${aspectLabel(result.aspect)}`}
-                onclick={() => view.onLink(link)}
+                aria-label={`${$t('onboard.link.change')} ${aspect}`}
+                onclick={() => view.onLink(changeLinkId(result.aspect))}
                 data-testid={`auto-result-change-${result.aspect}`}
               >
-                {$t('web.onboard.auto_result.change')}
+                {$t('onboard.link.change')}
               </Button>
             {/if}
           </td>
@@ -113,16 +99,14 @@
     </tbody>
   </table>
   <div class="state-card__actions">
-    {#each view.links as { id, isPrimary }}
-      {#if !id.startsWith('reconfigure:')}
-        <Button
-          variant={isPrimary ? 'primary' : 'secondary'}
-          loading={view.busy}
-          on:click={() => view.onLink(id)}
-        >
-          {view.linkLabel(id)}
-        </Button>
-      {/if}
+    {#each footerLinks as { id, isPrimary }}
+      <Button
+        variant={isPrimary ? 'primary' : 'secondary'}
+        loading={view.busy}
+        on:click={() => view.onLink(id)}
+      >
+        {view.linkLabel(id)}
+      </Button>
     {/each}
   </div>
 </div>

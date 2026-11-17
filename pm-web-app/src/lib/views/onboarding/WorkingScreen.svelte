@@ -37,9 +37,13 @@
   <p class="model-working__note">{$t('common.model.leave_note')}</p>
   {#if view.links.length > 0}
     <div class="state-card__actions">
-      {#each view.links as { id }}
-        <Button variant="secondary" loading={view.busy} on:click={() => view.onLink(id)}>
-          {$t('common.model.continue_without')}
+      {#each view.links as { id, isPrimary }}
+        <Button
+          variant={isPrimary ? 'primary' : 'secondary'}
+          loading={view.busy}
+          on:click={() => view.onLink(id)}
+        >
+          {view.linkLabel(id)}
         </Button>
       {/each}
     </div>

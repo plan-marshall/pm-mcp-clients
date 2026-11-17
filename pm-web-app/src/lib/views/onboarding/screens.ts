@@ -123,6 +123,7 @@ const CONSENT_ID = /(\.consent|-consent)$/;
 /** States the runtime works in, shown with the one working screen. */
 const WORKING_STATES = new Set([
   'auto.scan',
+  'auto.run',
   'harness.probe',
   'harness.enrol',
   'harness.install-profile',
@@ -142,6 +143,20 @@ const WORKING_STATES = new Set([
 
 /** States whose design is a read-only summary: the runtime reports what happened, in its words. */
 const STATUS_STATES = new Set(['providers.credentials', 'providers.verified', 'sonar.key']);
+
+/**
+ * The states whose design is a working state: the ones named above, plus every state whose id
+ * names the work it does (`.probe`, `.working`) — the rule the chain before the registry applied,
+ * so a state of the automatic run outside the mock's list still draws the progress screen.
+ *
+ * @param stateId the state's id
+ * @returns whether the working screen draws it
+ */
+function isWorkingState(stateId: string): boolean {
+  return (
+    WORKING_STATES.has(stateId) || stateId.endsWith('.probe') || stateId.endsWith('.working')
+  );
+}
 
 /**
  * The states of the frames beside the onboarding, which the onboarding frame answers with the
@@ -276,7 +291,7 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'working',
-    claims: (stateId) => WORKING_STATES.has(stateId),
+    claims: (stateId) => isWorkingState(stateId),
     screen: WorkingScreen,
   },
   {

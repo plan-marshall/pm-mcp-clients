@@ -194,43 +194,43 @@
         },
         "links": [
           {
-            "id": "reconfigure:language",
+            "id": "change:language",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/language"
           },
           {
-            "id": "reconfigure:harnesses",
+            "id": "change:harness",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/harnesses"
           },
           {
-            "id": "reconfigure:models",
+            "id": "change:catalogue",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/models"
           },
           {
-            "id": "reconfigure:roles",
+            "id": "change:roles",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/roles"
           },
           {
-            "id": "reconfigure:credentials",
+            "id": "change:store",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/credentials"
           },
           {
-            "id": "reconfigure:providers",
+            "id": "change:providers",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/providers"
           },
           {
-            "id": "reconfigure:plan-defaults",
+            "id": "change:defaults",
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults"
@@ -245,37 +245,37 @@
         ]
       },
       "links": {
-        "reconfigure:language": {
+        "change:language": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/language",
           "next": "language.reconfigure"
         },
-        "reconfigure:harnesses": {
+        "change:harness": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
           "next": "harness.reconfigure-consent"
         },
-        "reconfigure:models": {
+        "change:catalogue": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/models",
           "next": "catalogue.reconfigure"
         },
-        "reconfigure:roles": {
+        "change:roles": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/roles",
           "next": "roles.reconfigure"
         },
-        "reconfigure:credentials": {
+        "change:store": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/credentials",
           "next": "store.reconfigure"
         },
-        "reconfigure:providers": {
+        "change:providers": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/providers",
           "next": "providers.reconfigure"
         },
-        "reconfigure:plan-defaults": {
+        "change:defaults": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults",
           "next": "defaults.reconfigure"
@@ -967,8 +967,6 @@
             {
               "harness": "claude",
               "name": "Claude Code",
-              "path": "~/.local/bin/claude",
-              "check": "login",
               "result": "fail",
               "cause": "not logged in",
               "fix": "claude login"
@@ -976,8 +974,6 @@
             {
               "harness": "opencode",
               "name": "OpenCode",
-              "path": "/opt/homebrew/bin/opencode",
-              "check": "version",
               "result": "fail",
               "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
               "fix": "install a version in 1.5 - 1.x, then check again"
@@ -1046,8 +1042,6 @@
             {
               "harness": "claude",
               "name": "Claude Code",
-              "path": "~/.local/bin/claude",
-              "check": "login",
               "result": "fail",
               "cause": "not logged in",
               "fix": "claude login"
@@ -1055,8 +1049,6 @@
             {
               "harness": "opencode",
               "name": "OpenCode",
-              "path": "/opt/homebrew/bin/opencode",
-              "check": "version",
               "result": "fail",
               "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
               "fix": "install a version in 1.5 - 1.x, then check again"

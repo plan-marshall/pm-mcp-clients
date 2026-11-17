@@ -1006,11 +1006,11 @@ describe('OnboardingView against the mock runtime states', () => {
           { aspect: 'store', value: 'macOS Keychain', reason: 'detected' },
         ],
         links: {
-          'reconfigure:language': {
+          'change:language': {
             href: '/api/v1/onboarding/settings/reconfigure/language',
             next: 'language.reconfigure',
           },
-          'reconfigure:harnesses': {
+          'change:harness': {
             href: '/api/v1/onboarding/settings/reconfigure/harnesses',
             next: 'harness.reconfigure-consent',
           },
@@ -1033,7 +1033,7 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByTestId('auto-result')).toHaveTextContent('Credentials');
 
     await fireEvent.click(changes[1]);
-    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('reconfigure:harnesses', {}));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('change:harness', {}));
   });
 
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {

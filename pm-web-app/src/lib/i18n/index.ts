@@ -576,8 +576,9 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
 /**
  * Applies the interface language the machine recorded, where this browser chose none itself.
  *
- * Called after pairing, when the machine can be asked: a browser that paired just now must show
- * the recorded language without a reload (UC-ONB-3).
+ * Called after pairing and after the onboarding's language step, when the machine can be asked: a
+ * browser that paired just now, or that just recorded its language, must show the recorded
+ * language without a reload (UC-ONB-3, `onboarding-step-1.adoc`).
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
@@ -607,7 +608,7 @@ async function adoptRecordedLocaleUntimed(
   messagesLocale = recorded;
 }
 
-/** How long a pairing waits for the recorded language before it paints in the browser's own. */
+/** How long the adoption waits for the recorded language before the screen paints in its own. */
 const ADOPTION_BOUND_MS = 2000;
 
 /**

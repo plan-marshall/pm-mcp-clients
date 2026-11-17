@@ -281,7 +281,8 @@ describe('OnboardingView component', () => {
       render(OnboardingView);
 
       expect(await screen.findByText('about 4,000 tokens')).toBeInTheDocument();
-      await fireEvent.click(screen.getByRole('button', { name: 'Continue without the advice' }));
+      // The act carries the words of its own link id, never one sentence for every link.
+      await fireEvent.click(screen.getByRole('button', { name: 'No, without advice' }));
 
       expect(step).toHaveBeenCalledWith('no_advice', {});
     });
