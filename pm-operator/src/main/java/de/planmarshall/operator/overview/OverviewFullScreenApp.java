@@ -2678,10 +2678,6 @@ public final class OverviewFullScreenApp {
                 }
                 return;
             }
-            if (level().kind() == TuiLevel.Kind.PLAN_CHANGES) {
-                changesCloseFile();
-                return;
-            }
             closePlanRow();
         }
 
@@ -2844,11 +2840,11 @@ public final class OverviewFullScreenApp {
                 return;
             }
             synchronized (OverviewFullScreenApp.this) {
+                var row = changes.openFileRowId();
                 if (!changes.closeFile()) {
                     return;
                 }
                 stack.refresh(changes.rows(locale));
-                var row = changes.openFileRowId();
                 if (row != null) {
                     stack.select(row);
                 }

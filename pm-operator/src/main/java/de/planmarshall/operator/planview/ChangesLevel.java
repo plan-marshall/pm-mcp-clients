@@ -140,8 +140,8 @@ public final class ChangesLevel {
      * earlier read did not land.
      *
      * @param fresh     the list the runtime answered after the capture
-     * @param freshSize the figures the plan carries after the capture, or {@code null} when the read
-     *                  that names them did not land
+     * @param freshSize the figures the plan carries after the capture; {@code null} when it carries
+     *                  none or when the read that names them did not land
      * @return {@code true} when an open file's hunks must be read again
      */
     public boolean update(PlanChangesAnswer fresh, @Nullable ChangeSize freshSize) {

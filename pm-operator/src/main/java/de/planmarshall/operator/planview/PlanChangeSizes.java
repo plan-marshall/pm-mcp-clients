@@ -33,7 +33,8 @@ public final class PlanChangeSizes {
     /**
      * @param runtime the runtime client
      * @param planId  the plan
-     * @return the size of change the plan carries, or {@code null} when it carries none
+     * @return the size of change the plan carries; {@code null} when it carries none or when the
+     *         read did not land
      */
     public static @Nullable ChangeSize sizeOf(RuntimeClient runtime, String planId) {
         try {

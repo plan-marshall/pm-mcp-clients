@@ -298,7 +298,7 @@ public final class PlanCommand implements Callable<Integer> {
             throw new OperatorRefusedException("plan changes " + planId, response);
         }
         var answer = PlanChangesAnswer.fromJson(response.bodyText());
-        var level = new ChangesLevel(planId, answer, readChangeSize(runtime, planId));
+        var level = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
         out.println(level.breadcrumb(locale));
         if (changesFile == null || changesFile.isBlank()) {
             for (var row : level.rows(locale)) {
@@ -358,15 +358,6 @@ public final class PlanCommand implements Callable<Integer> {
                             .findFirst()
                             .map(file -> file.binary())
                             .orElse(false);
-    }
-
-    /**
-     * @param runtime the runtime client
-     * @param planId  the plan
-     * @return the size of change the plan carries, or {@code null} when it carries none
-     */
-    private @Nullable ChangeSize readChangeSize(RuntimeClient runtime, String planId) {
-        return PlanChangeSizes.sizeOf(runtime, planId);
     }
 
     private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {

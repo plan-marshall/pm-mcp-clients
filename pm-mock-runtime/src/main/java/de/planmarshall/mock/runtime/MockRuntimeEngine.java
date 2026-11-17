@@ -2675,9 +2675,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (file == null) {
             // A plan whose changes were never captured, or whose capture is gone, holds no file:
-            // the list route answers that state, and the file route names the missing target.
+            // the list route answers that state, and the file route names the missing path.
             response.json(404, Map.of(KEY_ERROR, ApiErrorCode.TARGET_NOT_FOUND.wire(),
-                    KEY_MESSAGE, "No such file in the plan's changes: " + planId));
+                    KEY_MESSAGE, "No such file in the plan's changes: " + planId + ": " + filePath));
             return;
         }
         response.json(200, file.toMap());
