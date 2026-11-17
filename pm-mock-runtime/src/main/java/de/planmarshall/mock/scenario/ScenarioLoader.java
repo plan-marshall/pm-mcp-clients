@@ -28,8 +28,8 @@ import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.changes.PlanChangeFile;
-import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangeLineKind;
+import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.chat.ChatEndedEvent;
@@ -479,8 +479,8 @@ public class ScenarioLoader {
         var added = countLines(content, PlanChangeLineKind.ADDED);
         var removed = countLines(content, PlanChangeLineKind.REMOVED);
         var agrees = content.truncated()
-                            ? added <= file.added() && removed <= file.removed()
-                            : added == file.added() && removed == file.removed();
+                ? added <= file.added() && removed <= file.removed()
+                : added == file.added() && removed == file.removed();
         if (!agrees) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the hunks of " + file.path() + " add " + added + " and remove " + removed
@@ -495,9 +495,9 @@ public class ScenarioLoader {
      */
     private static @Nullable PlanChangedFile rowOf(PlanChangesCaptured captured, String path) {
         return captured.files().stream()
-                            .filter(file -> file.path().equals(path))
-                            .findFirst()
-                            .orElse(null);
+                .filter(file -> file.path().equals(path))
+                .findFirst()
+                .orElse(null);
     }
 
     private static int countLines(PlanChangeFile file, PlanChangeLineKind kind) {
