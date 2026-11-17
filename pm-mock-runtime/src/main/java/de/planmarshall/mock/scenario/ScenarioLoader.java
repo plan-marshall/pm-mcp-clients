@@ -271,6 +271,23 @@ public class ScenarioLoader {
         // plan_changes member serves the base state's captures.
         var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
         // Every size is a measurement, in every scenario, whether or not it models captures.
+        var sizesByState = sizesOfEveryState(routes, states, scenario);
+        // A scenario that models no captures at all serves sizes without a changes fixture: its
+        // plans' changes are simply not part of what that scenario demonstrates.
+        if (!modelsCaptures(baseEntries, states, scenario)) {
+            return;
+        }
+        states.forEach((stateId, state) -> validateCapturesOf(state, stateId, baseEntries, sizesByState, scenario));
+    }
+
+    /**
+     * @param routes   the scenario's static routes
+     * @param states   the scenario's states
+     * @param scenario the scenario identifier for error reporting
+     * @return every state's sizes of change, by state id
+     */
+    private static Map<String, Map<String, List<ChangeSize>>> sizesOfEveryState(
+            Map<String, RouteDefinition> routes, Map<String, StateDefinition> states, String scenario) {
         var sizesByState = new LinkedHashMap<String, Map<String, List<ChangeSize>>>();
         for (var stateEntry : states.entrySet()) {
             try {
@@ -280,38 +297,60 @@ public class ScenarioLoader {
                         "a plan's size of change is not a measurement: " + e.getMessage());
             }
         }
-        // A scenario that models no captures at all serves sizes without a changes fixture: its
-        // plans' changes are simply not part of what that scenario demonstrates.
-        var modelsCaptures = baseEntries != null
+        return sizesByState;
+    }
+
+    /**
+     * @param baseEntries the base state's captures, or {@code null} when it declares none
+     * @param states      the scenario's states
+     * @param scenario    the scenario identifier for error reporting
+     * @return {@code true} when the scenario models captures at all
+     */
+    private static boolean modelsCaptures(@Nullable List<Map<String, Object>> baseEntries,
+            Map<String, StateDefinition> states, String scenario) {
+        return baseEntries != null
                 || states.values().stream().anyMatch(state -> planChangesOf(state, scenario) != null);
-        if (!modelsCaptures) {
-            return;
+    }
+
+    /**
+     * @param state        the state whose captures are validated
+     * @param stateId      the state's id
+     * @param baseEntries  the base state's captures, or {@code null}
+     * @param sizesByState every state's sizes of change
+     * @param scenario     the scenario identifier for error reporting
+     */
+    private static void validateCapturesOf(StateDefinition state, String stateId,
+            @Nullable List<Map<String, Object>> baseEntries,
+            Map<String, Map<String, List<ChangeSize>>> sizesByState, String scenario) {
+        var ownEntries = planChangesOf(state, scenario);
+        final List<Map<String, Object>> effective;
+        if (ownEntries != null) {
+            effective = ownEntries;
+        } else if (baseEntries != null) {
+            effective = baseEntries;
+        } else {
+            effective = List.of();
         }
-        for (var entry : states.entrySet()) {
-            var state = entry.getValue();
-            var ownEntries = planChangesOf(state, scenario);
-            final List<Map<String, Object>> effective;
-            if (ownEntries != null) {
-                effective = ownEntries;
-            } else if (baseEntries != null) {
-                effective = baseEntries;
-            } else {
-                effective = List.of();
+        // A size belongs to the state that serves it: a plan captured in one state says nothing
+        // about the same plan before its capture in another.
+        final Map<String, List<ChangeSize>> sizes = sizesByState.get(stateId);
+        requireEachPlanOnce(effective, scenario);
+        effective.forEach(entry -> validateOnePlansChanges(entry, sizes, scenario));
+        requireEverySizeHasACapture(effective, sizes, scenario);
+    }
+
+    /**
+     * @param entries  a state's capture entries
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireEachPlanOnce(List<Map<String, Object>> entries, String scenario) {
+        var seen = new HashSet<String>();
+        for (var entry : entries) {
+            var planId = JsonTree.string(entry, FIELD_PLAN_ID);
+            if (planId != null && !seen.add(planId)) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the fixture names the capture of " + planId + " twice");
             }
-            // A size belongs to the state that serves it: a plan captured in one state says nothing
-            // about the same plan before its capture in another.
-            final Map<String, List<ChangeSize>> sizes = sizesByState.get(entry.getKey());
-            var seen = new HashSet<String>();
-            for (var fixtureEntry : effective) {
-                var planId = JsonTree.string(fixtureEntry, FIELD_PLAN_ID);
-                if (planId != null && !seen.add(planId)) {
-                    throw new ScenarioValidationException(scenario, null,
-                            "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                            "the fixture names the capture of " + planId + " twice");
-                }
-                validateOnePlansChanges(fixtureEntry, sizes, scenario);
-            }
-            requireEverySizeHasACapture(effective, sizes, scenario);
         }
     }
 

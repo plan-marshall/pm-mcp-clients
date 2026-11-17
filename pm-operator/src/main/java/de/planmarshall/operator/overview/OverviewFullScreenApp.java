@@ -3336,10 +3336,18 @@ public final class OverviewFullScreenApp {
             switch (lvl.kind()) {
                 case REPORTS -> refreshReturnedReports();
                 case SYSTEM -> refreshReturnedSystem(lvl);
+                case PLAN -> refreshReturnedPlan();
                 case PLAN_CHANGES -> refreshReturnedChanges();
                 default -> {
                     // The other levels keep the rows they had.
                 }
+            }
+        }
+
+        private void refreshReturnedPlan() {
+            var view = currentPlanView.get();
+            if (view != null) {
+                stack.refresh(view.rows(locale));
             }
         }
 
