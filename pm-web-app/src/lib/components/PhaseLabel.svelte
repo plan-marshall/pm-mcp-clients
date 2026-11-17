@@ -89,6 +89,8 @@
     <span class="phase-label__word">{$t(PHASE_WORD_KEYS[phase])}</span>
     {#if isRole(role)}
       <span class="phase-label__role">· {$t(ROLE_WORD_KEYS[role])}</span>
+    {:else if role && role.trim() !== ''}
+      <span class="phase-label__role">· {$t('state.unknown')}</span>
     {/if}
   </span>
 {/if}
