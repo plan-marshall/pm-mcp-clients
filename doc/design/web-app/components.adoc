@@ -54,7 +54,7 @@ The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states w
 |<<containers>>
 
 |Data
-|`DataTable`, `EmptyState`, `ErrorState`, `Skeleton`
+|`DataTable`, `EmptyState`, `ErrorState`, `Skeleton`, `EvidenceView`
 |<<data>>
 
 |Supporting
@@ -450,6 +450,15 @@ image::../../resources/diagrams/web-component-error-state.svg[A failed state wit
 The same block as an empty state, in the danger role. Its words are not the view's: the block reads the error's code through the display layer (`displayError`), which resolves the title, the cause and the fix from the shared catalogue — the daemon's `error.<code>.*` texts or the client's own `common.error.<code>.*` area. The title says what happened, the one sentence is the fix, and the cause and the technical code fold under `Details` (the shared `common.action.details`); the code is there for a report and never leads, so it stays closed until someone opens it. A code the catalogue does not know reads as the shared unknown fallback, and the code itself still stands under `Details`, so a raw wire value never leads. A view that read no code passes none: the block then draws the unknown texts with no code line at all, where a placeholder would read as a code. An act's failure reaches the same one sentence through `actFailureText` (`errors.ts`), which resolves the code's fix text and never prints the failure's own message.
 
 Source and surface: `pm-web-app/src/lib/components/ErrorState.svelte`, tests in `ErrorState.test.ts`; the props are `code` (optional), `actionLabel`, `onAct`, `titleLevel` and `announce`.
+
+[#evidence-view]
+=== EvidenceView
+
+image::../../resources/diagrams/web-component-evidence-view.svg[Evidence as labelled fields, a file with its lines and a folded JSON block,360,align=center]
+
+The evidence a decision names, as one labelled field per key (link:../shared/decisions.adoc#order[Decisions, The Order]). A label is derived from the runtime's own key and is never guessed from a catalogue: `waiver_gate` and `waiverGate` both read `Waiver gate`, so a key the catalogue does not carry cannot reach the screen as a raw identifier. A sentence, a number or a flag shows as its value; an object that names a file (`file` or `path`) shows the file with its `lines` as `path:lines`, and the link the project offers (`link`, `url`, `href`) beside it as _Open_, in or out of the app; any structure the component does not know is a folded JSON block, shown expanded, so an unexpected shape is read rather than guessed at. Every value is text — nothing the runtime or a model writes reaches the DOM as markup — and evidence the decision does not carry draws nothing at all.
+
+Source and surface: `pm-web-app/src/lib/components/EvidenceView.svelte`, tests in `EvidenceView.test.ts`; the props are `evidence` and `titleLevel` (`2`, `3` or `4`, default `3`).
 
 [#skeleton]
 === Skeleton
