@@ -1716,10 +1716,10 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
 /**
  * Takes one onboarding step and applies the state it answers.
  *
- * The language step records the interface language the machine will speak from then on, so a
- * browser that chose no language of its own follows it BEFORE the next screen paints: the screen
- * after "Use Deutsch for both" is German, without a reload (UC-ONB-3, `onboarding-step-1.adoc`).
- * A browser whose own choice is stored keeps it; that choice overrides the recorded one.
+ * A step that records the interface language — the language step — must show the screen after it in
+ * the language just recorded, so a browser that chose no language of its own follows the machine's
+ * recorded one BEFORE the next screen paints (UC-ONB-3, `onboarding-step-1.adoc`). A browser whose
+ * own choice is stored keeps it; that choice overrides the recorded one.
  *
  * @param link the link the step names
  * @param body what the step records
@@ -1795,7 +1795,9 @@ export async function storeCredential(
 
 export async function startOnboardingAuto(): Promise<void> {
   try {
-    applyOnboardingState(await apiClient.startOnboardingAuto());
+    const next = await apiClient.startOnboardingAuto();
+    await adoptRecordedLocale();
+    applyOnboardingState(next);
   } catch {
     // A refused automatic run leaves the state as it is.
   }

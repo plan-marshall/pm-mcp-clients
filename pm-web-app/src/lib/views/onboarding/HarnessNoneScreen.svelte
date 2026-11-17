@@ -1,6 +1,6 @@
 <script lang="ts">
   import Button from '../../components/Button.svelte';
-  import { t } from '../../i18n';
+  import { hasMessage, humanizeKey, t } from '../../i18n';
   import type { ScreenProps } from './screens';
 
   /**
@@ -32,9 +32,7 @@
    * passed".
    */
   const failed = $derived(
-    view
-      .arrayField<FailedHarness>('checks')
-      .filter((entry) => entry.result === undefined || entry.result !== 'pass'),
+    view.arrayField<FailedHarness>('checks').filter((entry) => entry.result !== 'pass'),
   );
 
   const title = $derived(
@@ -45,23 +43,36 @@
   );
 
   /**
+   * @param name the fact's name @returns the sentence's half: the string the runtime sent, or the
+   *         items of its list, or `null` when it sent neither
+   */
+  function wording(name: string): string | null {
+    const value = (view.state as Record<string, unknown> | null)?.[name];
+    if (typeof value === 'string' && value.length > 0) return value;
+    if (Array.isArray(value) && value.length > 0) return value.map(String).join(', ');
+    return null;
+  }
+
+  /**
    * The sentence of what was looked for, when the state names both halves of it and reports no
    * failed check; a state that names neither gets no sentence rather than one with two holes.
    */
   const lookedForText = $derived.by(() => {
     if (failed.length > 0) return null;
-    const harnesses = view.field('harnesses');
-    const locations = view.field('locations');
+    const harnesses = wording('harnesses');
+    const locations = wording('locations');
     if (!harnesses || !locations) return null;
     return $t('onboard.harness.none.looked_for', { harnesses, locations });
   });
 
   /**
    * @param check the check id the runtime reports
-   * @returns the catalogue's words for it, which never leave the wire id on screen
+   * @returns the catalogue's words for it, and for an id the catalogue does not know a readable
+   *         form of the id itself — never the raw key
    */
   function checkLabel(check: string): string {
-    return $t(`onboard.harness.check.${check}`);
+    const key = `onboard.harness.check.${check}`;
+    return hasMessage(key) ? $t(key) : humanizeKey(check);
   }
 </script>
 

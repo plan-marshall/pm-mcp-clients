@@ -931,8 +931,6 @@ describe('OnboardingView against the mock runtime states', () => {
           {
             harness: 'claude',
             name: 'Claude Code',
-            path: '~/.local/bin/claude',
-            check: 'login',
             result: 'fail',
             cause: 'not logged in',
             fix: 'claude login',
@@ -940,8 +938,6 @@ describe('OnboardingView against the mock runtime states', () => {
           {
             harness: 'opencode',
             name: 'OpenCode',
-            path: '/opt/homebrew/bin/opencode',
-            check: 'version',
             result: 'fail',
             cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
             fix: 'install a version in 1.5 - 1.x, then check again',
@@ -956,22 +952,85 @@ describe('OnboardingView against the mock runtime states', () => {
 
     render(OnboardingView);
 
-    // Per harness found: its name, path, the check that failed, the answer and the fix.
+    // The published shape of a failed check: the harness's name, the answer it gave and the fix.
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
     const failures = screen.getByTestId('harness-none-failures');
     expect(failures).toHaveTextContent('Claude Code');
-    expect(failures).toHaveTextContent('~/.local/bin/claude');
-    expect(failures).toHaveTextContent('the login check');
     expect(failures).toHaveTextContent('not logged in');
     expect(failures).toHaveTextContent('claude login');
     expect(failures).toHaveTextContent('OpenCode');
-    expect(failures).toHaveTextContent('/opt/homebrew/bin/opencode');
-    expect(failures).toHaveTextContent('the version check');
     expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
 
     // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
     expect(document.body).not.toHaveTextContent('harness.none');
     expect(document.body).not.toHaveTextContent('Machine · harness.none');
+  });
+
+  it('shows a harness’s path and failed check when the runtime reports them', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            check: 'login',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            check: 'wordsmith',
+            result: 'fail',
+            cause: 'refused',
+            fix: 'reinstall',
+          },
+          {
+            harness: 'codex',
+            name: 'Codex',
+            path: '/opt/homebrew/bin/codex',
+            result: 'pass',
+            cause: '',
+            fix: '',
+          },
+        ],
+      }),
+    );
+
+    render(OnboardingView);
+
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('~/.local/bin/claude');
+    expect(failures).toHaveTextContent('the login check');
+    // An id the catalogue does not know reads as a word, never as a raw key or a wire token.
+    expect(failures).toHaveTextContent('Wordsmith');
+    expect(failures).not.toHaveTextContent('onboard.harness.check.');
+    expect(failures).not.toHaveTextContent('wordsmith');
+
+    // A check that passed is not listed under "none passed".
+    expect(failures).not.toHaveTextContent('Codex');
+  });
+
+  it('says what was looked for when nothing was found', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        harnesses: ['claude', 'opencode'],
+        locations: 'your PATH, ~/.local/bin',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByText('Looked for claude, opencode in your PATH, ~/.local/bin.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
   });
 
   it('shows the automatic run result per aspect and continues', async () => {

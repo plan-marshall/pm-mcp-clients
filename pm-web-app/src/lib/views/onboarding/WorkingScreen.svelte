@@ -6,7 +6,7 @@
 
   /**
    * A state the runtime is working in: what it does, the tokens it expects where the runtime states
-   * them, and the links that let the operator go on without it.
+   * them, and the links that let the operator go on while it works — each in the words of its own id.
    */
   let { view }: ScreenProps = $props();
 </script>

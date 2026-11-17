@@ -71,7 +71,7 @@
         <th>{$t('onboard.auto.result.aspect')}</th>
         <th>{$t('onboard.auto.result.value')}</th>
         <th>{$t('onboard.auto.result.reason')}</th>
-        <th><span class="visually-hidden">{$t('onboard.auto.result.action_label')}</span></th>
+        <th><span class="sr-only">{$t('onboard.auto.result.action_label')}</span></th>
       </tr>
     </thead>
     <tbody>
@@ -114,17 +114,6 @@
 <style>
   .result-table__act {
     text-align: right;
-    white-space: nowrap;
-  }
-
-  .visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
   }
 </style>
