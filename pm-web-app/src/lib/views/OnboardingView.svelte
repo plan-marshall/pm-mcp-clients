@@ -8,6 +8,7 @@
   import ScreenHost from './onboarding/ScreenHost.svelte';
   import {
     screenFor,
+    screenNameFor,
     type OfferedLink,
     type OnboardingScreenContext,
     type OnboardingState,
@@ -100,6 +101,9 @@
   /**
    * Takes the step a link names; a refused step leaves the state as it is (the store's own rule).
    *
+   * The language step's answer changes the language of every text after it, so the view asks the
+   * store to apply the machine's recorded interface language before it paints the next screen.
+   *
    * @param id the link's id
    * @param body what the step records
    */
@@ -107,7 +111,7 @@
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      await stepOnboarding(id, body);
+      await stepOnboarding(id, body, { adoptLocale: screenNameFor(stateId) === 'language' });
     } finally {
       isSubmitting = false;
     }

@@ -1713,12 +1713,27 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
   }
 }
 
+/**
+ * Takes one onboarding step and applies the state it answers.
+ *
+ * The language step records the interface language the machine will speak from then on, so a
+ * browser that chose no language of its own follows it BEFORE the next screen paints: the screen
+ * after "Use Deutsch for both" is German, without a reload (UC-ONB-3, `onboarding-step-1.adoc`).
+ * A browser whose own choice is stored keeps it; that choice overrides the recorded one.
+ *
+ * @param link the link the step names
+ * @param body what the step records
+ * @param options `adoptLocale` for the step that records the interface language
+ */
 export async function stepOnboarding(
   link: string,
   body: Record<string, unknown> = {},
+  options: { adoptLocale?: boolean } = {},
 ): Promise<void> {
   try {
-    applyOnboardingState(await apiClient.stepOnboarding(link, body));
+    const next = await apiClient.stepOnboarding(link, body);
+    if (options.adoptLocale) await adoptRecordedLocale();
+    applyOnboardingState(next);
   } catch {
     // A refused step leaves the state as it is.
   }

@@ -57,7 +57,7 @@ An advisory earns its place only by adding information to the label. It does tha
 
 * *Consequence*: what changes because of the action, especially where it cannot be undone ("Decline the waiver; the gate stays failed").
 * *Scope*: what the action reaches beyond the control's own row ("Mark every shown report read without a filter, only the matching ones with one; older reports stay unread").
-* *Shortcut or state*: a fact the operator would otherwise have to discover ("Switch the interface language; this browser remembers the choice").
+* *Shortcut or state*: a fact the operator would otherwise have to discover ("Switch the interface language for this browser; it overrides the language this machine recorded").
 * *Where the action goes*: for a label that does not name its destination ("Show this level; the selection stays").
 
 Two rules bound the text:
