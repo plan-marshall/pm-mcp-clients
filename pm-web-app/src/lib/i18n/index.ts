@@ -610,6 +610,12 @@ async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> 
   }
   try {
     const messages = await apiClient.getMessages(locale, 'all');
+    if (get(reloadDeferred)) {
+      // The switch started before the reload began waiting: the answer belongs to the newer
+      // runtime, so the old page keeps the language it shows and the choice is made again after
+      // the reload.
+      return null;
+    }
     rememberMessages(locale, messages);
     rememberEnglish(locale, messages);
     persistCatalogue(locale, messages);
