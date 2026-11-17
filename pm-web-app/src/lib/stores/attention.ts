@@ -283,10 +283,7 @@ export interface AttentionActLabel {
  * @returns the id its last segment names, decoded, or the path itself
  */
 function segmentOf(target: string): string {
-  const segment = target
-    .split('/')
-    .filter((part) => part.length > 0)
-    .pop() ?? '';
+  const segment = /([^/]+)\/?$/.exec(target)?.[1] ?? '';
   try {
     return decodeURIComponent(segment);
   } catch {
@@ -481,14 +478,13 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
   const generation = (readGeneration += 1);
   attentionStore.update((current) => ({ ...current, isLoading: true, loadError: null }));
   try {
-    const answers: NeedsOperatorPage[] = [];
-    for (let page = 1; page <= pages; page += 1) {
-      answers.push(await apiClient.getNeedsOperator(page));
-    }
+    const answers = await Promise.all(
+      Array.from({ length: pages }, (_unused, index) => apiClient.getNeedsOperator(index + 1)),
+    );
     if (generation !== readGeneration) {
       return;
     }
-    const last = answers[answers.length - 1];
+    const last = answers.at(-1);
     if (last === undefined) {
       return;
     }
