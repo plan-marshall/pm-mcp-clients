@@ -161,9 +161,8 @@ test.describe('The recorded interface language', () => {
     // Assert: it opens in the recorded language, without a reload. The onboarding state is shared
     // with the browser above, so the page may stand on any step; the frame is German either way.
     await expect(freshPage.getByTestId('onboarding-view')).toBeVisible({ timeout: 20000 });
-    await expect(freshPage.getByRole('button', { name: 'Startseite' })).toBeVisible({
-      timeout: 20000,
-    });
+    // The frame carries the brand, and the brand opens nothing before onboarding is done.
+    await expect(freshPage.getByTestId('brand-inert')).toBeVisible({ timeout: 20000 });
     await expect(freshPage.getByRole('button', { name: 'Sprache wechseln' })).toBeVisible();
     const stored = await freshPage.evaluate(() => localStorage.getItem('pm_locale'));
     expect(stored).toBeNull();
