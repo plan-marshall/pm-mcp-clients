@@ -60,6 +60,7 @@ class OverviewCatalogueTest {
     @DisplayName("the find list reads the shared kinds: the overview's own kind and wait copies are gone")
     void shouldNameTheKindsAndTheOneWaitWordOnly() {
         var retired = List.of(
+                "overview.kind.project",
                 "overview.find.kind.project", "overview.find.kind.epic", "overview.find.kind.plan",
                 "overview.find.kind.decision", "overview.find.kind.report",
                 "overview.needs.operator_wait");

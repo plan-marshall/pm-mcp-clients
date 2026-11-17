@@ -44,6 +44,7 @@ const RETIRED_ACT_KEYS = [
  * (`texts-and-languages.adoc`, Keys: `common.kind.*`, `common.filter.label`).
  */
 const RETIRED_KIND_AND_FILTER_KEYS = [
+  'overview.kind.project',
   'overview.find.kind.project',
   'overview.find.kind.epic',
   'overview.find.kind.plan',
