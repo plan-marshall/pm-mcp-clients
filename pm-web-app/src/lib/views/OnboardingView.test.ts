@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import path from 'node:path';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/svelte';
 import OnboardingView from './OnboardingView.svelte';
 import { apiClient, type OnboardingState } from '../api/client';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
 
 describe('OnboardingView component', () => {
   beforeEach(() => {
@@ -74,7 +76,7 @@ describe('OnboardingView component', () => {
     expect(screen.getByRole('button', { name: /not now/i })).toBeInTheDocument();
   });
 
-  it('renders model working indicator when probing', () => {
+  it('renders the progress of a probe without naming a model it never stated', () => {
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,
@@ -99,7 +101,9 @@ describe('OnboardingView component', () => {
     render(OnboardingView);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Checking harnesses');
-    expect(screen.getByText(/steward is working/i)).toBeInTheDocument();
+    // A probe states no role, harness or model, so the screen names none (the model sentence
+    // belongs to the states that do state them, as `catalogue.advise` does).
+    expect(screen.queryByText(/steward is working/i)).not.toBeInTheDocument();
   });
 
   it('renders completed card when onboard.completed is reached', () => {
@@ -320,6 +324,30 @@ describe('OnboardingView component', () => {
 
       await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
       expect(read).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('the brand on a phone', () => {
+    const stylesheet = stylesheetOf(path.resolve(__dirname, 'OnboardingView.svelte'));
+
+    it('carries one colour mark at 28 px beside the wordmark', () => {
+      render(OnboardingView);
+
+      const header = screen.getByTestId('onboarding-brand');
+      const marks = within(header).getAllByTestId('brand-mark');
+
+      expect(marks).toHaveLength(1);
+      expect(marks[0]).toHaveAttribute('data-size', '28');
+      expect(marks[0]).toHaveAttribute('data-rendering', 'colour');
+      expect(header).toHaveTextContent('plan-marshall');
+    });
+
+    it('shows that header below 768 px, where the rail is hidden, and nowhere else', () => {
+      const topLevel = withoutBlocks(stylesheet, '@media (max-width: 767px)');
+      const phone = blockOf(stylesheet, '@media (max-width: 767px)');
+
+      expect(ruleOf(topLevel, '.onboarding__brand')).toMatch(/display:\s*none\s*;/);
+      expect(ruleOf(phone, '.onboarding__brand')).toMatch(/display:\s*flex\s*;/);
     });
   });
 });
