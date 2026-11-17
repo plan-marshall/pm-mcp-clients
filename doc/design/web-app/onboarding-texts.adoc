@@ -69,7 +69,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.defaults.review.*` — the title, `override_note`, `action`, `action_defaults`, and the axis names `landing`, `method`, `asking`, `posture` with their `*_meaning` sentences; `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`, each with its `*_detail`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`; in a later run the posture `onboard.defaults.posture.unset`, `.minimal`, `.standard`, `.full`, each with its `*_detail`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
-|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.action`, `.action_label`, `.aspect`, `.value`, `.reason`; `onboard.auto.aspect.*`; `onboard.link.change`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
+|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.action`, `.action_label`, `.aspect`, `.value`, `.reason`; `onboard.auto.aspect.*`; `onboard.link.change` with `onboard.link.change\:<aspect>`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
 
 |xref:onboarding-steps-4-7.adoc#done[done]
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
