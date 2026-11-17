@@ -94,7 +94,8 @@ describe('the app shell', () => {
     await screen.findByTestId('brand-home');
 
     await fireEvent.click(screen.getByTestId('brand-home'));
-    await waitFor(() => expect(window.location.pathname).toBe('/projects'));
+    // The start page is what waits: the list at `/` (needs-and-find.adoc, The Start Page).
+    await waitFor(() => expect(window.location.pathname).toBe('/'));
 
     await fireEvent.click(screen.getByTestId('nav-designer-btn'));
     await waitFor(() => expect(window.location.pathname).toBe('/designer'));

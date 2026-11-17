@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   EPIC_TABS,
   PLAN_TABS,
+  ROUTE_TITLES,
   SETTINGS_TABS,
   canonicalAddress,
   formatAddress,
@@ -40,9 +41,27 @@ describe('the routes of the app', () => {
     expect(routeForPath('/decomposition')).toBe('decomposition');
   });
 
+  it('makes the list of what waits the root route', () => {
+    expect(routeForPath('/')).toBe('inbox');
+    expect(parseAddress('/?lens=waits')?.route).toBe('inbox');
+    expect(pathForRoute('inbox')).toBe('/');
+    expect(matchPath('/')).toEqual({ route: 'inbox' });
+    // The root is a route of its own, so a path that is none of the app names no route still.
+    expect(routeForPath('/unknown')).toBeNull();
+  });
+
+  it('carries the start page’s total in its tab title, and names itself without one', () => {
+    expect(ROUTE_TITLES.inbox({ attentionTotal: 4 })).toEqual({
+      key: 'web.inbox.title',
+      args: { count: '4' },
+    });
+    expect(ROUTE_TITLES.inbox({ attentionTotal: 0 })).toEqual({ key: 'overview.needs.title' });
+    expect(ROUTE_TITLES.inbox({})).toEqual({ key: 'overview.needs.title' });
+  });
+
   it('names no route for a path that is none of the app', () => {
     expect(routeForPath('/unknown')).toBeNull();
-    expect(routeForPath('/')).toBeNull();
+    expect(routeForPath('/entries')).toBeNull();
   });
 
   it('gives every route with a page its path', () => {
@@ -52,6 +71,7 @@ describe('the routes of the app', () => {
     expect(pathForRoute('settings')).toBe('/settings');
     expect(pathForRoute('project-onboarding')).toBe('/projects/onboard');
     expect(pathForRoute('overview')).toBe('/overview');
+    expect(pathForRoute('inbox')).toBe('/');
     expect(pathForRoute('decisions')).toBe('/decisions');
     expect(pathForRoute('reports')).toBe('/reports');
     expect(pathForRoute('system')).toBe('/system');
@@ -225,7 +245,8 @@ describe('the address model', () => {
       chat: true,
       turn: 'turn-9',
     });
-    expect(parseAddress('/?lens=waits')).toEqual({ route: null, lens: 'waits' });
+    expect(parseAddress('/?lens=waits')).toEqual({ route: 'inbox', lens: 'waits' });
+    expect(parseAddress('/')).toEqual({ route: 'inbox' });
   });
 
   it('drops every key and value the scheme does not know', () => {

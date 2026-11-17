@@ -2,9 +2,11 @@
   import {
     runtimeStore,
     navigateTo,
+    openAttention,
     openRunningWork,
     openStartPage,
   } from '../stores/runtime';
+  import { attentionStore } from '../stores/attention';
   import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
   import { RAIL_GROUPS, activeNavRoute, type ShellNavItem } from './nav';
@@ -58,10 +60,16 @@
   /**
    * The count a destination carries, or `0` when it carries none.
    *
+   * The attention count is the list's own total, the figure the tab title and the tab icon read,
+   * so the three never disagree.
+   *
    * @param item the destination
-   * @returns the open decisions or the unread reports
+   * @returns the items that wait, the open decisions or the unread reports
    */
   function countOf(item: ShellNavItem): number {
+    if (item.count === 'attention') {
+      return $attentionStore.total;
+    }
     if (item.count === 'decisions') {
       return $runtimeStore.openDecisionsCount;
     }
@@ -79,6 +87,9 @@
    * @returns the catalogue text the badge carries
    */
   function countLabel(item: ShellNavItem, count: number): string {
+    if (item.count === 'attention') {
+      return $t('overview.needs.count', { count });
+    }
     return item.count === 'decisions'
       ? $t('decisions.list.open', { count })
       : $t('report.list.unread', { count });
@@ -132,7 +143,11 @@
                   aria-current={active === item.route ? 'page' : undefined}
                   title={collapsed ? $t(item.labelKey) : undefined}
                   onclick={() =>
-                    item.id === 'running' ? void openRunningWork() : navigateTo(item.route)}
+                    item.id === 'needs'
+                      ? openAttention()
+                      : item.id === 'running'
+                        ? void openRunningWork()
+                        : navigateTo(item.route)}
                 >
                   <Icon name={item.icon} size={20} />
                   <span class="nav-rail__item-label">{$t(item.labelKey)}</span>

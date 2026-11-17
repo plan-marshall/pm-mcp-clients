@@ -38,6 +38,7 @@ import {
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
+import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -149,6 +150,8 @@ export interface RuntimeState {
   /** Whether the chat stands as a side column, and the turn it scrolls to. */
   chatOpen?: boolean;
   chatTurn?: string | null;
+  /** The start page's own lens: `?lens=waits`, which the remembered place never fills. */
+  lens?: 'waits' | null;
 }
 
 /** An ended plan as Ended Work names it, for the plan view it opens. */
@@ -215,6 +218,7 @@ const initialState: RuntimeState = {
   changeFile: null,
   chatOpen: false,
   chatTurn: null,
+  lens: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -361,17 +365,15 @@ async function probeExistingPairing(): Promise<PairingProbe> {
 }
 
 /**
- * The address the bar names, with the root mapped to the start point it is.
+ * The address the bar names, mapped to the start point it is.
  *
- * `/` has no route until PLAN-49 registers it, so the address model cannot parse it; the start
- * rule still needs it as the fillable start the remembered place may fill.
+ * `/` is the list of what waits and parses here like any route; a path the app cannot open
+ * answers `null`, so the start rule opens what waits instead of guessing.
  *
  * @returns the address of the bar, or `null` when it names a path the app cannot open
  */
 function fillableStart(): Address | null {
-  const address = currentAddress();
-  if (address) return address;
-  return window.location.pathname === '/' ? { route: null } : null;
+  return currentAddress();
 }
 
 /** Drops the code fragment after the browser is known to be paired. */
@@ -448,13 +450,12 @@ function machineNameOf(status: StatusResponse): string {
  * The one start rule of the app, as a route.
  *
  * The remembered place fills a mark-less load at `/` or at the bare `/overview`; a full address
- * opens what it names, and without a place the app opens what waits — until PLAN-49 registers `/`,
- * the overview while work runs or waits and the projects otherwise. The onboarding comes first
- * while the machine is not onboarded.
+ * opens what it names, and without a place — and without a remembered place — the app opens what
+ * waits, its start page at `/` (needs-and-find.adoc, The Start Page Is What Waits). The onboarding
+ * comes first while the machine is not onboarded.
  *
  * @param requested the address the bar names, if it names one
  * @param onboarded whether the machine is onboarded
- * @param workRunning whether the machine reports running work or work that waits for the operator
  * @param place the remembered place
  * @param facts what the runtime knows about the remembered objects
  * @param fromOutside whether the load carries no mark of the app
@@ -463,14 +464,11 @@ function machineNameOf(status: StatusResponse): string {
 export function startRouteFor(
   requested: Address | null,
   onboarded: boolean,
-  workRunning: boolean,
   place: RememberedPlace,
   facts: PlaceFacts,
   fromOutside: boolean,
 ): AppRoute {
-  const start = startAddress({ fromOutside, requested, onboarded, place, facts });
-  // `/` becomes a route of its own with PLAN-49; until then the start rule's fallback stands.
-  return start.route ?? (workRunning ? 'overview' : 'projects');
+  return startAddress({ fromOutside, requested, onboarded, place, facts }).route ?? 'inbox';
 }
 
 /**
@@ -526,16 +524,16 @@ export async function openStartPage(): Promise<void> {
     return;
   }
   const state = get(runtimeStore);
+  const intent = beginNavigation();
+  const epoch = navigationEpochOf();
   const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
+  // The person moved while the summary was in flight, or a later navigation began meanwhile:
+  // their choice stands.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
+    return;
+  }
   const place = readRememberedPlace();
-  const target = startRouteFor(
-    null,
-    state.isOnboarded,
-    hasWork(summary),
-    place,
-    factsOf(summary, place),
-    false,
-  );
+  const target = startRouteFor(null, state.isOnboarded, place, factsOf(summary, place), false);
   if (target !== get(runtimeStore).currentRoute) {
     show({ route: target }, 'replace');
   }
@@ -577,6 +575,7 @@ function fieldsOfAddress(address: Address): Partial<RuntimeState> {
     changeFile: address.file ?? null,
     chatOpen: address.chat ?? false,
     chatTurn: address.turn ?? null,
+    lens: address.lens ?? null,
   };
 }
 
@@ -590,7 +589,14 @@ export async function openRunningWork(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
+  const intent = beginNavigation();
+  const epoch = navigationEpochOf();
   const summary = await apiClient.getProjects().catch(() => null);
+  // The person picked another destination while the summary was in flight, or a later navigation
+  // began meanwhile: it wins.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
+    return;
+  }
   const place = readRememberedPlace();
   show(runningWorkAddress(place, factsOf(summary, place)), 'push');
 }
@@ -601,6 +607,33 @@ export async function openRunningWork(): Promise<void> {
  */
 export function openLensList(): void {
   show(unfilledLensAddress(), 'push');
+}
+
+/**
+ * Opens the start page, the list of what waits, by a push.
+ *
+ * The rail's first destination and the phone's first item both call it. The pushed entry carries
+ * the lens's own address (`/?lens=waits`), so a reload of it stays on the list and the remembered
+ * place never fills it — the remembered place only fills a bare load at `/`.
+ */
+export function openAttention(): void {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  show({ route: 'inbox', lens: 'waits' }, 'push');
+}
+
+/**
+ * Shows an address of the app and writes it, as the app's own navigation.
+ *
+ * The attention list's act opens the place an item belongs to through it: the address carries what
+ * `pushRoute` takes from the store (a settings tab, for one), so the act never opens a place the
+ * address does not name.
+ *
+ * @param address the address to show
+ */
+export function openAddress(address: Address): void {
+  show(address, 'push');
 }
 
 /**
@@ -773,6 +806,7 @@ export async function initRuntime(): Promise<void> {
     subscribeToEvents();
     void refreshReportsCount();
     void refreshDecisionsCount();
+    void loadAttention();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       stopRuntimeRecovery();
@@ -1053,6 +1087,10 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     void loadOnboardingState();
   } else if (event === 'machine.settings_changed') {
     void loadMachineSettings();
+  } else if (event === 'needs_operator.changed') {
+    // The list of what waits is the shell's count and the start page's rows: it follows every
+    // change the runtime announces, whoever resolved the item.
+    void handleNeedsOperatorChanged();
   }
 }
 
@@ -1088,7 +1126,6 @@ export async function pairBrowser(code: string): Promise<void> {
     currentRoute: startRouteFor(
       currentAddress(),
       onboarded,
-      hasWork(summary),
       place,
       factsOf(summary, place),
       false,
@@ -1104,6 +1141,7 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
+  void loadAttention();
 }
 
 /**
@@ -1116,6 +1154,30 @@ export interface NavigationEntry {
 
 /** The routes the browser can return to by the caller's own back, newest last. */
 const navigationStack: NavigationEntry[] = [];
+
+/**
+ * How many route applications this store has made. A call that awaits a read before it navigates
+ * notes this figure first and writes only while it is unchanged, so a person who picked another
+ * destination meanwhile is not moved back by the older answer.
+ */
+let navigationEpoch = 0;
+
+/** @returns the number of route applications this store has made so far */
+export function navigationEpochOf(): number {
+  return navigationEpoch;
+}
+
+/**
+ * How many navigations this store has begun. A call that awaits a read before it navigates takes
+ * this figure first: the later of two calls wins, whichever answer arrives first.
+ */
+let navigationIntent = 0;
+
+/** @returns the intent figure a navigation begins at */
+function beginNavigation(): number {
+  navigationIntent += 1;
+  return navigationIntent;
+}
 
 /**
  * The project whose id a route's path carries, if any.
@@ -1164,6 +1226,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
  * @param params the identifiers it names
  */
 function applyRoute(route: AppRoute, params: RouteParams): void {
+  navigationEpoch += 1;
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
@@ -1237,6 +1300,8 @@ export function addressOfState(state: RuntimeState): Address {
     ...(state.changeFile ? { file: state.changeFile } : {}),
     ...(state.chatOpen ? { chat: true } : {}),
     ...(state.chatTurn ? { turn: state.chatTurn } : {}),
+    // The start page's lens belongs to the start page's address alone.
+    ...(state.currentRoute === 'inbox' && state.lens ? { lens: state.lens } : {}),
   };
 }
 
@@ -1360,6 +1425,7 @@ export function adoptRouteFromLocation(): AppRoute | null {
       lensGroup: address?.group ?? null,
       lensFollow: address?.follow ?? false,
       lensProject: address?.project ?? null,
+      lens: address?.lens ?? null,
       objectTab: address?.tab ?? null,
       openObject: address?.open ?? null,
       phaseNode: address?.node ?? null,

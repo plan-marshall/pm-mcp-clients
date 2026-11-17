@@ -23,7 +23,9 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
   });
 
   async function openDecisions(page) {
-    await page.getByRole('button', { name: /Decisions/i }).click();
+    // The rail's own control: the start page's list carries acts of its own, so a label alone
+    // would not be unique.
+    await page.getByTestId('nav-decisions-btn').click();
     await expect(page.locator('.decisions-view')).toBeVisible();
   }
 
@@ -35,8 +37,9 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await expect(page.getByText('fix-relay asks for a waiver')).toBeVisible();
     await expect(page.getByText('Delete published v1 endpoints?')).toBeVisible();
 
-    // The tab title carries the count, so another tab shows the open work.
-    await expect(page).toHaveTitle(/^\(\d+\) Decisions$/);
+    // The decisions view names itself in the tab; the count the tab carries is the attention
+    // total of the start page (needs-and-find.adoc, The Route and the Rail).
+    await expect(page).toHaveTitle(/Decisions$/);
     await expect(page.locator('.unread-pill')).toContainText('open');
   });
 

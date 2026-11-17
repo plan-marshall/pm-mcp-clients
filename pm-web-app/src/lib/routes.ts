@@ -4,7 +4,8 @@
  * Every view has a canonical path: the pairing and entry pages (`/pair`, `/entry`), the
  * onboarding (`/onboarding`), the settings (`/settings`), the projects and one project page
  * (`/projects`, `/projects/{id}`), a
- * project's onboarding (`/projects/onboard`), the overview (`/overview`), a plan and an epic by
+ * project's onboarding (`/projects/onboard`), the overview (`/overview`), the start page and the
+ * list of what waits (`/`), a plan and an epic by
  * their id (`/plans/{id}`, `/epics/{id}`), a task of a plan (`/plans/{id}/tasks/{task}`), the
  * decisions and one decision (`/decisions`, `/decisions/{id}`), the reports and one report
  * (`/reports`, `/reports/{id}`), the decomposition (`/decomposition`, or
@@ -34,6 +35,7 @@ export type AppRoute =
   | 'projects'
   | 'project'
   | 'overview'
+  | 'inbox'
   | 'plan'
   | 'task'
   | 'epic'
@@ -168,6 +170,8 @@ export interface TitleState {
   startKind?: 'plan' | 'epic' | null;
   /** The project whose onboarding the project-onboarding route shows. */
   selectedOnboardingId?: string | null;
+  /** The number of items waiting for the operator: the inbox's title count. */
+  attentionTotal?: number | null;
 }
 
 /** The catalogue key of a route's tab title, and the names its text carries. */
@@ -220,6 +224,22 @@ function startTitle(state: TitleState): RouteTitle {
 }
 
 /**
+ * The tab title of the attention inbox.
+ *
+ * It carries the total while there is one (`4 items wait`), as the reports' and the system's
+ * routes carry their own counts; a list without a count names itself (`What waits`).
+ *
+ * @param state the store's names
+ * @returns the key and its arguments
+ */
+function inboxTitle(state: TitleState): RouteTitle {
+  const count = state.attentionTotal ?? 0;
+  return count > 0
+    ? { key: 'web.inbox.title', args: { count: String(count) } }
+    : plainTitle('overview.needs.title');
+}
+
+/**
  * The tab title of every route: its catalogue key, and the names a route carries.
  *
  * A parameterized key is never formatted without its argument, so no `{placeholder}` reaches the
@@ -241,6 +261,7 @@ export const ROUTE_TITLES: Record<AppRoute, (state: TitleState) => RouteTitle> =
   // The project page is the Projects lens's object column, so it carries the lens's own name.
   project: () => plainTitle('project.explorer.title'),
   overview: () => plainTitle('overview.running.title'),
+  inbox: inboxTitle,
   plan: (state) =>
     namedTitle('plan.view.title', 'plan.view.title.loading', 'plan', state.selectedPlanId),
   // A task is a level of its plan, so its tab names the plan it belongs to.
@@ -271,6 +292,8 @@ const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
   settings: '/settings',
   projects: '/projects',
   overview: '/overview',
+  // The start page is the list of what waits (needs-and-find.adoc, The Start Page Is What Waits).
+  inbox: '/',
   // The decomposition has a path of its own, so an epic called `decompose` is an id.
   decomposition: '/decomposition',
   decisions: '/decisions',
@@ -532,11 +555,6 @@ export function parseAddress(url: string): Address | null {
   const match = matchPath(split.path);
 
   if (!match) {
-    // The start point is registered by PLAN-49; its lens is part of the scheme already, so an
-    // address that names it parses and serialises here.
-    if (normalise(split.path) === '/' && split.query.get('lens') === 'waits') {
-      return { route: null, lens: 'waits' };
-    }
     return null;
   }
 
@@ -584,6 +602,12 @@ function applyQuery(address: Address, query: URLSearchParams): void {
   // tab is Process, so a node needs no tab of its own.
   applyTabKeys(address, query, tab);
   applyChat(address, query);
+
+  // The start page's own lens: `/?lens=waits` is a full address, so the remembered place never
+  // fills it (navigation.adoc#url).
+  if (address.route === 'inbox' && query.get('lens') === 'waits') {
+    address.lens = 'waits';
+  }
 
   // The old `/reports?plan=` address: its plan is read once so the view can open that report's
   // detail, and it is never written again.

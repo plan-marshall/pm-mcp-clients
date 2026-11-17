@@ -12,6 +12,7 @@
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { displayState, displayUnit, hasUnitName } from '../display';
+  import { projectCountsText } from '../display/projectCounts';
   import { formatDuration, formatTime } from '../display/format';
   import {
     apiClient,
@@ -584,22 +585,7 @@
   }
 
   function formatProjectCounts(p: ProjectSummary): string {
-    if (p.setup_needs_operator && p.active_plans_count === 0) {
-      return $t('overview.project.setup');
-    }
-    if (p.active_plans_count > 0 && p.active_epics_count > 0) {
-      return $t('overview.project.counts', {
-        plans: p.active_plans_count,
-        epics: p.active_epics_count,
-      });
-    }
-    if (p.active_plans_count > 0) {
-      return $t('overview.project.plans_only', { plans: p.active_plans_count });
-    }
-    if (p.active_epics_count > 0) {
-      return $t('overview.project.epics_only', { epics: p.active_epics_count });
-    }
-    return '';
+    return projectCountsText(p, $t);
   }
 </script>
 
