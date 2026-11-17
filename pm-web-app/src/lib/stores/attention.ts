@@ -277,7 +277,10 @@ export interface AttentionActLabel {
  * @returns the id its last segment names, decoded, or the path itself
  */
 function segmentOf(target: string): string {
-  const segment = target.split('/').filter(Boolean).pop() ?? '';
+  const segment = target
+    .split('/')
+    .filter((part) => part.length > 0)
+    .pop() ?? '';
   try {
     return decodeURIComponent(segment);
   } catch {
@@ -428,19 +431,21 @@ export async function handleNeedsOperatorChanged(): Promise<void> {
   }
   attentionStore.update((current) => ({ ...current, isLoading: true, loadError: null }));
   try {
-    const items: AttentionItem[] = [];
-    let answer: NeedsOperatorPage = await apiClient.getNeedsOperator(1);
-    items.push(...itemsOf(answer.items));
-    for (let page = 2; page <= pages; page += 1) {
-      answer = await apiClient.getNeedsOperator(page);
-      items.push(...itemsOf(answer.items));
+    const answers: NeedsOperatorPage[] = [];
+    for (let page = 1; page <= pages; page += 1) {
+      answers.push(await apiClient.getNeedsOperator(page));
     }
+    const last = answers[answers.length - 1];
+    if (last === undefined) {
+      return;
+    }
+    const items = answers.flatMap((answer) => itemsOf(answer.items));
     attentionStore.update((current) => ({
       ...current,
       items,
-      total: countOf(answer.total, items.length),
-      page: Math.max(1, countOf(answer.page, 1)),
-      hasOlder: answer.has_older === true,
+      total: countOf(last.total, items.length),
+      page: Math.max(1, countOf(last.page, 1)),
+      hasOlder: last.has_older === true,
       loaded: true,
       isLoading: false,
       loadError: null,
