@@ -17,8 +17,10 @@ import {
   type StartPath,
 } from '../routes';
 import {
+  addressRevisionCount,
   currentAddress,
   intentFor,
+  noteAddressAdopted,
   openedFromOutside,
   parentOf,
   writeAddress,
@@ -587,11 +589,12 @@ export async function openRunningWork(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
-  // The projects read is awaited, so another destination can open while it runs: that one is the
-  // operator's newer choice and wins, so this navigation is dropped rather than replacing it.
-  const shownBefore = `${window.location.pathname}${window.location.search}`;
+  // The projects read is awaited, so another navigation can happen while it runs — including a
+  // Back that returns to the address this one started from. A revision, not the final address,
+  // is what tells them apart: the newer navigation is the operator's choice and wins.
+  const revisionBefore = addressRevisionCount();
   const summary = await apiClient.getProjects().catch(() => null);
-  if (`${window.location.pathname}${window.location.search}` !== shownBefore) {
+  if (addressRevisionCount() !== revisionBefore) {
     return;
   }
   const place = readRememberedPlace();
@@ -1359,6 +1362,8 @@ export function adoptRouteFromLocation(): AppRoute | null {
       chatOpen: address?.chat ?? false,
       chatTurn: address?.turn ?? null,
     }));
+    // The app adopted an address it did not write: an awaited navigation must see that.
+    noteAddressAdopted();
   }
   return match?.route ?? null;
 }

@@ -709,7 +709,14 @@
     plans: ActivePlanSummary[] = filteredPlans,
   ): ActivePlanSummary[] {
     return plans.filter(
-      (p) => p.epic_id === e.epic_id || (!p.epic_id && Boolean(e.title) && p.epic_title === e.title),
+      (p) =>
+        p.epic_id === e.epic_id ||
+        (!p.epic_id &&
+          Boolean(e.title) &&
+          p.epic_title === e.title &&
+          // A plan that names only a title belongs to that epic only when the title identifies
+          // one epic; two epics of the same title would otherwise both show and count the row.
+          (detail?.epics ?? []).filter((other) => other.title === e.title).length === 1),
     );
   }
 
@@ -1069,10 +1076,9 @@
               class:nested-plan-row={inEpic}
               data-testid="plan-card"
               on:click={(event) => {
-                if (!inEpic) {
-                  event.stopPropagation();
-                  openPlanView(planIdOf(plan));
-                }
+                // Every row is a plan row, nested or not: it opens its plan and never its epic.
+                event.stopPropagation();
+                openPlanView(planIdOf(plan));
               }}
             >
               <div class="plan-row">
@@ -1084,10 +1090,8 @@
                         type="button"
                         class="work-card__open"
                         on:click={(event) => {
-                          if (!inEpic) {
-                            event.stopPropagation();
-                            openPlanView(planIdOf(plan));
-                          }
+                          event.stopPropagation();
+                          openPlanView(planIdOf(plan));
                         }}
                       >
                         {plan.title}

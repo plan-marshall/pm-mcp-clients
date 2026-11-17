@@ -656,6 +656,69 @@ describe('OverviewView component', () => {
     });
   });
 
+  it('opens the plan a nested plan title names, not its epic', async () => {
+    runtimeStore.update((s) => ({ ...s, lensGroup: 'epic' }));
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('epic-card')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Message catalogue' }));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('plan');
+    expect(state.selectedPlanId).toBe('pln-message-catalogue');
+  });
+
+  it('leaves a plan that names only a duplicated epic title unassigned', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      plans: [
+        {
+          plan_id: 'pln-only-title',
+          title: 'Only a title',
+          current_phase: 'execute',
+          phase_state: 'running',
+          epic_title: 'client work',
+        },
+      ],
+      epics: [
+        {
+          epic_id: 'epc-first',
+          title: 'client work',
+          running_plans_count: 0,
+          staged_plans_count: 0,
+          plans_done: 0,
+          plans_total: 0,
+          plans: [],
+        },
+        {
+          epic_id: 'epc-second',
+          title: 'client work',
+          running_plans_count: 0,
+          staged_plans_count: 0,
+          plans_done: 0,
+          plans_total: 0,
+          plans: [],
+        },
+      ],
+      alongside_landings: [],
+    });
+    runtimeStore.update((s) => ({ ...s, lensGroup: 'epic' }));
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Only a title').length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Two epics of one title identify none of them: the plan shows once, under the unassigned group.
+    expect(screen.getAllByText('Only a title')).toHaveLength(1);
+    expect(screen.getByText('without epic')).toBeInTheDocument();
+  });
+
   it('opens running work when the address names no ended mode, even after ended work was seen', async () => {
     // A running-work address wins over the section the operator looked at last.
     localStorage.setItem('pm_overview_show_ended', '1');
