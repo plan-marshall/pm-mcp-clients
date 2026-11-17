@@ -152,7 +152,7 @@
   <div class="completion-report__nav">
     {#if onClose}
       <Button variant="ghost" size="sm" icon="act.back" onclick={closeReport}>
-        {$t('web.common.back')}
+        {$t('common.action.back')}
       </Button>
     {/if}
   </div>

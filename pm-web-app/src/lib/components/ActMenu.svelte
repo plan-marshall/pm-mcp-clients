@@ -245,7 +245,7 @@
       ? [confirmingItem.disabledReason]
       : [confirmingItem.label]}
     actionLabel={confirmingItem.label}
-    cancelLabel={$t('web.common.cancel')}
+    cancelLabel={$t('common.action.cancel')}
     onConfirm={confirmDestructiveAction}
     onClose={cancelDestructiveAction}
   />

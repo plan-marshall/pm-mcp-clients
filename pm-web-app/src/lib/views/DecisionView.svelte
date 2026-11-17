@@ -973,7 +973,7 @@
             onclick={() => handleLater(dec.id)}
             data-advisory={$t('decision.waiver.later.title')}
           >
-            {$t('decision.waiver.later')}
+            {$t('common.action.later')}
           </Button>
           <Button
             variant="danger"
@@ -1382,7 +1382,7 @@
             <button
               type="button"
               class="notice-dismiss"
-              aria-label={$t('common.close')}
+              aria-label={$t('common.action.close')}
               data-advisory={$t('decision.notice.dismiss.title')}
               onclick={() => (notices = notices.filter((entry) => entry.id !== notice.id))}
             >
@@ -1434,7 +1434,7 @@
     {:else}
       <FilterInput
         value={query}
-        label={$t('decisions.filter.label')}
+        label={$t('common.filter.label', { what: $t('decisions.list.title') })}
         placeholder={$t('decisions.filter.placeholder')}
         resultCount={matchingDecisions.length}
         onchange={(value) => (query = value)}

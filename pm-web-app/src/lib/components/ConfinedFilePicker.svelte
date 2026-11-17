@@ -134,7 +134,7 @@
 
       {#if listing?.parent}
         <button type="button" class="file-picker__up" data-testid="picker-up" on:click={up}>
-          {$t('web.common.back')}
+          {$t('common.action.back')}
         </button>
       {/if}
 
@@ -207,7 +207,7 @@
           {$t('start.documents.add')}
         </button>
         <button type="button" data-testid="picker-close" on:click={onClose}>
-          {$t('web.common.close')}
+          {$t('common.action.close')}
         </button>
       </div>
     </div>

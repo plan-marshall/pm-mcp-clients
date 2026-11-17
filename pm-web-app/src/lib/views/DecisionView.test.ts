@@ -1055,7 +1055,7 @@ describe('DecisionView component', () => {
       const scrolled = recordScrolls();
       render(DecisionView);
       await screen.findByText('Select merge strategy');
-      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      const filter = (await screen.findByLabelText('Filter Decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'waiver' } });
       await waitFor(() => expect(screen.queryByText('Select merge strategy')).toBeNull());
 

@@ -928,7 +928,7 @@
           }}
           data-testid="cancel-abandon-btn"
         >
-          {$t('web.common.cancel')}
+          {$t('common.action.cancel')}
         </Button>
         <Button
           variant="danger"

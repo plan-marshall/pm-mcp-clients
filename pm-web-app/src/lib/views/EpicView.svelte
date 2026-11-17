@@ -935,7 +935,7 @@
     {#if resource && resource.workstreams.length > 0}
       <FilterInput
         value={query}
-        label={$t('common.filter.label')}
+        label={$t('common.filter.label', { what: $t('epic.views.workstreams') })}
         placeholder={$t('common.filter.placeholder')}
         resultCount={matchingPlanCount}
         onchange={(value) => (query = value)}

@@ -1400,7 +1400,7 @@
           disabled={busy}
           on:click={() => void goBack()}
         >
-          {$t('web.common.back')}
+          {$t('common.action.back')}
         </Button>
       {/if}
     </div>
@@ -1511,7 +1511,7 @@
   title={$t('start.entry.abandon_title')}
   consequences={[$t('start.entry.abandon_consequence')]}
   actionLabel={$t('start.entry.abandon')}
-  cancelLabel={$t('web.common.cancel')}
+  cancelLabel={$t('common.action.cancel')}
   {busy}
   onConfirm={abandon}
   onClose={() => (abandonOpen = false)}

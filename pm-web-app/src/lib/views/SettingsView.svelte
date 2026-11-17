@@ -1069,7 +1069,7 @@
         }}
         data-testid="settings-back-button"
       >
-        {$t('web.common.back')}
+        {$t('common.action.back')}
       </Button>
     </div>
   </div>
@@ -1179,7 +1179,7 @@
               on:click={saveDocumentsMode}
               data-testid="save-documents"
             >
-              {$t('web.common.save')}
+              {$t('common.action.save')}
             </Button>
           </div>
         </section>
@@ -1258,7 +1258,7 @@
                             on:click={() => saveRename(device.device_id)}
                             data-testid={`save-rename-${device.device_id}`}
                           >
-                            {$t('web.common.save')}
+                            {$t('common.action.save')}
                           </Button>
                           <Button variant="ghost" on:click={() => (renamingId = null)}>
                             {$t('web.settings.devices.cancel')}
