@@ -482,6 +482,32 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("records the later run's posture through the step and clears it when Not set is chosen")
+        void shouldRecordAndClearThePostureOfALaterRun() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                runtime.goToState("defaults.reconfigure");
+                assertEquals(200, stepStatus(client, auth, "{\"link\":\"set\",\"posture\":\"full\"}"));
+
+                var filled = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("full", filled.planDefaults().posture());
+
+                // *Not set* sends null, and the stored posture goes with it.
+                runtime.goToState("defaults.reconfigure");
+                assertEquals(200, stepStatus(client, auth, "{\"link\":\"set\",\"posture\":null}"));
+
+                var cleared = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertNull(cleared.planDefaults().posture());
+            }
+        }
+
+        @Test
         @DisplayName("rotates a credential, dropping its old expiry")
         void shouldRotateCredential() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
@@ -727,5 +753,21 @@ class OnboardingScenarioTest {
         var map = JsonTree.asObject(JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8)));
         assertNotNull(map);
         return map;
+    }
+
+    /**
+     * Takes one step of the current state with a body of its own, for the states whose answer the
+     * mock records.
+     *
+     * @param client the client of the running mock
+     * @param auth   the bearer header value
+     * @param body   the step's request body
+     * @return the response's status
+     * @throws Exception when the request cannot be sent
+     */
+    private static int stepStatus(UnixSocketHttpClient client, String auth, String body)
+            throws Exception {
+        return client.send(HttpRequest.json("POST", "/api/v1/onboarding/step", body)
+                .withHeader("Authorization", auth)).status();
     }
 }
