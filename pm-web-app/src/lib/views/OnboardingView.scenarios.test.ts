@@ -922,6 +922,57 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
   });
 
+  it('names each harness that failed its check at harness.none, never the raw state id', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            check: 'login',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            path: '/opt/homebrew/bin/opencode',
+            check: 'version',
+            result: 'fail',
+            cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
+            fix: 'install a version in 1.5 - 1.x, then check again',
+          },
+        ],
+        links: {
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.probe-failed' },
+          later: { href: '/api/v1/onboarding/harness/none/later', next: 'harness.none' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // Per harness found: its name, path, the check that failed, the answer and the fix.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('Claude Code');
+    expect(failures).toHaveTextContent('~/.local/bin/claude');
+    expect(failures).toHaveTextContent('login');
+    expect(failures).toHaveTextContent('not logged in');
+    expect(failures).toHaveTextContent('claude login');
+    expect(failures).toHaveTextContent('OpenCode');
+    expect(failures).toHaveTextContent('/opt/homebrew/bin/opencode');
+    expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
+
+    // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
+    expect(document.body).not.toHaveTextContent('harness.none');
+    expect(document.body).not.toHaveTextContent('Machine · harness.none');
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({
