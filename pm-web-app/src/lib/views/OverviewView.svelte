@@ -365,15 +365,16 @@
         // A project the address names wins over the fallback: the address may have changed while
         // this list was loading, and the first project is only what a silent list falls back to.
         const addressed = get(runtimeStore).lensProject ?? null;
-        const addressedIsListed =
-          Boolean(addressed) && projects.some((p) => p.project_id === addressed);
-        if (addressedIsListed) {
+        if (addressed !== null && projects.some((p) => p.project_id === addressed)) {
           lastStoreProject = addressed;
           selectedProjectId = addressed;
-        } else if (!selectedProjectId || !projects.some((p) => p.project_id === selectedProjectId)) {
+        } else if (
+          !selectedProjectId ||
+          !projects.some((p) => p.project_id === selectedProjectId)
+        ) {
           selectedProjectId = projects[0].project_id;
         }
-        await loadProjectDetail(selectedProjectId);
+        await loadProjectDetail(selectedProjectId ?? projects[0].project_id);
       } else {
         selectedProjectId = null;
         detail = null;
