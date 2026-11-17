@@ -270,6 +270,16 @@ public class ScenarioLoader {
         // The engine merges the base fixture below a case state's own, so a state without a
         // plan_changes member serves the base state's captures.
         var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
+        // Every size is a measurement, in every scenario, whether or not it models captures.
+        var sizesByState = new LinkedHashMap<String, Map<String, List<ChangeSize>>>();
+        for (var stateEntry : states.entrySet()) {
+            try {
+                sizesByState.put(stateEntry.getKey(), effectiveSizes(routes, stateEntry.getValue()));
+            } catch (IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, null, "change",
+                        "a plan's size of change is not a measurement: " + e.getMessage());
+            }
+        }
         // A scenario that models no captures at all serves sizes without a changes fixture: its
         // plans' changes are simply not part of what that scenario demonstrates.
         var modelsCaptures = baseEntries != null
@@ -277,7 +287,8 @@ public class ScenarioLoader {
         if (!modelsCaptures) {
             return;
         }
-        for (var state : states.values()) {
+        for (var entry : states.entrySet()) {
+            var state = entry.getValue();
             var ownEntries = planChangesOf(state, scenario);
             final List<Map<String, Object>> effective;
             if (ownEntries != null) {
@@ -289,22 +300,16 @@ public class ScenarioLoader {
             }
             // A size belongs to the state that serves it: a plan captured in one state says nothing
             // about the same plan before its capture in another.
-            final Map<String, List<ChangeSize>> sizes;
-            try {
-                sizes = effectiveSizes(routes, state);
-            } catch (IllegalArgumentException e) {
-                throw new ScenarioValidationException(scenario, null, "change",
-                        "a plan's size of change is not a measurement: " + e.getMessage());
-            }
+            final Map<String, List<ChangeSize>> sizes = sizesByState.get(entry.getKey());
             var seen = new HashSet<String>();
-            for (var entry : effective) {
-                var planId = JsonTree.string(entry, FIELD_PLAN_ID);
+            for (var fixtureEntry : effective) {
+                var planId = JsonTree.string(fixtureEntry, FIELD_PLAN_ID);
                 if (planId != null && !seen.add(planId)) {
                     throw new ScenarioValidationException(scenario, null,
                             "facts.runtime." + FIXTURE_PLAN_CHANGES,
                             "the fixture names the capture of " + planId + " twice");
                 }
-                validateOnePlansChanges(entry, sizes, scenario);
+                validateOnePlansChanges(fixtureEntry, sizes, scenario);
             }
             requireEverySizeHasACapture(effective, sizes, scenario);
         }

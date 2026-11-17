@@ -1922,6 +1922,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
         recordOfferedOperatorLinks(stateDef, nextStateId);
 
+        // A state that declares its own captures serves them as soon as it is entered, whatever the
+        // transition that entered it: the fixture is the state's own answer for that state.
+        applyStateCaptures(stateDef);
+
         // The chat failures the state names, each played once by the next chat request or reply.
         chatRegistry.arm(stateDef.chatFailures());
 
@@ -1947,6 +1951,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 }
             }, auto.afterMs(), TimeUnit.MILLISECONDS);
             pendingTasks.add(task);
+        }
+    }
+
+    /**
+     * Seeds a state's own captures when the state declares them: an auto or link transition enters a
+     * state the same way {@code goToState} does, so the changes route answers that state's fixture.
+     *
+     * @param stateDef the state that was entered
+     */
+    private void applyStateCaptures(StateDefinition stateDef) {
+        var representation = JsonTree.asObject(stateDef.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(FIXTURE_RUNTIME));
+        if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+            return;
+        }
+        synchronized (planChangesLock) {
+            planChanges.clear();
+            planChangeFiles.clear();
+            for (var entry : fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)) {
+                seedPlanChanges(entry);
+            }
         }
     }
 

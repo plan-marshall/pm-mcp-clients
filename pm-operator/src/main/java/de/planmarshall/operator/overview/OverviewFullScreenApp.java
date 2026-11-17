@@ -1773,7 +1773,13 @@ public final class OverviewFullScreenApp {
             var fresh = ProcessTree.fromJson(response.bodyText());
             synchronized (this) {
                 view.update(fresh);
-                stack.refresh(view.rows(locale));
+                // A level the operator opened meanwhile keeps its own rows: only the plan's frame is
+                // published to (plan-view.adoc § Live).
+                var top = stack.level();
+                if (top != null && top.kind() == TuiLevel.Kind.PLAN && planId.equals(top.id())
+                                    && currentPlanView.get() == view) {
+                    stack.refresh(view.rows(locale));
+                }
             }
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException | IllegalArgumentException _) {

@@ -843,8 +843,13 @@ class PlanChangesScenarioTest {
 
             // The engine replaces a route only with a map-valued override (activeRoute); a list
             // override leaves the static size in force, so a capture that disagrees with it is
-            // refused although the fixture "replaces" the route.
+            // refused although the fixture "replaces" the route. The project-detail rows carry the
+            // plan's size a second time, so they are cleared: the overridden route is the only
+            // measurement the test leaves in the scenario.
             var root = JsonTree.asObject(JsonTree.parse(valid));
+            var project = JsonTree.object(JsonTree.object(root, "routes"),
+                    "GET /api/v1/projects/pm-mcp-clients");
+            planOf(JsonTree.object(project, "representation"), FIX_RELAY).remove("change");
             var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
                             JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
                     "runtime");
