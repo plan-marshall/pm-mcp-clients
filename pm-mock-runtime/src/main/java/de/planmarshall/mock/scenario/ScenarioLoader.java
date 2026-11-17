@@ -566,23 +566,31 @@ public class ScenarioLoader {
      */
     private static void requireContentsOf(PlanChangedFile file, Map<String, PlanChangeFile> contents,
             PlanChangesCaptured captured, String scenario) {
+        var content = contents.get(file.path());
+        if (content == null) {
+            // Every row is answered by its contents, the binary ones included: their answer carries
+            // no hunks (the record refuses that), and the file route needs an entry to serve them.
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the file " + file.path() + " of " + captured.planId() + " has no contents");
+        }
         if (file.binary()) {
             return;
         }
-        var content = contents.get(file.path());
-        if (content == null) {
-            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
-                    "the non-binary file " + file.path() + " of " + captured.planId() + " has no contents");
-        }
         var added = countLines(content, PlanChangeLineKind.ADDED);
         var removed = countLines(content, PlanChangeLineKind.REMOVED);
+        // A cut file's hunks show a part of its lines; the count it names is at least every line the
+        // hunks leave out (omitted hunks may also carry context lines, so this is a lower bound).
+        var missing = (file.added() - added) + (file.removed() - removed);
         var agrees = content.truncated()
                 ? added <= file.added() && removed <= file.removed()
+                && content.linesOmitted() >= missing
                 : added == file.added() && removed == file.removed();
         if (!agrees) {
             throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                     "the hunks of " + file.path() + " add " + added + " and remove " + removed
-                            + ", the list says " + file.added() + " and " + file.removed());
+                            + ", the list says " + file.added() + " and " + file.removed()
+                            + (content.truncated() ? ", and it names " + content.linesOmitted()
+                            + " omitted lines for " + missing + " missing edits" : ""));
         }
     }
 

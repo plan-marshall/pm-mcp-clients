@@ -3360,22 +3360,19 @@ public final class OverviewFullScreenApp {
         }
 
         /**
-         * A capture may have read the list again while another level was on top
-         * ({@code plan-view.adoc} § Live): the rows come from the model the level returned to.
+         * A capture may have landed while another level covered the changes; the rows are rebuilt
+         * from a fresh read, not from the model as it was left behind
+         * ({@code plan-view.adoc} § Live).
          */
         private void refreshReturnedChanges() {
             var level = currentChanges.get();
             if (level == null) {
                 return;
             }
-            var selected = stack.selected() != null ? stack.selected().id() : null;
-            var rows = level.rows(locale);
-            stack.refresh(rows);
-            if (selected == null || rows.stream().noneMatch(row -> row.id().equals(selected))) {
-                var open = level.openFileRowId();
-                if (open != null) {
-                    stack.select(open);
-                }
+            try {
+                refreshChanges(context.runtime(false));
+            } catch (IOException _) {
+                // A runtime that cannot be read now leaves the rows the level had.
             }
         }
 

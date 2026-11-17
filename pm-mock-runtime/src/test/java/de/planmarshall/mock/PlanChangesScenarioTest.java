@@ -865,6 +865,41 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a listed binary file without contents")
+        void refusesABinaryRowWithoutContents() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            contents.removeIf(row -> {
+                var content = JsonTree.asObject(row);
+                return content != null && JsonTree.string(content, "path").endsWith("plan-changes.svg");
+            });
+
+            refusesTheLoad(JsonTree.write(root), "plan-changes.svg");
+        }
+
+        @Test
+        @DisplayName("refuses a cut file whose omitted count is below the edits its hunks leave out")
+        void refusesAnUnderstatedOmittedCount() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            for (var row : contents) {
+                var content = JsonTree.asObject(row);
+                if (content != null
+                        && JsonTree.string(content, "path").endsWith("MockRuntimeEngine.java")) {
+                    content.put("lines_omitted", 1);
+                }
+            }
+
+            refusesTheLoad(JsonTree.write(root), "MockRuntimeEngine.java");
+        }
+
+        @Test
         @DisplayName("a scenario that models no captures serves its sizes without a changes fixture")
         void exemptsAScenarioWithoutCaptures() throws Exception {
             try (var in = PlanChangesScenarioTest.class.getClassLoader()
