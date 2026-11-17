@@ -638,6 +638,19 @@ describe('OverviewView component', () => {
     expect(apiClient.getProjectDetail).toHaveBeenCalledWith('pm-mcp-core');
   });
 
+  it('writes the displayed project into the address when the grouping changes', async () => {
+    render(OverviewView);
+
+    await waitFor(() => expect(screen.getByText('Message catalogue')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+
+    await waitFor(() => {
+      expect(window.location.search).toContain('project=pm-mcp-clients');
+    });
+    expect(window.location.search).toContain('group=epic');
+  });
+
   it('reads the new project’s ended page when the address changes project while ended work is open', async () => {
     render(OverviewView);
 

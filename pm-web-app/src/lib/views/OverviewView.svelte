@@ -513,10 +513,11 @@
   function setViewMode(mode: 'plan' | 'epic') {
     viewMode = mode;
     writeRememberedPlace({ ...readRememberedPlace(), group: mode });
-    // The grouping is the address's too, so a reload opens the same list.
-    const project = get(runtimeStore).lensProject;
+    // The grouping is the address's too, so a reload opens the same list — on the project the view
+    // shows, which the address may not name yet (a first-project fallback, a remembered place).
+    const project = selectedProjectId ?? get(runtimeStore).lensProject;
     lastStoreGroup = mode === 'epic' ? 'epic' : null;
-    runtimeStore.update((s) => ({ ...s, lensGroup: mode === 'epic' ? 'epic' : null }));
+    runtimeStore.update((s) => ({ ...s, lensGroup: mode === 'epic' ? 'epic' : null, lensProject: project }));
     writeAddress(
       {
         route: 'overview',
