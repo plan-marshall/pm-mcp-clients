@@ -23,6 +23,10 @@ import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesRoutes;
 import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -47,10 +51,14 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.planview.ChangesLevel;
+import de.planmarshall.operator.planview.PlanChangeSizes;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
+import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
@@ -116,6 +124,13 @@ public final class PlanCommand implements Callable<Integer> {
     @Option(names = "--watch", description = "Watch updates")
     boolean watch;
 
+    @Option(names = "--changes", description = "Print the plan's changes into the scrollback")
+    boolean changes;
+
+    @Option(names = "--file", paramLabel = "<path>", description = "With --changes: print one file's hunks")
+    @Nullable
+    String changesFile;
+
     @Option(names = "--print", description = "Prints the plan into the scrollback instead of opening the full-screen view.")
     boolean print;
 
@@ -133,6 +148,9 @@ public final class PlanCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
+            if (changes || changesFile != null) {
+                return printChanges(out, runtime, planId);
+            }
             if (activity != null && !activity.isBlank()) {
                 var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
                                     + "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
@@ -212,7 +230,8 @@ public final class PlanCommand implements Callable<Integer> {
      */
     private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {
         if (planId == null || planId.isBlank() || print || all || depth != null || activity != null
-                            || tokens || components || watch || !context.isInteractiveTerminal()) {
+                            || tokens || components || watch || changes || changesFile != null
+                            || !context.isInteractiveTerminal()) {
             return null;
         }
         Terminal terminal = null;
@@ -253,6 +272,103 @@ public final class PlanCommand implements Callable<Integer> {
                 }
             }
         }
+    }
+
+    /**
+     * Prints a plan's changes into the scrollback ({@code plan <id> --changes [--file <path>]},
+     * 16-plan-view.adoc#changes). The head's figures are the plan's own size of change, and every
+     * path and line is printed after its control sequences are removed.
+     *
+     * @param out     the writer of the console
+     * @param runtime the runtime client
+     * @param planId  the plan
+     * @return {@code 0} when the changes or the file were printed, {@code 1} for a plan or a file
+     *         the runtime does not hold
+     * @throws IOException when the runtime cannot be read
+     */
+    private int printChanges(PrintWriter out, RuntimeClient runtime, String planId) throws IOException {
+        var locale = context.clientEnvironment().locale();
+        var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
+        if (response.status() == 404) {
+            out.printf("Plan %s not found.%n", OutputSafety.stripControlSequences(planId));
+            out.flush();
+            return 1;
+        }
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("plan changes " + planId, response);
+        }
+        var answer = PlanChangesAnswer.fromJson(response.bodyText());
+        var level = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
+        out.println(level.breadcrumb(locale));
+        if (changesFile == null || changesFile.isBlank() || !(answer instanceof PlanChangesCaptured captured)) {
+            // The whole list, or the refusal's own text: a plan without a capture holds no file.
+            printRows(out, level.rows(locale));
+            return 0;
+        }
+        return printOneFile(out, runtime, planId, locale, level, captured);
+    }
+
+    /**
+     * Prints one file's hunks, its row alone when it is binary, or the text that says the file is not
+     * in the plan's changes ({@code plan <id> --changes --file <path>}).
+     *
+     * @param out       the writer of the console
+     * @param runtime   the runtime client
+     * @param planId    the plan
+     * @param locale    the interface locale
+     * @param level     the plan's changes
+     * @param captured  the list the runtime answered
+     * @return {@code 0} when the file or its row was printed, {@code 1} when it is not in the list
+     * @throws IOException when the runtime cannot be read
+     */
+    private int printOneFile(PrintWriter out, RuntimeClient runtime, String planId, String locale,
+                        ChangesLevel level, PlanChangesCaptured captured) throws IOException {
+        var binaryRow = level.fileRowOf(changesFile, locale);
+        if (binaryRow != null && isBinary(captured, changesFile)) {
+            // A binary file answers no lines: its row is the whole answer.
+            printRows(out, List.of(binaryRow));
+            return 0;
+        }
+        var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
+        if (fileResponse.status() == 404) {
+            return noSuchFile(out);
+        }
+        if (fileResponse.status() != 200) {
+            throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
+        }
+        if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
+            // The list moved between the two reads: the file it answered is no longer one of its rows.
+            return noSuchFile(out);
+        }
+        printRows(out, level.openFileRows(locale));
+        return 0;
+    }
+
+    private int noSuchFile(PrintWriter out) {
+        out.printf("No such file in the plan's changes: %s%n",
+                            OutputSafety.stripControlSequences(changesFile));
+        out.flush();
+        return 1;
+    }
+
+    private static void printRows(PrintWriter out, List<TuiRow> rows) {
+        for (var row : rows) {
+            out.println("  " + row.line());
+        }
+        out.flush();
+    }
+
+    /**
+     * @param captured the list
+     * @param path     the file's path
+     * @return {@code true} when the list marks the file binary
+     */
+    private static boolean isBinary(PlanChangesCaptured captured, String path) {
+        return captured.files().stream()
+                            .filter(file -> file.path().equals(path))
+                            .findFirst()
+                            .map(file -> file.binary())
+                            .orElse(false);
     }
 
     private void printTaskActivity(PrintWriter out, String planId, TaskActivity act) {
@@ -297,6 +413,16 @@ public final class PlanCommand implements Callable<Integer> {
                 case LINK -> {
                     var target = OutputSafety.stripControlSequences(entry.toolTarget());
                     out.printf("  %s  link       %s%n", ts, target != null ? target : "");
+                }
+                case MODEL_DIFFERS -> {
+                    // The harness answered a turn with another model: name both, information only.
+                    var served = OutputSafety.stripControlSequences(entry.servedModel());
+                    var launched = OutputSafety.stripControlSequences(entry.launchModel());
+                    out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()),
+                                        MessageCatalogue.format(context.clientEnvironment().locale(),
+                                                            "plan.activity.model_differs",
+                                                            Map.of("served", served != null ? served : "",
+                                                                                "launched", launched != null ? launched : "")));
                 }
                 default -> {
                     var content = OutputSafety.stripControlSequences(entry.content());

@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -192,7 +193,7 @@ class PlanChangesScenarioTest {
     class AFile {
 
         @Test
-        @DisplayName("answers its hunks with every line marked")
+        @DisplayName("answers its hunks with every line marked, and the counts of each side")
         void answersTheHunks() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
                 var file = readFile(runtime, FIX_RELAY, PLAN_CHANGES_FILE);
@@ -203,9 +204,11 @@ class PlanChangesScenarioTest {
                         () -> assertFalse(file.truncated()),
                         () -> assertEquals(1, file.hunks().size()),
                         () -> assertEquals(1, file.hunks().getFirst().newStart()),
-                        () -> assertEquals(List.of(PlanChangeLineKind.ADDED, PlanChangeLineKind.CONTEXT,
-                                        PlanChangeLineKind.ADDED),
-                                file.hunks().getFirst().lines().stream().map(line -> line.kind()).toList()));
+                        () -> assertEquals("/*", file.hunks().getFirst().lines().getFirst().text()),
+                        () -> assertEquals("}", file.hunks().getFirst().lines().getLast().text()),
+                        () -> assertEquals(file.hunks().getFirst().lines().size(),
+                                file.hunks().getFirst().newLen(),
+                                "the hunk's new length is the count of its lines"));
             }
         }
 
@@ -213,9 +216,10 @@ class PlanChangesScenarioTest {
         @DisplayName("keeps a planted control sequence in a line as text")
         void keepsTheControlSequence() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
-                var lines = readFile(runtime, FIX_RELAY, PLAN_CHANGES_FILE).hunks().getFirst().lines();
+                var lines = readFile(runtime, FIX_RELAY, "pm-web-app/src/lib/plan-changes.ts")
+                        .hunks().getFirst().lines();
 
-                assertTrue(lines.get(2).text().startsWith(CONTROL), "the escape is served unchanged");
+                assertTrue(lines.getLast().text().contains(CONTROL), "the escape is served unchanged");
             }
         }
 
@@ -264,6 +268,37 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a file of a plan the scenario does not know, as the list route does")
+        void refusesAFileOfAnUnknownPlan() throws Exception {
+            var unknown = Generators.letterStrings(6, 12).next().toLowerCase();
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var response = get(runtime, PlanChangesRoutes.plan(unknown).file("pm-api/src/PlanChanges.java"));
+
+                assertEquals(404, response.status(), response.bodyText());
+                assertEquals("scope_not_found",
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error"),
+                        "an unknown plan is a missing scope on both routes");
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a file of a plan whose changes were never captured, and of a gone capture")
+        void refusesAFileOfACaptureThatIsNotThere() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var notCaptured = get(runtime, PlanChangesRoutes.plan("drop-legacy-api").file("a/B.java"));
+                var unavailable = get(runtime, PlanChangesRoutes.plan("docs-typo").file("a/B.java"));
+
+                assertAll(
+                        () -> assertEquals(404, notCaptured.status(), notCaptured.bodyText()),
+                        () -> assertEquals("target_not_found",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(notCaptured.body())), "error")),
+                        () -> assertEquals(404, unavailable.status(), unavailable.bodyText()),
+                        () -> assertEquals("target_not_found",
+                                JsonTree.string(JsonTree.asObject(JsonTree.parse(unavailable.body())), "error")));
+            }
+        }
+
+        @Test
         @DisplayName("refuses a path that is not validly encoded rather than failing")
         void refusesAMalformedPath() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
@@ -300,6 +335,71 @@ class PlanChangesScenarioTest {
                                 PlanChangesAnswer.fromMap(JsonTree.asObject(JsonTree.parse(response.body()))))
                                 .planId());
             }
+        }
+
+        @Test
+        @DisplayName("its files stand in path order")
+        void filesInPathOrder() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+                var paths = captured.files().stream().map(file -> file.path()).toList();
+
+                assertEquals(paths.stream().sorted().toList(), paths, "the list is served in path order");
+            }
+        }
+
+        @Test
+        @DisplayName("every non-binary file answers its hunks, so the fixture has contents for each")
+        void everyNonBinaryFileHasContents() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+
+                for (var file : captured.files()) {
+                    if (file.binary()) {
+                        continue;
+                    }
+                    var content = readFile(runtime, FIX_RELAY, file.path());
+                    assertEquals(file.path(), content.path());
+                    if (content.truncated()) {
+                        // The runtime cut this file's answer: its hunks show a part of its lines.
+                        continue;
+                    }
+                    assertEquals(file.added(), addedLines(content),
+                            "the file's added lines are the lines its hunks add");
+                    assertEquals(file.removed(), removedLines(content),
+                            "the file's removed lines are the lines its hunks remove");
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("a cut file's hunks are no more than its counts")
+        void aCutFilesHunksFitItsCounts() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+                var cut = captured.files().stream().filter(file -> TRUNCATED_FILE.equals(file.path()))
+                        .findFirst().orElseThrow();
+
+                var content = readFile(runtime, FIX_RELAY, TRUNCATED_FILE);
+                assertAll(
+                        () -> assertTrue(content.truncated(), "the fixture cuts this file"),
+                        () -> assertTrue(addedLines(content) <= cut.added()),
+                        () -> assertTrue(removedLines(content) <= cut.removed()));
+            }
+        }
+
+        private static int addedLines(PlanChangeFile file) {
+            return file.hunks().stream()
+                    .mapToInt(hunk -> (int) hunk.lines().stream()
+                            .filter(line -> line.kind() == PlanChangeLineKind.ADDED).count())
+                    .sum();
+        }
+
+        private static int removedLines(PlanChangeFile file) {
+            return file.hunks().stream()
+                    .mapToInt(hunk -> (int) hunk.lines().stream()
+                            .filter(line -> line.kind() == PlanChangeLineKind.REMOVED).count())
+                    .sum();
         }
     }
 
@@ -516,6 +616,317 @@ class PlanChangesScenarioTest {
             var refused = assertThrows(ScenarioValidationException.class,
                     () -> ScenarioLoader.load(unknown, StandardScenarios.RUNNING_WORK));
             assertTrue(refused.getMessage().contains("Unknown state of a plan's changes"), refused.getMessage());
+        }
+
+        /**
+         * @param root the scenario's parsed tree
+         * @return the runtime fixture of the start state
+         */
+        private static Map<String, Object> startRuntime(Map<String, Object> root) {
+            return JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "running_work.active"), "representation"), "facts"),
+                    "runtime");
+        }
+
+        /**
+         * @param runtime the start state's runtime fixture
+         * @return the fixture entry of the plan whose changes the tests contradict
+         */
+        private static Map<String, Object> fixRelayEntry(Map<String, Object> runtime) {
+            for (var row : JsonTree.asArray(runtime.get("plan_changes"))) {
+                var entry = JsonTree.asObject(row);
+                if (entry != null && FIX_RELAY.equals(JsonTree.string(entry, "plan_id"))) {
+                    return entry;
+                }
+            }
+            throw new AssertionError("the fixture names no changes for " + FIX_RELAY);
+        }
+
+        private static void refusesTheLoad(String scenario, String expected) {
+            var refused = assertThrows(ScenarioValidationException.class,
+                    () -> ScenarioLoader.load(scenario, StandardScenarios.RUNNING_WORK));
+            assertTrue(refused.getMessage().contains(expected),
+                    "the refusal names " + expected + ", was: " + refused.getMessage());
+        }
+
+        @Test
+        @DisplayName("refuses a file whose counts disagree with its hunks")
+        void refusesAFileCountThatDisagreesWithItsHunks() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var files = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("files"));
+            JsonTree.asObject(files.get(1)).put("added", 53);
+
+            refusesTheLoad(JsonTree.write(root), "PlanChangeFile.java");
+        }
+
+        @Test
+        @DisplayName("refuses files that are not in path order")
+        void refusesFilesOutOfPathOrder() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var files = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("files"));
+            Collections.swap(files, 1, 2);
+
+            refusesTheLoad(JsonTree.write(root), "path order");
+        }
+
+        @Test
+        @DisplayName("refuses contents at a path the list does not name")
+        void refusesContentsAtAnUnknownPath() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            for (var row : contents) {
+                var content = JsonTree.asObject(row);
+                if (content != null && "pm-web-app/src/lib/plan-changes.ts".equals(JsonTree.string(content, "path"))) {
+                    content.put("path", "pm-web-app/src/lib/not-there.ts");
+                }
+            }
+
+            refusesTheLoad(JsonTree.write(root), "not-there.ts");
+        }
+
+        @Test
+        @DisplayName("refuses a non-binary file without contents")
+        void refusesANonBinaryFileWithoutContents() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            contents.removeIf(row -> {
+                var content = JsonTree.asObject(row);
+                return content != null
+                        && "pm-web-app/src/lib/plan-changes.ts".equals(JsonTree.string(content, "path"));
+            });
+
+            refusesTheLoad(JsonTree.write(root), "plan-changes.ts");
+        }
+
+        @Test
+        @DisplayName("refuses two captures of one plan")
+        void refusesADuplicatePlanId() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var runtime = startRuntime(root);
+            var entries = JsonTree.asArray(runtime.get("plan_changes"));
+            entries.add(fixRelayEntry(runtime));
+
+            refusesTheLoad(JsonTree.write(root), "twice");
+        }
+
+        @Test
+        @DisplayName("refuses two contents for one path")
+        void refusesADuplicateContent() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            contents.add(contents.getFirst());
+
+            refusesTheLoad(JsonTree.write(root), "twice");
+        }
+
+        @Test
+        @DisplayName("refuses a content whose binary mark disagrees with its row")
+        void refusesABinaryMarkThatDisagrees() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            for (var row : contents) {
+                var content = JsonTree.asObject(row);
+                if (content != null
+                        && JsonTree.string(content, "path").endsWith("plan-changes.svg")) {
+                    content.put("binary", false);
+                }
+            }
+
+            refusesTheLoad(JsonTree.write(root), "plan-changes.svg");
+        }
+
+        @Test
+        @DisplayName("a state that declares its own capture is held to its own size, never the state it inherits from")
+        void refusesOnlyWithinItsOwnCapture() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            // drop-legacy-api is not_captured where the scenario starts; a later state declares its
+            // own capture of the same plan, with the size that capture carries, and carries the
+            // base's capture of fix-relay so the static figure still has its capture.
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            other.put("plan_changes", List.of(capturedDropLegacyApi(), fixRelayEntry(startRuntime(root))));
+            var override = new LinkedHashMap<String, Object>();
+            override.put("plan_id", "drop-legacy-api");
+            override.put("change", Map.of("files", 1, "insertions", 2, "deletions", 0, "unplanned", 0));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/drop-legacy-api/process", override);
+            other.put("routes", routes);
+
+            // Its own capture agrees with its own size, and the start state's refusal stands alone.
+            var ownedScenario = JsonTree.write(root);
+            assertDoesNotThrow(() -> ScenarioLoader.load(ownedScenario, StandardScenarios.RUNNING_WORK));
+
+            // A size the state serves over a capture it only inherits is still refused.
+            root = JsonTree.asObject(JsonTree.parse(valid));
+            var inherited = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            var contradicting = new LinkedHashMap<String, Object>();
+            contradicting.put("plan_id", FIX_RELAY);
+            contradicting.put("change", Map.of("files", 13, "insertions", 341, "deletions", 27, "unplanned", 2));
+            var inheritedRoutes = new LinkedHashMap<String, Object>();
+            inheritedRoutes.put("GET /api/v1/plans/fix-relay/process", contradicting);
+            inherited.put("routes", inheritedRoutes);
+            var inheritedScenario = JsonTree.write(root);
+
+            refusesTheLoad(inheritedScenario, FIX_RELAY);
+        }
+
+        /**
+         * @return a capture of one added file, its hunks and its size, as the fixture spells one
+         */
+        private static Map<String, Object> capturedDropLegacyApi() {
+            var line = new LinkedHashMap<String, Object>();
+            line.put("kind", "added");
+            line.put("text", "package pm.api;");
+            var second = new LinkedHashMap<String, Object>();
+            second.put("kind", "added");
+            second.put("text", "class A {}");
+            var hunk = new LinkedHashMap<String, Object>();
+            hunk.put("old_start", 1);
+            hunk.put("old_len", 0);
+            hunk.put("new_start", 1);
+            hunk.put("new_len", 2);
+            hunk.put("lines", List.of(line, second));
+            var content = new LinkedHashMap<String, Object>();
+            content.put("path", "pm-api/src/A.java");
+            content.put("hunks", List.of(hunk));
+            content.put("binary", false);
+            content.put("truncated", false);
+            var file = new LinkedHashMap<String, Object>();
+            file.put("path", "pm-api/src/A.java");
+            file.put("status", "added");
+            file.put("added", 2);
+            file.put("removed", 0);
+            file.put("binary", false);
+            file.put("unplanned", false);
+            var capture = new LinkedHashMap<String, Object>();
+            capture.put("plan_id", "drop-legacy-api");
+            capture.put("state", "captured");
+            capture.put("head", "a1b2c3d4e5f6");
+            capture.put("base_ref", "main");
+            capture.put("files", List.of(file));
+            capture.put("contents", List.of(content));
+            return capture;
+        }
+
+        @Test
+        @DisplayName("a route override that is no object leaves the static route's size in force")
+        void refusesANonObjectOverrideThatWouldHideASize() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            // The engine replaces a route only with a map-valued override (activeRoute); a list
+            // override leaves the static size in force, so a capture that disagrees with it is
+            // refused although the fixture "replaces" the route. The project-detail rows carry the
+            // plan's size a second time, so they are cleared: the overridden route is the only
+            // measurement the test leaves in the scenario.
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var project = JsonTree.object(JsonTree.object(root, "routes"),
+                    "GET /api/v1/projects/pm-mcp-clients");
+            planOf(JsonTree.object(project, "representation"), FIX_RELAY).remove("change");
+            var other = JsonTree.object(JsonTree.object(JsonTree.object(JsonTree.object(
+                            JsonTree.object(root, "states"), "overview.empty"), "representation"), "facts"),
+                    "runtime");
+            other.put("plan_changes", List.of(Map.of("plan_id", FIX_RELAY, "state", "captured",
+                    "head", "9f3c2ab41d7e", "base_ref", "main", "files", List.of(),
+                    "contents", List.of())));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/fix-relay/process", List.of());
+            other.put("routes", routes);
+            var hidden = JsonTree.write(root);
+
+            refusesTheLoad(hidden, "fix-relay");
+        }
+
+        @Test
+        @DisplayName("refuses a listed binary file without contents")
+        void refusesABinaryRowWithoutContents() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            contents.removeIf(row -> {
+                var content = JsonTree.asObject(row);
+                return content != null && JsonTree.string(content, "path").endsWith("plan-changes.svg");
+            });
+
+            refusesTheLoad(JsonTree.write(root), "plan-changes.svg");
+        }
+
+        @Test
+        @DisplayName("refuses a cut file whose omitted count is below the edits its hunks leave out")
+        void refusesAnUnderstatedOmittedCount() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var contents = JsonTree.asArray(fixRelayEntry(startRuntime(root)).get("contents"));
+            for (var row : contents) {
+                var content = JsonTree.asObject(row);
+                if (content != null
+                        && JsonTree.string(content, "path").endsWith("MockRuntimeEngine.java")) {
+                    content.put("lines_omitted", 1);
+                }
+            }
+
+            refusesTheLoad(JsonTree.write(root), "MockRuntimeEngine.java");
+        }
+
+        @Test
+        @DisplayName("a scenario that models no captures serves its sizes without a changes fixture")
+        void exemptsAScenarioWithoutCaptures() throws Exception {
+            try (var in = PlanChangesScenarioTest.class.getClassLoader()
+                         .getResourceAsStream("scenarios/reports-and-system.json")) {
+                assertNotNull(in, "the reports-and-system scenario is on the classpath");
+                var reports = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+
+                assertDoesNotThrow(() -> ScenarioLoader.load(reports, StandardScenarios.REPORTS_AND_SYSTEM));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a size of change on a plan whose changes were never captured")
+        void refusesASizeOnAPlanWithoutACapture() throws Exception {
+            var valid = scenarioJson();
+            assertDoesNotThrow(() -> ScenarioLoader.load(valid, StandardScenarios.RUNNING_WORK));
+
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var runtime = startRuntime(root);
+            var override = new LinkedHashMap<String, Object>();
+            override.put("plan_id", "drop-legacy-api");
+            override.put("change", Map.of("files", 12, "insertions", 340, "deletions", 27, "unplanned", 2));
+            var routes = new LinkedHashMap<String, Object>();
+            routes.put("GET /api/v1/plans/drop-legacy-api/process", override);
+            runtime.put("routes", routes);
+
+            refusesTheLoad(JsonTree.write(root), "drop-legacy-api");
         }
     }
 }

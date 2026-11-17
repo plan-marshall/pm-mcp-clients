@@ -107,6 +107,10 @@ class OverviewCatalogueTest {
         assertTrue(keys.size() > 70, "the text tables of both documents must be read: " + keys);
         assertTrue(keys.contains("overview.running.title"), keys.toString());
         assertTrue(keys.contains("operator.status.runtime"), keys.toString());
+        // A key that is the final cell of a table: the reader must not need a translation row after
+        // it (terminal-client/15-overview.adoc's refusal table ends with it).
+        assertTrue(keys.contains("operator.tui.unavailable.too_narrow"),
+                "the key in the last cell of a table is read: " + keys);
         assertTrue(keys.containsAll(PENDING_RENAME), "a pending key no document names any more: " + PENDING_RENAME);
         var missing = new ArrayList<String>();
         var stillPending = new ArrayList<String>();

@@ -1486,20 +1486,91 @@
         },
         "facts": {
           "summary": "Give every role a harness and a model",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
           "roles": [
             {
               "role": "outline",
+              "class": "read_only",
+              "phase": "planning",
               "harness_id": "claude",
               "model_id": "opus-5.5",
               "effort": "high",
-              "origin": "default"
+              "origin": "default",
+              "advisory": {
+                "does": "Turns the refined request into deliverables and the plan's lane; reads the whole affected codebase.",
+                "needs": "Deep reasoning over a large context; few tool calls.",
+                "why": "A weak outline makes more work later than a frontier model takes here: every later phase builds on it.",
+                "lower_tier": "More loop-backs from the Q-Gate; the standard tier passed 71 % of the qualification items, the frontier tier 92 %.",
+                "steward": "no departure"
+              }
             },
             {
               "role": "implement",
+              "class": "write",
+              "phase": "execution",
               "harness_id": "claude",
               "model_id": "sonnet-5.5",
               "effort": "medium",
-              "origin": "default"
+              "origin": "default",
+              "advisory": {
+                "does": "Writes the production code of one deliverable and runs its tests.",
+                "needs": "Steady tool use over a bounded set of files.",
+                "why": "The default meets the class without the frontier tier's price.",
+                "lower_tier": "The standard tier passed the qualification items with a wider margin.",
+                "steward": "no departure"
+              }
+            },
+            {
+              "role": "qgate",
+              "class": "read_only",
+              "phase": "review",
+              "harness_id": "opencode",
+              "model_id": "qwen-coder-32b",
+              "effort": "",
+              "origin": "steward",
+              "default": {
+                "harness_id": "claude",
+                "model_id": "sonnet-5.5",
+                "effort": "medium"
+              },
+              "departure": {
+                "harness_id": "opencode",
+                "model_id": "qwen-coder-32b",
+                "effort": "",
+                "reason": "reads only; a fast model suffices"
+              },
+              "advisory": {
+                "does": "Checks the artifacts of a phase against the plan.",
+                "needs": "A steady reader of long documents.",
+                "why": "The default sits above what the checks need.",
+                "lower_tier": "Not qualified for the frontier tier.",
+                "steward": "reads only; a fast model suffices"
+              }
+            },
+            {
+              "role": "screener",
+              "class": "zero_tool",
+              "phase": "review",
+              "harness_id": "",
+              "model_id": "",
+              "effort": "",
+              "origin": "unmet",
+              "advisory": {
+                "does": "Sorts the entry the operator hands over.",
+                "needs": "A model of the fast tier.",
+                "why": "No chosen model is of the fast tier.",
+                "lower_tier": "none",
+                "steward": "no departure"
+              }
             }
           ]
         },
@@ -2144,6 +2215,7 @@
         "facts": {
           "summary": "The provider could not be verified",
           "provider": "SonarCloud",
+          "provider_id": "sonar",
           "cause": "401 \"Invalid token\"",
           "fix": "enter the token again"
         },
@@ -2209,8 +2281,7 @@
           "summary": "How should plans run on this machine?",
           "landing": "landing.pull-request",
           "method": "method.test-first",
-          "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "asking": "ask.key-points"
         },
         "links": [
           {
@@ -2743,11 +2814,39 @@
         },
         "facts": {
           "summary": "The role assignments run again with the recorded values as the proposal",
-          "aspect": "roles"
-          ,"set": "",
+          "aspect": "roles",
+          "set": "",
           "reset": "",
           "reset_all": "false",
-          "defaults": "false"
+          "defaults": "false",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
+          "roles": [
+            {
+              "role": "outline",
+              "class": "read_only",
+              "phase": "planning",
+              "harness_id": "claude",
+              "model_id": "opus-5.5",
+              "effort": "high",
+              "origin": "default",
+              "advisory": {
+                "does": "Turns the refined request into deliverables and the plan's lane; reads the whole affected codebase.",
+                "needs": "Deep reasoning over a large context; few tool calls.",
+                "why": "A weak outline makes more work later than a frontier model takes here: every later phase builds on it.",
+                "lower_tier": "More loop-backs from the Q-Gate; the standard tier passed 71 % of the qualification items, the frontier tier 92 %.",
+                "steward": "no departure"
+              }
+            }
+          ]
         },
         "links": [
           {
@@ -2989,7 +3088,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "posture": "standard"
         },
         "links": [
           {
@@ -3182,7 +3281,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard",
+          "posture": "standard",
           "runtime": {
             "status": "ready",
             "onboarded": true,

@@ -3122,6 +3122,22 @@
                 "base_ref": "main",
                 "files": [
                   {
+                    "path": "doc/design/shared/\u001B[2Jplan-changes.svg",
+                    "status": "modified",
+                    "added": 0,
+                    "removed": 0,
+                    "binary": true,
+                    "unplanned": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangeFile.java",
+                    "status": "added",
+                    "added": 54,
+                    "removed": 0,
+                    "binary": false,
+                    "unplanned": false
+                  },
+                  {
                     "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChanges.java",
                     "status": "added",
                     "added": 84,
@@ -3130,17 +3146,9 @@
                     "unplanned": false
                   },
                   {
-                    "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangeFile.java",
-                    "status": "added",
-                    "added": 52,
-                    "removed": 0,
-                    "binary": false,
-                    "unplanned": false
-                  },
-                  {
                     "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangesAnswer.java",
                     "status": "added",
-                    "added": 47,
+                    "added": 46,
                     "removed": 0,
                     "binary": false,
                     "unplanned": false
@@ -3148,7 +3156,7 @@
                   {
                     "path": "pm-api/src/main/java/de/planmarshall/api/changes/PlanChangesRoutes.java",
                     "status": "added",
-                    "added": 38,
+                    "added": 39,
                     "removed": 0,
                     "binary": false,
                     "unplanned": false
@@ -3156,7 +3164,15 @@
                   {
                     "path": "pm-api/src/main/java/de/planmarshall/api/event/EventName.java",
                     "status": "modified",
-                    "added": 6,
+                    "added": 7,
+                    "removed": 1,
+                    "binary": false,
+                    "unplanned": false
+                  },
+                  {
+                    "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntry.java",
+                    "status": "modified",
+                    "added": 11,
                     "removed": 1,
                     "binary": false,
                     "unplanned": false
@@ -3170,26 +3186,18 @@
                     "unplanned": false
                   },
                   {
-                    "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntry.java",
-                    "status": "modified",
-                    "added": 9,
-                    "removed": 1,
-                    "binary": false,
-                    "unplanned": false
-                  },
-                  {
                     "path": "pm-api/src/test/java/de/planmarshall/api/changes/PlanChangesContractTest.java",
                     "renamed_from": "pm-api/src/test/java/de/planmarshall/api/overview/PlanChangesContractTest.java",
                     "status": "renamed",
-                    "added": 61,
-                    "removed": 8,
+                    "added": 59,
+                    "removed": 7,
                     "binary": false,
                     "unplanned": false
                   },
                   {
                     "path": "pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java",
                     "status": "modified",
-                    "added": 38,
+                    "added": 33,
                     "removed": 17,
                     "binary": false,
                     "unplanned": false
@@ -3203,18 +3211,10 @@
                     "unplanned": true
                   },
                   {
-                    "path": "doc/design/shared/\u001B[2Jplan-changes.svg",
-                    "status": "modified",
-                    "added": 0,
-                    "removed": 0,
-                    "binary": true,
-                    "unplanned": false
-                  },
-                  {
                     "path": "pm-web-app/src/lib/plan-changes.ts",
                     "status": "modified",
-                    "added": 0,
-                    "removed": 0,
+                    "added": 2,
+                    "removed": 1,
                     "binary": false,
                     "unplanned": true
                   }
@@ -3227,20 +3227,92 @@
                         "old_start": 1,
                         "old_len": 0,
                         "new_start": 1,
-                        "new_len": 3,
+                        "new_len": 84,
                         "lines": [
-                          {
-                            "kind": "added",
-                            "text": "package de.planmarshall.api.changes;"
-                          },
-                          {
-                            "kind": "context",
-                            "text": "import de.planmarshall.api.json.JsonTree;"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "\u001B[2Jhover"
-                          }
+                          { "kind": "added", "text": "/*" },
+                          { "kind": "added", "text": " * Copyright © 2026-present Oliver Wolff" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * SPDX-License-Identifier: LicenseRef-Proprietary" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software." },
+                          { "kind": "added", "text": " * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at" },
+                          { "kind": "added", "text": " * the root of this repository." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "package de.planmarshall.api.changes;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import java.util.ArrayList;" },
+                          { "kind": "added", "text": "import java.util.LinkedHashMap;" },
+                          { "kind": "added", "text": "import java.util.List;" },
+                          { "kind": "added", "text": "import java.util.Map;" },
+                          { "kind": "added", "text": "import java.util.Objects;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import de.planmarshall.api.json.JsonTree;" },
+                          { "kind": "added", "text": "import de.planmarshall.api.overview.ChangeSize;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "/**" },
+                          { "kind": "added", "text": " * The list of the files a plan changed, at the plan's last capture." },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * <p>The list names the capture's head and base_ref and the files in path order; its totals" },
+                          { "kind": "added", "text": " * are derived from the files, so the list and the plan's size are one measurement." },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * @param head    the commit the capture measured" },
+                          { "kind": "added", "text": " * @param baseRef the base the capture measured against" },
+                          { "kind": "added", "text": " * @param files   the changed files, in path order" },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "public record PlanChanges(String head, String baseRef, List<PlanChangedFile> files) {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private static final String FIELD_HEAD = \"head\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_BASE_REF = \"base_ref\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_FILES = \"files\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    public PlanChanges {" },
+                          { "kind": "added", "text": "        Objects.requireNonNull(head, FIELD_HEAD);" },
+                          { "kind": "added", "text": "        Objects.requireNonNull(baseRef, FIELD_BASE_REF);" },
+                          { "kind": "added", "text": "        files = files != null ? List.copyOf(files) : List.of();" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * Adds up the files into the size of the change the plan carries." },
+                          { "kind": "added", "text": "     *" },
+                          { "kind": "added", "text": "     * @param files the changed files" },
+                          { "kind": "added", "text": "     * @return the size, with the files beyond the footprint counted as unplanned" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public static ChangeSize totalsOf(List<PlanChangedFile> files) {" },
+                          { "kind": "added", "text": "        var added = 0;" },
+                          { "kind": "added", "text": "        var removed = 0;" },
+                          { "kind": "added", "text": "        var unplanned = 0;" },
+                          { "kind": "added", "text": "        for (var file : files) {" },
+                          { "kind": "added", "text": "            added += file.added();" },
+                          { "kind": "added", "text": "            removed += file.removed();" },
+                          { "kind": "added", "text": "            if (file.unplanned()) {" },
+                          { "kind": "added", "text": "                unplanned++;" },
+                          { "kind": "added", "text": "            }" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "        return new ChangeSize(files.size(), added, removed, unplanned);" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the size of the change, derived from the files" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public ChangeSize totals() {" },
+                          { "kind": "added", "text": "        return totalsOf(files);" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the map representation, in the order of the wire contract" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public Map<String, Object> toMap() {" },
+                          { "kind": "added", "text": "        var map = new LinkedHashMap<String, Object>();" },
+                          { "kind": "added", "text": "        map.put(FIELD_HEAD, head);" },
+                          { "kind": "added", "text": "        map.put(FIELD_BASE_REF, baseRef);" },
+                          { "kind": "added", "text": "        var rows = new ArrayList<Map<String, Object>>(files.size());" },
+                          { "kind": "added", "text": "        for (var file : files) {" },
+                          { "kind": "added", "text": "            rows.add(file.toMap());" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "        map.put(FIELD_FILES, rows);" },
+                          { "kind": "added", "text": "        return map;" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "}" }
                         ]
                       }
                     ],
@@ -3251,19 +3323,80 @@
                     "path": "pm-api/src/test/java/de/planmarshall/api/changes/PlanChangesContractTest.java",
                     "hunks": [
                       {
-                        "old_start": 29,
-                        "old_len": 1,
-                        "new_start": 29,
-                        "new_len": 1,
+                        "old_start": 27,
+                        "old_len": 10,
+                        "new_start": 27,
+                        "new_len": 62,
                         "lines": [
-                          {
-                            "kind": "removed",
-                            "text": "class OverviewContractTest {"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "class PlanChangesContractTest {"
-                          }
+                          { "kind": "context", "text": "import org.junit.jupiter.api.Test;" },
+                          { "kind": "context", "text": "" },
+                          { "kind": "context", "text": "@DisplayName(\"The changes contract\")" },
+                          { "kind": "removed", "text": "class OverviewContractTest {" },
+                          { "kind": "removed", "text": "" },
+                          { "kind": "removed", "text": "    private static final String LIST = \"{}\";" },
+                          { "kind": "removed", "text": "" },
+                          { "kind": "removed", "text": "    @Test" },
+                          { "kind": "removed", "text": "    void listIsEmpty() throws Exception {" },
+                          { "kind": "removed", "text": "        assertTrue(PlanChangesAnswer.fromJson(LIST).isEmpty());" },
+                          { "kind": "added", "text": "class PlanChangesContractTest {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /** The escape a worker or the project could plant in a path or a line. */" },
+                          { "kind": "added", "text": "    private static final String CONTROL_JSON = \"\\\\u001B[2J\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private static final String LIST = \"{\\\"plan_id\\\":\\\"fix-relay\\\",\\\"state\\\":\\\"captured\\\",\"" },
+                          { "kind": "added", "text": "            + \"\\\"head\\\":\\\"9f3c2ab41d7e\\\",\\\"base_ref\\\":\\\"main\\\",\\\"files\\\":[\"" },
+                          { "kind": "added", "text": "            + \"{\\\"path\\\":\\\"a/B.java\\\",\\\"status\\\":\\\"added\\\",\\\"added\\\":84,\\\"removed\\\":0,\"" },
+                          { "kind": "added", "text": "            + \"\\\"binary\\\":false,\\\"unplanned\\\":false}]}\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    @Nested" },
+                          { "kind": "added", "text": "    @DisplayName(\"The list\")" },
+                          { "kind": "added", "text": "    class TheList {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "        @Test" },
+                          { "kind": "added", "text": "        @DisplayName(\"round-trips the wire JSON literally\")" },
+                          { "kind": "added", "text": "        void roundTrip() throws Exception {" },
+                          { "kind": "added", "text": "            var answer = PlanChangesAnswer.fromJson(LIST);" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "            var captured = assertInstanceOf(PlanChangesCaptured.class, answer);" },
+                          { "kind": "added", "text": "            assertEquals(LIST, JsonTree.write(answer.toMap()));" },
+                          { "kind": "added", "text": "            assertEquals(\"fix-relay\", captured.planId());" },
+                          { "kind": "added", "text": "            assertEquals(\"9f3c2ab41d7e\", captured.head());" },
+                          { "kind": "added", "text": "            assertEquals(\"main\", captured.baseRef());" },
+                          { "kind": "added", "text": "            assertEquals(1, captured.files().size());" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "        @Test" },
+                          { "kind": "added", "text": "        @DisplayName(\"keeps a planted control sequence as text\")" },
+                          { "kind": "added", "text": "        void controlSequenceStaysText() throws Exception {" },
+                          { "kind": "added", "text": "            var captured = assertInstanceOf(PlanChangesCaptured.class," },
+                          { "kind": "added", "text": "                    PlanChangesAnswer.fromJson(LIST));" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "            assertEquals(\"a/\" + CONTROL_JSON + \"B.java\", captured.files().getFirst().path());" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "        @Test" },
+                          { "kind": "added", "text": "        @DisplayName(\"derives totals that agree with the plan's size of change\")" },
+                          { "kind": "added", "text": "        void totalsAgree() throws Exception {" },
+                          { "kind": "added", "text": "            var captured = assertInstanceOf(PlanChangesCaptured.class," },
+                          { "kind": "added", "text": "                    PlanChangesAnswer.fromJson(LIST));" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "            assertEquals(new ChangeSize(1, 84, 0, 0), captured.totals());" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    @Nested" },
+                          { "kind": "added", "text": "    @DisplayName(\"A file\")" },
+                          { "kind": "added", "text": "    class AFile {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "        @Test" },
+                          { "kind": "added", "text": "        @DisplayName(\"marks every line context, removed or added\")" },
+                          { "kind": "added", "text": "        void lineKinds() throws Exception {" },
+                          { "kind": "added", "text": "            var lines = PlanChangeFile.fromJson(FILE).hunks().getFirst().lines();" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "            assertEquals(List.of(PlanChangeLineKind.ADDED, PlanChangeLineKind.CONTEXT," },
+                          { "kind": "added", "text": "                    PlanChangeLineKind.ADDED), lines.stream().map(PlanChangeLine::kind).toList());" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "    }" }
                         ]
                       }
                     ],
@@ -3307,16 +3440,62 @@
                         "old_start": 1,
                         "old_len": 0,
                         "new_start": 1,
-                        "new_len": 2,
+                        "new_len": 54,
                         "lines": [
-                          {
-                            "kind": "added",
-                            "text": "package de.planmarshall.api.changes;"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "import java.util.List;"
-                          }
+                          { "kind": "added", "text": "/*" },
+                          { "kind": "added", "text": " * Copyright © 2026-present Oliver Wolff" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * SPDX-License-Identifier: LicenseRef-Proprietary" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software." },
+                          { "kind": "added", "text": " * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at" },
+                          { "kind": "added", "text": " * the root of this repository." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "package de.planmarshall.api.changes;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import java.util.LinkedHashMap;" },
+                          { "kind": "added", "text": "import java.util.List;" },
+                          { "kind": "added", "text": "import java.util.Map;" },
+                          { "kind": "added", "text": "import java.util.Objects;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "/**" },
+                          { "kind": "added", "text": " * One file of a plan's change with its hunks." },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * <p>A binary file answers no lines; a cut file names the lines it left out." },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * @param path         the file's path in the capture" },
+                          { "kind": "added", "text": " * @param hunks        the hunks in order, empty for a binary file" },
+                          { "kind": "added", "text": " * @param binary       whether the file is binary" },
+                          { "kind": "added", "text": " * @param truncated    whether the runtime left lines out" },
+                          { "kind": "added", "text": " * @param linesOmitted the count of the lines left out" },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "public record PlanChangeFile(String path, List<PlanChangeHunk> hunks, boolean binary," },
+                          { "kind": "added", "text": "        boolean truncated, int linesOmitted) {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private static final String FIELD_PATH = \"path\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_HUNKS = \"hunks\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_BINARY = \"binary\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_TRUNCATED = \"truncated\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_LINES_OMITTED = \"lines_omitted\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    public PlanChangeFile {" },
+                          { "kind": "added", "text": "        Objects.requireNonNull(path, FIELD_PATH);" },
+                          { "kind": "added", "text": "        hunks = hunks != null ? List.copyOf(hunks) : List.of();" },
+                          { "kind": "added", "text": "        if (binary && !hunks.isEmpty()) {" },
+                          { "kind": "added", "text": "            throw new IllegalArgumentException(\"A binary file carries no hunks\");" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "        if (truncated != (linesOmitted > 0)) {" },
+                          { "kind": "added", "text": "            throw new IllegalArgumentException(\"A cut file names the lines it left out\");" },
+                          { "kind": "added", "text": "        }" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the map representation, in the order of the wire contract" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public Map<String, Object> toMap() {" },
+                          { "kind": "added", "text": "        return new LinkedHashMap<>();" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "}" }
                         ]
                       }
                     ],
@@ -3330,16 +3509,54 @@
                         "old_start": 1,
                         "old_len": 0,
                         "new_start": 1,
-                        "new_len": 2,
+                        "new_len": 46,
                         "lines": [
-                          {
-                            "kind": "added",
-                            "text": "package de.planmarshall.api.changes;"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "public sealed interface PlanChangesAnswer {"
-                          }
+                          { "kind": "added", "text": "/*" },
+                          { "kind": "added", "text": " * Copyright © 2026-present Oliver Wolff" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * SPDX-License-Identifier: LicenseRef-Proprietary" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software." },
+                          { "kind": "added", "text": " * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at" },
+                          { "kind": "added", "text": " * the root of this repository." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "package de.planmarshall.api.changes;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import java.io.IOException;" },
+                          { "kind": "added", "text": "import java.util.Map;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import de.planmarshall.api.json.JsonFormatException;" },
+                          { "kind": "added", "text": "import de.planmarshall.api.json.JsonTree;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "/**" },
+                          { "kind": "added", "text": " * What the list route answers: the capture, or one of the two refusals." },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * <p>The state is the answer's own member, so a client branches on it." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "public sealed interface PlanChangesAnswer" },
+                          { "kind": "added", "text": "        permits PlanChangesCaptured, PlanChangesNotCaptured, PlanChangesUnavailable {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    String FIELD_STATE = \"state\";" },
+                          { "kind": "added", "text": "    String FIELD_PLAN_ID = \"plan_id\";" },
+                          { "kind": "added", "text": "    String CAPTURED = \"captured\";" },
+                          { "kind": "added", "text": "    String NOT_CAPTURED = \"not_captured\";" },
+                          { "kind": "added", "text": "    String UNAVAILABLE = \"unavailable\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the plan the answer is about" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    String planId();" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the state of this answer" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    String state();" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the map representation, with the plan id and the state first" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    Map<String, Object> toMap();" },
+                          { "kind": "added", "text": "}" }
                         ]
                       }
                     ],
@@ -3353,16 +3570,47 @@
                         "old_start": 1,
                         "old_len": 0,
                         "new_start": 1,
-                        "new_len": 2,
+                        "new_len": 39,
                         "lines": [
-                          {
-                            "kind": "added",
-                            "text": "package de.planmarshall.api.changes;"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "public final class PlanChangesRoutes {"
-                          }
+                          { "kind": "added", "text": "/*" },
+                          { "kind": "added", "text": " * Copyright © 2026-present Oliver Wolff" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * SPDX-License-Identifier: LicenseRef-Proprietary" },
+                          { "kind": "added", "text": " *" },
+                          { "kind": "added", "text": " * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software." },
+                          { "kind": "added", "text": " * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at" },
+                          { "kind": "added", "text": " * the root of this repository." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "package de.planmarshall.api.changes;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "import java.net.URLEncoder;" },
+                          { "kind": "added", "text": "import java.nio.charset.StandardCharsets;" },
+                          { "kind": "added", "text": "import java.util.Objects;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "/**" },
+                          { "kind": "added", "text": " * The HTTP paths of a plan's changes: the list and one file's hunks." },
+                          { "kind": "added", "text": " */" },
+                          { "kind": "added", "text": "public final class PlanChangesRoutes {" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    public static final String API_PREFIX = \"/api/v1\";" },
+                          { "kind": "added", "text": "    private static final String CHANGES = \"/changes\";" },
+                          { "kind": "added", "text": "    private static final String FILE = \"/file\";" },
+                          { "kind": "added", "text": "    private static final String PATH_QUERY = \"path=\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private final String planPath;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private PlanChangesRoutes(String planPath) {" },
+                          { "kind": "added", "text": "        this.planPath = planPath;" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @param planId the plan's id" },
+                          { "kind": "added", "text": "     * @return the routes of that plan's changes" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public static PlanChangesRoutes plan(String planId) {" },
+                          { "kind": "added", "text": "        return new PlanChangesRoutes(API_PREFIX + \"/plans/\" + segment(planId));" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "}" }
                         ]
                       }
                     ],
@@ -3373,19 +3621,21 @@
                     "path": "pm-api/src/main/java/de/planmarshall/api/event/EventName.java",
                     "hunks": [
                       {
-                        "old_start": 41,
-                        "old_len": 2,
-                        "new_start": 41,
-                        "new_len": 1,
+                        "old_start": 40,
+                        "old_len": 3,
+                        "new_start": 40,
+                        "new_len": 9,
                         "lines": [
-                          {
-                            "kind": "removed",
-                            "text": " * The catalogue's plan.change_captured is not a member yet."
-                          },
-                          {
-                            "kind": "added",
-                            "text": " * The catalogue's plan.change_captured is the event of the changes package."
-                          }
+                          { "kind": "context", "text": "    PLAN_ENDED(\"plan.ended\")," },
+                          { "kind": "context", "text": "" },
+                          { "kind": "removed", "text": "    // The catalogue's plan.change_captured is not a member yet." },
+                          { "kind": "added", "text": "    // The catalogue's plan.change_captured is the event of the changes package." },
+                          { "kind": "added", "text": "    PLAN_CHANGE_CAPTURED(PlanChangeCapturedEvent.EVENT_NAME)," },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    private final String wire;" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    public String wire() {" },
+                          { "kind": "added", "text": "        return wire;" }
                         ]
                       }
                     ],
@@ -3396,19 +3646,16 @@
                     "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntryKind.java",
                     "hunks": [
                       {
-                        "old_start": 23,
-                        "old_len": 1,
-                        "new_start": 23,
-                        "new_len": 2,
+                        "old_start": 22,
+                        "old_len": 2,
+                        "new_start": 22,
+                        "new_len": 5,
                         "lines": [
-                          {
-                            "kind": "context",
-                            "text": "    LINK(\"link\"),"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "    MODEL_DIFFERS(\"model_differs\");"
-                          }
+                          { "kind": "context", "text": "    LINK(\"link\")," },
+                          { "kind": "context", "text": "" },
+                          { "kind": "added", "text": "    /** The harness answered a turn with another model than the launch model. */" },
+                          { "kind": "added", "text": "    MODEL_DIFFERS(\"model_differs\")," },
+                          { "kind": "added", "text": "" }
                         ]
                       }
                     ],
@@ -3419,23 +3666,26 @@
                     "path": "pm-api/src/main/java/de/planmarshall/api/process/ActivityEntry.java",
                     "hunks": [
                       {
-                        "old_start": 45,
-                        "old_len": 1,
-                        "new_start": 45,
-                        "new_len": 3,
+                        "old_start": 43,
+                        "old_len": 4,
+                        "new_start": 43,
+                        "new_len": 14,
                         "lines": [
-                          {
-                            "kind": "context",
-                            "text": "        List<String> questions"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "        , @Nullable String launchModel"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "        , @Nullable String servedModel"
-                          }
+                          { "kind": "context", "text": "        List<String> questions" },
+                          { "kind": "context", "text": "        , @Nullable String content" },
+                          { "kind": "context", "text": ") {" },
+                          { "kind": "removed", "text": "    // The model that answered is the task's launch model." },
+                          { "kind": "added", "text": "    private static final String FIELD_LAUNCH_MODEL = \"launch_model\";" },
+                          { "kind": "added", "text": "    private static final String FIELD_SERVED_MODEL = \"served_model\";" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    /**" },
+                          { "kind": "added", "text": "     * @return the model the worker was launched with, or {@code null}" },
+                          { "kind": "added", "text": "     */" },
+                          { "kind": "added", "text": "    public @Nullable String launchModel() {" },
+                          { "kind": "added", "text": "        return launchModel;" },
+                          { "kind": "added", "text": "    }" },
+                          { "kind": "added", "text": "" },
+                          { "kind": "added", "text": "    // A model_differs entry names both models; the head keeps the launch model." }
                         ]
                       }
                     ],
@@ -3449,16 +3699,11 @@
                         "old_start": 3069,
                         "old_len": 1,
                         "new_start": 3069,
-                        "new_len": 2,
+                        "new_len": 3,
                         "lines": [
-                          {
-                            "kind": "context",
-                            "text": "            ],"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "            \"plan_changes\": ["
-                          }
+                          { "kind": "context", "text": "            ]," },
+                          { "kind": "added", "text": "            \"plan_changes\": [" },
+                          { "kind": "added", "text": "              {\"plan_id\": \"fix-relay\", \"state\": \"captured\"}" }
                         ]
                       }
                     ],
@@ -3470,22 +3715,13 @@
                     "hunks": [
                       {
                         "old_start": 1,
-                        "old_len": 2,
+                        "old_len": 1,
                         "new_start": 1,
-                        "new_len": 3,
+                        "new_len": 2,
                         "lines": [
-                          {
-                            "kind": "removed",
-                            "text": "export const tabs = [];"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "export const tabs = ['changes'];"
-                          },
-                          {
-                            "kind": "added",
-                            "text": "// the plan's changes, read from the runtime"
-                          }
+                          { "kind": "removed", "text": "export const tabs = [];" },
+                          { "kind": "added", "text": "export const tabs = ['changes'];" },
+                          { "kind": "added", "text": "// \u001B[2Jthe plan's changes, read from the runtime" }
                         ]
                       }
                     ],

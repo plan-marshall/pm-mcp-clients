@@ -225,7 +225,8 @@ export const runtimeStore = writable<RuntimeState>(initialState);
 
 export function deriveStepFromState(stateId?: string): number {
   if (!stateId) return 1;
-  if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 1;
+  // The mode screen stands before step 1: the bar marks no step there (onboarding.adoc, Frame).
+  if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 0;
   if (stateId.startsWith('language.')) return 1;
   if (stateId.startsWith('harness.')) return 2;
   if (stateId.startsWith('models.') || stateId.startsWith('catalogue.')) return 3;

@@ -230,6 +230,8 @@ class OverviewFullScreenAppTest {
         assertTrue(OverviewFullScreenApp.isStructuralChange("task.completed", ""));
         assertTrue(OverviewFullScreenApp.isStructuralChange("needs_operator.changed", ""));
         assertTrue(OverviewFullScreenApp.isStructuralChange("reset", ""));
+        assertTrue(OverviewFullScreenApp.isStructuralChange("plan.change_captured", ""),
+                            "a capture is read again, as the design's Live section says");
 
         // By type
         assertTrue(OverviewFullScreenApp.isStructuralChange("", "project.something"));

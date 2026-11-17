@@ -27,9 +27,15 @@
 
   let { collapsed, onToggle, themeChoice, onChooseTheme }: Props = $props();
 
-  /** The brand is inert while the app has no usable page to open. */
+  /**
+   * The brand is inert while the app has no usable page to open.
+   *
+   * Before the machine is onboarded the onboarding fills the whole app (onboarding.adoc, Frame), so
+   * the brand opens nothing either: the frame carries it, and no destination is offered yet.
+   */
   const canGoHome = $derived(
     $runtimeStore.isPaired &&
+      $runtimeStore.isOnboarded &&
       !$runtimeStore.isRevoked &&
       !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
   );
