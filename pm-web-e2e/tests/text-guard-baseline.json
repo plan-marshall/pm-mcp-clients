@@ -26,18 +26,8 @@
       "en": []
     },
     "DecisionView": {
-      "de": [
-        {
-          "rule": "raw-enum",
-          "word": "ci_check"
-        }
-      ],
-      "en": [
-        {
-          "rule": "raw-enum",
-          "word": "ci_check"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "SystemView": {
       "de": [],

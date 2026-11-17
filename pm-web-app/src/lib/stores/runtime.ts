@@ -338,6 +338,9 @@ function subscribeToEvents(): void {
   eventsUnsubscribe = apiClient.subscribeEvents((event, data) => {
     handleRuntimeEvent(event, data);
   });
+  // A start or a reload finds decisions it never announced: the set is primed silently, never
+  // re-announced (`decisions.adoc#announce`).
+  void primeDecisionAnnouncer();
 }
 
 /**
@@ -720,8 +723,13 @@ export async function initRuntime(): Promise<void> {
   // The stream reports its own state, so the live indicator says what the connection does instead
   // of inferring it from a request that happened to fail.
   apiClient.setOnStreamState((state) => {
-    if (get(runtimeStore).streamState !== state) {
+    const previous = get(runtimeStore).streamState;
+    if (previous !== state) {
       runtimeStore.update((s) => ({ ...s, streamState: state }));
+    }
+    // The stream came back: what it missed while it was away is read, not announced.
+    if (state === 'connected' && (previous === 'reconnecting' || previous === 'offline')) {
+      void primeDecisionAnnouncer();
     }
   });
 
@@ -966,18 +974,232 @@ function handleReportEvent(event: string, data: unknown): void {
   }
 }
 
-/** A new or closed decision: the open count, and the quiet notice of an arrival. */
+/** The storage key of the notification permission the operator gave once. */
+const NOTIFY_KEY = 'pm_decision_notify';
+
+/** How long a burst of decisions collects before it makes one notification. */
+export const DECISION_BURST_MS = 1000;
+
+/** The fields of a decision an announcement names its subject by. */
+export interface AnnouncedDecision {
+  id: string;
+  subject?: string;
+  is_waiver?: boolean;
+}
+
+/** One notification the announcer asks the browser to show. */
+export interface AnnouncedNotification {
+  title: string;
+  onclick: () => void;
+}
+
+/** Everything the announcer reads and does, so a test drives it with a fake clock and a fake browser. */
+export interface DecisionAnnouncerDeps {
+  /** The permission the operator gave, read at the moment a notification would show. */
+  permission: () => 'granted' | 'denied' | 'default';
+  /**
+   * Whether the tab stands in front: a notification is for a tab nobody is looking at, while the
+   * quiet notice, the badge and the tab title carry the arrival on the page itself.
+   */
+  visible: () => boolean;
+  /** Reads the decisions that are open now, for the silent prime. */
+  openDecisions: () => Promise<ReadonlyArray<{ id: string }>>;
+  /** Shows one notification and wires its click. */
+  notify: (notification: AnnouncedNotification) => void;
+  /** Opens the list of open decisions. */
+  openList: () => void;
+  /** Opens one decision. */
+  openDecision: (id: string) => void;
+  setTimer: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>;
+}
+
+/** What the store and the views call. */
+export interface DecisionAnnouncer {
+  /** Primes the announced set from the open decisions, silently: start, reload and reconnect. */
+  prime: () => Promise<void>;
+  /** A decision arrived; it is announced once, inside its burst. */
+  decisionOpened: (decision: AnnouncedDecision) => void;
+  /** A decision closed; it is dropped from a burst that has not shown yet. */
+  decisionClosed: (id: string) => void;
+}
+
+/**
+ * The decision announcer (`decisions.adoc#announce`): one notification for what is new.
+ *
+ * It keeps the set of decisions it has announced, and the first read after a start, a reload or a
+ * reconnect primes that set silently — a decision the client finds by reading everything again is
+ * never announced. Decisions that arrive within one second make one notification, which opens the
+ * list of open decisions; a single one opens that decision. A decision answered before the
+ * notification shows is dropped from it, and nothing of a decision's content is ever carried: the
+ * title names its subject and its kind alone.
+ *
+ * The burst window opens with the first arrival and does not slide: a steady stream of decisions
+ * still makes one notification per second, so an announcement always arrives.
+ *
+ * @param deps the clock, the browser's notification, the open-decision read and the two ways to open
+ * @returns the announcer the event stream and the reconnect prime
+ */
+export function createDecisionAnnouncer(deps: DecisionAnnouncerDeps): DecisionAnnouncer {
+  /** The ids the announcer has announced, or primed silently. */
+  const announced = new Set<string>();
+  /** The decisions of the burst that has not shown yet. */
+  let burst: AnnouncedDecision[] = [];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Shows the burst and empties it. */
+  function flush(): void {
+    timer = null;
+    const collected = burst;
+    burst = [];
+    if (collected.length === 0 || deps.permission() !== 'granted' || deps.visible()) {
+      return;
+    }
+    if (collected.length === 1) {
+      const decision = collected[0];
+      deps.notify({
+        title: translate(get(currentLocale), 'decision.notify.title', notificationParams(decision)),
+        onclick: () => deps.openDecision(decision.id),
+      });
+      return;
+    }
+    deps.notify({
+      title: translate(get(currentLocale), 'decision.notify.several', { count: collected.length }),
+      onclick: () => deps.openList(),
+    });
+  }
+
+  return {
+    async prime(): Promise<void> {
+      try {
+        const open = await deps.openDecisions();
+        for (const decision of open) {
+          announced.add(decision.id);
+        }
+      } catch {
+        // An unreadable list primes nothing: the next arrival is then announced, which is the
+        // direction that tells the operator too much rather than nothing at all.
+      }
+    },
+
+    decisionOpened(decision: AnnouncedDecision): void {
+      if (announced.has(decision.id)) {
+        return;
+      }
+      announced.add(decision.id);
+      burst.push(decision);
+      timer ??= deps.setTimer(flush, DECISION_BURST_MS);
+    },
+
+    decisionClosed(id: string): void {
+      burst = burst.filter((decision) => decision.id !== id);
+    },
+  };
+}
+
+/**
+ * The parameters a notification's title names the decision's subject by.
+ *
+ * @param decision the announced decision
+ * @returns the subject, its name and the kind of decision
+ */
+export function notificationParams(decision: AnnouncedDecision): Record<string, string> {
+  const subject = decision.subject ?? '';
+  const kind = decision.is_waiver ? 'waiver' : 'decision';
+  if (subject.startsWith('epic ')) {
+    return { subject: 'epic', name: subject.slice('epic '.length), kind };
+  }
+  if (subject.startsWith('setup of ')) {
+    return { subject: 'setup', project: subject.slice('setup of '.length), kind };
+  }
+  if (subject.startsWith('start ')) {
+    return { subject: 'entry', project: subject.replace(/^start (in )?/, ''), kind };
+  }
+  return { subject: 'other', name: subject.replace(/^plan /, ''), kind };
+}
+
+/**
+ * @returns the permission the operator gave once, or the browser's own while they gave none
+ */
+function decisionNotifyPermission(): 'granted' | 'denied' | 'default' {
+  try {
+    const stored = window.localStorage.getItem(NOTIFY_KEY);
+    if (stored === 'granted' || stored === 'denied') {
+      return stored;
+    }
+    if (typeof Notification === 'undefined') {
+      return 'denied';
+    }
+    const permission = Notification.permission;
+    if (permission === 'granted') return 'granted';
+    if (permission === 'denied') return 'denied';
+    return 'default';
+  } catch {
+    return 'denied';
+  }
+}
+
+/** The announcer the app runs: the browser's notification, the runtime's list and the app's routes. */
+const decisionAnnouncer = createDecisionAnnouncer({
+  permission: decisionNotifyPermission,
+  visible: () => typeof document !== 'undefined' && document.visibilityState === 'visible',
+  openDecisions: async () => await apiClient.getDecisions(),
+  notify: ({ title, onclick }) => {
+    try {
+      const shown = new Notification(title);
+      shown.onclick = () => {
+        window.focus();
+        onclick();
+      };
+    } catch {
+      // A browser that refuses the notification leaves the tab title and the list to say so.
+    }
+  },
+  openList: () => pushRoute('decisions', {}),
+  openDecision: (id) => pushRoute('decision', { decisionId: id }),
+  setTimer: (callback, ms) => setTimeout(callback, ms),
+});
+
+/**
+ * Primes the announced set from the decisions open now, silently.
+ *
+ * @returns the prime, so a caller can wait for it
+ */
+export async function primeDecisionAnnouncer(): Promise<void> {
+  await decisionAnnouncer.prime();
+}
+
+/**
+ * @param data the payload of a decision event
+ * @returns the decision it names, or `null` when it names none
+ */
+function announcedDecisionOf(data: unknown): AnnouncedDecision | null {
+  const payload = (data ?? {}) as { decision?: AnnouncedDecision } & Partial<AnnouncedDecision>;
+  const decision = (payload.decision ?? payload) as Partial<AnnouncedDecision>;
+  return decision.id
+    ? { id: decision.id, subject: decision.subject, is_waiver: decision.is_waiver }
+    : null;
+}
+
+/** A new or closed decision: the open count, the announcement, and the quiet notice of an arrival. */
 function handleDecisionEvent(event: string, data: unknown): void {
   if (event === 'decision.opened') {
     const dec = (data || {}) as { title?: string; question?: string };
     const notice =
       dec.title || dec.question || translate(get(currentLocale), 'decision.arrival.quiet');
+    const announced = announcedDecisionOf(data);
+    if (announced) {
+      decisionAnnouncer.decisionOpened(announced);
+    }
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: s.openDecisionsCount + 1,
       quietDecisionNotice: notice,
     }));
   } else {
+    const closed = announcedDecisionOf(data);
+    if (closed) {
+      decisionAnnouncer.decisionClosed(closed.id);
+    }
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
