@@ -290,9 +290,9 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Decline
 |Lehne ab
 
-|`decision.waiver.later`
-|Later
-|Später
+|`decision.waiver.later.title`
+|Leave the waiver request open; it stays in the list
+|Lass die Waiver-Anfrage offen; sie bleibt in der Liste
 
 |`decision.answer.chat`
 |chat about it first
