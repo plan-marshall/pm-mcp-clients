@@ -1,5 +1,6 @@
 import { writable, derived, get } from 'svelte/store';
 import { apiClient } from '../api/client';
+import { reloadDeferred } from '../stores/reloadDeferred';
 
 export type Locale = 'en' | 'de';
 
@@ -38,6 +39,34 @@ interface CachedCatalogue {
 
 export const currentLocale = writable<Locale>('en');
 export const messagesStore = writable<Record<string, string>>({});
+
+/**
+ * Keeps the document's declared language on the language it shows.
+ *
+ * `src/app.html` declares English for the first paint; every page after it — the pairing page
+ * included, which the root layout initialises — declares the locale the screen is written in, so a
+ * screen reader never reads German text as English.
+ */
+currentLocale.subscribe((locale) => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = locale;
+});
+
+/**
+ * The language the operator asked for while the reload was deferred, applied when it is released.
+ *
+ * The page is then the old release's code and its request could ask for keys the newer runtime has
+ * retired, so the choice waits for the reload instead of fetching a pack now
+ * (texts-and-languages.adoc, Keys and Packs, Delivery).
+ */
+let pendingLocale: Locale | null = null;
+
+reloadDeferred.subscribe((deferred) => {
+  if (deferred || pendingLocale === null) return;
+  const requested = pendingLocale;
+  pendingLocale = null;
+  void setLocale(requested);
+});
 
 function skipWhitespace(text: string, startIndex: number): number {
   let i = startIndex;
@@ -335,6 +364,22 @@ const sessionMessages: Record<Locale, Record<string, string>> = {
   de: Object.create(null),
 };
 
+/**
+ * The catalogue areas this session already holds per locale.
+ *
+ * A deferred reload may only render what is already held: see {@link holdsPack}.
+ */
+const heldAreas: Record<Locale, Set<string>> = { en: new Set(), de: new Set() };
+
+/**
+ * @param locale the locale @param area the catalogue area
+ * @returns whether the area's pack is already in hand, so a deferred reload may use it
+ */
+function holdsPack(locale: Locale, area: string): boolean {
+  if (area === 'all') return loadCachedCatalogue(locale) !== null;
+  return heldAreas[locale].has(area);
+}
+
 /** The English catalogue, the fallback of every other locale. */
 let englishMessages: Record<string, string> | null = null;
 let englishLookupAttempted = false;
@@ -374,6 +419,7 @@ function englishCatalogue(): Record<string, string> | null {
 function hydrateFromCache(locale: Locale): boolean {
   const cached = loadCachedCatalogue(locale);
   if (!cached) return false;
+  heldAreas[locale].add('all');
   if (locale === get(currentLocale)) {
     messagesStore.set(cached);
     messagesLocale = locale;
@@ -454,8 +500,14 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   if (area === 'all') {
     hydrateFromCache(locale);
   }
+  if (get(reloadDeferred) && !holdsPack(locale, area)) {
+    // The page is still the old release's code: a pack it does not hold waits for the reload,
+    // because the newer runtime may have retired the keys the old code asks for.
+    return;
+  }
   try {
     const msgs = await apiClient.getMessages(locale, area);
+    heldAreas[locale].add(area);
     const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
     // A slow response must not replace the catalogue of a locale the person has switched to
     // since the request began: the store follows the active locale only.
@@ -502,6 +554,15 @@ export async function setLocale(locale: Locale): Promise<void> {
     return;
   }
 
+  if (get(reloadDeferred) && loadCachedCatalogue(locale) === null) {
+    // The reload waits for unsent input and the page is the old release's code: a pack that is not
+    // in hand is not fetched now, because the newer runtime may have retired the keys this code
+    // asks for. The choice is kept and applied when the reload is released.
+    pendingLocale = locale;
+    rememberLocaleChoice(locale);
+    return;
+  }
+
   const loaded = await loadCatalogueFor(locale);
   if (!loaded || generation !== switchGeneration) {
     // Nothing was loaded, or a later switch has been asked for since: the language and its
@@ -543,18 +604,21 @@ function rememberLocaleChoice(locale: Locale): void {
 async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
   const cached = loadCachedCatalogue(locale);
   if (cached && catalogueVersion !== null) {
+    heldAreas[locale].add('all');
     rememberMessages(locale, cached);
     rememberEnglish(locale, cached);
     return cached;
   }
   try {
     const messages = await apiClient.getMessages(locale, 'all');
+    heldAreas[locale].add('all');
     rememberMessages(locale, messages);
     rememberEnglish(locale, messages);
     persistCatalogue(locale, messages);
     return messages;
   } catch {
     if (cached) {
+      heldAreas[locale].add('all');
       rememberMessages(locale, cached);
       rememberEnglish(locale, cached);
       return cached;

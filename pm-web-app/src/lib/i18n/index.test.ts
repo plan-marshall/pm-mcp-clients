@@ -14,6 +14,7 @@ import {
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
+import { setReloadDeferred } from '../stores/reloadDeferred';
 
 describe('i18n dynamic message formatting', () => {
   beforeEach(() => {
@@ -458,5 +459,142 @@ describe('the locale switch never mixes the two catalogues', () => {
 
     // Assert: the later entry wins, whatever order the storage lists the keys in.
     expect(cached?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
+  });
+});
+
+describe('a deferred reload never fetches a pack the old code does not hold', () => {
+  /** @param locale the locale @param messages its catalogue @returns a stored entry */
+  function catalogueEntry(locale: string, messages: Record<string, string>): string {
+    return JSON.stringify({ locale, cachedAt: '2026-10-01T08:00:00.000Z', messages });
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+    setReloadDeferred(false);
+  });
+
+  afterEach(() => {
+    setReloadDeferred(false);
+    setCatalogueVersion(null);
+  });
+
+  it('keeps the current locale, fetches nothing, and applies the choice when the reload is released', async () => {
+    // Arrange: the reload waits for unsent input, and German is not in the cache.
+    const getMessages = vi
+      .spyOn(apiClient, 'getMessages')
+      .mockResolvedValue({ 'deferred.only.label': 'Deutsch' });
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert: no request left the page, and the screen keeps the language it shows.
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('en');
+
+    // Act: the operator sends the text and the reload proceeds.
+    setReloadDeferred(false);
+
+    // Assert: the kept choice is applied.
+    await vi.waitFor(() => expect(get(currentLocale)).toBe('de'));
+    expect(getMessages).toHaveBeenCalledWith('de', 'all');
+    expect(get(t)('deferred.only.label')).toBe('Deutsch');
+  });
+
+  it('switches to a cached locale at once while the reload waits', async () => {
+    // Arrange: German is in the hand of this browser already.
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      catalogueEntry('de', { 'deferred.cached.label': 'Aus dem Speicher' }),
+    );
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('de');
+    expect(get(t)('deferred.cached.label')).toBe('Aus dem Speicher');
+  });
+
+  it('fetches no area pack the session does not hold while the reload waits', async () => {
+    // Arrange
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await loadMessages('de', 'system');
+
+    // Assert
+    expect(getMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe('the page declares the language it shows', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+    setReloadDeferred(false);
+  });
+
+  afterEach(() => {
+    document.documentElement.lang = 'en';
+    setCatalogueVersion(null);
+    vi.unstubAllGlobals();
+  });
+
+  it('follows the locale to German and back to English', async () => {
+    // Arrange: both catalogues are in the hand of this browser.
+    setCatalogueVersion('0.9.1');
+    for (const locale of ['en', 'de'] as const) {
+      localStorage.setItem(
+        `pm_i18n_messages_${locale}@0.9.1`,
+        JSON.stringify({
+          locale,
+          cachedAt: '2026-10-01T08:00:00.000Z',
+          messages: { 'lang.label': locale === 'de' ? 'Deutsch' : 'English' },
+        }),
+      );
+    }
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(document.documentElement.lang).toBe('de');
+
+    await setLocale('en');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('declares German on the first load of the pairing page in German', async () => {
+    // Arrange: the language this browser chose, as the pairing page finds it on its first load.
+    localStorage.setItem('pm_locale', 'de');
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      JSON.stringify({
+        locale: 'de',
+        cachedAt: '2026-10-01T08:00:00.000Z',
+        messages: { 'pair.first.label': 'Koppeln' },
+      }),
+    );
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    vi.resetModules();
+    const fresh = await import('./index');
+
+    // Act: what the root layout does for every route, the pairing page included.
+    await fresh.initI18n();
+
+    // Assert
+    expect(document.documentElement.lang).toBe('de');
   });
 });
