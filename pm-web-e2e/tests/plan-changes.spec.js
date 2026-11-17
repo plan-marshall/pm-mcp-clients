@@ -67,8 +67,8 @@ test.describe('A plan’s changes (PLAN-164)', () => {
     );
     const hunks = page.locator('[data-testid="change-hunks"]');
     await expect(hunks).toBeVisible();
-    await expect(hunks.locator('[data-testid="diff-line"]').first()).toBeVisible();
-    await expect(hunks.locator('[data-testid="line-old"]').first()).toHaveText('1');
+    await expect(hunks.locator('[data-testid="diff-line"]').first()).toContainText('/*');
+    await expect(hunks.locator('[data-testid="line-new"]').first()).toHaveText('1');
 
     await testInfo.attach('plan-changes-tab', {
       body: await page.screenshot({ fullPage: false }),
