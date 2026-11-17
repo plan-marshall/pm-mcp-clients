@@ -14,7 +14,7 @@
  * filled.
  */
 
-import type { Address } from '../routes';
+import { formatAddress, type Address } from '../routes';
 
 /** The grouping of the overview's list: by plan or by epic. */
 export type PlaceGrouping = 'plan' | 'epic';
@@ -154,23 +154,10 @@ export function addressOfPlace(place: RememberedPlace, facts: PlaceFacts): Addre
 /** The bare addresses the remembered place may fill: `/` and the unfilled `/overview`. */
 export function isFillableStart(address: Address | null): boolean {
   if (!address) return false;
-  // `/` is the list of what waits; `/?lens=waits` is a full address and is never filled, and
-  // neither is an address that carries anything else of the query scheme.
-  if (address.route === 'inbox') {
-    return (
-      address.lens === undefined &&
-      !address.project &&
-      !address.mode &&
-      !address.group &&
-      !address.follow &&
-      !address.open &&
-      !address.chat &&
-      !address.tab &&
-      !address.node &&
-      !address.file &&
-      !address.turn
-    );
-  }
+  // `/` is the list of what waits: only the address that serialises to the bare root is fillable,
+  // so `?lens=waits` and every other key of the scheme keep the address as it was written. The
+  // answer comes from the one address model, never from a copy of its field list.
+  if (address.route === 'inbox') return formatAddress(address) === '/';
   return (
     address.route === 'overview' &&
     !address.project &&
