@@ -94,6 +94,9 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     await expect(groups.nth(1)).toContainText('pm-mcp-core');
     await expect(groups.nth(1)).toContainText('session-log asks for a waiver');
 
+    // The view names itself in the tab, with the count the tab title carries (needs-and-find.adoc).
+    await expect(page).toHaveTitle(/Decisions$/);
+
     // A row carries the subject, the phase and the one line under it.
     const row = page.locator('.decisions-row[data-decision-id="Q-007"]');
     await expect(row).toContainText('Resolve rebase conflict');
@@ -245,6 +248,10 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
    */
   async function recordNotifications(page) {
     await page.addInitScript(() => {
+      // The announcer notifies only for a tab nobody is looking at (`decisions.adoc#announce`),
+      // so the checked page reports itself in the background.
+      Object.defineProperty(document, 'visibilityState', { get: () => 'hidden' });
+      Object.defineProperty(document, 'hidden', { get: () => true });
       window.__notifications = [];
       window.__notificationClicks = [];
       class FakeNotification {
