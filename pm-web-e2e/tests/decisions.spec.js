@@ -131,6 +131,11 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     const detail = await openDecision(page, 'Q-007');
 
     await detail.getByText('Rebase onto main', { exact: true }).click();
+    // The next row the list draws, read before the decision leaves it.
+    const ids = await page
+      .locator('.decisions-row')
+      .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-decision-id')));
+    const successor = ids[ids.indexOf('Q-007') + 1];
     // `Enter` belongs to the decision's own surface, not to the option it was chosen on.
     await page.locator('.decision-title').focus();
     await page.keyboard.press('Enter');
@@ -143,9 +148,9 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     // decision that was just answered.
     await expect(page.getByTestId('decision-detail')).toHaveAttribute(
       'data-decision-id',
-      'WR-3',
+      successor,
     );
-    await expect(page).toHaveURL(/\/decisions\/WR-3$/);
+    await expect(page).toHaveURL(new RegExp(`/decisions/${successor}$`));
   });
 
   test('a decision answered from the console says where it was answered', async ({ page, request }) => {
@@ -205,12 +210,13 @@ test.describe('Decisions as a triage list (UC-PLN-2)', () => {
     const detail = await openDecision(page, 'Q-012');
 
     await expect(detail).toContainText('Answer part 1 first.');
-    await expect(detail.getByText('At the first start of the new release')).toHaveCount(0);
+    // The part's own choice control is what waits; its question stands in the waiting line above.
+    await expect(detail.getByTestId('options-Q-012-1')).toHaveCount(0);
 
     await detail.getByText('A file per plan', { exact: true }).click();
 
     await expect(detail).toContainText('depends on part 1: A file per plan');
-    await expect(detail.getByText('At the first start of the new release')).toBeVisible();
+    await expect(detail.getByTestId('options-Q-012-1')).toBeVisible();
   });
 
   test('waives a gate only with its reason', async ({ page }) => {
