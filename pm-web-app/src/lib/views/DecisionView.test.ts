@@ -1136,6 +1136,17 @@ describe('DecisionView component', () => {
       expect(await screen.findByTestId('decision-notices')).toHaveTextContent(line);
     });
 
+    it('dismisses a notice', async () => {
+      const emit = await openTheChat();
+      await emit('decision.closed', { id: 'dec-101', outcome: 'answered' });
+      const notices = await screen.findByTestId('decision-notices');
+      expect(notices).toHaveTextContent('dec-101 is answered');
+
+      await fireEvent.click(within(notices).getByRole('button', { name: 'Close' }));
+
+      expect(screen.queryByTestId('decision-notices')).toBeNull();
+    });
+
     it('closes the chat when the decision is revised', async () => {
       const emit = await openTheChat();
 
@@ -1324,7 +1335,14 @@ describe('DecisionView component', () => {
       const emit = captureEvents();
       vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([multipartDecision]);
       const detail = await renderOpen('dec-multipart');
-      await fireEvent.click(within(detail).getByText('A file per plan', { exact: true }));
+      const group = (index: number) => within(detail).getByTestId(`options-dec-multipart-${index}`);
+
+      await fireEvent.click(group(0).querySelector('input') as HTMLInputElement);
+      await waitFor(() =>
+        expect(within(detail).getByTestId('options-dec-multipart-1')).toBeInTheDocument(),
+      );
+      await fireEvent.click(group(1).querySelector('input') as HTMLInputElement);
+      expect(within(detail).getByRole('button', { name: 'Decide' })).toBeEnabled();
 
       await emit('decision.changed', {
         decision: { ...multipartDecision, revision: 2 },
@@ -1335,6 +1353,7 @@ describe('DecisionView component', () => {
         'The decision changed: the migration part changed. Please answer again.',
       );
       expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
+      expect(group(0).querySelector('input:checked')).toBeNull();
     });
 
     it('records an own-words answer for one part without closing the decision', async () => {
@@ -1345,6 +1364,11 @@ describe('DecisionView component', () => {
         },
       ]);
       const detail = await renderOpen('dec-multipart');
+      vi.spyOn(apiClient, 'interpretDecision').mockResolvedValue({
+        interpretation_type: 'OPTION',
+        mapped_option_key: '1',
+        read_back_text: 'A file per plan',
+      });
 
       await fireEvent.click(within(detail).getAllByText('in my own words')[0]);
       await fireEvent.input(screen.getByTestId('own-words-dec-multipart-0'), {
@@ -1352,10 +1376,16 @@ describe('DecisionView component', () => {
       });
       await fireEvent.click(within(detail).getByRole('button', { name: 'Read back' }));
 
-      expect(await screen.findByText('I understood: Rebase onto main')).toBeInTheDocument();
+      expect(await screen.findByText('I understood: A file per plan')).toBeInTheDocument();
       await fireEvent.click(within(detail).getByRole('button', { name: 'Correct' }));
 
       expect(apiClient.answerDecision).not.toHaveBeenCalled();
+      // The part keeps the answer the read-back mapped it to, and the decision does not close.
+      expect(
+        (within(detail)
+          .getByTestId('options-dec-multipart-0')
+          .querySelector('input:checked') as HTMLInputElement).value,
+      ).toBe('1');
       expect(screen.getAllByText('How is it migrated?').length).toBeGreaterThan(0);
       expect(screen.getByRole('button', { name: 'Decide' })).toBeDisabled();
     });

@@ -1574,7 +1574,11 @@
         </div>
       {/if}
 
-      <p class="part-question">{part.question}</p>
+      {#if !partAvailable(dec, part, pIdx)}
+        <!-- The question of a part that is offered is the legend of its choice control; a part
+             that waits has no control yet and keeps its question here. -->
+        <p class="part-question">{part.question}</p>
+      {/if}
 
       {#if part.dependency}
         {#if partAvailable(dec, part, pIdx)}

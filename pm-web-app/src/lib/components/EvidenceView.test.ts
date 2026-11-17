@@ -34,6 +34,7 @@ describe('EvidenceView', () => {
     render(EvidenceView, {
       props: {
         evidence: {
+          '\u001b[35mgate\u001b[0m': 'ready',
           summary: '\u001b[31mred\u001b[0m text',
           file: { path: '\u001b[32msrc/App.svelte', lines: '1-2' },
           unknown: { note: '\u001b[33mfolded\u001b[0m' },

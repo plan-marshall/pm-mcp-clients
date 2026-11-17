@@ -107,9 +107,10 @@
    * @returns the field
    */
   function fieldOf(key: string, value: unknown): Field {
-    const label = plainLabel(key);
+    const cleanKey = stripControlSequences(key);
+    const label = stripControlSequences(plainLabel(cleanKey));
     if (isScalar(value)) {
-      return { key, label, text: textOf(value) };
+      return { key: cleanKey, label, text: textOf(value) };
     }
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       const record = value as Record<string, unknown>;
@@ -117,7 +118,7 @@
       if (fileKey !== undefined) {
         const lines = record['lines'];
         return {
-          key,
+          key: cleanKey,
           label,
           file: stripControlSequences(String(record[fileKey])),
           lines:
@@ -128,7 +129,7 @@
         };
       }
     }
-    return { key, label, structure: value };
+    return { key: cleanKey, label, structure: value };
   }
 
   const fields = $derived.by<Field[]>(() =>
