@@ -8376,12 +8376,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         if (state.startsWith("defaults.reconfigure")) {
-            for (var key : List.of(KEY_LANDING, KEY_METHOD, KEY_ASKING)) {
-                var chosen = JsonTree.string(body, key);
-                if (chosen != null && !chosen.isBlank()) {
-                    machinePlanDefaults.put(key, chosen);
-                }
-            }
+            recordPlanDefaults(body);
             return;
         }
         if (state.startsWith("store.reconfigure")) {
@@ -8394,6 +8389,33 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (state.startsWith("providers.reconfigure")) {
             var verify = Boolean.parseBoolean(JsonTree.string(body, KEY_VERIFY));
             machineProvidersVerified = verify && providerCheckSucceeds();
+        }
+    }
+
+    /**
+     * Records the plan defaults a later run submitted.
+     *
+     * The three required lines keep what is stored when the body omits them. The posture is the
+     * later run's own line: an absent key keeps what is stored, and a null clears it, which is what
+     * *Not set* sends.
+     *
+     * @param body the step's request body
+     */
+    private void recordPlanDefaults(Map<String, Object> body) {
+        for (var key : List.of(KEY_LANDING, KEY_METHOD, KEY_ASKING)) {
+            var chosen = JsonTree.string(body, key);
+            if (chosen != null && !chosen.isBlank()) {
+                machinePlanDefaults.put(key, chosen);
+            }
+        }
+        if (!body.containsKey(KEY_POSTURE)) {
+            return;
+        }
+        var posture = JsonTree.string(body, KEY_POSTURE);
+        if (posture == null || posture.isBlank()) {
+            machinePlanDefaults.remove(KEY_POSTURE);
+        } else {
+            machinePlanDefaults.put(KEY_POSTURE, posture);
         }
     }
 

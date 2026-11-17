@@ -1,6 +1,7 @@
 <script lang="ts">
   import { type Snippet } from 'svelte';
   import type { ThemeChoice } from '../theme';
+  import { runtimeStore } from '../stores/runtime';
   import NavRail from './NavRail.svelte';
   import TopBar from './TopBar.svelte';
   import BottomBar from './BottomBar.svelte';
@@ -43,7 +44,10 @@
 
   <BottomBar {themeChoice} {onChooseTheme} />
 
-  <CommandPalette />
+  <!-- The onboarding fills the whole app and offers no search: the palette opens no page yet. -->
+  {#if $runtimeStore.isOnboarded}
+    <CommandPalette />
+  {/if}
 </div>
 
 <style>

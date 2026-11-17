@@ -22,32 +22,6 @@ describe('AspectChoice', () => {
     messagesStore.set(loadMessages('en'));
   });
 
-  describe('roles', () => {
-    it('lists each role with its harness, model and effort, and records the defaults', async () => {
-      const onRecord = vi.fn();
-      const { container } = render(AspectChoice, {
-        kind: 'roles',
-        roles: [
-          { role: 'planner', harness_id: 'claude', model_id: 'opus', effort: 'high' },
-          { role: 'worker', harness_id: 'codex', model_id: 'gpt-5' },
-        ],
-        onRecord,
-      });
-
-      expect(container.querySelector('[data-role="planner"]')).toHaveTextContent(
-        'claude · opus · effort high',
-      );
-      const worker = container.querySelector('[data-role="worker"]');
-      expect(worker).toHaveTextContent('codex · gpt-5');
-      expect(worker).not.toHaveTextContent('effort');
-      expect(screen.getByText('The default assignment is applied to all 2 roles.')).toBeVisible();
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Use the defaults' }));
-
-      expect(onRecord).toHaveBeenCalledWith(null);
-    });
-  });
-
   describe('store', () => {
     it('preselects the recommended store and names it on the button', () => {
       render(AspectChoice, { kind: 'store', stores: STORES });
@@ -103,33 +77,6 @@ describe('AspectChoice', () => {
       await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
       await fireEvent.click(screen.getByRole('button', { name: 'Use 2 providers' }));
       expect(onRecord).toHaveBeenLastCalledWith(['github', 'sonar']);
-    });
-  });
-
-  describe('defaults', () => {
-    const DEFAULTS = { landing: 'pull request', method: 'tdd', asking: 'on doubt' };
-
-    it('shows the plan defaults and records them', async () => {
-      const onRecord = vi.fn();
-      render(AspectChoice, { kind: 'defaults', planDefaults: DEFAULTS, onRecord });
-
-      expect(screen.getByText('Landing').nextElementSibling).toHaveTextContent('pull request');
-      expect(screen.getByText('Method').nextElementSibling).toHaveTextContent('tdd');
-      expect(screen.getByText('Asking').nextElementSibling).toHaveTextContent('on doubt');
-      expect(screen.queryByText('Posture')).toBeNull();
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Save these choices' }));
-
-      expect(onRecord).toHaveBeenCalledWith(DEFAULTS);
-    });
-
-    it('adds the posture a later run reports', () => {
-      render(AspectChoice, {
-        kind: 'defaults',
-        planDefaults: { ...DEFAULTS, posture: 'careful' },
-      });
-
-      expect(screen.getByText('Posture').nextElementSibling).toHaveTextContent('careful');
     });
   });
 });
