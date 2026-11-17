@@ -1365,7 +1365,30 @@ describe('PlanView’s Changes tab', () => {
       not_measured: false,
     },
     current_position_path: ['execute'],
-    nodes: [],
+    nodes: [
+      {
+        node_id: 'execute',
+        title: 'execute',
+        kind: 'phase',
+        state: 'running',
+        run_count: 1,
+        current_run: 1,
+        duration_seconds: 1500,
+        sub_nodes: [],
+        leaf_tasks: [
+          {
+            task_id: 'TASK-003',
+            role: 'implement',
+            harness: 'claude',
+            model: 'sonnet',
+            attempt: 1,
+            status: 'running',
+            duration_seconds: 360,
+            tokens_so_far: 48000,
+          },
+        ],
+      },
+    ],
     change: { files: 12, insertions: 340, deletions: 27, unplanned: 2 },
   };
 
@@ -1438,6 +1461,8 @@ describe('PlanView’s Changes tab', () => {
         selectedTaskId: null,
       }),
     );
+    // The plan view stands at the plan's own address: the tab and the file are written beside it.
+    window.history.replaceState({}, '', '/plans/fix-relay');
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(capturedPlan);
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(capture);
