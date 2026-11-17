@@ -45,7 +45,8 @@ async function openEpicFromOverview(page, title = 'Relay Hardening') {
   await page.getByRole('radio', { name: /by epic/i }).click();
   const card = page.getByTestId('epic-card').filter({ hasText: title });
   await expect(card).toBeVisible();
-  await card.click();
+  // The epic's own head opens the epic; a plan row below it opens its plan.
+  await card.locator('.work-card__header .work-card__open').click();
 
   await expect(page.getByTestId('epic-view')).toBeVisible();
 }
