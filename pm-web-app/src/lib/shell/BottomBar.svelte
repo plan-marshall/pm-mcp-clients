@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { runtimeStore, navigateTo, openAttention, openRunningWork } from '../stores/runtime';
-  import { attentionStore } from '../stores/attention';
-  import { currentLocale, setLocale, t } from '../i18n';
+import { runtimeStore, navigateTo, openAttention, openRunningWork } from '../stores/runtime';
+import { attentionStore } from '../stores/attention';
+import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
   import { RAIL_GROUPS, BOTTOM_ITEMS, activeNavRoute, type ShellNavItem } from './nav';
   import Dialog from '../components/Dialog.svelte';

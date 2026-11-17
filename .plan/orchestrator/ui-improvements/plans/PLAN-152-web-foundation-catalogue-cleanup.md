@@ -181,6 +181,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 7 contradicted: getMessages is reached by setLocale and adoptRecordedLocale (runtime.ts:848) via loadCatalogueFor and by initI18n:673-677; no view calls loadMessages(area) so first-open-of-a-view path does not exist
 - Already done: `web.common.retry` merged into `common.action.retry` (#399); `overview.needs.waiver_request` removed (#426). Readers changed: re-run the inventory. No view calls `loadMessages(area)`.
 
+## Emit Amendment 2026-11-17 (handle-open decision 2026-11-15, operator)
+
+Source: `epic.md` § Watches, the `<html lang>` entry (decided 2026-11-15; the entry stays open until the writer lands). This amendment adds one clause and an overlap note; it supersedes nothing above.
+
+- **`<html lang>` follows the language.** `pm-web-app/src/app.html:2` reads `<html lang="en">` and no code in `pm-web-app/src` writes `document.documentElement.lang`, so every German page declares English to a screen reader. The writer belongs where the locale changes: a subscription on `currentLocale` in `pm-web-app/src/lib/i18n/index.ts` (the file this spec already reasons about at `setLocale`) that sets `document.documentElement.lang`; the `app.html` default stays `en`. It must also hold at the first load of the pairing page, not only on a change of language: read at the outline how that page picks its language. Re-read at the outline whether `lang` is still `en` at HEAD and whether `src/app.html` or the i18n module still has these shapes.
+  - Done when: a unit test pins `document.documentElement.lang` to `de` after the locale is set to German and back to `en` after English, and the pairing page's first load in German carries `de` (evidence order: `test-first`). Add `pm-web-app/src/app.html` and its test to the Expected Surface.
+- **Overlap with running PLAN-51 (operator, 2026-11-17, `AskUserQuestion`: emit now).** Four files are shared: `pm-api/src/main/resources/messages/decisions.en.properties`, `pm-api/src/main/resources/messages/decisions.de.properties`, `pm-web-app/src/lib/views/DecisionView.svelte`, `doc/design/shared/decisions-texts.adoc`. Whichever pull request lands second merges `main` into its branch and keeps both sides' keys and wording; never overwrite the other plan's catalogue entries. PLAN-52 (landed, `d79cc5f1`) changed `OverviewView.svelte`, `PhaseLabel.svelte` and `components-tags.adoc`: re-read the `overview.*` readers and `PhaseLabel`'s `state.unknown` at HEAD before counting a key unused. PLAN-49 and PLAN-64 landed too: re-read the `overview.needs.*` and onboarding keys they added.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

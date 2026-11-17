@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Address } from '../routes';
 import { formatAddress, parseAddress } from '../routes';
 import {
@@ -186,5 +186,81 @@ describe('a tab switch', () => {
 
   it('replaces the address rather than pushing', () => {
     expect(intentFor(PLAN, switchTab(PLAN, 'intent'))).toBe('replace');
+  });
+});
+
+describe('the mark of a load', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/');
+    vi.resetModules();
+  });
+
+  it('treats a load without the mark as opened from outside and writes none', async () => {
+    const { openedFromOutside } = await import('./history');
+
+    expect(openedFromOutside()).toBe(true);
+    expect(window.history.state).toBeNull();
+  });
+
+  it('answers the app’s own for an entry that still carries the mark', async () => {
+    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+
+    const { openedFromOutside } = await import('./history');
+
+    expect(openedFromOutside()).toBe(false);
+  });
+
+  it.each(['reload', 'back_forward'] as const)(
+    're-applies the mark the framework dropped on hydration of a %s, by a replace',
+    async (type) => {
+      window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+      vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+        { type } as unknown as PerformanceNavigationTiming,
+      ]);
+      const { openedFromOutside } = await import('./history');
+
+      const replaceSpy = vi.spyOn(window.history, 'replaceState');
+      const pushSpy = vi.spyOn(window.history, 'pushState');
+      // SvelteKit replaces `history.state` on client hydration, so the mark is gone from the entry.
+      window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+      replaceSpy.mockClear();
+
+      expect(openedFromOutside()).toBe(false);
+      expect(window.history.state).toMatchObject({
+        from: 'sveltekit',
+        path: '/overview',
+        [APP_MARK]: true,
+      });
+      // The address does not change: the entry is the same one, marked again.
+      expect(replaceSpy).toHaveBeenCalledTimes(1);
+      expect(pushSpy).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps a fresh navigation’s answer even after the app writes the mark', async () => {
+    const { openedFromOutside, writeAddress: write } = await import('./history');
+
+    expect(openedFromOutside()).toBe(true);
+    write(OVERVIEW, 'replace');
+
+    expect(carriesAppMark()).toBe(true);
+    expect(openedFromOutside()).toBe(true);
+  });
+
+  it('returns the answer to the load’s own state after a reset', async () => {
+    window.history.replaceState({ path: '/overview', [APP_MARK]: true }, '', '/overview');
+    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
+      { type: 'reload' } as unknown as PerformanceNavigationTiming,
+    ]);
+    const { openedFromOutside, resetOpenedFromOutside } = await import('./history');
+    expect(openedFromOutside()).toBe(false);
+
+    // The framework dropped the mark, and a test asks for another load of the app: the load began
+    // as a reload of the app's own entry, so it still answers so.
+    window.history.replaceState({ from: 'sveltekit' }, '', '/overview');
+    resetOpenedFromOutside();
+
+    expect(openedFromOutside()).toBe(false);
   });
 });

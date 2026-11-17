@@ -13,8 +13,10 @@
  * - every selection the app makes on its own (the fallback after a deletion, filling a bare lens,
  *   the next decision) replaces, even when it changes the depth.
  *
- * A pairing code lives in the fragment and is redeemed before the first write; no write of this
- * module ever puts a fragment in the address, so the code never reaches the history.
+ * One write does not change the address: `openedFromOutside` re-applies the mark to the current
+ * entry when the framework dropped it on hydration, so a reload of the app's own entry stays the
+ * app's own. A pairing code lives in the fragment and is redeemed before the first write; no write
+ * of this module ever puts a fragment in the address, so the code never reaches the history.
  */
 
 import { type Address, type ObjectTab, formatAddress, parseAddress } from '../routes';
@@ -47,24 +49,67 @@ export function carriesAppMark(state: unknown = history.state): boolean {
 /**
  * Whether this load was opened from outside the app: read once, at start, and remembered.
  *
- * The answer is taken before the app writes anything, so a write of this same load (the pairing
- * fragment dropped, the first address written) never changes it.
+ * A fresh document load answers from `history.state` before the app writes anything, so a write of
+ * this same load (the pairing fragment dropped, the first address written) never changes it. A
+ * reload or a history traversal of an entry the app wrote answers `false` from the mark the entry
+ * carried at start (`initialMarked`), because SvelteKit replaces `history.state` on client
+ * hydration: the answer is fixed for the load, and the mark is re-applied to the current entry so
+ * the next reload of it stays the app's own (a reload of an unfilled lens stays unfilled).
  *
  * @returns `true` when the load carried no mark of the app
  */
 export function openedFromOutside(): boolean {
   startMark ??= !carriesAppMark();
+  if (
+    startMark === false &&
+    typeof window !== 'undefined' &&
+    typeof history !== 'undefined' &&
+    !carriesAppMark(history.state)
+  ) {
+    window.history.replaceState(
+      {
+        ...(typeof history.state === 'object' && history.state !== null ? history.state : {}),
+        path: `${window.location.pathname}${window.location.search}`,
+        [APP_MARK]: true,
+      },
+      '',
+    );
+  }
   return startMark ?? false;
 }
 
+/**
+ * Whether the current document load came from a browser reload or history traversal rather than a
+ * fresh document navigation (`navigate`).
+ *
+ * @returns `true` when the navigation timing entry is `'reload'` or `'back_forward'`
+ */
+function isReloadOrHistoryTraversal(): boolean {
+  if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') {
+    return false;
+  }
+  const nav = performance.getEntriesByType('navigation')[0] as
+    | PerformanceNavigationTiming
+    | undefined;
+  return nav?.type === 'reload' || nav?.type === 'back_forward';
+}
+
 /** The answer of the first `openedFromOutside` of this load. */
-let startMark: boolean | null = null;
+const initialMarked =
+  typeof history !== 'undefined' &&
+  isReloadOrHistoryTraversal() &&
+  carriesAppMark(history.state);
+let startMark: boolean | null = initialMarked ? false : null;
 
 /**
  * Forgets the answer of `openedFromOutside`, for a test that simulates another load of the app.
+ *
+ * The answer returns to what the module read at load: a load that began as a reload of the app's
+ * own entry (`initialMarked`) keeps answering so, and any other load answers from the mark the
+ * entry carries at the next call.
  */
 export function resetOpenedFromOutside(): void {
-  startMark = null;
+  startMark = initialMarked ? false : null;
 }
 
 /**
