@@ -523,15 +523,45 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
     expect(get(t)('deferred.cached.label')).toBe('Aus dem Speicher');
   });
 
-  it('fetches no area pack the session does not hold while the reload waits', async () => {
-    // Arrange
+  it('fetches no pack while the reload waits, not even the one it holds', async () => {
+    // Arrange: the German pack is in hand, and the reload waits for unsent input.
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      catalogueEntry('de', { 'deferred.held.label': 'Aus dem Speicher' }),
+    );
     const getMessages = vi.spyOn(apiClient, 'getMessages');
     setReloadDeferred(true);
 
     // Act
+    await loadMessages('de', 'all');
     await loadMessages('de', 'system');
 
-    // Assert
+    // Assert: the old page renders what it holds, whatever the area holds, and asks for nothing.
+    expect(getMessages).not.toHaveBeenCalled();
+  });
+
+  it('lets a later choice of the language shown supersede the pending one', async () => {
+    // Arrange: the catalogue store settles on English, then a deferred request keeps German pending.
+    const getMessages = vi
+      .spyOn(apiClient, 'getMessages')
+      .mockResolvedValue({ 'deferred.superseded.label': 'English' });
+    await setLocale('en');
+    getMessages.mockClear();
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+    expect(get(currentLocale)).toBe('en');
+    await setLocale('en');
+
+    // Assert: no request leaves the page while it waits…
+    expect(getMessages).not.toHaveBeenCalled();
+
+    // …and the release applies no superseded choice.
+    setReloadDeferred(false);
+    await Promise.resolve();
+    expect(get(currentLocale)).toBe('en');
     expect(getMessages).not.toHaveBeenCalled();
   });
 });
