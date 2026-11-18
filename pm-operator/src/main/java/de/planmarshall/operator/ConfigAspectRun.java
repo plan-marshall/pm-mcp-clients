@@ -190,11 +190,6 @@ final class ConfigAspectRun {
             RefusalRenderer.render(err, locale, e);
             err.flush();
             return outcome(source, PmOperator.EXIT_FAILURE);
-        } catch (AspectRunSource.RefusedException refused) {
-            err.println(MessageCatalogue.format(locale, "operator.config.aspect_refused",
-                                Map.of(ASPECT, aspect, "status", refused.status())));
-            err.flush();
-            return outcome(source, PmOperator.EXIT_FAILURE);
         } catch (IOException _) {
             err.println(MessageCatalogue.format(locale, "operator.config.aspect_failed", Map.of(ASPECT, aspect)));
             err.flush();

@@ -621,7 +621,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the exit code of a run stopped at a choice it was not given
      */
     int previewThenStop(PrintWriter out, DeletePreview preview, int unchecked) {
-        out.println(previewText(preview, unchecked));
+        out.println(previewText(context.clientEnvironment().locale(), preview, unchecked));
         printWholeJobNote(out);
         out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice",
                             Map.of("option", "--yes")));
@@ -1153,7 +1153,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the consent prompt's title: the preview and its own question
      */
     static String consentTitle(DeletePreview preview, int unchecked, String locale, boolean wholeJob) {
-        var text = previewText(preview, unchecked);
+        var text = previewText(locale, preview, unchecked);
         if (wholeJob) {
             text = text + "\n  " + MessageCatalogue.format(locale, "operator.cleanup.choose.whole_job", Map.of());
         }
@@ -1259,15 +1259,17 @@ public final class CleanupCommand implements Callable<Integer> {
                             Math.max(reports, 0), Math.max(projects, 0), Math.max(freed, 0L));
     }
 
-    static String previewText(DeletePreview preview, int unchecked) {
+    static String previewText(String locale, DeletePreview preview, int unchecked) {
         var text = new StringBuilder();
-        text.append(String.format("Delete %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project?%n",
-                            preview.plans(), preview.epics(), preview.logs(), preview.reports(), preview.projects()));
-        text.append(String.format("  This frees %s. It cannot be undone.%n", SystemCommand.formatBytes(preview.freedBytes())));
-        text.append("  Branches, pull requests, the remote, the checkout, and an epic's ledger in the").append('\n');
-        text.append("  repository stay.");
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview", Map.of(
+                            "plans", preview.plans(), "epics", preview.epics(), "logs", preview.logs(),
+                            "reports", preview.reports(), "projects", preview.projects()))).append('\n');
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_frees",
+                            Map.of("size", SystemCommand.formatBytes(preview.freedBytes())))).append('\n');
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_keep", Map.of()));
         if (unchecked > 0) {
-            text.append(String.format("%n  %d unchecked item is kept for good.", unchecked));
+            text.append('\n').append(MessageCatalogue.format(locale,
+                                "operator.cleanup.delete_preview_unchecked", Map.of("count", unchecked)));
         }
         return text.toString();
     }

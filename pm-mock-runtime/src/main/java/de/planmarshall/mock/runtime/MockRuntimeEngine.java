@@ -2955,8 +2955,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 response.json(409, stale);
                 return true;
             }
-            // A direct submission link answers a state as the step route does: record it.
-            recordAspectAnswer(activeStateId, linkName, Objects.requireNonNullElse(parseBody(request.body()), Map.of()));
+            var answer = parseBody(request.body());
+            var answerBody = answer != null ? answer : Map.<String, Object>of();
+            if (activeStateId.startsWith("language.")) {
+                recordInterfaceLanguage(answerBody, activeStateId, linkName);
+            }
+            recordAspectAnswer(activeStateId, linkName, answerBody);
             transitionTo(linkDef.next());
             state = currentScenario.get().state(this.currentStateId.get());
         }

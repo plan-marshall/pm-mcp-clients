@@ -1126,7 +1126,7 @@ class CleanupCommandTest {
     void previewTextNamesTheCounts() {
         var preview = new CleanupCommand.DeletePreview(11, 2, 29, 5, 1, 1806906163L);
 
-        var text = CleanupCommand.previewText(preview, 1);
+        var text = CleanupCommand.previewText("en", preview, 1);
 
         assertAll(
                             () -> assertTrue(text.contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?"), text),

@@ -113,7 +113,8 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         if (deliverables.isEmpty()) {
             return;
         }
-        long done = deliverables.stream().filter(deliverable -> "done".equalsIgnoreCase(deliverable.state())).count();
+        long done = deliverables.stream()
+                            .filter(deliverable -> "done".equalsIgnoreCase(deliverable.state().trim())).count();
         rows.add(TuiRow.leaf("completion:deliverables", INDENT
                             + MessageCatalogue.format(locale, "report.completion.deliverables", Map.of())
                             + KEY_SEPARATOR + MessageCatalogue.format(locale, "report.completion.deliverables_done",

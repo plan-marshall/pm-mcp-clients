@@ -224,16 +224,18 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("rotate without recorded consent needs consent and exits 3 under --no-input")
+    @DisplayName("rotate without recorded consent asks and exits 3 when the consent is left")
     void rotateWithoutRecordedConsentNeedsConsent() throws Exception {
         verification(false, false);
 
-        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes", "--no-input");
+        var code = run(context("s3cret\nb\n"), "credentials", "rotate", "github", "--yes");
         var text = out.toString();
 
         assertAll(
                             () -> assertEquals(3, code, text + " | " + err),
-                            () -> assertFalse(text.contains("Consent remembered"), text));
+                            () -> assertFalse(text.contains("Consent remembered"), text),
+                            () -> assertFalse(text.contains("verified"), text),
+                            () -> assertFalse(steps.isEmpty(), "the run reached the settings steps: " + steps));
     }
 
     @Test

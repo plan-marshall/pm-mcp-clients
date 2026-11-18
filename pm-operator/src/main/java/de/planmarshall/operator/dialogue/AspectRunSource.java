@@ -46,25 +46,6 @@ public final class AspectRunSource implements StateDialogue.Source {
     /** The machine settings' operator wait, from which a later run is called and where it ends. */
     public static final String SETTINGS_STATE = "settings.choose";
 
-    /** The runtime refused a read or a step of the run: the status it answered with. */
-    public static final class RefusedException extends IOException {
-
-        private static final long serialVersionUID = 1L;
-        private final int status;
-
-        RefusedException(String what, int status) {
-            super(what + " answered HTTP " + status);
-            this.status = status;
-        }
-
-        /**
-         * @return the HTTP status the runtime answered with
-         */
-        public int status() {
-            return status;
-        }
-    }
-
     private static final String SETTINGS_LINK = "settings";
     private static final String RECONFIGURE_PREFIX = "reconfigure:";
     private static final String KIND = "kind";

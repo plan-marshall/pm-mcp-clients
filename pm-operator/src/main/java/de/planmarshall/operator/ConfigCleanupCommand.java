@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
@@ -393,7 +394,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             }
         }
         if (project == null) {
-            var recorded = recordMachine(out, locale, settings, durations, changes);
+            var recorded = recordMachine(out, locale, settings, changes);
             if (recorded == RECORD_KEPT) {
                 return 0;
             }
@@ -409,55 +410,70 @@ final class ConfigCleanupCommand implements Callable<Integer> {
     }
 
     private int recordMachine(PrintWriter out, String locale, MachineSettingsRecord settings,
-                        Map<String, Integer> durations, Map<String, Integer> changes) throws IOException {
+                        Map<String, Integer> changes) throws IOException {
         var recordDurations = merged(settings.cleanupDurations(), changes);
         var targetRevision = settings.revision();
         while (true) {
-            var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, recordDurations.toJson(),
-                                targetRevision);
-            var response = context.runtime(true).send(
-                                HttpRequest.json("PUT", ConfigCommand.MACHINE_SETTINGS_PATH, request.toJson()));
+            var response = sendMachineWrite(recordDurations, targetRevision);
             if (response.status() == 200 || response.status() == 204) {
                 return 0;
             }
-            if (response.status() == 409) {
-                var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());
-                var rendered = renderedCleanupConflict(locale, conflict.currentValue());
-                if (noInput) {
-                    out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(VALUE, rendered)));
-                    out.flush();
-                    return ConfigAspectRun.EXIT_MISSING_INPUT;
-                }
-                out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
+            if (response.status() != 409) {
+                out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
+                                    Map.of("status", response.status())));
                 out.flush();
-                if (!context.isInteractiveTerminal()) {
-                    out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
-                    out.flush();
-                    return ConfigAspectRun.EXIT_MISSING_INPUT;
-                }
-                if (!ConfigCommand.applyAgain(context, out, locale)) {
-                    out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
-                    out.flush();
-                    return RECORD_KEPT;
-                }
-                targetRevision = conflict.revision();
-                var current = currentDurationsOf(conflict.currentValue());
-                if (current == null) {
-                    // No readable value in the refusal: read what the machine holds now.
-                    current = rereadCleanupDurations();
-                }
-                if (current != null) {
-                    // Only the durations this run asked for change: a concurrent edit to another one
-                    // stays as the runtime has it.
-                    recordDurations = merged(current, changes);
-                }
-                continue;
+                return PmOperator.EXIT_FAILURE;
             }
-            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                Map.of("status", response.status())));
-            out.flush();
-            return PmOperator.EXIT_FAILURE;
+            var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());
+            var stop = stopAtConflict(out, locale, conflict);
+            if (stop != null) {
+                return stop;
+            }
+            targetRevision = conflict.revision();
+            var current = currentDurationsOf(conflict.currentValue());
+            if (current == null) {
+                current = rereadCleanupDurations();
+            }
+            if (current == null) {
+                out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
+            }
+            // Only the durations this run asked for change: a concurrent edit to another one stays.
+            recordDurations = merged(current, changes);
         }
+    }
+
+    private HttpResponse sendMachineWrite(CleanupDurations durations, int revision) throws IOException {
+        var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, durations.toJson(), revision);
+        return context.runtime(true).send(HttpRequest.json("PUT", ConfigCommand.MACHINE_SETTINGS_PATH,
+                            request.toJson()));
+    }
+
+    /**
+     * @return the exit code the run stops with at the conflict, or {@code null} when it retries
+     */
+    private @Nullable Integer stopAtConflict(PrintWriter out, String locale,
+                        MachineSettingsUpdateResult conflict) throws IOException {
+        var rendered = renderedCleanupConflict(locale, conflict.currentValue());
+        if (noInput) {
+            out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(VALUE, rendered)));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
+        out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(VALUE, rendered)));
+        out.flush();
+        if (!context.isInteractiveTerminal()) {
+            out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
+        if (!ConfigCommand.applyAgain(context, out, locale)) {
+            out.println(MessageCatalogue.format(locale, ConfigCommand.NO_SETTING, Map.of()));
+            out.flush();
+            return RECORD_KEPT;
+        }
+        return null;
     }
 
     private static String renderedCleanupConflict(String locale, @Nullable String currentValue) {
@@ -571,7 +587,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
      */
     private @Nullable CleanupDurations rereadCleanupDurations() {
         try {
-            return new ConfigCommand(context).readSettingsQuiet().cleanupDurations();
+            var settings = new ConfigCommand(context).readSettingsQuiet();
+            return settings != null ? settings.cleanupDurations() : null;
         } catch (IOException _) {
             return null;
         }
