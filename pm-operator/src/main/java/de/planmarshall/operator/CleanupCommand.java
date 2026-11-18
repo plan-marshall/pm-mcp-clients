@@ -885,7 +885,7 @@ public final class CleanupCommand implements Callable<Integer> {
         String label(String locale) {
             return this == REMIND
                                 ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey,
-                                                    Map.of("days", CleanupDurations.DEFAULT_REMIND_DAYS))
+                                Map.of("days", CleanupDurations.DEFAULT_REMIND_DAYS))
                                 : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 

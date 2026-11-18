@@ -1007,10 +1007,10 @@ class PlanCommandTest {
                                     () -> assertEquals(1, unknown, err.toString()),
                                     () -> assertTrue(unknownText.contains("\u2717 This entry does not exist"), unknownText),
                                     () -> assertTrue(unknownText.contains(
-                                                        "No plan, epic, decision, report or entry carries this id."),
+                                                                            "No plan, epic, decision, report or entry carries this id."),
                                                         unknownText),
                                     () -> assertTrue(unknownText.contains(
-                                                        "\u2192 Check the id or pick the entry from the list again."),
+                                                                            "\u2192 Check the id or pick the entry from the list again."),
                                                         unknownText),
                                     () -> assertFalse(unknownText.contains("Plan not-a-plan not found."),
                                                         "the English literal is gone: " + unknownText));
@@ -1064,7 +1064,7 @@ class PlanCommandTest {
             assertAll(
                                 () -> assertEquals(1, code, err.toString()),
                                 () -> assertTrue(out.toString().contains(
-                                                    "Keine solche Datei in den \u00c4nderungen des Plans: a/C.java"),
+                                                                        "Keine solche Datei in den \u00c4nderungen des Plans: a/C.java"),
                                                     out.toString()));
         }
 

@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -370,7 +371,7 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("an interactive answer refused as invalid prints the refusal and asks the part again")
     void interactiveInvalidAnswerAsksAgain() throws Exception {
-        var posts = new java.util.concurrent.atomic.AtomicInteger();
+        var posts = new AtomicInteger();
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, planEnvelope());

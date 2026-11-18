@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,6 +29,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.jline.terminal.impl.DumbTerminal;
+
+import de.planmarshall.api.overview.ActivePlanSummary;
+import de.planmarshall.api.overview.ProjectDetailResponse;
+import de.planmarshall.api.overview.ProjectOverviewResponse;
+import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,14 +43,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-import de.planmarshall.api.overview.ActivePlanSummary;
-import de.planmarshall.api.overview.ProjectDetailResponse;
-import de.planmarshall.api.overview.ProjectOverviewResponse;
-import de.planmarshall.api.overview.ProjectSummary;
-import de.planmarshall.api.testsupport.RuntimeFixture;
 
 /**
  * {@code pm-operator status}: the requests it sends for a project the operator names.

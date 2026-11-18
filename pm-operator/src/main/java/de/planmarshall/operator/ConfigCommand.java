@@ -284,6 +284,7 @@ public final class ConfigCommand implements Callable<Integer> {
                                                 "listener", MessageCatalogue.format(locale, listener, Map.of()))),
                             List.of(WEB_VERB, DEVICES_VERB));
     }
+
     /**
      * The overview of a runtime that reports no machine settings: the effective values it serves
      * through {@code GET /api/v1/config} ({@code 02-levels.adoc#origins}).
