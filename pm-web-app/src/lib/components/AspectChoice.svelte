@@ -183,9 +183,12 @@
       data-testid={`${kind}-record`}
     >
       {#if kind === 'store'}
-        {$t('onboard.store.choose.action', {
-          store: stores.find((s) => s.kind === selectedStore)?.name ?? selectedStore,
-        })}
+        {@const activeStore = stores.find((s) => s.kind === selectedStore && s.available)}
+        {activeStore
+          ? $t('onboard.store.choose.action', {
+              store: activeStore.name ?? activeStore.kind,
+            })
+          : $t('onboard.store.choose.none')}
       {:else}
         {$t('onboard.providers.select.action', { count: selectedProviders.length })}
       {/if}

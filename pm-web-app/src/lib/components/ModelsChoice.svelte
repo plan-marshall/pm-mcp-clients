@@ -27,7 +27,7 @@
 </script>
 
 <script lang="ts">
-  import { t, currentLocale, humanizeKey } from '../i18n';
+  import { t, currentLocale, humanizeKey, type Locale } from '../i18n';
   import { formatTokens } from '../display/format';
   import Button from './Button.svelte';
   import Marker from './Marker.svelte';
@@ -56,24 +56,11 @@
     return `${row.harness_id}::${row.model_id}`;
   }
 
-  function hasRecommendationFilter(rows: ModelRow[], rec?: string): boolean {
-    return (
-      Boolean(rec) ||
-      rows.some(
-        (r) =>
-          r.recommended === false ||
-          r.allowed !== undefined ||
-          Boolean(r.reason) ||
-          Boolean(r.rationale),
-      )
-    );
-  }
-
-  function initiallySelected(rows: ModelRow[], rec?: string): string[] {
+  function initiallySelected(rows: ModelRow[]): string[] {
     if (rows.some((r) => r.allowed !== undefined)) {
       return rows.filter((r) => r.allowed !== false).map(key);
     }
-    if (hasRecommendationFilter(rows, rec)) {
+    if (rows.some((r) => r.recommended === false)) {
       return rows
         .filter((r) => r.recommended === true || (r.source === 'operator' && r.recommended !== false))
         .map(key);
@@ -86,16 +73,23 @@
   let modified = false;
   let draftByHarness: Record<string, string> = {};
   let prevModels = models;
+  let prevHarnesses = harnesses;
   let prevRecommendation = recommendation;
-  let selected: string[] = initiallySelected(models, recommendation);
+  let selected: string[] = initiallySelected(models);
 
-  $: if (models !== prevModels || recommendation !== prevRecommendation) {
+  $: if (
+    models !== prevModels ||
+    harnesses !== prevHarnesses ||
+    recommendation !== prevRecommendation
+  ) {
     prevModels = models;
+    prevHarnesses = harnesses;
     prevRecommendation = recommendation;
     extraModels = [];
     removedKeys = [];
     modified = false;
-    selected = initiallySelected(models, recommendation);
+    draftByHarness = {};
+    selected = initiallySelected(models);
   }
 
   $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
@@ -182,9 +176,9 @@
     return !rows.some((r) => r.source === 'probe');
   }
 
-  function tokensLabel(row: ModelRow): string {
+  function tokensLabel(row: ModelRow, locale: Locale, _translate?: unknown): string {
     if (row.tokens === undefined) return '';
-    return formatTokens(row.tokens, Boolean(row.tokens_floor), $currentLocale);
+    return formatTokens(row.tokens, Boolean(row.tokens_floor), locale);
   }
 </script>
 
@@ -233,8 +227,10 @@
                 {#if rowReason}
                   <span class="choice-screen__row-meta">{rowReason}</span>
                 {/if}
-                {#if tokensLabel(row)}
-                  <span class="choice-screen__row-meta">{tokensLabel(row)}</span>
+                {#if row.tokens !== undefined}
+                  <span class="choice-screen__row-meta">
+                    {tokensLabel(row, $currentLocale, $t)}
+                  </span>
                 {/if}
               </div>
               <div class="choice-screen__row-side">
@@ -245,6 +241,9 @@
                   <Button
                     variant="ghost"
                     size="sm"
+                    aria-label={$t('onboard.catalogue.select.remove_model_for', {
+                      model: row.model_id,
+                    })}
                     on:click={() => removeOperatorModel(row)}
                     data-testid={`model-remove-${harnessId}-${row.model_id}`}
                   >

@@ -75,7 +75,31 @@ describe('AspectChoice', () => {
 
       expect(screen.getByRole('radio', { name: 'the keychain' })).not.toBeChecked();
       expect(screen.getByRole('radio', { name: 'the file store' })).not.toBeChecked();
-      expect(screen.getByTestId('store-record')).toBeDisabled();
+      const recordBtn = screen.getByTestId('store-record');
+      expect(recordBtn).toBeDisabled();
+      expect(recordBtn).toHaveTextContent('No store available');
+    });
+
+    it('resyncs the selected store when stores prop changes', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES,
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'Secret Service', available: true, recommended: true },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'Secret Service' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in Secret Service',
+      );
     });
 
     it('renders the generic other protection copy for non-os, non-file stores', () => {
@@ -120,6 +144,26 @@ describe('AspectChoice', () => {
       await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
       await fireEvent.click(screen.getByRole('button', { name: 'Use 2 providers' }));
       expect(onRecord).toHaveBeenLastCalledWith(['github', 'sonar']);
+    });
+
+    it('resyncs selected providers when the providers prop changes', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: PROVIDERS,
+      });
+
+      await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+
+      await rerender({
+        kind: 'providers',
+        providers: [
+          { provider: 'gitlab', name: 'GitLab', available: true, variant: 'glab', token_stored: true },
+        ],
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
     });
   });
 });

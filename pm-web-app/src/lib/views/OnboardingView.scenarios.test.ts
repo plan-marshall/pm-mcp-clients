@@ -1550,6 +1550,65 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     expect(container.textContent).toContain('steward timed out');
     expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
   });
+
+  it('keeps probe models preselected when prose recommendation carries no per-row recommended flags', () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        recommendation: 'All listed models fit standard coding tasks.',
+        models: [
+          { harness_id: 'claude', model_id: 'opus-5.5', source: 'probe', reason: 'strongest planner' },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('model-recommendation')).toHaveTextContent(
+      'All listed models fit standard coding tasks.',
+    );
+    expect(screen.getByTestId('model-toggle-claude-opus-5.5')).toBeChecked();
+    expect(screen.getByTestId('model-toggle-claude-sonnet-5.5')).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
+    expect(screen.getByTestId('models-record')).toBeEnabled();
+  });
+
+  it('keeps added operator models when models is absent during store updates and a failed submit', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        harnesses: [{ harness_id: 'opencode', name: 'OpenCode', cannot_list: true }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockRejectedValueOnce(new Error('temporary failure'));
+
+    render(OnboardingView);
+
+    await fireEvent.input(screen.getByTestId('models-input-opencode'), {
+      target: { value: 'anthropic/claude-opus-4-6' },
+    });
+    await fireEvent.click(screen.getByTestId('models-add-opencode'));
+    expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked();
+
+    runtimeStore.update((store) => ({ ...store, connected: !store.connected }));
+    await waitFor(() =>
+      expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked(),
+    );
+
+    await fireEvent.click(screen.getByTestId('models-record'));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('models-record')).toBeEnabled());
+
+    expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
 });
 
 describe('store.choose protection lines per option (D9)', () => {
@@ -1712,10 +1771,95 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
     expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
     expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-      'usage partial: no cache_read, cache_write',
+      'usage partial: no cache read, cache write',
     );
     expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
     expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
+  });
+
+  it('localises partial missing figures in German on harness.choose', () => {
+    try {
+      messagesStore.set(loadMessages('de'));
+      currentLocale.set('de');
+      arrange(
+        onboardingState({
+          state: 'harness.choose',
+          summary: 'Wähle die Harnesses zum Eintragen',
+          harnesses: [
+            {
+              harness_id: 'claude',
+              name: 'Claude Code',
+              found: true,
+              supported: true,
+              worker_eligible: true,
+              token_usage: 'complete',
+              default: true,
+            },
+            {
+              harness_id: 'opencode',
+              name: 'OpenCode',
+              found: true,
+              supported: true,
+              worker_eligible: true,
+              token_usage: 'partial',
+              missing_figures: ['cache_read', 'cache_write'],
+            },
+          ],
+          links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+        }),
+      );
+
+      const { container } = render(OnboardingView);
+
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
+        'Tokenverbrauch vollständig',
+      );
+      expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
+        'Tokenverbrauch teilweise: ohne aus dem Cache gelesen, in den Cache geschrieben',
+      );
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      currentLocale.set('en');
+    }
+  });
+
+  it('renders TokensScreen for harness.tokens-* with detail on complete and localised missing figures', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.tokens-partial',
+        summary: 'How each harness reports tokens',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            token_usage: 'complete',
+            token_detail: 'input, cache read, output',
+          },
+          {
+            harness_id: 'opencode',
+            name: 'OpenCode',
+            token_usage: 'partial',
+            missing_figures: ['cache_read', 'cache_write'],
+          },
+          {
+            harness_id: 'codex',
+            name: 'Codex',
+            token_usage: 'not_reported',
+          },
+        ],
+        links: { ok: { href: '/api/v1/onboarding/harness/tokens', next: 'catalogue.consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const list = screen.getByTestId('token-reporting');
+    expect(list).toHaveTextContent('Claude Code');
+    expect(list).toHaveTextContent('complete: input, cache read, output');
+    expect(list).toHaveTextContent('OpenCode');
+    expect(list).toHaveTextContent('usage partial: no cache read, cache write');
+    expect(list).toHaveTextContent('Codex');
+    expect(list).toHaveTextContent('usage not reported');
   });
 
   it('draws a fetched icon without any stray markup fragment', () => {

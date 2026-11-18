@@ -440,7 +440,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
 
   ┌ Recommendation by steward ─────────────────────────────────────┐
   │ Use opus-5.5 for planning, sonnet-5.5 for the work, and a      │
-  │ small model on OpenCode for screening.              [ Why? ]   │
+  │ small model on OpenCode for screening.                         │
   └────────────────────────────────────────────────────────────────┘
 
   CC Claude Code   default
@@ -463,7 +463,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
 ----
   Choose the models plans may use
 
-  The steward gave no proposal: you continued without the advice.
+  Model advice did not run: you continued without the advice. You can still choose below.
 
   CC Claude Code   default
     [x] opus-5.5

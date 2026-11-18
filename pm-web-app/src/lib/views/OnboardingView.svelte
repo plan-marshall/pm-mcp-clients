@@ -191,9 +191,12 @@
     return $t('onboard.completed.summary');
   }
 
+  // Shared frozen sentinel so absent array fields keep reference identity across store updates.
+  const EMPTY_ARRAY: readonly unknown[] = Object.freeze([]);
+
   function arrayField<T>(name: string): T[] {
     const value = currentState?.[name];
-    return Array.isArray(value) ? (value as T[]) : [];
+    return Array.isArray(value) ? (value as T[]) : (EMPTY_ARRAY as T[]);
   }
 
   function harnessNames(): Record<string, string> {

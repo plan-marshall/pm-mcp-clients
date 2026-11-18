@@ -15,11 +15,6 @@
    * information, never a condition of the choice (onboarding.adoc, What a harness reports).
    */
   let { view }: ScreenProps = $props();
-
-  /** The catalogue sentence of a harness's token reporting. */
-  function tokenState(harness: Harness): string {
-    return harnessUsageText($t, harness, { preferDetailOnComplete: true });
-  }
 </script>
 
 <div class="state-card">
@@ -29,10 +24,12 @@
     </h1>
   </div>
   <ul class="completed-list" data-testid="token-reporting">
-    {#each view.arrayField<Harness>('harnesses') as harness}
+    {#each view.arrayField<Harness>('harnesses') as harness, idx (harness.harness_id ?? harness.name ?? idx)}
       <li class="completed-row">
         <span class="completed-row__name">{harness.name ?? harness.harness_id ?? ''}</span>
-        <span class="completed-row__value">{tokenState(harness)}</span>
+        <span class="completed-row__value">
+          {harnessUsageText($t, harness, { preferDetailOnComplete: true })}
+        </span>
       </li>
     {/each}
   </ul>

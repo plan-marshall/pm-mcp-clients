@@ -154,6 +154,13 @@
     align-items: stretch;
   }
 
+  .choice-screen__actions button.btn {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
+  }
+
   .choice-screen__row {
     padding: var(--space-2) var(--space-3);
   }
