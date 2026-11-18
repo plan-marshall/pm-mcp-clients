@@ -130,6 +130,14 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Against it ({role}): {reason}
 |Dagegen ({role}): {reason}
 
+|`decision.evidence.title`
+|Evidence
+|Belege
+
+|`decision.evidence.open`
+|Open
+|Öffnen
+
 |`decision.answer.own_words`
 |in my own words
 |Antworte in eigenen Worten
@@ -210,6 +218,10 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Decided: {answer}
 |Entschieden: {answer}
 
+|`decision.outcome.answered_elsewhere`
+|answered in {channel}, {device}: {answer}
+|beantwortet in {channel}, {device}: {answer}
+
 |`decision.outcome.revised`
 |The decision changed: {change}. Please answer again.
 |Die Entscheidung hat sich geändert: {change}. Bitte antworte noch einmal.
@@ -229,6 +241,10 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |`decision.channel.cli`
 |the console
 |die Konsole
+
+|`decision.channel.other`
+|another client
+|ein anderer Client
 
 |`decision.notify.ask`
 |Should the web app notify you when a plan, an epic, a project's setup, or a start asks a decision? It names the plan, the epic, the setup, or the start and the kind of decision, never its content.
@@ -290,9 +306,9 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Decline
 |Lehne ab
 
-|`decision.waiver.later`
-|Later
-|Später
+|`decision.waiver.later.title`
+|Leave the waiver request open; it stays in the list
+|Lass die Waiver-Anfrage offen; sie bleibt in der Liste
 
 |`decision.answer.chat`
 |chat about it first

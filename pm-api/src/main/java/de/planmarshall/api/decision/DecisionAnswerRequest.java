@@ -32,6 +32,9 @@ import de.planmarshall.api.json.JsonTree;
  * @param reason      mandatory operator reason when action is {@code "waive"} or {@code "decline"}
  * @param channel     operator channel ({@code cli} or {@code web}), or {@code null} when the client sent none
  * @param device      optional device identifier or label
+ * @param requestId   the client's own identifier of this answer, echoed by {@link DecisionAnsweredEvent}; the
+ *                    client attributes the answered event to its own request by it, and {@code null} when the
+ *                    client sent none
  */
 public record DecisionAnswerRequest(
         Map<String, Object> partAnswers,
@@ -41,7 +44,8 @@ public record DecisionAnswerRequest(
         @Nullable String action,
         @Nullable String reason,
         @Nullable String channel,
-        @Nullable String device
+        @Nullable String device,
+        @Nullable String requestId
 ) {
     public DecisionAnswerRequest {
         partAnswers = partAnswers != null ? Map.copyOf(partAnswers) : Map.of();
@@ -77,6 +81,9 @@ public record DecisionAnswerRequest(
         }
         if (device != null) {
             map.put("device", device);
+        }
+        if (requestId != null) {
+            map.put("request_id", requestId);
         }
         return map;
     }
@@ -120,6 +127,7 @@ public record DecisionAnswerRequest(
         var note = JsonTree.string(map, "note");
         var action = JsonTree.string(map, "action");
         var reason = JsonTree.string(map, "reason");
+        var requestId = JsonTree.string(map, "request_id");
 
         var answers = new LinkedHashMap<String, Object>();
         var paObj = map.get("part_answers");
@@ -131,6 +139,6 @@ public record DecisionAnswerRequest(
             answers.put("1", option);
         }
 
-        return new DecisionAnswerRequest(answers, option, ownWords, note, action, reason, channel, device);
+        return new DecisionAnswerRequest(answers, option, ownWords, note, action, reason, channel, device, requestId);
     }
 }

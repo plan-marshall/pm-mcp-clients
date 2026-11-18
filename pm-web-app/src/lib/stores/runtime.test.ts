@@ -10,6 +10,8 @@ import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
   checkUrlHashForCode,
+  createDecisionAnnouncer,
+  DECISION_BURST_MS,
   deriveStepFromState,
   handleRuntimeEvent,
   initRuntime,
@@ -1409,5 +1411,190 @@ describe('the machine settings the store writes', () => {
     // Assert
     expect(result).toBeNull();
     expect(withdraw).toHaveBeenCalledWith('telemetry', 4);
+  });
+});
+
+/**
+ * The decision announcer (`decisions.adoc#announce`): one notification for what is new, none for
+ * what a start, a reload or a reconnect finds by reading everything again, and none for a decision
+ * answered before its window closed. It is driven with a fake clock and a fake browser.
+ */
+describe('the decision announcer', () => {
+  /** One notification the fake browser was asked to show. */
+  interface Shown {
+    title: string;
+    onclick: () => void;
+  }
+
+  let shown: Shown[];
+  let opened: string[];
+  let openList: ReturnType<typeof vi.fn<() => void>>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    shown = [];
+    opened = [];
+    openList = vi.fn<() => void>();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * @param permission the permission the browser gave
+   * @param openDecisions the decisions the silent prime reads
+   * @param visible whether the tab stands in front
+   * @returns the announcer under test, over the fake clock and the fake browser
+   */
+  function announcer(
+    permission: 'granted' | 'denied' = 'granted',
+    openDecisions: ReadonlyArray<{ id: string }> = [],
+    visible = false,
+  ) {
+    return createDecisionAnnouncer({
+      permission: () => permission,
+      visible: () => visible,
+      openDecisions: async () => openDecisions,
+      notify: (notification) => shown.push(notification),
+      openList,
+      openDecision: (id) => opened.push(id),
+      setTimer: (callback, ms) => setTimeout(callback, ms),
+    });
+  }
+
+  it('raises none for what a start, a reload or a reconnect finds by reading everything again', async () => {
+    // Arrange: the prime of a reconnect reads two open decisions.
+    const view = announcer('granted', [{ id: 'dec-1' }, { id: 'dec-2' }]);
+
+    // Act: both are named by events after the prime, as a re-read of the same list does.
+    await view.prime();
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the primed set is silent; only an unannounced decision is announced.
+    expect(shown).toEqual([]);
+  });
+
+  it('announces the first decision the prime did not find', async () => {
+    // Arrange
+    const view = announcer('granted', [{ id: 'dec-1' }]);
+    await view.prime();
+
+    // Act
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown.map((notification) => notification.title)).toEqual(['two asks a decision']);
+  });
+
+  it('makes one notification for three decisions within one second, which opens the list', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act: the three arrive inside the first window.
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(300);
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(300);
+    view.decisionOpened({ id: 'dec-3', subject: 'plan three' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: one title for the three, and its click opens the list of open decisions.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      '3 decisions wait for you',
+    ]);
+    shown[0].onclick();
+    expect(openList).toHaveBeenCalledOnce();
+    expect(opened).toEqual([]);
+  });
+
+  it('makes one notification for a single decision, which opens that decision', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-9', subject: 'plan Rebase onto main' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the title names the subject alone, never the decision's content.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'Rebase onto main asks a decision',
+    ]);
+    shown[0].onclick();
+    expect(opened).toEqual(['dec-9']);
+    expect(openList).not.toHaveBeenCalled();
+  });
+
+  it('names a waiver as a waiver in the single notification', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-w', subject: 'plan Release', is_waiver: true });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'Release asks for a waiver',
+    ]);
+  });
+
+  it('drops a decision answered before its notification shows', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act: the decision closes inside the window it opened.
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    view.decisionClosed('dec-1');
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
+  });
+
+  it('opens a new window after the burst showed, and never announces a decision twice', () => {
+    // Arrange: the window does not slide, so a steady stream still announces.
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the repeat of a decision already announced adds nothing.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'one asks a decision',
+      'two asks a decision',
+    ]);
+  });
+
+  it('shows nothing while the browser gave no permission', () => {
+    // Arrange
+    const view = announcer('denied');
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
+  });
+
+  it('shows nothing while the tab stands in front', () => {
+    // Arrange: the app's own notice, badge and tab title carry the arrival on the page itself.
+    const view = announcer('granted', [], true);
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
   });
 });

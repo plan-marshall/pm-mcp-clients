@@ -11157,7 +11157,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         // device an answer on the web listener came from.
         answerReq = new DecisionAnswerRequest(answerReq.partAnswers(), answerReq.option(), answerReq.ownWords(),
                 answerReq.note(), answerReq.action(), answerReq.reason(), isWeb ? CHANNEL_WEB : CHANNEL_CLI,
-                isWeb ? webListenerDevice() : null);
+                isWeb ? webListenerDevice() : null, answerReq.requestId());
 
         if (envelope.isWaiver()) {
             handleWaiverAnswer(response, decisionId, answerReq);
@@ -11196,7 +11196,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, outcome + " (" + reason + ")",
-                answerReq.channel(), answerReq.device(), extractPlan(answered)));
+                answerReq.channel(), answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
@@ -11236,7 +11236,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
 
         broadcastEvent(DECISION_ANSWERED, answeredPayload(decisionId, chosen, answerReq.channel(),
-                answerReq.device(), extractPlan(answered)));
+                answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
@@ -11249,9 +11249,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * The payload of {@code decision.answered}: the channel is the one the answer carried, and an absent
      * channel stays absent, never read as {@code cli}; the device likewise is written only when the
      * answer carried one, so a client renders an answer without a device through the variant without one.
+     * The client's own {@code request_id} is echoed when it sent one, so the answering client attributes
+     * the event to its request and every other client reads the answer as one from another channel.
      */
     private static Map<String, Object> answeredPayload(String decisionId, String answer, @Nullable String channel,
-            @Nullable String device, @Nullable String planId) {
+            @Nullable String device, @Nullable String planId, @Nullable String requestId) {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("id", decisionId);
         payload.put(KEY_ANSWER, answer);
@@ -11263,6 +11265,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (device != null) {
             payload.put("device", device);
+        }
+        if (requestId != null) {
+            payload.put("request_id", requestId);
         }
         return payload;
     }

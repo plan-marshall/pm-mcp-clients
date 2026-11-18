@@ -378,9 +378,12 @@ test.describe('The command palette', () => {
     await expect(match).toContainText('Resolve rebase conflict');
     await match.click();
 
-    // The decision opens at its own address, scrolled to its card, in any layout.
+    // The decision opens at its own address, with the decision in the object column beside the list.
     await expect(page).toHaveURL(/\/decisions\/Q-007$/);
-    await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
+    await expect(page.getByTestId('decision-detail')).toHaveAttribute(
+      'data-decision-id',
+      'Q-007',
+    );
   });
 
   test('keeps the matched project ahead of its start act', async ({ page }) => {

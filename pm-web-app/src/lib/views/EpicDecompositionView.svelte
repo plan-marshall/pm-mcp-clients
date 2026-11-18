@@ -280,7 +280,7 @@
       <div class="decomposition__head-actions">
         <span class="badge" data-testid="decomposition-status">{cut.status}</span>
         <Button variant="ghost" onclick={backToEpic} data-testid="decomposition-back">
-          {$t('common.actions.back')}
+          {$t('common.action.back')}
         </Button>
       </div>
     </header>

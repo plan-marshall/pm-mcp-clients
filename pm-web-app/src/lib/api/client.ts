@@ -1170,6 +1170,10 @@ export interface DecisionEnvelope {
   header?: string;
   subject: string;
   scope: string;
+  /** The project the decision belongs to, where the runtime names one. */
+  project?: string;
+  /** The plan the decision belongs to, where the runtime names one. */
+  plan?: string;
   asking_phase?: string;
   asking_role?: string;
   blocks: string;
@@ -1195,6 +1199,11 @@ export interface DecisionAnswerPayload {
   reason?: string;
   channel?: string;
   device?: string;
+  /**
+   * The client's own identifier of this answer, which `decision.answered` echoes: the client
+   * attributes the answered event to its own request by it (`decisions.adoc#outcomes`).
+   */
+  request_id?: string;
 }
 
 export interface DecisionInterpretation {

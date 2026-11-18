@@ -82,10 +82,10 @@
 
   /** The six acts the bar gets: one primary, three secondary, two in the overflow. */
   $: acts = [
-    { id: 'save', label: $t('web.common.save') },
-    { id: 'cancel', label: $t('web.common.cancel') },
+    { id: 'save', label: $t('common.action.save') },
+    { id: 'cancel', label: $t('common.action.cancel') },
     { id: 'copy', label: $t('web.common.copy'), advisory: $t('web.common.copy.title') },
-    { id: 'back', label: $t('common.actions.back'), advisory: $t('common.actions.back.title') },
+    { id: 'back', label: $t('common.action.back'), advisory: $t('common.action.back.title') },
     {
       id: 'archive',
       label: $t('control.epic.archive'),
@@ -134,7 +134,7 @@
 
   $: actMenuActs = [
     { id: 'copy', label: $t('web.common.copy'), icon: 'act.copy', onAct: () => {} },
-    { id: 'save', label: $t('web.common.save'), icon: 'act.save', onAct: () => {} },
+    { id: 'save', label: $t('common.action.save'), icon: 'act.save', onAct: () => {} },
     {
       id: 'archive',
       label: $t('control.epic.archive'),
@@ -335,9 +335,9 @@
       {/each}
       <div class="dev__row">
         <Button variant="secondary" icon="act.copy">{$t('web.common.copy')}</Button>
-        <Button variant="primary" loading>{$t('web.common.save')}</Button>
+        <Button variant="primary" loading>{$t('common.action.save')}</Button>
         <Button variant="primary" disabled disabledReason={$t('dev.disabled_reason')}>
-          {$t('web.common.save')}
+          {$t('common.action.save')}
         </Button>
       </div>
 
@@ -355,8 +355,8 @@
         />
         <IconButton
           icon="act.back"
-          label={$t('common.actions.back')}
-          advisory={$t('common.actions.back.title')}
+          label={$t('common.action.back')}
+          advisory={$t('common.action.back.title')}
         />
         <IconButton
           icon="act.copy"
@@ -457,7 +457,7 @@
             variant="ghost"
             on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}
           >
-            {$t('web.common.cancel')}
+            {$t('common.action.cancel')}
           </Button>
           <Button
             variant="danger"

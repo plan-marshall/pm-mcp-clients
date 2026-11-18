@@ -1,0 +1,135 @@
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/svelte';
+import EvidenceView, { plainLabel } from './EvidenceView.svelte';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+/**
+ * `EvidenceView` (decisions.adoc#order): the evidence a decision names, as fields with plain labels,
+ * a `file`/`lines` pair, and any structure the view does not know folded into a JSON block that is
+ * shown expanded. The description is the view's, not this component's, so it never appears twice.
+ */
+
+/** @param locale the language the catalogue is loaded in */
+function useCatalogue(locale: 'en' | 'de'): void {
+  currentLocale.set(locale);
+  messagesStore.set(loadMessages(locale));
+}
+
+describe('EvidenceView', () => {
+  it('names the block and every field with a plain label', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: { evidence: { endpoints: '/api/v1/legacy', waiver_gate: 'coverage' } },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Evidence' })).toBeInTheDocument();
+    expect(screen.getByText('Endpoints')).toBeInTheDocument();
+    expect(screen.getByText('Waiver gate')).toBeInTheDocument();
+    expect(screen.getByText('/api/v1/legacy')).toBeInTheDocument();
+  });
+
+  it('strips the control sequences a runtime value may carry', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: {
+          '\u001b[35mgate\u001b[0m': 'ready',
+          summary: '\u001b[31mred\u001b[0m text',
+          file: { path: '\u001b[32msrc/App.svelte', lines: '1-2' },
+          unknown: { note: '\u001b[33mfolded\u001b[0m' },
+        },
+      },
+    });
+
+    const view = screen.getByTestId('evidence-view');
+    expect(view).toHaveTextContent('red text');
+    expect(view).toHaveTextContent('src/App.svelte:1-2');
+    expect(view.textContent).not.toContain('\u001b');
+  });
+
+  it('keeps two keys that differ only by control sequences apart', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: { evidence: { gate: 'one', '\u001b[35mgate\u001b[0m': 'two' } },
+    });
+
+    // The raw key is the identity, so the keyed list never receives a duplicate; the test id is
+    // the readable one.
+    expect(screen.getAllByTestId('evidence-field-gate')).toHaveLength(2);
+  });
+
+  it('folds a file record that carries more than the shortcut draws', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: { bug: { file: 'A.java', lines: [12, 20], reason: 'Unsafe access' } },
+      },
+    });
+
+    const fold = screen.getByTestId('evidence-structure-bug');
+    expect(fold).toHaveTextContent('"reason"');
+    expect(fold).toHaveTextContent('Unsafe access');
+  });
+
+  it('shows a file with the lines it names', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: { file: { file: 'pm-relay/src/main/java/EventQueue.java', lines: '12-20' } },
+      },
+    });
+
+    expect(
+      screen.getByText('pm-relay/src/main/java/EventQueue.java:12-20'),
+    ).toBeInTheDocument();
+  });
+
+  it('folds a structure it does not know, expanded and as JSON', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: { evidence: { votes: { quorum: { a: 1, b: 2 } } } },
+    });
+
+    const fold = screen.getByTestId('evidence-structure-votes');
+    expect(fold).toBeVisible();
+    expect(fold.hasAttribute('open')).toBe(true);
+    expect(fold.textContent).toContain('"quorum"');
+  });
+
+  it('renders every value as text, never as markup', () => {
+    useCatalogue('en');
+    const { container } = render(EvidenceView, {
+      props: { evidence: { note: '<img src=x onerror="alert(1)">' } },
+    });
+
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('<img src=x onerror="alert(1)">')).toBeInTheDocument();
+  });
+
+  it('shows an app path the evidence offers as a link', () => {
+    useCatalogue('en');
+    render(EvidenceView, {
+      props: {
+        evidence: {
+          diff: { file: 'pm-relay/src/main/java/EventQueue.java', lines: 4, link: '/plans/fix-relay' },
+        },
+      },
+    });
+
+    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/plans/fix-relay');
+  });
+
+  it('draws a plain label out of the runtime key', () => {
+    expect(plainLabel('waiverGate')).toBe('Waiver gate');
+    expect(plainLabel('waiver_gate')).toBe('Waiver gate');
+    expect(plainLabel('endpoints')).toBe('Endpoints');
+  });
+
+  it('renders nothing where the decision names no evidence', () => {
+    useCatalogue('en');
+    const { container } = render(EvidenceView, { props: { evidence: {} } });
+
+    expect(container.querySelector('[data-testid="evidence-view"]')).toBeNull();
+  });
+});

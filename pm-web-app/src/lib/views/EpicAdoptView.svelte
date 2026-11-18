@@ -32,7 +32,7 @@
         {$t('start.source.retry')}
       </Button>
       <Button variant="ghost" data-testid="adopt-back" disabled={busy} on:click={onBack}>
-        {$t('web.common.back')}
+        {$t('common.action.back')}
       </Button>
       <Button variant="ghost" data-testid="adopt-abandon" disabled={busy} on:click={onAbandon}>
         {$t('start.entry.abandon')}

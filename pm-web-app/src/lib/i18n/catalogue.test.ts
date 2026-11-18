@@ -20,6 +20,42 @@ const SOURCE_DIR = path.resolve(__dirname, '../..');
 const I18N_SOURCE = path.resolve(__dirname, 'index.ts');
 
 /**
+ * The act keys the catalogue retired when the shared acts got one key each
+ * (`texts-and-languages.adoc`, Keys: `common.action.back|close|cancel|save|retry|later`).
+ *
+ * They are named here on purpose: this is the absence assertion a put-back key fails.
+ */
+const RETIRED_ACT_KEYS = [
+  'web.common.back',
+  'web.common.close',
+  'web.common.save',
+  'web.common.cancel',
+  'web.common.retry',
+  'common.actions.back',
+  'common.actions.back.title',
+  'common.back',
+  'common.close',
+  'common.save',
+  'decision.waiver.later',
+];
+
+/**
+ * The kind, wait and filter keys retired when each concept got one key
+ * (`texts-and-languages.adoc`, Keys: `common.kind.*`, `common.filter.label`).
+ */
+const RETIRED_KIND_AND_FILTER_KEYS = [
+  'overview.kind.project',
+  'overview.find.kind.project',
+  'overview.find.kind.epic',
+  'overview.find.kind.plan',
+  'overview.find.kind.decision',
+  'overview.find.kind.report',
+  'overview.needs.operator_wait',
+  'decisions.filter.label',
+  'report.filter.label',
+];
+
+/**
  * Texts that are not UI copy: they are wire values, ids, or the punctuation of a layout.
  */
 const ALLOWED_LITERALS = new Set([
@@ -423,6 +459,24 @@ describe('the catalogue carries every text of the package', () => {
     expect(source).not.toContain('fallbackMessages');
   });
 
+  it('retires every duplicate act key the shared family replaced', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    const present = RETIRED_ACT_KEYS.filter((key) => key in en || key in de);
+
+    expect(present).toEqual([]);
+  });
+
+  it('retires the kind, wait and filter keys the shared ones replaced', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    const present = RETIRED_KIND_AND_FILTER_KEYS.filter((key) => key in en || key in de);
+
+    expect(present).toEqual([]);
+  });
+
   it('looks up only keys the catalogue carries', () => {
     const en = loadMessages('en');
     const offenders: string[] = [];
@@ -535,8 +589,13 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
 
     expect(en['decision.outcome.answered']).toBe('Decided: {answer}');
     expect(de['decision.outcome.answered']).toBe('Entschieden: {answer}');
-    expect(en['decision.outcome.answered_elsewhere']).toBeUndefined();
-    expect(de['decision.outcome.answered_elsewhere']).toBeUndefined();
+    // An answer from another client names where and how it came (`decisions.adoc#outcomes`).
+    expect(en['decision.outcome.answered_elsewhere']).toBe(
+      'answered in {channel}, {device}: {answer}',
+    );
+    expect(de['decision.outcome.answered_elsewhere']).toBe(
+      'beantwortet in {channel}, {device}: {answer}',
+    );
   });
 
   it('agrees on the German term for the epic waiting text', () => {

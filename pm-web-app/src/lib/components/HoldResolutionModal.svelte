@@ -167,7 +167,7 @@
               {actLabel(confirming)}
             </button>
             <button type="button" data-testid="hold-cancel-button" on:click={cancelConfirm}>
-              {$t('common.back')}
+              {$t('common.action.back')}
             </button>
           </div>
         </div>
@@ -185,7 +185,7 @@
             </button>
           {/each}
           <button type="button" data-testid="hold-close-button" on:click={close}>
-            {$t('common.close')}
+            {$t('common.action.close')}
           </button>
         </div>
       {/if}

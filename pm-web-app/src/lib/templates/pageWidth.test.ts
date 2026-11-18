@@ -26,6 +26,8 @@ const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'EpicView.svelte', root: '.epic-view' },
   // The start page is the lens's list column on the column engine (needs-and-find.adoc#route).
   { file: 'InboxView.svelte', root: '.inbox-view' },
+  // PLAN-51 moves the decisions lens onto the triage page (`decisions.adoc#order`).
+  { file: 'DecisionView.svelte', root: '.decisions-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */
