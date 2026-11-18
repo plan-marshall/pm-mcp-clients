@@ -1898,7 +1898,10 @@ export function selectObjectTab(tab: ObjectTab): void {
 export function selectPlanChangeFile(path: string | null): void {
   runtimeStore.update((s) => ({ ...s, changeFile: path }));
   const current = currentAddress();
-  if (!current || current.route !== 'plan') {
+  if (current === null) {
+    return;
+  }
+  if (current.route !== 'plan') {
     return;
   }
   const address: Address = switchTab(current, 'changes');

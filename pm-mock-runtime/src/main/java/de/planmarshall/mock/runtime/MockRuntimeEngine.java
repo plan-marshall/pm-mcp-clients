@@ -526,6 +526,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String FIXTURE_CONTENTS = "contents";
     /** The member a {@code plan.change_captured} payload uses to carry the capture it announces. */
     private static final String FIELD_CAPTURE = "capture";
+    /** The prefix every message about an announcement carries, so the words are spelled once. */
+    private static final String ANNOUNCEMENT_OF = "the announcement of ";
     private static final String SUFFIX_PLAN_CHANGES = "/changes";
     private static final String SUFFIX_PLAN_CHANGES_FILE = "/changes/file";
     private static final String QUERY_PATH = "path";
@@ -8078,11 +8080,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         var answer = decoded.answer();
         if (!announced.planId().equals(answer.planId())) {
-            return "the announcement of " + announced.planId() + " carries the capture of " + answer.planId();
+            return ANNOUNCEMENT_OF + announced.planId() + " carries the capture of " + answer.planId();
         }
         if (answer instanceof PlanChangesCaptured captured) {
             if (!announced.head().equals(captured.head())) {
-                return "the announcement of " + announced.planId() + " names the head " + announced.head()
+                return ANNOUNCEMENT_OF + announced.planId() + " names the head " + announced.head()
                         + ", its capture " + captured.head();
             }
             if (!captured.totals().equals(announced.size())) {
@@ -8091,7 +8093,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         } else if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
                 || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
-            return "the announcement of " + announced.planId() + " names a size of change beside "
+            return ANNOUNCEMENT_OF + announced.planId() + " names a size of change beside "
                     + answer.state();
         }
         synchronized (planChangesLock) {

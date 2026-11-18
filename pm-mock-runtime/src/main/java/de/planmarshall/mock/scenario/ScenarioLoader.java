@@ -110,6 +110,8 @@ public class ScenarioLoader {
     private static final String FIXTURE_CONTENTS = "contents";
     /** The member a {@code plan.change_captured} payload uses to carry the capture it announces. */
     private static final String FIELD_CAPTURE = "capture";
+    /** The suffix of an event's field path, so every error names its field the same way. */
+    private static final String EVENT_DATA_SUFFIX = "].data";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -360,44 +362,104 @@ public class ScenarioLoader {
             List<Map<String, Object>> effective, String scenario, String stateId) {
         for (var index = 0; index < state.events().size(); index++) {
             var event = state.events().get(index);
-            if (!PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
-                continue;
+            if (PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
+                requireScheduledCaptureApplies(event.data(), index, effective, scenario, stateId);
             }
-            var payload = JsonTree.asObject(event.data());
-            if (payload == null) {
-                continue;
-            }
-            final PlanChangeCapturedEvent announced;
-            try {
-                announced = PlanChangeCapturedEvent.fromMap(payload);
-            } catch (IOException | IllegalArgumentException e) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
-                        "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": "
-                                + e.getMessage());
-            }
-            var entry = effective.stream()
-                    .filter(candidate -> announced.planId().equals(JsonTree.string(candidate, FIELD_PLAN_ID)))
-                    .findFirst()
-                    .orElse(null);
-            var servedState = entry == null ? null : JsonTree.string(entry, "state");
-            var carry = JsonTree.asObject(payload.get(FIELD_CAPTURE));
-            if (carry != null) {
-                requireCarriedCaptionStaysForward(carry, servedState, announced, index, scenario, stateId);
-                continue;
-            }
-            var totals = PlanChangesAnswer.CAPTURED.equals(servedState)
-                    ? ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals()
-                    : null;
-            if (totals == null) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
-                        "the plan " + announced.planId()
-                                + " has no capture in the state for the announcement to move");
-            }
-            if (!totals.equals(announced.size())) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
-                        "the announced size of " + announced.planId()
-                                + " contradicts the files the state serves");
-            }
+        }
+    }
+
+    /**
+     * Holds one scheduled capture to what the mock can play: a carried capture to the transition the
+     * contract names, and one that only moves a head to the capture the state serves.
+     *
+     * @param data      the event's payload
+     * @param index     the event's position
+     * @param effective the capture entries the state serves
+     * @param scenario  the scenario identifier for error reporting
+     * @param stateId   the state identifier
+     */
+    private static void requireScheduledCaptureApplies(@Nullable Object data, int index,
+            List<Map<String, Object>> effective, String scenario, String stateId) {
+        var payload = JsonTree.asObject(data);
+        if (payload == null) {
+            return;
+        }
+        var announced = announcedOf(payload, index, scenario, stateId);
+        var entry = captureEntryOf(effective, announced.planId());
+        var servedState = entry == null ? null : JsonTree.string(entry, "state");
+        var carried = JsonTree.asObject(payload.get(FIELD_CAPTURE));
+        if (carried != null) {
+            requireCarriedCaptureGoesForward(carried, servedState, announced, index, scenario, stateId);
+        } else {
+            requireHeadOnlyCaptureAgrees(entry, servedState, announced, index, scenario, stateId);
+        }
+    }
+
+    /**
+     * @param payload  the event's payload
+     * @param index    the event's position
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     * @return the payload read through its {@code pm-api} record
+     * @throws ScenarioValidationException when the payload is no {@code plan.change_captured}
+     */
+    private static PlanChangeCapturedEvent announcedOf(Map<String, Object> payload, int index,
+            String scenario, String stateId) {
+        try {
+            return PlanChangeCapturedEvent.fromMap(payload);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * @param effective the capture entries the state serves
+     * @param planId    a plan's id
+     * @return the entry the state serves for the plan, or {@code null} when it names none
+     */
+    private static @Nullable Map<String, Object> captureEntryOf(List<Map<String, Object>> effective,
+            String planId) {
+        return effective.stream()
+                .filter(candidate -> planId.equals(JsonTree.string(candidate, FIELD_PLAN_ID)))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
+     * @param index the event's position in its state
+     * @return the field path the event's payload errors are reported under
+     */
+    private static String eventField(int index) {
+        return "events[" + index + EVENT_DATA_SUFFIX;
+    }
+
+    /**
+     * Holds an announcement that carries no capture to the capture its state serves: it may only move
+     * that capture's head, at the size the capture adds up to.
+     *
+     * @param entry       the capture entry the state serves, or {@code null}
+     * @param servedState its state, or {@code null}
+     * @param announced   the announcement
+     * @param index       the event's position
+     * @param scenario    the scenario identifier for error reporting
+     * @param stateId     the state identifier
+     */
+    private static void requireHeadOnlyCaptureAgrees(@Nullable Map<String, Object> entry,
+            @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
+            String stateId) {
+        var totals = PlanChangesAnswer.CAPTURED.equals(servedState)
+                ? ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals()
+                : null;
+        if (totals == null) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the plan " + announced.planId()
+                            + " has no capture in the state for the announcement to move");
+        }
+        if (!totals.equals(announced.size())) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the announced size of " + announced.planId()
+                            + " contradicts the files the state serves");
         }
     }
 
@@ -413,20 +475,20 @@ public class ScenarioLoader {
      * @param scenario    the scenario identifier for error reporting
      * @param stateId     the state identifier
      */
-    private static void requireCarriedCaptionStaysForward(Map<String, Object> carry,
+    private static void requireCarriedCaptureGoesForward(Map<String, Object> carry,
             @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
             String stateId) {
         final PlanChangesAnswer carried;
         try {
             carried = PlanChangesAnswer.fromMap(carry);
-        } catch (IOException | IllegalArgumentException e) {
+        } catch (IOException | IllegalArgumentException _) {
             // The capture itself is refused where the event's payload is validated.
             return;
         }
         if (PlanChangesAnswer.NOT_CAPTURED.equals(carried.state())
                 && (PlanChangesAnswer.CAPTURED.equals(servedState)
                 || PlanChangesAnswer.UNAVAILABLE.equals(servedState))) {
-            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the capture of " + announced.planId() + " does not go back to "
                             + PlanChangesAnswer.NOT_CAPTURED);
         }
@@ -993,7 +1055,7 @@ public class ScenarioLoader {
         try {
             read = EventEnvelope.fromMap(envelope);
         } catch (IOException e) {
-            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the event is no envelope: " + e.getMessage());
         }
         if (name.startsWith(CHAT_EVENT_PREFIX)) {
@@ -1017,14 +1079,8 @@ public class ScenarioLoader {
      */
     private static void validatePlanChangeCaptured(Map<String, Object> payload, int index, String scenario,
             String stateId) {
-        var field = "events[" + index + "].data";
-        final PlanChangeCapturedEvent announced;
-        try {
-            announced = PlanChangeCapturedEvent.fromMap(payload);
-        } catch (IOException | IllegalArgumentException e) {
-            throw new ScenarioValidationException(scenario, stateId, field,
-                    "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": " + e.getMessage());
-        }
+        var field = eventField(index);
+        var announced = announcedOf(payload, index, scenario, stateId);
         var capture = JsonTree.asObject(payload.get(FIELD_CAPTURE));
         if (capture == null) {
             return;
@@ -1073,7 +1129,7 @@ public class ScenarioLoader {
      */
     private static void validateChatEvent(String name, Map<String, Object> payload, int index, String scenario,
             String stateId) {
-        var field = "events[" + index + "].data";
+        var field = eventField(index);
         Map<String, Object> read;
         try {
             read = readChatEvent(name, payload);
@@ -1203,7 +1259,7 @@ public class ScenarioLoader {
 
             var data = eventMap.get("data");
             if (data == null) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].data",
+                throw new ScenarioValidationException(scenario, stateId, eventField(i),
                         "missing event data");
             }
 
