@@ -199,7 +199,7 @@ The exit codes are those of a verb run as one shell command; the console itself 
 |done: the sub-workflow reached its done state, or a read-only verb answered.
 
 |`1`
-|refused by the runtime: an error code of `pm-api` (xref:03-dialogues.adoc#refusals[Refusals and Errors]), printed with its text and fix.
+|refused: an error code of `pm-api`, or a refusal the client makes itself before or beside the runtime's answer (xref:03-dialogues.adoc#refusals[Refusals and Errors]), printed with its text and fix.
 
 |`2`
 |usage: an unknown verb, option, or option value (picocli).
