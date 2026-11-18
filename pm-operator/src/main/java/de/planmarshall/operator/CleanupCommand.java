@@ -87,6 +87,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
     private static final String KEPT_API = CLEANUP_API + "/kept";
     private static final String COUNT_PARAM = "count";
+    private static final String DURATIONS_KEY = "durations";
 
     /** A kind of ended work, as the runtime names it and as the summary's placeholders read it. */
     private static final String KIND_PLANS = "plans";
@@ -716,7 +717,7 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         if (durations != null) {
             parts.add(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
-                                Map.of("durations", durationsText(locale, durations))));
+                                Map.of(DURATIONS_KEY, durationsText(locale, durations))));
         }
         if (!parts.isEmpty()) {
             out.println(String.join(" · ", parts));
@@ -726,7 +727,7 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private static @Nullable CleanupDurations durationsOf(Map<String, Object> state) throws IOException {
-        var object = JsonTree.asObject(state.get("durations"));
+        var object = JsonTree.asObject(state.get(DURATIONS_KEY));
         if (object == null) {
             return null;
         }
@@ -959,7 +960,7 @@ public final class CleanupCommand implements Callable<Integer> {
                             Map.of(COUNT_PARAM, s.keptForGoodCount())));
         if (durations != null) {
             footer.append(" \u00b7 ").append(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
-                                Map.of("durations", durationsText(locale, durations))));
+                                Map.of(DURATIONS_KEY, durationsText(locale, durations))));
         }
         if (s.lastSweepAt() != null) {
             footer.append(" · ").append(lastSweepText(locale, s.lastSweepAt()));

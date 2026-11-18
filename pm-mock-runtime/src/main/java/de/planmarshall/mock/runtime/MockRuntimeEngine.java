@@ -2692,7 +2692,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             "/api/v1/web",
             "/api/v1/status/",
             "/api/v1/enrol",
-            "/api/v1/credentials",
+            PATH_CREDENTIALS,
             "/api/v1/machine/decisions",
             "/api/v1/machine/settings",
             MockConfigRoutes.PATH);
@@ -8357,7 +8357,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         // A credential or device route that happens to carry a decision segment stays out: its body
         // is a secret, never a decision the act log may show.
-        if (path.startsWith("/api/v1/credentials") || path.startsWith("/api/v1/web/devices")
+        if (path.startsWith(PATH_CREDENTIALS) || path.startsWith(PATH_DEVICES)
                 || path.startsWith("/api/v1/devices")) {
             return false;
         }
