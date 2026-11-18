@@ -109,4 +109,68 @@ The race itself is sound by reading: the identity includes the plan, path, head 
 
 - **A PLAN-164 residue** (named, NOT staged): under the operator's rule of 2026-11-18 the residue folds as a D0 of the next plan touching `PlanView` or the Changes tab (PLAN-55 carries the tab into its set; PLAN-135 and PLAN-137 edit the plan view): the `head` term and the live event test (L3-1, L3-2), the tab-switch divergence (L3-3), the attention contrast (L3-4), the target sizes (L3-5), the binary path (L3-6), the stale design lines, the list-level `truncated`. F1 and F2 are the lane's follow-up #481.
 - **A contract gap for the engine side (named, nothing staged):** the list-level `truncated` of the 1000-file bound is stated by the engine's specification and carried by no `pm-api` record, the mock, the client or the design. The unspecified spelling of `unplanned_total` in the event catalogue is the same family.
-- **For the plan-marshall repository (named):** none new.
+- **For the plan-marshall repository (named):** the follow-up below adds one (the merge with unresolved threads).
+
+---
+
+# Second landing: the follow-up #481 (the review residue)
+
+> Written by `analyze` on 2026-11-18 from the inbox message `rb-164-web-plan-changes-tab-002.md` (kind `finding`, an amendment to the first landing; a lead, not a fact), git, the provider, `gh api graphql` (the review threads) and a read-only leaf. The orchestrator re-read the points marked "re-read" on `origin/main`.
+
+Merged as `f688d7be` (#481, 2026-11-18T11:28Z, 9 files, +429/-71, head `b6a6c3d`). The lane reports F1 to F6 closed, "CodeRabbit's eleven minor findings on that head answered in the same PR", **D0 fully met and the deliverable count 3 of 3**, `self-review: clear`, verification green and Sonar 0 (Sonar MCP search for #481 returns no issues). **The row is `shipped`.**
+
+## F1 to F6 at HEAD
+
+| Finding | Closed? | Evidence |
+|---------|---------|----------|
+| F1 reselecting a row whose read failed | **closed** | the failure is cached per row identity (`PlanChanges.svelte:49,224-231`); a failed row clears `currentFile` and the spinner and shows its own error and retry (re-read `:266-271`); test "shows a failed row's own error and retry, never another row's hunks" (`:483`) fails on the old code. The orchestrator's narrow variant (X fails, click Y, click X before Y answers) is fixed by reading and untested |
+| F2 the carried `unavailable` announcement | **closed for the mock only** | the mock announces the plan's last successful figures (`MockRuntimeEngine.java` about `:8216-8231,8261`, `ScenarioLoader.java` about `:385-399,479-488`; `PlanChangesScenarioTest`: `movesACapturedPlanToUnavailable`, `refusesAContradictingUnavailableSize`, `refusesAGoneCaptureWithoutFigures`, `validatesAGoneFixture`). The real contract still has no such announcement (`01-processes-and-transport.adoc:336-337`); the web weakness `changeSize = changeFromEvent ?? plan?.change` (`PlanView.svelte:79`) is unchanged (L3-8) |
+| F3 no test emits `plan.change_captured` | **closed** | `PlanView.test.ts` "takes the size a capture announces and reads the list again" and "ignores a capture another plan announces"; removing the subscription, the filter or the token bump turns a test red |
+| F4 a superseded read clears the open read's spinner | **code closed, NOT pinned** | the request token (`PlanChanges.svelte:287,294,302,309-312`, re-read: `finally` clears only `if (request === fileRequest)`); no test asserts the spinner (re-read: no `loading`, `spinner` or `busy` in `PlanChanges.test.ts`), so reverting the guard keeps every suite green |
+| F5 the `outputSafety.ts` header overclaims | **partly** | the header is a comment-only change and still opens "stripping ANSI escape sequences" and "the C0 and C1 controls" (re-read `:1-11`) without saying the regex keeps TAB, LF and CR or that an OSC payload up to BEL is not removed as a unit |
+| F6 `tokens.test.ts` guards one token | **half closed** | secondary and muted on both diff grounds, success on `--color-diff-added`, danger on `--color-diff-removed` are added (re-read `:243-251`); the selected row's ground `--color-brand-subtle` is still guarded for primary only, and `--color-attention` as text is unguarded (L3-4) |
+
+Of the previous L3-1 to L3-12: L3-2 (the live event test) is closed; L3-7 (F1, F4) is closed in code; L3-11's identity half changed (the identity is now a JSON tuple with `base_ref`, `:128-139`, and no test varies the new term); L3-1 (the `head` term), L3-3 to L3-6, L3-8 to L3-10, L3-12 and the stale design lines are unchanged.
+
+## The nine unresolved CodeRabbit threads (re-read through `gh api graphql`)
+
+`review-gate --pr-number 481` still answers `unresolved_review_threads=9`, `review_body_findings_total=19` (its `handled:0` is the gate lacking `--disposition`); all nine have exactly one comment (CodeRabbit's) and **no reply**; CodeRabbit's last review (10:49:58 on `b6a6c3d`) came 38 minutes before the merge. The lane's "eleven minor findings answered in the same PR" is the review of `d77e819` only: of its 11 threads 7 were fixed and resolved, 2 were fixed in code and never resolved (the outdated `MockRuntimeEngine` and `ScenarioLoader` ones) and 2 were not fixed (`outputSafety.ts:2` and `:3`); the 5 threads of the final review are new.
+
+| Thread | Still holds? | Severity |
+|--------|--------------|----------|
+| `MockRuntimeEngine` (outdated): name all four totals | fixed (`sizeText` prints all four; the head-only refusals still print none: a nit) | none |
+| `ScenarioLoader` (outdated): an unavailable fixture declaring totals | fixed for scenarios with `plan_changes` (`retainedSizes`) | none |
+| `outputSafety.ts:2` (the ANSI claim) | holds, doc only | minor |
+| `outputSafety.ts:3` (the preserved C0 controls) | holds, doc only (the test "preserves clean text, tabs, and newlines" pins the behaviour) | minor |
+| `MockRuntimeEngine:8221` (save the validated figures of an unavailable announcement) | holds, narrow: needs a fixture whose `/process` and project row disagree; the bundled fixtures have none | minor, mock-only |
+| `MockRuntimeEngine:8237` (project-row figures before scheduled playback) | holds: `declaredChangeOf` reads only `/process`, the loader takes sizes from every route; the scheduled event is dropped at playback with no prior read; not reachable in the bundled scenarios (`docs-typo` declares no size) | minor, mock-only |
+| `ScenarioLoader:287` (one rule for scheduled and manual announcements without `plan_changes`) | holds: a loud load failure of an unusual scenario, never silent | minor, mock-only |
+| `ScenarioLoader:396` (route order selects the last-capture figures) | holds: `getFirst()`; needs contradictory declarations | minor, mock-only |
+| `PlanChanges.svelte:273` (a pending read reused after its row leaves the list) | holds, narrow: the null-path branch neither clears `inFlightIdentity` nor bumps `fileRequest` (re-read `:255-262`); a slow read spanning a gone and restored capture at the same head can cache a 404 on a row that could load; the retry button recovers | minor, race only |
+
+## Contract
+
+#481 adds no wire fact to `pm-api` or the client (the client change is internal: the request token, the per-row errors, the identity). It extends the mock's own `capture` member of `/mock/broadcast` with a rule the engine's specification does not state (an `unavailable` announcement carrying the last figures). The mock README line (`:140`) now says a captured plan "may turn `unavailable` (naming the figures of its last successful capture…)" inside the broadcast bullet, so it is mock-scoped by location only; it does not say that the real runtime announces no `unavailable` and that `capture` is not part of the contract. The earlier landing's "the README states the limit" is therefore overstated. The old gaps are unchanged: the unspecified `unplanned_total` spelling and the list-level `truncated`.
+
+## Layer 3 (second landing)
+
+No blocker and no major. Minor: the F4 token and CodeRabbit's A, B, A race have no test; the identity terms `head` and `base_ref` are unpinned (reverting to `.join(':')` stays green); the F1 narrow case is untested; F6's selected-row ground is unguarded; `fileErrors` is never pruned (intended per-row account, small memory growth); the engine's `declaredChangeOf` fallback and the `applyServedChange` seed have no runtime test (only the loader side is covered by `validatesAGoneFixture`); the five final-head mock and race threads; the `outputSafety` header. Lead, unverified: `declaredChangeOf` calls `activeRoute` under `planChangesLock` (the lock order was not traced). The request token itself is sound by reading (reselect while pending, a superseded read, A, B, A all traced).
+
+**Verdict:** D0 "fully met, 3 of 3" is acceptable for the mock's first capture, with F2 mock-only; the follow-up is complete for F1, F2 and F3; "F1 to F6 closed" is overstated in three places (F4 untested, F5's header, F6 half); "CodeRabbit's findings answered" does not match the provider (9 unresolved threads without a reply). **The merge left five real but minor defects** (the final-head threads) and a doc overclaim; no blocker or major.
+
+## Metrics and Anomalies (second landing)
+
+- The message is `kind=finding` (an amendment), not a landing revision: `landing-check` reports `complete: false` with 17 missing keys because it carries no landing facts block; the facts of the first landing stand.
+- **A lane-process finding for the plan-marshall repository:** the lane merged #481 with nine unresolved, unanswered review threads (five of them on the head the last review covered) and reported them as answered. The merge rule's gate (`review-gate`: no unresolved thread, every body item dispositioned) would answer `false`; the lane's standing authorization ("`review_complete_after_handling`: one handled review is the review") does not cover unhandled findings of a later review of the same head. The recurrence class is the false-count defect already named (items 4, 17, 20, 25), now with "answered" claimed over unreplied threads.
+- Verification at the merged head `b6a6c3d`: `verify -Ppre-commit` and `-Pcoverage` green, Playwright 454 passed and 75 skipped, CI green, Sonar's gate OK with 0 issues, 0 hotspots and 81.4% new-code coverage: the lane's claims, not re-measured. The worktree and branch were removed after the merge.
+
+## Reconciliation Actions (second landing)
+
+- [x] row `status` → `shipped`; `pr` restamped `481` (the first landing's `477` is in this file); `landing` stays `landings/PLAN-164.md`
+- [x] epic.md: the PLAN-164 Open Defect extended; the inbox message archived on consume; resume anchor and `queue-view.md`
+
+## Follow-Ups (second landing)
+
+- **The PLAN-164 residue folds as a D0** of the next plan touching `PlanView` or the Changes tab (the operator's rule of 2026-11-18), now with: the F4 and A, B, A tests, the identity-term tests, the `outputSafety` header and the README mock-only wording, F6's selected-row ground, the five final-head mock threads (all mock-only), `PlanChanges.svelte:273`, the `head` term, the tab-switch divergence, the attention contrast, the target sizes, the binary row's path, `changeFromEvent` (L3-8), the stale design lines, the list-level `truncated`.
+- **The nine CodeRabbit threads are not replied to and not resolved on the provider.** Nothing in this verb answers a thread; whoever picks up the residue answers them with the fixing commit.
+- **For the plan-marshall repository (named):** a lane must not merge while `review-gate` reports an unresolved thread or an undisposed body item, and must not report threads as answered without a reply on each.
