@@ -1,0 +1,26 @@
+= Architectural Decision Records of `pm-mcp-clients`
+:nofooter:
+
+An ADR records one design decision: the situation, what was decided, the alternatives and what follows. The ADRs of
+this repository live in `doc/adr/`; a module that needs decisions of its own opens `{module}/doc/adr/` by the same
+rules.
+
+== Numbering
+
+ADRs are numbered per directory, with three digits: `NNN-{slug}.adoc`. A new ADR takes the next free number of its
+directory. A number is never reused, not even for a superseded ADR. Two plans that write into the same directory at
+the same time can take the same number; the plan that merges later renumbers its own ADR before the push.
+
+== Writing an ADR
+
+A new ADR follows the template link:template.adoc[`doc/adr/template.adoc`]. The template states the sections and what
+each one holds. Where the specifications of this repository live, and how they relate to the design of the clients,
+is ADR link:001-specifications-of-the-clients.adoc[001 The Specifications of the Clients in This Repository].
+
+== Directories
+
+* link:./[`doc/adr/`]: the decisions that concern the whole repository.
+** link:001-specifications-of-the-clients.adoc[001 The Specifications of the Clients in This Repository]: the
+specifications and the implementation watch live in the repository that implements them, an implemented section is
+condensed and pointed, the documentation repository keeps the requirements, and the design of the clients links to
+the specification instead of restating it.

@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » link:brand-mark.adoc
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (a revoked device, the network listener turned off), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (set up the machine), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] (see what needs the operator)_
 
-_Relies on: link:brand-mark.adoc#provenance[Brand Mark and Mascot, Provenance], link:README.adoc#shell[Web App, The App Shell] (the rail), link:components.adoc#empty-state[Components, EmptyState], link:theme-readability.adoc[Theme Readability] (the contrast every pair owes), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy)_
+_Relies on: link:brand-mark.adoc#provenance[Brand Mark and Mascot, Provenance], link:README.adoc#shell[Web App, The App Shell] (the rail), link:components.adoc#empty-state[Components, EmptyState], link:theme-readability.adoc[Theme Readability] (the contrast every pair owes), link:../../specification/cli-and-security/03-web-app.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy)_
 
 Status: `AGREED`. A part of link:brand-mark.adoc[Brand Mark and Mascot]: the mascot as illustration — where it appears and where it never does, how its files are made and delivered, the rail-foot bear, and the closed set of six poses with a brief for each.
 

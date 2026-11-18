@@ -1,0 +1,105 @@
+= Harness Integration & Bundle Manifest Specification: Harness Environment Detection
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../../Specification.adoc[Specification] » link:../harness-integration.adoc[Harness Integration & Bundle Manifest Specification] » Harness Environment Detection
+
+[#harness-environment-detection]
+== Harness Environment Detection
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-1[PM-CLIENT-1: Harnesses as Workers & Harness Identity]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3: Harness Environment Detection]_
+
+Client identity is advisory routing and rendering metadata, never a security credential. A harness is a worker only: a worker's connection takes its harness profile from its job record, which names the harness of its role's effective configuration and the harness version probed at its spawn, and carries its `job_id`, role, and generation in its audit records (link:../../../../plan-marshall-documentation/doc/specification/mcp-tools/01-core-workflow-tools.adoc#job-bound-connections[MCP Tools Specification, Worker Connections]); the system performs no identity check per tool call.
+
+The one use of detection is the operator checks of `pm-operator`: they recognise a coding agent's environment from the process environment the verb inherited, by the detection signals and their precedence below, and refuse an operator verb while any signal is present, naming the detected harness (link:../cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI, Coordination & Security Specification, Operator Channel Isolation]). Detection never selects a profile and never records an identity. No model-facing representation carries a detection result (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/hypermedia-format/01-representation-and-link-forms.adoc#model-facing-minimality[Hypermedia Format Specification, Model-Facing Minimality]).
+
+[#harness-integration-table]
+=== Harness Integration Table (Normative)
+_Implementation watch: link:../../implementation-watch/harness-integration.adoc#PM-WATCH-CLIENT-4[PM-WATCH-CLIENT-4], link:../../implementation-watch/harness-integration.adoc#PM-WATCH-CLIENT-9[PM-WATCH-CLIENT-9]_
+
+This table is the single source for harness-specific values. Requirements, other specifications, and the roadmap reference it instead of repeating values. Values without a marker are verified against a local installation of the harness and what it sends at `initialize` (Claude Code 2.1, OpenCode 1.18, Antigravity CLI `agy` 1.3), or backed by the evaluation (link:../../../../plan-marshall-documentation/doc/specification/evaluation.adoc[Evaluation Reference]) or by `plan-marshall` (`script-shared/scripts/marketplace_paths.py`, `platform-runtime/scripts/{opencode,antigravity}_runtime.py`, verified at commit `1d4a1da37`). Values marked _(provisional)_ are known from the harness's documentation, source, or binary only and are verified against a live harness before the profile ships: every Codex value, and the Antigravity values that only a live session shows.
+
+[cols="1,4,3,3,2"]
+|===
+|Profile |Detection signals |Skill directories (user / project) |Project configuration (protected in a plan) |Instruction files (at every level)
+
+|`claude`
+|`CLAUDE_CODE_SESSION_ID` present (set in the shell and in the environment of its MCP servers; its value is the session id); secondary: `CLAUDECODE=1`, `AI_AGENT` with the prefix `claude-code`; process-id marker `CLAUDE_PID` _(provisional)_; `detection.reaches: ["command", "serve"]`
+|`~/.claude/skills` / `.claude/skills`
+|`.claude/**`, `.mcp.json`
+|`CLAUDE.md`, `CLAUDE.local.md` _(provisional)_; `AGENTS.md` only where no `CLAUDE.md` and no `CLAUDE.local.md` exists in the working directory or above _(provisional)_
+
+|`opencode`
+|`OPENCODE` or `OPENCODE_PID` present (the harness also sets a generic `AGENT=1`, which is no signal); process-id marker `OPENCODE_PID`; `detection.reaches: ["command", "serve"]`
+|`~/.config/opencode/skills/` _(provisional)_ / `.opencode/skills/` (the harness also reads `.claude/skills/` and `.agents/skills/`)
+|`.opencode/**`, `opencode.json`, `opencode.jsonc` _(provisional)_
+|`AGENTS.md`, `CLAUDE.md` where no `AGENTS.md` exists _(provisional)_
+
+|`antigravity`
+|`ANTIGRAVITY_AGENT` present, visible to the commands the harness runs only (`detection.reaches: ["command"]`; <<antigravity-environment>>)
+|`~/.gemini/config/plugins/plan-marshall-mcp/skills` _(provisional)_ / `.agents/skills/`
+|`.agents/**` _(provisional)_
+|`GEMINI.md`, `AGENTS.md` _(provisional)_
+
+|`codex`
+|`CODEX_THREAD_ID`, `CODEX_CI=1`, or `CODEX_SANDBOX` (`seatbelt` when sandboxed) present, visible to the commands the harness runs only (`detection.reaches: ["command"]`; <<codex-environment>>) _(provisional)_
+|Skills, invoked as `$<name>`: `~/.agents/skills/` / `.agents/skills/` _(provisional)_
+|`.codex/**`, `.agents/**` _(provisional)_
+|`AGENTS.md`, `AGENTS.override.md` _(provisional)_
+|===
+
+*Detection precedence*: Primary signals are evaluated in the fixed order `antigravity` -> `opencode` -> `claude` (the order `plan-marshall` uses, `script-shared/scripts/target_context.py` `detect_target_from_env`), then `codex`; the first match wins. Secondary signals (`CLAUDECODE`, the `AI_AGENT` prefix) are consulted only when no primary signal matches.
+
+[[nested-harnesses]]*Nested harnesses*: The signals are inherited, and a harness started inside another clears none of the outer harness's markers, so the fixed order alone attributes Claude Code started inside OpenCode to `opencode`. When the primary signals of more than one harness are present, the detected harness is therefore the one whose process-id marker names the nearest ancestor process of the checking `pm-operator`; the fixed order decides only among harnesses for which no such marker resolves to an ancestor. Both nestings of two harnesses are test cases of the detection.
+
+[[ai-agent-mapping]]*`AI_AGENT`*: Of the four harnesses only Claude Code sets `AI_AGENT` (in the form `claude-code_<version>_agent`), overwriting an inherited value. The mapped value is the prefix before the first `_` or `@` (`claude-code` -> `claude`). It is a secondary signal only, because a value inherited from an outer Claude Code survives in a harness started inside it.
+
+[[codex-environment]]*Codex environment*: Codex passes only a fixed list of variables to the MCP servers it starts (`HOME`, `PATH`, `SHELL`, `USER`, `LANG`, `TERM`, and a few more), so its markers never reach an MCP server it starts; only a command Codex runs through its shell tool, such as `pm-operator`, sees them, which is where detection happens for every harness (<<harness-environment-detection>>) _(provisional)_. The same signals are the harness session markers that the job launcher never passes to a worker, so a harness started by the runtime never inherits the markers of the operator's harness (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/job-runtime/02-confinement-and-environment.adoc#_job_environment_pm_sec_5[Job Runtime Specification, Job Environment]).
+
+*MCP tool names per harness*: A harness names the tools of the `plan-marshall` server `mcp__plan-marshall__<tool>` (`claude`), `plan-marshall_<tool>` (`opencode`), or reaches them through its built-in `call_mcp_tool` with server and tool name (`antigravity`; the direct name `mcp_plan-marshall_<tool>` was also observed in a worker's output). A role's tool set and every rendered tool reference use this form; a tool allowlist names every tool exactly, never by a wildcard (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/01-roles-and-configuration.adoc[Model Work Specification, Roles & Configuration]).
+
+[[antigravity-environment]]*Antigravity environment*: Antigravity hands its own environment unchanged to the `stdio` server it starts and adds none of its `ANTIGRAVITY_*` variables, which it sets only for the commands it runs. Its markers therefore never reach an MCP server it starts; only a command it runs, such as `pm-operator`, sees them, as on Codex. Its tool calls carry the `_meta` keys `antigravity.google/conversation_id` and `antigravity.google/artifacts_dir`, which the server ignores.
+
+*Shared skill directories*: `.agents/skills/` is read by `codex`, `antigravity`, and `opencode`, and `opencode` also reads `.claude/skills/`. A shim skill installed for one harness in such a directory is therefore visible to the other harnesses that read it.
+
+*Project configuration*: the paths a harness loads from the project besides its instruction files: settings, commands, hooks, MCP configuration, and skills. A plan changes them only where its outline declares the path, whichever harness its workers run on (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/phase-workflows/03-q-gate-and-execute.adoc#protected-paths[Phase Workflows Specification, Protected Paths]).
+
+[[instruction-files]]*Instruction files*: the files a harness loads natively as the project's own instructions, at the root of the working directory and in the subdirectories it reads. A worker loads them from its working directory (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/04-worker-launch.adoc#job-working-directory[Model Work Specification, Working Directory]), so a pull request of another author that changes one is held for the operator before a worker runs on its head (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/07-untrusted-text-screening.adoc#pr-instruction-files[Model Work Specification, A Pull Request That Changes an Instruction File]). They are not protected paths: a plan may change them.
+
+[#harness-detection-table]
+*Harness-detection table (compiled, `pm-api`)*: The harness-detection data, that is the environment signals and their precedence and the version-probe argument vector with its pattern, is one compiled, data-only table in `pm-api` (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[Module Structure Specification, `pm-api`]): the `detection` and `identity` objects of the profile documents, which are resources of `pm-api` (xref:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#harness-as-data[The Profile Is the Harness]). It is the single source and is read, never written in code: `pm-operator` (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[Module Structure Specification, `pm-operator`]) depends only on `pm-api` and reads the signals through its profile reader, which names no harness, only for its operator checks, which refuse a verb while a coding-agent environment signal is present (link:../cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI, Coordination & Security Specification, Operator Channel Isolation]); the profile loader of `pm-core` reads the same documents whole, and the runtime runs their version probes (<<harness-identity-probes>>). Operator overrides do not touch it (xref:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#profile-override-hierarchy[Profile Override Hierarchy]).
+
+*Codex tool names*: The Codex columns of the placeholder table (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/02-placeholders.adoc#_normative_placeholder_syntax_resolution_table[Harness Profiles Specification, Normative Placeholder Syntax & Resolution Table]) are _(provisional)_; in particular Codex has no `write_file` tool and writes files through `apply_patch`, so `{{tool:write_file}}` resolves to `apply_patch` like `{{tool:edit_file}}`.
+
+*OpenCode tool names*: In the `opencode` column of the same table, `{{tool:write_file}}` resolves to `write`, OpenCode's file-create tool, and never to `edit`, the OpenCode permission category that governs writing.
+
+[#harness-identity-probes]
+==== Harness Identity Probes (Normative)
+
+The version probe of each harness is part of the Harness Integration Table, compiled in the <<harness-detection-table,harness-detection table>>, and carried by each profile in `identity` (Normative Harness Profile JSON Schema). The runtime runs it without a shell, as a confined job with a bounded timeout, and takes the first capture group of `version_pattern` over its standard output as the harness version: in the harness scan on what it finds (xref:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#harness-scan[Harness Scan]), at the enrolment, at a worker's spawn where the enrolled executable's digest changed (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/11-enrolment-store.adoc#harness-enrolment-store[Store Schemas Specification, Harness Enrolment Store], Self-Update Within Range; the version in force at the spawn is the job record's `harness_version`, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/04-worker-launch.adoc#launch-contract[Model Work Specification, Launch Contract]), and in the stage `identity` of the profile verification. A missing probe, a non-zero exit, a timeout, or no match yields no version, which the enrolment refuses. Values marked _(provisional)_ are verified per harness like the other provisional harness facts.
+
+[cols="1,2,3"]
+|===
+|Profile |Version probe (`identity.version_probe`) |Version pattern (`identity.version_pattern`)
+
+|`claude`
+|`["claude", "--version"]`
+|`^(\d+\.\d+\.\d+) \(Claude Code\)$`
+
+|`opencode`
+|`["opencode", "--version"]`
+|`^(\d+\.\d+\.\d+)\s*$`
+
+|`antigravity`
+|`["agy", "--version"]`
+|`^(\d+\.\d+\.\d+)\s*$`
+
+|`codex`
+|`["codex", "--version"]` _(provisional)_
+|`^codex-cli (\S+)\s*$` _(provisional)_
+|===

@@ -1,0 +1,95 @@
+= Runtime & Interaction Model Specification: Mock Runtime
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../../Specification.adoc[Specification] » link:../runtime-model.adoc[Runtime & Interaction Model Specification] » Mock Runtime
+
+[#mock-runtime]
+== Mock Runtime (`pm-mock-runtime`)
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-TEST-7[PM-TEST-7: Mock Runtime for Client Development & Tests]_
+
+The mock runtime stands in for `pm-mcpd` towards the clients. It serves the link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API] `/api/v1` with the contract of `pm-api`, driven by scenario files instead of an engine, so that the terminal client `pm-operator` and the web app can be developed and tested against every state a flow can reach, including the ones a real machine produces only by accident (a harness that is not logged in, a locked keychain, a refused token, a slow check). It never runs a job, starts a harness, reads the machine, or writes a store; it is never shipped and never deployed.
+
+It is the module `pm-mock-runtime` of `pm-mcp-clients` (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mock-runtime[Module Structure]). The integration tests of `pm-operator` run against it with their own scenarios. It also serves the MCP endpoint `/mcp` of a worker connection on the same socket, authenticated by a job token, against which the integration tests of the worker relay `pm-mcp serve --job` run; the relay meets the real runtime in the release-shape tests (link:../../../../plan-marshall-documentation/doc/specification/mcp-tools/04-errors-and-testing.adoc[MCP Tools Specification, Protocol Testing]).
+
+[#mock-endpoints]
+=== Endpoints & Start
+
+* *Start*: `java -jar pm-mock-runtime.jar --scenario <name|path> [--base <dir>] [--web-port <port>] [--timing realistic|ordered]`, or from the repository `./mvnw -pl pm-mock-runtime exec:java -Dscenario=<name>`. `--base` is the `PM_MCP_BASE` it serves (default a new temporary directory, printed at start).
+* *Unix socket*: it binds `<base>/run/runtime.sock`, the socket path of the real runtime (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_singleton_discovery[Singleton & Discovery]), writes `<base>/run/runtime.token` and `<base>/state/runtime.json` as the runtime does, and answers the liveness check, so a client started with `PM_MCP_BASE=<base>` finds a live runtime and never starts the real one. `pm-operator` runs against it unchanged.
+* *Loopback web listener*: with `--web-port` it also serves `/api/v1/` on `127.0.0.1:<port>`, without static files: during development the web app is served by its own dev server, which forwards `/api` to this port. A pairing redemption succeeds for the code the scenario names (default `MOCKMOCK`), and every request with the device secret it returned is accepted.
+* *Control*: `/mock/` beside `/api/v1/` (on both listeners): `GET /mock/state` (scenario, current state, the links it offers), `POST /mock/reset` (back to the start state), `POST /mock/scenario` (switch to another scenario), `POST /mock/goto/{state}` (jump to a state, for development only), `POST /mock/inject` and `POST /mock/broadcast` (<<mock-timing>>). The control paths exist only in the mock runtime.
+* *One implementation of HTTP*: the minimal HTTP/1.1 and Server-Sent Events server over a JDK `ServerSocketChannel`, on a Unix domain socket address or a loopback TCP address alike; no framework (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Dependency Rules]).
+
+[#scenario-files]
+=== Scenario Files
+
+A scenario is one JSON file, `scenarios/<name>.json` in the module's resources (or a path), with `format_version` and a closed schema:
+
+[source,json]
+----
+{
+  "format_version": 1,
+  "name": "onboarding-harness-not-logged-in",
+  "description": "Claude Code is found but not logged in; logging in and checking again passes.",
+  "start": "harness.choose",
+  "pairing_code": "MOCKMOCK",
+  "routes": {
+    "GET /api/v1/status": { "representation": { "...": "the status of a machine without projects" } }
+  },
+  "states": {
+    "harness.choose": {
+      "representation": { "...": "the state's representation as the runtime would send it" },
+      "links": {
+        "check": { "next": "harness.probe" }
+      }
+    },
+    "harness.probe": {
+      "representation": { "...": "two checks running" },
+      "events": [
+        { "after_ms": 600, "event": "check.result", "data": { "check_id": "version", "result": "pass" } },
+        { "after_ms": 1400, "event": "check.result", "data": { "check_id": "login", "result": "fail",
+          "cause": { "key": "harness.login.missing", "args": { "harness": "claude" } },
+          "fix": { "key": "harness.login.fix", "args": { "command": "claude login" } } } }
+      ],
+      "auto": { "after_ms": 1500, "next": "harness.blocked" }
+    },
+    "harness.blocked": {
+      "representation": { "...": "the failed check with its fix" },
+      "links": {
+        "recheck": { "next": "harness.probe-passes" },
+        "choose_another": { "next": "harness.choose" }
+      }
+    }
+  }
+}
+----
+
+* *State*: `representation` is exactly what the runtime returns for that state in the operator representation, including its operator links with their `href` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/hypermedia-format/01-representation-and-link-forms.adoc#operator-links[Hypermedia Format Specification, Operator Links]); `links` maps the id of each offered operator link (never its relation, which several links share) to the state it leads to, optionally with `delay_ms` before the answer, `status` and `error` for a refusal (`409` with an error code of `pm-api`), and `answer` with its `status` and `body` where the runtime answers an act otherwise than with the state (a chat's message, `202` with its turn).
+* *Routing*: a request is matched against the operator links of the current state by method and `href`; a match moves to its `next` state and answers with that state's representation. A request that matches no link of the current state and no entry of `routes` is answered `404` with the error code `mock_no_route`, naming the current state and the offered links, so a client that sends what the real runtime would refuse sees it at once. `mock_no_route` is a code of the mock runtime only: it stands outside the closed list of the runtime's error codes (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#api-error-codes[Local API, Error codes]), and the real runtime never answers it.
+* *Time*: `events` are sent on the event streams of the scope (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], with `Last-Event-ID`) relative to the entry into the state, each named and shaped as the link:06-event-catalogue.adoc[Event Catalogue] says; `auto` moves to another state without a request. Together they play progress, the ✓ and ✗ of checks, and a model at work.
+* *Validation at load*: every representation, event, and error is decoded with the codecs of `pm-api`; an unknown field, a missing required field, an event the catalogue does not define, a link relation `pm-api` does not define, or a `next` naming no state fails the load with the file, the state, and the field. A scenario therefore cannot describe what the contract does not allow.
+* *One set for every use*: the same files serve development (the started mock runtime), the integration tests of `pm-operator` (each test starts the mock runtime with a scenario), and the unit tests of the web app, which read the files from the module's resources and answer `fetch` from them with the same routing rules.
+
+[#mock-timing]
+=== Realistic and Deterministic Timing
+
+* *Two timings*: `--timing realistic`, the default, sends the `events` of a state and takes its `auto` move after their `after_ms`; `--timing ordered`, which every test passes, sends them in their order as soon as the state is entered, without a timer, and takes the `auto` move after the last of them, so a test waits on the event it expects and never on time. The same scenario serves both.
+* *The chat*: a scenario plays a chat with its events (link:06-event-catalogue.adoc#chat-events[Event Catalogue, Chat]): the operator's message answered `202`, a latency before the first piece, the reply's `chat.turn.delta` events at a reading pace, its progress steps, its end, and proposals in later turns of a scripted conversation; a reply with lists, code blocks, and references to tasks and files; an untrusted turn; the decision chat's proposed answer; the chat's `context`, what the role knows, changed by a turn whose worker was primed anew; the narrative notices of the scenario's events of the subject (a task ended, the phase changed, a decision opened or answered, a pause), each a `notice` turn with its `lines[]` between replies, several at once folded into one; a reference of kind `act`; a plan's `queued_revision` from the accept of a revision to its `applied`, each change announced by `plan.revision_queued`; a revision queued from a decision's chat, its `subject` the decision, and its `chat_open` turning false when that chat ends (the decision answered), announced by `plan.revision_queued`; the chat's `context` in the answer of `POST …/chat` and `GET …/chat` before any turn; and a proposal that lapses or whose accept is refused `conflict`, because the plan moved on or because another revision of the plan is already queued. Every chat route of every subject is served (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes]); a stop ends the playing reply with the text sent so far.
+* *Failures on demand*: `POST /mock/inject` with a failure (`infeasible`, `lost`, `too_long`, `http_error` with its status and code, `slow`) or a stop of the playing reply makes the next matching request or reply of the current scenario fail that way, once; a scenario may name the same failures for a state.
+* *Another device*: `POST /mock/broadcast` sends an event on a stream as if another device had acted (a message, an accepted proposal, the chat's end) or the subject had moved on (a narrative notice).
+* *Transcriptions*: the transcription methods are served in the machine's onboarding and settings, a local model found or not found among them, and `POST /api/v1/transcriptions` answers a scripted text after a delay, or fails as injected (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#transcriptions[Transcriptions]); the mock keeps no recording.
+
+[#scenario-coverage]
+=== Scenarios per Flow
+
+Every client-facing flow ships its scenarios with its API: the pull request that adds or changes an endpoint or a state the clients render adds or changes the scenarios that show it. Per flow at least: the path of the preselected choices, every refusal and failed check the use case names, and a stop and resume in the middle. A scenario is named `<flow>-<case>` (`onboarding-happy`, `onboarding-keychain-locked`).
+
+[#scenario-drift]
+=== Drift Against the Real Runtime
+
+Once the real runtime serves a flow, the integration tests of `pm-mcp-server` replay each of its scenarios, taken from the test-only `scenarios` artifact of `pm-mock-runtime` (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mock-runtime[Module Structure]), against the real runtime with fixture inputs (a fixture machine, fixture harness profiles, a sandboxed provider) and compare per step the state id, the ids of the offered operator links, the events, and the error codes; values such as ids, times, and paths are not compared. A difference fails the build of `plan-marshall-mcp` with the scenario, the step, and both answers. A scenario whose flow the real runtime does not serve yet is reported as not replayed, never as passed.

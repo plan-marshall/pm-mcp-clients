@@ -1,0 +1,51 @@
+= Runtime & Interaction Model Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:nofooter:
+
+link:../Specification.adoc[Specification] » Runtime & Interaction Model
+
+== Overview
+
+This document is the index of the parts of the Runtime & Interaction Model Specification that the modules of this
+repository implement: the relay `pm-mcp serve --job`, the mock runtime, and the event catalogue (the message
+catalogue of `pm-api`). The family is split across two repositories, at a heading: the runtime's own parts —
+`01-processes-and-transport.adoc` and `04-sessions-and-workers.adoc` — stay in `plan-marshall-documentation` until they
+move into `plan-marshall-mcp`, beside the code that implements them. Until then, the family's `Overview`,
+`Traceability`, `Status` and the daemon's
+`Modules` rows stay with the family index in `plan-marshall-documentation`
+(link:../../../plan-marshall-documentation/doc/specification/runtime-model.adoc[the family index]); this document
+lists the parts of this repository alone. The client side of the local API (`01#local-api`, `01#_start_modes`) is
+stated there, in the section that specifies it for both sides, and `pm-api` implements it. The requirements stay in
+`plan-marshall-documentation`
+(link:../../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]); what implements and verifies
+each of them is recorded in link:../Traceability.adoc[Traceability].
+
+== Modules
+
+The modules of this repository that implement a part of this family, with the row of the Module Structure
+Specification each carries (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module
+Structure Specification], `Specified in`):
+
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 06,
+  the event catalogue of the event streams; the local API and the start modes its socket client and its on-demand
+  start implement
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`]: part
+  03, the relay rules; part 05, the MCP endpoint its integration tests run against
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`]:
+  part 03, the on-demand start and the direct file reads; part 05, the scenarios its integration tests run against
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mock-runtime[`pm-mock-runtime`]:
+  part 05, the mock runtime
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-web-e2e[`pm-web-e2e`]:
+  part 05, the mock runtime its browser tests start
+
+== Parts
+
+* link:runtime-model/03-relay.adoc[Relay] — the relay `pm-mcp serve --job`: its contract, the harness protocol forms,
+  the connection metadata, the generations at the relay, the relay rules, and the request and response flow
+* link:runtime-model/05-mock-runtime.adoc[Mock Runtime] — the mock runtime `pm-mock-runtime`: its endpoints and start,
+  the scenario files, the realistic and deterministic timing, the scenarios per flow, and the drift against the real
+  runtime
+* link:runtime-model/06-event-catalogue.adoc[Event Catalogue] — the events of every stream: stream control, the
+  runtime, system and cleanup, the overview, states and process and decisions, the chat, and the reports and activity

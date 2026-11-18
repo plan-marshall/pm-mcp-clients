@@ -21,7 +21,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+Requirements and use cases stay in `plan-marshall-documentation`; the specifications of the client modules,
+their implementation watch and the traceability live in this repository (`doc/Specification.adoc`,
+`doc/specification/`, `doc/ImplementationWatch.adoc`, `doc/implementation-watch/`, `doc/Traceability.adoc`); the
+specifications of the engine and their watch documents stay in `pm-mcp-core`.
 
 * Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-1[PM-SEC-1]
 * Specification: link:../../../pm-mcp-core/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#state-catalogue-source[State Catalogue § Source Units]; link:../../../pm-mcp-core/doc/specification/store-schemas/10-job-and-lesson-records.adoc#lesson-record[Store Schemas § Lesson Record] (Derived from Untrusted Text)

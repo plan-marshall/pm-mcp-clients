@@ -1,0 +1,88 @@
+= `pm-mcp-clients` Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+== Overview
+
+This document is the index of the technical specifications of the clients of *plan-marshall-mcp* (`PM-MCP`): the
+specification parts the modules of this repository (`pm-api`, `pm-exec`, `pm-relay`, `pm-operator`,
+`pm-mock-runtime`, `pm-web-app` and `pm-web-e2e`) implement, kept beside the code so that a work package changes
+code, tests and specification in one pull request. The requirements
+(link:../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]), the use cases, the roadmap,
+`later-improvements`, the open questions and the articles stay in `plan-marshall-documentation`, together with the
+specifications of `pm-mcp-parent` (the
+link:../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification] among
+them) and the archetypes that span every specification
+(link:../../plan-marshall-documentation/doc/implementation-watch/cross-cutting.adoc[`cross-cutting.adoc`]). The
+specifications the daemon implements stay in `plan-marshall-documentation` until they move into `plan-marshall-mcp`. The watch items of the specifications here are
+collected in the link:ImplementationWatch.adoc[Implementation Watch of `pm-mcp-clients`]; what each implemented
+requirement is implemented by, verified by and documented in is recorded in link:Traceability.adoc[Traceability]. How
+the specification relates to the design of the two clients is ADR
+link:adr/001-specifications-of-the-clients.adoc[001 The Specifications of the Clients in This Repository].
+
+The lifecycle states of a specification (`PLANNED`, `IN PROGRESS`, `REFERENCE`, `DEPRECATED`), the condensation and
+pointing of implemented sections and the traceability rules are those of the
+link:../../plan-marshall-documentation/doc/Specification.adoc[Specification index] of the documentation; they apply
+here unchanged, with the links to the requirements written as relative sibling paths into
+`plan-marshall-documentation`.
+
+== Specification Index
+
+The links between the documents of this tree are relative; a link into another repository is a relative sibling path
+that resolves with the repositories checked out beside each other, and those repositories link into this tree with
+absolute `https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/...` URLs. `trace.py` of the documentation
+checks the links of this tree outwards; it checks the links into this tree once its extension for this repository is
+in place, run against a checkout of this repository beside it. It is run locally before every merge.
+
+Three families are split across two repositories at a heading, and each holds a family index here that lists the parts
+of this repository alone: `cli-and-security`, `runtime-model` and `harness-integration`. For `cli-and-security` and
+`runtime-model`, a family's `Overview`, `Traceability`, `Status` and the daemon's `Modules` rows stay with the family
+index of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`; `harness-integration`
+has all of its parts here, so its family index here carries its `Overview`, `Traceability` and `Status`.
+
+[cols="3,1,3,3,2"]
+|===
+|Specification Document |Status |Target Requirements |Technical Scope |Implementation Watch
+
+|link:specification/cli-and-security.adoc[cli-and-security.adoc]
+|`IN PROGRESS`
+|the family's requirements are listed in its
+link:../../plan-marshall-documentation/doc/specification/cli-and-security.adoc#_traceability[Traceability]
+|the client parts of the CLI, Coordination & Security Specification: the two CLI binaries with their installation layout, command tree and entry, the harness bundle installer, the operator's credential acts and the operator channel, and the web app
+|link:implementation-watch/cli-and-security.adoc[cli-and-security.adoc] (9 items)
+
+|link:specification/runtime-model.adoc[runtime-model.adoc]
+|`IN PROGRESS`
+|the family's requirements are listed in its
+link:../../plan-marshall-documentation/doc/specification/runtime-model.adoc#_traceability[Traceability]
+|the relay `pm-mcp serve --job`, the mock runtime and the event catalogue of the event streams
+|link:implementation-watch/runtime-model.adoc[runtime-model.adoc] (3 items)
+
+|link:specification/harness-integration.adoc[harness-integration.adoc]
+|`IN PROGRESS`
+|link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-1[PM-CLIENT-1], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-3[PM-DIST-3], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-5[PM-DIST-5], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SKILL-4[PM-SKILL-4]
+|the detection of a coding agent's environment for the operator checks with the Harness Integration Table and the version probes, and the embedded harness bundle with its `bundle-manifest.json` schema, its installer semantics and its drift checks
+|link:implementation-watch/harness-integration.adoc[harness-integration.adoc] (4 items)
+|===
+
+The parts of the three families, as the files of `specification/`:
+
+|===
+|Family |Part |Document
+
+|`cli-and-security` |01 |link:specification/cli-and-security/01-cli-and-installer.adoc[CLI Binaries, Harness Installer & Entry]
+|`cli-and-security` |02 |link:specification/cli-and-security/02-operator-channel.adoc[Operator Credential Acts & Operator Channel]
+|`cli-and-security` |03 |link:specification/cli-and-security/03-web-app.adoc[Web App] (the rest of part 03 is the daemon's)
+|`runtime-model` |03 |link:specification/runtime-model/03-relay.adoc[Relay]
+|`runtime-model` |05 |link:specification/runtime-model/05-mock-runtime.adoc[Mock Runtime]
+|`runtime-model` |06 |link:specification/runtime-model/06-event-catalogue.adoc[Event Catalogue]
+|`harness-integration` |01 |link:specification/harness-integration/01-harness-detection.adoc[Harness Environment Detection]
+|`harness-integration` |02 |link:specification/harness-integration/02-bundle-manifest.adoc[Bundle Manifest] (the bundle's content is the daemon's)
+|===
+
+Eight part documents under three family indexes, and sixteen watch items in the three watch documents of
+link:ImplementationWatch.adoc[the Implementation Watch] (9 + 3 + 4).

@@ -12,7 +12,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == Tasks
 
 . `pm-operator drain` signals the runtime process recorded in `state/runtime.json`, does nothing when none is recorded, and waits at most the bound defined with the drain timeout; it sends no request to the runtime's API.
-  Anchor: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-without-runtime[CLI, Coordination & Security § Without the Runtime]; link:../../../pm-mcp-core/doc/specification/timeouts/02-runtime-leases-operator-web.adoc#drain-timeout[Timeouts & Budgets § Drain Timeout]; link:../design/terminal-client/25-system.adoc[Terminal Client, System] (`drain` asks nothing and cannot be withdrawn).
+  Anchor: link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-without-runtime[CLI, Coordination & Security § Without the Runtime]; link:../../../pm-mcp-core/doc/specification/timeouts/02-runtime-leases-operator-web.adoc#drain-timeout[Timeouts & Budgets § Drain Timeout]; link:../design/terminal-client/25-system.adoc[Terminal Client, System] (`drain` asks nothing and cannot be withdrawn).
   Proof: `DrainCommandTest` with a fixture process recorded in `state/runtime.json`: the signal reaches it, the command returns once it exits and at the bound when it does not; no record means no signal and exit `0`; no HTTP request is sent.
 . `--withdraw` leaves `drain`; `runtime stop --withdraw` withdraws a drain the operator asked with `DELETE /api/v1/operator/runtime/stop`, and its refusals print the design's lines.
   Anchor: link:../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain[Runtime Lifecycle § Drain, Stop & Upgrade]; link:../design/terminal-client/25-system.adoc#t-stop[Terminal Client, System, Stopping]; link:../design/terminal-client/01-commands.adoc#command-tree[Terminal Client, The Verbs].
@@ -20,8 +20,11 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
+Requirements and use cases stay in `plan-marshall-documentation`; the specifications of the client modules,
+their implementation watch and the traceability live in this repository (`doc/Specification.adoc`,
+`doc/specification/`, `doc/ImplementationWatch.adoc`, `doc/implementation-watch/`, `doc/Traceability.adoc`); the
+specifications of the engine and their watch documents stay in `pm-mcp-core`. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
 
 * Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-4[PM-SEC-4]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-without-runtime[§ Without the Runtime]; link:../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain[Runtime Lifecycle § Drain, Stop & Upgrade]
+* Specification: link:../specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]; link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-without-runtime[§ Without the Runtime]; link:../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain[Runtime Lifecycle § Drain, Stop & Upgrade]
 * Design: link:../design/terminal-client/25-system.adoc[Terminal Client, System]; link:../design/shared/system.adoc[System]
