@@ -1287,6 +1287,11 @@ class PlanChangesScenarioTest {
             assertDoesNotThrow(() -> ScenarioLoader.load(gone, StandardScenarios.RUNNING_WORK));
             refusesTheLoad(withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
                     new ChangeSize(0, 0, 0, 0), unavailableCapture(FIX_RELAY, "gone"))), FIX_RELAY);
+
+            // The figures a gone capture keeps outlive a second announcement of the same transition.
+            var twice = withScheduledCapture(gone, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(12, 340, 27, 2), unavailableCapture(FIX_RELAY, "still gone")));
+            assertDoesNotThrow(() -> ScenarioLoader.load(twice, StandardScenarios.RUNNING_WORK));
             refusesTheLoad(withScheduledCapture(gone, announcement(FIX_RELAY, "b2c3d4e5f6a1",
                     new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
         }

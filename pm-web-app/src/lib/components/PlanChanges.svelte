@@ -51,6 +51,8 @@
   let loadedIdentity = $state<string | null>(null);
   /** The row whose read is open, so a re-render does not open a second read of the same hunks. */
   let inFlightIdentity = $state<string | null>(null);
+  /** The read started last, so an answer of a superseded read never settles the current one. */
+  let fileRequest = 0;
   /** A count a person's retry raises, so a failed row is read again rather than staying failed. */
   let fileRetryToken = $state(0);
   /** Whether the view is gone, so an answer still on its way is not written onto dead state. */
@@ -109,9 +111,9 @@
   }
 
   /**
-   * The identity of a row: the plan, the path and the figures its hunks belong to. A file answer
-   * carries no head, so this is what tells a current answer from one the list moved under, one plan's
-   * row from another's, and two files of the same status and counts apart.
+   * The identity of a row: the plan, the capture's base and head, the path and the figures its hunks
+   * belong to. A file answer carries no head, so this is what tells a current answer from one the list
+   * moved under, one plan's row from another's, and two files of the same status and counts apart.
    *
    * @param read the answer the row belongs to, or none
    * @param path the file's path
@@ -122,16 +124,18 @@
     if (row === null || read === null || read.state !== 'captured') {
       return null;
     }
-    return [
+    // A tuple, never a joined string: a path may itself hold the separator a join would use.
+    return JSON.stringify([
       planId,
-      path,
+      read.base_ref,
       read.head,
+      path,
       row.status,
       row.added,
       row.removed,
       row.binary,
       row.renamed_from ?? '',
-    ].join(':');
+    ]);
   }
 
   /**
@@ -266,7 +270,12 @@
       isFileLoading = false;
       return;
     }
-    if (inFlightIdentity === identity || disposed) {
+    if (inFlightIdentity === identity) {
+      // Returning to the row whose read is still open: its spinner stands until the answer lands.
+      isFileLoading = true;
+      return;
+    }
+    if (disposed) {
       return;
     }
     // The hunks of another row are no longer the ones the tab stands on: the panel shows the read in
@@ -275,26 +284,29 @@
     loadedIdentity = null;
     isFileLoading = true;
     inFlightIdentity = identity;
+    const request = ++fileRequest;
     void (async () => {
       try {
         const read = await apiClient.getPlanChangeFile(planId, path);
         // The answer carries no head. It belongs to the row the list held when the read started; a
-        // list that moved meanwhile makes it stale, so it is dropped and the effect reads the row
-        // of the new list instead.
-        if (disposed || selectedFile !== path || rowIdentity(answer, path) !== identity) {
+        // list that moved meanwhile — or a later read of the row — makes it stale, so it is dropped and
+        // the effect reads the row of the new list instead.
+        if (request !== fileRequest || disposed || selectedFile !== path
+            || rowIdentity(answer, path) !== identity) {
           return;
         }
         currentFile = read;
         loadedIdentity = identity;
         fileErrors = withoutRow(fileErrors, identity);
       } catch (error) {
-        if (!disposed && selectedFile === path && rowIdentity(answer, path) === identity) {
+        if (request === fileRequest && !disposed && selectedFile === path
+            && rowIdentity(answer, path) === identity) {
           currentFile = null;
           loadedIdentity = null;
           fileErrors = { ...fileErrors, [identity]: errorCodeOf(error) };
         }
       } finally {
-        if (inFlightIdentity === identity) {
+        if (request === fileRequest) {
           inFlightIdentity = null;
           isFileLoading = false;
         }

@@ -1695,8 +1695,13 @@ describe('PlanView’s Changes tab', () => {
       emit = handler;
       return () => {};
     });
+    const readList = vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(capture);
     render(PlanView);
     await screen.findByTestId('plan-title');
+    screen.getByTestId('plan-change-size').click();
+    await screen.findByTestId('plan-changes');
+    const readsBefore = readList.mock.calls.length;
+    const sizeBefore = screen.getByTestId('plan-change-size').textContent;
 
     // Act
     emit!('plan.change_captured', {
@@ -1709,8 +1714,9 @@ describe('PlanView’s Changes tab', () => {
     });
     await tick();
 
-    // Assert
-    expect(screen.getByTestId('plan-change-size')).toHaveTextContent('12 files');
+    // Assert: neither the size nor the open list moved for another plan's capture.
+    expect(screen.getByTestId('plan-change-size').textContent).toBe(sizeBefore);
+    expect(readList.mock.calls.length).toBe(readsBefore);
   });
 
   it('opens Process and replaces an address that names a tab this view does not draw', async () => {

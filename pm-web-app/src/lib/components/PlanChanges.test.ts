@@ -527,9 +527,10 @@ describe('PlanChanges', () => {
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
     expect(readFile).toHaveBeenCalledTimes(2);
 
-    // The retry reads the failed row again.
+    // The retry reads the failed row again, and only it.
     screen.getByRole('button', { name: 'Try again' }).click();
     expect(await screen.findByText('a line')).toBeInTheDocument();
+    expect(readFile.mock.calls[2]).toEqual(['fix-relay', 'src/a.ts']);
   });
 
   it('applies no list completion after the view is gone', async () => {

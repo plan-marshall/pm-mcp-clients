@@ -8215,13 +8215,51 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (answer instanceof PlanChangesUnavailable) {
             var retained = planChangeSizes.get(answer.planId());
+            if (retained == null) {
+                // A state may start on a capture that is gone and declare its figures: they are the
+                // plan's last capture, so an announcement of them is coherent before the first read.
+                retained = declaredChangeOf(answer.planId());
+            }
             if (!announced.size().equals(retained)) {
-                return ANNOUNCEMENT_OF + announced.planId() + " names "
-                        + announced.size().files() + " files beside " + answer.state()
-                        + ", its last capture " + (retained == null ? "none" : retained.files() + " files");
+                return ANNOUNCEMENT_OF + announced.planId() + " names the size "
+                        + sizeText(announced.size()) + " beside " + answer.state()
+                        + ", its last capture " + sizeText(retained);
             }
         }
         return null;
+    }
+
+    /**
+     * @param planId a plan's id
+     * @return the size the plan's process route declares, or {@code null} when it declares none
+     */
+    private @Nullable ChangeSize declaredChangeOf(String planId) {
+        var route = activeRoute("GET", "/api/v1/plans/" + planId + "/process");
+        if (route == null || !(route.representation() instanceof Map<?, ?> representation)) {
+            return null;
+        }
+        var declared = JsonTree.asObject(representation.get(FIELD_CHANGE));
+        if (declared == null) {
+            return null;
+        }
+        try {
+            return ChangeSize.fromMap(declared);
+        } catch (IllegalArgumentException _) {
+            // A size the codec refuses is no measurement.
+            return null;
+        }
+    }
+
+    /**
+     * @param size a size of change, or {@code null}
+     * @return its four figures for a refusal message
+     */
+    private static String sizeText(@Nullable ChangeSize size) {
+        if (size == null) {
+            return "none";
+        }
+        return size.files() + " files, " + size.insertions() + " insertions, "
+                + size.deletions() + " deletions, " + size.unplanned() + " unplanned";
     }
 
     /**
