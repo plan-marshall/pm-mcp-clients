@@ -448,14 +448,12 @@ public class ScenarioLoader {
     private static void requireHeadOnlyCaptureAgrees(@Nullable Map<String, Object> entry,
             @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
             String stateId) {
-        var totals = PlanChangesAnswer.CAPTURED.equals(servedState)
-                ? ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals()
-                : null;
-        if (totals == null) {
+        if (entry == null || !PlanChangesAnswer.CAPTURED.equals(servedState)) {
             throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the plan " + announced.planId()
                             + " has no capture in the state for the announcement to move");
         }
+        var totals = ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals();
         if (!totals.equals(announced.size())) {
             throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the announced size of " + announced.planId()
