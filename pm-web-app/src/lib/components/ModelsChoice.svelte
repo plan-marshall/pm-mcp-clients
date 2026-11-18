@@ -1,10 +1,4 @@
-<script lang="ts">
-  import { t, currentLocale, humanizeKey } from '../i18n';
-  import { formatTokens } from '../display/format';
-  import Button from './Button.svelte';
-  import Marker from './Marker.svelte';
-  import TextField from './TextField.svelte';
-
+<script lang="ts" module>
   /**
    * ③ Models: the models plans may use, grouped by harness.
    *
@@ -30,6 +24,14 @@
     models_listed?: boolean;
     reason?: string;
   }
+</script>
+
+<script lang="ts">
+  import { t, currentLocale, humanizeKey } from '../i18n';
+  import { formatTokens } from '../display/format';
+  import Button from './Button.svelte';
+  import Marker from './Marker.svelte';
+  import TextField from './TextField.svelte';
 
   const KNOWN_HARNESS_NAMES: Readonly<Record<string, string>> = {
     claude: 'Claude Code',
