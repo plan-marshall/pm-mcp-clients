@@ -47,7 +47,8 @@ describe('ModelsChoice', () => {
 
       expect(screen.getByRole('button', { name: 'Remove model-a' })).toBeVisible();
       expect(screen.getByRole('button', { name: 'Remove model-b' })).toBeVisible();
-      expect(container).toHaveTextContent('model-b');
+      expect(container).toHaveTextContent('2.0 k');
+      expect(container).toHaveTextContent('≥ 5.0 k');
 
       currentLocale.set('de');
       messagesStore.set(loadMessages('de'));
@@ -55,6 +56,8 @@ describe('ModelsChoice', () => {
 
       expect(screen.getByRole('button', { name: 'model-a entfernen' })).toBeVisible();
       expect(screen.getByRole('button', { name: 'model-b entfernen' })).toBeVisible();
+      expect(container).toHaveTextContent('2,0 Tsd.');
+      expect(container).toHaveTextContent('≥ 5,0 Tsd.');
     } finally {
       currentLocale.set('en');
       messagesStore.set(loadMessages('en'));

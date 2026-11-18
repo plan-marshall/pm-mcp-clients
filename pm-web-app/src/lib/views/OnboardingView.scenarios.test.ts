@@ -1597,7 +1597,10 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     await fireEvent.click(screen.getByTestId('models-add-opencode'));
     expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked();
 
-    runtimeStore.update((store) => ({ ...store, connected: !store.connected }));
+    runtimeStore.update((store) => ({
+      ...store,
+      unreadReportsCount: store.unreadReportsCount + 1,
+    }));
     await waitFor(() =>
       expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked(),
     );
