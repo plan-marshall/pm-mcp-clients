@@ -377,13 +377,16 @@ class MessageCatalogueTest {
     }
 
     @Test
-    @DisplayName("a key read without parameters renders the locale's own text")
+    @DisplayName("a key read without parameters renders the locale's own text, and a selector key stays a template")
     void shouldGetAKeyWithoutParameters() {
         assertAll(
                 () -> assertEquals(MessageCatalogue.format("de", "plan.changes.unavailable", Map.of()),
                         MessageCatalogue.get("de", "plan.changes.unavailable")),
                 () -> assertEquals(MessageCatalogue.get("en", "common.unknown"),
                         MessageCatalogue.get("common.unknown")),
-                () -> assertTrue(MessageCatalogue.get("de", "plan.changes.unavailable").contains("nderungen")));
+                () -> assertTrue(MessageCatalogue.get("de", "plan.changes.unavailable").contains("nderungen")),
+                () -> assertTrue(MessageCatalogue.get("de", "operator.cleanup.durations.after")
+                        .contains("{days, plural"), "a template is returned unevaluated: "
+                                + MessageCatalogue.get("de", "operator.cleanup.durations.after")));
     }
 }

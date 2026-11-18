@@ -194,18 +194,29 @@ public final class MessageCatalogue {
      * @return the message string
      */
     public static String get(String key) {
-        return format(DEFAULT_LOCALE, key, Map.of());
+        return template(DEFAULT_LOCALE, key);
     }
 
     /**
-     * Retrieves a message template in the specified locale without parameter substitution.
+     * Retrieves a message template in the specified locale without parameter substitution: the text
+     * as the pack holds it, a selector or a plural unevaluated.
      *
      * @param locale the requested locale
      * @param key    the message key
-     * @return the message string
+     * @return the message template
      */
     public static String get(String locale, String key) {
-        return format(locale, key, Map.of());
+        return template(normalizeLocale(locale), key);
+    }
+
+    /**
+     * @param effectiveLocale the normalized locale
+     * @param key             the message key
+     * @return the pack's own text, the default locale's, or the key when neither holds it
+     */
+    private static String template(String effectiveLocale, String key) {
+        var text = getMessages(effectiveLocale, "all").get(key);
+        return text != null ? text : getMessages(DEFAULT_LOCALE, "all").getOrDefault(key, key);
     }
 
     /**
