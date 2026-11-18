@@ -455,9 +455,9 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
   [ Back ]                                            [ Allow 3 models ]
 ----
 
-* One group per enrolled harness, the default marked. The recommendation is preselected and marked `recommended` (`Marker`) with its reason; the operator's change of a preselected box removes the mark from it. *Why?* opens the rationale with the limits per model.
+* One group per enrolled harness, the default marked. The recommendation is preselected and marked `recommended` (`Marker`) with its reason inline; the operator's change of a preselected box removes the mark from it.
 * A harness that cannot list its models (`cannot list its models`) shows a `TextField` (`Model id for <harness>`) paired with *Add a model id*; any model id the steward recommended for it is filled in, marked `recommended`, and can be removed.
-* *Without a recommendation* (no consent to the advice, the advice left, or failed): the box is replaced by one line, `The steward gave no proposal: <reason>.`, or by nothing when the advice was not asked for; every listed model is preselected, and a harness that cannot list its models starts empty.
+* *Without a recommendation* (no consent to the advice, the advice left, or failed): the box is replaced by one line, `Model advice did not run: <reason>. You can still choose below.`, or by nothing when the advice was not asked for; every listed model is preselected, and a harness that cannot list its models starts empty.
 
 [source,text]
 ----

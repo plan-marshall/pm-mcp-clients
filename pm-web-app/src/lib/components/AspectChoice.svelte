@@ -37,8 +37,30 @@
 
   export let onRecord: (choice: unknown) => void = () => {};
 
-  let selectedStore = stores.find((s) => s.recommended)?.kind ?? stores[0]?.kind ?? '';
+  function pickDefaultStore(list: StoreRow[]): string {
+    return (
+      list.find((s) => s.available && s.recommended)?.kind ??
+      list.find((s) => s.available)?.kind ??
+      ''
+    );
+  }
+
+  let prevStores = stores;
+  let prevProviders = providers;
+  let selectedStore = pickDefaultStore(stores);
   let selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
+
+  $: if (stores !== prevStores) {
+    prevStores = stores;
+    selectedStore = pickDefaultStore(stores);
+  }
+
+  $: if (providers !== prevProviders) {
+    prevProviders = providers;
+    selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
+  }
+
+  $: canRecordStore = stores.some((s) => s.kind === selectedStore && s.available);
 
   function toggleProvider(id: string): void {
     selectedProviders = selectedProviders.includes(id)
@@ -49,12 +71,14 @@
   function protectionDetail(store: StoreRow, field: 'protects' | 'does_not_protect'): string {
     const custom = field === 'protects' ? store.protects_against : store.does_not_protect_against;
     if (custom) return custom;
-    const target =
-      store.kind === 'file'
-        ? 'file'
-        : (store.name ?? '').toLowerCase().includes('secret service')
-          ? 'os.secret_service'
-          : 'os.keychain';
+    let target: 'file' | 'os.secret_service' | 'os.keychain' | 'other' = 'other';
+    if (store.kind === 'file') {
+      target = 'file';
+    } else if (store.kind === 'os') {
+      target = (store.name ?? '').toLowerCase().includes('secret service')
+        ? 'os.secret_service'
+        : 'os.keychain';
+    }
     const keys = {
       file: {
         protects: 'onboard.store.choose.file.protects',
@@ -68,6 +92,10 @@
         protects: 'onboard.store.choose.os.keychain.protects',
         does_not_protect: 'onboard.store.choose.os.keychain.does_not_protect',
       },
+      other: {
+        protects: 'onboard.store.choose.other.protects',
+        does_not_protect: 'onboard.store.choose.other.does_not_protect',
+      },
     } as const;
     return $t(keys[target][field]);
   }
@@ -76,7 +104,7 @@
 <section class="choice-screen" data-testid={`${kind}-screen`}>
   {#if kind === 'store'}
     <ul class="choice-screen__list">
-      {#each stores as store}
+      {#each stores as store (store.kind)}
         <li class="choice-screen__row" class:choice-screen__row--disabled={!store.available}>
           <input
             type="radio"
@@ -116,7 +144,7 @@
     </ul>
   {:else}
     <ul class="choice-screen__list">
-      {#each providers as provider}
+      {#each providers as provider (provider.provider)}
         <li class="choice-screen__row" data-provider={provider.provider}>
           <input
             type="checkbox"
@@ -148,6 +176,7 @@
   <div class="choice-screen__actions">
     <Button
       variant="primary"
+      disabled={kind === 'store' ? !canRecordStore : false}
       loading={busy}
       on:click={() =>
         onRecord(kind === 'store' ? selectedStore : selectedProviders)}

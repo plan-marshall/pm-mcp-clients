@@ -32,15 +32,30 @@
 
   export let onCheck: (chosen: string[], defaultId: string) => void = () => {};
 
-  const selectable = harnesses.filter((h) => h.found && h.supported && h.worker_eligible);
-  const initialChosen = selectable.map((h) => h.harness_id);
-  const recordedDefault = harnesses.find((h) => h.default && selectable.includes(h));
+  function initialSelection(list: HarnessRow[]): { chosen: string[]; defaultId: string } {
+    const eligible = list.filter((h) => h.found && h.supported && h.worker_eligible);
+    const recorded = list.find((h) => h.default && eligible.includes(h));
+    return {
+      chosen: eligible.map((h) => h.harness_id),
+      defaultId: recorded?.harness_id ?? eligible[0]?.harness_id ?? '',
+    };
+  }
 
-  let chosen: string[] = [...initialChosen];
-  let defaultId = recordedDefault?.harness_id ?? selectable[0]?.harness_id ?? '';
+  let prevHarnesses = harnesses;
+  let initial = initialSelection(harnesses);
+  let chosen: string[] = [...initial.chosen];
+  let defaultId = initial.defaultId;
   // A path the runtime serves but the browser cannot load falls back to the monogram, so a broken
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
+
+  $: if (harnesses !== prevHarnesses) {
+    prevHarnesses = harnesses;
+    const next = initialSelection(harnesses);
+    chosen = [...next.chosen];
+    defaultId = next.defaultId;
+    failedIconPaths = {};
+  }
 
   function rememberIconFailure(harnessId: string, path: string): void {
     failedIconPaths = { ...failedIconPaths, [harnessId]: path };
@@ -116,7 +131,7 @@
   <p class="choice-screen__label">{$t('onboard.harness.choose.found')}</p>
 
   <ul class="choice-screen__list">
-    {#each harnesses as harness}
+    {#each harnesses as harness (harness.harness_id)}
       {@const canChoose = harness.found && harness.supported && harness.worker_eligible}
       {@const iconPath = harnessIconPath(harness)}
       {@const iconFailed = failedIconPaths[harness.harness_id] === iconPath}

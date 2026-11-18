@@ -18,7 +18,7 @@
 
   /** The catalogue sentence of a harness's token reporting. */
   function tokenState(harness: Harness): string {
-    return harnessUsageText($t, harness);
+    return harnessUsageText($t, harness, { preferDetailOnComplete: true });
   }
 </script>
 

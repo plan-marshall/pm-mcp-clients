@@ -9,6 +9,11 @@ export interface HarnessTokenInfo {
   usage?: { coverage?: string; figures?: Record<string, string> };
 }
 
+export interface HarnessUsageFormatOptions {
+  /** Include `complete: {figures}` when `token_detail` is supplied (`TokensScreen`). */
+  preferDetailOnComplete?: boolean;
+}
+
 type Translator = (key: string, params?: Record<string, string | number>) => string;
 
 function missingFiguresText(harness: HarnessTokenInfo): string {
@@ -32,12 +37,17 @@ function missingFiguresText(harness: HarnessTokenInfo): string {
  *
  * @param translate catalogue translator function (`$t`)
  * @param harness harness scan or token-report row
+ * @param options formatting options (`preferDetailOnComplete` defaults to `false`)
  * @returns localised usage line
  */
-export function harnessUsageText(translate: Translator, harness: HarnessTokenInfo): string {
+export function harnessUsageText(
+  translate: Translator,
+  harness: HarnessTokenInfo,
+  options: HarnessUsageFormatOptions = {},
+): string {
   const coverage = harness.token_usage ?? harness.usage?.coverage;
   if (coverage === 'complete') {
-    if (harness.token_detail?.trim()) {
+    if (options.preferDetailOnComplete && harness.token_detail?.trim()) {
       return translate('onboard.harness.tokens.complete', { figures: harness.token_detail.trim() });
     }
     return translate('onboard.harness.choose.usage_complete');

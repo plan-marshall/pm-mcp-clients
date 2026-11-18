@@ -1497,6 +1497,59 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
       }),
     );
   });
+
+  it('keeps the manual TextField when removing the sole operator model and avoids duplicates on re-add', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [{ harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]') as HTMLElement;
+    expect(opencodeGroup).not.toBeNull();
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+
+    await fireEvent.click(within(opencodeGroup).getByRole('button', { name: /Remove/i }));
+
+    expect(container.querySelector('[data-harness="opencode"]')).not.toBeNull();
+    expect(opencodeGroup).toHaveTextContent('no model allowed');
+    expect(within(opencodeGroup).getByTestId('models-input-opencode')).toBeVisible();
+
+    await fireEvent.input(within(opencodeGroup).getByTestId('models-input-opencode'), {
+      target: { value: 'qwen-coder-32b' },
+    });
+    await fireEvent.click(within(opencodeGroup).getByTestId('models-add-opencode'));
+
+    expect(
+      within(opencodeGroup).getAllByTestId('model-toggle-opencode-qwen-coder-32b'),
+    ).toHaveLength(1);
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+  });
+
+  it('respects explicit cannot_list: false and renders no_advice_reason when advice did not run', () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        no_advice_reason: 'steward timed out',
+        harnesses: [{ harness_id: 'opencode', cannot_list: false, models_listed: true }],
+        models: [{ harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]') as HTMLElement;
+    expect(within(opencodeGroup).queryByTestId('models-input-opencode')).toBeNull();
+    expect(container.textContent).toContain('steward timed out');
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+  });
 });
 
 describe('store.choose protection lines per option (D9)', () => {

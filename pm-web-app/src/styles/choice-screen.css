@@ -85,6 +85,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .choice-screen__row-meta {

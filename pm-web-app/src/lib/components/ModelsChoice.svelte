@@ -100,15 +100,20 @@
 
   $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
 
-  $: groups = buildGroups(allModels, harnesses);
+  $: groups = buildGroups(allModels, harnesses, models);
 
   $: allowed = allModels.filter((row) => selected.includes(key(row)));
 
   function buildGroups(
     rows: ModelRow[],
     harnessInfos: ModelHarnessInfo[],
+    initialRows: ModelRow[],
   ): Array<[string, ModelRow[]]> {
     const grouped: Record<string, ModelRow[]> = {};
+    // Keep initial harnesses even if all their models are later removed.
+    for (const row of initialRows) {
+      grouped[row.harness_id] ??= [];
+    }
     for (const row of rows) {
       (grouped[row.harness_id] ??= []).push(row);
     }
@@ -134,10 +139,11 @@
     const modelId = (draftByHarness[harnessId] ?? '').trim();
     if (!modelId) return;
     const id = key({ harness_id: harnessId, model_id: modelId });
-    if (removedKeys.includes(id)) {
+    // Inspect incoming `models` and `extraModels` directly rather than deferred `$: allModels`
+    // so re-adding a removed initial model does not create a duplicate row.
+    if (models.some((m) => key(m) === id)) {
       removedKeys = removedKeys.filter((k) => k !== id);
-    }
-    if (!allModels.some((m) => key(m) === id)) {
+    } else if (!extraModels.some((m) => key(m) === id)) {
       extraModels = [...extraModels, { harness_id: harnessId, model_id: modelId, source: 'operator' }];
     }
     if (!selected.includes(id)) {
@@ -167,7 +173,12 @@
 
   function cannotList(harnessId: string, rows: ModelRow[]): boolean {
     const info = harnesses.find((h) => h.harness_id === harnessId);
-    if (info?.cannot_list === true || info?.models_listed === false) return true;
+    if (info?.cannot_list !== undefined) return info.cannot_list;
+    if (info?.models_listed !== undefined) return !info.models_listed;
+    const initialForHarness = models.filter((m) => m.harness_id === harnessId);
+    if (initialForHarness.length > 0) {
+      return !initialForHarness.some((r) => r.source === 'probe');
+    }
     return !rows.some((r) => r.source === 'probe');
   }
 
@@ -189,7 +200,7 @@
     </p>
   {/if}
 
-  {#each groups as [harnessId, rows]}
+  {#each groups as [harnessId, rows] (harnessId)}
     <div class="model-group" data-harness={harnessId}>
       <div class="model-group__header">
         <h3 class="choice-screen__label">{resolveHarnessName(harnessId)}</h3>
@@ -205,7 +216,7 @@
 
       {#if rows.length > 0}
         <ul class="choice-screen__list">
-          {#each rows as row}
+          {#each rows as row (key(row))}
             {@const rowKey = key(row)}
             {@const isChecked = selected.includes(rowKey)}
             {@const rowReason = row.reason ?? row.rationale}
@@ -298,15 +309,15 @@
 <style>
   .recommendation {
     padding: var(--space-4);
-    background-color: var(--color-primary-subtle);
-    border: 1px solid var(--color-primary);
+    background-color: var(--color-brand-subtle);
+    border: 1px solid var(--color-brand);
     border-radius: var(--radius-md);
   }
 
   .recommendation__title {
     font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-primary);
+    color: var(--color-brand);
     margin-bottom: var(--space-1);
   }
 

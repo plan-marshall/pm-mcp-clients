@@ -49,6 +49,49 @@ describe('AspectChoice', () => {
 
       expect(onRecord).toHaveBeenCalledWith('file');
     });
+
+    it('falls back to the first available store when an unavailable store is marked recommended', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false, recommended: true },
+          { kind: 'file', name: 'the file store', available: true },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeDisabled();
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Keep the tokens in the file store' })).toBeEnabled();
+    });
+
+    it('disables the confirm button when no store is available', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false, recommended: true },
+          { kind: 'file', name: 'the file store', available: false },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).not.toBeChecked();
+      expect(screen.getByRole('radio', { name: 'the file store' })).not.toBeChecked();
+      expect(screen.getByTestId('store-record')).toBeDisabled();
+    });
+
+    it('renders the generic other protection copy for non-os, non-file stores', () => {
+      const en = loadMessages('en');
+      const { container } = render(AspectChoice, {
+        kind: 'store',
+        stores: [{ kind: 'vault', name: 'Vault', available: true }],
+      });
+
+      const vaultOption = screen.getByRole('radio', { name: 'Vault' }).closest('label, li');
+      expect(vaultOption ?? container).toHaveTextContent(en['onboard.store.choose.other.protects']);
+      expect(vaultOption ?? container).toHaveTextContent(
+        en['onboard.store.choose.other.does_not_protect'],
+      );
+      expect(container).not.toHaveTextContent(en['onboard.store.choose.file.protects']);
+    });
   });
 
   describe('providers', () => {

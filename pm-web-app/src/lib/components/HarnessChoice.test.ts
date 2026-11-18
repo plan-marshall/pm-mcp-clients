@@ -89,23 +89,37 @@ describe('HarnessChoice monograms', () => {
   });
 
   it('updates token usage wording reactively when switching between English and German', async () => {
-    currentLocale.set('en');
-    messagesStore.set(loadMessages('en'));
+    try {
+      currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
 
+      const { container } = render(HarnessChoice, {
+        props: { harnesses: [harness({ token_usage: 'complete' })] },
+      });
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
+
+      currentLocale.set('de');
+      messagesStore.set(loadMessages('de'));
+      await tick();
+
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
+        'Tokenverbrauch vollständig',
+      );
+    } finally {
+      currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
+    }
+  });
+
+  it('keeps complete wording without detail even when token_detail is also set', () => {
     const { container } = render(HarnessChoice, {
-      props: { harnesses: [harness({ token_usage: 'complete' })] },
+      props: {
+        harnesses: [harness({ token_usage: 'complete', token_detail: 'input, output' })],
+      },
     });
-    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
 
-    currentLocale.set('de');
-    messagesStore.set(loadMessages('de'));
-    await tick();
-
-    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
-      'Tokenverbrauch vollständig',
-    );
-
-    currentLocale.set('en');
-    messagesStore.set(loadMessages('en'));
+    const row = container.querySelector('[data-harness="claude"]');
+    expect(row).toHaveTextContent('usage complete');
+    expect(row).not.toHaveTextContent('input, output');
   });
 });
