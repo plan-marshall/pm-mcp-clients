@@ -39,7 +39,7 @@ const RAW_ELEMENTS = new Set(['button', 'a', 'input', 'textarea', 'select']);
  * @returns {number}
  */
 export function getLineNumber(source, offset) {
-  if (offset == null || offset < 0) return 1;
+  if (offset === null || offset === undefined || offset < 0) return 1;
   return source.slice(0, offset).split('\n').length;
 }
 
@@ -389,23 +389,18 @@ export function runCli(argv = process.argv.slice(2)) {
     const baseline = generateBaseline(findings);
     const baselinePath = path.join(appDir, 'scripts', 'vocabulary-baseline.json');
     fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
-    // eslint-disable-next-line no-console
     console.info(`Updated baseline with ${findings.length} findings across ${Object.keys(baseline).length} files.`);
     return 0;
   }
 
   for (const f of findings) {
-    // eslint-disable-next-line no-console
     console.warn(`warning: ${f.file}:${f.line} ${f.rule} — use ${f.component}`);
   }
 
   if (findings.length > 0) {
-    // eslint-disable-next-line no-console
     console.info('\n' + formatTable(findings) + '\n');
-    // eslint-disable-next-line no-console
     console.info(`Total vocabulary findings: ${findings.length} (${isErrorMode ? 'error' : 'warning'})`);
   } else {
-    // eslint-disable-next-line no-console
     console.info('No vocabulary findings. All files conform to the vocabulary.');
   }
 

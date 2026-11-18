@@ -102,6 +102,7 @@ describe('vocabulary completeness', () => {
         `Expected test for ${name} (${name}.test.ts) to exist beside component`,
       ).toBe(true);
 
+      // eslint-disable-next-line security/detect-non-literal-regexp
       const nameRegex = new RegExp(`\\b${name}\\b`);
       expect(
         nameRegex.test(devPageSource),
