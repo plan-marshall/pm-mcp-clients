@@ -67,6 +67,7 @@ class OverviewChangesKeysTest {
 
     private RuntimeFixture fixture;
     private final Map<String, String> bodies = new LinkedHashMap<>();
+    private final Map<String, String> refusals = new LinkedHashMap<>();
     private final List<String> reads = new ArrayList<>();
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
     private OverviewFullScreenApp app;
@@ -123,6 +124,11 @@ class OverviewChangesKeysTest {
         var body = bodies.get(path);
         if (body == null) {
             body = bodies.get(request.method() + " " + path);
+        }
+        var refusal = refusals.get(path);
+        if (refusal != null) {
+            response.send(503, null, refusal);
+            return;
         }
         if (body == null) {
             response.send(404, null, "{\"error\":\"target_not_found\"}");
@@ -232,6 +238,23 @@ class OverviewChangesKeysTest {
                                 () -> assertEquals(TuiLevel.Kind.PLAN_CHANGES, level().kind()),
                                 () -> assertTrue(statusText().contains("does not exist"), statusText()),
                                 () -> assertFalse(rowsText().contains("@@"), "no hunks of a refused read"));
+        }
+
+        @Test
+        @DisplayName("a refused file read prints the catalogue's text, never the runtime's own message")
+        void refusedFileUsesTheCatalogue() throws Exception {
+            open();
+            keys.handle(TuiKeyAction.CHANGES);
+            bodies.remove(FILE_PATH);
+            refusals.put(FILE_PATH, "{\"error\":\"scope_not_found\",\"message\":\"Runtime said: no such file\"}");
+            selectNaming("a/B.java");
+
+            keys.handle(TuiKeyAction.OPEN);
+
+            assertAll(
+                                () -> assertEquals(TuiLevel.Kind.PLAN_CHANGES, level().kind()),
+                                () -> assertFalse(statusText().contains("Runtime said"), statusText()),
+                                () -> assertTrue(statusText().contains("does not exist"), statusText()));
         }
     }
 

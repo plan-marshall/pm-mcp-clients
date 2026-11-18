@@ -184,7 +184,7 @@ The code the plan changed, read where the operator is, also where no pull reques
 ----
 
 * *The list*: one row per file in the order served, with its status mark (`A` added, `M` modified, `D` deleted, `R` renamed with the path it came from, `B` binary), its lines added and removed, and `unplanned` where it is (`plan.changes.unplanned`); the head names the capture's `head` (short) and the size line's figures.
-* *A file*: selecting a row opens its hunks: each hunk's header with its old and new lines, the lines with `−`, `+`, or a space, on the diff tokens of the client. A file the runtime cut shows `plan.changes.truncated` with the count of lines left out. A binary file shows only its row.
+* *A file*: selecting a row opens its hunks: each hunk's header with its old and new lines, the lines with `−`, `+`, or a space, on the diff tokens of the client. A file the runtime cut shows `plan.changes.truncated` with the count of lines left out. A binary file shows only its row. `plan <id> --changes --file <path>` for a file the list does not hold says `plan.changes.file_not_found` with its path and exits 1.
 * *Untrusted*: every path and line is shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
 * *Read only*: no hunk is accepted or rejected here, and the view offers no act on the code; a change the operator wants goes into the plan's chat (link:work-actions.adoc#chat[Chatting with the Planning Role]).
 * *Absent*: before the first capture the terminal's `d` says `plan.changes.not_captured`, never an empty list, and the web app shows no _Changes_ tab and no size line (<<tabs>>); where the captured commit is gone both say `plan.changes.unavailable` (in the web app inside the tab, which is present then). An ended plan shows its last capture.
@@ -270,6 +270,10 @@ Keys of the area `plan`, shared by both clients.
 |`plan.changes.unavailable`
 |The changes are no longer in the repository
 |Die Änderungen sind nicht mehr im Repository
+
+|`plan.changes.file_not_found`
+|No such file in the plan's changes: {path}
+|Keine solche Datei in den Änderungen des Plans: {path}
 
 |`plan.activity.model_differs`
 |answered by {served} instead of {launched}

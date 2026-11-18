@@ -1005,7 +1005,15 @@ class PlanCommandTest {
                                     () -> assertTrue(unavailableText.contains(
                                                         "The changes are no longer in the repository"), unavailableText),
                                     () -> assertEquals(1, unknown, err.toString()),
-                                    () -> assertTrue(unknownText.contains("Plan not-a-plan not found."), unknownText));
+                                    () -> assertTrue(unknownText.contains("\u2717 This entry does not exist"), unknownText),
+                                    () -> assertTrue(unknownText.contains(
+                                                        "No plan, epic, decision, report or entry carries this id."),
+                                                        unknownText),
+                                    () -> assertTrue(unknownText.contains(
+                                                        "\u2192 Check the id or pick the entry from the list again."),
+                                                        unknownText),
+                                    () -> assertFalse(unknownText.contains("Plan not-a-plan not found."),
+                                                        "the English literal is gone: " + unknownText));
             }
         }
 
@@ -1031,6 +1039,32 @@ class PlanCommandTest {
             assertAll(
                                 () -> assertEquals(1, code, err.toString()),
                                 () -> assertTrue(out.toString().contains("No such file in the plan's changes: a/C.java"),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("a file the held list does not name is not found, in German too")
+        void refusesAFileOutsideTheListInGerman() throws Exception {
+            var list = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c2ab41d7e\","
+                                + "\"base_ref\":\"main\",\"files\":[{\"path\":\"a/B.java\",\"status\":\"added\","
+                                + "\"added\":1,\"removed\":0,\"binary\":false,\"unplanned\":false}]}";
+            var file = "{\"path\":\"a/C.java\",\"hunks\":[],\"binary\":false,\"truncated\":false}";
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans/fix-relay/changes".equals(request.target())) {
+                    response.json(200, list);
+                } else if (request.target().startsWith("/api/v1/plans/fix-relay/changes/file?")) {
+                    response.json(200, file);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            int code = executeWithLocale("de", "plan", "fix-relay", "--changes", "--file", "a/C.java");
+
+            assertAll(
+                                () -> assertEquals(1, code, err.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                    "Keine solche Datei in den \u00c4nderungen des Plans: a/C.java"),
                                                     out.toString()));
         }
 

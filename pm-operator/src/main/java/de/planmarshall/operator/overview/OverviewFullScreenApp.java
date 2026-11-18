@@ -2792,7 +2792,7 @@ public final class OverviewFullScreenApp {
             try {
                 openChanges(context.runtime(true), view.planId());
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
         }
 
@@ -2827,7 +2827,7 @@ public final class OverviewFullScreenApp {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
                 if (response.status() != 200) {
-                    statusMessage = fileRefusalOf(response);
+                    statusMessage = refusalOf(response);
                     return;
                 }
                 synchronized (OverviewFullScreenApp.this) {
@@ -2836,25 +2836,8 @@ public final class OverviewFullScreenApp {
                     }
                 }
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
-        }
-
-        /**
-         * @param response a refused file read
-         * @return the runtime's own message, which names the file, or the level's refusal text
-         */
-        private String fileRefusalOf(HttpResponse response) {
-            try {
-                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-                var message = map != null ? JsonTree.string(map, "message") : null;
-                if (message != null) {
-                    return OutputSafety.stripControlSequences(message);
-                }
-            } catch (IOException _) {
-                // A refusal that carries no JSON still has its status.
-            }
-            return LoadRefusal.of(locale, response, PLAN_LEVEL).line();
         }
 
         /**

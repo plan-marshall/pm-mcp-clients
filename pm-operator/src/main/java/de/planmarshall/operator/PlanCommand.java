@@ -290,8 +290,7 @@ public final class PlanCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
         if (response.status() == 404) {
-            out.printf("Plan %s not found.%n", OutputSafety.stripControlSequences(planId));
-            out.flush();
+            RefusalRenderer.render(out, locale, ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         if (response.status() != 200) {
@@ -331,22 +330,22 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
         if (fileResponse.status() == 404) {
-            return noSuchFile(out);
+            return noSuchFile(out, locale);
         }
         if (fileResponse.status() != 200) {
             throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
         }
         if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
             // The list moved between the two reads: the file it answered is no longer one of its rows.
-            return noSuchFile(out);
+            return noSuchFile(out, locale);
         }
         printRows(out, level.openFileRows(locale));
         return 0;
     }
 
-    private int noSuchFile(PrintWriter out) {
-        out.printf("No such file in the plan's changes: %s%n",
-                            OutputSafety.stripControlSequences(changesFile));
+    private int noSuchFile(PrintWriter out, String locale) {
+        out.println(MessageCatalogue.format(locale, "plan.changes.file_not_found",
+                            Map.of("path", OutputSafety.stripControlSequences(changesFile))));
         out.flush();
         return 1;
     }
