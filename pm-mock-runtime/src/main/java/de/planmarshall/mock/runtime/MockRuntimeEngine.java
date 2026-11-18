@@ -2946,6 +2946,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
 
+        // The language values are part of the settings snapshot: record them before the transition,
+        // and before the state lock, so the revision write takes only the onboarding lock.
+        var answer = parseBody(request.body());
+        var answerBody = answer != null ? answer : Map.<String, Object>of();
+        if (activeStateId.startsWith("language.")) {
+            recordInterfaceLanguage(answerBody, activeStateId, linkName);
+        }
         synchronized (this) {
             if (!Objects.equals(this.currentStateId.get(), activeStateId)) {
                 var stale = new LinkedHashMap<String, Object>();
@@ -2954,11 +2961,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 stale.put(KEY_STATE, this.currentStateId.get());
                 response.json(409, stale);
                 return true;
-            }
-            var answer = parseBody(request.body());
-            var answerBody = answer != null ? answer : Map.<String, Object>of();
-            if (activeStateId.startsWith("language.")) {
-                recordInterfaceLanguage(answerBody, activeStateId, linkName);
             }
             recordAspectAnswer(activeStateId, linkName, answerBody);
             transitionTo(linkDef.next());
@@ -8649,15 +8651,26 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         var chosenInterface = JsonTree.string(body,
                 reconfigure ? KEY_INTERFACE : KEY_LANGUAGE_INTERFACE);
-        if (isSupportedLanguage(chosenInterface)) {
-            machineLanguageInterface = Objects.requireNonNull(chosenInterface);
-        }
         var chosenModel = JsonTree.string(body,
                 reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
-        if (choiceSame(chosenModel)) {
-            machineLanguageModel = machineLanguageInterface;
-        } else if (isSupportedLanguage(chosenModel)) {
-            machineLanguageModel = Objects.requireNonNull(chosenModel);
+        var nextInterface = isSupportedLanguage(chosenInterface) ? chosenInterface : null;
+        var nextModel = choiceSame(chosenModel) ? machineLanguageInterface
+                : isSupportedLanguage(chosenModel) ? chosenModel : null;
+        var interfaceApplies = nextInterface != null && !nextInterface.equals(machineLanguageInterface);
+        var modelApplies = nextModel != null && !nextModel.equals(machineLanguageModel);
+        if (!interfaceApplies && !modelApplies) {
+            return;
+        }
+        // The language values are part of the settings snapshot: a change moves its revision, so a
+        // stale settings write is refused with 409 as any other stale write.
+        synchronized (onboardingLock) {
+            if (interfaceApplies) {
+                machineLanguageInterface = nextInterface;
+            }
+            if (modelApplies) {
+                machineLanguageModel = nextModel;
+            }
+            machineSettingsRevision++;
         }
     }
 

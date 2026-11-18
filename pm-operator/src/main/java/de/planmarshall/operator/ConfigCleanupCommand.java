@@ -419,9 +419,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() != 409) {
-                out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                    Map.of("status", response.status())));
-                out.flush();
+                RefusalRenderer.render(out, locale, new OperatorRefusedException("config cleanup", response));
                 return PmOperator.EXIT_FAILURE;
             }
             var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());

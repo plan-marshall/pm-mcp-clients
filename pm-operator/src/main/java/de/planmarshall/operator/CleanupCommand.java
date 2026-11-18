@@ -1171,8 +1171,8 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         if (res.status() == 200) {
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.cleanup.deleted_summary",
-                                Map.of(KIND_PLANS, preview.plans(), KIND_EPICS, preview.epics(), "logs", preview.logs(),
-                                                    KIND_REPORTS, preview.reports(), "projects", preview.projects(),
+                                Map.of(KIND_PLANS, preview.plans(), KIND_EPICS, preview.epics(), KIND_LOGS, preview.logs(),
+                                                    KIND_REPORTS, preview.reports(), KIND_PROJECTS, preview.projects(),
                                                     "size", SystemCommand.formatBytes(preview.freedBytes()))));
             out.flush();
             return 0;
@@ -1271,7 +1271,7 @@ public final class CleanupCommand implements Callable<Integer> {
         text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_keep", Map.of()));
         if (unchecked > 0) {
             text.append('\n').append(MessageCatalogue.format(locale,
-                                "operator.cleanup.delete_preview_unchecked", Map.of("count", unchecked)));
+                                "operator.cleanup.delete_preview_unchecked", Map.of(COUNT_PARAM, unchecked)));
         }
         return text.toString();
     }

@@ -349,11 +349,14 @@ class OnboardingScenarioTest {
                 var summaries = JsonTree.asObject(stateMap.get("step_summaries"));
                 assertEquals("Deutsch, models Deutsch", JsonTree.string(summaries, "1"));
 
-                assertEquals(200, put(client, auth,
+                // The language step moved the settings revision: the revision read before it is stale.
+                assertEquals(409, put(client, auth,
                         "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":4}"));
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":5}"));
                 // A code the machine does not support changes nothing.
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":5}"));
+                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":6}"));
 
                 var changed = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
