@@ -11,6 +11,7 @@ import {
   persistCatalogue,
   t,
   initI18n,
+  adoptRecordedLocale,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
@@ -458,5 +459,45 @@ describe('the locale switch never mixes the two catalogues', () => {
 
     // Assert: the later entry wins, whatever order the storage lists the keys in.
     expect(cached?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
+  });
+});
+
+describe('the recorded language of the machine', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('applies the recorded language even when its catalogue answers after the bound', async () => {
+    // Arrange: the runtime records Deutsch, but its catalogue answers only after the bound.
+    vi.useFakeTimers();
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      language_interface: 'de',
+    } as never);
+    let answer: ((messages: Record<string, string>) => void) | undefined;
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    // Act: the screen stops waiting at the bound and keeps the language it shows.
+    const adoption = adoptRecordedLocale();
+    await vi.advanceTimersByTimeAsync(2000);
+    await adoption;
+
+    // Assert: nothing switched yet, and the late answer still switches the screen.
+    expect(get(currentLocale)).toBe('en');
+    answer?.({ 'web.pair.page.title': 'Titel' });
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    expect(get(currentLocale)).toBe('de');
   });
 });

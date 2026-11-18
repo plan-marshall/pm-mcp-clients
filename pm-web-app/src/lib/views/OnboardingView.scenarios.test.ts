@@ -1048,6 +1048,34 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
   });
 
+  it('names the aspect of a change link whose line the result does not report', () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:roles': {
+            href: '/api/v1/onboarding/settings/reconfigure/roles',
+            next: 'roles.reconfigure',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // The row's act and the orphan link's act are told apart by the aspect each opens.
+    expect(screen.getByRole('button', { name: 'Change Language' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change Roles' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^change /i })).toHaveLength(2);
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({

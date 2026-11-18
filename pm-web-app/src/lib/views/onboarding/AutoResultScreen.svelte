@@ -100,12 +100,17 @@
   </table>
   <div class="state-card__actions">
     {#each footerLinks as { id, isPrimary }}
+      {@const aspect = id.startsWith('change:') ? id.slice('change:'.length) : null}
       <Button
         variant={isPrimary ? 'primary' : 'secondary'}
         loading={view.busy}
         on:click={() => view.onLink(id)}
       >
-        {view.linkLabel(id)}
+        {aspect
+          ? $t('onboard.auto.result.change_label', {
+              aspect: $t(`onboard.auto.aspect.${aspect}`),
+            })
+          : view.linkLabel(id)}
       </Button>
     {/each}
   </div>

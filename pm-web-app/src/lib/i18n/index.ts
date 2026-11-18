@@ -579,52 +579,45 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  * Called after pairing and after the onboarding's language step, when the machine can be asked: a
  * browser that paired just now, or that just recorded its language, must show the recorded
  * language without a reload (UC-ONB-3, `onboarding-step-1.adoc`).
+ *
+ * The wait below bounds only how long the NEXT SCREEN waits for the language; the read itself goes
+ * on, so a runtime that answers after the bound still switches the screen once its catalogue is in
+ * hand. A browser whose own choice is stored keeps it either way.
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
-  let expired = false;
-  const work = adoptRecordedLocaleUntimed(generation, () => expired);
-  await withinBound(work, ADOPTION_BOUND_MS, () => {
-    expired = true;
-  });
+  await withinBound(adoptRecordedLocaleUntimed(generation), ADOPTION_BOUND_MS);
 }
 
 /**
  * @param generation the switch generation the adoption was asked under
- * @param hasExpired tells whether the pairing's bound has passed
  */
-async function adoptRecordedLocaleUntimed(
-  generation: number,
-  hasExpired: () => boolean,
-): Promise<void> {
+async function adoptRecordedLocaleUntimed(generation: number): Promise<void> {
   await readCatalogueVersion();
-  if (storedLocale() || hasExpired()) return;
+  if (storedLocale()) return;
   const recorded = await recordedLocale();
   if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
   const loaded = await loadCatalogueFor(recorded);
-  if (!loaded || generation !== switchGeneration || hasExpired() || storedLocale()) return;
+  if (!loaded || generation !== switchGeneration || storedLocale()) return;
   currentLocale.set(recorded);
   messagesStore.set(loaded);
   messagesLocale = recorded;
 }
 
-/** How long the adoption waits for the recorded language before the screen paints in its own. */
+/** How long a screen waits for the recorded language before it paints in its current one. */
 const ADOPTION_BOUND_MS = 2000;
 
 /**
  * @param work the promise to bound
  * @param ms the bound in milliseconds
- * @param onExpire called when the bound passes first
- * @returns the promise's value, or `null` when the bound passed first
+ * @returns the promise's value, or `null` when the bound passed first — the work itself is left to
+ *          finish, so nothing it applies is lost
  */
-function withinBound<T>(work: Promise<T>, ms: number, onExpire: () => void): Promise<T | null> {
+function withinBound<T>(work: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
     work,
     new Promise<null>((resolve) => {
-      setTimeout(() => {
-        onExpire();
-        resolve(null);
-      }, ms);
+      setTimeout(() => resolve(null), ms);
     }),
   ]);
 }
