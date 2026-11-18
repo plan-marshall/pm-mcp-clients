@@ -275,7 +275,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         if (state == null || state.isBlank()) {
             return unknown(locale);
         }
-        var clean = PlanViewFormatting.clean(state);
+        var clean = PlanViewFormatting.clean(state).trim().toLowerCase(Locale.ROOT);
         return Display.word(locale, "task", clean);
     }
 

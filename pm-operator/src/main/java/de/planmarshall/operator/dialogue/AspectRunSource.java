@@ -21,6 +21,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.OperatorGate;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -80,6 +81,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private final RuntimeClient runtime;
     private final OperatorGate gate;
     private final String linkId;
+    private final String locale;
     private final Map<String, String> facts;
     private final Set<String> consents;
     private final Flags flags;
@@ -104,15 +106,17 @@ public final class AspectRunSource implements StateDialogue.Source {
      * @param runtime  the runtime client
      * @param gate     the operator gate every answer is sent through
      * @param linkId   the id of the machine settings' link that calls the aspect again
+     * @param locale   the interface locale a refusal is written in
      * @param facts    the facts the verb answers a state with, by field name
      * @param consents the consent kinds the verb carries
      * @param flags    the boolean answers the verb carries
      */
-    public AspectRunSource(RuntimeClient runtime, OperatorGate gate, String linkId, Map<String, String> facts,
-                        List<String> consents, Flags flags) {
+    public AspectRunSource(RuntimeClient runtime, OperatorGate gate, String linkId, String locale,
+                        Map<String, String> facts, List<String> consents, Flags flags) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.gate = Objects.requireNonNull(gate, "gate");
         this.linkId = Objects.requireNonNull(linkId, "linkId");
+        this.locale = Objects.requireNonNull(locale, "locale");
         this.facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
         this.consents = Set.copyOf(Objects.requireNonNull(consents, "consents"));
         this.flags = Objects.requireNonNull(flags, "flags");
@@ -244,12 +248,14 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return send(linkId, current);
             }
             if (current.links().stream().noneMatch(link -> SETTINGS_LINK.equals(link.id()))) {
-                throw new OperatorRefusedException("the machine settings are not reachable: the runtime offers neither "
-                                    + SETTINGS_LINK + " nor " + linkId);
+                throw new OperatorRefusedException(
+                                    MessageCatalogue.format(locale, "operator.config.settings_unreachable",
+                                                        Map.of("link", SETTINGS_LINK)));
             }
             current = send(SETTINGS_LINK);
         }
-        throw new OperatorRefusedException("the machine settings were not reached");
+        throw new OperatorRefusedException(
+                            MessageCatalogue.format(locale, "operator.config.settings_not_reached", Map.of()));
     }
 
     private @Nullable String answerFor(StateDialogue.Frame frame) {

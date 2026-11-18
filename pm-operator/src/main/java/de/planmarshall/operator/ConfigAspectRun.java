@@ -85,14 +85,15 @@ final class ConfigAspectRun {
     }
 
     /**
-     * The outcome of one later run: its exit code, the facts of the last state it reported, and the
-     * id of that last state.
+     * The outcome of one later run: its exit code, the facts of the last state it reported, the id of
+     * that last state, and whether the operator left the dialogue before it ended.
      *
      * @param exitCode    the verb's exit code
      * @param facts       the facts of the last state before the run returned to the settings
      * @param lastStateId the state id of the last state
+     * @param left        whether the operator left the dialogue instead of finishing it
      */
-    record Outcome(int exitCode, Map<String, Object> facts, String lastStateId) {
+    record Outcome(int exitCode, Map<String, Object> facts, String lastStateId, boolean left) {
 
         Outcome {
             facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
@@ -100,7 +101,7 @@ final class ConfigAspectRun {
         }
 
         Outcome(int exitCode, Map<String, Object> facts) {
-            this(exitCode, facts, "");
+            this(exitCode, facts, "", false);
         }
     }
 
@@ -157,7 +158,7 @@ final class ConfigAspectRun {
 
     private Outcome execute(String aspect, @Nullable Terminal terminal) throws IOException {
         var source = new AspectRunSource(context.runtime(true), context.gate(),
-                            AspectRunSource.reconfigureLink(aspect), answers.facts(), answers.consents(),
+                            AspectRunSource.reconfigureLink(aspect), locale, answers.facts(), answers.consents(),
                             new AspectRunSource.Flags(answers.noIcons(), answers.noAdvice(), answers.yes(),
                                                 answers.noInput()));
         if (terminal != null) {
@@ -184,7 +185,7 @@ final class ConfigAspectRun {
         } catch (StartPrompt.StartLeftException _) {
             reportUnused(source);
             out.flush();
-            return outcome(source, 0);
+            return outcome(source, 0, true);
         } catch (OperatorRefusedException e) {
             RefusalRenderer.render(err, locale, e);
             err.flush();
@@ -206,7 +207,11 @@ final class ConfigAspectRun {
     }
 
     private static Outcome outcome(AspectRunSource source, int exitCode) {
-        return new Outcome(exitCode, source.lastFacts(), source.lastStateId());
+        return new Outcome(exitCode, source.lastFacts(), source.lastStateId(), false);
+    }
+
+    private static Outcome outcome(AspectRunSource source, int exitCode, boolean left) {
+        return new Outcome(exitCode, source.lastFacts(), source.lastStateId(), left);
     }
 
     private void reportUnused(AspectRunSource source) {

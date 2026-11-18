@@ -10114,12 +10114,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (id.isBlank()) id = "new-project";
 
         final var finalPath = path;
-        final var finalId = id;
         synchronized (projectsLock) {
             var existing = beingAddedProjects.stream()
-                    .filter(candidate -> candidate.checkoutPath().equals(finalPath)
-                            || candidate.checkoutPath().endsWith("/" + finalId)
-                            || (candidate.continueLink() != null && candidate.continueLink().contains(finalId)))
+                    .filter(candidate -> normalized(candidate.checkoutPath()).equals(normalized(finalPath)))
                     .findFirst()
                     .orElse(null);
             var beingAdded = existing != null ? existing : new BeingAddedProject(
@@ -10145,6 +10142,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     KEY_TOTAL_STEPS, beingAdded.totalSteps()
             ));
         }
+    }
+
+    /**
+     * @param path a checkout path
+     * @return the path without a trailing separator, so two spellings of one checkout match
+     */
+    private static String normalized(String path) {
+        return path.length() > 1 && path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
     }
 
     /**

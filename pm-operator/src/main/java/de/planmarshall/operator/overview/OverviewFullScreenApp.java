@@ -2826,6 +2826,12 @@ public final class OverviewFullScreenApp {
             try {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
+                if (response.status() == 404) {
+                    // A file the held list does not name: the status line must say which file.
+                    statusMessage = MessageCatalogue.format(locale, "plan.changes.file_not_found",
+                                        Map.of("path", OutputSafety.stripControlSequences(path)));
+                    return;
+                }
                 if (response.status() != 200) {
                     statusMessage = refusalOf(response);
                     return;

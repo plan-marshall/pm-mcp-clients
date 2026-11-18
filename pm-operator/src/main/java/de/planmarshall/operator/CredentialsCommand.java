@@ -165,6 +165,12 @@ public final class CredentialsCommand implements Callable<Integer> {
     private int store(PrintWriter out, PrintWriter err, String key, String mode, boolean yes,
                         @Nullable Map<String, Object> status) throws IOException {
         var locale = locale();
+        if (noInput) {
+            // The secret is read at the terminal, never from an argument: no input is no store.
+            out.println(MessageCatalogue.format(locale, "operator.credentials.no_input", Map.of()));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
         try (var lease = context.openTerminal()) {
             var terminal = lease.terminal();
             char[] secret;
@@ -186,8 +192,17 @@ public final class CredentialsCommand implements Callable<Integer> {
                     out.flush();
                     return PmOperator.EXIT_FAILURE;
                 }
-                if (!yes && !confirm(terminal)) {
-                    return 0;
+                if (!yes) {
+                    var confirmation = confirm(terminal);
+                    if (confirmation == Confirmation.NO_INPUT) {
+                        // No more input at the confirmation: nothing was stored, and input is missing.
+                        out.println(MessageCatalogue.format(locale, "operator.credentials.store_stopped", Map.of()));
+                        out.flush();
+                        return ConfigAspectRun.EXIT_MISSING_INPUT;
+                    }
+                    if (confirmation == Confirmation.BACK) {
+                        return 0;
+                    }
                 }
                 var body = new LinkedHashMap<String, Object>();
                 body.put(MODE, mode);
@@ -274,6 +289,12 @@ public final class CredentialsCommand implements Callable<Integer> {
         if (outcome.exitCode() != 0) {
             return outcome.exitCode();
         }
+        if (outcome.left()) {
+            // The provider check asked for consent and the operator left: nothing was verified.
+            out.println(MessageCatalogue.format(locale, "operator.credentials.verify_stopped", Map.of(KEY, key)));
+            out.flush();
+            return ConfigAspectRun.EXIT_MISSING_INPUT;
+        }
         var reported = outcome.facts();
         if ("providers.failed".equals(outcome.lastStateId())
                             || Boolean.TRUE.equals(reported.get("failed"))
@@ -297,17 +318,25 @@ public final class CredentialsCommand implements Callable<Integer> {
         return 0;
     }
 
-    private boolean confirm(Terminal terminal) {
+    /** What the operator answered at the store confirmation. */
+    private enum Confirmation {
+        STORE, BACK, NO_INPUT
+    }
+
+    private Confirmation confirm(Terminal terminal) {
         var reader = LineReaderBuilder.builder().terminal(terminal).build();
         try {
             var line = reader.readLine(MessageCatalogue.format(locale(),
                                 "operator.credentials.store_confirm", Map.of()));
-            return line == null || !"b".equalsIgnoreCase(line.trim());
+            if (line == null) {
+                return Confirmation.STORE;
+            }
+            return "b".equalsIgnoreCase(line.trim()) ? Confirmation.BACK : Confirmation.STORE;
         } catch (UserInterruptException _) {
             // The interrupt is the exit-code table's 130, not a declined confirmation.
             throw new StartPrompt.InterruptException();
         } catch (EndOfFileException _) {
-            return false;
+            return Confirmation.NO_INPUT;
         }
     }
 

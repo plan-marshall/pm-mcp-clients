@@ -15,13 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -259,7 +261,7 @@ class MessageCatalogueTest {
     }
 
     @Test
-    @DisplayName("no message pack has duplicate keys")
+    @DisplayName("no message pack has duplicate keys, read as the production loader reads them")
     void shouldHaveNoDuplicateKeysInAnyMessagePack() throws Exception {
         var duplicates = new ArrayList<String>();
         for (String area : MessageCatalogue.SUPPORTED_AREAS) {
@@ -267,36 +269,39 @@ class MessageCatalogueTest {
                 var path = "messages/" + area + "." + locale + ".properties";
                 try (var stream = getClass().getClassLoader().getResourceAsStream(path)) {
                     assertNotNull(stream, "Missing resource: " + path);
-                    try (var reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8))) {
-                        var seen = new HashSet<String>();
-                        String line;
-                        int lineNo = 0;
-                        while ((line = reader.readLine()) != null) {
-                            lineNo++;
-                            var trimmed = line.trim();
-                            if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("!")) {
-                                continue;
-                            }
-                            int separatorIdx = -1;
-                            for (int i = 0; i < trimmed.length(); i++) {
-                                char c = trimmed.charAt(i);
-                                if ((c == '=' || c == ':') && (i == 0 || trimmed.charAt(i - 1) != '\\')) {
-                                    separatorIdx = i;
-                                    break;
-                                }
-                            }
-                            if (separatorIdx > 0) {
-                                var key = trimmed.substring(0, separatorIdx).trim();
-                                if (!seen.add(key)) {
-                                    duplicates.add(path + ":" + lineNo + " duplicate key: " + key);
-                                }
-                            }
-                        }
+                    try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                        duplicates.addAll(duplicateKeysOf(path, reader));
                     }
                 }
             }
         }
         assertTrue(duplicates.isEmpty(), "Duplicate keys found in message packs:\n" + String.join("\n", duplicates));
+    }
+
+    /**
+     * The packs are read with {@link Properties#load(java.io.Reader)}, which accepts whitespace as a
+     * key separator as well: a scan for {@code =} and {@code :} alone would miss that form.
+     *
+     * @param path   the pack, for the message
+     * @param reader its text
+     * @return one entry per key the pack defines twice
+     * @throws IOException when the pack cannot be read
+     */
+    private static List<String> duplicateKeysOf(String path, Reader reader) throws IOException {
+        var seen = new HashSet<String>();
+        var duplicates = new ArrayList<String>();
+        var properties = new Properties() {
+            @Override
+            public synchronized Object put(Object key, Object value) {
+                var name = String.valueOf(key);
+                if (!seen.add(name)) {
+                    duplicates.add(path + " duplicate key: " + name);
+                }
+                return super.put(key, value);
+            }
+        };
+        properties.load(reader);
+        return duplicates;
     }
 
     @Nested

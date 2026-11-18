@@ -887,10 +887,10 @@ public final class CleanupCommand implements Callable<Integer> {
          * @param locale the interface locale
          * @return the rendered label
          */
-        String label(String locale) {
+        String label(String locale, int remindDays) {
             return this == REMIND
                                 ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey,
-                                Map.of("days", CleanupDurations.DEFAULT_REMIND_DAYS))
+                                Map.of("days", remindDays))
                                 : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 
@@ -1097,22 +1097,24 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private ChoicePrompt decisionPrompt(PrintWriter out) {
         var locale = context.clientEnvironment().locale();
+        var remindDays = durations != null ? durations.remindAfterDays() : CleanupDurations.DEFAULT_REMIND_DAYS;
         var prompt = prompts.create(DECISION_STATE, cleanupLabel(locale), out)
                             .keyed()
                             .leaveKeyLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.leave", Map.of()));
-        for (var choice : decisionChoices(locale)) {
+        for (var choice : decisionChoices(locale, remindDays)) {
             prompt.addChoice(choice);
         }
         return prompt;
     }
 
     /**
-     * @param locale the interface locale
+     * @param locale     the interface locale
+     * @param remindDays the postponement the runtime holds, so the bar names it
      * @return the five decisions of the bar, in the order they are drawn
      */
-    static List<ChoicePrompt.Choice> decisionChoices(String locale) {
+    static List<ChoicePrompt.Choice> decisionChoices(String locale, int remindDays) {
         return Arrays.stream(Decision.values())
-                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale)))
+                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale, remindDays)))
                             .toList();
     }
 

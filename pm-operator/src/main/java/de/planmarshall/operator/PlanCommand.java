@@ -584,14 +584,13 @@ public final class PlanCommand implements Callable<Integer> {
 
     static String formatTokens(ProcessTokens tokens, String locale) {
         if (tokens.noneYet()) {
-            return "none yet";
+            return MessageCatalogue.format(locale, "plan.view.tokens_none", Map.of());
         }
-        var prefix = tokens.floor() ? "≥ " : "";
-        return String.format("%s%s (%s in · %s out)",
-                            prefix,
-                            TokenFormat.formatTokens(tokens.total(), false, locale),
-                            TokenFormat.formatTokens(tokens.input(), false, locale),
-                            TokenFormat.formatTokens(tokens.output(), false, locale));
+        var prefix = tokens.floor() ? "\u2265 " : "";
+        return prefix + MessageCatalogue.format(locale, "operator.plan.tokens.split", Map.of(
+                            "total", TokenFormat.formatTokens(tokens.total(), false, locale),
+                            "input", TokenFormat.formatTokens(tokens.input(), false, locale),
+                            "output", TokenFormat.formatTokens(tokens.output(), false, locale)));
     }
 
     static String formatTokens(ProcessTokens tokens) {

@@ -268,7 +268,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                                 "index", index++,
                                 "label", MessageCatalogue.format(locale,
                                                     "operator.cleanup.durations.kind." + kind, Map.of()),
-                                VALUE, rendered(locale, daysOf(durations, kind)))));
+                                VALUE, rendered(locale, Objects.requireNonNullElse(durations.get(kind),
+                                CleanupDurations.DEFAULT_DAYS)))));
         }
         out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.explain", Map.of()));
     }
@@ -392,7 +393,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             }
         }
         if (project == null) {
-            var recorded = recordMachine(out, locale, settings, durations);
+            var recorded = recordMachine(out, locale, settings, durations, changes);
             if (recorded == RECORD_KEPT) {
                 return 0;
             }
@@ -408,10 +409,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
     }
 
     private int recordMachine(PrintWriter out, String locale, MachineSettingsRecord settings,
-                        Map<String, Integer> durations) throws IOException {
-        var recordDurations = new CleanupDurations(daysOf(durations, KIND_PLANS), daysOf(durations, KIND_EPICS),
-                            daysOf(durations, KIND_LOGS), daysOf(durations, KIND_REPORTS),
-                            daysOf(durations, KIND_UNENROLLED), daysOf(durations, KIND_REMIND));
+                        Map<String, Integer> durations, Map<String, Integer> changes) throws IOException {
+        var recordDurations = merged(settings.cleanupDurations(), changes);
         var targetRevision = settings.revision();
         while (true) {
             var request = new MachineSettingsUpdateRequest(KEY_CLEANUP_DURATIONS, recordDurations.toJson(),
@@ -442,6 +441,16 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                     return RECORD_KEPT;
                 }
                 targetRevision = conflict.revision();
+                var current = currentDurationsOf(conflict.currentValue());
+                if (current == null) {
+                    // No readable value in the refusal: read what the machine holds now.
+                    current = rereadCleanupDurations();
+                }
+                if (current != null) {
+                    // Only the durations this run asked for change: a concurrent edit to another one
+                    // stays as the runtime has it.
+                    recordDurations = merged(current, changes);
+                }
                 continue;
             }
             out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
@@ -525,8 +534,47 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                             : MessageCatalogue.format(locale, "operator.cleanup.durations.after", Map.of("days", days));
     }
 
-    private static int daysOf(Map<String, Integer> durations, String kind) {
-        return Objects.requireNonNullElse(durations.get(kind), CleanupDurations.DEFAULT_DAYS);
+    /**
+     * @param base      the durations in force
+     * @param requested the kinds this run changes
+     * @return the base with the requested kinds replaced, every other kind as it was
+     */
+    private static CleanupDurations merged(CleanupDurations base, Map<String, Integer> requested) {
+        return new CleanupDurations(
+                            requested.getOrDefault(KIND_PLANS, base.plansAfterDays()),
+                            requested.getOrDefault(KIND_EPICS, base.epicsAfterDays()),
+                            requested.getOrDefault(KIND_LOGS, base.logsAfterDays()),
+                            requested.getOrDefault(KIND_REPORTS, base.reportsAfterDays()),
+                            requested.getOrDefault(KIND_UNENROLLED, base.unenrolledAfterDays()),
+                            requested.getOrDefault(KIND_REMIND, base.remindAfterDays()));
+    }
+
+    /**
+     * @param currentValue the conflict's current value, as the runtime sent it
+     * @return the durations it names, or {@code null} when it names none this client can read
+     */
+    private static @Nullable CleanupDurations currentDurationsOf(@Nullable String currentValue) {
+        if (currentValue == null || currentValue.isBlank()) {
+            return null;
+        }
+        // A runtime may hand the value over already escaped; both spellings name the same map.
+        var text = currentValue.contains("\\\"") ? currentValue.replace("\\\"", "\"") : currentValue;
+        try {
+            return CleanupDurations.fromJson(text);
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
+    /**
+     * @return the durations the machine settings hold now, or {@code null} when they cannot be read
+     */
+    private @Nullable CleanupDurations rereadCleanupDurations() {
+        try {
+            return new ConfigCommand(context).readSettingsQuiet().cleanupDurations();
+        } catch (IOException _) {
+            return null;
+        }
     }
 
     private static int minimumOf(String kind) {

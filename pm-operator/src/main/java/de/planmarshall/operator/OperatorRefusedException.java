@@ -128,8 +128,8 @@ public class OperatorRefusedException extends IOException {
 
         if (parsedMessage == null && (parsedCode == null || ApiErrorCode.fromWireOrNull(parsedCode) == null)) {
             // A body that is no JSON object is its own message. A JSON object that names no message
-            // carries only its code, and the raw body is never shown.
-            parsedMessage = body != null && body.trim().startsWith("{") ? parsedCode : body;
+            // carries only its code, and a code is a machine token, never a text for the operator.
+            parsedMessage = body != null && body.trim().startsWith("{") ? null : body;
         }
         if (parsedCode == null && response.status() == 404) {
             parsedCode = ApiErrorCode.SCOPE_NOT_FOUND.wire();
@@ -155,24 +155,27 @@ public class OperatorRefusedException extends IOException {
     }
 
     private static ExtractedFields extractFromMap(Map<?, ?> map) {
-        String parsedCode = null;
-        String parsedMessage = null;
         var errorObj = map.get("error");
-        if (errorObj instanceof Map<?, ?> errMap) {
-            if (errMap.get("code") instanceof String c) {
-                parsedCode = c;
-            }
-            if (errMap.get("message") instanceof String m) {
-                parsedMessage = m;
-            }
+        String parsedCode = null;
+        if (errorObj instanceof Map<?, ?> errMap && errMap.get("code") instanceof String nestedCode) {
+            parsedCode = nestedCode;
         } else if (errorObj instanceof String errStr) {
             parsedCode = errStr;
         }
-        if (parsedCode == null && map.get("code") instanceof String c) {
-            parsedCode = c;
+        if (parsedCode == null && map.get("code") instanceof String flatCode) {
+            parsedCode = flatCode;
         }
-        if (parsedMessage == null && map.get("message") instanceof String m) {
-            parsedMessage = m;
+        // A message the body names is what the operator reads; a code never is.
+        String parsedMessage = null;
+        if (errorObj instanceof Map<?, ?> errMap && errMap.get("message") instanceof String nestedMessage) {
+            parsedMessage = nestedMessage;
+        }
+        if (parsedMessage == null && map.get("message") instanceof String flatMessage) {
+            parsedMessage = flatMessage;
+        }
+        if (parsedMessage == null && errorObj instanceof String errStr) {
+            // The legacy form's string is its own text, which may be readable.
+            parsedMessage = errStr;
         }
         return new ExtractedFields(parsedCode, parsedMessage);
     }
