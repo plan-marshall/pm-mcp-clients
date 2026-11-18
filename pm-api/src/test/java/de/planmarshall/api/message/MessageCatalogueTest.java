@@ -265,7 +265,7 @@ class MessageCatalogueTest {
     void shouldHaveNoDuplicateKeysInAnyMessagePack() throws Exception {
         var duplicates = new ArrayList<String>();
         for (String area : MessageCatalogue.SUPPORTED_AREAS) {
-            for (String locale : List.of("en", "de")) {
+            for (String locale : MessageCatalogue.SUPPORTED_LOCALES) {
                 var path = "messages/" + area + "." + locale + ".properties";
                 try (var stream = getClass().getClassLoader().getResourceAsStream(path)) {
                     assertNotNull(stream, "Missing resource: " + path);
