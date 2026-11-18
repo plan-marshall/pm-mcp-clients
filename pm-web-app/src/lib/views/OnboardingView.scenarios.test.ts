@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
-import { runtimeStore } from '../stores/runtime';
+import { loadOnboardingState, runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
@@ -1074,6 +1075,37 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByRole('button', { name: 'Change Language' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Change Roles' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^change /i })).toHaveLength(2);
+  });
+
+  it('keeps a state the runtime reported while a step was still in flight', async () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.mode',
+        summary: 'Set up this machine for plan-marshall',
+        links: { begin: { href: '/api/v1/onboarding/language', next: 'language.choose' } },
+      }),
+    );
+    let answer: ((state: OnboardingState) => void) | undefined;
+    vi.spyOn(apiClient, 'stepOnboarding').mockReturnValue(
+      new Promise<OnboardingState>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    render(OnboardingView);
+    await fireEvent.click(await screen.findByRole('button', { name: /begin with step 1/i }));
+
+    // A step-completed event refreshes the state while the step's own answer is still on its way.
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(
+      onboardingState({ state: 'harness.probe', summary: 'Checking 2 harnesses' }),
+    );
+    await loadOnboardingState();
+
+    // The older answer must not overwrite the newer state.
+    answer?.(onboardingState({ state: 'language.choose', summary: 'Choose your languages' }));
+    await waitFor(() =>
+      expect(get(runtimeStore).onboarding?.summary).toBe('Checking 2 harnesses'),
+    );
   });
 
   it('shows the automatic run result per aspect and continues', async () => {

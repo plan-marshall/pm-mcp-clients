@@ -12,6 +12,7 @@ import {
   t,
   initI18n,
   adoptRecordedLocale,
+  forgetVisitChoice,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
@@ -696,6 +697,7 @@ describe('the page declares the language it shows', () => {
 describe('the recorded language of the machine', () => {
   beforeEach(() => {
     localStorage.clear();
+    forgetVisitChoice();
     messagesStore.set({});
     currentLocale.set('en');
     vi.restoreAllMocks();

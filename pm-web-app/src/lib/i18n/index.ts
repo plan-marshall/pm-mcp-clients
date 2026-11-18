@@ -6,6 +6,8 @@ export type Locale = 'en' | 'de';
 
 /** The storage key of the locale the person last chose. */
 const LOCALE_STORAGE_KEY = 'pm_locale';
+/** The language this browser chose in this visit, kept even where the browser cannot store it. */
+let explicitChoiceThisVisit: Locale | null = null;
 /** The storage key prefix of a cached catalogue, one entry per locale and runtime version. */
 const CATALOGUE_STORAGE_PREFIX = 'pm_i18n_messages_';
 
@@ -578,15 +580,37 @@ export async function setLocale(locale: Locale): Promise<void> {
  * Keeps the person's choice for this browser; the header switch overrides the machine's recorded
  * language, and says so in its advisory.
  *
+ * The choice also lives in memory for this visit: where the browser refuses to store it, the
+ * explicit choice must still beat the machine's recorded language.
+ *
  * @param locale the chosen locale
  */
 function rememberLocaleChoice(locale: Locale): void {
+  explicitChoiceThisVisit = locale;
   const storage = catalogueStorage();
   try {
     storage?.setItem(LOCALE_STORAGE_KEY, locale);
   } catch {
     // The choice applies to this visit even when the browser cannot remember it.
   }
+}
+
+/**
+ * @returns whether this browser chose a language of its own — stored, or made in this visit
+ */
+function browserChoseItsOwnLanguage(): boolean {
+  return explicitChoiceThisVisit !== null || storedLocale() !== null;
+}
+
+/**
+ * Forgets the choice this visit made, so a test starts as a browser that chose nothing.
+ *
+ * The choice lives in memory for the visit because a browser that refuses to store it must still
+ * win over the machine's recorded language; a module lives for the whole test file, so the test
+ * that asserts the adoption clears it first.
+ */
+export function forgetVisitChoice(): void {
+  explicitChoiceThisVisit = null;
 }
 
 /**
@@ -643,13 +667,10 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
 /**
  * Applies the interface language the machine recorded, where this browser chose none itself.
  *
- * Called after pairing and after the onboarding's language step, when the machine can be asked: a
- * browser that paired just now, or that just recorded its language, must show the recorded
- * language without a reload (UC-ONB-3, `onboarding-step-1.adoc`).
+ * Called after pairing, when the machine can be asked: the wait is bounded so the first paint is
+ * never held up by a slow runtime, and the read goes on so a late answer still switches the screen.
  *
- * The wait below bounds only how long the NEXT SCREEN waits for the language; the read itself goes
- * on, so a runtime that answers after the bound still switches the screen once its catalogue is in
- * hand. A browser whose own choice is stored keeps it either way.
+ * @see adoptRecordedLocaleNow for the step that records the language, which waits for it
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
@@ -657,15 +678,30 @@ export async function adoptRecordedLocale(): Promise<void> {
 }
 
 /**
+ * Applies the interface language the machine recorded, and WAITS for it.
+ *
+ * The step that records the language must show the next screen in that language (UC-ONB-3,
+ * `onboarding-step-1.adoc`), so it cannot bound the wait: the screen waits until the machine's
+ * language and its catalogue are in hand, or until the machine cannot be asked at all. Starting the
+ * adoption also invalidates every adoption still in flight, so a language recorded later is never
+ * overwritten by an earlier read.
+ *
+ * @returns when the recorded language is applied, or could not be read
+ */
+export async function adoptRecordedLocaleNow(): Promise<void> {
+  await adoptRecordedLocaleUntimed(++switchGeneration);
+}
+
+/**
  * @param generation the switch generation the adoption was asked under
  */
 async function adoptRecordedLocaleUntimed(generation: number): Promise<void> {
   await readCatalogueVersion();
-  if (storedLocale()) return;
+  if (browserChoseItsOwnLanguage()) return;
   const recorded = await recordedLocale();
   if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
   const loaded = await loadCatalogueFor(recorded);
-  if (!loaded || generation !== switchGeneration || storedLocale()) return;
+  if (!loaded || generation !== switchGeneration || browserChoseItsOwnLanguage()) return;
   currentLocale.set(recorded);
   messagesStore.set(loaded);
   messagesLocale = recorded;

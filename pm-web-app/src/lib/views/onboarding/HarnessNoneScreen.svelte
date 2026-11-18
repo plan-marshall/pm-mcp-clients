@@ -137,6 +137,10 @@
     <p class="harness-none__fix-one">{$t('onboard.harness.none.fix_one')}</p>
   {/if}
 
+  {#if view.links.some((link) => link.id === 'later')}
+    <p class="state-card__next">{$t('onboard.later.hint')}</p>
+  {/if}
+
   <div class="state-card__actions">
     {#each view.links as { id, isPrimary }}
       <Button

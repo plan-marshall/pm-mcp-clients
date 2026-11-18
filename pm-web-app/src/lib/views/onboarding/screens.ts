@@ -212,7 +212,10 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'language',
-    claims: (stateId) => stateId === 'language.choose' || stateId === 'language.reconfigure',
+    claims: (stateId) =>
+      stateId === 'language.choose' ||
+      stateId === 'language.reconfigure' ||
+      stateId === 'language.reconfigure-result',
     screen: LanguageScreen,
   },
   {
@@ -221,7 +224,8 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
       stateId === 'harness.choose' ||
       stateId === 'harness.not-logged-in' ||
       stateId === 'harness.all-failed' ||
-      stateId === 'harness.reconfigure',
+      stateId === 'harness.reconfigure' ||
+      stateId === 'harness.reconfigure-result',
     screen: HarnessChooseScreen,
   },
   {
@@ -256,22 +260,34 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'catalogue',
-    claims: (stateId) => stateId === 'catalogue.select' || stateId === 'catalogue.reconfigure',
+    claims: (stateId) =>
+      stateId === 'catalogue.select' ||
+      stateId === 'catalogue.reconfigure' ||
+      stateId === 'catalogue.reconfigure-result',
     screen: ModelsScreen,
   },
   {
     id: 'roles',
-    claims: (stateId) => stateId === 'roles.review' || stateId === 'roles.reconfigure',
+    claims: (stateId) =>
+      stateId === 'roles.review' ||
+      stateId === 'roles.reconfigure' ||
+      stateId === 'roles.reconfigure-result',
     screen: RolesScreen,
   },
   {
     id: 'store',
-    claims: (stateId) => stateId === 'store.choose' || stateId === 'store.reconfigure',
+    claims: (stateId) =>
+      stateId === 'store.choose' ||
+      stateId === 'store.reconfigure' ||
+      stateId === 'store.reconfigure-result',
     screen: StoreScreen,
   },
   {
     id: 'providers',
-    claims: (stateId) => stateId === 'providers.select' || stateId === 'providers.reconfigure',
+    claims: (stateId) =>
+      stateId === 'providers.select' ||
+      stateId === 'providers.reconfigure' ||
+      stateId === 'providers.reconfigure-result',
     screen: ProvidersScreen,
   },
   {
@@ -281,7 +297,10 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'defaults',
-    claims: (stateId) => stateId === 'defaults.review' || stateId === 'defaults.reconfigure',
+    claims: (stateId) =>
+      stateId === 'defaults.review' ||
+      stateId === 'defaults.reconfigure' ||
+      stateId === 'defaults.reconfigure-result',
     screen: DefaultsScreen,
   },
   {

@@ -36,7 +36,7 @@ import {
   type PlaceFacts,
   type RememberedPlace,
 } from '../navigation/rememberedPlace';
-import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
+import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
 import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
@@ -1674,7 +1674,14 @@ export function adoptRouteFromLocation(): AppRoute | null {
   return match?.route ?? null;
 }
 
+/**
+ * How many onboarding states this page has applied. A request that lands after another state has
+ * been applied must not overwrite it: the newer state is the one the runtime means.
+ */
+let onboardingStateRevision = 0;
+
 function applyOnboardingState(state: OnboardingState): void {
+  onboardingStateRevision += 1;
   const activeStep = deriveStepFromState(state.state);
   const completed =
     typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
@@ -1716,10 +1723,12 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
 /**
  * Takes one onboarding step and applies the state it answers.
  *
- * A step that records the interface language — the language step — must show the screen after it in
- * the language just recorded, so a browser that chose no language of its own follows the machine's
- * recorded one BEFORE the next screen paints (UC-ONB-3, `onboarding-step-1.adoc`). A browser whose
- * own choice is stored keeps it; that choice overrides the recorded one.
+ * The language step records the interface language, so its next screen WAITS for that language:
+ * a browser that chose no language of its own shows the recorded one before the state is applied
+ * (UC-ONB-3, `onboarding-step-1.adoc`). A browser whose own choice is stored keeps it.
+ *
+ * A state the runtime reported while the step was in flight is newer than the step's own answer;
+ * the step's answer is applied only when nothing landed in between.
  *
  * @param link the link the step names
  * @param body what the step records
@@ -1731,8 +1740,10 @@ export async function stepOnboarding(
   options: { adoptLocale?: boolean } = {},
 ): Promise<void> {
   try {
+    const revision = onboardingStateRevision;
     const next = await apiClient.stepOnboarding(link, body);
-    if (options.adoptLocale) await adoptRecordedLocale();
+    if (options.adoptLocale) await adoptRecordedLocaleNow();
+    if (onboardingStateRevision !== revision) return;
     applyOnboardingState(next);
   } catch {
     // A refused step leaves the state as it is.
@@ -1795,8 +1806,10 @@ export async function storeCredential(
 
 export async function startOnboardingAuto(): Promise<void> {
   try {
+    const revision = onboardingStateRevision;
     const next = await apiClient.startOnboardingAuto();
     await adoptRecordedLocale();
+    if (onboardingStateRevision !== revision) return;
     applyOnboardingState(next);
   } catch {
     // A refused automatic run leaves the state as it is.
