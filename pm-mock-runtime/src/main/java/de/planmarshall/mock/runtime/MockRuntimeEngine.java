@@ -8654,8 +8654,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var chosenModel = JsonTree.string(body,
                 reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
         var nextInterface = isSupportedLanguage(chosenInterface) ? chosenInterface : null;
-        var nextModel = choiceSame(chosenModel) ? machineLanguageInterface
-                : isSupportedLanguage(chosenModel) ? chosenModel : null;
+        String nextModel;
+        if (choiceSame(chosenModel)) {
+            nextModel = machineLanguageInterface;
+        } else {
+            nextModel = isSupportedLanguage(chosenModel) ? chosenModel : null;
+        }
         var interfaceApplies = nextInterface != null && !nextInterface.equals(machineLanguageInterface);
         var modelApplies = nextModel != null && !nextModel.equals(machineLanguageModel);
         if (!interfaceApplies && !modelApplies) {

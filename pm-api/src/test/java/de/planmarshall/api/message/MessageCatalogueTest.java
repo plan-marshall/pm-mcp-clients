@@ -387,6 +387,6 @@ class MessageCatalogueTest {
                 () -> assertTrue(MessageCatalogue.get("de", "plan.changes.unavailable").contains("nderungen")),
                 () -> assertTrue(MessageCatalogue.get("de", "operator.cleanup.durations.after")
                         .contains("{days, plural"), "a template is returned unevaluated: "
-                                + MessageCatalogue.get("de", "operator.cleanup.durations.after")));
+                        + MessageCatalogue.get("de", "operator.cleanup.durations.after")));
     }
 }
