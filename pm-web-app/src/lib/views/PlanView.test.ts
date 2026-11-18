@@ -1654,6 +1654,71 @@ describe('PlanView’s Changes tab', () => {
     );
   });
 
+  it('takes the size a capture announces and reads the list again', async () => {
+    // Arrange
+    let emit: ((event: string, data: unknown) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      emit = handler;
+      return () => {};
+    });
+    const readList = vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(capture);
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    // The tab mounts the list, so its reads are counted from here.
+    screen.getByTestId('plan-change-size').click();
+    await screen.findByTestId('plan-changes');
+    const readsBefore = readList.mock.calls.length;
+    expect(readsBefore).toBeGreaterThan(0);
+
+    // Act: the stream announces a capture of this plan.
+    emit!('plan.change_captured', {
+      plan_id: 'fix-relay',
+      head: 'a1b2c3d4e5f6a',
+      files_total: 13,
+      insertions_total: 350,
+      deletions_total: 27,
+      unplanned_total: 2,
+    });
+    await tick();
+
+    // Assert
+    expect(screen.getByTestId('plan-change-size')).toHaveTextContent(
+      '13 files · +350 −27 · 2 unplanned',
+    );
+    await waitFor(() => expect(readList.mock.calls.length).toBeGreaterThan(readsBefore));
+  });
+
+  it('ignores a capture another plan announces', async () => {
+    // Arrange
+    let emit: ((event: string, data: unknown) => void) | null = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      emit = handler;
+      return () => {};
+    });
+    const readList = vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue(capture);
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    screen.getByTestId('plan-change-size').click();
+    await screen.findByTestId('plan-changes');
+    const readsBefore = readList.mock.calls.length;
+    const sizeBefore = screen.getByTestId('plan-change-size').textContent;
+
+    // Act
+    emit!('plan.change_captured', {
+      plan_id: 'relay-metrics',
+      head: 'b2c3d4e5f6a1',
+      files_total: 1,
+      insertions_total: 1,
+      deletions_total: 0,
+      unplanned_total: 0,
+    });
+    await tick();
+
+    // Assert: neither the size nor the open list moved for another plan's capture.
+    expect(screen.getByTestId('plan-change-size').textContent).toBe(sizeBefore);
+    expect(readList).toHaveBeenCalledTimes(readsBefore);
+  });
+
   it('opens Process and replaces an address that names a tab this view does not draw', async () => {
     // Arrange: `intent` belongs to PLAN-55's tab set, which is not in this view yet.
     runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));

@@ -8145,6 +8145,28 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return e.getMessage();
         }
         var answer = decoded.answer();
+        var disagreement = disagreementOf(announced, answer);
+        if (disagreement != null) {
+            return disagreement;
+        }
+        synchronized (planChangesLock) {
+            var refusal = transitionRefusal(announced, answer, planChanges.get(answer.planId()));
+            if (refusal != null) {
+                return refusal;
+            }
+            planChanges.put(answer.planId(), answer);
+            planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
+            applyCaptureSize(answer);
+        }
+        return null;
+    }
+
+    /**
+     * @param announced the announcement
+     * @param answer    the capture it carries
+     * @return the reason the announcement and the capture disagree, or {@code null} when they agree
+     */
+    private static @Nullable String disagreementOf(PlanChangeCapturedEvent announced, PlanChangesAnswer answer) {
         if (!announced.planId().equals(answer.planId())) {
             return ANNOUNCEMENT_OF + announced.planId() + " carries the capture of " + answer.planId();
         }
@@ -8157,24 +8179,87 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return "the announced size of " + announced.planId()
                         + " contradicts the files its capture carries";
             }
-        } else if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
-                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
+            return null;
+        }
+        if (answer instanceof PlanChangesNotCaptured && !namesNoSize(announced)) {
             return ANNOUNCEMENT_OF + announced.planId() + " names a size of change beside "
                     + answer.state();
         }
-        synchronized (planChangesLock) {
-            var previous = planChanges.get(answer.planId());
-            if ((previous instanceof PlanChangesCaptured || previous instanceof PlanChangesUnavailable)
-                    && answer instanceof PlanChangesNotCaptured) {
-                // A capture moves on to a new capture or to a capture that is gone; it never goes back
-                // to the plan's first capture, which no event of the contract announces.
-                return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+        return null;
+    }
+
+    /**
+     * @param announced the announcement
+     * @return whether its figures say that nothing was captured
+     */
+    private static boolean namesNoSize(PlanChangeCapturedEvent announced) {
+        return announced.filesTotal() == 0 && announced.insertionsTotal() == 0
+                && announced.deletionsTotal() == 0 && announced.unplannedTotal() == 0;
+    }
+
+    /**
+     * Holds the capture to the transitions the contract names: a capture moves on to a new capture or to
+     * a capture that is gone, never back to the plan's first capture, and a gone capture keeps the figures
+     * of the plan's last successful capture, which the announcement must name.
+     *
+     * @param announced the announcement
+     * @param answer    the capture it carries
+     * @param previous  the answer the plan serves now, or {@code null}
+     * @return the reason the transition cannot be served, or {@code null} when it can
+     */
+    private @Nullable String transitionRefusal(PlanChangeCapturedEvent announced, PlanChangesAnswer answer,
+            @Nullable PlanChangesAnswer previous) {
+        if ((previous instanceof PlanChangesCaptured || previous instanceof PlanChangesUnavailable)
+                && answer instanceof PlanChangesNotCaptured) {
+            return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+        }
+        if (answer instanceof PlanChangesUnavailable) {
+            var retained = planChangeSizes.get(answer.planId());
+            if (retained == null) {
+                // A state may start on a capture that is gone and declare its figures: they are the
+                // plan's last capture, so an announcement of them is coherent before the first read.
+                retained = declaredChangeOf(answer.planId());
             }
-            planChanges.put(answer.planId(), answer);
-            planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
-            applyCaptureSize(answer);
+            if (!announced.size().equals(retained)) {
+                return ANNOUNCEMENT_OF + announced.planId() + " names the size "
+                        + sizeText(announced.size()) + " beside " + answer.state()
+                        + ", its last capture " + sizeText(retained);
+            }
         }
         return null;
+    }
+
+    /**
+     * @param planId a plan's id
+     * @return the size the plan's process route declares, or {@code null} when it declares none
+     */
+    private @Nullable ChangeSize declaredChangeOf(String planId) {
+        var route = activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS);
+        if (route == null || !(route.representation() instanceof Map<?, ?> representation)) {
+            return null;
+        }
+        var declared = JsonTree.asObject(representation.get(FIELD_CHANGE));
+        if (declared == null) {
+            return null;
+        }
+        try {
+            return ChangeSize.fromMap(declared);
+        } catch (IllegalArgumentException _) {
+            // A size the codec refuses is no measurement.
+            return null;
+        }
+    }
+
+    /**
+     * @param size a size of change, or {@code null}
+     * @return its four figures for a refusal message
+     */
+    private static String sizeText(@Nullable ChangeSize size) {
+        if (size == null) {
+            return "none";
+        }
+        return size.files() + " files, " + size.insertions() + " insertions, "
+                + size.deletions() + " deletions, " + size.unplanned() + " unplanned";
     }
 
     /**
