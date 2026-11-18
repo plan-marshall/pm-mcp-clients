@@ -10107,24 +10107,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private void handleStartProjectOnboarding(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String path = "~/git/new-project";
-        Map<String, String> buildEnvironment = Map.of();
-        if (request.body().length > 0) {
-            try {
-                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                if (parsed != null) {
-                    if (parsed.get("path") instanceof String p) path = p;
-                    else if (parsed.get("checkout_path") instanceof String cp) path = cp;
-                    if (parsed.get("build_environment") instanceof Map<?, ?> env) {
-                        var captured = new LinkedHashMap<String, String>();
-                        env.forEach((key, value) -> captured.put(String.valueOf(key), String.valueOf(value)));
-                        buildEnvironment = captured;
-                    }
-                }
-            } catch (IOException _) {
-                // ignore malformed payload
-            }
-        }
+        var onboarding = onboardingRequestOf(request.body());
+        String path = onboarding.path();
+        var buildEnvironment = onboarding.buildEnvironment();
         String id = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
         if (id.isBlank()) id = "new-project";
 
@@ -10159,6 +10144,41 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "step_number", beingAdded.stepNumber(),
                     KEY_TOTAL_STEPS, beingAdded.totalSteps()
             ));
+        }
+    }
+
+    /**
+     * @param path             the checkout path the request named, or the default
+     * @param buildEnvironment the build environment the request named, empty for none
+     */
+    private record OnboardingRequest(String path, Map<String, String> buildEnvironment) {
+    }
+
+    private static OnboardingRequest onboardingRequestOf(byte[] body) {
+        var path = "~/git/new-project";
+        Map<String, String> buildEnvironment = Map.of();
+        if (body.length == 0) {
+            return new OnboardingRequest(path, buildEnvironment);
+        }
+        try {
+            var parsed = JsonTree.asObject(JsonTree.parse(body));
+            if (parsed == null) {
+                return new OnboardingRequest(path, buildEnvironment);
+            }
+            if (parsed.get("path") instanceof String p) {
+                path = p;
+            } else if (parsed.get("checkout_path") instanceof String cp) {
+                path = cp;
+            }
+            if (parsed.get("build_environment") instanceof Map<?, ?> env) {
+                var captured = new LinkedHashMap<String, String>();
+                env.forEach((key, value) -> captured.put(String.valueOf(key), String.valueOf(value)));
+                buildEnvironment = captured;
+            }
+            return new OnboardingRequest(path, buildEnvironment);
+        } catch (IOException _) {
+            // A malformed payload starts the default path, as before it was read at all.
+            return new OnboardingRequest(path, buildEnvironment);
         }
     }
 

@@ -339,37 +339,46 @@ public final class AnswerCommand implements Callable<Integer> {
         }
 
         if (ACTION_LATER.equals(effectiveAction)) {
-            var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
-            var laterPayload = new LinkedHashMap<String, Object>();
-            laterPayload.put(ACTION_KEY, ACTION_LATER);
-            laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
-            var laterResponse = runtime.send(HttpRequest.json("POST", laterPath, JsonTree.write(laterPayload)));
-            if (!isAccepted(laterResponse.status())) {
-                var refusal = new OperatorRefusedException("later " + questionId, laterResponse);
-                if (isDecisionRefusal(refusal.code())) {
-                    return handleDecisionRefusal(out, envelope, refusal, locale);
-                }
-                throw refusal;
-            }
-            printLaterDone(out, envelope, locale);
-            return 0;
+            return submitLater(runtime, out, envelope, safeQid, locale);
         }
 
         if (ACTION_WITHDRAW.equals(effectiveAction)) {
-            var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
-            var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
-            if (isAccepted(resp.status())) {
-                printNoneFitsDone(out, envelope, locale);
-                return 0;
-            }
-            var refusal = new OperatorRefusedException("withdraw " + questionId, resp);
-            if (isDecisionRefusal(refusal.code())) {
-                return handleDecisionRefusal(out, envelope, refusal, locale);
-            }
-            throw refusal;
+            return submitWithdraw(runtime, out, envelope, safeQid, locale);
         }
 
         return submitAnswerPayload(runtime, out, safeQid, envelope, effectiveAction, locale);
+    }
+
+    private int submitLater(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope,
+                        String safeQid, String locale) throws IOException {
+        var laterPayload = new LinkedHashMap<String, Object>();
+        laterPayload.put(ACTION_KEY, ACTION_LATER);
+        laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
+        var response = runtime.send(HttpRequest.json("POST", resolveDecisionPath(safeQid) + PATH_ANSWER,
+                            JsonTree.write(laterPayload)));
+        if (isAccepted(response.status())) {
+            printLaterDone(out, envelope, locale);
+            return 0;
+        }
+        var refusal = new OperatorRefusedException("later " + questionId, response);
+        if (isDecisionRefusal(refusal.code())) {
+            return handleDecisionRefusal(out, envelope, refusal, locale);
+        }
+        throw refusal;
+    }
+
+    private int submitWithdraw(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope,
+                        String safeQid, String locale) throws IOException {
+        var response = runtime.send(HttpRequest.json("POST", resolveDecisionPath(safeQid) + PATH_WITHDRAW, "{}"));
+        if (isAccepted(response.status())) {
+            printNoneFitsDone(out, envelope, locale);
+            return 0;
+        }
+        var refusal = new OperatorRefusedException("withdraw " + questionId, response);
+        if (isDecisionRefusal(refusal.code())) {
+            return handleDecisionRefusal(out, envelope, refusal, locale);
+        }
+        throw refusal;
     }
 
     /**
@@ -435,7 +444,7 @@ public final class AnswerCommand implements Callable<Integer> {
             return 0;
         }
         var refusal = new OperatorRefusedException("answer " + questionId, response);
-        if (envelope != null && isDecisionRefusal(refusal.code())) {
+        if (isDecisionRefusal(refusal.code())) {
             return handleDecisionRefusal(out, envelope, refusal, locale);
         }
         throw refusal;
@@ -784,7 +793,7 @@ public final class AnswerCommand implements Callable<Integer> {
         out.flush();
     }
 
-    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException, OperatorRefusedException {
+    private int runInteractiveDecision(DialogueSession session, DecisionEnvelope envelope) throws IOException {
         printQuestionDetail(session.out(), envelope, session.locale());
         session.out().println();
 
@@ -803,7 +812,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 if (step.exitCode().isPresent()) {
                     return step.exitCode().getAsInt();
                 }
-                var reopenIndex = step.reopenIndex();
+                var reopenIndex = Objects.requireNonNull(step.reopenIndex());
                 progress = new Progress(reopenIndex, progress.note());
                 answers.keySet().removeIf(key -> key >= reopenIndex);
             } catch (OperatorRefusedException refused) {

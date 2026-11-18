@@ -2791,7 +2791,7 @@ public final class OverviewFullScreenApp {
             }
             try {
                 openChanges(context.runtime(true), view.planId());
-            } catch (IOException refused) {
+            } catch (IOException _) {
                 statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
         }
@@ -2835,7 +2835,7 @@ public final class OverviewFullScreenApp {
                         stack.refresh(changes.rows(locale));
                     }
                 }
-            } catch (IOException refused) {
+            } catch (IOException _) {
                 statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
         }

@@ -279,11 +279,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         return Display.word(locale, "task", clean);
     }
 
-    private static String description(String locale, @Nullable String value) {
-        return value != null ? value : unknown(locale);
-    }
-
     private static String unknown(String locale) {
-        return MessageCatalogue.format(locale, "common.unknown", Map.of());
+        return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
     }
 }

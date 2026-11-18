@@ -182,8 +182,8 @@ public final class PmOperator implements Callable<Integer> {
         applyResourceBundle(commandLine, bundle);
         commandLine.setParameterExceptionHandler((ex, parseArgs) ->
                             handleParameterException(ex, context));
-        commandLine.setExecutionExceptionHandler((exception, command, parseResult) ->
-                            handleExecutionException(exception, command, parseResult, context, err));
+        commandLine.setExecutionExceptionHandler((exception, command, _) ->
+                            handleExecutionException(exception, command, context, err));
         var code = commandLine.execute(selection.args().toArray(String[]::new));
         out.flush();
         err.flush();
@@ -192,15 +192,12 @@ public final class PmOperator implements Callable<Integer> {
 
     private static int handleParameterException(CommandLine.ParameterException ex, OperatorContext context) {
         var writer = ex.getCommandLine().getErr();
-        var locale = context.locale();
-        if (ex instanceof CommandLine.UnmatchedArgumentException uae && !uae.getUnmatched().isEmpty()) {
-            var first = TerminalSanitizer.sanitizeLine(uae.getUnmatched().get(0)).strip();
-            var msg = formatUnmatchedMessage(ex.getCommandLine(), first, locale);
-            writer.println(msg);
-            writer.flush();
-            return CommandLine.ExitCode.USAGE;
-        }
-        writer.println(TerminalSanitizer.sanitizeLine(ex.getMessage()));
+        var text = ex instanceof CommandLine.UnmatchedArgumentException uae && !uae.getUnmatched().isEmpty()
+                            ? formatUnmatchedMessage(ex.getCommandLine(),
+                            TerminalSanitizer.sanitizeLine(uae.getUnmatched().get(0)).strip(),
+                            context.locale())
+                            : TerminalSanitizer.sanitizeLine(ex.getMessage());
+        writer.println(text);
         writer.flush();
         return CommandLine.ExitCode.USAGE;
     }
@@ -219,7 +216,7 @@ public final class PmOperator implements Callable<Integer> {
     }
 
     private static int handleExecutionException(Exception exception, CommandLine command,
-                        CommandLine.ParseResult parseResult, OperatorContext context, PrintWriter err) {
+                        OperatorContext context, PrintWriter err) {
         if (exception instanceof StartPrompt.InterruptException
                             || exception instanceof UserInterruptException) {
             return StartPrompt.EXIT_INTERRUPTED;
