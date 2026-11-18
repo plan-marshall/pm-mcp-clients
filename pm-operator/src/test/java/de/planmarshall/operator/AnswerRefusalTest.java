@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -444,16 +445,20 @@ class AnswerRefusalTest {
     }
 
     @ParameterizedTest(name = "{0} refused as {1} in German")
-    @CsvSource(delimiter = '|', value = {
-                        "later    | conflict         | In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert.",
-                        "withdraw | already_answered | Die Frage wurde bereits an anderer Stelle beantwortet."})
+    @CsvSource(delimiter = '|', nullValues = "NULL", value = {
+                        "later    | conflict              | NULL           | In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert.",
+                        "withdraw | already_answered      | NULL           | Die Frage wurde bereits an anderer Stelle beantwortet.",
+                        "later    | invalid_answer        | no such option | Diese Antwort passt nicht zu dem Teil: no such option",
+                        "withdraw | dependency_unanswered | NULL           | Beantworte zuerst Teil 1."})
     @DisplayName("the decision refusals read German in German, with the decision's own exit 1")
-    void decisionRefusalInGerman(String act, String code, String text) throws Exception {
+    void decisionRefusalInGerman(String act, String code, @Nullable String message, String text) throws Exception {
+        var body = message == null || message.isBlank() ? "{\"error\":\"%s\"}".formatted(code)
+                            : "{\"error\":\"%s\",\"message\":\"%s\"}".formatted(code, message);
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, planEnvelope());
             } else if (request.target().startsWith("/api/v1/decisions/Q-001/")) {
-                response.json(409, "{\"error\":\"%s\"}".formatted(code));
+                response.json(409, body);
             } else {
                 response.send(404, null, "");
             }

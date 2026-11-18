@@ -835,7 +835,7 @@ class ConfigCommandTest {
         var text = out.toString();
         assertAll(
                             () -> assertEquals(0, code, text),
-                            () -> assertTrue(text.contains("Durations kept: nothing was written."), text),
+                            () -> assertTrue(text.contains("The conflicting values were left as the runtime has them."), text),
                             () -> assertFalse(text.contains("Durations kept: Archived plans after 60 days."), text),
                             () -> assertFalse(text.contains("Durations recorded:"), text));
     }
