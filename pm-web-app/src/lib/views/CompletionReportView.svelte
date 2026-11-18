@@ -9,7 +9,7 @@
   import StatusLabel from '../components/StatusLabel.svelte';
   import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
-  import { displayState } from '../display';
+  import { displayState, formatChangeSize } from '../display';
 
   interface Props {
     planId: string;
@@ -139,12 +139,7 @@
    * @returns the catalogue's one-line form
    */
   function changeText(change: ChangeSizeRecord): string {
-    return $t('plan.change.size', {
-      files: change.files,
-      insertions: change.insertions,
-      deletions: change.deletions,
-      unplanned: change.unplanned ?? 0,
-    });
+    return formatChangeSize(change, $t);
   }
 </script>
 

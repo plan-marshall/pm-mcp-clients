@@ -2968,3 +2968,30 @@ describe('the list of what waits', () => {
     expect(requested).toContain('/api/v1/machine/needs-operator?page=1');
   });
 });
+
+describe('ApiClient plan changes', () => {
+  it('encodes the plan id and the file path as the contract does, with /, ., a space and a non-ASCII character', async () => {
+    // Arrange
+    const client = new ApiClient('http://localhost:7420');
+    const requested: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requested.push(String(url));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ plan_id: 'p', state: 'not_captured' }),
+      });
+    });
+
+    // Act
+    await client.getPlanChanges('plan/with space.ü');
+    await client.getPlanChangeFile('plan/with space.ü', 'dir/a b.ü/File.ts');
+
+    // Assert
+    expect(requested[0]).toBe('http://localhost:7420/api/v1/plans/plan%2Fwith%20space.%C3%BC/changes');
+    expect(requested[1]).toBe(
+      'http://localhost:7420/api/v1/plans/plan%2Fwith%20space.%C3%BC/changes/file' +
+        '?path=dir%2Fa%20b.%C3%BC%2FFile.ts',
+    );
+  });
+});
