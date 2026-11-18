@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from './Button.svelte';
+  import Marker from './Marker.svelte';
 
   /**
    * ⑤ Credentials and ⑥ Providers: the two review screens that pick from a list.
@@ -15,6 +16,8 @@
     name: string;
     available: boolean;
     recommended?: boolean;
+    protects_against?: string;
+    does_not_protect_against?: string;
   }
 
   interface ProviderRow {
@@ -42,6 +45,32 @@
       ? selectedProviders.filter((v) => v !== id)
       : [...selectedProviders, id];
   }
+
+  function protectionDetail(store: StoreRow, field: 'protects' | 'does_not_protect'): string {
+    const custom = field === 'protects' ? store.protects_against : store.does_not_protect_against;
+    if (custom) return custom;
+    const target =
+      store.kind === 'file'
+        ? 'file'
+        : (store.name ?? '').toLowerCase().includes('secret service')
+          ? 'os.secret_service'
+          : 'os.keychain';
+    const keys = {
+      file: {
+        protects: 'onboard.store.choose.file.protects',
+        does_not_protect: 'onboard.store.choose.file.does_not_protect',
+      },
+      'os.secret_service': {
+        protects: 'onboard.store.choose.os.secret_service.protects',
+        does_not_protect: 'onboard.store.choose.os.secret_service.does_not_protect',
+      },
+      'os.keychain': {
+        protects: 'onboard.store.choose.os.keychain.protects',
+        does_not_protect: 'onboard.store.choose.os.keychain.does_not_protect',
+      },
+    } as const;
+    return $t(keys[target][field]);
+  }
 </script>
 
 <section class="choice-screen" data-testid={`${kind}-screen`}>
@@ -66,11 +95,21 @@
                 ? $t('onboard.providers.select.available')
                 : $t('onboard.providers.select.not_available')}
             </span>
+            <span class="choice-screen__row-meta">
+              {$t('onboard.store.choose.protects_against', {
+                value: protectionDetail(store, 'protects'),
+              })}
+            </span>
+            <span class="choice-screen__row-meta">
+              {$t('onboard.store.choose.does_not_protect_against', {
+                value: protectionDetail(store, 'does_not_protect'),
+              })}
+            </span>
           </div>
           {#if store.recommended}
-            <span class="choice-screen__badge choice-screen__badge--default">
-              {$t('onboard.catalogue.select.recommendation')}
-            </span>
+            <div class="choice-screen__row-side">
+              <Marker kind="recommended" label={store.name} />
+            </div>
           {/if}
         </li>
       {/each}

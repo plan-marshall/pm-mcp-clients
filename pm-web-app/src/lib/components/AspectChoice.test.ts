@@ -27,7 +27,7 @@ describe('AspectChoice', () => {
       render(AspectChoice, { kind: 'store', stores: STORES });
 
       expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
-      expect(screen.getByText('Recommendation by steward')).toBeVisible();
+      expect(screen.getByText('recommended')).toBeVisible();
       expect(screen.getByRole('radio', { name: 'Vault' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Keep the tokens in the keychain' })).toBeVisible();
     });

@@ -1498,3 +1498,93 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     );
   });
 });
+
+describe('store.choose protection lines per option (D9)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('shows Protects a secret against and Does not protect against on every store option', () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          {
+            kind: 'os',
+            name: 'macOS Keychain',
+            available: true,
+            recommended: true,
+          },
+          {
+            kind: 'file',
+            name: 'Files in ~/.plan-marshall-mcp/credentials/',
+            available: true,
+            recommended: false,
+          },
+        ],
+        links: {
+          os: { href: '/api/v1/onboarding/store/os', next: 'store.consent' },
+          file: { href: '/api/v1/onboarding/store/file', next: 'store.check' },
+        },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    expect(screen.getAllByText(/^Protects a secret against:/)).toHaveLength(2);
+    expect(screen.getAllByText(/^Does not protect against:/)).toHaveLength(2);
+
+    const osOption = screen.getByTestId('store-os').closest('li') as HTMLElement;
+    expect(osOption).toHaveTextContent(
+      'Protects a secret against: other programs reading a token without macOS asking first',
+    );
+    expect(osOption).toHaveTextContent(
+      'Does not protect against: a program you allow in the macOS dialog',
+    );
+    expect(within(osOption).getByText('recommended')).toBeVisible();
+
+    const fileOption = screen.getByTestId('store-file').closest('li') as HTMLElement;
+    expect(fileOption).toHaveTextContent(
+      'Protects a secret against: other users of the machine (mode 0600)',
+    );
+    expect(fileOption).toHaveTextContent(
+      'Does not protect against: other programs running as your user',
+    );
+    expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
+  });
+
+  it('shows Secret Service protection lines when the Linux Secret Service is offered', () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          {
+            kind: 'os',
+            name: 'Linux Secret Service',
+            available: true,
+            recommended: true,
+          },
+        ],
+        links: { os: { href: '/api/v1/onboarding/store/os', next: 'store.consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByText(
+        'Protects a secret against: reading while the collection is locked and from confined jobs',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Does not protect against: unconfined programs running as your user while unlocked',
+      ),
+    ).toBeVisible();
+  });
+});
