@@ -382,7 +382,7 @@ A scenario file adheres to `format_version: 1`:
 * *`states`*: the states in the state machine:
 ** *`representation`*: the exact JSON payload returned to clients when entering or querying this state.
 ** *`links`*: hypermedia transitions offered by the state. A request matching `href` and `method` moves the engine to `next` and responds with the next state's representation. Supports `delay_ms` for simulated latency and `status` with `error` for refusal responses (e.g. HTTP 409).
-** *`events`*: Server-Sent Events emitted to `/api/v1/events` subscribers after `after_ms` milliseconds from entering the state. A scheduled `plan.change_captured` applies the capture it announces before the notice goes out, like a broadcast one; the loader validates its payload, the capture it carries and the capture its state serves, so a scheduled capture the mock cannot serve fails the scenario's load.
+** *`events`*: Server-Sent Events emitted to `/api/v1/events` subscribers after `after_ms` milliseconds from entering the state. An event's `after_ms` never precedes the event before it, so the list order is the order both timings play. A scheduled `plan.change_captured` applies the capture it announces before the notice goes out, like a broadcast one; the loader validates its payload, the capture it carries and the capture its state serves, so a scheduled capture the mock cannot serve fails the scenario's load.
 ** *`auto`*: automatic state transition triggered after `after_ms` milliseconds without requiring an incoming client request.
 
 === Dynamic Scenario Switching

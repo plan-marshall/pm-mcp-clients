@@ -1219,6 +1219,7 @@ public class ScenarioLoader {
             return List.of();
         }
         var events = new ArrayList<EventDefinition>();
+        var previousAfterMs = 0L;
         for (var i = 0; i < list.size(); i++) {
             var item = list.get(i);
             if (!(item instanceof Map<?, ?> eventMapRaw)) {
@@ -1234,6 +1235,13 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].after_ms",
                         "missing or negative after_ms");
             }
+            // A later event never plays before an earlier one: the list order is the order both timing
+            // modes play, and a capture sequence is validated in it.
+            if (afterMs < previousAfterMs) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].after_ms",
+                        "after_ms " + afterMs + " is earlier than the previous event's " + previousAfterMs);
+            }
+            previousAfterMs = afterMs;
 
             var event = JsonTree.string(eventMap, "event");
             if (event == null || event.isBlank()) {

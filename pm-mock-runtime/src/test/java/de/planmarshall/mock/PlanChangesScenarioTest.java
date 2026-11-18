@@ -1159,8 +1159,21 @@ class PlanChangesScenarioTest {
          * @param scenario the scenario's JSON
          * @param data     the payload of a scheduled {@code plan.change_captured}
          * @return the scenario with that event scheduled by its start state
+         * @throws IOException on a parse failure of the scenario text
          */
         private static String withScheduledCapture(String scenario, Map<String, Object> data)
+                throws IOException {
+            return withScheduledEvent(scenario, 100, data);
+        }
+
+        /**
+         * @param scenario the scenario's JSON
+         * @param afterMs  the delay the event is scheduled with
+         * @param data     the payload of a scheduled {@code plan.change_captured}
+         * @return the scenario with that event scheduled by its start state
+         * @throws IOException on a parse failure of the scenario text
+         */
+        private static String withScheduledEvent(String scenario, int afterMs, Map<String, Object> data)
                 throws IOException {
             var root = JsonTree.asObject(JsonTree.parse(scenario));
             var start = JsonTree.object(JsonTree.object(root, "states"), "running_work.active");
@@ -1175,11 +1188,23 @@ class PlanChangesScenarioTest {
             payload.put("scope", Map.of("kind", "plan", "id", data.get("plan_id"),
                     "project_id", "pm-mcp-clients"));
             var event = new LinkedHashMap<String, Object>();
-            event.put("after_ms", 100);
+            event.put("after_ms", afterMs);
             event.put("event", PlanChangeCapturedEvent.EVENT_NAME);
             event.put("data", payload);
             events.add(event);
             return JsonTree.write(root);
+        }
+
+        @Test
+        @DisplayName("refuses a state whose events would play out of list order")
+        void refusesDecreasingEventDelays() throws Exception {
+            var valid = scenarioJson();
+            var first = withScheduledEvent(valid, 200, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(12, 340, 27, 2), null));
+            var decreasing = withScheduledEvent(first, 100, announcement(FIX_RELAY, "b2c3d4e5f6a1",
+                    new ChangeSize(12, 340, 27, 2), null));
+
+            refusesTheLoad(decreasing, "after_ms");
         }
 
         @Test
