@@ -13,6 +13,10 @@ import java.util.Objects;
 
 /**
  * Kind of entry in a worker's live activity log (UC-PLN-1).
+ * <p>
+ * {@link #MODEL_DIFFERS} is the server's own entry: a turn reported a model other than the
+ * worker's launch model, and the entry names both
+ * ({@code harness-profiles/01-profile-schema.adoc#served-model}).
  */
 public enum ActivityEntryKind {
     MODEL_TEXT("text"),
@@ -20,7 +24,8 @@ public enum ActivityEntryKind {
     FILES_CHANGED("file_changed"),
     QUESTIONS_ASKED("question"),
     ANSWER_ACK("answer_ack"),
-    LINK("link");
+    LINK("link"),
+    MODEL_DIFFERS("model_differs");
 
     private final String value;
 

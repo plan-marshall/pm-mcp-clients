@@ -9,14 +9,15 @@
     initRuntime,
     adoptRouteFromLocation,
     advanceLifecycleEpoch,
+    addressOfState,
     lifecycleEpochOf,
     lifecycleFieldsOf,
-    routeParamsOf,
     stopRuntimeRecovery,
-    syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient } from '../lib/api/client';
-  import { pathForRoute, ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import { attentionStore } from '../lib/stores/attention';
+  import { ROUTE_TITLES, parseAddress, replaceLegacyAddress, type AppRoute } from '../lib/routes';
+  import { writeAddress } from '../lib/navigation/history';
   import {
     applyTheme,
     readThemeChoice,
@@ -157,11 +158,24 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      await apiClient.stopRuntime('now');
+      const epoch = lifecycleEpochOf();
+      const answer = await apiClient.stopRuntime('now');
       stopNowConfirm = false;
+      // A lifecycle event that arrived while the request was pending is newer than this answer.
+      const superseded = epoch !== lifecycleEpochOf();
       advanceLifecycleEpoch();
-      // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
-      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null, isStopped: true }));
+      if (!superseded) {
+        // The stop ends the drain; the lifecycle event may be missed on a dropped stream. A drain that
+        // ends in a restart answers `running`: the runtime is not stopped (as `runtime.stopping`).
+        const isStopped = answer.lifecycle_state !== 'running';
+        runtimeStore.update((s) => ({
+          ...s,
+          isDraining: false,
+          drainInfo: null,
+          isStopped,
+          stoppedInfo: null,
+        }));
+      }
     } catch (err: unknown) {
       // The refusal belongs in the banner; the short confirmation has done its work.
       stopNowConfirm = false;
@@ -194,9 +208,6 @@
   // The theme this browser chose. `app.html` already applied it before the first paint; the
   // control reads the same choice so the pressed option and the document agree.
   let themeChoice = $state<ThemeChoice>(readThemeChoice());
-  // The first write settles the address bar on the route the store chose; every later one is a
-  // history entry, so the browser's Back returns to the previous view.
-  let addressBarSettled = false;
 
   onMount(() => {
     // Native buttons and the views rendered later get their hover advisory from the observer.
@@ -212,6 +223,16 @@
 
     // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
     adoptRouteFromLocation();
+    // An old address of a moved view is replaced once, when it is opened; pre-1.0 there is no
+    // other compatibility.
+    const legacy = replaceLegacyAddress(
+      `${window.location.pathname}${window.location.search}`,
+    );
+    if (legacy) {
+      const address = parseAddress(legacy);
+      if (address) writeAddress(address, 'replace');
+      adoptRouteFromLocation();
+    }
     const onPop = () => adoptRouteFromLocation();
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));
@@ -242,20 +263,19 @@
   // redeemed first, and only then does the app move on.
   $effect(() => {
     if ($runtimeStore.isInitialized && !devRoute) {
-      syncPath($runtimeStore.currentRoute);
+      syncPath();
     }
   });
 
-  function syncPath(route: AppRoute): void {
+  function syncPath(): void {
     if (typeof window === 'undefined') return;
     // Never rewrite a URL that still carries a pairing code in its fragment: the code is redeemed
     // first, and only then does the app move on.
     if (window.location.hash.includes('code=')) return;
-    const path = pathForRoute(route, routeParamsOf($runtimeStore));
-    if (!path) return;
-    // The URL the popstate handler just adopted is already in the address bar; syncUrl leaves it.
-    syncUrl(path, !addressBarSettled);
-    addressBarSettled = true;
+    const address = addressOfState($runtimeStore);
+    // The URL the popstate handler just adopted is already in the address bar; the writer leaves
+    // it, and a write always replaces the entry the view stands on.
+    writeAddress(address, 'replace');
   }
 
   /**
@@ -269,17 +289,24 @@
     applyTheme(choice);
   }
 
-  // The tab title counts the open decisions, so an operator in another tab sees them without
-  // opening the app; the list and the badge carry the same count. The route supplies the key and
-  // the name it carries, so no title is ever formatted without its argument.
+  // The tab title counts what waits, so an operator in another tab sees it without opening the
+  // app; the rail's entry, the tab title and the tab icon read the same total. The route supplies
+  // the key and the name it carries, so no title is ever formatted without its argument; the start
+  // page's own title is the count's words, every other route prefixes the base title with it.
   $effect(() => {
     if (typeof document === 'undefined') return;
-    const count = $runtimeStore.openDecisionsCount;
-    const { key, args } = ROUTE_TITLES[$runtimeStore.currentRoute]($runtimeStore);
+    const count = $attentionStore.total;
+    const { key, args } = ROUTE_TITLES[$runtimeStore.currentRoute]({
+      ...$runtimeStore,
+      attentionTotal: count,
+    });
     // The address bar never shows a raw key: the title waits for the catalogue to arrive.
     if (!$messagesStore[key]) return;
     const base = $t(key, args);
-    document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+    document.title =
+      count > 0 && $runtimeStore.currentRoute !== 'inbox'
+        ? $t('decision.notify.tab_title', { count, title: base })
+        : base;
   });
 
   // Once the app has started and reaches its origin, it fetches the figure of the disconnected
@@ -290,10 +317,10 @@
     }
   });
 
-  // The tab icon carries the attention dot while items wait; it reads the same count the rail
-  // badge and the tab title carry, so the three never disagree.
+  // The tab icon carries the attention dot while items wait; it reads the same total the rail's
+  // entry and the tab title carry, so the three never disagree.
   $effect(() => {
-    applyFavicon($runtimeStore.openDecisionsCount);
+    applyFavicon($attentionStore.total);
   });
 </script>
 
@@ -313,9 +340,10 @@
           <span class="draining-text" data-testid="draining-text">
             {$t('system.stopping.line', {
               count: drainCount,
-              what: drainItems.length > 0
-                ? drainNames
-                : ($runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work')),
+              what:
+                drainItems.length > 0
+                  ? drainNames
+                  : ($runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work')),
             })}
           </span>
           {#if drainMore > 0}
@@ -376,6 +404,15 @@
   <div class="sr-only" aria-live="polite">
     {$runtimeStore.quietReportNotice || ''}
     {$runtimeStore.quietDecisionNotice || ''}
+    {#if $attentionStore.leftNotice}
+      {$t('overview.needs.left', {
+        kind: $t(`overview.needs.${$attentionStore.leftNotice}`),
+      })}{$attentionStore.leftSeq % 2 === 0 ? '' : '\u200B'}
+    {/if}
+  </div>
+
+  <div class="sr-only" aria-live="polite">
+    {$runtimeStore.quietNavigationNotice || ''}
   </div>
 {/if}
 

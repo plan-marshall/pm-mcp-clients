@@ -26,12 +26,16 @@ import de.planmarshall.api.json.JsonTree;
  * @param channel channel where answered ({@code cli} or {@code web}), or {@code null} when none is known; an
  *                absent channel stays absent and is never read as a default
  * @param device  optional device identifier or label
+ * @param requestId the client's identifier of the answer that produced this event, echoed from
+ *                  {@link DecisionAnswerRequest}; {@code null} when the answering client sent none, and then the
+ *                  event names no one client's request
  */
 public record DecisionAnsweredEvent(
         String id,
         String answer,
         @Nullable String channel,
-        @Nullable String device
+        @Nullable String device,
+        @Nullable String requestId
 ) {
     public static final String EVENT_NAME = "decision.answered";
 
@@ -54,6 +58,9 @@ public record DecisionAnsweredEvent(
         }
         if (device != null) {
             map.put("device", device);
+        }
+        if (requestId != null) {
+            map.put("request_id", requestId);
         }
         return map;
     }
@@ -82,7 +89,8 @@ public record DecisionAnsweredEvent(
         if (answer == null) answer = "";
         var channel = JsonTree.string(map, "channel");
         var device = JsonTree.string(map, "device");
-        return new DecisionAnsweredEvent(id, answer, channel, device);
+        var requestId = JsonTree.string(map, "request_id");
+        return new DecisionAnsweredEvent(id, answer, channel, device, requestId);
     }
 
     /**

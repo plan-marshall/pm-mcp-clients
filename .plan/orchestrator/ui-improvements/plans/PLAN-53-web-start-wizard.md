@@ -59,17 +59,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-10)`, `doc/claude_review/ux/proposals.adoc#UX-P-07` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: UX-S-10 at ux/plan.adoc:68, UX-P-07 at proposals.adoc:284, UC-P-07 at use-cases/proposals.adoc:138 present
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:68 UX-S-10; ux/proposals.adoc:284-285 UX-P-07 Start as a Wizard present
 - HYPOTHESIS: the start view hangs on "checking" after a jump to a `start.*` state (UC-F-36) because the gate has no time limit — confirm/refute at `pm-web-app/src/lib/stores/start.ts` (verify-at-outline)
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: Client bounds every request at 15 s (client.ts:2199,2325; 9fb2e7fa #399) and StartView.svelte:752-766 shows Skeleton then ErrorState with retry; no 20 s gate bound; stores/start.ts is modal state only | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: client bounds every request at 15s (client.ts:2847; :2971) and checks at 30s (:2855); StartView.svelte:791 Skeleton then :795 ErrorState with retry; stores/start.ts is modal state only; no gate without time limit
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Line references in the hypothesis moved (StartView.svelte load() at 120-163, client.ts request() at 3036); StartView.svelte grew to 1327 lines and now shows start.state.checking for the documents source (line 343) too; SourceList.svelte, start properties and starting-work-texts.adoc changed since the anchor.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Drift only: StartView.svelte now 1425 lines, load() at 139-185, request() near client.ts:2325, start.state.checking at :1142 and :1183
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: drift only: StartView.svelte now 1469 lines; load() :165; start.state.checking :1186 :1227; client request() client.ts:3966
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first instruction; no code fact
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; no code fact
 - HYPOTHESIS: the entry is created by `openEntry` before any source exists and the gate refusal creates none, so a lazy entry needs a split of that call — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `openEntry` and `doc/design/shared/starting-work.adoc#steps` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte:156 calls openEntry on load before any source; client.ts:2432 POST /projects/{id}/entries; refusal is a resource field with no entry; starting-work.adoc:184 says leaving keeps the entry
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte:182 calls apiClient.openEntry on load before any source; client.ts:3072 POST /projects/{id}/entries; starting-work.adoc:24 gate refusal creates nothing (design statement) and :184 leaving keeps the entry
 - HYPOTHESIS: no `StartView.test.ts` and no `start.test.ts` exist, so the gate and lazy-entry tests are new files — confirm/refute at `pm-web-app/src/lib/views/` and `pm-web-app/src/lib/stores/` (verify-at-outline)
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: StartView.test.ts (68 lines) and StartView.scenarios.test.ts exist at HEAD; only stores/start.test.ts is absent | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: StartView.test.ts; StartView.scenarios.test.ts; and stores/start.test.ts all exist at main
 
 ## Expected Surface
 

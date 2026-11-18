@@ -11,9 +11,12 @@ import {
   persistCatalogue,
   t,
   initI18n,
+  adoptRecordedLocale,
+  forgetVisitChoice,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
+import { setReloadDeferred } from '../stores/reloadDeferred';
 
 describe('i18n dynamic message formatting', () => {
   beforeEach(() => {
@@ -458,5 +461,276 @@ describe('the locale switch never mixes the two catalogues', () => {
 
     // Assert: the later entry wins, whatever order the storage lists the keys in.
     expect(cached?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
+  });
+});
+
+describe('a deferred reload never fetches a pack the old code does not hold', () => {
+  /** @param locale the locale @param messages its catalogue @returns a stored entry */
+  function catalogueEntry(locale: string, messages: Record<string, string>): string {
+    return JSON.stringify({ locale, cachedAt: '2026-10-01T08:00:00.000Z', messages });
+  }
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+    setReloadDeferred(false);
+  });
+
+  afterEach(() => {
+    setReloadDeferred(false);
+    setCatalogueVersion(null);
+  });
+
+  it('keeps the current locale, fetches nothing, and applies the choice when the reload is released', async () => {
+    // Arrange: the reload waits for unsent input, and German is not in the cache.
+    const getMessages = vi
+      .spyOn(apiClient, 'getMessages')
+      .mockResolvedValue({ 'deferred.only.label': 'Deutsch' });
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert: no request left the page, and the screen keeps the language it shows.
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('en');
+
+    // Act: the operator sends the text and the reload proceeds.
+    setReloadDeferred(false);
+
+    // Assert: the kept choice is applied.
+    await vi.waitFor(() => expect(get(currentLocale)).toBe('de'));
+    expect(getMessages).toHaveBeenCalledWith('de', 'all');
+    expect(get(t)('deferred.only.label')).toBe('Deutsch');
+  });
+
+  it('switches to a cached locale at once while the reload waits', async () => {
+    // Arrange: German is in the hand of this browser already.
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      catalogueEntry('de', { 'deferred.cached.label': 'Aus dem Speicher' }),
+    );
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('de');
+    expect(get(t)('deferred.cached.label')).toBe('Aus dem Speicher');
+  });
+
+  it('fetches no pack while the reload waits, not even the one it holds', async () => {
+    // Arrange: the German pack is in hand, and the reload waits for unsent input.
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      catalogueEntry('de', { 'deferred.held.label': 'Aus dem Speicher' }),
+    );
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await loadMessages('de', 'all');
+    await loadMessages('de', 'system');
+
+    // Assert: the old page renders what it holds, whatever the area holds, and asks for nothing.
+    expect(getMessages).not.toHaveBeenCalled();
+  });
+
+  it('drops a response that resolves while the reload starts waiting', async () => {
+    // Arrange: the request for the language the screen shows leaves before the upgrade event, and
+    // its answer arrives after it.
+    let resolveFetch: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    messagesStore.set({ 'deferred.held.label': 'Alt' });
+    const pending = loadMessages('en', 'all');
+
+    // Act
+    setReloadDeferred(true);
+    resolveFetch({ 'deferred.newer.label': 'Neu' });
+
+    // Assert: the old page keeps what it holds and caches nothing of the newer runtime.
+    await pending;
+    expect(get(messagesStore)).toEqual({ 'deferred.held.label': 'Alt' });
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
+  });
+
+  it('keeps the shown language when a switch answer lands after the reload starts waiting', async () => {
+    // Arrange: the switch leaves the page while no reload waits, its answer arrives during one.
+    let resolveFetch: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const pending = setLocale('de');
+
+    // Act
+    setReloadDeferred(true);
+    resolveFetch({ 'deferred.switched.label': 'Deutsch' });
+    await pending;
+
+    // Assert: the screen keeps its language and the newer pack is not cached.
+    expect(get(currentLocale)).toBe('en');
+    expect(get(messagesStore)).not.toHaveProperty('deferred.switched.label');
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
+  });
+
+  it('switches to the held pack of an unknown runtime version instead of fetching', async () => {
+    // Arrange: the runtime version is not known, the German pack is in the browser, and the reload
+    // waits for unsent input.
+    setCatalogueVersion(null);
+    localStorage.setItem(
+      'pm_i18n_messages_de@unversioned',
+      catalogueEntry('de', { 'deferred.unversioned.label': 'Aus dem Speicher' }),
+    );
+    const getMessages = vi.spyOn(apiClient, 'getMessages');
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(getMessages).not.toHaveBeenCalled();
+    expect(get(currentLocale)).toBe('de');
+    expect(get(t)('deferred.unversioned.label')).toBe('Aus dem Speicher');
+  });
+
+  it('lets a later choice of the language shown supersede the pending one', async () => {    // Arrange: the catalogue store settles on English, then a deferred request keeps German pending.
+    const getMessages = vi
+      .spyOn(apiClient, 'getMessages')
+      .mockResolvedValue({ 'deferred.superseded.label': 'English' });
+    await setLocale('en');
+    getMessages.mockClear();
+    setReloadDeferred(true);
+
+    // Act
+    await setLocale('de');
+    expect(get(currentLocale)).toBe('en');
+    await setLocale('en');
+
+    // Assert: no request leaves the page while it waits…
+    expect(getMessages).not.toHaveBeenCalled();
+
+    // …and the release applies no superseded choice.
+    setReloadDeferred(false);
+    await Promise.resolve();
+    expect(get(currentLocale)).toBe('en');
+    expect(getMessages).not.toHaveBeenCalled();
+  });
+});
+
+describe('the page declares the language it shows', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+    setReloadDeferred(false);
+  });
+
+  afterEach(() => {
+    document.documentElement.lang = 'en';
+    setCatalogueVersion(null);
+    vi.unstubAllGlobals();
+  });
+
+  it('follows the locale to German and back to English', async () => {
+    // Arrange: both catalogues are in the hand of this browser.
+    setCatalogueVersion('0.9.1');
+    for (const locale of ['en', 'de'] as const) {
+      localStorage.setItem(
+        `pm_i18n_messages_${locale}@0.9.1`,
+        JSON.stringify({
+          locale,
+          cachedAt: '2026-10-01T08:00:00.000Z',
+          messages: { 'lang.label': locale === 'de' ? 'Deutsch' : 'English' },
+        }),
+      );
+    }
+
+    // Act
+    await setLocale('de');
+
+    // Assert
+    expect(document.documentElement.lang).toBe('de');
+
+    await setLocale('en');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('declares German on the first load of the pairing page in German', async () => {
+    // Arrange: the language this browser chose, as the pairing page finds it on its first load.
+    localStorage.setItem('pm_locale', 'de');
+    setCatalogueVersion('0.9.1');
+    localStorage.setItem(
+      'pm_i18n_messages_de@0.9.1',
+      JSON.stringify({
+        locale: 'de',
+        cachedAt: '2026-10-01T08:00:00.000Z',
+        messages: { 'pair.first.label': 'Koppeln' },
+      }),
+    );
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    vi.resetModules();
+    const fresh = await import('./index');
+
+    // Act: what the root layout does for every route, the pairing page included.
+    await fresh.initI18n();
+
+    // Assert
+    expect(document.documentElement.lang).toBe('de');
+  });
+});
+
+describe('the recorded language of the machine', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    forgetVisitChoice();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('applies the recorded language even when its catalogue answers after the bound', async () => {
+    // Arrange: the runtime records Deutsch, but its catalogue answers only after the bound.
+    vi.useFakeTimers();
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      language_interface: 'de',
+    } as never);
+    let answer: ((messages: Record<string, string>) => void) | undefined;
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    // Act: the screen stops waiting at the bound and keeps the language it shows.
+    const adoption = adoptRecordedLocale();
+    await vi.advanceTimersByTimeAsync(2000);
+    await adoption;
+
+    // Assert: nothing switched yet, and the late answer still switches the screen.
+    expect(get(currentLocale)).toBe('en');
+    answer?.({ 'web.pair.page.title': 'Titel' });
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    expect(get(currentLocale)).toBe('de');
   });
 });

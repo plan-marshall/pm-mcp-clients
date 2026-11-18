@@ -2,10 +2,10 @@
   "id": "PLAN-152",
   "slug": "web-foundation-catalogue-cleanup",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-152-web-foundation-catalogue-cleanup",
+  "pr": "468",
+  "landing": "landings/PLAN-152.md",
   "seq": 152
 }

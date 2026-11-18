@@ -42,13 +42,22 @@
   });
 
   const crumbs = $derived(
-    pathOf($runtimeStore.currentRoute, $runtimeStore).map(
-      (crumb): Crumb => ({
-        label: $t(crumb.key, crumb.args),
-        id: crumb.id,
-      }),
-    ),
+    pathOf($runtimeStore.currentRoute, $runtimeStore).map((crumb): Crumb => ({
+      label: $t(crumb.key, crumb.args),
+      id: crumb.id,
+    })),
   );
+
+  /**
+   * Whether the frame shows the header of the onboarding only.
+   *
+   * Until the machine is onboarded the onboarding fills the whole app (onboarding.adoc, Frame): the
+   * header carries the machine beside the frame's own brand, language and theme, and offers no
+   * path, no search and no live indicator. A machine that has not been paired yet shows no header
+   * at all; its page carries its own head. A paired browser that was revoked or lost its listener
+   * is onboarded, so it keeps the full header like every other page.
+   */
+  const frameOnly = $derived(!$runtimeStore.isOnboarded);
 
   // The connection status follows the session: read on mount, on a listener/device event, and on a
   // heartbeat, so a machine that went away or came back is seen without a reload. Only the latest
@@ -83,37 +92,52 @@
   });
 </script>
 
-<header class="app-header" data-testid="top-bar">
-  <div class="app-header__path">
-    <Breadcrumb {crumbs} label={$t('web.frame.path.label')} />
-  </div>
+{#if !frameOnly || $runtimeStore.isPaired}
+  <header class="app-header" data-testid="top-bar">
+    {#if frameOnly}
+      <div class="app-header__actions">
+        <span
+          class="app-header__machine mono"
+          title={connectionTitle}
+          data-connection-mode={connectionMode}
+          data-testid="header-machine"
+        >
+          {$t('web.frame.machine', { name: $runtimeStore.machineName })}
+        </span>
+      </div>
+    {:else}
+      <div class="app-header__path">
+        <Breadcrumb {crumbs} label={$t('web.frame.path.label')} />
+      </div>
 
-  <div class="app-header__actions">
-    <Button
-      variant="ghost"
-      size="sm"
-      icon="act.search"
-      title={$t('web.frame.search.title')}
-      onclick={openCommandPalette}
-      data-testid="search-trigger"
-    >
-      {$t('web.frame.search')}
-    </Button>
+      <div class="app-header__actions">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon="act.search"
+          title={$t('web.frame.search.title')}
+          onclick={openCommandPalette}
+          data-testid="search-trigger"
+        >
+          {$t('web.frame.search')}
+        </Button>
 
-    <LiveIndicator />
+        <LiveIndicator />
 
-    {#if $runtimeStore.isPaired}
-      <span
-        class="app-header__machine mono"
-        title={connectionTitle}
-        data-connection-mode={connectionMode}
-        data-testid="header-machine"
-      >
-        {$t('web.frame.machine', { name: $runtimeStore.machineName })}
-      </span>
+        {#if $runtimeStore.isPaired}
+          <span
+            class="app-header__machine mono"
+            title={connectionTitle}
+            data-connection-mode={connectionMode}
+            data-testid="header-machine"
+          >
+            {$t('web.frame.machine', { name: $runtimeStore.machineName })}
+          </span>
+        {/if}
+      </div>
     {/if}
-  </div>
-</header>
+  </header>
+{/if}
 
 <style>
   .app-header {

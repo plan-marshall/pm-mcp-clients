@@ -65,12 +65,14 @@ describe('MascotFigure', () => {
       expect(screen.getByTestId('mascot-figure').getAttribute('data-crop')).toBe('full');
     });
 
-    it.each(['mascot-full-1x.webp', 'mascot-full-2x.webp', 'mascot-bust-1x.webp', 'mascot-bust-2x.webp'])(
-      'keeps %s within 60 KB',
-      (file) => {
-        expect(fs.statSync(path.join(ASSET_DIR, file)).size).toBeLessThanOrEqual(MAX_FILE_BYTES);
-      },
-    );
+    it.each([
+      'mascot-full-1x.webp',
+      'mascot-full-2x.webp',
+      'mascot-bust-1x.webp',
+      'mascot-bust-2x.webp',
+    ])('keeps %s within 60 KB', (file) => {
+      expect(fs.statSync(path.join(ASSET_DIR, file)).size).toBeLessThanOrEqual(MAX_FILE_BYTES);
+    });
   });
 
   describe('the size', () => {
@@ -130,7 +132,9 @@ describe('MascotFigure', () => {
     });
 
     it('draws nothing and keeps no space for an empty object URL', () => {
-      const { container } = render(MascotFigure, { props: { pose: 'searching', height: 180, src: '' } });
+      const { container } = render(MascotFigure, {
+        props: { pose: 'searching', height: 180, src: '' },
+      });
 
       expect(screen.queryByTestId('mascot-figure')).toBeNull();
       expect(container.querySelector('img')).toBeNull();
@@ -139,16 +143,19 @@ describe('MascotFigure', () => {
   });
 
   describe('the content security policy', () => {
-    it.each([undefined, generatedObjectUrl()])('sets no style attribute and no data: URL, src %s', (src) => {
-      const { container } = render(MascotFigure, {
-        props: { pose: 'welcome', height: 320, entrance: true, src },
-      });
-      const figure = screen.getByTestId('mascot-figure');
+    it.each([undefined, generatedObjectUrl()])(
+      'sets no style attribute and no data: URL, src %s',
+      (src) => {
+        const { container } = render(MascotFigure, {
+          props: { pose: 'welcome', height: 320, entrance: true, src },
+        });
+        const figure = screen.getByTestId('mascot-figure');
 
-      expect(container.querySelectorAll('[style]')).toHaveLength(0);
-      expect(figure.getAttribute('src')).not.toMatch(/^data:/);
-      expect(figure.getAttribute('srcset') ?? '').not.toContain('data:');
-    });
+        expect(container.querySelectorAll('[style]')).toHaveLength(0);
+        expect(figure.getAttribute('src')).not.toMatch(/^data:/);
+        expect(figure.getAttribute('srcset') ?? '').not.toContain('data:');
+      },
+    );
 
     it('carries no literal colour and no raw HTML in the component', () => {
       expect(source).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);

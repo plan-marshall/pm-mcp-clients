@@ -2,10 +2,10 @@
   "id": "PLAN-60",
   "slug": "web-settings-one-place",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-60-web-settings-one-place",
+  "pr": "457",
+  "landing": "landings/PLAN-60.md",
   "seq": 60
 }

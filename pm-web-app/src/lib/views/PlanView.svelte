@@ -4,6 +4,8 @@
   import Button from '../components/Button.svelte';
   import NodeNarrative from '../components/NodeNarrative.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import Tabs, { type TabItem } from '../components/Tabs.svelte';
+  import PlanChanges from '../components/PlanChanges.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
@@ -17,6 +19,7 @@
     type ProcessEndedInfo,
     type TokenBreakdownItem,
     type ActivityEntry,
+    type ChangeSizeRecord,
   } from '../api/client';
   import {
     runtimeStore,
@@ -25,6 +28,8 @@
     openCompletionReport,
     goBack,
     navigateTo,
+    selectObjectTab,
+    selectPlanChangeFile,
   } from '../stores/runtime';
   import {
     dateOnRead,
@@ -38,7 +43,7 @@
   } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
-  import { displayState } from '../display';
+  import { displayState, formatChangeSize } from '../display';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
@@ -57,6 +62,79 @@
   let reportRoleBreakdown = $state<TokenBreakdownItem[] | null>(null);
   /** The moment the day headers are measured at; a quiet timer moves it across midnight. */
   let clock = $state(Date.now());
+
+  /**
+   * The size the last `plan.change_captured` announced, or `null` before the plan's first capture
+   * of this load.
+   *
+   * The line's figures come from the process resource or from the event, never summed here: the
+   * list and the size are one measurement of git (`plan-view.adoc`, Change So Far).
+   */
+  let changeFromEvent = $state<ChangeSizeRecord | null>(null);
+
+  /** A count the view raises on a capture, so the tab reads its list again. */
+  let changesReloadToken = $state(0);
+
+  /** The size of the plan's change: the event's figures, else the process resource's. */
+  const changeSize = $derived<ChangeSizeRecord | null>(changeFromEvent ?? plan?.change ?? null);
+
+  /**
+   * The plan's tab the address names, or the default one the address omits.
+   *
+   * This view draws the Process and Changes tabs; Intent belongs to the tab set PLAN-55 carries
+   * into this view, so an address that names it opens Process here.
+   */
+  const activeTab = $derived<'process' | 'changes'>(
+    $runtimeStore.objectTab === 'changes' ? 'changes' : 'process',
+  );
+
+  /**
+   * @param tab a tab of this view
+   * @returns the id of its panel while that tab is the shown one, and none for the other
+   */
+  function panelIdOf(tab: 'process' | 'changes'): string | undefined {
+    // Only the shown tab has a panel in the document, so only it may name one.
+    return tab === activeTab ? `plan-panel-${tab}` : undefined;
+  }
+
+  /** The tabs of the plan's column: Changes appears at the first capture, and with it the line. */
+  const tabItems = $derived<TabItem[]>(
+    changeSize === null
+      ? [
+          {
+            id: 'process',
+            label: $t('plan.tab.process'),
+            panelId: panelIdOf('process'),
+          },
+        ]
+      : [
+          {
+            id: 'process',
+            label: $t('plan.tab.process'),
+            panelId: panelIdOf('process'),
+          },
+          {
+            id: 'changes',
+            label: $t('plan.tab.changes'),
+            panelId: panelIdOf('changes'),
+          },
+        ],
+  );
+
+  /**
+   * @param tab the tab a person chose
+   */
+  function selectTab(tab: string): void {
+    selectObjectTab(tab === 'changes' ? 'changes' : 'process');
+  }
+
+  /**
+   * @param size the size the runtime served
+   * @returns the catalogue's one-line form of it
+   */
+  function changeText(size: ChangeSizeRecord): string {
+    return formatChangeSize(size, $t);
+  }
 
   /**
    * How the plan ended: the process resource's own record, or what Ended Work handed the view.
@@ -122,15 +200,18 @@
   let activityLoadGeneration = 0;
 
   onMount(async () => {
-    unsubscribeEvents = apiClient.subscribeEvents((event) => {
+    unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
+      // The runtime stream's events that change a plan's process (`EventName`).
       if (
-        event === 'plan.changed' ||
         event === 'activity.changed' ||
         event === 'phase.changed' ||
         event === 'task.off_track' ||
         event === 'project.work_ended'
       ) {
         void loadPlanProcess(false);
+      }
+      if (event === 'plan.change_captured') {
+        applyCapturedChange(data);
       }
     });
     clockTimer = setInterval(() => {
@@ -174,7 +255,13 @@
     errorCode = null;
     try {
       const res = await apiClient.getPlanProcess(planId);
+      const previousPlanId = plan?.plan_id ?? null;
       plan = res;
+      if (previousPlanId !== null && previousPlanId !== res.plan_id) {
+        // Another plan is open: the size the last capture announced belonged to the old one.
+        changeFromEvent = null;
+        changesReloadToken += 1;
+      }
 
       // Expand all nodes by default or ensure active path is expanded
       if (initial && res.nodes) {
@@ -202,6 +289,53 @@
       if (initial) isLoading = false;
     }
   }
+
+  /**
+   * Applies a `plan.change_captured` of this plan: the size line moves to the announced figures and
+   * the tab reads its list again.
+   *
+   * The payload names the figures, so the line needs no read and the view sums nothing up. A
+   * payload without them still raises the token: the list is the answer that matters.
+   *
+   * @param data the event's payload
+   */
+  function applyCapturedChange(data: unknown): void {
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+    const payload = data as Record<string, unknown>;
+    if (payload.plan_id !== planId) {
+      return;
+    }
+    const figure = (value: unknown): number | null =>
+      typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
+    const files = figure(payload.files_total);
+    const insertions = figure(payload.insertions_total);
+    const deletions = figure(payload.deletions_total);
+    const unplanned = figure(payload.unplanned_total);
+    if (files !== null && insertions !== null && deletions !== null && unplanned !== null) {
+      changeFromEvent = { files, insertions, deletions, unplanned };
+    }
+    changesReloadToken += 1;
+  }
+
+  // The address may name a tab this view does not draw — Changes before the plan's first capture,
+  // or Intent, which PLAN-55's tab set carries into this view. The view then opens Process and
+  // replaces the address, so the address never names a panel that is not there
+  // (`plan-view-interaction.adoc#changes`).
+  $effect(() => {
+    if (plan === null) {
+      return;
+    }
+    if (activeTab === 'changes' && changeSize === null) {
+      selectObjectTab('process');
+      return;
+    }
+    const named = $runtimeStore.objectTab;
+    if (named !== null && named !== undefined && named !== 'process' && named !== 'changes') {
+      selectObjectTab('process');
+    }
+  });
 
   function findRunningTask(nodes: ProcessNode[]): LeafTask | null {
     for (const node of nodes) {
@@ -347,6 +481,8 @@
       size: textOf(source.size),
       files: stringsOf(source.files),
       questions: stringsOf(source.questions),
+      launch_model: textOf(source.launch_model),
+      served_model: textOf(source.served_model),
     };
   }
 
@@ -399,29 +535,28 @@
     };
   }
 
-  function jumpToCurrentPosition() {
-    if (!plan) return;
-    const path = plan.current_position_path || [];
+  /** Opens the path to the current position and selects what runs there; offered with a plan. */
+  function jumpToCurrentPosition(current: ProcessTree) {
+    const path = current.current_position_path;
     const nextExp = { ...expandedNodes };
     for (const p of path) {
       nextExp[p] = true;
     }
     expandedNodes = nextExp;
 
-    const running = findRunningTask(plan.nodes);
+    const running = findRunningTask(current.nodes);
     if (running) {
       selection = { kind: 'task', taskId: running.task_id };
     } else {
-      const runningNode = findRunningNode(plan.nodes);
+      const runningNode = findRunningNode(current.nodes);
       if (runningNode) {
         selection = { kind: 'node', nodeId: runningNode.node_id };
       }
     }
-    if (typeof document !== 'undefined') {
-      const el = document.querySelector('.node-item--running, .node-item--waiting');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+    // The app renders in the browser only (`ssr = false` in the root layout).
+    const el = document.querySelector('.node-item--running, .node-item--waiting');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
 
@@ -433,8 +568,13 @@
     });
   }
 
-  function formatTokensLine(tokens?: ProcessTokens | null, loc: Locale = 'en'): string {
-    if (!tokens || tokens.none_yet) {
+  /**
+   * @param tokens the plan's tokens, which the process resource always carries
+   * @param loc the interface language
+   * @returns the tokens line
+   */
+  function formatTokensLine(tokens: ProcessTokens, loc: Locale): string {
+    if (tokens.none_yet) {
       return $t('plan.view.tokens_none');
     }
     if (tokens.not_measured) {
@@ -663,7 +803,7 @@
             onclick={() => openProject(plan!.project.project_id)}
             data-testid="breadcrumb-project"
           >
-            {plan.project?.display_name || plan.project?.project_id || 'project'}
+            {plan.project.display_name || plan.project.project_id}
           </button>
           {#if plan.epic}
             <span class="breadcrumb-sep">›</span>
@@ -692,7 +832,7 @@
           </Button>
           <Button
             variant="secondary"
-            onclick={jumpToCurrentPosition}
+            onclick={() => jumpToCurrentPosition(plan!)}
             data-testid="jump-btn"
             data-advisory={$t('plan.path.jump.title')}
           >
@@ -721,9 +861,9 @@
             variant="ghost"
             onclick={goBackToCaller}
             data-testid="back-btn"
-            data-advisory={$t('common.actions.back.title')}
+            data-advisory={$t('common.action.back.title')}
           >
-            {$t('common.actions.back')}
+            {$t('common.action.back')}
           </Button>
         </div>
       </div>
@@ -740,7 +880,9 @@
             {displayState('plan', plan.phase_state, $t)}
           </span>
           {#if plan.duration_seconds > 0}
-            <span class="duration-tag">{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span>
+            <span class="duration-tag"
+              >{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span
+            >
           {/if}
         </div>
       </div>
@@ -794,7 +936,7 @@
       <div class="plan-tokens mono" data-testid="plan-tokens">
         <span class="tokens-label">{$t('plan.view.tokens')}</span>
         <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
-        {#if plan.tokens_so_far && !plan.tokens_so_far.none_yet}
+        {#if !plan.tokens_so_far.none_yet}
           <button
             class="tokens-toggle"
             aria-expanded={showTokenBreakdown}
@@ -809,7 +951,7 @@
         {/if}
       </div>
 
-      {#if showTokenBreakdown && plan.tokens_so_far}
+      {#if showTokenBreakdown}
         <div class="token-breakdown" id="plan-token-breakdown" data-testid="token-breakdown">
           {#if isLoadingBreakdown}
             <div class="token-breakdown__empty">
@@ -878,10 +1020,54 @@
           {/if}
         </div>
       {/if}
+      <!-- The size line of the change: it opens the Changes tab, and is absent before the first capture -->
+      {#if changeSize}
+        <div class="plan-change-size" data-testid="plan-change-size-row">
+          <span class="tokens-label">{$t('plan.change.so_far')}</span>
+          <button
+            type="button"
+            class="change-size-link mono"
+            data-testid="plan-change-size"
+            onclick={() => {
+              if (activeTab !== 'changes') {
+                selectObjectTab('changes');
+              }
+            }}
+          >
+            {changeText(changeSize)}
+          </button>
+        </div>
+      {/if}
     </header>
 
-    <!-- Two-Panel Main Layout -->
-    <div class="plan-content">
+    <div class="plan-tabs">
+      <Tabs tabs={tabItems} active={activeTab} label={$t('plan.tabs')} onSelect={selectTab} />
+    </div>
+
+    {#if activeTab === 'changes' && changeSize}
+      <div
+        class="plan-changes-panel"
+        id="plan-panel-changes"
+        role="tabpanel"
+        aria-label={$t('plan.tab.changes')}
+        data-testid="plan-changes-panel"
+      >
+        <PlanChanges
+          planId={plan.plan_id}
+          change={changeSize}
+          selectedFile={$runtimeStore.changeFile ?? null}
+          onSelectFile={selectPlanChangeFile}
+          reloadToken={changesReloadToken}
+        />
+      </div>
+    {:else}
+      <!-- Two-Panel Main Layout -->
+      <div
+        class="plan-content"
+        id="plan-panel-process"
+        role="tabpanel"
+        aria-label={$t('plan.tab.process')}
+      >
       <!-- Left: Process Tree -->
       <section
         class="plan-tree-panel"
@@ -909,7 +1095,9 @@
                 aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
                 data-testid="toggle-node-{node.node_id}"
               >
-                <span class="node-glyph"><Icon name={getNodeStateIcon(node.state)} size={16} /></span>
+                <span class="node-glyph"
+                  ><Icon name={getNodeStateIcon(node.state)} size={16} /></span
+                >
                 <span class="toggle-icon">
                   {#if hasChildren(node)}
                     {expandedNodes[node.node_id] ? '▾' : '▸'}
@@ -939,7 +1127,9 @@
                 <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
                 {#if node.duration_seconds > 0}
-                  <span class="node-duration">{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span>
+                  <span class="node-duration"
+                    >{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span
+                  >
                 {/if}
                 <span class="sr-only">{$t('plan.node.select')}</span>
               </button>
@@ -971,7 +1161,9 @@
                         <span class="task-id font-semibold">{task.task_id}</span>
                         <span class="task-role">{task.role}</span>
                         <span class="task-model">{task.harness} {task.model}</span>
-                        <span class="task-attempt">attempt {task.attempt}</span>
+                        <span class="task-attempt"
+                          >{$t('plan.node.attempt', { attempt: task.attempt })}</span
+                        >
                         <span class="task-status badge badge--state badge--state-{task.status}"
                           >{displayState('task', task.status, $t)}</span
                         >
@@ -1031,13 +1223,21 @@
                 <div class="task-headline">
                   <h3 class="task-title font-semibold">{taskActivity.task_id}</h3>
                   <span class="task-role-tag">{taskActivity.role}</span>
-                  <span class="task-meta">{taskActivity.harness} {taskActivity.model}</span>
-                  <span class="task-meta">attempt {taskActivity.attempt}</span>
+                  <span class="task-meta" data-testid="activity-model"
+                    >{taskActivity.harness} {taskActivity.model}</span
+                  >
+                  <span class="task-meta" data-testid="activity-attempt"
+                    >{$t('plan.node.attempt', { attempt: taskActivity.attempt })}</span
+                  >
                 </div>
                 <div class="task-metrics mono">
-                  <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span>
+                  <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span
+                  >
                   {#if taskActivity.tokens_so_far > 0}
-                    <span>· {formatTokens(taskActivity.tokens_so_far, false, $currentLocale)} {$t('plan.view.tokens')}</span>
+                    <span
+                      >· {formatTokens(taskActivity.tokens_so_far, false, $currentLocale)}
+                      {$t('plan.view.tokens')}</span
+                    >
                   {/if}
                 </div>
               </div>
@@ -1083,8 +1283,10 @@
                               >{stripControlSequences(entry.tool_target)}</span
                             >
                             {#if entry.tool_failed}
-                              <span class="badge badge--danger"
-                                >{displayState('task', 'failed', $t)} · {entry.size || ''}</span
+                              <span class="badge badge--danger" data-testid="tool-failed"
+                                >{entry.size
+                                  ? $t('plan.activity.kind.tool_failed', { size: entry.size })
+                                  : displayState('task', 'failed', $t)}</span
                               >
                             {/if}
                           </div>
@@ -1097,6 +1299,17 @@
                         {:else if entry.kind === 'gap'}
                           <div class="activity-gap text-muted italic" data-model-text>
                             {stripControlSequences(entry.content || '')}
+                          </div>
+                        {:else if entry.kind === 'model_differs'}
+                          <div
+                            class="entry-content model-differs"
+                            data-testid="model-differs"
+                            data-model-text
+                          >
+                            {$t('plan.activity.model_differs', {
+                              served: stripControlSequences(entry.served_model ?? '?'),
+                              launched: stripControlSequences(entry.launch_model ?? '?'),
+                            })}
                           </div>
                         {:else}
                           <div class="entry-content" data-model-text>
@@ -1127,7 +1340,8 @@
           </div>
         {/if}
       </section>
-    </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -1260,6 +1474,49 @@
     color: var(--color-text-secondary);
     display: flex;
     gap: var(--space-2);
+  }
+
+  .plan-change-size {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .change-size-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: var(--text-xs);
+  }
+
+  .change-size-link:hover {
+    text-decoration: underline;
+  }
+
+  .change-size-link:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  .plan-tabs {
+    padding: 0 var(--space-6);
+    background-color: var(--color-bg-surface);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .plan-changes-panel {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow: auto;
+    padding: var(--space-4) var(--space-6);
+  }
+
+  .model-differs {
+    color: var(--color-text-secondary);
   }
 
   .tokens-label {

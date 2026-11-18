@@ -9,7 +9,7 @@
   import StatusLabel from '../components/StatusLabel.svelte';
   import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
-  import { displayState } from '../display';
+  import { displayState, formatChangeSize } from '../display';
 
   interface Props {
     planId: string;
@@ -49,8 +49,7 @@
   }
 
   onMount(() => {
-    restoreFocusTo =
-      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    restoreFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     focusReportHeading();
     if (!report && planId) {
       void fetchReport();
@@ -140,20 +139,15 @@
    * @returns the catalogue's one-line form
    */
   function changeText(change: ChangeSizeRecord): string {
-    return $t('plan.change.size', {
-      files: change.files,
-      insertions: change.insertions,
-      deletions: change.deletions,
-      unplanned: change.unplanned ?? 0,
-    });
+    return formatChangeSize(change, $t);
   }
 </script>
 
 <div class="completion-report" bind:this={rootEl}>
   <div class="completion-report__nav">
     {#if onClose}
-      <Button variant="ghost" size="small" icon="act.back" onclick={closeReport}>
-        {$t('web.common.back')}
+      <Button variant="ghost" size="sm" icon="act.back" onclick={closeReport}>
+        {$t('common.action.back')}
       </Button>
     {/if}
   </div>
@@ -175,7 +169,7 @@
         code={errorMessage}
         actionLabel={$t('common.action.retry')}
         onAct={fetchReport}
-        titleLevel={titleLevel}
+        {titleLevel}
       />
     </div>
   {:else if data}
@@ -187,7 +181,7 @@
         {/if}
         {#if data.from.epic}
           <span class="breadcrumb-sep">›</span>
-        <span class="breadcrumb-item">{data.from.epic}</span>
+          <span class="breadcrumb-item">{data.from.epic}</span>
         {/if}
         <span class="breadcrumb-sep">›</span>
         <span class="breadcrumb-item font-semibold">{data.plan_id}</span>
@@ -200,7 +194,10 @@
         <svelte:element this={`h${titleLevel}`} class="report-title" tabindex="-1"
           >{data.plan_id}</svelte:element
         >
-        <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
+        <StatusLabel
+          tone={outcomeTone(data.outcome)}
+          label={$t('overview.ended.outcome', { outcome: data.outcome })}
+        />
         {#if data.pull_request_number}
           <a
             class="pr-link mono"
@@ -249,8 +246,7 @@
           <div class="summary-row">
             <span class="summary-label">{$t('report.completion.ran')}</span>
             <span class="summary-value"
-              >{data.ran ||
-                formatDuration(data.duration_seconds * 1000, $currentLocale)}</span
+              >{data.ran || formatDuration(data.duration_seconds * 1000, $currentLocale)}</span
             >
           </div>
         {/if}
@@ -396,7 +392,8 @@
       {/if}
 
       <!-- Tokens section -->
-      {#if data.token_usage}        {@const usage = data.token_usage}
+      {#if data.token_usage}
+        {@const usage = data.token_usage}
         <section class="report-section tokens-section">
           <div class="tokens-header">
             <svelte:element this={`h${titleLevel + 1}`} class="section-title">
@@ -404,7 +401,7 @@
             </svelte:element>
             <Button
               variant="secondary"
-              size="small"
+              size="sm"
               onclick={() => (showRawComponents = !showRawComponents)}
               aria-expanded={showRawComponents}
             >

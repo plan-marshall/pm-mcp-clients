@@ -85,6 +85,51 @@ export interface ProjectOverviewResponse {
   projects: ProjectSummary[];
 }
 
+/** Where an item of what waits belongs: a project, an epic or a plan (`WorkLocation`). */
+export interface NeedsOperatorLocation {
+  id: string;
+  title?: string | null;
+}
+
+/**
+ * One item of the one list of everything that waits (UC-PLN-7, `NeedsOperatorItem`).
+ *
+ * The runtime derives it on read and serves it in its own order; a client keeps that order and
+ * sorts nothing.
+ */
+export interface NeedsOperatorItem {
+  /** The closed kind of the wait (`NeedsOperatorKind`); an unknown one reads as `other`. */
+  kind: string;
+  /** The path of the item itself, an absolute path of the local API, or absent. */
+  link?: string | null;
+  /** The project it belongs to, or absent for the machine's own items. */
+  project?: NeedsOperatorLocation | null;
+  /** The epic it belongs to, or absent. */
+  epic?: NeedsOperatorLocation | null;
+  /** The plan it belongs to, or absent. */
+  plan?: NeedsOperatorLocation | null;
+  /** When it started to wait, or absent when the runtime measures none. */
+  since?: string | null;
+  /** What it blocks: `plan`, `epic` or `project`; absent when it blocks no work. */
+  blocks?: string | null;
+}
+
+/** One page of the list of what waits (`GET /api/v1/machine/needs-operator`). */
+export interface NeedsOperatorPage {
+  /** The page number, 1-based. */
+  page: number;
+  /** How many pages the list has. */
+  total_pages: number;
+  /** Whether a newer page exists. */
+  has_newer: boolean;
+  /** Whether an older page exists; it is what `Show more` reads. */
+  has_older: boolean;
+  /** The number of items of every page. */
+  total: number;
+  /** The items of this page, in the runtime's order. */
+  items: NeedsOperatorItem[];
+}
+
 export type ProjectReadiness = 'ready' | 'setup_needs' | 'released';
 
 export interface EnrolledProject {
@@ -388,6 +433,8 @@ export interface ProcessTree {
   duration_seconds: number;
   /** How the plan ended, when the process resource carries it. */
   ended?: ProcessEndedInfo | null;
+  /** The size of the plan's change at its last capture; a plan with none carries no field. */
+  change?: ChangeSizeRecord | null;
 }
 
 export interface ActivityEntry {
@@ -400,6 +447,10 @@ export interface ActivityEntry {
   size?: string | null;
   files?: string[];
   questions?: string[];
+  /** The worker's launch model, on a `model_differs` entry. */
+  launch_model?: string | null;
+  /** The model that answered, on a `model_differs` entry. */
+  served_model?: string | null;
 }
 
 export interface TaskActivity {
@@ -413,6 +464,66 @@ export interface TaskActivity {
   entries: ActivityEntry[];
   off_track?: OffTrackInfo | null;
 }
+
+/** The status of one changed file of a plan's change, as git reports it. */
+export type ChangedFileStatus = 'added' | 'modified' | 'deleted' | 'renamed';
+
+/**
+ * One changed file of a plan's change, at the plan's last capture (`plan-changes`).
+ *
+ * The path and the path the file was renamed from come from the project: a view shows them as
+ * plain text, never as markup and never as a link it follows.
+ */
+export interface PlanChangedFile {
+  path: string;
+  renamed_from?: string | null;
+  status: ChangedFileStatus;
+  added: number;
+  removed: number;
+  binary: boolean;
+  unplanned: boolean;
+}
+
+/** One line of a hunk: context of both sides, removed from the base, or added by the capture. */
+export interface PlanChangeLine {
+  kind: 'context' | 'removed' | 'added';
+  text: string;
+}
+
+/** One hunk of a file's change, with its position on both sides. */
+export interface PlanChangeHunk {
+  old_start: number;
+  old_len: number;
+  new_start: number;
+  new_len: number;
+  lines: PlanChangeLine[];
+}
+
+/**
+ * One file of a plan's change with its hunks, as the file route answers it.
+ *
+ * The answer carries no `head`: it belongs to the row of the list the caller holds, and a list
+ * that moved makes the answer stale (`plan-view.adoc`, `#changes`).
+ */
+export interface PlanChangeFile {
+  path: string;
+  hunks: PlanChangeHunk[];
+  binary: boolean;
+  truncated: boolean;
+  lines_omitted?: number;
+}
+
+/**
+ * What a plan's changes answer: the list of the last capture, or one of the two refusals.
+ *
+ * The `state` member names which answer this is, so a view branches on it instead of on the
+ * presence of a list: before the first capture there is no list, and a capture whose commit is
+ * gone answers `unavailable` with its reason.
+ */
+export type PlanChangesAnswer =
+  | { plan_id: string; state: 'captured'; head: string; base_ref: string; files: PlanChangedFile[] }
+  | { plan_id: string; state: 'not_captured' }
+  | { plan_id: string; state: 'unavailable'; reason: string };
 
 export interface EpicProcessPlan {
   plan_id: string;
@@ -530,6 +641,8 @@ export interface EpicWorkRow {
   status: string;
   wait_reason?: string | null;
   wait_plan_id?: string | null;
+  /** The instant the row began to wait, so the view can say since when. */
+  wait_since?: string | null;
   overlap_files?: string[];
   pull_request_number?: number | null;
   pull_request_url?: string | null;
@@ -825,9 +938,11 @@ function normaliseTokenBreakdown(raw: unknown): TokenBreakdownItem {
     output: number('output', 'output_tokens'),
     unmeasured: number('unmeasured', 'unmeasured_tasks'),
     floor: line['floor'] === true || line['is_floor'] === true,
-    harness_model: text('harness_model'),
+    // The record writes the role's pin (`claude:opus-5.5 · high`) as `details`; the raw token
+    // components travel as `components` of their own.
+    harness_model: text('harness_model', 'details'),
     effort: text('effort'),
-    components: (line['components'] ?? line['details']) as TokenComponentRecord | undefined,
+    components: line['components'] as TokenComponentRecord | undefined,
   };
 }
 
@@ -1055,6 +1170,10 @@ export interface DecisionEnvelope {
   header?: string;
   subject: string;
   scope: string;
+  /** The project the decision belongs to, where the runtime names one. */
+  project?: string;
+  /** The plan the decision belongs to, where the runtime names one. */
+  plan?: string;
   asking_phase?: string;
   asking_role?: string;
   blocks: string;
@@ -1080,6 +1199,11 @@ export interface DecisionAnswerPayload {
   reason?: string;
   channel?: string;
   device?: string;
+  /**
+   * The client's own identifier of this answer, which `decision.answered` echoes: the client
+   * attributes the answered event to its own request by it (`decisions.adoc#outcomes`).
+   */
+  request_id?: string;
 }
 
 export interface DecisionInterpretation {
@@ -2189,6 +2313,687 @@ function httpError(message: string, status: number): Error {
   return error;
 }
 
+/**
+ * The path of a plan's changes, with the plan id as one encoded segment — the same encoding
+ * `PlanChangesRoutes` of `pm-api` applies (`URLEncoder`, and `%20` for a space).
+ *
+ * @param planId the plan
+ * @returns the list's path
+ */
+function planChangesPath(planId: string): string {
+  return `/api/v1/plans/${encodeURIComponent(planId)}/changes`;
+}
+
+/**
+ * One criterion of a plan's intent record, with the deliverables that satisfy it and, once the
+ * self-review has run, its verdict and the reviewer's reason (`IntentCriterion` of `pm-api`).
+ */
+export interface IntentCriterionRecord {
+  id: string;
+  text: string;
+  satisfies: number[];
+  status?: CriterionStatusValue;
+  status_reason?: string;
+}
+
+/** The closed list of a criterion's self-review verdicts. */
+export type CriterionStatusValue = 'met' | 'not_met' | 'not_verified';
+
+/** One non-goal of a plan's intent, with the record's own id (`NG-n`), never a position. */
+export interface NonGoalRecord {
+  id: string;
+  text: string;
+}
+
+/** The closed list of who took a decision of a plan's intent. */
+export type IntentDeciderValue = 'operator' | 'quorum' | 'role' | 'fact';
+
+/** The architecture decision record a decision follows or contradicts. */
+export interface IntentAdrReference {
+  adr_id: string;
+  relation: 'follows' | 'contradicts';
+}
+
+/** One decision of a plan's intent, with who took it and the evidence or the ADR it names. */
+export interface IntentDecisionRecord {
+  id: string;
+  text: string;
+  decider: IntentDeciderValue;
+  options_weighed: string[];
+  question_id?: string;
+  evidence?: string;
+  adr?: IntentAdrReference;
+}
+
+/** One deferred item of a plan's intent, with the reason the plan defers it. */
+export interface DeferredItemRecord {
+  id: string;
+  text: string;
+  reason: string;
+}
+
+/** The closed list of a builder check's resolutions. */
+export type BuilderCheckResolution = 'pending' | 'answered' | 'not_run';
+
+/** The closed list of who can answer a builder question. */
+export type BuilderQuestionSort = 'answered' | 'minor' | 'operator';
+
+/** The closed list of a builder question's resolution states. */
+export type BuilderQuestionState = 'open' | 'answered' | 'deferred';
+
+/** One question of a plan's builder check. */
+export interface BuilderQuestionRecord {
+  id: string;
+  text: string;
+  sort: BuilderQuestionSort;
+  recommended: boolean;
+  state: BuilderQuestionState;
+  answer?: string;
+}
+
+/** The builder check of a plan's intent; a `not_run` check carries the plan's reason. */
+export interface BuilderCheckRecord {
+  resolution: BuilderCheckResolution;
+  questions: BuilderQuestionRecord[];
+  reason?: string;
+}
+
+/** A plan's intent record as the runtime serves it (`PlanIntentResource` of `pm-api`). */
+export interface PlanIntentRecord {
+  plan_id: string;
+  revision: number;
+  goal: string;
+  criteria: IntentCriterionRecord[];
+  non_goals: NonGoalRecord[];
+  decisions: IntentDecisionRecord[];
+  open_questions: string[];
+  deferred: DeferredItemRecord[];
+  builder_check?: BuilderCheckRecord;
+}
+
+/** What a deliverable does to an affected file. */
+export type FileIntentValue =
+  'read' | 'write-new' | 'write-replace' | 'write-conditional' | 'delete';
+
+/** One file a deliverable affects, with the intent it affects it with. */
+export interface OutlineAffectedFileRecord {
+  path: string;
+  intent: FileIntentValue;
+}
+
+/** One deliverable of a plan's outline. */
+export interface OutlineDeliverableRecord {
+  number: number;
+  title: string;
+  intent_gloss: string;
+  affected_files: OutlineAffectedFileRecord[];
+  depends_on: number[];
+  satisfies: string[];
+  verification?: string;
+}
+
+/** A dependency the outline adds, with the deliverable that adds it and the reason. */
+export interface AddedDependencyRecord {
+  name: string;
+  version?: string;
+  justification: string;
+  deliverable: number;
+}
+
+/** A plan's outline record as the runtime serves it (`OutlineResource` of `pm-api`). */
+export interface OutlineRecord {
+  plan_id: string;
+  revision: number;
+  summary: string;
+  deliverables: OutlineDeliverableRecord[];
+  added_dependencies: AddedDependencyRecord[];
+}
+
+/** The closed list of a done-when check's verdicts. */
+export type DoneWhenVerdict = 'pending' | 'met' | 'not_met';
+
+/** One done-when check of an epic's intent, with its verdict and the evidence. */
+export interface EpicDoneWhenRecord {
+  text: string;
+  verdict: DoneWhenVerdict;
+  evidence: string[];
+}
+
+/** One staged plan's own done-when criterion, shown with the epic's intent. */
+export interface EpicPlanDoneWhenRecord {
+  plan_id: string;
+  title: string;
+  done_when: string[];
+}
+
+/** An epic's intent record as the runtime serves it (`EpicIntentResource` of `pm-api`). */
+export interface EpicIntentRecord {
+  epic_id: string;
+  destination: string;
+  done_when: EpicDoneWhenRecord[];
+  non_goals: string[];
+  not_yet_specified: string[];
+  plans: EpicPlanDoneWhenRecord[];
+}
+
+/** One bucket of the `over_size` distribution. */
+export interface OverSizeBucketRecord {
+  label: string;
+  from_multiple: number;
+  to_multiple: number;
+  task_count: number;
+  flagged_tasks: number;
+}
+
+/**
+ * The `over_size` distribution of a role, as the runtime serves it
+ * (`OverSizeDistributionResource` of `pm-api`): the multiple in force, the proposed one where the
+ * runtime serves a proposal, and the measured buckets. A role without measured tasks carries no
+ * bucket, which the chart shows as `intent.oversize.empty` rather than as a zero bar.
+ */
+export interface OverSizeDistributionRecord {
+  project_id: string;
+  role: string;
+  current_multiple: number;
+  proposed_multiple?: number;
+  buckets: OverSizeBucketRecord[];
+}
+
+/**
+ * The `over_size` distributions of a project, one per role whose multiple the project sets
+ * (`OverSizeDistributionsResource` of `pm-api`), in the runtime's order.
+ */
+export interface OverSizeDistributionsRecord {
+  project_id: string;
+  distributions: OverSizeDistributionRecord[];
+}
+
+/**
+ * The failure a record raises when it does not fit the contract it names.
+ *
+ * The client's own closed codes (`timeout`, `network_offline`, `unauthorized`) say nothing about a
+ * 200 whose record breaks its schema, so this one names the break and carries the field it was found
+ * in; the display layer shows its unknown fallback for it, never a half-read record.
+ */
+const MALFORMED_RECORD = 'invalid_response';
+
+/**
+ * @param type the record's type name, as the contract calls it
+ * @param field the member the record breaks
+ * @returns the failure to throw
+ */
+function malformedRecord(type: string, field: string): Error {
+  return new Error(`${MALFORMED_RECORD}: ${type}.${field}`);
+}
+
+/**
+ * @param raw the value the runtime sent
+ * @param type the record's type name
+ * @returns it as an object
+ */
+function recordObject(raw: unknown, type: string): Record<string, unknown> {
+  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw as Record<string, unknown>;
+  }
+  throw malformedRecord(type, '<record>');
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's text
+ */
+function recordText(record: Record<string, unknown>, field: string, type: string): string {
+  const value = record[field];
+  if (typeof value === 'string') {
+    return value;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's text, or `undefined` where the record does not carry it
+ */
+function optionalRecordText(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): string | undefined {
+  const value = record[field];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value === 'string') {
+    return value;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's number
+ */
+function recordNumber(record: Record<string, unknown>, field: string, type: string): number {
+  const value = record[field];
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's number, or `undefined` where the record does not carry it
+ */
+function optionalRecordNumber(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): number | undefined {
+  const value = record[field];
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  return recordNumber(record, field, type);
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's flag
+ */
+function recordBoolean(record: Record<string, unknown>, field: string, type: string): boolean {
+  const value = record[field];
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's array
+ */
+function recordArray(record: Record<string, unknown>, field: string, type: string): unknown[] {
+  const value = record[field];
+  if (Array.isArray(value)) {
+    return value;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * @param record the object
+ * @param field the member the contract requires at least one of
+ * @param type the record's type name
+ * @returns the member's array
+ */
+function recordNonEmptyArray(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): unknown[] {
+  const value = recordArray(record, field, type);
+  if (value.length === 0) {
+    throw malformedRecord(type, field);
+  }
+  return value;
+}
+
+/**
+ * @param elements the elements of an array member
+ * @param type the record's type name
+ * @returns the elements as objects
+ */
+function eachObject(elements: unknown[], type: string): Record<string, unknown>[] {
+  return elements.map((element) => recordObject(element, type));
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's strings
+ */
+function recordStrings(record: Record<string, unknown>, field: string, type: string): string[] {
+  return recordArray(record, field, type).map((element) => {
+    if (typeof element === 'string') {
+      return element;
+    }
+    throw malformedRecord(type, field);
+  });
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's integral numbers
+ */
+function recordNumbers(record: Record<string, unknown>, field: string, type: string): number[] {
+  return recordArray(record, field, type).map((element) => {
+    if (typeof element === 'number' && Number.isInteger(element)) {
+      return element;
+    }
+    throw malformedRecord(type, field);
+  });
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param type the record's type name
+ * @returns the member's objects
+ */
+function recordObjects(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): Record<string, unknown>[] {
+  return eachObject(recordArray(record, field, type), type);
+}
+
+/**
+ * @param record the object
+ * @param field the member the contract requires at least one of
+ * @param type the record's type name
+ * @returns the member's objects
+ */
+function recordRequiredObjects(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): Record<string, unknown>[] {
+  return eachObject(recordNonEmptyArray(record, field, type), type);
+}
+
+/**
+ * @param record the object
+ * @param field the member the contract requires at least one of
+ * @param type the record's type name
+ * @returns the member's strings
+ */
+function recordRequiredStrings(
+  record: Record<string, unknown>,
+  field: string,
+  type: string,
+): string[] {
+  return recordNonEmptyArray(record, field, type).map((element) => {
+    if (typeof element === 'string') {
+      return element;
+    }
+    throw malformedRecord(type, field);
+  });
+}
+
+/**
+ * @param record the object
+ * @param field the member
+ * @param known the closed list of the member's values
+ * @param type the record's type name
+ * @returns the member's value of the closed list
+ */
+function recordEnum<T extends string>(
+  record: Record<string, unknown>,
+  field: string,
+  known: readonly T[],
+  type: string,
+): T {
+  const value = recordText(record, field, type);
+  if ((known as readonly string[]).includes(value)) {
+    return value as T;
+  }
+  throw malformedRecord(type, field);
+}
+
+/**
+ * The wire vocabularies of the intent records, in the order their `pm-api` enums declare them.
+ *
+ * A record's closed values are the contract's, so these lists are the contract's too: the readers
+ * accept nothing outside them, and `intentWireCatalogues.test.ts` holds each list to the enum it
+ * mirrors, so an added enum constant fails the build rather than being refused at the wire.
+ */
+export const CRITERION_STATUSES: readonly CriterionStatusValue[] = [
+  'met',
+  'not_met',
+  'not_verified',
+];
+export const INTENT_DECIDERS: readonly IntentDeciderValue[] = [
+  'operator',
+  'quorum',
+  'role',
+  'fact',
+];
+export const ADR_RELATIONS: readonly ('follows' | 'contradicts')[] = ['follows', 'contradicts'];
+export const BUILDER_RESOLUTIONS: readonly BuilderCheckResolution[] = [
+  'pending',
+  'answered',
+  'not_run',
+];
+export const BUILDER_SORTS: readonly BuilderQuestionSort[] = ['operator', 'minor', 'answered'];
+export const BUILDER_STATES: readonly BuilderQuestionState[] = ['open', 'answered', 'deferred'];
+export const FILE_INTENTS: readonly FileIntentValue[] = [
+  'read',
+  'write-new',
+  'write-replace',
+  'write-conditional',
+  'delete',
+];
+export const DONE_WHEN_VERDICTS: readonly DoneWhenVerdict[] = ['pending', 'met', 'not_met'];
+
+/**
+ * @param raw the record the runtime sent
+ * @returns the plan's intent, every member of the contract read
+ */
+function readPlanIntent(raw: unknown): PlanIntentRecord {
+  const type = 'PlanIntentResource';
+  const record = recordObject(raw, type);
+  const builder = record['builder_check'];
+  return {
+    plan_id: recordText(record, 'plan_id', type),
+    revision: recordNumber(record, 'revision', type),
+    goal: recordText(record, 'goal', type),
+    criteria: recordRequiredObjects(record, 'criteria', 'IntentCriterion').map((criterion) => ({
+      id: recordText(criterion, 'id', 'IntentCriterion'),
+      text: recordText(criterion, 'text', 'IntentCriterion'),
+      satisfies: recordNumbers(criterion, 'satisfies', 'IntentCriterion'),
+      status:
+        criterion['status'] === undefined || criterion['status'] === null
+          ? undefined
+          : recordEnum(criterion, 'status', CRITERION_STATUSES, 'IntentCriterion'),
+      status_reason: optionalRecordText(criterion, 'status_reason', 'IntentCriterion'),
+    })),
+    non_goals: recordRequiredObjects(record, 'non_goals', 'NonGoal').map((nonGoal) => ({
+      id: recordText(nonGoal, 'id', 'NonGoal'),
+      text: recordText(nonGoal, 'text', 'NonGoal'),
+    })),
+    decisions: recordObjects(record, 'decisions', 'Decision').map((decision) => ({
+      id: recordText(decision, 'id', 'Decision'),
+      text: recordText(decision, 'text', 'Decision'),
+      decider: recordEnum(decision, 'decider', INTENT_DECIDERS, 'Decision'),
+      options_weighed: recordStrings(decision, 'options_weighed', 'Decision'),
+      question_id: optionalRecordText(decision, 'question_id', 'Decision'),
+      evidence: optionalRecordText(decision, 'evidence', 'Decision'),
+      adr:
+        decision['adr'] === undefined || decision['adr'] === null
+          ? undefined
+          : {
+              adr_id: recordText(
+                recordObject(decision['adr'], 'AdrReference'),
+                'adr_id',
+                'AdrReference',
+              ),
+              relation: recordEnum(
+                recordObject(decision['adr'], 'AdrReference'),
+                'relation',
+                ADR_RELATIONS,
+                'AdrReference',
+              ),
+            },
+    })),
+    open_questions: recordStrings(record, 'open_questions', type),
+    deferred: recordObjects(record, 'deferred', 'DeferredItem').map((item) => ({
+      id: recordText(item, 'id', 'DeferredItem'),
+      text: recordText(item, 'text', 'DeferredItem'),
+      reason: recordText(item, 'reason', 'DeferredItem'),
+    })),
+    builder_check:
+      builder === undefined || builder === null
+        ? undefined
+        : readBuilderCheck(builder, 'PlanIntentResource'),
+  };
+}
+
+/**
+ * @param raw the check the runtime sent
+ * @param parent the record's type name, for the refusal
+ * @returns the builder check, every member of the contract read
+ */
+function readBuilderCheck(raw: unknown, parent: string): BuilderCheckRecord {
+  const type = `${parent}.builder_check`;
+  const check = recordObject(raw, type);
+  const resolution = recordEnum(check, 'resolution', BUILDER_RESOLUTIONS, type);
+  const questions = recordObjects(check, 'questions', 'BuilderQuestion').map((question) => ({
+    id: recordText(question, 'id', 'BuilderQuestion'),
+    text: recordText(question, 'text', 'BuilderQuestion'),
+    sort: recordEnum(question, 'sort', BUILDER_SORTS, 'BuilderQuestion'),
+    recommended: recordBoolean(question, 'recommended', 'BuilderQuestion'),
+    state: recordEnum(question, 'state', BUILDER_STATES, 'BuilderQuestion'),
+    answer: optionalRecordText(question, 'answer', 'BuilderQuestion'),
+  }));
+  const reason = optionalRecordText(check, 'reason', type);
+  // The record's own rules, as `BuilderCheckResource` enforces them: a check that did not run says
+  // why and asked nothing, and no other resolution carries a reason.
+  if (resolution === 'not_run' && (reason === undefined || reason.trim() === '')) {
+    throw malformedRecord(type, 'reason');
+  }
+  if (resolution !== 'not_run' && reason !== undefined) {
+    throw malformedRecord(type, 'reason');
+  }
+  if (resolution === 'not_run' && questions.length > 0) {
+    throw malformedRecord(type, 'questions');
+  }
+  return { resolution, questions, reason };
+}
+
+/**
+ * @param raw the record the runtime sent
+ * @returns the plan's outline, every member of the contract read
+ */
+function readOutline(raw: unknown): OutlineRecord {
+  const type = 'OutlineResource';
+  const record = recordObject(raw, type);
+  return {
+    plan_id: recordText(record, 'plan_id', type),
+    revision: recordNumber(record, 'revision', type),
+    summary: recordText(record, 'summary', type),
+    deliverables: recordRequiredObjects(record, 'deliverables', 'DeliverableRecord').map(
+      (deliverable) => ({
+        number: recordNumber(deliverable, 'number', 'DeliverableRecord'),
+        title: recordText(deliverable, 'title', 'DeliverableRecord'),
+        intent_gloss: recordText(deliverable, 'intent_gloss', 'DeliverableRecord'),
+        affected_files: recordObjects(deliverable, 'affected_files', 'AffectedFile').map(
+          (file) => ({
+            path: recordText(file, 'path', 'AffectedFile'),
+            intent: recordEnum(file, 'intent', FILE_INTENTS, 'AffectedFile'),
+          }),
+        ),
+        depends_on: recordNumbers(deliverable, 'depends_on', 'DeliverableRecord'),
+        satisfies: recordStrings(deliverable, 'satisfies', 'DeliverableRecord'),
+        verification: optionalRecordText(deliverable, 'verification', 'DeliverableRecord'),
+      }),
+    ),
+    added_dependencies: recordObjects(record, 'added_dependencies', 'DependencyJustification').map(
+      (dependency) => ({
+        name: recordText(dependency, 'name', 'DependencyJustification'),
+        version: optionalRecordText(dependency, 'version', 'DependencyJustification'),
+        justification: recordText(dependency, 'justification', 'DependencyJustification'),
+        deliverable: recordNumber(dependency, 'deliverable', 'DependencyJustification'),
+      }),
+    ),
+  };
+}
+
+/**
+ * @param raw the record the runtime sent
+ * @returns the epic's intent, every member of the contract read
+ */
+function readEpicIntent(raw: unknown): EpicIntentRecord {
+  const type = 'EpicIntentResource';
+  const record = recordObject(raw, type);
+  return {
+    epic_id: recordText(record, 'epic_id', type),
+    destination: recordText(record, 'destination', type),
+    done_when: recordRequiredObjects(record, 'done_when', 'DoneWhenCheck').map((check) => ({
+      text: recordText(check, 'text', 'DoneWhenCheck'),
+      verdict: recordEnum(check, 'verdict', DONE_WHEN_VERDICTS, 'DoneWhenCheck'),
+      evidence: recordStrings(check, 'evidence', 'DoneWhenCheck'),
+    })),
+    non_goals: recordRequiredStrings(record, 'non_goals', type),
+    not_yet_specified: recordStrings(record, 'not_yet_specified', type),
+    plans: recordObjects(record, 'plans', 'PlanDoneWhen').map((plan) => ({
+      plan_id: recordText(plan, 'plan_id', 'PlanDoneWhen'),
+      title: recordText(plan, 'title', 'PlanDoneWhen'),
+      done_when: recordStrings(plan, 'done_when', 'PlanDoneWhen'),
+    })),
+  };
+}
+
+/**
+ * @param raw the record the runtime sent
+ * @returns the distributions, every member of the contract read
+ */
+function readOverSize(raw: unknown): OverSizeDistributionsRecord {
+  const type = 'OverSizeDistributionsResource';
+  const record = recordObject(raw, type);
+  return {
+    project_id: recordText(record, 'project_id', type),
+    distributions: recordObjects(record, 'distributions', type).map((entry) =>
+      readOverSizeDistribution(entry),
+    ),
+  };
+}
+
+/**
+ * @param record one role's distribution of the served set
+ * @returns it, every member of the contract read; a role without measured tasks carries no bucket
+ */
+function readOverSizeDistribution(record: Record<string, unknown>): OverSizeDistributionRecord {
+  const type = 'OverSizeDistributionResource';
+  return {
+    project_id: recordText(record, 'project_id', type),
+    role: recordText(record, 'role', type),
+    current_multiple: recordNumber(record, 'current_multiple', type),
+    proposed_multiple: optionalRecordNumber(record, 'proposed_multiple', type),
+    buckets: recordObjects(record, 'buckets', type).map((bucket) => ({
+      label: recordText(bucket, 'label', 'TokenBucket'),
+      from_multiple: recordNumber(bucket, 'from_multiple', 'TokenBucket'),
+      to_multiple: recordNumber(bucket, 'to_multiple', 'TokenBucket'),
+      task_count: recordNumber(bucket, 'task_count', 'TokenBucket'),
+      flagged_tasks: recordNumber(bucket, 'flagged_tasks', 'TokenBucket'),
+    })),
+  };
+}
+
+/**
+ * @param failure the failure a read of a record caught
+ * @returns `true` when the runtime has no record of that kind yet
+ */
+function absentRecord(failure: unknown): boolean {
+  return (failure as { status?: number }).status === 404;
+}
+
 export class ApiClient {
   /**
    * How long one request may wait for the runtime before the client gives up.
@@ -2293,18 +3098,17 @@ export class ApiClient {
     this.onStreamStateCallback?.(state);
   }
 
+  // The app renders in the browser only (`ssr = false` in the root layout), so `localStorage` is
+  // always there when a method of the client runs.
   public getSecret(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_SECRET);
   }
 
   public getLabel(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_LABEL);
   }
 
   public getDeviceId(): string | null {
-    if (typeof window === 'undefined') return null;
     return localStorage.getItem(STORAGE_KEY_DEVICE_ID);
   }
 
@@ -2313,7 +3117,6 @@ export class ApiClient {
   }
 
   public clearAuth(): void {
-    if (typeof window === 'undefined') return;
     localStorage.removeItem(STORAGE_KEY_SECRET);
     localStorage.removeItem(STORAGE_KEY_DEVICE_ID);
     localStorage.removeItem(STORAGE_KEY_LABEL);
@@ -2344,17 +3147,11 @@ export class ApiClient {
     }
 
     const data = await this.readBody<PairingResponse>(res, undefined, deadline);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
-      localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
-      localStorage.setItem(STORAGE_KEY_LABEL, data.label);
-    }
+    localStorage.setItem(STORAGE_KEY_SECRET, data.device_secret);
+    localStorage.setItem(STORAGE_KEY_DEVICE_ID, data.device_id);
+    localStorage.setItem(STORAGE_KEY_LABEL, data.label);
 
     return data;
-  }
-
-  public async getAvailableMessages(): Promise<{ locales: string[]; areas: string[] }> {
-    return this.request<{ locales: string[]; areas: string[] }>('GET', '/api/v1/messages');
   }
 
   public async getMessages(locale: string, area = 'all'): Promise<Record<string, string>> {
@@ -2425,18 +3222,28 @@ export class ApiClient {
   /**
    * Opens an entry under its project, addressed by its id from then on.
    *
+   * The setup gate is the opening call, so the view brings its own bound
+   * (`AbortSignal.timeout`): the client's own limit applies beside it, and the one that fires
+   * decides the failure both report.
+   *
    * @param projectId the project the entry starts in
    * @param request the kind of work and what the operator already said
+   * @param signal the caller's bound, where the gate brings one
+   * @param timeoutMs the client's own bound for this call
    * @returns the entry's representation
    */
   public async openEntry(
     projectId: string,
     request: EntryOpenRequest,
+    signal?: AbortSignal,
+    timeoutMs: number = ApiClient.REQUEST_TIMEOUT_MS,
   ): Promise<StartStateResource> {
     return this.request<StartStateResource>(
       'POST',
       `/api/v1/projects/${encodeURIComponent(projectId)}/entries`,
       request,
+      signal,
+      timeoutMs,
     );
   }
 
@@ -2635,14 +3442,6 @@ export class ApiClient {
     );
   }
 
-  public async draftIntake(request: {
-    project_id: string;
-    prompt?: string;
-    sources?: SourceInput[];
-  }): Promise<IntakeDraft> {
-    return this.request<IntakeDraft>('POST', '/api/v1/intake/draft', request);
-  }
-
   private decompositionPath(projectId: string, epicId: string): string {
     return `/api/v1/projects/${encodeURIComponent(projectId)}/epics/${encodeURIComponent(epicId)}/decomposition`;
   }
@@ -2787,6 +3586,23 @@ export class ApiClient {
 
   public async getProjects(): Promise<ProjectOverviewResponse> {
     return this.request<ProjectOverviewResponse>('GET', '/api/v1/projects');
+  }
+
+  /**
+   * Reads one page of the one list of everything that waits (UC-PLN-7).
+   *
+   * The runtime serves the items in its own order — the items that block running work first, then
+   * the oldest — and the client keeps it. `has_older` is what `Show more` (`overview.needs.more`)
+   * reads; `total` is the count the rail entry and the tab title carry.
+   *
+   * @param page the page to read, 1-based
+   * @returns the page with its items, its total and whether an older page exists
+   */
+  public async getNeedsOperator(page = 1): Promise<NeedsOperatorPage> {
+    return this.request<NeedsOperatorPage>(
+      'GET',
+      `/api/v1/machine/needs-operator?page=${encodeURIComponent(String(page))}`,
+    );
   }
 
   public async getProjectExplorer(): Promise<ProjectExplorer> {
@@ -3018,14 +3834,12 @@ export class ApiClient {
     await this.request('DELETE', '/api/v1/web/devices?others');
   }
 
+  /**
+   * Closes the network listener; the loopback listener stays. A refusal reaches the caller with
+   * its code.
+   */
   public async turnOffLanListener(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/web/listeners/lan');
-    } catch (err) {
-      const msg = (err as Error)?.message;
-      if (msg !== 'HTTP 404' && msg !== 'HTTP 405') throw err;
-      await this.request('PUT', '/api/v1/web', { lan: false });
-    }
+    await this.request('DELETE', '/api/v1/web/listeners/lan');
   }
 
   public async getReports(older = false, project?: string): Promise<ReportsPage> {
@@ -3097,14 +3911,6 @@ export class ApiClient {
     const qs = q.toString();
     if (qs) path += `?${qs}`;
     return this.request<DecisionEnvelope[]>('GET', path);
-  }
-
-  public async getDecision(id: string, plan?: string): Promise<DecisionEnvelope> {
-    const safeQid = encodeURIComponent(id);
-    const path = plan
-      ? `/api/v1/plans/${encodeURIComponent(plan)}/decisions/${safeQid}`
-      : `/api/v1/decisions/${safeQid}`;
-    return this.request<DecisionEnvelope>('GET', path);
   }
 
   public async answerDecision(
@@ -3184,28 +3990,12 @@ export class ApiClient {
     return this.request<{ status: string }>('POST', '/api/v1/operator/runtime/upgrade', body);
   }
 
+  /**
+   * Withdraws the upgrade on the runtime's own route; a refusal (`not_withdrawable`, a switched
+   * link) reaches the caller with its code.
+   */
   public async withdrawUpgrade(): Promise<void> {
-    try {
-      await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
-    } catch (err: unknown) {
-      // The operator channel is the runtime's own withdraw. A deployment that offers only the
-      // system route is the fallback; a refused withdraw (the links are switched) is not retried.
-      const status = (err as Error & { status?: number })?.status;
-      const message = (err as Error)?.message ?? '';
-      if (status === 409 || message.includes('not_withdrawable')) throw err;
-      const routeUnavailable =
-        status === 404 ||
-        status === 405 ||
-        message.includes('mock_no_route') ||
-        message.includes('unknown_route') ||
-        message.includes('no route');
-      if (!routeUnavailable) throw err;
-      try {
-        await this.request('POST', '/api/v1/system/upgrade/withdraw', {});
-      } catch {
-        throw err;
-      }
-    }
+    await this.request('DELETE', '/api/v1/operator/runtime/upgrade');
   }
 
   public async checkUpgrade(): Promise<{
@@ -3259,10 +4049,6 @@ export class ApiClient {
   ): Promise<{ released_count: number }> {
     const body = all ? { all: true } : { item_ids: itemIds || [] };
     return this.request<{ released_count: number }>('PUT', '/api/v1/system/cleanup/kept', body);
-  }
-
-  public async getCleanupDurations(): Promise<CleanupDurations> {
-    return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
   /**
@@ -3425,6 +4211,32 @@ export class ApiClient {
     return this.request<ProcessTree>('GET', `/api/v1/plans/${encodeURIComponent(planId)}/process`);
   }
 
+  /**
+   * Reads a plan's changes: the list of its last capture, or the answer that says why there is
+   * none (design `plan-view.adoc#changes`).
+   *
+   * @param planId the plan
+   * @returns the list or its refusal; the answer's `state` names which
+   */
+  public async getPlanChanges(planId: string): Promise<PlanChangesAnswer> {
+    return this.request<PlanChangesAnswer>('GET', planChangesPath(planId));
+  }
+
+  /**
+   * Reads one file's hunks of a plan's last capture. The answer carries no head: it belongs to the
+   * row of the list the caller holds at that head (design `plan-view.adoc#changes`).
+   *
+   * @param planId the plan
+   * @param path the file's path in the capture
+   * @returns the file's hunks, or its binary mark
+   */
+  public async getPlanChangeFile(planId: string, path: string): Promise<PlanChangeFile> {
+    return this.request<PlanChangeFile>(
+      'GET',
+      `${planChangesPath(planId)}/file?path=${encodeURIComponent(path)}`,
+    );
+  }
+
   public async getTaskActivity(planId: string, taskId: string): Promise<TaskActivity> {
     return this.request<TaskActivity>(
       'GET',
@@ -3443,6 +4255,72 @@ export class ApiClient {
    */
   public async getEpicResource(epicId: string): Promise<EpicResource> {
     return this.request<EpicResource>('GET', `/api/v1/epics/${encodeURIComponent(epicId)}`);
+  }
+
+  /**
+   * Reads a plan's intent record (design `intent-and-outline.adoc`, The Plan's Intent).
+   *
+   * @param planId the plan
+   * @returns the record, or `null` where refine has not written one yet
+   */
+  public async getPlanIntent(planId: string): Promise<PlanIntentRecord | null> {
+    return this.readRecord(`/api/v1/plans/${encodeURIComponent(planId)}/intent`, readPlanIntent);
+  }
+
+  /**
+   * Reads a plan's outline record (design `intent-and-outline.adoc`, The Outline Record).
+   *
+   * @param planId the plan
+   * @returns the record, or `null` where outline has not written one yet
+   */
+  public async getPlanOutline(planId: string): Promise<OutlineRecord | null> {
+    return this.readRecord(`/api/v1/plans/${encodeURIComponent(planId)}/outline`, readOutline);
+  }
+
+  /**
+   * Reads an epic's intent record (design `intent-and-outline.adoc`, The Epic's Intent).
+   *
+   * @param epicId the epic
+   * @returns the record, or `null` where the epic has none
+   */
+  public async getEpicIntent(epicId: string): Promise<EpicIntentRecord | null> {
+    return this.readRecord(`/api/v1/epics/${encodeURIComponent(epicId)}/intent`, readEpicIntent);
+  }
+
+  /**
+   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (design
+   * `intent-and-outline.adoc`, The `over_size` Distribution).
+   *
+   * @param projectId the project
+   * @returns the roles' distributions, or `null` where the runtime has no such record; a project it
+   *     measures no role of answers an empty `distributions` list
+   */
+  public async getOverSize(projectId: string): Promise<OverSizeDistributionsRecord | null> {
+    return this.readRecord(
+      `/api/v1/projects/${encodeURIComponent(projectId)}/metrics/oversize`,
+      readOverSize,
+    );
+  }
+
+  /**
+   * Reads one record and holds it to its contract: an absent record answers `null`, and a record
+   * that does not fit fails closed instead of reaching a panel half read.
+   *
+   * @param path the record's route
+   * @param reader the reader of the record's every member
+   * @returns the record, or `null` when the runtime has none
+   */
+  private async readRecord<T>(path: string, reader: (raw: unknown) => T): Promise<T | null> {
+    let raw: unknown;
+    try {
+      raw = await this.request<unknown>('GET', path);
+    } catch (error_) {
+      if (absentRecord(error_)) {
+        return null;
+      }
+      throw error_;
+    }
+    return reader(raw);
   }
 
   /**
@@ -3667,10 +4545,7 @@ export class ApiClient {
    */
   public async endChat(subjectId: string): Promise<ChatReadBack> {
     return normaliseChat(
-      await this.request<WireChatResource>(
-        'POST',
-        `${ApiClient.subjectChatPath(subjectId)}/end`,
-      ),
+      await this.request<WireChatResource>('POST', `${ApiClient.subjectChatPath(subjectId)}/end`),
     );
   }
 
@@ -4204,11 +5079,10 @@ export class ApiClient {
         });
 
         if (res.status === 401) {
-          // The stream always carries the secret, so this is a genuine auth loss.
-          if (secret) {
-            this.clearAuth();
-            this.onRevokedCallback?.('unauthorized');
-          }
+          // The stream always carries the secret (connect returns without one), so this is a
+          // genuine auth loss.
+          this.clearAuth();
+          this.onRevokedCallback?.('unauthorized');
           abortAll();
           onState?.('offline');
           return;
@@ -4265,7 +5139,6 @@ export class ApiClient {
         }
       } catch {
         currentReader = undefined;
-        if (internalController.signal.aborted) return;
         if (active && !internalController.signal.aborted) {
           reconnect();
         }
@@ -4325,14 +5198,11 @@ function handleSseMessage(
   try {
     const parsed = JSON.parse(eventData);
     onEvent(eventType, parsed);
-    if (eventType === 'stream.closed') {
-      if (parsed.reason === 'device_revoked' || parsed.reason === 'device_expired') {
-        onRevoke(parsed);
-        return true;
-      }
-    }
-    if (eventType === 'web_device_revoked') {
-      onRevoke(parsed.reason || parsed);
+    if (
+      eventType === 'stream.closed' &&
+      (parsed.reason === 'device_revoked' || parsed.reason === 'device_expired')
+    ) {
+      onRevoke(parsed);
       return true;
     }
   } catch {

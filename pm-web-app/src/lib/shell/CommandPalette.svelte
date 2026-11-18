@@ -145,9 +145,7 @@
   const optionIds = $derived(new Map(rows.map((row, index) => [row.key, optionId(index)])));
 
   /** The id of the row the field's active descendant names, or `undefined` for no row. */
-  const selectedOptionId = $derived(
-    selectedKey === null ? undefined : optionIds.get(selectedKey),
-  );
+  const selectedOptionId = $derived(selectedKey === null ? undefined : optionIds.get(selectedKey));
 
   /** @param index a group's position @returns the id of the heading that names it */
   function groupTitleId(index: number): string {
@@ -223,10 +221,12 @@
       case 'decision':
         // The decision id is its scope and its first question (`doc/design/shared/decisions.adoc`),
         // so the id alone addresses the decision from any plan; the plan adds nothing to the route.
-        pushRoute('decisions', { decisionId: match.id });
+        pushRoute('decision', { decisionId: match.id });
         return;
       case 'report':
-        if (match.plan?.id) {
+        if (match.id) {
+          pushRoute('report', { reportId: match.id });
+        } else if (match.plan?.id) {
           openCompletionReport(match.plan.id);
         } else {
           pushRoute('reports');
@@ -384,13 +384,8 @@
       <div class="command-palette__header">
         <h2 class="command-palette__title" id={titleId}>{$t('overview.find.title')}</h2>
 
-        <Button
-          variant="ghost"
-          size="sm"
-          data-testid="command-palette-close"
-          onclick={close}
-        >
-          {$t('web.common.close')}
+        <Button variant="ghost" size="sm" data-testid="command-palette-close" onclick={close}>
+          {$t('common.action.close')}
         </Button>
       </div>
 
@@ -431,7 +426,7 @@
               id={groupTitleId(index)}
               role="presentation"
             >
-              {$t(`overview.find.kind.${group.kind}`)}
+              {$t(`common.kind.${group.kind}`)}
             </h3>
             <div class="command-palette__list">
               {#each group.matches as match (matchKey(match))}
@@ -512,7 +507,7 @@
   .command-palette-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 100;
+    z-index: var(--layer-dialog);
     display: flex;
     justify-content: center;
     align-items: flex-start;

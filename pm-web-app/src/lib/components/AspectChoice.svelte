@@ -3,19 +3,13 @@
   import Button from './Button.svelte';
 
   /**
-   * ④ Roles, ⑤ Credentials, ⑥ Providers, ⑦ Plans: the review screens.
+   * ⑤ Credentials and ⑥ Providers: the two review screens that pick from a list.
    *
    * Each shows what the runtime reports and records it with one button; the aspect's later run
-   * from the machine settings uses the same screens with the current values as the proposal.
+   * from the machine settings uses the same screens with the current values as the proposal. The
+   * plans' own choice screens (`defaults.review`) and the role assignment (`roles.review`) are
+   * screens of their own beside this one.
    */
-  interface RoleRow {
-    role: string;
-    harness_id: string;
-    model_id: string;
-    effort?: string;
-    origin?: string;
-  }
-
   interface StoreRow {
     kind: string;
     name: string;
@@ -32,18 +26,10 @@
     cause?: string;
   }
 
-  interface PlanDefaultsRow {
-    landing: string;
-    method: string;
-    asking: string;
-    posture?: string;
-  }
-
-  export let kind: 'roles' | 'store' | 'providers' | 'defaults' = 'roles';
-  export let roles: RoleRow[] = [];
+  export let kind: 'store' | 'providers' = 'store';
   export let stores: StoreRow[] = [];
   export let providers: ProviderRow[] = [];
-  export let planDefaults: PlanDefaultsRow | null = null;
+
   export let busy = false;
 
   export let onRecord: (choice: unknown) => void = () => {};
@@ -59,27 +45,7 @@
 </script>
 
 <section class="choice-screen" data-testid={`${kind}-screen`}>
-  {#if kind === 'roles'}
-    <ul class="choice-screen__list">
-      {#each roles as role}
-        <li class="choice-screen__row" data-role={role.role}>
-          <div class="choice-screen__row-main">
-            <span class="choice-screen__row-title">{role.role}</span>
-            <span class="choice-screen__row-meta">
-              {$t('onboard.roles.review.assignment', {
-                harness: role.harness_id,
-                model: role.model_id,
-              })}
-              {#if role.effort}· {$t('onboard.roles.review.effort', { effort: role.effort })}{/if}
-            </span>
-          </div>
-        </li>
-      {/each}
-    </ul>
-    <p class="choice-screen__hint">
-      {$t('onboard.roles.review.defaults', { count: roles.length })}
-    </p>
-  {:else if kind === 'store'}
+  {#if kind === 'store'}
     <ul class="choice-screen__list">
       {#each stores as store}
         <li class="choice-screen__row" class:choice-screen__row--disabled={!store.available}>
@@ -109,7 +75,7 @@
         </li>
       {/each}
     </ul>
-  {:else if kind === 'providers'}
+  {:else}
     <ul class="choice-screen__list">
       {#each providers as provider}
         <li class="choice-screen__row" data-provider={provider.provider}>
@@ -138,27 +104,6 @@
         </li>
       {/each}
     </ul>
-  {:else if kind === 'defaults' && planDefaults}
-    <dl class="defaults-list">
-      <div class="defaults-list__row">
-        <dt>{$t('onboard.defaults.review.landing')}</dt>
-        <dd class="mono">{planDefaults.landing}</dd>
-      </div>
-      <div class="defaults-list__row">
-        <dt>{$t('onboard.defaults.review.method')}</dt>
-        <dd class="mono">{planDefaults.method}</dd>
-      </div>
-      <div class="defaults-list__row">
-        <dt>{$t('onboard.defaults.review.asking')}</dt>
-        <dd class="mono">{planDefaults.asking}</dd>
-      </div>
-      {#if planDefaults.posture}
-        <div class="defaults-list__row">
-          <dt>{$t('onboard.defaults.review.posture')}</dt>
-          <dd class="mono">{planDefaults.posture}</dd>
-        </div>
-      {/if}
-    </dl>
   {/if}
 
   <div class="choice-screen__actions">
@@ -166,96 +111,16 @@
       variant="primary"
       loading={busy}
       on:click={() =>
-        onRecord(
-          kind === 'store'
-            ? selectedStore
-            : kind === 'providers'
-              ? selectedProviders
-              : planDefaults,
-        )}
+        onRecord(kind === 'store' ? selectedStore : selectedProviders)}
       data-testid={`${kind}-record`}
     >
-      {#if kind === 'roles'}
-        {$t('onboard.roles.review.action')}
-      {:else if kind === 'store'}
+      {#if kind === 'store'}
         {$t('onboard.store.choose.action', {
           store: stores.find((s) => s.kind === selectedStore)?.name ?? selectedStore,
         })}
-      {:else if kind === 'providers'}
-        {$t('onboard.providers.select.action', { count: selectedProviders.length })}
       {:else}
-        {$t('onboard.defaults.review.action')}
+        {$t('onboard.providers.select.action', { count: selectedProviders.length })}
       {/if}
     </Button>
   </div>
 </section>
-
-<style>
-  .defaults-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .defaults-list__row {
-    display: grid;
-    grid-template-columns: 10rem 1fr;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .defaults-list__row dt {
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-
-  .defaults-list__row dd {
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-  }
-
-  @media (max-width: 768px) {
-    .defaults-list__row {
-      grid-template-columns: 1fr;
-      gap: var(--space-1);
-    }
-  }
-
-  .defaults-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .defaults-list__row {
-    display: grid;
-    grid-template-columns: 10rem 1fr;
-    gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .defaults-list__row dt {
-    font-weight: 600;
-    color: var(--color-text-secondary);
-  }
-
-  .defaults-list__row dd {
-    color: var(--color-text-primary);
-    overflow-wrap: anywhere;
-  }
-
-  @media (max-width: 768px) {
-    .defaults-list__row {
-      grid-template-columns: 1fr;
-      gap: var(--space-1);
-    }
-  }
-</style>

@@ -1,10 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
+import { tick } from 'svelte';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import ListenerOffView from './ListenerOffView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type PairedDevice } from '../api/client';
+import { ClientError } from '../api/errors';
+
+/**
+ * Lets every microtask a read's chain needs run: the promise reactions of `Promise.all`, the
+ * component's continuation, and Svelte's own flush.
+ */
+async function settleMicrotasks(): Promise<void> {
+  for (let step = 0; step < 8; step += 1) {
+    await Promise.resolve();
+  }
+  await tick();
+}
+
+/** The callback the view registered with the events stream. */
+let emitEvent: ((event: string, data: unknown) => void) | null = null;
 
 /**
  * @param id the device id
@@ -52,6 +70,7 @@ function arrange(partial: Record<string, unknown> = {}): void {
       deviceLabel: 'Firefox on mbp-oliver',
       machineName: 'mbp-oliver',
       currentRoute: 'settings',
+      objectTab: 'access',
       currentState: null,
       isRevoked: false,
       revokedReason: '',
@@ -79,6 +98,12 @@ describe('Paired devices against the mock runtime scenarios', () => {
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       status: 'ready',
       web: { enabled: true, lan: true, port: 7420 },
+    });
+    // The view's own event subscription, so a test can deliver what the runtime broadcasts.
+    emitEvent = null;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      emitEvent = callback;
+      return () => {};
     });
   });
 
@@ -179,6 +204,149 @@ describe('Paired devices against the mock runtime scenarios', () => {
       expect(runtimeStore).toBeDefined();
     });
     expect(apiClient.getSecret()).toBeNull();
+  });
+
+  it('keeps a revoked row gone when a read that started before it answers late', async () => {
+    // Arrange: the first revoke loses its answer and starts a recovery read that stays open.
+    const pending: Array<(rows: PairedDevice[]) => void> = [];
+    vi.spyOn(apiClient, 'getDevices')
+      .mockResolvedValueOnce(devices)
+      .mockImplementation(
+        () =>
+          new Promise<PairedDevice[]>((resolve) => {
+            pending.push(resolve);
+          }),
+      );
+    vi.spyOn(apiClient, 'revokeDevice')
+      .mockRejectedValueOnce(new ClientError('timeout'))
+      .mockResolvedValueOnce(undefined);
+
+    render(SettingsView);
+    await waitFor(() =>
+      expect(within(deviceRow('dev-3')).getByTestId('action-bar-overflow')).toBeInTheDocument(),
+    );
+
+    // The revoke times out, so the dialog stays open and its recovery read stays in flight.
+    await fireEvent.click(within(deviceRow('dev-3')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-3')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    // The second confirm succeeds while the read is still in flight.
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    await waitFor(() =>
+      expect(screen.queryByText('Chrome on build-box')).not.toBeInTheDocument(),
+    );
+
+    // Act: the read that started before the revoke answers with the row it ended.
+    pending[0](devices);
+    await settleMicrotasks();
+
+    // Assert: the revoked row stays gone.
+    expect(screen.queryByText('Chrome on build-box')).not.toBeInTheDocument();
+  });
+
+  it('keeps a revoked device gone when the event arrives during a load', async () => {
+    // Arrange: a recovery read is in flight when the runtime broadcasts the revoke.
+    const pending: Array<(rows: PairedDevice[]) => void> = [];
+    vi.spyOn(apiClient, 'getDevices')
+      .mockResolvedValueOnce(devices)
+      .mockImplementation(
+        () =>
+          new Promise<PairedDevice[]>((resolve) => {
+            pending.push(resolve);
+          }),
+      );
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(new ClientError('timeout'));
+
+    render(SettingsView);
+    await waitFor(() =>
+      expect(within(deviceRow('dev-3')).getByTestId('action-bar-overflow')).toBeInTheDocument(),
+    );
+    await fireEvent.click(within(deviceRow('dev-3')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-3')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+    await waitFor(() => expect(pending).toHaveLength(1));
+
+    // Act: the event arrives, then the read that started before it answers with the old list.
+    emitEvent?.('device.revoked', { device_id: 'dev-3' });
+    pending[0](devices);
+    await settleMicrotasks();
+
+    // Assert: the event's change survives the snapshot.
+    expect(screen.queryByText('Chrome on build-box')).not.toBeInTheDocument();
+    expect(screen.getByText('Safari on iPad')).toBeInTheDocument();
+  });
+
+  it('guards a read that settles after the view is gone', () => {
+    // The destroy guard is what keeps a read's continuation from writing to a view the operator
+    // has left. Its write is component-local and invisible to the page, so the guards are pinned at
+    // their source: the test fails exactly when the entry guard or either continuation guard is
+    // reverted.
+    const source = fs.readFileSync(path.resolve(__dirname, 'SettingsView.svelte'), 'utf8');
+    expect(source).toContain('if (!isMounted) return;');
+    expect(source.match(/if \(!isMounted \|\| sequence !== loadSequence\) return;/g)).toHaveLength(2);
+  });
+
+  it('aborts the status read when the devices read fails', async () => {
+    // Arrange: the status read never answers, and the devices read ends in a timeout.
+    const statusSignals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getDevices').mockRejectedValue(new ClientError('timeout'));
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal) => {
+      statusSignals.push(signal);
+      return new Promise(() => {});
+    });
+
+    // Act
+    render(SettingsView);
+
+    // Assert: the status read behind the failure is ended, not left to answer into nothing.
+    await waitFor(() => expect(statusSignals).toHaveLength(1));
+    await waitFor(() => expect(statusSignals[0]?.aborted).toBe(true));
+  });
+
+  it('aborts both reads when the view goes away', async () => {
+    // Arrange
+    const signals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getDevices').mockImplementation((signal) => {
+      signals.push(signal);
+      return new Promise(() => {});
+    });
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal) => {
+      signals.push(signal);
+      return new Promise(() => {});
+    });
+
+    const view = render(SettingsView);
+    await waitFor(() => expect(signals).toHaveLength(2));
+
+    // Act
+    view.unmount();
+
+    // Assert
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(true);
+  });
+
+  it('shows the devices when the status read never settles', async () => {
+    // Arrange: the status read accepts the request and never answers.
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(apiClient, 'getStatus').mockReturnValue(new Promise(() => {}));
+
+      render(SettingsView);
+      await settleMicrotasks();
+
+      // Act: the read reaches its own bound.
+      await vi.advanceTimersByTimeAsync(10_000);
+      await settleMicrotasks();
+
+      // Assert: the list is shown, and the listener is unknown rather than "on".
+      expect(screen.getByText('Firefox on mbp-oliver')).toBeInTheDocument();
+      expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('turns the network listener off and offers no act for it afterwards', async () => {

@@ -42,6 +42,8 @@ public enum TuiKeyAction {
     NON_LANE("not_in_plan"),
     /** Show or hide the token breakdown by phase and by role. */
     TOKENS("tokens"),
+    /** Open the plan's changes: the files of its last capture. */
+    CHANGES("changes"),
     /** Jump to the plan's project. */
     PROJECT("project"),
     /** Open an ended plan's completion report. */

@@ -60,11 +60,11 @@ Read first:
 ## Claim Labels
 
 - OBSERVED: `planview/` holds `PlanViewLevel`, `PlanCompletionLevel` and `WorkerActivityLevel`, and no changes level — read at `7adb56c2`
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (planview/ has no changes level; PlanCommand has no --changes)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: planview/ holds PlanViewLevel PlanCompletionLevel WorkerActivityLevel PlanViewFormatting and no changes level
 - OBSERVED: `PlanCommand.java` has no `--changes` option — `git grep -n "changes" PlanCommand.java` at `7adb56c2`
-  - verdict: corroborated | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: read at origin/main 7adb56c2 while staging (planview/ has no changes level; PlanCommand has no --changes)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanCommand.java has no --changes option; only --local-changes :520 (start answers) and the settings text :1253
 - HYPOTHESIS: `d` is free in the plan view's key map — confirm/refute at `PlanViewLevel.java` and `16-plan-view.adoc` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 7adb56c2 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HYPOTHESIS, verify-at-outline
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: d is unbound in the plan view: TuiKeyRegistry.planNavigation :716-750 binds no d; design 16-plan-view.adoc:114 and :149 already assign d to the changes level
 
 ## Expected Surface
 
@@ -77,6 +77,18 @@ Read first:
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-163.txt` — absent; created by this plan
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at `7adb56c2`
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at `7adb56c2`
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at `6b97acd2` (D0: the six `plan.changes.*` keys)
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at `6b97acd2` (D0)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/message/PlanViewCatalogueTest.java` — present at `6b97acd2` (D0: derives its list from the design)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/changes/PlanChangeFile.java` — present at `6b97acd2` (D0: coherence rules)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/changes/PlanChangedFile.java` — present at `6b97acd2` (D0)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/changes/PlanChangeHunk.java` — present at `6b97acd2` (D0)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/changes/PlanChanges.java` — present at `6b97acd2` (D0: the `fromJson` null case)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/changes/PlanChangesContractTest.java` — present at `6b97acd2` (D0)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `6b97acd2` (D0: the file route's refusals)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario/ScenarioLoader.java` — present at `6b97acd2` (D0: loader checks)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `6b97acd2` (D0: the fixtures' hunks, counts and order)
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/PlanChangesScenarioTest.java` — present at `6b97acd2` (D0)
 
 ## Dependencies and Sequencing
 
@@ -84,7 +96,10 @@ Read first:
 - Overlaps with:
   - `PLAN-30` (running): `operator.*.properties`. Start after it lands, or the second rebases.
   - `PLAN-44`/`PLAN-48` (staged, terminal): `PlanCommand` only if they touch it; check at outline.
-- Disjoint from `PLAN-164` (web).
+- **Before `PLAN-164`** (operator decision 2026-11-15: the residue of `PLAN-162` is folded into 163 and 164; the shared keys, fixtures and contract go
+  here as D0, so `PLAN-164` starts after this plan lands). No longer disjoint from it: see "Folded from the PLAN-162 landing" below.
+- Overlaps with `PLAN-146` (D0 of that plan) on `MockRuntimeEngine.java` and `running-work.json`; `PLAN-30` on `operator.*.properties`, `PlanCommand.java` and
+  the mock engine. A multi-file overlap is the operator's decision at emit; the second to land rebases.
 
 ## Re-Grounding at Restart
 
@@ -99,6 +114,41 @@ Lane: `runbook`.
 ```text
 /plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-163-cli-plan-changes.md
 ```
+
+## Folded from the PLAN-162 landing 2026-11-15
+
+`PLAN-162` landed as `6b97acd2` (#444; `landings/PLAN-162.md`). Operator decision 2026-11-15: its residue is folded into this plan and `PLAN-164`, not staged
+as a plan of its own. The shared part is this plan's **D0**, done first; D1 and D2 above are reconciled with it as the notes say. Read each point at the
+then-current HEAD before the outline: the landing's reading was by reading, no run.
+
+**D0 — the residue of the changes contract and its fixtures** (persona `plan-marshall:persona-implementer`; skills `pm-dev-java:java-core`,
+`pm-dev-java:junit-core`, `pm-dev-java-cui:cui-testing`):
+- **The six keys.** `plan.changes.{title,unplanned,binary,truncated,not_captured,unavailable}` (design `plan-view.adoc:249-262`) are in no pack: add them, English
+  and German, to the **`plan_view`** pack (one owner and one pack; the web tab reads the same pack), and make `PlanViewCatalogueTest` derive its key list
+  from the design document as `ChatTextsCatalogueTest` does (`Files.readAllLines` and a regex; no dependency, so the lane's reason for not taking
+  CodeRabbit's finding was wrong). The keys the CLI shows stay `operator.*` only where the design says so.
+- **The fixtures.** `running-work.json` (`fix-relay`): each hunk's `old_len` and `new_len` agree with its lines (the first hunk of `PlanChanges.java` has `old_len` 0
+  beside a context line), each file's `added` and `removed` agree with its hunks (`plan-changes.ts` says 0 and 0 against two added and one removed line), the files
+  stand in path order, the totals stay 12 files, +340 −27, 2 unplanned. The loader (`ScenarioLoader.validatePlanChanges`) refuses each of those contradictions,
+  checks that content paths are in the list and that every non-binary file has contents, refuses a duplicate `plan_changes` plan id, and checks `ChangeSize`
+  for a `not_captured` or `unavailable` plan. Evidence order: `test-first` for each refusal, with the matched positive control.
+- **Coherence on decode.** The records refuse: `renamed` without `renamed_from` and `renamed_from` on a file that is not renamed; a `binary` file with counts or
+  hunks; `truncated` without `lines_omitted` and `lines_omitted` above 0 with `truncated: false`; a duplicate path in one list; a missing or non-boolean
+  `binary`, `unplanned` or `truncated` (today `Boolean.TRUE.equals` reads it as `false`). `PlanChanges.fromJson` answers an `IOException`, not an NPE, for a
+  non-object JSON. Each by a contract test with the literal wire; each fails on a revert.
+- **The file route.** Its refusals agree with the list route (an unknown plan answers `scope_not_found` on the list route and `target_not_found` on the file route today) and a file answer names the
+  `head` it belongs to, or the spec says why not (a client cannot otherwise tell which capture a read file came from after a capture). Decide at the outline
+  and state it; the design (`plan-view.adoc` § Live) re-reads an open file only when its row changed.
+- **`PlanCommand.printActivity`** (`PlanCommand.java:276-303`): a `model_differs` entry prints its kind and an empty content, both models lost, because the `default`
+  branch takes it. This plan's own D2 ("`WorkerActivityLevel` shows both models") was **already done** by `PLAN-162` (`WorkerActivityLevel.java:162`, pinned by a test
+  on inline JSON): rescope D2 to `PlanCommand.printActivity` and the activity read from the fixture.
+- **The head's figures** come from `ProcessTree.change` or the event, never summed on the client (`plan-view.adoc:170`); `PlanChanges.totals()` is a
+  contract accessor, not a client rule. `--file` meets a 404 for `not_captured` and `unavailable`: show the design's texts, not a transport error.
+- **Untrusted text:** strip more than ESC when a path or a line is printed (U+0085, U+2028 and bidirectional controls reach the wire as UTF-8).
+- Two pins the landing left open: the literal wire of `PlanChangeCapturedEvent.toMap`, and the file route's refusals.
+
+Surface: the Expected Surface above gains the D0 files (13 entries). `PLAN-163` is no longer a two-deliverable plan: D0 is its first and largest; check the
+scope-bloat guard (about six deliverables) at the outline and split D0 out if the outline grows past it.
 
 ## Write-Boundary
 

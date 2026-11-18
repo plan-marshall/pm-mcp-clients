@@ -99,9 +99,9 @@ An 8 px dot in the tone of the state, followed by the state word in `--color-tex
 
 *Verdicts* are states too: a criterion of a plan's intent (`state.criterion.*`) and a done-when check of an epic (`state.check.*`) take a `StatusLabel` (link:../shared/intent-and-outline.adoc#web[Intent and Outline, The Web App]). `not verified` is neutral, never attention: it is evidence for the operator, not something that waits for them (the operator, 2026-11-10, D6).
 
-The word is the shared display word of the state (`state.<kind>.<value>`, through the display layer's `displayState`), never a wire value and never an area's own word for the same state (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, One Word per Value]). In a list the state takes a slot of fixed width, so the dots of the rows stand one under the other.
+The word is the shared display word of the state (`state.<kind>.<value>`, through the display layer's `displayState`), never a wire value and never an area's own word for the same state (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, One Word per Value]). In a list the state takes a slot of fixed width (8.5rem), so the dots of the rows stand one under the other.
 
-Source and surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, tests in `StatusLabel.test.ts`; the props are `tone` (`running`, `attention`, `neutral`, `danger`, `success`), `label` and `slot`, the fixed state slot a list asks for.
+Source and surface: `pm-web-app/src/lib/components/StatusLabel.svelte`, tests in `StatusLabel.test.ts`; the props are `tone` (`running`, `attention`, `neutral`, `danger`, `success`), `label` and `fixed`, the fixed state slot a list asks for.
 
 [#reason-badge]
 === ReasonBadge
@@ -259,7 +259,7 @@ image::../../resources/diagrams/web-component-phase-label.svg[Phase labels for e
 
 The phase the object is in: the phase's icon (link:workflow-visual-language.adoc#mapping[Workflow Visual Language, Unit and Phase Map]) and its word, no box, in `--color-text-secondary`. Where a decision names the role that asks, the role's word follows after `·` (`execute · implement`).
 
-* *The words are product terms*, the same in both languages, as link:../shared/texts-and-languages.adoc#phases[Texts and Languages, Phases and Roles] lists them. They come from the keys `phase.name.<phase>`, whose German value equals the English one, so the catalogue owns them and no wire token reaches the screen. The role's word comes from `role.name.<role>` the same way. `phase.<phase>` stays the icon id and is no text.
+* *The words are product terms*, the same in both languages, as link:../shared/texts-and-languages.adoc#phases[Texts and Languages, Phases and Roles] lists them. They come from the keys `phase.name.<phase>`, whose German value equals the English one, so the catalogue owns them and no wire token reaches the screen. The role's word comes from `role.name.<role>` the same way; an unknown asking role uses `state.unknown` so no wire token reaches the screen and the gap stays visible. `phase.<phase>` stays the icon id and is no text.
 * *Never twice*: the kind of a node is not repeated before its name (the phase tree shows `init` with the phase icon, never `Phase phase init`), and a row that shows the phase in its `PhaseLabel` does not repeat it in its time (`2 h 10 min`, not `in execute 25 min`).
 * *The decision's phase* is shown in its row and in its detail alike.
 
@@ -318,7 +318,7 @@ Chip(id) · PrChip · head links · PhaseLabel · StatusLabel · state sentence
 * *A kind's tint* is on its icon only (<<kind-tints>>).
 * *`--color-success-subtle`* has a value of its own in both themes instead of being an alias of `--color-bg-subtle`.
 * *Danger and attention* never colour a reversibility, an untrusted source or a retry: those are detail text with an icon.
-* *The one exception* is the diff of a chat's proposal: `--color-diff-removed` and `--color-diff-added` tint its removed and added lines red and green there and nowhere else, and the signs `−` and `+` carry the meaning without the colour (link:chat.adoc#proposal[Chat and Voice, The Change Proposal]; values and contrast in link:theme-readability.adoc#token-contract[Theme Readability, The Design Token Contract]).
+* *The one exception* is a diff — of a chat's proposal and of a plan's changes: `--color-diff-removed` and `--color-diff-added` tint its removed and added lines red and green there and nowhere else, and the signs `−` and `+` carry the meaning without the colour (link:chat.adoc#proposal[Chat and Voice, The Change Proposal], link:plan-view-interaction.adoc#changes[Plan View, The Changes Tab]; values and contrast in link:theme-readability.adoc#token-contract[Theme Readability, The Design Token Contract]).
 
 [#tag-words]
 == One Word per Value

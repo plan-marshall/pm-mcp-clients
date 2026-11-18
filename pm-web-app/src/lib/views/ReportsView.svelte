@@ -10,10 +10,11 @@
   import EmptyState from '../components/EmptyState.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
-  import TriagePage from '../templates/TriagePage.svelte';
+  import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
-  import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
+  import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
+  import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
 
@@ -208,6 +209,36 @@
 
   let isNarrow = $state(typeof window !== 'undefined' ? window.innerWidth < 1100 : false);
 
+  /**
+   * The chain the column engine draws: the lens list, and — once a report is open — the report
+   * beside it as the object column. With nothing selected the list is the rightmost column and
+   * takes the object column's width (`navigation.adoc#column-types`).
+   */
+  const reportLevels = $derived.by<Level[]>(() => {
+    const list: Level = {
+      key: 'reports',
+      kind: 'report',
+      title: $t('report.list.title'),
+      href: '/reports',
+      state: '',
+    };
+    if (activeDetailPlanId === null) {
+      return [list];
+    }
+    return [
+      list,
+      {
+        key: `report:${activeDetailPlanId}`,
+        kind: 'report',
+        title: activeDetailPlanId,
+        // The detail address is written by the writer when it opens; the column descriptor names
+        // the list it stands beside.
+        href: '/reports',
+        state: '',
+      },
+    ];
+  });
+
   function handleWindowResize(): void {
     if (typeof window !== 'undefined') {
       isNarrow = window.innerWidth < 1100;
@@ -329,15 +360,22 @@
   function closeDetail(): void {
     flushRetainedReads();
     activeDetailPlanId = null;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null }));
-    syncUrl('/reports', true);
+    syncedRouteReportPlan = null;
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: null,
+      selectedReportId: null,
+      currentRoute: 'reports',
+    }));
+    writeAddress({ route: 'reports' }, 'replace');
   }
 
   // The reports route stays the same while its detail changes (a header visit to Reports, the
   // browser's back between two reports). Follow the store so the view does not keep a plan the
   // address no longer names.
   $effect(() => {
-    if ($runtimeStore.currentRoute !== 'reports') return;
+    const route = $runtimeStore.currentRoute;
+    if (route !== 'reports' && route !== 'report') return;
     const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
@@ -358,6 +396,19 @@
       clock = Date.now();
     }, 30_000);
     await loadReports();
+    // A report's own address names the report; a completion report opened from an act names the
+    // plan. Both resolve to the same detail, and the address is replaced with the report's own
+    // once the row is known. A request that cannot be resolved stays pending, so a retry of the
+    // list still opens it.
+    if (!isMounted) return;
+    const requestedReportId = $runtimeStore.selectedReportId;
+    const requestedReport = requestedReportId
+      ? items.find((item) => item.id === requestedReportId)
+      : undefined;
+    const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
+    if (plan) {
+      showDetail(plan);
+    }
   });
 
   onDestroy(() => {
@@ -693,7 +744,19 @@
       if (!row || planIdOf(row) !== planId) dropRetainedRow(id);
     }
     syncedRouteReportPlan = planId;
-    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
+    // The address of the report names the report, not the plan: the route and the report id are
+    // kept in the store so the writer reproduces the same address, and the address is replaced
+    // with it now that the row is known.
+    const report = items.find((item) => planIdOf(item) === planId);
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedReportDetailPlanId: planId,
+      selectedReportId: report?.id ?? null,
+      currentRoute: 'report',
+    }));
+    if (report?.id) {
+      writeAddress({ route: 'report', reportId: report.id }, 'replace');
+    }
   }
 
   /**
@@ -733,7 +796,7 @@
    */
   function openFromPart(part: 'project' | 'epic' | 'plan', report: ReportItem): void {
     if (part === 'project' && report.from?.project) {
-      navigateTo('projects', { explorerProjectId: report.from.project });
+      openProjectInExplorer(report.from.project);
     } else if (part === 'epic' && report.from?.epic) {
       navigateTo('epic', { epicId: report.from.epic });
     } else if (part === 'plan' && report.from?.plan) {
@@ -827,7 +890,7 @@
     }
     if (kind === 'project') {
       if (item.from?.project) {
-        navigateTo('projects', { explorerProjectId: item.from.project });
+        openProjectInExplorer(item.from.project);
       }
       return;
     }
@@ -868,9 +931,7 @@
    */
   function rowMenuLabel(report: ReportItem): string {
     const subject = (report.subject ?? '').trim();
-    return subject
-      ? `${$t('report.list.row_menu')}: ${subject}`
-      : $t('report.list.row_menu');
+    return subject ? `${$t('report.list.row_menu')}: ${subject}` : $t('report.list.row_menu');
   }
 
   /**
@@ -918,14 +979,26 @@
   function formatReportTime(item: ReportItem): string {
     const now = new Date(clock);
     const created = formatInstant(item.created_at, 'relative', $currentLocale, now);
-    const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
+    const isSentLater = Boolean(
+      item.sent_at && item.created_at && item.sent_at !== item.created_at,
+    );
 
     if (isSentLater) {
-      const sent =
-        formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
+      const sent = formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
       return `${created} · ${$t('report.list.sent_at', { time: sent })}`;
     }
     return created;
+  }
+
+  /**
+   * Measures the report bodies whenever the list container is mounted, so a list that comes back
+   * after the detail closed on a narrow container offers its clamp controls again.
+   *
+   * @param node the list container
+   */
+  function measureWhenMounted(node: HTMLElement): void {
+    void node;
+    measureOverflow();
   }
 
   /**
@@ -953,36 +1026,35 @@
 <svelte:window onresize={handleWindowResize} />
 
 <div class="reports-view">
-  <TriagePage selected={activeDetailPlanId !== null} hasFilters={items.length > 0}>
-    <div slot="filters">
-      {#if items.length > 0}
-        <FilterInput
-          value={query}
-          label={$t('report.filter.label')}
-          placeholder={$t('report.filter.placeholder')}
-          resultCount={isFiltered ? matchingItems.length : undefined}
-          onchange={(value) => (query = value)}
-        />
-      {/if}
-    </div>
-    <div slot="list">
-      {@render listPane()}
-    </div>
-    <div slot="detail">
-      {@render detailPane()}
-    </div>
-  </TriagePage>
+  <TriagePage
+    levels={reportLevels}
+    label={$t('report.list.title')}
+    column={listColumn}
+    object={activeDetailPlanId === null ? undefined : objectColumn}
+  />
 </div>
 
+{#snippet listColumn()}
+  {@render listPane()}
+{/snippet}
+
+{#snippet objectColumn()}
+  {@render detailPane()}
+{/snippet}
+
 {#snippet listPane()}
-  <div class="reports-container">
+  <div class="reports-container" use:measureWhenMounted>
     <!-- Header -->
     <header class="reports-header">
       <div class="reports-header__title-row">
         {#if !isNarrow || activeDetailPlanId === null}
-          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h1>
+          <h1 class="reports-heading" tabindex="-1" bind:this={listHeading}>
+            {$t('report.list.title')}
+          </h1>
         {:else}
-          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>{$t('report.list.title')}</h2>
+          <h2 class="reports-heading" tabindex="-1" bind:this={listHeading}>
+            {$t('report.list.title')}
+          </h2>
         {/if}
         {#if unreadCount > 0}
           <span class="unread-count" data-testid="unread-count">
@@ -993,7 +1065,7 @@
           {#if items.length > 0}
             <Button
               variant="secondary"
-              size="small"
+              size="sm"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
               aria-disabled={isMarkingAll ? 'true' : undefined}
@@ -1007,12 +1079,23 @@
           {/if}
         </div>
       </div>
+      {#if items.length > 0}
+        <div class="reports-filter" data-testid="reports-filter">
+          <FilterInput
+            value={query}
+            label={$t('common.filter.label', { what: $t('report.list.title') })}
+            placeholder={$t('report.filter.placeholder')}
+            resultCount={isFiltered ? matchingItems.length : undefined}
+            onchange={(value) => (query = value)}
+          />
+        </div>
+      {/if}
     </header>
 
     {#if actionError}
       <div class="error-line" role="alert">
         <p>{actionError}</p>
-        <Button variant="ghost" size="small" onclick={retryFailedAction}>
+        <Button variant="ghost" size="sm" onclick={retryFailedAction}>
           {$t('common.action.retry')}
         </Button>
       </div>
@@ -1022,7 +1105,12 @@
       {refreshing ? $t('report.list.loading') : ''}
     </p>
     {#if loadError !== null && items.length > 0}
-      <div class="reports-error" data-testid="reports-error" bind:this={loadErrorRegion} tabindex="-1">
+      <div
+        class="reports-error"
+        data-testid="reports-error"
+        bind:this={loadErrorRegion}
+        tabindex="-1"
+      >
         <ErrorState
           code={loadError}
           actionLabel={$t('common.action.retry')}
@@ -1064,16 +1152,18 @@
         {#each groupedReports as pGroup (pGroup.key)}
           <section class="project-section">
             <h2 class="project-header">
-              <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
+              <span class="project-glyph" aria-hidden="true"
+                ><Icon name="state.dot" size={16} /></span
+              >
               {#if pGroup.isMachine}
                 <span class="project-title">{$t('report.list.machine')}</span>
               {:else}
                 <Button
                   variant="ghost"
-                  size="small"
+                  size="sm"
                   aria-label={$t('report.from.open_project', { project: pGroup.key })}
                   onclick={() =>
-                    navigateTo('projects', { explorerProjectId: pGroup.key })}
+                    openProjectInExplorer(pGroup.key)}
                 >
                   {pGroup.key}
                 </Button>
@@ -1088,7 +1178,7 @@
                     <span class="epic-glyph" aria-hidden="true">◇</span>
                     <Button
                       variant="ghost"
-                      size="small"
+                      size="sm"
                       aria-label={$t('report.from.open_epic', { epic: epicName })}
                       onclick={() => openFromPart('epic', epicItems[0])}
                     >
@@ -1162,8 +1252,6 @@
         onClose={closeDetail}
       />
     {/key}
-  {:else}
-    <p class="split-placeholder">{$t('report.split.select')}</p>
   {/if}
 {/snippet}
 
@@ -1192,7 +1280,7 @@
         {#if item.from?.project}
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_project', { project: item.from.project })}
             onclick={() => openFromPart('project', item)}
           >
@@ -1205,7 +1293,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
             onclick={() => openFromPart('epic', item)}
           >
@@ -1216,7 +1304,7 @@
           <span class="path-sep" aria-hidden="true">›</span>
           <Button
             variant="ghost"
-            size="small"
+            size="sm"
             aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
             onclick={() => openFromPart('plan', item)}
           >
@@ -1227,9 +1315,7 @@
       <span class="report-card__subject" class:report-card__subject--unread={unread}>
         {item.subject}
       </span>
-      <span class="item-time text-muted" title={reportMoment(item)}
-        >{formatReportTime(item)}</span
-      >
+      <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
     </div>
 
     {#if item.body || item.summary}
@@ -1244,7 +1330,7 @@
       {#if overflowingBodies.has(item.id)}
         <Button
           variant="ghost"
-          size="small"
+          size="sm"
           aria-expanded={bodyOpen}
           aria-label={bodyToggleLabel(item, bodyOpen)}
           onclick={() => (shownBodies[item.id] = !bodyOpen)}
@@ -1258,7 +1344,7 @@
       {#if hasDetail(item)}
         <Button
           variant="secondary"
-          size="small"
+          size="sm"
           data-testid="report-details"
           disabled={item.subject_deleted}
           disabledReason={item.subject_deleted
@@ -1287,7 +1373,6 @@
           size="sm"
           data-testid="report-row-menu"
           label={rowMenuLabel(item)}
-          visibleLabel={$t('report.list.row_menu')}
           advisory={$t('report.list.row_menu.title')}
           items={[
             {
@@ -1318,19 +1403,15 @@
     min-inline-size: 0;
   }
 
-  .split-placeholder {
-    padding: var(--space-10) var(--space-4);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-
   .reports-header__actions {
     display: flex;
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
+  }
+
+  .reports-filter {
+    margin-block-start: var(--space-3);
   }
 
   /* The mark-all act keeps its place in the tab order (aria-disabled, never native disabled); the
@@ -1618,7 +1699,6 @@
     position: relative;
     display: inline-flex;
   }
-
 
   .pagination-bar {
     display: flex;

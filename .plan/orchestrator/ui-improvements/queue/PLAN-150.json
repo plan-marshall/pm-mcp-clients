@@ -2,10 +2,10 @@
   "id": "PLAN-150",
   "slug": "web-foundation-field-system",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-150-web-foundation-field-system",
+  "pr": "452",
+  "landing": "landings/PLAN-150.md",
   "seq": 150
 }

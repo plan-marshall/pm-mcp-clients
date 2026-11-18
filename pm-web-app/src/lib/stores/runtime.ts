@@ -3,7 +3,6 @@ import {
   apiClient,
   type StatusResponse,
   type StateRepresentation,
-  type HypermediaLink,
   type OnboardingState,
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
@@ -12,14 +11,34 @@ import {
 } from '../api/client';
 import {
   matchPath,
-  pathForRoute,
+  SETTINGS_TABS,
+  type Address,
   type AppRoute,
-  type PathMatch,
+  type ObjectTab,
   type RouteParams,
   type StartPath,
 } from '../routes';
-import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
-import { actFailureReason } from '../api/errors';
+import {
+  currentAddress,
+  intentFor,
+  openedFromOutside,
+  parentOf,
+  switchTab,
+  writeAddress,
+  type WriteIntent,
+} from '../navigation/history';
+import {
+  readRememberedPlace,
+  runningWorkAddress,
+  startAddress,
+  unfilledLensAddress,
+  writeRememberedPlace,
+  type PlaceFacts,
+  type RememberedPlace,
+} from '../navigation/rememberedPlace';
+import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
+import { actFailureReason, errorCodeOf } from '../api/errors';
+import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -80,6 +99,8 @@ export interface RuntimeState {
   selectedReportDetailPlanId?: string | null;
   openDecisionsCount: number;
   quietDecisionNotice?: string | null;
+  /** What the column engine announces after a window shift, in the frame's polite live region. */
+  quietNavigationNotice?: string | null;
   projectEventNotice?: string | null;
   selectedPlanId?: string | null;
   selectedEpicId?: string | null;
@@ -111,6 +132,26 @@ export interface RuntimeState {
   selectedDecisionId?: string | null;
   /** The work kind a figure asked the overview to show, consumed when it opens. */
   overviewFocus?: 'plans' | 'epics' | null;
+  /** The report one `/reports/{id}` address names, until the view resolves its plan. */
+  selectedReportId?: string | null;
+  /** The lens's scope: the project Running work is narrowed to, `?project=`. */
+  lensProject?: string | null;
+  /** The lens's mode, scope and follow, as the address carries them. */
+  lensMode?: 'ended' | null;
+  lensGroup?: 'epic' | null;
+  lensFollow?: boolean;
+  /** The tab of the object column the address names. */
+  objectTab?: string | null;
+  /** The object the address opens in place beside its caller. */
+  openObject?: { kind: string; id: string } | null;
+  /** The node of the plan's phase tree and the file of its changes, as the address names them. */
+  phaseNode?: string | null;
+  changeFile?: string | null;
+  /** Whether the chat stands as a side column, and the turn it scrolls to. */
+  chatOpen?: boolean;
+  chatTurn?: string | null;
+  /** The start page's own lens: `?lens=waits`, which the remembered place never fills. */
+  lens?: 'waits' | null;
 }
 
 /** An ended plan as Ended Work names it, for the plan view it opens. */
@@ -148,6 +189,7 @@ const initialState: RuntimeState = {
   selectedReportDetailPlanId: null,
   openDecisionsCount: 0,
   quietDecisionNotice: null,
+  quietNavigationNotice: null,
   projectEventNotice: null,
   selectedPlanId: null,
   selectedEpicId: null,
@@ -165,13 +207,26 @@ const initialState: RuntimeState = {
   cleanupPreviewItemId: null,
   cleanupHighlightItemId: null,
   overviewFocus: null,
+  selectedReportId: null,
+  lensProject: null,
+  lensMode: null,
+  lensGroup: null,
+  lensFollow: false,
+  objectTab: null,
+  openObject: null,
+  phaseNode: null,
+  changeFile: null,
+  chatOpen: false,
+  chatTurn: null,
+  lens: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
 
 export function deriveStepFromState(stateId?: string): number {
   if (!stateId) return 1;
-  if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 1;
+  // The mode screen stands before step 1: the bar marks no step there (onboarding.adoc, Frame).
+  if (stateId.startsWith('onboard.mode') || stateId.startsWith('onboard.entry')) return 0;
   if (stateId.startsWith('language.')) return 1;
   if (stateId.startsWith('harness.')) return 2;
   if (stateId.startsWith('models.') || stateId.startsWith('catalogue.')) return 3;
@@ -215,7 +270,7 @@ let recoveryStops = 0;
  *   since then wins over the late failure, so no timer outlives the shell that ended the retry
  */
 function startRecovery(stopsAtStart: number): void {
-  if (recovery !== null || stopsAtStart !== recoveryStops || typeof window === 'undefined') return;
+  if (recovery !== null || stopsAtStart !== recoveryStops) return;
   recovery = setInterval(() => void retryRuntime(), RECONNECT_INTERVAL_MS);
 }
 
@@ -228,7 +283,11 @@ export function stopRuntimeRecovery(): void {
   }
 }
 
-/** @returns whether a retry of the initialization is owed and its timer runs */
+/**
+ * A test hook: no view reads it; the store's tests observe the retry timer through it.
+ *
+ * @returns whether a retry of the initialization is owed and its timer runs
+ */
 export function isRuntimeRecovering(): boolean {
   return recovery !== null;
 }
@@ -256,7 +315,7 @@ interface RouteMark {
 /** @returns where the person stands now */
 function routeMark(): RouteMark {
   return {
-    path: typeof window !== 'undefined' ? window.location.pathname : '/',
+    path: window.location.pathname,
     route: get(runtimeStore).currentRoute,
   };
 }
@@ -279,6 +338,9 @@ function subscribeToEvents(): void {
   eventsUnsubscribe = apiClient.subscribeEvents((event, data) => {
     handleRuntimeEvent(event, data);
   });
+  // A start or a reload finds decisions it never announced: the set is primed silently, never
+  // re-announced (`decisions.adoc#announce`).
+  void primeDecisionAnnouncer();
 }
 
 /**
@@ -306,16 +368,39 @@ async function probeExistingPairing(): Promise<PairingProbe> {
   }
 }
 
+/**
+ * The address the bar names, mapped to the start point it is.
+ *
+ * `/` is the list of what waits and parses here like any route; a path the app cannot open
+ * answers `null`, so the start rule opens what waits instead of guessing.
+ *
+ * @returns the address of the bar, or `null` when it names a path the app cannot open
+ */
+function fillableStart(): Address | null {
+  return currentAddress();
+}
+
 /** Drops the code fragment after the browser is known to be paired. */
 function dropCodeFragment(): void {
-  history.replaceState(null, '', window.location.pathname);
+  // The fragment is not part of the address the app writes, so the pairing code never reaches the
+  // history. The mark of this load was read before this write, so the write never turns a load the
+  // app was opened at into an app-created one.
+  const address = currentAddress();
+  if (address) {
+    writeAddress(address, 'replace');
+  } else {
+    // The start point has no route of its own yet (PLAN-49 registers `/`): the fragment is dropped
+    // and the entry the app leaves carries its mark.
+    window.history.replaceState(
+      { path: window.location.pathname, pmApp: true },
+      '',
+      window.location.pathname,
+    );
+  }
   runtimeStore.update((s) => ({ ...s, pairingFailed: false }));
 }
 
 export async function checkUrlHashForCode(): Promise<boolean> {
-  if (typeof window === 'undefined') {
-    return false;
-  }
   const match = /code=([^&]+)/.exec(window.location.hash);
   if (!match?.[1]) {
     return false;
@@ -366,32 +451,51 @@ function machineNameOf(status: StatusResponse): string {
 }
 
 /**
- * The route the app opens on for a paired browser.
+ * The one start rule of the app, as a route.
  *
- * A paired browser never lands on the pairing page or the entry: it opens on the overview when
- * work is running or waiting and the explorer otherwise. The onboarding comes first while the
- * machine is not onboarded.
+ * The remembered place fills a mark-less load at `/` or at the bare `/overview`; a full address
+ * opens what it names, and without a place — and without a remembered place — the app opens what
+ * waits, its start page at `/` (needs-and-find.adoc, The Start Page Is What Waits). The onboarding
+ * comes first while the machine is not onboarded.
  *
- * @param requested the route the address bar named, if it named one
+ * @param requested the address the bar names, if it names one
  * @param onboarded whether the machine is onboarded
- * @param workRunning whether the machine reports running work or work that waits for the operator
+ * @param place the remembered place
+ * @param facts what the runtime knows about the remembered objects
+ * @param fromOutside whether the load carries no mark of the app
  * @returns the route to open
  */
-export function landingRoute(
-  requested: PathMatch | null,
+export function startRouteFor(
+  requested: Address | null,
   onboarded: boolean,
-  workRunning: boolean,
+  place: RememberedPlace,
+  facts: PlaceFacts,
+  fromOutside: boolean,
 ): AppRoute {
-  if (!onboarded) {
-    return 'onboarding';
-  }
-  if (requested?.route === 'onboarding') {
-    return 'onboarding';
-  }
-  if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
-    return requested.route;
-  }
-  return workRunning ? 'overview' : 'projects';
+  return startAddress({ fromOutside, requested, onboarded, place, facts }).route ?? 'inbox';
+}
+
+/**
+ * What the start needs to know about the remembered place: the work it names and the work of its
+ * project.
+ *
+ * @param summary the projects summary, or `null` when it could not be read
+ * @param place the remembered place
+ * @returns the facts the fall-backs read
+ */
+export function factsOf(summary: ProjectOverviewResponse | null, place: RememberedPlace): PlaceFacts {
+  const projects = summary?.projects ?? [];
+  const project = place.project
+    ? projects.find((entry) => entry.project_id === place.project)
+    : undefined;
+  const projectRuns = project ? hasWork({ projects: [project] }) : true;
+  return {
+    workRunning: hasWork(summary),
+    projectRuns,
+    // The summary names no plan, so a remembered plan opens while its project still runs work and
+    // falls back to the project otherwise.
+    planEnded: projectRuns ? false : undefined,
+  };
 }
 
 /**
@@ -415,29 +519,134 @@ function hasWork(summary: ProjectOverviewResponse | null): boolean {
 /**
  * Opens the operator's start page by the same rule as a first visit.
  *
- * Opens the overview while work runs or waits and the projects otherwise. A route already shown
- * is not pushed again, so the brand click adds no duplicate history entry.
+ * The brand click names no address of its own: the start rule decides, so a click never fills the
+ * remembered place (that is the Running work entry's job). A route already shown is not written
+ * again, so the brand click adds no history entry.
  */
 export async function openStartPage(): Promise<void> {
   if (!apiClient.isPaired()) {
     return;
   }
-  const onboarded = get(runtimeStore).isOnboarded;
-  const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
-  const target = landingRoute(null, onboarded, hasWork(summary));
-  if (target !== get(runtimeStore).currentRoute) {
-    navigateTo(target);
+  const state = get(runtimeStore);
+  const intent = beginNavigation();
+  const epoch = navigationEpochOf();
+  const summary = state.isOnboarded ? await apiClient.getProjects().catch(() => null) : null;
+  // The person moved while the summary was in flight, or a later navigation began meanwhile:
+  // their choice stands.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
+    return;
   }
+  const place = readRememberedPlace();
+  const target = startRouteFor(null, state.isOnboarded, place, factsOf(summary, place), false);
+  if (target !== get(runtimeStore).currentRoute) {
+    show({ route: target }, 'replace');
+  }
+}
+
+/**
+ * Shows an address and writes it to the bare, as the app's own navigation.
+ *
+ * @param address the address to show
+ * @param intent whether the change pushes a history entry or replaces the current one
+ */
+function show(address: Address, intent: WriteIntent): void {
+  applyRoute(address.route ?? 'overview', address);
+  runtimeStore.update((s) => ({
+    ...s,
+    ...fieldsOfAddress(address),
+    ...(address.project ? { selectedProjectId: address.project } : {}),
+  }));
+  // The address is written as it was built: the store carries the selection, not every query key
+  // (the lens scope is not a store field of its own).
+  writeAddress(address, intent);
+}
+
+/**
+ * The store fields an address names, so the bar and the store never disagree.
+ *
+ * @param address the address that was read or written
+ * @returns the fields it sets
+ */
+function fieldsOfAddress(address: Address): Partial<RuntimeState> {
+  return {
+    lensProject: address.project ?? null,
+    lensMode: address.mode ?? null,
+    lensGroup: address.group ?? null,
+    lensFollow: address.follow ?? false,
+    objectTab: address.tab ?? null,
+    openObject: address.open ?? null,
+    phaseNode: address.node ?? null,
+    changeFile: address.file ?? null,
+    chatOpen: address.chat ?? false,
+    chatTurn: address.turn ?? null,
+    lens: address.lens ?? null,
+  };
+}
+
+/**
+ * Opens Running work and fills it from the remembered place, by a push.
+ *
+ * The rail's entry and the phone's bottom bar both call it; the pushed entry carries the app's
+ * mark, so a reload of it stays as it is.
+ */
+export async function openRunningWork(): Promise<void> {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  const intent = beginNavigation();
+  const epoch = navigationEpochOf();
+  const summary = await apiClient.getProjects().catch(() => null);
+  // The person picked another destination while the summary was in flight, or a later navigation
+  // began meanwhile: it wins.
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) {
+    return;
+  }
+  const place = readRememberedPlace();
+  show(runningWorkAddress(place, factsOf(summary, place)), 'push');
+}
+
+/**
+ * Opens the lens's own list with nothing selected, by a push: what Up and the breadcrumb's lens
+ * segment do, and PLAN-144 calls it.
+ */
+export function openLensList(): void {
+  show(unfilledLensAddress(), 'push');
+}
+
+/**
+ * Opens the start page, the list of what waits, by a push.
+ *
+ * The rail's first destination and the phone's first item both call it. The pushed entry carries
+ * the lens's own address (`/?lens=waits`), so a reload of it stays on the list and the remembered
+ * place never fills it — the remembered place only fills a bare load at `/`.
+ */
+export function openAttention(): void {
+  if (!apiClient.isPaired()) {
+    return;
+  }
+  show({ route: 'inbox', lens: 'waits' }, 'push');
+}
+
+/**
+ * Shows an address of the app and writes it, as the app's own navigation.
+ *
+ * The attention list's act opens the place an item belongs to through it: the address carries what
+ * `pushRoute` takes from the store (a settings tab, for one), so the act never opens a place the
+ * address does not name.
+ *
+ * @param address the address to show
+ */
+export function openAddress(address: Address): void {
+  show(address, 'push');
 }
 
 /**
  * @param status the status the runtime reports
  * @returns the lifecycle fields the store keeps, so every read of them agrees
  */
-export function lifecycleFieldsOf(status: StatusResponse): Pick<
-  RuntimeState,
-  'isDraining' | 'drainInfo' | 'isStopped'
-> {
+export function lifecycleFieldsOf(
+  status: StatusResponse,
+): Pick<RuntimeState, 'isDraining' | 'drainInfo' | 'isStopped'> {
   // The daemon's own status resource writes the lifecycle under `state`; the mock and the tests
   // use `lifecycle_state`. Both are read, the daemon's first.
   const lifecycle = status.state ?? status.lifecycle_state;
@@ -471,8 +680,11 @@ function drainInfoOf(
 }
 
 export async function initRuntime(): Promise<void> {
+  // Whether the app was opened from outside is read before anything writes: dropping a pairing
+  // fragment is a write of this load, and it must not make the load look app-created.
+  const fromOutside = openedFromOutside();
   const stopsAtStart = recoveryStops;
-  if (typeof window !== 'undefined' && !hashListenerRegistered) {
+  if (!hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
       void checkUrlHashForCode();
     });
@@ -511,8 +723,13 @@ export async function initRuntime(): Promise<void> {
   // The stream reports its own state, so the live indicator says what the connection does instead
   // of inferring it from a request that happened to fail.
   apiClient.setOnStreamState((state) => {
-    if (get(runtimeStore).streamState !== state) {
+    const previous = get(runtimeStore).streamState;
+    if (previous !== state) {
       runtimeStore.update((s) => ({ ...s, streamState: state }));
+    }
+    // The stream came back: what it missed while it was away is read, not announced.
+    if (state === 'connected' && (previous === 'reconnecting' || previous === 'offline')) {
+      void primeDecisionAnnouncer();
     }
   });
 
@@ -523,7 +740,7 @@ export async function initRuntime(): Promise<void> {
 
   const isPaired = apiClient.isPaired();
   const label = apiClient.getLabel() || '';
-  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const requested = matchPath(window.location.pathname);
   const mark = routeMark();
 
   if (!isPaired) {
@@ -550,14 +767,32 @@ export async function initRuntime(): Promise<void> {
     const currentState: StateRepresentation = (status as unknown as StateRepresentation) || null;
 
     // A person who moved while the reads were in flight stays where they went.
-    const route = navigatedSince(mark)
+    const place = readRememberedPlace();
+    const facts = factsOf(summary, place);
+    const start = startAddress({
+      fromOutside,
+      requested: fillableStart(),
+      onboarded,
+      place,
+      facts,
+    });
+    const navigated = navigatedSince(mark);
+    // The start address is written before any page adopts the bar, so the fill of the remembered
+    // place is what the page reads. A replace, never a push: the entry the app was opened at is
+    // the one it shows.
+    if (!navigated && start.route) {
+      writeAddress(start, 'replace');
+    }
+    const route = navigated
       ? {}
       : {
-          currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-          selectedPlanId: requested?.planId ?? null,
-          selectedEpicId: requested?.epicId ?? null,
-          startProjectId: requested?.projectId ?? null,
-          startEntryId: requested?.entryId ?? null,
+          currentRoute: start.route ?? (facts.workRunning ? 'overview' : 'projects'),
+          ...fieldsOfAddress(start),
+          selectedPlanId: start.planId ?? null,
+          selectedEpicId: start.epicId ?? null,
+          selectedTaskId: start.taskId ?? null,
+          startProjectId: start.projectId ?? null,
+          startEntryId: start.entryId ?? null,
         };
 
     runtimeStore.update((s) => ({
@@ -580,6 +815,7 @@ export async function initRuntime(): Promise<void> {
     subscribeToEvents();
     void refreshReportsCount();
     void refreshDecisionsCount();
+    void loadAttention();
   } catch (err: unknown) {
     if ((err as Error)?.message === 'unauthorized') {
       stopRuntimeRecovery();
@@ -664,7 +900,7 @@ const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
  * that says why, with its pairing kept.
  */
 function markListenerClosed(): void {
-  const onLoopback = typeof window === 'undefined' || loopbackHosts.has(window.location.hostname);
+  const onLoopback = loopbackHosts.has(window.location.hostname);
   const closedAt = new Date().toISOString();
   runtimeStore.update((s) => ({
     ...s,
@@ -674,10 +910,14 @@ function markListenerClosed(): void {
   }));
 }
 
-/** A listener change for the LAN listener: closed marks this browser, any other state clears it. */
+/**
+ * A listener change for the LAN listener: closed marks this browser, any other state clears it.
+ *
+ * The event names the listener in `listener` (`ListenerChangedEvent {listener, state, port}`).
+ */
 function handleListenerChanged(data: unknown): void {
-  const changed = (data || {}) as { state?: string; kind?: string };
-  if (changed.kind !== 'lan') {
+  const changed = (data || {}) as { state?: string; listener?: string };
+  if (changed.listener !== 'lan') {
     return;
   }
   if (changed.state === 'closed') {
@@ -687,18 +927,32 @@ function handleListenerChanged(data: unknown): void {
   }
 }
 
-/** A state the runtime moved to: the current state, the step, and the `onboarded` flag. */
-function handleStateTransition(data: unknown): void {
-  const stateData = data as StateRepresentation;
-  if (!stateData?.state) {
-    return;
-  }
-  runtimeStore.update((s) => ({
-    ...s,
-    currentState: stateData,
-    activeStep: deriveStepFromState(stateData.state),
-    isOnboarded: stateData.state === 'onboard.completed' ? true : s.isOnboarded,
-  }));
+/**
+ * Announces the column now in view after a shift of the column window, in the frame's polite live
+ * region (`navigation.adoc#keys`). The engine calls it; the frame owns the region.
+ *
+ * @param text what the shift moved to — the column's name and its kind
+ */
+export function announceNavigation(text: string): void {
+  runtimeStore.update((s) => ({ ...s, quietNavigationNotice: text }));
+}
+
+/**
+ * Falls back to the parent when the object the address shows was deleted.
+ *
+ * The fallback replaces the address rather than pushing, so the browser's Back never returns to
+ * the deleted object, and the frame's live region says what went away (`web.nav.gone`).
+ *
+ * @param name the object's name, as the notice prints it
+ * @returns `true` when the address moved to the parent
+ */
+export function fallBackFromDeletedObject(name: string): boolean {
+  const parent = parentOf(addressOfState(get(runtimeStore)));
+  if (!parent?.route) return false;
+  applyRoute(parent.route, parent);
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+  announceNavigation(translate(get(currentLocale), 'web.nav.gone', { name }));
+  return true;
 }
 
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
@@ -720,18 +974,232 @@ function handleReportEvent(event: string, data: unknown): void {
   }
 }
 
-/** A new or closed decision: the open count, and the quiet notice of an arrival. */
+/** The storage key of the notification permission the operator gave once. */
+const NOTIFY_KEY = 'pm_decision_notify';
+
+/** How long a burst of decisions collects before it makes one notification. */
+export const DECISION_BURST_MS = 1000;
+
+/** The fields of a decision an announcement names its subject by. */
+export interface AnnouncedDecision {
+  id: string;
+  subject?: string;
+  is_waiver?: boolean;
+}
+
+/** One notification the announcer asks the browser to show. */
+export interface AnnouncedNotification {
+  title: string;
+  onclick: () => void;
+}
+
+/** Everything the announcer reads and does, so a test drives it with a fake clock and a fake browser. */
+export interface DecisionAnnouncerDeps {
+  /** The permission the operator gave, read at the moment a notification would show. */
+  permission: () => 'granted' | 'denied' | 'default';
+  /**
+   * Whether the tab stands in front: a notification is for a tab nobody is looking at, while the
+   * quiet notice, the badge and the tab title carry the arrival on the page itself.
+   */
+  visible: () => boolean;
+  /** Reads the decisions that are open now, for the silent prime. */
+  openDecisions: () => Promise<ReadonlyArray<{ id: string }>>;
+  /** Shows one notification and wires its click. */
+  notify: (notification: AnnouncedNotification) => void;
+  /** Opens the list of open decisions. */
+  openList: () => void;
+  /** Opens one decision. */
+  openDecision: (id: string) => void;
+  setTimer: (callback: () => void, ms: number) => ReturnType<typeof setTimeout>;
+}
+
+/** What the store and the views call. */
+export interface DecisionAnnouncer {
+  /** Primes the announced set from the open decisions, silently: start, reload and reconnect. */
+  prime: () => Promise<void>;
+  /** A decision arrived; it is announced once, inside its burst. */
+  decisionOpened: (decision: AnnouncedDecision) => void;
+  /** A decision closed; it is dropped from a burst that has not shown yet. */
+  decisionClosed: (id: string) => void;
+}
+
+/**
+ * The decision announcer (`decisions.adoc#announce`): one notification for what is new.
+ *
+ * It keeps the set of decisions it has announced, and the first read after a start, a reload or a
+ * reconnect primes that set silently — a decision the client finds by reading everything again is
+ * never announced. Decisions that arrive within one second make one notification, which opens the
+ * list of open decisions; a single one opens that decision. A decision answered before the
+ * notification shows is dropped from it, and nothing of a decision's content is ever carried: the
+ * title names its subject and its kind alone.
+ *
+ * The burst window opens with the first arrival and does not slide: a steady stream of decisions
+ * still makes one notification per second, so an announcement always arrives.
+ *
+ * @param deps the clock, the browser's notification, the open-decision read and the two ways to open
+ * @returns the announcer the event stream and the reconnect prime
+ */
+export function createDecisionAnnouncer(deps: DecisionAnnouncerDeps): DecisionAnnouncer {
+  /** The ids the announcer has announced, or primed silently. */
+  const announced = new Set<string>();
+  /** The decisions of the burst that has not shown yet. */
+  let burst: AnnouncedDecision[] = [];
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Shows the burst and empties it. */
+  function flush(): void {
+    timer = null;
+    const collected = burst;
+    burst = [];
+    if (collected.length === 0 || deps.permission() !== 'granted' || deps.visible()) {
+      return;
+    }
+    if (collected.length === 1) {
+      const decision = collected[0];
+      deps.notify({
+        title: translate(get(currentLocale), 'decision.notify.title', notificationParams(decision)),
+        onclick: () => deps.openDecision(decision.id),
+      });
+      return;
+    }
+    deps.notify({
+      title: translate(get(currentLocale), 'decision.notify.several', { count: collected.length }),
+      onclick: () => deps.openList(),
+    });
+  }
+
+  return {
+    async prime(): Promise<void> {
+      try {
+        const open = await deps.openDecisions();
+        for (const decision of open) {
+          announced.add(decision.id);
+        }
+      } catch {
+        // An unreadable list primes nothing: the next arrival is then announced, which is the
+        // direction that tells the operator too much rather than nothing at all.
+      }
+    },
+
+    decisionOpened(decision: AnnouncedDecision): void {
+      if (announced.has(decision.id)) {
+        return;
+      }
+      announced.add(decision.id);
+      burst.push(decision);
+      timer ??= deps.setTimer(flush, DECISION_BURST_MS);
+    },
+
+    decisionClosed(id: string): void {
+      burst = burst.filter((decision) => decision.id !== id);
+    },
+  };
+}
+
+/**
+ * The parameters a notification's title names the decision's subject by.
+ *
+ * @param decision the announced decision
+ * @returns the subject, its name and the kind of decision
+ */
+export function notificationParams(decision: AnnouncedDecision): Record<string, string> {
+  const subject = decision.subject ?? '';
+  const kind = decision.is_waiver ? 'waiver' : 'decision';
+  if (subject.startsWith('epic ')) {
+    return { subject: 'epic', name: subject.slice('epic '.length), kind };
+  }
+  if (subject.startsWith('setup of ')) {
+    return { subject: 'setup', project: subject.slice('setup of '.length), kind };
+  }
+  if (subject.startsWith('start ')) {
+    return { subject: 'entry', project: subject.replace(/^start (in )?/, ''), kind };
+  }
+  return { subject: 'other', name: subject.replace(/^plan /, ''), kind };
+}
+
+/**
+ * @returns the permission the operator gave once, or the browser's own while they gave none
+ */
+function decisionNotifyPermission(): 'granted' | 'denied' | 'default' {
+  try {
+    const stored = window.localStorage.getItem(NOTIFY_KEY);
+    if (stored === 'granted' || stored === 'denied') {
+      return stored;
+    }
+    if (typeof Notification === 'undefined') {
+      return 'denied';
+    }
+    const permission = Notification.permission;
+    if (permission === 'granted') return 'granted';
+    if (permission === 'denied') return 'denied';
+    return 'default';
+  } catch {
+    return 'denied';
+  }
+}
+
+/** The announcer the app runs: the browser's notification, the runtime's list and the app's routes. */
+const decisionAnnouncer = createDecisionAnnouncer({
+  permission: decisionNotifyPermission,
+  visible: () => typeof document !== 'undefined' && document.visibilityState === 'visible',
+  openDecisions: async () => await apiClient.getDecisions(),
+  notify: ({ title, onclick }) => {
+    try {
+      const shown = new Notification(title);
+      shown.onclick = () => {
+        window.focus();
+        onclick();
+      };
+    } catch {
+      // A browser that refuses the notification leaves the tab title and the list to say so.
+    }
+  },
+  openList: () => pushRoute('decisions', {}),
+  openDecision: (id) => pushRoute('decision', { decisionId: id }),
+  setTimer: (callback, ms) => setTimeout(callback, ms),
+});
+
+/**
+ * Primes the announced set from the decisions open now, silently.
+ *
+ * @returns the prime, so a caller can wait for it
+ */
+export async function primeDecisionAnnouncer(): Promise<void> {
+  await decisionAnnouncer.prime();
+}
+
+/**
+ * @param data the payload of a decision event
+ * @returns the decision it names, or `null` when it names none
+ */
+function announcedDecisionOf(data: unknown): AnnouncedDecision | null {
+  const payload = (data ?? {}) as { decision?: AnnouncedDecision } & Partial<AnnouncedDecision>;
+  const decision = (payload.decision ?? payload) as Partial<AnnouncedDecision>;
+  return decision.id
+    ? { id: decision.id, subject: decision.subject, is_waiver: decision.is_waiver }
+    : null;
+}
+
+/** A new or closed decision: the open count, the announcement, and the quiet notice of an arrival. */
 function handleDecisionEvent(event: string, data: unknown): void {
   if (event === 'decision.opened') {
     const dec = (data || {}) as { title?: string; question?: string };
     const notice =
       dec.title || dec.question || translate(get(currentLocale), 'decision.arrival.quiet');
+    const announced = announcedDecisionOf(data);
+    if (announced) {
+      decisionAnnouncer.decisionOpened(announced);
+    }
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: s.openDecisionsCount + 1,
       quietDecisionNotice: notice,
     }));
   } else {
+    const closed = announcedDecisionOf(data);
+    if (closed) {
+      decisionAnnouncer.decisionClosed(closed.id);
+    }
     runtimeStore.update((s) => ({
       ...s,
       openDecisionsCount: Math.max(0, s.openDecisionsCount - 1),
@@ -757,7 +1225,17 @@ export function advanceLifecycleEpoch(): number {
   return lifecycleEpoch;
 }
 
-/** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
+/**
+ * @param data the payload of a `runtime.stopping` event, `{lifecycle_state, then}`
+ * @returns whether the stop is a restart: its `then` is `restart`, or the runtime already reports
+ *   itself running again
+ */
+function isRestart(data: unknown): boolean {
+  const payload = (data || {}) as { then?: string; lifecycle_state?: string };
+  return payload.then === 'restart' || payload.lifecycle_state === 'running';
+}
+
+/** The runtime's lifecycle: a drain, a withdrawn drain, a restart, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
   advanceLifecycleEpoch();
   if (event === 'runtime.draining') {
@@ -775,6 +1253,7 @@ function handleLifecycleEvent(event: string, data: unknown): void {
       ...s,
       isDraining: true,
       isStopped: false,
+      stoppedInfo: null,
       drainInfo: drainInfoOf(
         items,
         payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
@@ -783,6 +1262,16 @@ function handleLifecycleEvent(event: string, data: unknown): void {
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+  } else if (isRestart(data)) {
+    // A restart has its successor started on the same release: the drain ends, but the runtime
+    // is not stopped, so no page tells the operator to start it on the machine.
+    runtimeStore.update((s) => ({
+      ...s,
+      isDraining: false,
+      drainInfo: null,
+      isStopped: false,
+      stoppedInfo: null,
+    }));
   } else {
     runtimeStore.update((s) => ({
       ...s,
@@ -793,7 +1282,6 @@ function handleLifecycleEvent(event: string, data: unknown): void {
   }
 }
 
-const STATE_TRANSITION_EVENTS = new Set(['state_transition', 'check']);
 const REPORT_EVENTS = new Set(['report.sent', 'report.read']);
 const DECISION_EVENTS = new Set(['decision.opened', 'decision.answered', 'decision.closed']);
 const LIFECYCLE_EVENTS = new Set([
@@ -810,8 +1298,6 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     }
   } else if (event === 'listener.changed') {
     handleListenerChanged(data);
-  } else if (STATE_TRANSITION_EVENTS.has(event)) {
-    handleStateTransition(data);
   } else if (REPORT_EVENTS.has(event)) {
     handleReportEvent(event, data);
   } else if (DECISION_EVENTS.has(event)) {
@@ -824,6 +1310,10 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     void loadOnboardingState();
   } else if (event === 'machine.settings_changed') {
     void loadMachineSettings();
+  } else if (event === 'needs_operator.changed') {
+    // The list of what waits is the shell's count and the start page's rows: it follows every
+    // change the runtime announces, whoever resolved the item.
+    void handleNeedsOperatorChanged();
   }
 }
 
@@ -840,8 +1330,9 @@ export async function pairBrowser(code: string): Promise<void> {
     typeof status.machine === 'string' ? status.machine : status.machine?.name || 'local-machine';
   // Pairing is the main path into the app, so it applies the same landing rule as a reload. A
   // deep link opened with the code keeps its route and its identifiers.
-  const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
+  const requested = matchPath(window.location.pathname);
   const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
+  const place = readRememberedPlace();
 
   // The recorded interface language is settled before the shell first renders, so the app never
   // paints one language and then switches under the operator.
@@ -855,8 +1346,14 @@ export async function pairBrowser(code: string): Promise<void> {
     deviceLabel: res.label,
     machineName,
     isOnboarded: onboarded,
-    currentRoute: landingRoute(requested, onboarded, hasWork(summary)),
-    selectedPlanId: requested?.planId ?? null,
+    currentRoute: startRouteFor(
+      currentAddress(),
+      onboarded,
+      place,
+      factsOf(summary, place),
+      false,
+    ),
+    selectedPlanId: currentAddress()?.planId ?? requested?.planId ?? null,
     selectedEpicId: requested?.epicId ?? null,
     startProjectId: requested?.projectId ?? null,
     startEntryId: requested?.entryId ?? null,
@@ -867,19 +1364,7 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
-}
-
-export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {
-  const nextRep = await apiClient.followLink(link, body);
-  if (nextRep?.state) {
-    const activeStep = deriveStepFromState(nextRep.state);
-    runtimeStore.update((s) => ({
-      ...s,
-      currentState: nextRep,
-      activeStep,
-      isOnboarded: nextRep.state === 'onboard.completed' ? true : s.isOnboarded,
-    }));
-  }
+  void loadAttention();
 }
 
 /**
@@ -894,6 +1379,55 @@ export interface NavigationEntry {
 const navigationStack: NavigationEntry[] = [];
 
 /**
+ * How many route applications this store has made. A call that awaits a read before it navigates
+ * notes this figure first and writes only while it is unchanged, so a person who picked another
+ * destination meanwhile is not moved back by the older answer.
+ */
+let navigationEpoch = 0;
+
+/** @returns the number of route applications this store has made so far */
+export function navigationEpochOf(): number {
+  return navigationEpoch;
+}
+
+/**
+ * How many navigations this store has begun. A call that awaits a read before it navigates takes
+ * this figure first: the later of two calls wins, whichever answer arrives first.
+ */
+let navigationIntent = 0;
+
+/** @returns the intent figure a navigation begins at */
+function beginNavigation(): number {
+  navigationIntent += 1;
+  return navigationIntent;
+}
+
+/**
+ * Records that the store adopted a route it did not begin — the browser's own back or forward.
+ *
+ * It is a route application like any other, so a call that waits on a read before it navigates
+ * sees it and leaves the adopted route in place.
+ */
+function noteNavigationAdopted(): void {
+  navigationEpoch += 1;
+}
+
+/**
+ * The project whose id a route's path carries, if any.
+ *
+ * The designer names the project it shows, the one project page names the selected project, and
+ * every other route that carries a project id is a start.
+ *
+ * @param state the runtime state
+ * @returns the project id, or `null` when the route carries none
+ */
+function projectIdOf(state: RuntimeState): string | null {
+  if (state.currentRoute === 'designer') return state.designerProjectId ?? null;
+  if (state.currentRoute === 'project') return state.selectedProjectId ?? null;
+  return state.startProjectId ?? null;
+}
+
+/**
  * The identifiers the store carries, so a route can be written to the address bar and pushed on
  * the caller's stack without collecting them at every call site.
  *
@@ -901,16 +1435,14 @@ const navigationStack: NavigationEntry[] = [];
  * @returns the identifiers of the route it holds
  */
 export function routeParamsOf(state: RuntimeState): RouteParams {
-  const designer = state.currentRoute === 'designer';
   return {
-    projectId: (designer ? state.designerProjectId : state.startProjectId) ?? undefined,
+    projectId: projectIdOf(state) ?? undefined,
     entryId: state.startEntryId ?? undefined,
     planId: state.selectedPlanId ?? undefined,
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
-    reportPlanId: state.selectedReportDetailPlanId ?? undefined,
     decisionId: state.selectedDecisionId ?? undefined,
-    explorerProjectId: state.selectedProjectId ?? undefined,
+    reportId: state.selectedReportId ?? undefined,
     // The onboarding step is part of the address while the onboarding is the shown route. The view
     // consumes the store's copy once, but the address keeps it so a reload opens the same aspect.
     onboardingStep:
@@ -927,6 +1459,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
  * @param params the identifiers it names
  */
 function applyRoute(route: AppRoute, params: RouteParams): void {
+  navigationEpoch += 1;
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
@@ -936,7 +1469,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
           startEntryId: params.entryId ?? null,
         }
       : {}),
-    ...(route === 'plan'
+    // The plan and the task: a task is a level of its own and carries the plan with it.
+    ...(route === 'plan' || route === 'task'
       ? {
           selectedPlanId: params.planId ?? s.selectedPlanId ?? null,
           selectedTaskId: params.taskId ?? null,
@@ -949,16 +1483,66 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // visit to the list clears it so the query does not outlive the detail.
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
     // The decisions route focuses the decision a match opened, if one was named.
-    ...(route === 'decisions' ? { selectedDecisionId: params.decisionId ?? null } : {}),
+    ...(route === 'decisions' || route === 'decision'
+      ? { selectedDecisionId: params.decisionId ?? null }
+      : {}),
+    // One report's own address names the report; the list clears it.
+    ...(route === 'report' ? { selectedReportId: params.reportId ?? null } : {}),
+    ...(route === 'reports' ? { selectedReportId: null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
-    ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
+    ...(route === 'projects' || route === 'project'
+      ? { selectedProjectId: params.projectId ?? params.explorerProjectId ?? null }
+      : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
     ...(route === 'designer' ? { designerProjectId: params.projectId ?? null } : {}),
+    // A settings tab belongs to the settings view. A tab of a plan that is still in the store is
+    // not one, so opening the settings starts on its first tab instead of carrying it there.
+    ...(route === 'settings' && !isSettingsTab(s.objectTab) ? { objectTab: null } : {}),
   }));
 }
 
 /**
- * Moves to a route and pushes the one left behind on the caller's navigation stack.
+ * @param tab a tab id, or nothing
+ * @returns whether it names a tab of the settings view
+ */
+function isSettingsTab(tab: string | null | undefined): boolean {
+  return typeof tab === 'string' && (SETTINGS_TABS as ReadonlyArray<string>).includes(tab);
+}
+
+/**
+ * The address the store holds: the route and its identifiers, and the query fields the address
+ * carries for the object it shows.
+ *
+ * @param state the runtime state
+ * @returns the address to write
+ */
+export function addressOfState(state: RuntimeState): Address {
+  return {
+    route: state.currentRoute,
+    ...routeParamsOf(state),
+    // Running work's scope is the lens's own query key, not a path id.
+    ...(state.currentRoute === 'overview' && state.lensProject
+      ? { project: state.lensProject }
+      : {}),
+    ...(state.lensMode ? { mode: state.lensMode } : {}),
+    ...(state.lensGroup ? { group: state.lensGroup } : {}),
+    ...(state.lensFollow ? { follow: true } : {}),
+    ...(state.objectTab ? { tab: state.objectTab as Address['tab'] } : {}),
+    ...(state.openObject ? { open: state.openObject as Address['open'] } : {}),
+    ...(state.phaseNode ? { node: state.phaseNode } : {}),
+    ...(state.changeFile ? { file: state.changeFile } : {}),
+    ...(state.chatOpen ? { chat: true } : {}),
+    ...(state.chatTurn ? { turn: state.chatTurn } : {}),
+    // The start page's lens belongs to the start page's address alone.
+    ...(state.currentRoute === 'inbox' && state.lens ? { lens: state.lens } : {}),
+  };
+}
+
+/**
+ * Moves to a route and writes the address it names.
+ *
+ * The writer decides whether the change pushes or replaces: a change of depth or of lens pushes, a
+ * sibling in the same column replaces.
  *
  * @param route the route to show
  * @param params the identifiers it names, e.g. a plan's id
@@ -969,10 +1553,8 @@ export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
     navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
   }
   applyRoute(route, params);
-  const path = pathForRoute(route, params);
-  if (path) {
-    syncUrl(path, false);
-  }
+  const next = addressOfState(get(runtimeStore));
+  writeAddress(next, intentFor(currentAddress(), next));
 }
 
 /**
@@ -986,18 +1568,15 @@ export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
 export function goBack(): boolean {
   const previous = navigationStack.pop();
   if (!previous) {
-    if (typeof window !== 'undefined' && window.history.length > 1) {
+    if (window.history.length > 1) {
       window.history.back();
       return true;
     }
     return false;
   }
   applyRoute(previous.route, previous.params);
-  const path = pathForRoute(previous.route, previous.params);
-  if (path) {
-    // The current entry is replaced, so the browser's Back does not lead into a loop.
-    syncUrl(path, true);
-  }
+  // The current entry is replaced, so the browser's Back does not lead into a loop.
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
   return true;
 }
 
@@ -1012,28 +1591,6 @@ export function navigateTo(route: AppRoute, start: RouteParams = {}): void {
 }
 
 /**
- * Puts a path in the address bar without reloading the view.
- *
- * The history API is used directly: every route page mounts the same dispatcher, so a history
- * entry alone moves between views, and `popstate` reads it back.
- *
- * @param path the path to show
- * @param replace `true` to replace the current entry instead of pushing one
- */
-export function syncUrl(path: string, replace: boolean): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  // The address is the same only when path and query both match: a plain path must drop a stale
-  // query (a report's plan, a project in the explorer) rather than leave it in the bar.
-  if (`${window.location.pathname}${window.location.search}` === path) {
-    return;
-  }
-  const method = replace ? 'replaceState' : 'pushState';
-  window.history[method]({ path }, '', path);
-}
-
-/**
  * Shows the designer for a project and keeps the address bar on it without a history entry.
  *
  * The local selector and a refused route change both converge on the project the designer
@@ -1044,35 +1601,39 @@ export function syncUrl(path: string, replace: boolean): void {
  */
 export function replaceDesignerProject(projectId: string | null): void {
   runtimeStore.update((s) => ({ ...s, designerProjectId: projectId }));
-  const path = pathForRoute('designer', { projectId: projectId ?? undefined });
-  if (path) {
-    syncUrl(path, true);
-  }
+  writeAddress({ route: 'designer', projectId: projectId ?? undefined }, 'replace');
 }
 
 /**
  * Takes the route the address bar names, if it names one of the app's routes.
  *
+ * The whole address is read: the selection, the lens's mode and grouping, the tab, the object
+ * opened in place, the node, the file and the chat, so a reload and the browser's back return the
+ * view exactly as it was.
+ *
  * @returns the route taken, or `null` when the path names none
  */
 export function adoptRouteFromLocation(): AppRoute | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
   const match = matchPath(window.location.pathname);
   if (match) {
+    const address = currentAddress();
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: match.route,
       // The reports route keeps its plan in the query, so a reload or the browser's back
       // between two reports opens the one the address names.
       selectedReportDetailPlanId:
-        match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
-      // The decisions route focuses the decision its query names, the same way.
-      selectedDecisionId:
-        match.route === 'decisions'
-          ? new URLSearchParams(window.location.search).get('decision')
+        match.route === 'reports'
+          ? (new URLSearchParams(window.location.search).get('plan') ??
+            address?.legacyReportPlanId ??
+            null)
           : null,
+      // One report's own address names the report; the view resolves its plan from the report.
+      selectedReportId: match.reportId ?? null,
+      // The decisions route focuses the decision its query or its path names, the same way.
+      selectedDecisionId: match.decisionId ?? (match.route === 'decisions'
+        ? new URLSearchParams(window.location.search).get('decision')
+        : null),
       // The designer keeps the project it was opened for the same way.
       designerProjectId:
         match.route === 'designer'
@@ -1082,14 +1643,45 @@ export function adoptRouteFromLocation(): AppRoute | null {
       onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
+      selectedTaskId: match.taskId ?? null,
+      // The one project page names its project; Running work's scope and the explorer's old
+      // `?project=` name the same selection.
+      selectedProjectId:
+        match.projectId ??
+        address?.project ??
+        (match.route === 'projects'
+          ? new URLSearchParams(window.location.search).get('project')
+          : null),
       startProjectId: match.projectId ?? s.startProjectId ?? null,
       startEntryId: match.entryId ?? s.startEntryId ?? null,
+      lensMode: address?.mode ?? null,
+      lensGroup: address?.group ?? null,
+      lensFollow: address?.follow ?? false,
+      lensProject: address?.project ?? null,
+      lens: address?.lens ?? null,
+      objectTab: address?.tab ?? null,
+      openObject: address?.open ?? null,
+      phaseNode: address?.node ?? null,
+      changeFile: address?.file ?? null,
+      chatOpen: address?.chat ?? false,
+      chatTurn: address?.turn ?? null,
     }));
+    // The store adopted a route the browser's own back or forward named: a navigation that was
+    // awaiting a read while this happened must see it, so a later return to the same address is
+    // not mistaken for no movement at all.
+    noteNavigationAdopted();
   }
   return match?.route ?? null;
 }
 
+/**
+ * How many onboarding states this page has applied. A request that lands after another state has
+ * been applied must not overwrite it: the newer state is the one the runtime means.
+ */
+let onboardingStateRevision = 0;
+
 function applyOnboardingState(state: OnboardingState): void {
+  onboardingStateRevision += 1;
   const activeStep = deriveStepFromState(state.state);
   const completed =
     typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
@@ -1128,12 +1720,31 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
   }
 }
 
+/**
+ * Takes one onboarding step and applies the state it answers.
+ *
+ * The language step records the interface language, so its next screen WAITS for that language:
+ * a browser that chose no language of its own shows the recorded one before the state is applied
+ * (UC-ONB-3, `onboarding-step-1.adoc`). A browser whose own choice is stored keeps it.
+ *
+ * A state the runtime reported while the step was in flight is newer than the step's own answer;
+ * the step's answer is applied only when nothing landed in between.
+ *
+ * @param link the link the step names
+ * @param body what the step records
+ * @param options `adoptLocale` for the step that records the interface language
+ */
 export async function stepOnboarding(
   link: string,
   body: Record<string, unknown> = {},
+  options: { adoptLocale?: boolean } = {},
 ): Promise<void> {
   try {
-    applyOnboardingState(await apiClient.stepOnboarding(link, body));
+    const revision = onboardingStateRevision;
+    const next = await apiClient.stepOnboarding(link, body);
+    if (options.adoptLocale) await adoptRecordedLocaleNow();
+    if (onboardingStateRevision !== revision) return;
+    applyOnboardingState(next);
   } catch {
     // A refused step leaves the state as it is.
   }
@@ -1195,7 +1806,11 @@ export async function storeCredential(
 
 export async function startOnboardingAuto(): Promise<void> {
   try {
-    applyOnboardingState(await apiClient.startOnboardingAuto());
+    const revision = onboardingStateRevision;
+    const next = await apiClient.startOnboardingAuto();
+    await adoptRecordedLocale();
+    if (onboardingStateRevision !== revision) return;
+    applyOnboardingState(next);
   } catch {
     // A refused automatic run leaves the state as it is.
   }
@@ -1212,24 +1827,43 @@ export async function loadMachineSettings(): Promise<MachineSettingsRecord | nul
   }
 }
 
+/**
+ * The result of writing one machine setting, with the wire code of a refusal the store read.
+ *
+ * The client's own result type stays the wire shape; a refusal is the store's finding, because only
+ * the store catches the throw and reads its code.
+ */
+export interface MachineSettingsWriteResult extends MachineSettingsUpdateResult {
+  /** The wire code of a refusal the client read, when the runtime answered with one. */
+  errorCode?: string;
+}
+
 export async function updateMachineSetting(
   key: string,
   value: string | null,
-): Promise<MachineSettingsUpdateResult | null> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+  revision?: number,
+): Promise<MachineSettingsWriteResult> {
+  // The caller may name the revision its edit was aimed at, so a refresh between the read and the
+  // write cannot turn another client's change into an overwrite.
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.updateMachineSetting(key, value, revision);
+    const result = await apiClient.updateMachineSetting(key, value, target);
     await loadMachineSettings();
     return result;
-  } catch {
-    return null;
+  } catch (err: unknown) {
+    // A refusal keeps its wire code, so the page can name the rule the value missed instead of
+    // showing the generic failure. Nothing was applied.
+    return { applied: false, conflict: false, revision: target, errorCode: errorCodeOf(err) };
   }
 }
 
-export async function withdrawConsent(kind: string): Promise<MachineSettingsUpdateResult | null> {
-  const revision = get(runtimeStore).machineSettings?.revision ?? 0;
+export async function withdrawConsent(
+  kind: string,
+  revision?: number,
+): Promise<MachineSettingsUpdateResult | null> {
+  const target = revision ?? get(runtimeStore).machineSettings?.revision ?? 0;
   try {
-    const result = await apiClient.withdrawConsent(kind, revision);
+    const result = await apiClient.withdrawConsent(kind, target);
     await loadMachineSettings();
     return result;
   } catch {
@@ -1239,7 +1873,14 @@ export async function withdrawConsent(kind: string): Promise<MachineSettingsUpda
 
 export function openPlanView(planId: string, taskId?: string | null): void {
   runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
-  pushRoute('plan', { planId, taskId: taskId ?? undefined });
+  // The plan the operator selected is the object the remembered place keeps.
+  writeRememberedPlace({ ...readRememberedPlace(), planId, epicId: null });
+  // A task is a level of its own and takes the path; a plan without a task keeps the plan path.
+  if (taskId) {
+    pushRoute('task', { planId, taskId });
+    return;
+  }
+  pushRoute('plan', { planId });
 }
 
 /**
@@ -1253,7 +1894,51 @@ export function openEndedPlanView(info: EndedPlanInfo): void {
 }
 
 export function openEpicView(epicId: string): void {
+  writeRememberedPlace({ ...readRememberedPlace(), epicId, planId: null });
   pushRoute('epic', { epicId });
+}
+
+/**
+ * Selects a tab of the object column, and writes it into the address by a replace.
+ *
+ * A tab is not a level: switching it leaves the history where it is, so Back leaves the object
+ * rather than walking through its tabs (`navigation.adoc#url`). The store follows the address, so
+ * the tab survives a reload of the same object.
+ *
+ * @param tab the tab to show
+ */
+export function selectObjectTab(tab: ObjectTab): void {
+  runtimeStore.update((s) => ({ ...s, objectTab: tab }));
+  const current = currentAddress();
+  if (!current) {
+    return;
+  }
+  writeAddress(switchTab(current, tab), 'replace');
+}
+
+/**
+ * Opens one file of the plan's changes, or drops the file when a caller passes `null`, and writes
+ * the file into the address beside the tab.
+ *
+ * A file is a selection inside the tab, so it replaces the entry rather than pushing one: Back
+ * leaves the plan rather than walking through the files of its change (`navigation.adoc#url`).
+ *
+ * @param path the file's path, or `null` to show the list alone
+ */
+export function selectPlanChangeFile(path: string | null): void {
+  runtimeStore.update((s) => ({ ...s, changeFile: path }));
+  const current = currentAddress();
+  if (current === null) {
+    return;
+  }
+  if (current.route !== 'plan') {
+    return;
+  }
+  const address: Address = switchTab(current, 'changes');
+  if (path) {
+    address.file = path;
+  }
+  writeAddress(address, 'replace');
 }
 
 /**
@@ -1262,7 +1947,11 @@ export function openEpicView(epicId: string): void {
  * @param planId the plan whose completion report to show
  */
 export function openCompletionReport(planId: string): void {
-  pushRoute('reports', { reportPlanId: planId });
+  // The act knows the plan, not the report's id: the report's own address is written once the view
+  // has resolved that id from the report record. The store keeps the plan across the push, which
+  // a plain visit to the list clears.
+  pushRoute('reports');
+  runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
 }
 
 /**
@@ -1271,7 +1960,7 @@ export function openCompletionReport(planId: string): void {
  * @param projectId the project to show
  */
 export function openProjectInExplorer(projectId: string): void {
-  pushRoute('projects', { explorerProjectId: projectId });
+  pushRoute('project', { projectId });
 }
 
 export function openEpicDecomposition(epicId: string, projectId: string): void {
@@ -1307,16 +1996,16 @@ export function openOnboardingStep(step: number): void {
   runtimeStore.update((s) => ({ ...s, onboardingStep: step }));
   pushRoute('onboarding');
   // The step travels in the address bar too, so a reload opens the same aspect.
-  syncUrl(`/onboarding?step=${step}`, true);
+  writeAddress(
+    { route: 'onboarding', onboardingStep: step },
+    intentFor(currentAddress(), { route: 'onboarding', onboardingStep: step }),
+  );
 }
 
 /**
  * @returns the step the address bar names, or `null` when it names none
  */
 function requestedOnboardingStepFromUrl(): number | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
   const requested = Number.parseInt(
     new URLSearchParams(window.location.search).get('step') ?? '',
     10,

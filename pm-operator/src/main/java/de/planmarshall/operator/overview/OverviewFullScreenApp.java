@@ -32,10 +32,14 @@ import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesRoutes;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.EndedWorkItem;
@@ -81,6 +85,8 @@ import de.planmarshall.operator.actions.ActionMenus;
 import de.planmarshall.operator.actions.ActionsMenu;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.epicview.EpicViewLevel;
+import de.planmarshall.operator.planview.ChangesLevel;
+import de.planmarshall.operator.planview.PlanChangeSizes;
 import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.planview.PlanViewLevel.EndedInfo;
@@ -121,7 +127,10 @@ public final class OverviewFullScreenApp {
     private static final String PLAN_LEVEL = "plan";
     private static final String EXPLORER_LEVEL = "explorer";
     private static final Set<String> STRUCTURAL_EVENTS = Set.of("activity.changed", "tokens.changed",
-                        "state.entered", "state.left", "instance.changed", "needs_operator.changed", "reset");
+                        "state.entered", "state.left", "instance.changed", "needs_operator.changed",
+                        // A capture moves the plan's changes: an open list is read again
+                        // (plan-view.adoc § Live).
+                        "plan.change_captured", "reset");
 
     /**
      * Initial CLI selection state.
@@ -228,6 +237,7 @@ public final class OverviewFullScreenApp {
     private final AtomicReference<EndedWorkLevel> currentEndedLevel = new AtomicReference<>();
     private final AtomicReference<PlanViewLevel> currentPlanView = new AtomicReference<>();
     private final AtomicReference<WorkerActivityLevel> currentActivity = new AtomicReference<>();
+    private final AtomicReference<ChangesLevel> currentChanges = new AtomicReference<>();
     private final AtomicReference<PlanCompletionLevel> currentCompletion = new AtomicReference<>();
     private final AtomicReference<EpicViewLevel> currentEpicView = new AtomicReference<>();
     private final AtomicReference<ReportsLevel> currentReports = new AtomicReference<>();
@@ -239,6 +249,7 @@ public final class OverviewFullScreenApp {
     private final Map<String, EndedWorkLevel> endedLevels = new ConcurrentHashMap<>();
     private final Map<String, PlanViewLevel> planViews = new ConcurrentHashMap<>();
     private final Map<String, WorkerActivityLevel> activities = new ConcurrentHashMap<>();
+    private final Map<String, ChangesLevel> changesLevels = new ConcurrentHashMap<>();
     private final Map<String, PlanCompletionLevel> completions = new ConcurrentHashMap<>();
     private final Map<String, EpicViewLevel> epicViews = new ConcurrentHashMap<>();
     private final AtomicBoolean activityFollow = new AtomicBoolean(true);
@@ -388,6 +399,7 @@ public final class OverviewFullScreenApp {
         return switch (lvl.kind()) {
             case PLAN -> header(currentPlanView.get(), title, view -> view.breadcrumb(locale, selectedId));
             case PLAN_ACTIVITY -> header(currentActivity.get(), title, view -> view.breadcrumb());
+            case PLAN_CHANGES -> header(currentChanges.get(), title, view -> view.breadcrumb(locale));
             case PLAN_COMPLETION -> header(currentCompletion.get(), title, view -> view.breadcrumb(locale));
             case EPIC -> header(currentEpicView.get(), title, view -> view.level(locale).title());
             case REPORTS -> header(currentReports.get(), title, view -> view.breadcrumb(locale));
@@ -866,7 +878,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION
-                                || kind == TuiLevel.Kind.REPORTS) {
+                                || kind == TuiLevel.Kind.PLAN_CHANGES || kind == TuiLevel.Kind.REPORTS) {
                 // A sub-level of a plan, or the reports, does not describe a place of the
                 // overview; keep the snapshot the operator had before opening it.
                 return;
@@ -1099,6 +1111,13 @@ public final class OverviewFullScreenApp {
                 var activity = currentActivity.get();
                 if (activity != null) {
                     openPlanActions(activity.planId(), selectedId);
+                }
+                return;
+            }
+            if (kind == TuiLevel.Kind.PLAN_CHANGES) {
+                var changes = currentChanges.get();
+                if (changes != null) {
+                    openPlanActions(changes.planId(), selectedId);
                 }
                 return;
             }
@@ -1635,6 +1654,10 @@ public final class OverviewFullScreenApp {
                 refreshActivity(runtime);
                 return;
             }
+            if (targetKind == TuiLevel.Kind.PLAN_CHANGES) {
+                refreshChanges(runtime);
+                return;
+            }
             if (targetKind == TuiLevel.Kind.EPIC) {
                 refreshEpic();
                 return;
@@ -1754,7 +1777,13 @@ public final class OverviewFullScreenApp {
             var fresh = ProcessTree.fromJson(response.bodyText());
             synchronized (this) {
                 view.update(fresh);
-                stack.refresh(view.rows(locale));
+                // A level the operator opened meanwhile keeps its own rows: only the plan's frame is
+                // published to (plan-view.adoc § Live).
+                var top = stack.level();
+                if (top != null && top.kind() == TuiLevel.Kind.PLAN && planId.equals(top.id())
+                                    && currentPlanView.get() == view) {
+                    stack.refresh(view.rows(locale));
+                }
             }
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException | IllegalArgumentException _) {
@@ -1804,6 +1833,82 @@ public final class OverviewFullScreenApp {
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException | IllegalArgumentException _) {
             // best-effort refresh
+        }
+    }
+
+    /**
+     * Reads the plan's changes again after a capture ({@code plan-view.adoc} § Live): the list keeps
+     * the selected file by its path, the head's figures come from the plan, and an open file is read
+     * again when its row changed — or when an earlier read did not land.
+     *
+     * @param runtime the runtime client
+     */
+    private void refreshChanges(RuntimeClient runtime) {
+        var changes = currentChanges.get();
+        if (changes == null) {
+            return;
+        }
+        try {
+            var list = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).list()));
+            if (list.status() != 200) {
+                return;
+            }
+            var fresh = PlanChangesAnswer.fromJson(list.bodyText());
+            var figures = PlanChangeSizes.probe(runtime, changes.planId());
+            final boolean needsRead;
+            final @Nullable String openPath;
+            synchronized (this) {
+                needsRead = changes.update(fresh, figures);
+                openPath = changes.openFilePath();
+            }
+            if (needsRead && openPath != null) {
+                readOpenFile(runtime, changes, fresh, openPath);
+            }
+            synchronized (this) {
+                var top = stack.level();
+                if (top != null && top.kind() == TuiLevel.Kind.PLAN_CHANGES
+                                    && changes.planId().equals(top.id()) && currentChanges.get() == changes) {
+                    var selectedBefore = stack.selected() != null ? stack.selected().id() : null;
+                    var rows = changes.rows(locale);
+                    stack.refresh(rows);
+                    var selectionVanished = selectedBefore != null
+                                        && rows.stream().noneMatch(row -> row.id().equals(selectedBefore));
+                    if (selectionVanished && openPath != null) {
+                        stack.select(ChangesLevel.FILE_PREFIX + openPath);
+                    }
+                }
+            }
+            terminal.raise(Terminal.Signal.WINCH);
+        } catch (IOException | IllegalArgumentException _) {
+            // best-effort refresh
+        }
+    }
+
+    /**
+     * Reads the open file again after a capture whose row changed. A read that fails leaves the hunks
+     * pending and never stops the list's own refresh.
+     *
+     * @param runtime  the runtime client
+     * @param changes  the plan's changes
+     * @param fresh    the list the refresh applied
+     * @param openPath the path that was open when the row changed
+     */
+    private void readOpenFile(RuntimeClient runtime, ChangesLevel changes, PlanChangesAnswer fresh,
+                        String openPath) {
+        try {
+            var file = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(openPath)));
+            if (file.status() != 200) {
+                return;
+            }
+            var content = PlanChangeFile.fromJson(file.bodyText());
+            synchronized (this) {
+                // The capture and the operator's own choice must both still be the ones asked about.
+                if (changes.answer() == fresh && openPath.equals(changes.openFilePath())) {
+                    changes.showFile(content);
+                }
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // The hunks wait for the next capture; the list below is refreshed either way.
         }
     }
 
@@ -2315,6 +2420,7 @@ public final class OverviewFullScreenApp {
                 case WHERE -> planJumpToWhere();
                 case NON_LANE -> planToggleNonLane();
                 case TOKENS -> planToggleTokens();
+                case CHANGES -> planOpenChanges();
                 case PROJECT -> jumpToProject();
                 case COMPLETION -> planOpenCompletion();
                 case ACTIONS -> openActions();
@@ -2464,6 +2570,10 @@ public final class OverviewFullScreenApp {
                 return epicOpenSelected(selectedId);
             }
             if (kind == TuiLevel.Kind.PLAN_ACTIVITY || kind == TuiLevel.Kind.PLAN_COMPLETION) {
+                return true;
+            }
+            if (kind == TuiLevel.Kind.PLAN_CHANGES) {
+                changesOpenSelected(selectedId);
                 return true;
             }
             if (kind == TuiLevel.Kind.REPORTS) {
@@ -2667,6 +2777,108 @@ public final class OverviewFullScreenApp {
                 return true;
             } catch (IOException | IllegalArgumentException _) {
                 return false;
+            }
+        }
+
+        /**
+         * Opens the plan's changes as a level of the view (`d`, 16-plan-view.adoc#changes). The
+         * head's figures are the plan's own size of change, never a sum over the rows.
+         */
+        private void planOpenChanges() {
+            var view = currentPlanView.get();
+            if (view == null) {
+                return;
+            }
+            try {
+                openChanges(context.runtime(true), view.planId());
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        private boolean openChanges(RuntimeClient runtime, String planId) throws IOException {
+            var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
+            if (response.status() != 200) {
+                statusMessage = refusalOf(response);
+                return false;
+            }
+            var answer = PlanChangesAnswer.fromJson(response.bodyText());
+            // The figures are the plan's, read now: a capture may have moved them since the plan
+            // view was read (plan-view.adoc § Live).
+            var changes = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
+            currentChanges.set(changes);
+            changesLevels.put(planId, changes);
+            var level = TuiLevel.of(TuiLevel.Kind.PLAN_CHANGES, planId, changes.breadcrumb(locale));
+            var rows = changes.rows(locale);
+            stack.push(level, rows, rows.isEmpty() ? null : rows.getFirst().id());
+            return true;
+        }
+
+        private void changesOpenSelected(String selectedId) {
+            var changes = currentChanges.get();
+            if (changes == null) {
+                return;
+            }
+            var path = changes.fileOf(selectedId);
+            if (path == null) {
+                return;
+            }
+            try {
+                var response = context.runtime(true)
+                                    .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
+                if (response.status() != 200) {
+                    statusMessage = fileRefusalOf(response);
+                    return;
+                }
+                synchronized (OverviewFullScreenApp.this) {
+                    if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()))) {
+                        stack.refresh(changes.rows(locale));
+                    }
+                }
+            } catch (IOException refused) {
+                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            }
+        }
+
+        /**
+         * @param response a refused file read
+         * @return the runtime's own message, which names the file, or the level's refusal text
+         */
+        private String fileRefusalOf(HttpResponse response) {
+            try {
+                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                var message = map != null ? JsonTree.string(map, "message") : null;
+                if (message != null) {
+                    return OutputSafety.stripControlSequences(message);
+                }
+            } catch (IOException _) {
+                // A refusal that carries no JSON still has its status.
+            }
+            return LoadRefusal.of(locale, response, PLAN_LEVEL).line();
+        }
+
+        /**
+         * @param response a refused read
+         * @return the refusal as the view's own texts name it
+         */
+        private String refusalOf(HttpResponse response) {
+            return LoadRefusal.of(locale, response, PLAN_LEVEL).line();
+        }
+
+        private void changesCloseFile() {
+            var changes = currentChanges.get();
+            if (changes == null) {
+                return;
+            }
+            synchronized (OverviewFullScreenApp.this) {
+                var row = changes.openFileRowId();
+                if (!changes.closeFile()) {
+                    return;
+                }
+                stack.refresh(changes.rows(locale));
+                if (row != null) {
+                    stack.select(row);
+                }
             }
         }
 
@@ -3125,17 +3337,46 @@ public final class OverviewFullScreenApp {
         private void refreshPoppedLevel() {
             var lvl = level();
             restoreModel(lvl);
-            if (lvl.kind() == TuiLevel.Kind.REPORTS) {
-                var level = currentReports.get();
-                if (level != null) {
-                    stack.refresh(level.rows(locale));
-                    skipReportHeadings(1);
+            switch (lvl.kind()) {
+                case REPORTS -> refreshReturnedReports();
+                case SYSTEM -> refreshReturnedSystem(lvl);
+                case PLAN -> refreshPlanRows();
+                case PLAN_CHANGES -> refreshReturnedChanges();
+                default -> {
+                    // The other levels keep the rows they had.
                 }
-            } else if (lvl.kind() == TuiLevel.Kind.SYSTEM) {
-                var level = currentSystem.get();
-                if (level != null) {
-                    stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
-                }
+            }
+        }
+
+        private void refreshReturnedReports() {
+            var level = currentReports.get();
+            if (level != null) {
+                stack.refresh(level.rows(locale));
+                skipReportHeadings(1);
+            }
+        }
+
+        private void refreshReturnedSystem(TuiLevel lvl) {
+            var level = currentSystem.get();
+            if (level != null) {
+                stack.refresh(level.rows(locale, SystemLevel.sectionOf(lvl.id())));
+            }
+        }
+
+        /**
+         * A capture may have landed while another level covered the changes; the rows are rebuilt
+         * from a fresh read, not from the model as it was left behind
+         * ({@code plan-view.adoc} § Live).
+         */
+        private void refreshReturnedChanges() {
+            var level = currentChanges.get();
+            if (level == null) {
+                return;
+            }
+            try {
+                refreshChanges(context.runtime(false));
+            } catch (IOException _) {
+                // A runtime that cannot be read now leaves the rows the level had.
             }
         }
 
@@ -3163,6 +3404,7 @@ public final class OverviewFullScreenApp {
                 case ENDED -> Optional.ofNullable(endedLevels.get(id)).ifPresent(currentEndedLevel::set);
                 case PLAN -> Optional.ofNullable(planViews.get(id)).ifPresent(currentPlanView::set);
                 case PLAN_ACTIVITY -> Optional.ofNullable(activities.get(id)).ifPresent(currentActivity::set);
+                case PLAN_CHANGES -> Optional.ofNullable(changesLevels.get(id)).ifPresent(currentChanges::set);
                 case PLAN_COMPLETION -> Optional.ofNullable(completions.get(id)).ifPresent(currentCompletion::set);
                 case EPIC -> Optional.ofNullable(epicViews.get(id)).ifPresent(currentEpicView::set);
                 default -> {
@@ -3578,6 +3820,15 @@ public final class OverviewFullScreenApp {
             if (!stack.filter().isEmpty()) {
                 stack.back();
                 return true;
+            }
+            // On the changes level Esc closes an open file's hunks first, then the level.
+            var current = stack.level();
+            if (current != null && current.kind() == TuiLevel.Kind.PLAN_CHANGES) {
+                var changes = currentChanges.get();
+                if (changes != null && changes.hasOpenFile()) {
+                    changesCloseFile();
+                    return true;
+                }
             }
             if (stack.depth() > 1) {
                 stack.back();

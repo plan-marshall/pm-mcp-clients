@@ -87,6 +87,21 @@ class MessageCatalogueTest {
     }
 
     @Test
+    @DisplayName("should serve the area intent as a pack of its own")
+    void shouldServeTheIntentArea() {
+        var en = MessageCatalogue.getMessages("en", "intent");
+        var de = MessageCatalogue.getMessages("de", "intent");
+
+        assertAll(
+                () -> assertTrue(MessageCatalogue.SUPPORTED_AREAS.contains("intent"),
+                        "The area intent must be registered"),
+                () -> assertFalse(en.isEmpty(), "The English intent pack must carry its texts"),
+                () -> assertEquals(en.keySet(), de.keySet(), "Both packs must carry the same keys"),
+                () -> assertTrue(en.keySet().stream().allMatch(key -> key.startsWith("intent.")),
+                        "The area's keys all live in the area: " + en.keySet()));
+    }
+
+    @Test
     void shouldFormatParameterizedMessages() {
         var formattedEn = MessageCatalogue.format("en", "web.pair.done.paired_as", Map.of("label", "Firefox"));
         assertEquals("Paired as Firefox", formattedEn);
@@ -188,6 +203,44 @@ class MessageCatalogueTest {
         assertAll(
                 () -> assertEquals(role, MessageCatalogue.getMessages("en", "common").get(key)),
                 () -> assertEquals(role, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @ParameterizedTest(name = "common.action.{0} is ''{1}'' and ''{2}''")
+    @DisplayName("Carries the shared acts of texts-and-languages.adoc, keys")
+    @CsvSource({
+            "back, Back, Zurück",
+            "cancel, Cancel, Abbrechen",
+            "close, Close, Schließen",
+            "later, Later, Später",
+            "retry, Try again, Erneut versuchen",
+            "save, Save, Speichern"
+    })
+    void shouldCarryTheSharedActs(String act, String english, String german) {
+        var key = "common.action." + act;
+
+        assertAll(
+                () -> assertEquals(english, MessageCatalogue.getMessages("en", "common").get(key)),
+                () -> assertEquals(german, MessageCatalogue.getMessages("de", "common").get(key)));
+    }
+
+    @Test
+    @DisplayName("Gives the shared acts one key each: no retired act key survives in either pack")
+    void shouldRetireTheDuplicateActKeys() {
+        var retired = List.of(
+                "web.common.back", "web.common.close", "web.common.save", "web.common.cancel",
+                "web.common.retry", "common.actions.back", "common.actions.back.title",
+                "common.back", "common.close", "common.save", "decision.waiver.later");
+        var present = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "all");
+            for (String key : retired) {
+                if (messages.containsKey(key)) {
+                    present.add(locale + ":" + key);
+                }
+            }
+        }
+
+        assertTrue(present.isEmpty(), "a retired act key survives: " + present);
     }
 
     @Test

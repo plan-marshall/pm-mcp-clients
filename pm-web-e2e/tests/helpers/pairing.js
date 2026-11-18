@@ -96,13 +96,23 @@ export async function openStartSources(page, kind = 'plan') {
 }
 
 /**
+ * Opens the one "Add a source" menu and chooses a kind.
+ *
+ * @param page the Playwright page
+ * @param kind the source kind to add
+ */
+export async function addSource(page, kind) {
+  await page.getByTestId('source-add-menu').click();
+  await page.getByTestId(`action-${kind}`).click();
+}
+
+/**
  * Fills the description source and stores it.
  *
  * @param page the Playwright page
  * @param text the description
  */
 export async function addDescription(page, text) {
-  await page.getByTestId('add-description').click();
   await page.getByTestId('description-input').fill(text);
   await page.getByTestId('description-add').click();
   await expect(page.getByTestId('source-list')).toContainText(text);

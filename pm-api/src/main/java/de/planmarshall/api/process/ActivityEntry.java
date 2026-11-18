@@ -24,7 +24,7 @@ import de.planmarshall.api.json.JsonTree;
  * A single entry in a worker's live activity stream (UC-PLN-1).
  *
  * @param timestamp  timestamp string (e.g. "14:02:11" or ISO timestamp)
- * @param kind       entry kind (text, tool_call, file_changed, question, answer_ack, link)
+ * @param kind       entry kind (text, tool_call, file_changed, question, answer_ack, link, model_differs)
  * @param toolName   name of the tool called (e.g. "read", "bash"), or {@code null}
  * @param toolTarget target operand of the tool or link (e.g. file path, command, link identifier), or {@code null}
  * @param toolFailed whether the tool invocation failed
@@ -32,6 +32,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param size       size summary of the tool result (e.g. "4 KiB"), or {@code null}
  * @param files      list of modified files, or empty list
  * @param questions  list of questions asked, or empty list
+ * @param launchModel the worker's launch model, on a {@code model_differs} entry, else {@code null}
+ * @param servedModel the model that answered, on a {@code model_differs} entry, else {@code null}
  */
 public record ActivityEntry(
         String timestamp,
@@ -42,7 +44,9 @@ public record ActivityEntry(
         @Nullable String content,
         @Nullable String size,
         List<String> files,
-        List<String> questions
+        List<String> questions,
+        @Nullable String launchModel,
+        @Nullable String servedModel
 ) {
     public ActivityEntry {
         Objects.requireNonNull(timestamp, "timestamp");
@@ -75,6 +79,12 @@ public record ActivityEntry(
         }
         if (!questions.isEmpty()) {
             map.put("questions", questions);
+        }
+        if (launchModel != null) {
+            map.put("launch_model", launchModel);
+        }
+        if (servedModel != null) {
+            map.put("served_model", servedModel);
         }
         return map;
     }
@@ -129,7 +139,9 @@ public record ActivityEntry(
                 content,
                 size,
                 files,
-                questions
+                questions,
+                JsonTree.string(map, "launch_model"),
+                JsonTree.string(map, "served_model")
         );
     }
 

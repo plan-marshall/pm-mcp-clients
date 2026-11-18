@@ -24,7 +24,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |Screen |Keys
 
 |xref:onboarding.adoc#frame[frame]
-|the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`
+|the steps `onboard.step.language`, `.harnesses`, `.models`, `.roles`, `.credentials`, `.providers`, `.plans`; answered elsewhere `common.error.state_moved`; the fallback of a state without a web screen `onboard.missing_screen.title`, `.body` (with `{command}`), `.command`, `.back`, and the field labels `onboard.state.cause`, `.fix`
 
 |xref:onboarding.adoc#model-at-work[model-at-work]
 |`common.model.working`, `common.consent.tokens.estimate`, `common.model.no_result`
@@ -42,7 +42,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.scan.progress`, `.found`; `onboard.harness.icons_consent.title`, `.looks_for`, `.runs`, `.never`; `onboard.harness.fetch_icons.done`, `.failed`; `web.onboard.icons_consent.action`, `web.onboard.icons_consent.no_action`; `web.consent.withdraw_hint`
 
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `onboard.harness.tokens.label`, `.complete`, `.partial`, `.not_reported` with `report.tokens.component` for the figures; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`, `.unusable_title`, `.none_passed`, `.fix_one`; `web.onboard.later`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `onboard.harness.tokens.label`, `.complete`, `.partial`, `.not_reported` with `report.tokens.component` for the figures; `web.onboard.harness.advanced`; `onboard.harness.none.title`, `.unusable_title`, `.looked_for`, `.none_passed`, `.fix_one`, `.check`, `.path`, `.answer` with `onboard.harness.check.*` and `onboard.state.fix` for the failure's words; `onboard.link.later`, `onboard.link.recheck`, `onboard.link.add`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
 |`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.tokens`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.tokens.label`, `.partial`; `onboard.harness.install.done`; `common.link.back`
@@ -57,19 +57,19 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.catalogue.consent.title`, `.probe`, `.advice`, `.advice_runs`, `.yes_both`, `.yes_both_remember`, `.probes_only`; `web.onboard.catalogue_consent.action`; `common.consent.remembered`; `onboard.catalogue.models.count`, `.cannot_list`; `onboard.catalogue.select.title`, `.recommendation`, `.why`, `.add_model`, `.model_id_prompt`, `.none_allowed`, `.action`, with `onboard.harness.choose.default` for the mark; `common.from.recommended`; `onboard.catalogue.done`
 
 |xref:onboarding-steps-4-7.adoc#roles[roles]
-|`onboard.roles.review.title`, `.applied`, `.group_roles`, `.not_assignable`, `.no_model_of_tier`, `.assign_open_first`, `.action_defaults`, `.action_save`, `.action_use`, `.adjust`, `.ask_steward`, `.reset`, `.to_look_at`, `.no_effort`; `onboard.roles.field.*`, `onboard.roles.origin.*`, `onboard.roles.advisory.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
+|`onboard.roles.review.*` — the title, `defaults`, `ask_steward`, `change`, `advisory_label`, `does`, `needs`, `why`, `lower_tier`, `steward`, `no_departure`, `proposed`, `accept_departure`, `reject_departure`, `open_roles`, `save`, `harness`, `model`, `effort_field`, `no_harness`, `action`; `onboard.roles.origin.*`, `onboard.roles.phase.*`, `onboard.roles.class.*`, `onboard.roles.effort.*`; `onboard.roles.consent.title`, `.runs`, `.never`; `onboard.roles.propose.title`, `.reason`, `.rejected`, `.action_all`, `.action_some`; `onboard.roles.validate.ok`, `onboard.roles.done`
 
 |xref:onboarding-steps-4-7.adoc#credential-store[credential-store]
 |`onboard.store.choose.title`, `.keychain`, `.keychain_text`, `.secret_service`, `.secret_service_text`, `.files`, `.files_text`, `.holds`, `.action`; `onboard.store.consent.title`, `.runs`, `.never`; `onboard.store.check.write`, `.read`, `.delete`; `onboard.store.unavailable.now`, `.locked`, `.locked_fix`, `.no_bus`, `.no_bus_fix`, `.choose_another`; `common.link.recheck`; `onboard.store.done`; `onboard.store.move.title`, `.moves`, `.moves_value`, `.each`, `.each_value`, `.if_stopped`, `.if_stopped_value`, `.action`, `.moved`, `.key_moved`
 
 |xref:onboarding-steps-4-7.adoc#providers[providers]
-|`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`, `.stored`; `onboard.providers.verify_consent.title`, `.runs`, `.never`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.fix_token`, `.continue_without`, `.without_note`; `onboard.providers.done`, `.done_not_available`
+|`onboard.providers.consent.title`, `.looks_for`, `.never`; `onboard.providers.scan.tokens`; `onboard.providers.select.title`, `.available`, `.variant`, `.native`, `.native_only`, `.token_stored`, `.token_missing`, `.review_bots`, `.defaults_note`, `.action`; `onboard.providers.credentials.title`, `.stored_note`, `.action`, `.lan`, `.stored`; `onboard.providers.verify_consent.title`, `.runs`, `.never`; `onboard.providers.verify.*`; `common.check.ready`, `common.check.not_ready`; `onboard.providers.failed.title`, `.enter_token`; `onboard.providers.done`, `.done_not_available`
 
 |xref:onboarding-steps-4-7.adoc#plan-defaults[plan-defaults]
-|`onboard.defaults.review.title`, `.override_note`, `.needs_provider`, `.action_defaults`, `.action_save`; `onboard.defaults.axis.*`, `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`; in a later run the posture `onboard.defaults.axis.posture`, `onboard.defaults.posture.unset`, `.minimal`, `.standard`, `.full`
+|`onboard.defaults.review.*` — the title, `override_note`, `action`, `action_defaults`, and the axis names `landing`, `method`, `asking`, `posture` with their `*_meaning` sentences; `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`, each with its `*_detail`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`; in a later run the posture `onboard.defaults.posture.unset`, `.minimal`, `.standard`, `.full`, each with its `*_detail`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
-|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
+|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.action`, `.action_label`, `.aspect`, `.value`, `.reason`; `onboard.auto.aspect.*`; `onboard.link.change` with `onboard.link.change\:<aspect>`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
 
 |xref:onboarding-steps-4-7.adoc#done[done]
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
@@ -266,9 +266,9 @@ The keys of the speech role in the roles step (xref:onboarding-steps-4-7.adoc#sp
 |The automatic run waits for you here.
 |Der automatische Lauf wartet hier auf dich.
 
-|`web.onboard.auto_result.change`
+|`onboard.link.change`
 |Change
-|Ändere
+|Ändern
 
 |`web.onboard.auto_result.no_model`
 |No model was asked; you can ask the steward to refine the roles in the machine settings.

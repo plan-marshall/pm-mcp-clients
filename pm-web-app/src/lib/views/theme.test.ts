@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import fs from 'node:fs';
 import path from 'node:path';
 import EpicView from './EpicView.svelte';
@@ -204,6 +204,9 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
       it('renders the epic findings action button ("Prüfen" / Review) with the primary action role', async () => {
         render(EpicView);
 
+        // The findings and watches reviews live on the Reviews tab of the epic's object column.
+        await fireEvent.click(await screen.findByRole('tab', { name: /Reviews|Prüfungen/ }));
+
         const reviewBtn = await screen.findByTestId('open-findings-review');
         expect(reviewBtn).toBeInTheDocument();
         expect(reviewBtn.tagName).toBe('BUTTON');
@@ -218,9 +221,10 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
         expect(style.color).toBe('var(--color-primary)');
 
         // Contrast verification: calculate relative luminance and contrast ratio against card surface
-        const themeTokens = theme === 'dark'
-          ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
-          : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
+        const themeTokens =
+          theme === 'dark'
+            ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
+            : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
 
         const lum = (c: { r: number; g: number; b: number }) => {
           const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Icon from '../components/Icon.svelte';
+  import Button from '../components/Button.svelte';
   import type {
     DecompositionCheckFinding,
     EpicDecomposition,
@@ -98,20 +99,20 @@
         </dd>
       </dl>
       <div class="decomposition-review__actions">
-        <button type="button" data-testid="read-back-accept" disabled={busy} on:click={onAccept}>
+        <Button variant="secondary" data-testid="read-back-accept" disabled={busy} on:click={onAccept}>
           {$t('start.decomposition.accept')}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
           data-testid="read-back-instruct"
           disabled={busy}
           on:click={onInstructAgain}
         >
           {$t('start.decomposition.instruct_again')}
-        </button>
-        <button type="button" data-testid="read-back-discard" disabled={busy} on:click={onDiscard}>
+        </Button>
+        <Button variant="ghost" data-testid="read-back-discard" disabled={busy} on:click={onDiscard}>
           {$t('start.decomposition.discard')}
-        </button>
+        </Button>
       </div>
     </section>
   {:else}
@@ -151,16 +152,18 @@
                   </span>
                 {/if}
                 <span class="decomposition-review__row-actions">
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     data-testid={`plan-keep-${plan.plan_id}`}
                     disabled={busy}
                     on:click={() => onKeep(plan.plan_id)}
                   >
                     {$t('start.decomposition.keep')}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     data-testid={`plan-edit-${plan.plan_id}`}
                     disabled={busy}
                     on:click={() => {
@@ -170,15 +173,16 @@
                     }}
                   >
                     {$t('start.decomposition.edit')}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     data-testid={`plan-drop-${plan.plan_id}`}
                     disabled={busy}
                     on:click={() => onDrop(plan.plan_id)}
                   >
                     {$t('start.decomposition.drop')}
-                  </button>
+                  </Button>
                 </span>
               </li>
             {/each}
@@ -197,16 +201,16 @@
         <textarea data-testid="instruct-input" bind:value={instruction} disabled={busy} rows="3"
         ></textarea>
         <div class="decomposition-review__actions">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             data-testid="instruct-submit"
             disabled={busy || !instruction.trim()}
             on:click={submitInstruct}
           >
             {$t('start.decomposition.edit')}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             data-testid="instruct-cancel"
             disabled={busy}
             on:click={() => {
@@ -214,8 +218,8 @@
               adding = false;
             }}
           >
-            {$t('web.common.close')}
-          </button>
+            {$t('common.action.close')}
+          </Button>
         </div>
       </section>
     {/if}
@@ -226,21 +230,21 @@
         <textarea data-testid="draft-input" bind:value={instruction} disabled={busy} rows="3"
         ></textarea>
         <div class="decomposition-review__actions">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             data-testid="draft-submit"
             disabled={busy || !instruction.trim()}
             on:click={submitDraft}
           >
             {$t('start.decomposition.draft_again')}
-          </button>
+          </Button>
         </div>
       </section>
     {/if}
 
     <div class="decomposition-review__footer">
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         data-testid="decomposition-add"
         disabled={busy}
         on:click={() => {
@@ -250,12 +254,12 @@
         }}
       >
         {$t('start.decomposition.add')}
-      </button>
-      <button type="button" data-testid="decomposition-chat" disabled={busy} on:click={onChat}>
+      </Button>
+      <Button variant="ghost" data-testid="decomposition-chat" disabled={busy} on:click={onChat}>
         {$t('start.decomposition.chat')}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="ghost"
         data-testid="decomposition-draft-again"
         disabled={busy}
         on:click={() => {
@@ -264,15 +268,15 @@
         }}
       >
         {$t('start.decomposition.draft_again')}
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="primary"
         data-testid="agree-commit"
         disabled={busy || failures.length > 0}
         on:click={onAgree}
       >
         {$t('start.decomposition.agree')}
-      </button>
+      </Button>
       <span class="decomposition-review__checks" data-testid="decomposition-checks">
         {failures.length > 0
           ? $t('start.decomposition.checks_fail', { count: failures.length })
@@ -373,12 +377,6 @@
     width: 100%;
     min-height: 44px;
     padding: var(--space-1);
-  }
-
-  .decomposition-review button {
-    min-height: 44px;
-    padding: var(--space-1) var(--space-3);
-    cursor: pointer;
   }
 
   .decomposition-review__old {

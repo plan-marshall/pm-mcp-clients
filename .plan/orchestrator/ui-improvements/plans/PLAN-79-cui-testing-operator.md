@@ -41,28 +41,29 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 ## Claim Labels
 
 - OBSERVED: no `pm-operator` test class uses `Generators` or `@EnableGeneratorController` (0 of 116 `*Test.java` and `*IT.java`) although `pm-operator/pom.xml` declares `cui-test-generator` and `cui-test-juli-logger` — read at HEAD 7e2b4b61
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: 47 of 149 test classes carry @EnableGeneratorController (44 reference Generators); 125 *Test + 24 *IT; about 102 remain; pom declares both CUI test artifacts | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: 71 of about 166 pm-operator test classes carry @EnableGeneratorController (git grep -l); about 95 remain; pom.xml:92,97 declares cui-test-generator and cui-test-juli-logger
 - OBSERVED: `pm-operator` main code has no logger (`CuiLogger`, `java.util.logging`, SLF4J: none) — read by a repository-wide search at HEAD 7e2b4b61
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: no Logger, CuiLogger, JUL or SLF4J reference under pm-operator/src/main/java; pom.xml:92,97 declares cui-test-generator and juli-logger
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: No CuiLogger JUL SLF4J or Logger in pm-operator/src/main/java (git grep empty); pom.xml:92,97 declare the cui-test artifacts
 - HYPOTHESIS: most `pm-operator` tests assert catalogue texts and screen text, so the share of classes that can use generated input is small — confirm/refute by the before count (verify-at-outline); a finding that fewer than a third of the classes take incidental input is reported to the operator, not forced
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: outline-time count; note 47 of 149 (32 percent) are already converted
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Outline-time count judgement; 71 of about 166 classes (43 percent) already carry the controller so the before count is moot
 - Re-grounded note at HEAD e83a9ee2 (2026-10-31): `cui-standards-foundation` (PLAN-77, shipped, PR #282) landed the rule in `CLAUDE.md` and converted the two small modules as the pilot; `pm-operator` already declared the CUI test artifacts. Follow the pilot's pattern: draw `Generators` values inside the test or a `@BeforeEach`, not in field initialisers (flagged as not seed-controlled); a class whose values are the contract is listed input-free, not converted; expected values that derive from a generated input are re-derived from it, and contract values (catalogue texts, screen text, scripted answers) stay literal. All 11 `package-info.java` of this module carry `@NullMarked` since PLAN-77.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: all 11 main package-info.java carry @NullMarked; PLAN-77 landed as #282 (e83a9ee2)
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: All 11 package-info.java of pm-operator carry @NullMarked; PLAN-77 rule present in repo CLAUDE.md test-data section
 - Pull request size (PLAN-78's run, 2026-10-31): the required reviewer CodeRabbit refuses a pull request of more than 100 files (it refused PLAN-78's 197-file first PR, and the optional Sourcery refuses above 150,000 diff characters), and a pull request it never reviewed cannot be merged. This plan converts about 116 test classes: its set will exceed 100 files. The `pre-commit` gate also rewrites the import grouping of main sources that drifted on `main` (171 `pm-api` files in PLAN-78's run): such a rewrite is not part of this plan and is restored from `origin/main` before the pull request (the operator authorised exactly that in PLAN-78). If the converted set still passes 100 files, stop and ask the operator to split the plan in two (unit tests; integration and transcript tests, which are this spec's two deliverables) before opening the pull request.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: CodeRabbit refusal above 100 files is an external fact; consistent: about 102 classes remain, split 79a/79b stands
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: CodeRabbit refusal above 100 files is an external fact; remaining set is about 95 classes now so the split question still stands
 - HOLD (design audit 2026-11-02): it rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol, which the D25 (drain: signal the pid of state/runtime.json, withdraw as 'runtime stop --withdraw'), D26 and R7-7 (accept-edit enrolment <project_id>) package changes. Sequence it after that package; also sequence it with PLAN-92 (shared handler tests).
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 (d8efe35f) landed; EnrolCommandTest, StartCommandTest, OnboardCommandTest still exist with no EnrolCommand, StartCommand or OnboardCommand in main | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: HOLD cleared: PLAN-97 #358 d8efe35f is an ancestor of main; EnrolCommandTest StartCommandTest OnboardCommandTest still exist but no EnrolCommand or OnboardCommand class in main (StartCommand only nested PlanCommand:659 RuntimeCommand:121)
 - Verify-first clause: before each deliverable, re-read the test tree at the current HEAD; `PLAN-77` must have landed. The terminal plans in flight edit these files; re-read which of them landed. A refuted claim re-scopes the deliverable and is reported.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause
+  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause
 
 - Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; they are the three deliverables of PLAN-97 (staged 2026-11-04 on the operator's word): sequence this plan after PLAN-97. PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PLAN-97 landed #358 d8efe35f; PLAN-92 c7d9dcb8 (#309) is an ancestor of HEAD
+  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: d8efe35f (PLAN-97 #358) and c7d9dcb8 (PLAN-92) are both ancestors of origin/main (merge-base check)
 - OBSERVED: AnswerSanitizationTest, AnswerMultipartTest, AnswerRefusalTest, AnswerDialogueIT, CleanupCommandTest, StateDialogueTest and DialogueSourceTest carry no @EnableGeneratorController — read by git grep -c at 1cc0e10e
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: all seven now carry @EnableGeneratorController: Answer* x4 since 98cea294 (#426); CleanupCommandTest, StateDialogueTest, DialogueSourceTest since 56e1ad37 (#425) | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: All seven now carry @EnableGeneratorController at main: AnswerSanitization AnswerMultipart AnswerRefusal AnswerDialogueIT CleanupCommand StateDialogue DialogueSource tests
 
 ## Expected Surface
 
 - OBSERVED: `pm-operator/src/test/java/` — present at HEAD 7e2b4b61
+- OBSERVED: `pm-operator/src/test/resources/transcript/console-settings.transcript`, `pm-operator/src/test/resources/transcript/console-settings-de.transcript` — present at `b6c90174` (added by the `analyze-fix-build-time` fold of 2026-11-14)
 
 ## Dependencies and Sequencing
 
@@ -126,6 +127,25 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
   for the least covered branches, chosen for behaviour, not for lines; report the before/after in the pull request.
 - `-Pcoverage,integration-tests` in ONE invocation under-reports (the agent is prepared twice and the second run overwrites
   `jacoco.exec`: 63 % instead of 94.2 %). Measure coverage with `-Pcoverage` alone, and state that in this plan's verification.
+
+## Fold 2026-11-14 (`analyze-fix-build-time-002`, review of #435)
+
+Source: `inbox/archive/analyze-fix-build-time/analyze-fix-build-time-002.md` items 1, 4, 5 and 6 (the sender's account of what CodeRabbit asked for
+on #435 and the build-time plan deferred on purpose; #435 merged as `b6c90174`). Read at `b6c90174`. Items 2 and 3 (offered keys, cleanup kinds) are
+main code and ride PLAN-165, not this plan. Tests only; behaviour unchanged.
+
+1. **Generators sweep: about 28 review findings.** The sender counts about 28 hand-written literals in pm-operator tests that are input and
+   not expectations. This is the work of deliverables 1 and 2 above, so no new deliverable: sweep once by class, do not answer finding by finding.
+2. **Parameterize.** Where a test class repeats a case three or more times with other values, use `@ParameterizedTest` (the project rule).
+3. **Console settings transcripts.** `console-settings.transcript` and `console-settings-de.transcript` are captured while onboarding is still
+   open when `config` runs. Capture them after leaving onboarding, and review the new bytes (this is the one place the "screen-capture set is
+   byte-identical" clause of deliverable 2 does not hold: name the two files and why in the progress record).
+4. **`refreshPoppedLevel()` after the jumps.** `OverviewFullScreenApp.jumpToPlanProject` and `jumpToPlanEpic` now call `refreshPoppedLevel()`
+   (`OverviewFullScreenApp.java:2701-2726`, `:3054`); no test shows its effect on the level shown. Add one in `OverviewFullScreenAppTest`
+   that fails when the call is removed.
+
+Surface: widened by the two transcript files above (stated in the Expected Surface in this same edit); everything else lies below the claimed
+`pm-operator/src/test/java/`.
 
 ## Hand-Off Command
 

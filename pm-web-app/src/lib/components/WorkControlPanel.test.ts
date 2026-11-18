@@ -1,7 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import WorkControlPanel from './WorkControlPanel.svelte';
-import { apiClient, type ArchiveCheck, type PlanSettingsRecord, type WorkActions } from '../api/client';
+import {
+  apiClient,
+  type ArchiveCheck,
+  type PlanSettingsRecord,
+  type WorkActions,
+} from '../api/client';
 import { PLAN_ACTS, EPIC_ACTS, handledActIds, tableActIds } from '../actions/byState';
 
 /**
@@ -397,8 +402,12 @@ describe('WorkControlPanel component', () => {
     const next = await screen.findByTestId('action-next');
 
     // Nothing weighs a scope it has not read: the act is refused with its reason, and sends nothing.
-    expect(next).toBeDisabled();
-    expect(next).toHaveAttribute('title', 'The epic is still being read; the next plan cannot start yet.');
+    expect(next).not.toBeDisabled();
+    expect(next).toHaveAttribute('aria-disabled', 'true');
+    expect(next).toHaveAttribute(
+      'title',
+      'The epic is still being read; the next plan cannot start yet.',
+    );
     await fireEvent.click(next);
     expect(apply).not.toHaveBeenCalled();
   });
@@ -602,7 +611,8 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('action-report'));
 
     await waitFor(() => expect(window.location.pathname).toBe('/reports'));
-    expect(window.location.search).toContain('plan=fix-relay');
+    // The act knows the plan; the report's own address follows once the view resolves its id.
+    expect(window.location.search).toBe('');
     expect(apply).not.toHaveBeenCalled();
   });
 
@@ -1067,7 +1077,8 @@ describe('WorkControlPanel component', () => {
     const pause = await screen.findByTestId('action-pause');
     const describedBy = pause.getAttribute('aria-describedby');
 
-    expect(pause).toBeDisabled();
+    expect(pause).not.toBeDisabled();
+    expect(pause).toHaveAttribute('aria-disabled', 'true');
     expect(pause.getAttribute('title')).toBe('the ledger is landing');
     expect(describedBy).toBeTruthy();
     expect(document.getElementById(describedBy as string)?.textContent).toContain(
@@ -1098,13 +1109,12 @@ describe('WorkControlPanel component', () => {
     try {
       vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
         ...running,
-        actions: [
-          ...running.actions!,
-          { action: 'custom_inspect', available: true },
-        ],
+        actions: [...running.actions!, { action: 'custom_inspect', available: true }],
       });
 
-      const { unmount } = render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+      const { unmount } = render(WorkControlPanel, {
+        props: { subjectId: 'fix-relay', subjectKind: 'plan' },
+      });
 
       const menu = await openOverflow();
       const customButton = within(menu).getByTestId('action-custom_inspect');
@@ -1147,7 +1157,11 @@ describe('WorkControlPanel component', () => {
       expect(customEpicButton).toBeInTheDocument();
 
       await fireEvent.click(customEpicButton);
-      expect(apiClient.applyEpicAction).toHaveBeenCalledWith('relay-hardening', 'custom_epic_inspect', {});
+      expect(apiClient.applyEpicAction).toHaveBeenCalledWith(
+        'relay-hardening',
+        'custom_epic_inspect',
+        {},
+      );
       unmount();
     } finally {
       const idx = EPIC_ACTS.running.indexOf(customEpicAct);

@@ -1,5 +1,12 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../../../lib/i18n';
+  import {
+    apiClient,
+    type BuilderCheckRecord,
+    type OutlineDeliverableRecord,
+    type OverSizeDistributionRecord,
+  } from '../../../lib/api/client';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import RowMenu from '../../../lib/components/RowMenu.svelte';
   import Button from '../../../lib/components/Button.svelte';
@@ -30,6 +37,27 @@
   import ReasonBadge, { REASONS } from '../../../lib/components/ReasonBadge.svelte';
   import Compose from '../../../lib/components/Compose.svelte';
   import FormStatus from '../../../lib/components/FormStatus.svelte';
+  import ActMenu from '../../../lib/components/ActMenu.svelte';
+  import SegmentedControl from '../../../lib/components/SegmentedControl.svelte';
+  import Toggle from '../../../lib/components/Toggle.svelte';
+  import PlanIntentPanel from '../../../lib/components/PlanIntentPanel.svelte';
+  import OutlinePanel from '../../../lib/components/OutlinePanel.svelte';
+  import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
+  import EpicIntentPanel from '../../../lib/components/EpicIntentPanel.svelte';
+  import OverSizeChart from '../../../lib/components/OverSizeChart.svelte';
+  import { refreshesIntentView } from '../../../lib/components/intentEvents';
+  import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
+  import DemoFormFixture from '../../../lib/dev/DemoFormFixture.svelte';
+  import TextField from '../../../lib/components/TextField.svelte';
+  import TextArea from '../../../lib/components/TextArea.svelte';
+  import NumberField from '../../../lib/components/NumberField.svelte';
+  import SecretField from '../../../lib/components/SecretField.svelte';
+  import CodeField from '../../../lib/components/CodeField.svelte';
+  import SelectField from '../../../lib/components/SelectField.svelte';
+  import RadioGroup from '../../../lib/components/RadioGroup.svelte';
+  import CheckField from '../../../lib/components/CheckField.svelte';
+  import CheckGroup from '../../../lib/components/CheckGroup.svelte';
+  import { LAYER_TOKENS } from '../../../styles/layers';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -54,10 +82,10 @@
 
   /** The six acts the bar gets: one primary, three secondary, two in the overflow. */
   $: acts = [
-    { id: 'save', label: $t('web.common.save') },
-    { id: 'cancel', label: $t('web.common.cancel') },
+    { id: 'save', label: $t('common.action.save') },
+    { id: 'cancel', label: $t('common.action.cancel') },
     { id: 'copy', label: $t('web.common.copy'), advisory: $t('web.common.copy.title') },
-    { id: 'back', label: $t('common.actions.back'), advisory: $t('common.actions.back.title') },
+    { id: 'back', label: $t('common.action.back'), advisory: $t('common.action.back.title') },
     {
       id: 'archive',
       label: $t('control.epic.archive'),
@@ -88,6 +116,33 @@
 
   /** The tab the fixture shows as selected, one per theme, so each list answers its own keyboard. */
   let activeTabs: Record<string, string> = {};
+
+  const LAYERS = LAYER_TOKENS;
+
+  let segmentedValue: Record<string, string> = { light: 'all', dark: 'all' };
+  let togglePressed: Record<string, boolean> = { light: false, dark: true };
+  let actMenuDownOpen: Record<string, boolean> = { light: true, dark: true };
+  let actMenuUpOpen: Record<string, boolean> = { light: true, dark: true };
+  let actMenuDownTrigger: Record<string, HTMLButtonElement | null> = { light: null, dark: null };
+  let actMenuUpTrigger: Record<string, HTMLButtonElement | null> = { light: null, dark: null };
+
+  $: segmentedOptions = [
+    { id: 'all', label: $t('dev.segmented.all') },
+    { id: 'active', label: $t('dev.segmented.active') },
+    { id: 'completed', label: $t('dev.segmented.completed') },
+  ];
+
+  $: actMenuActs = [
+    { id: 'copy', label: $t('web.common.copy'), icon: 'act.copy', onAct: () => {} },
+    { id: 'save', label: $t('common.action.save'), icon: 'act.save', onAct: () => {} },
+    {
+      id: 'archive',
+      label: $t('control.epic.archive'),
+      disabled: true,
+      disabledReason: $t('dev.disabled_reason'),
+      onAct: () => {},
+    },
+  ];
 
   /** The tabs of the fixture: one count that waits for the operator, one that does not. */
   $: tabs = [
@@ -190,6 +245,75 @@
     { tone: 'success', key: 'dev.form_status.success' },
     { tone: 'danger', key: 'dev.form_status.danger' },
   ] as const;
+
+  /**
+   * The plan whose intent and outline the fixture shows. The mock runtime serves its records for any
+   * id (it answers from the `fix-relay` fixture), so the fixture reads the one the design's sketches
+   * name through the real client.
+   */
+  const INTENT_PLAN_ID = 'fix-relay';
+
+  /**
+   * The epic whose intent the fixture shows, and the project whose `over_size` distributions it
+   * shows. Both are read through the real client from the scenario's fixtures, so the epic panel and
+   * the charts walk the runtime's own records.
+   */
+  const INTENT_EPIC_ID = 'relay-hardening';
+  const OVERSIZE_PROJECT_ID = 'pm-mcp-clients';
+
+  /** The builder check the fixture shows, read from the plan's own record. */
+  let builderCheck: BuilderCheckRecord | null = null;
+
+  /** The outline's deliverables, so a criterion names them by number and title. */
+  let deliverables: OutlineDeliverableRecord[] = [];
+
+  /** One distribution per role whose multiple the project sets, in the runtime's order. */
+  let distributions: OverSizeDistributionRecord[] = [];
+
+  /** @returns the plan's record and outline as the fixture's own parts read them */
+  async function readFixtureData(): Promise<void> {
+    try {
+      const record = await apiClient.getPlanIntent(INTENT_PLAN_ID);
+      builderCheck = record?.builder_check ?? null;
+    } catch {
+      // An unpaired page draws the panels' own error state; the check then stays a title alone.
+      builderCheck = null;
+    }
+    try {
+      const outline = await apiClient.getPlanOutline(INTENT_PLAN_ID);
+      deliverables = outline?.deliverables ?? [];
+    } catch {
+      deliverables = [];
+    }
+    try {
+      const answer = await apiClient.getOverSize(OVERSIZE_PROJECT_ID);
+      distributions = answer?.distributions ?? [];
+    } catch {
+      distributions = [];
+    }
+  }
+
+  onMount(() => {
+    void readFixtureData();
+    // The panels read their own records on the same events; the fixture's own parts follow, so the
+    // builder check and the criterion titles never lag behind the record on screen.
+    const unsubscribe = apiClient.subscribeEvents((event) => {
+      if (refreshesIntentView(event)) {
+        void readFixtureData();
+      }
+    });
+    return unsubscribe;
+  });
+
+  /** @param number the deliverable's number @returns the address of its row in this fixture */
+  function deliverableHref(number: number): string {
+    return `/dev/components#deliverable-${number}`;
+  }
+
+  /** @param criterionId the criterion's id @returns the address of its row in this fixture */
+  function criterionHref(criterionId: string): string {
+    return `/dev/components#criterion-${criterionId}`;
+  }
 </script>
 
 <div class="dev">
@@ -201,21 +325,19 @@
       <h2 class="dev__theme-title">{$t(`dev.theme.${theme}`)}</h2>
 
       <h3 class="dev__section-title">{$t('dev.section.buttons')}</h3>
-      <div class="dev__row">
-        {#each VARIANTS as variant (variant)}
-          <Button {variant}>{$t(`dev.variant.${variant}`)}</Button>
-        {/each}
-      </div>
-      <div class="dev__row">
-        {#each SIZES as size (size)}
-          <Button variant="primary" {size}>{$t(`dev.size.${size}`)}</Button>
-        {/each}
-      </div>
+      {#each VARIANTS as variant (variant)}
+        <div class="dev__row">
+          {#each SIZES as size (size)}
+            <Button {variant} {size}>{$t(`dev.variant.${variant}`)} {$t(`dev.size.${size}`)}</Button
+            >
+          {/each}
+        </div>
+      {/each}
       <div class="dev__row">
         <Button variant="secondary" icon="act.copy">{$t('web.common.copy')}</Button>
-        <Button variant="primary" loading>{$t('web.common.save')}</Button>
+        <Button variant="primary" loading>{$t('common.action.save')}</Button>
         <Button variant="primary" disabled disabledReason={$t('dev.disabled_reason')}>
-          {$t('web.common.save')}
+          {$t('common.action.save')}
         </Button>
       </div>
 
@@ -233,8 +355,8 @@
         />
         <IconButton
           icon="act.back"
-          label={$t('common.actions.back')}
-          advisory={$t('common.actions.back.title')}
+          label={$t('common.action.back')}
+          advisory={$t('common.action.back.title')}
         />
         <IconButton
           icon="act.copy"
@@ -272,11 +394,12 @@
         <RowMenu
           items={rowMenuItems}
           label="{$t('dev.section.row_menu')} ({$t('web.common.more')}, {$t(`dev.theme.${theme}`)})"
-          visibleLabel={$t('web.common.more')}
         />
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {$t(`dev.theme.${theme}`)})"
+          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {$t(
+            `dev.theme.${theme}`,
+          )})"
         />
       </div>
 
@@ -317,10 +440,7 @@
 
       <h3 class="dev__section-title">{$t('dev.section.dialog')}</h3>
       <div class="dev__row">
-        <Button
-          variant="danger"
-          on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}
-        >
+        <Button variant="danger" on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}>
           {$t('dev.dialog.open')}
         </Button>
       </div>
@@ -333,8 +453,11 @@
       >
         <p class="dev__note">{$t('dev.dialog.body')}</p>
         <svelte:fragment slot="footer">
-          <Button variant="ghost" on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}>
-            {$t('web.common.cancel')}
+          <Button
+            variant="ghost"
+            on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}
+          >
+            {$t('common.action.cancel')}
           </Button>
           <Button
             variant="danger"
@@ -347,7 +470,10 @@
 
       <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
       <div class="dev__row">
-        <Button variant="secondary" on:click={() => (openToasts = { ...openToasts, [theme]: true })}>
+        <Button
+          variant="secondary"
+          on:click={() => (openToasts = { ...openToasts, [theme]: true })}
+        >
           {$t('dev.toast.show')}
         </Button>
       </div>
@@ -481,7 +607,7 @@
       {#snippet composeFooter()}
         {$t('dev.compose.counter', { count: 0, limit: COMPOSE_LIMIT })}
       {/snippet}
-      <div class="dev__stack">
+      <div class="dev__stack" data-testid="compose-fixture">
         <Compose
           label={$t('dev.compose.label')}
           placeholder={$t('dev.compose.placeholder')}
@@ -506,7 +632,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.form_status')}</h3>
-      <div class="dev__stack">
+      <div class="dev__stack" data-testid="form-status-fixture">
         {#each FORM_STATUSES as status (status.tone)}
           <FormStatus tone={status.tone} message={$t(status.key)} />
         {/each}
@@ -526,7 +652,6 @@
             <RowMenu
               items={rowMenuItems}
               label="{$t('dev.row_link.menu')} ({$t(`dev.theme.${theme}`)})"
-              visibleLabel={$t('web.common.more')}
             />
           {/snippet}
         </RowLink>
@@ -555,7 +680,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.marker')}</h3>
-      <div class="dev__row">
+      <div class="dev__row" data-testid="marker-fixture">
         {#each MARKERS as kind (kind)}
           <Marker {kind} />
         {/each}
@@ -573,10 +698,258 @@
           <RowMenu
             items={rowMenuItems}
             label="{$t('dev.examples.menu')} ({$t(`dev.theme.${theme}`)})"
-            visibleLabel={$t('web.common.more')}
           />
         {/snippet}
       </RowLink>
+
+      <h3 class="dev__section-title">{$t('dev.section.segmented_control')}</h3>
+      <div class="dev__row">
+        <SegmentedControl
+          options={segmentedOptions}
+          bind:value={segmentedValue[theme]}
+          label={$t('dev.section.segmented_control')}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.toggle')}</h3>
+      <div class="dev__row" data-testid="toggle-fixture">
+        <Toggle
+          label="{$t('dev.toggle.label')} (off)"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
+          pressed={false}
+        />
+        <Toggle
+          label="{$t('dev.toggle.label')} (on)"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
+          pressed={true}
+        />
+        <Toggle
+          label="{$t('dev.toggle.label')} (interactive)"
+          icon="act.favourite"
+          pressedIcon="act.favourite-on"
+          bind:pressed={togglePressed[theme]}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.act_menu')}</h3>
+      <div class="dev__row dev__act-menu-fixtures">
+        <div class="dev__act-menu-fixture">
+          <Button
+            variant="secondary"
+            size="sm"
+            bind:buttonElement={actMenuDownTrigger[theme]}
+            onclick={() => {
+              actMenuDownOpen[theme] = !actMenuDownOpen[theme];
+            }}
+          >
+            {$t('dev.section.act_menu')} (down)
+          </Button>
+          <ActMenu
+            items={actMenuActs}
+            label="{$t('dev.section.act_menu')} (down)"
+            triggerElement={actMenuDownTrigger[theme]}
+            bind:open={actMenuDownOpen[theme]}
+          />
+        </div>
+        <div class="dev__act-menu-fixture dev__act-menu-fixture--above">
+          <Button
+            variant="secondary"
+            size="sm"
+            bind:buttonElement={actMenuUpTrigger[theme]}
+            onclick={() => {
+              actMenuUpOpen[theme] = !actMenuUpOpen[theme];
+            }}
+          >
+            {$t('dev.section.act_menu')} (upward)
+          </Button>
+          <ActMenu
+            items={actMenuActs}
+            label="{$t('dev.section.act_menu')} (upward)"
+            above={true}
+            triggerElement={actMenuUpTrigger[theme]}
+            bind:open={actMenuUpOpen[theme]}
+          />
+        </div>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.status')} (fixed)</h3>
+      <div class="dev__rows">
+        <div class="dev__row">
+          <StatusLabel tone="success" label={$t('state.task.done')} fixed />
+        </div>
+        <div class="dev__row">
+          <StatusLabel tone="running" label={$t('state.plan.running')} fixed />
+        </div>
+        <div class="dev__row">
+          <StatusLabel tone="attention" label={$t('state.plan.waiting_for_you')} fixed />
+        </div>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.layers')}</h3>
+      <div class="dev__layers-demo">
+        <div class="dev__layers-track">
+          {#each LAYERS as layer}
+            <div class="dev__layer dev__layer--{layer.name}">
+              <code>{layer.token}</code>
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.column_engine')}</h3>
+      <ColumnEngineFixture />
+
+      <h3 class="dev__section-title">{$t('intent.tab.title')}</h3>
+      <div class="dev__grid" data-testid="intent-fixture">
+        <Card>
+          <PlanIntentPanel planId={INTENT_PLAN_ID} {deliverables} {deliverableHref} />
+        </Card>
+        <Card>
+          <OutlinePanel planId={INTENT_PLAN_ID} {criterionHref} />
+        </Card>
+        <Card>
+          <BuilderCheckList check={builderCheck} />
+        </Card>
+        <div class="dev__stack" data-testid="epic-fixture">
+          <Card>
+            <EpicIntentPanel epicId={INTENT_EPIC_ID} />
+          </Card>
+        </div>
+        <div class="dev__stack" data-testid="oversize-fixture">
+          {#each distributions as distribution (distribution.role)}
+            <Card>
+              <OverSizeChart {distribution} />
+            </Card>
+          {/each}
+        </div>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.fields')}</h3>
+      <div class="dev__grid" data-testid="fields-fixture">
+        <Card title={$t('dev.field.rest')}>
+          <div class="dev__stack">
+            <TextField label={$t('dev.field.sample_label')} hint={$t('dev.field.sample_hint')} />
+            <TextArea label={$t('dev.field.sample_label')} hint={$t('dev.field.sample_hint')} optional />
+            <NumberField label={$t('dev.field.sample_label')} unit="days" allowNever value={30} />
+            <SecretField label={$t('common.field.token')} />
+            <CodeField label={$t('web.pair.page.code')} />
+            <SelectField
+              label={$t('dev.field.sample_label')}
+              options={[
+                { value: '1', label: 'Option 1' },
+                { value: '2', label: 'Option 2' },
+                { value: '3', label: 'Option 3' },
+              ]}
+              value="1"
+            />
+            <CheckField label={$t('dev.field.sample_label')} />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.filled')}>
+          <div class="dev__stack">
+            <TextField label={$t('dev.field.sample_label')} value="sample/path/checkout" mono />
+            <TextArea label={$t('dev.field.sample_label')} value="Multiple lines of text entered here." />
+            <NumberField label={$t('dev.field.sample_label')} unit="days" allowNever value={null} />
+            <SecretField label={$t('common.field.token')} value="super-secret-token" />
+            <CodeField label={$t('web.pair.page.code')} value="KXQB-MRTN" complete />
+            <RadioGroup
+              legend={$t('dev.field.sample_label')}
+              name={`radio-cards-${theme}`}
+              variant="card"
+              options={[
+                { value: 'opt1', label: 'Standard', description: 'Default selection' },
+                { value: 'opt2', label: 'Enhanced', marker: 'recommended', description: 'Recommended choice' },
+              ]}
+              value="opt2"
+            />
+            <CheckGroup
+              legend={$t('dev.field.sample_label')}
+              variant="card"
+              options={[
+                { value: 'c1', label: 'Item 1' },
+                { value: 'c2', label: 'Item 2', marker: 'recommended' },
+              ]}
+              values={['c1', 'c2']}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.invalid')}>
+          <div class="dev__stack">
+            <TextField
+              label={$t('dev.field.sample_label')}
+              value="bad-value"
+              error={$t('dev.field.sample_error')}
+            />
+            <TextArea
+              label={$t('dev.field.sample_label')}
+              value="bad input"
+              error={$t('dev.field.sample_error')}
+            />
+            <NumberField
+              label={$t('dev.field.sample_label')}
+              unit="MB"
+              value={9999}
+              error={$t('dev.field.sample_error')}
+            />
+            <CodeField
+              label={$t('web.pair.page.code')}
+              value="INVALID"
+              error={$t('dev.field.sample_error')}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.disabled')}>
+          <div class="dev__stack">
+            <TextField
+              label={$t('dev.field.sample_label')}
+              value="locked-value"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <TextArea
+              label={$t('dev.field.sample_label')}
+              value="locked text"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <SecretField
+              label={$t('common.field.token')}
+              value="locked"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <SelectField
+              label={$t('dev.field.sample_label')}
+              options={[{ value: '1', label: 'Locked' }]}
+              value="1"
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+            <RadioGroup
+              legend={$t('dev.field.sample_label')}
+              name={`radio-disabled-${theme}`}
+              options={[
+                { value: 'd1', label: 'Choice 1', disabled: true, disabledReason: $t('dev.disabled_reason') },
+              ]}
+              disabled
+            />
+            <CheckField
+              label={$t('dev.field.sample_label')}
+              disabled
+              disabledReason={$t('dev.disabled_reason')}
+            />
+          </div>
+        </Card>
+
+        <Card title={$t('dev.field.demo_form')}>
+          <DemoFormFixture />
+        </Card>
+      </div>
     </section>
   {/each}
 </div>
@@ -712,5 +1085,89 @@
 
   .dev__ground--brand-subtle {
     background-color: var(--color-brand-subtle);
+  }
+
+  .dev__act-menu-fixtures {
+    display: flex;
+    gap: var(--space-8);
+    align-items: flex-start;
+    padding-block-start: var(--space-4);
+    padding-block-end: 180px;
+  }
+
+  .dev__act-menu-fixture {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+  }
+
+  .dev__act-menu-fixture--above {
+    margin-block-start: 160px;
+  }
+
+  .dev__layers-demo {
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-inline-size: 100%;
+    background-color: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .dev__layers-track {
+    position: relative;
+    min-inline-size: 360px;
+    block-size: 140px;
+    padding: var(--space-4);
+  }
+
+  .dev__layer {
+    position: absolute;
+    inline-size: 160px;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-family: var(--font-mono);
+    border: 1px solid var(--color-border-strong);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dev__layer--sticky {
+    inset-block-start: 16px;
+    inset-inline-start: 16px;
+    z-index: var(--layer-sticky);
+    background-color: var(--color-bg-subtle);
+  }
+
+  .dev__layer--bar {
+    inset-block-start: 32px;
+    inset-inline-start: 56px;
+    z-index: var(--layer-bar);
+    background-color: var(--color-bg-surface);
+  }
+
+  .dev__layer--menu {
+    inset-block-start: 48px;
+    inset-inline-start: 96px;
+    z-index: var(--layer-menu);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .dev__layer--toast {
+    inset-block-start: 64px;
+    inset-inline-start: 136px;
+    z-index: var(--layer-toast);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+  }
+
+  .dev__layer--dialog {
+    inset-block-start: 80px;
+    inset-inline-start: 176px;
+    z-index: var(--layer-dialog);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-overlay);
+    border-color: var(--color-brand);
   }
 </style>

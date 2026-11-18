@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { LAYER_TOKENS as SHARED_LAYER_TOKENS } from './layers';
 import fs from 'fs';
 import path from 'path';
 import { contrastRatio, deltaE00, hueDistance, toOklch } from '../test/colourMetrics';
@@ -23,6 +24,9 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
   '--workflow-icon-size', // Component-local size bound inline on WorkflowIcon
   '--workflow-icon-url', // Component-local mask-image URL bound inline on WorkflowIcon
   '--compose-lines', // Component-local line count Compose sets from script on its text area
+  '--triage-inset', // Component-local page inset the column engine measures and binds
+  '--wizard-inset', // Component-local page inset the wizard measures and binds
+  '--side-width', // Component-local width the side column template computes and binds
 ]);
 
 /**
@@ -31,6 +35,37 @@ const ALLOWLISTED_LOCAL_TOKENS = new Set([
 const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
   path.normalize('lib/components/PairingQr.svelte'), // High-contrast black/white scannable QR modules
 ]);
+
+/**
+ * Allowlisted modals and views that still draw their own z-index layer,
+ * each mapped to the part or plan that removes it.
+ */
+const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
+  [path.normalize('lib/components/FindingsReviewModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/HoldResolutionModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/ConfinedFilePicker.svelte')]: 'the V parts',
+  [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
+  [path.normalize('lib/components/StartWorkModal.svelte')]: 'the V parts',
+  [path.normalize('lib/views/EpicDecompositionView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/SystemView.svelte')]: 'the V parts',
+  [path.normalize('lib/views/CleanupView.svelte')]: 'the V parts',
+  [path.normalize('lib/components/PlanSettingsModal.svelte')]: 'PLAN-55',
+  [path.normalize('lib/components/GitSourceIntakeModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',
+  [path.normalize('lib/views/ProjectOnboardingView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
+  [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
+  [path.normalize('lib/templates/SideColumn.svelte')]: 'the V parts',
+};
+
+const LAYER_TOKENS: Record<string, number> = {
+  '--layer-sticky': 1,
+  '--layer-bar': 20,
+  '--layer-menu': 30,
+  '--layer-toast': 90,
+  '--layer-dialog': 100,
+};
 
 /** The colour palette of VD-P-02, with the two tuned brand values and the two tokens the proposal does not name documented in `theme-readability.adoc`. */
 const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
@@ -55,6 +90,8 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-danger-subtle': { dark: '#2C1517', light: '#FDECEA' },
   '--color-success': { dark: '#3FB37F', light: '#1E7A4E' },
   '--color-success-subtle': { dark: '#15271D', light: '#E9F6EE' },
+  '--color-diff-removed': { dark: '#3D1F24', light: '#FBE3E1' },
+  '--color-diff-added': { dark: '#132E22', light: '#DDF2E5' },
   '--color-neutral': { dark: '#8B95A7', light: '#7A808B' },
   '--color-kind-project': { dark: '#ADCD4A', light: '#606700' },
   '--color-kind-epic': { dark: '#EF8BC5', light: '#BB2D8C' },
@@ -203,6 +240,14 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['--color-success', '--color-success-subtle'],
   ['--color-text-primary', '--color-success-subtle'],
   ['--color-text-secondary', '--color-success-subtle'],
+  ['--color-text-primary', '--color-diff-added'],
+  ['--color-text-primary', '--color-diff-removed'],
+  ['--color-text-secondary', '--color-diff-added'],
+  ['--color-text-secondary', '--color-diff-removed'],
+  ['--color-text-muted', '--color-diff-added'],
+  ['--color-text-muted', '--color-diff-removed'],
+  ['--color-success', '--color-diff-added'],
+  ['--color-danger', '--color-diff-removed'],
   ['--color-star', '--color-bg-surface'],
   ['--color-running', '--color-bg-surface'],
   ['--color-danger', '--color-bg-surface'],
@@ -226,7 +271,12 @@ const KIND_TINTS = ['--color-kind-project', '--color-kind-epic', '--color-kind-p
  * The colours a kind tint must keep clear of: the state tones, the brand and the mascot's orange and
  * gold. The state tones are `STATE_DOTS` itself, so a state token added there is checked here too.
  */
-const TINT_NEIGHBOURS = [...STATE_DOTS, '--color-brand', '--color-mascot-fur', '--color-mascot-gold'];
+const TINT_NEIGHBOURS = [
+  ...STATE_DOTS,
+  '--color-brand',
+  '--color-mascot-fur',
+  '--color-mascot-gold',
+];
 
 /** Every ground a kind icon stands on, the selected row's brand-subtle among them. */
 const TINT_GROUNDS = [...SURFACES, '--color-brand-subtle'];
@@ -242,7 +292,9 @@ const DOT_PAIRS: Array<[string, string]> = SURFACES.flatMap((surface) =>
  * @returns the rows whose raw value is below the minimum, with the value rounded for the report only
  */
 function belowMinimum<T extends { value: number }>(rows: readonly T[], minimum: number): T[] {
-  return rows.filter((row) => row.value < minimum).map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
+  return rows
+    .filter((row) => row.value < minimum)
+    .map((row) => ({ ...row, value: Math.round(row.value * 100) / 100 }));
 }
 
 /**
@@ -319,7 +371,9 @@ function parseThemes(source: string): {
   const root = declarations(blockOf(css, ':root'));
   const light = declarations(blockOf(css, "[data-theme='light']"));
   const dark = declarations(blockOf(css, "[data-theme='dark']"));
-  const mediaDark = declarations(blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root'));
+  const mediaDark = declarations(
+    blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root'),
+  );
   return { root, light, dark, mediaDark };
 }
 
@@ -372,15 +426,12 @@ describe('tokens.css: the design system v2 contract', () => {
   const themes = parseThemes(css);
 
   describe('VD-P-02 colour tokens', () => {
-    it.each(Object.entries(COLOUR_TOKENS))(
-      'declares %s in both themes',
-      (token, values) => {
-        expect(themes.root[token]?.toLowerCase()).toBe(values.light.toLowerCase());
-        expect(themes.light[token]?.toLowerCase()).toBe(values.light.toLowerCase());
-        expect(themes.dark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
-        expect(themes.mediaDark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
-      },
-    );
+    it.each(Object.entries(COLOUR_TOKENS))('declares %s in both themes', (token, values) => {
+      expect(themes.root[token]?.toLowerCase()).toBe(values.light.toLowerCase());
+      expect(themes.light[token]?.toLowerCase()).toBe(values.light.toLowerCase());
+      expect(themes.dark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
+      expect(themes.mediaDark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
+    });
 
     it('keeps the set of theme-varying tokens identical in light, dark and the system-dark block', () => {
       const themed = new Set([...Object.keys(COLOUR_TOKENS), '--focus-ring', ...ELEVATION_TOKENS]);
@@ -391,14 +442,19 @@ describe('tokens.css: the design system v2 contract', () => {
       const rootNames = declaredNames(blockOf(stylesheet, ':root'));
       const rootThemed = [...rootNames].filter(isThemedName);
       expect(
-        rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES) && !(name in MASCOT_TOKENS)),
+        rootThemed.filter(
+          (name) => !themed.has(name) && !(name in ALIASES) && !(name in MASCOT_TOKENS),
+        ),
       ).toEqual([]);
       expect([...themed].filter((name) => !rootNames.has(name))).toEqual([]);
 
       for (const [label, block] of [
         ['light', blockOf(stylesheet, "[data-theme='light']")],
         ['dark', blockOf(stylesheet, "[data-theme='dark']")],
-        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+        [
+          'media-dark',
+          blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root'),
+        ],
       ] as const) {
         const declared = [...declaredNames(block)];
         expect(declared.filter(isThemedName).sort(), `${label} is missing a palette token`).toEqual(
@@ -412,7 +468,10 @@ describe('tokens.css: the design system v2 contract', () => {
       for (const [label, block] of [
         ['light', blockOf(stylesheet, "[data-theme='light']")],
         ['dark', blockOf(stylesheet, "[data-theme='dark']")],
-        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+        [
+          'media-dark',
+          blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root'),
+        ],
       ] as const) {
         const declared = declaredNames(block);
         expect(
@@ -430,16 +489,21 @@ describe('tokens.css: the design system v2 contract', () => {
   });
 
   describe('mascot palette tokens', () => {
-    it.each(Object.entries(MASCOT_TOKENS))('resolves %s to the same value in every palette', (token, value) => {
-      const palettes = {
-        light: resolveAliases({ ...themes.root, ...themes.light }),
-        dark: resolveAliases({ ...themes.root, ...themes.dark }),
-        'media-dark': resolveAliases({ ...themes.root, ...themes.mediaDark }),
-      };
-      for (const [label, palette] of Object.entries(palettes)) {
-        expect(palette[token]?.toLowerCase(), `${token} in the ${label} palette`).toBe(value.toLowerCase());
-      }
-    });
+    it.each(Object.entries(MASCOT_TOKENS))(
+      'resolves %s to the same value in every palette',
+      (token, value) => {
+        const palettes = {
+          light: resolveAliases({ ...themes.root, ...themes.light }),
+          dark: resolveAliases({ ...themes.root, ...themes.dark }),
+          'media-dark': resolveAliases({ ...themes.root, ...themes.mediaDark }),
+        };
+        for (const [label, palette] of Object.entries(palettes)) {
+          expect(palette[token]?.toLowerCase(), `${token} in the ${label} palette`).toBe(
+            value.toLowerCase(),
+          );
+        }
+      },
+    );
   });
 
   describe('VD-P-03 type scale', () => {
@@ -493,34 +557,93 @@ describe('tokens.css: the design system v2 contract', () => {
     });
   });
 
+  describe('control tokens (components-fields.adoc, control-tokens)', () => {
+    it('declares the four control tokens in :root', () => {
+      expect(themes.root['--control-height']).toBe('34px');
+      expect(themes.root['--control-radius']).toBe('var(--radius-md)');
+      expect(themes.root['--control-bg']).toBe('var(--color-bg-surface)');
+      expect(themes.root['--control-border']).toBe('var(--color-border-strong)');
+    });
+
+    it('sets --control-height to 44px on phone (below 768px)', () => {
+      const phoneBlock = blockOf(withoutComments(css), '@media (max-width: 767px)');
+      expect(phoneBlock).toContain('--control-height: 44px');
+    });
+  });
+
+  describe('layer tokens', () => {
+    it.each(Object.entries(LAYER_TOKENS))(
+      'declares the layer token %s with value %i',
+      (token, value) => {
+        expect(Number(themes.root[token])).toBe(value);
+      },
+    );
+
+    it('asserts the layer token order: sticky < bar < menu < toast < dialog', () => {
+      const sticky = Number(themes.root['--layer-sticky']);
+      const bar = Number(themes.root['--layer-bar']);
+      const menu = Number(themes.root['--layer-menu']);
+      const toast = Number(themes.root['--layer-toast']);
+      const dialog = Number(themes.root['--layer-dialog']);
+
+      expect(menu).toBeGreaterThan(bar); // menu above bar
+      expect(toast).toBeLessThan(dialog); // toast below dialog
+      expect(sticky).toBeLessThan(bar);
+      expect(bar).toBeLessThan(menu);
+      expect(menu).toBeLessThan(toast);
+      expect(toast).toBeLessThan(dialog);
+    });
+
+    it('ensures shared LAYER_TOKENS exactly mirrors the layer declarations in tokens.css', () => {
+      const declaredInCss = Object.keys(themes.root).filter((k) => k.startsWith('--layer-'));
+      const sharedTokens = SHARED_LAYER_TOKENS.map((l) => l.token);
+      expect(declaredInCss.sort()).toEqual(sharedTokens.sort());
+      for (const entry of SHARED_LAYER_TOKENS) {
+        expect(Number(themes.root[entry.token])).toBe(entry.value);
+      }
+    });
+  });
+
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
-    it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        TEXT_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        4.5,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every text pair at or above 4.5:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          TEXT_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          4.5,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
-    it.each(['light', 'dark'] as const)('keeps every state dot at or above 3:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        DOT_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        3,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every state dot at or above 3:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          DOT_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          3,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
   });
 
   describe('the three kind tints keep clear of every other colour (components-tags.adoc, kind-tints)', () => {
@@ -538,7 +661,11 @@ describe('tokens.css: the design system v2 contract', () => {
         const palette = palettes[theme];
         const failures = belowMinimum(
           KIND_TINTS.flatMap((tint) =>
-            TINT_NEIGHBOURS.map((other) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
+            TINT_NEIGHBOURS.map((other) => ({
+              tint,
+              other,
+              value: deltaE00(palette[tint], palette[other]),
+            })),
           ),
           20,
         );
@@ -568,27 +695,41 @@ describe('tokens.css: the design system v2 contract', () => {
       },
     );
 
-    it.each(['light', 'dark'] as const)('keeps a ΔE00 of at least 30 between the tints in the %s theme', (theme) => {
-      const palette = palettes[theme];
-      const failures = belowMinimum(
-        tintPairs.map(([tint, other]) => ({ tint, other, value: deltaE00(palette[tint], palette[other]) })),
-        30,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps a ΔE00 of at least 30 between the tints in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const failures = belowMinimum(
+          tintPairs.map(([tint, other]) => ({
+            tint,
+            other,
+            value: deltaE00(palette[tint], palette[other]),
+          })),
+          30,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
-    it.each(['light', 'dark'] as const)('keeps every tint at or above 3:1 on every ground in the %s theme', (theme) => {
-      const palette = palettes[theme];
-      const failures = belowMinimum(
-        KIND_TINTS.flatMap((tint) =>
-          TINT_GROUNDS.map((ground) => ({ tint, ground, value: contrastRatio(palette[tint], palette[ground]) })),
-        ),
-        3,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps every tint at or above 3:1 on every ground in the %s theme',
+      (theme) => {
+        const palette = palettes[theme];
+        const failures = belowMinimum(
+          KIND_TINTS.flatMap((tint) =>
+            TINT_GROUNDS.map((ground) => ({
+              tint,
+              ground,
+              value: contrastRatio(palette[tint], palette[ground]),
+            })),
+          ),
+          3,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
 
     it('declares none of the retired epic tokens in :root or any theme block', () => {
       const retired = ['--color-epic', '--color-epic-subtle', '--color-epic-text'];
@@ -608,7 +749,10 @@ describe('tokens.css: the design system v2 contract', () => {
     ];
 
     it('draws each tone from the pair audited below', () => {
-      const source = fs.readFileSync(path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'), 'utf8');
+      const source = fs.readFileSync(
+        path.resolve(__dirname, '../lib/components/ReasonBadge.svelte'),
+        'utf8',
+      );
 
       expect(source).toContain('background-color: var(--color-attention-subtle)');
       expect(source).toContain('color: var(--color-attention-text)');
@@ -616,19 +760,25 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(source).toContain('color: var(--color-danger)');
     });
 
-    it.each(['light', 'dark'] as const)('keeps both pairs at or above 4.5:1 in the %s theme', (theme) => {
-      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
-      const failures = belowMinimum(
-        REASON_TONE_PAIRS.map(([foreground, background]) => ({
-          foreground,
-          background,
-          value: contrastRatio(palette[foreground], palette[background]),
-        })),
-        4.5,
-      );
+    it.each(['light', 'dark'] as const)(
+      'keeps both pairs at or above 4.5:1 in the %s theme',
+      (theme) => {
+        const palette = resolveAliases({
+          ...themes.root,
+          ...(theme === 'light' ? themes.light : themes.dark),
+        });
+        const failures = belowMinimum(
+          REASON_TONE_PAIRS.map(([foreground, background]) => ({
+            foreground,
+            background,
+            value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          4.5,
+        );
 
-      expect(failures).toEqual([]);
-    });
+        expect(failures).toEqual([]);
+      },
+    );
   });
 });
 
@@ -667,7 +817,9 @@ describe('tokens.css: static scans over the source tree', () => {
 
   it('ensures no hard-coded color literals exist in views or components outside the allowlist', () => {
     const srcDir = path.resolve(__dirname, '..');
-    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']).filter((f) => !f.endsWith('tokens.css'));
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']).filter(
+      (f) => !f.endsWith('tokens.css'),
+    );
 
     const hexRegex = /#([0-9a-fA-F]{3,8})\b/g;
     const rgbRegex = /rgba?\([^)]+\)/g;
@@ -726,5 +878,89 @@ describe('tokens.css: static scans over the source tree', () => {
     }
 
     expect(violations).toEqual([]);
+  });
+
+  it('ensures every allowlisted z-index file has a valid reason', () => {
+    for (const [file, reason] of Object.entries(ALLOWLISTED_Z_INDEX_FILES)) {
+      expect(typeof reason).toBe('string');
+      expect(
+        reason.trim().length,
+        `Allowlisted file ${file} lost its removal reason`,
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  function sanitizeSource(content: string, isCss: boolean): string {
+    let result = content
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, ' '));
+    if (!isCss) {
+      result = result.replace(/<script[\s\S]*?<\/script>/gi, (scriptBlock) =>
+        scriptBlock.replace(/\/\/.*$/gm, (m) => ' '.repeat(m.length)),
+      );
+    }
+    return result;
+  }
+
+  it('ensures no numeric z-index exists outside the allowlist', () => {
+    const srcDir = path.resolve(__dirname, '..');
+    const sourceFiles = walkFiles(srcDir, ['.svelte', '.css']);
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
+    const violations: { file: string; line: number; value: string; snippet: string }[] = [];
+
+    for (const file of sourceFiles) {
+      const relPath = path.normalize(path.relative(srcDir, file));
+      const isAllowlisted = relPath in ALLOWLISTED_Z_INDEX_FILES;
+      const isCss = file.endsWith('.css');
+
+      const content = fs.readFileSync(file, 'utf8');
+      const sanitized = sanitizeSource(content, isCss);
+
+      let match;
+      while ((match = zIndexRegex.exec(sanitized)) !== null) {
+        if (!isAllowlisted) {
+          const lineNumber = sanitized.slice(0, match.index).split('\n').length;
+          const snippetStart = Math.max(0, match.index - 20);
+          const snippetEnd = Math.min(sanitized.length, match.index + match[0].length + 20);
+          violations.push({
+            file: relPath,
+            line: lineNumber,
+            value: match[1],
+            snippet: sanitized.slice(snippetStart, snippetEnd).trim().replace(/\s+/g, ' '),
+          });
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it('detects numeric z-index declarations on universal selectors and across line breaks', () => {
+    const raw = `
+      /* comment */
+      * { position: relative; z-index: 999; }
+      .multiline {
+        position: fixed;
+        z-index:
+          888;
+      }
+      .signed {
+        position: absolute;
+        Z-INDEX: +777;
+      }
+      .css-strings {
+        content: "//";
+        position: relative;
+        z-index: 666;
+      }
+    `;
+    const sanitized = sanitizeSource(raw, true);
+    const zIndexRegex = /z-index\s*:\s*([+-]?\d+)\b/gi;
+    const matches: string[] = [];
+    let match;
+    while ((match = zIndexRegex.exec(sanitized)) !== null) {
+      matches.push(match[1]);
+    }
+    expect(matches).toEqual(['999', '888', '+777', '666']);
   });
 });

@@ -2,10 +2,10 @@
   "id": "PLAN-164",
   "slug": "web-plan-changes-tab",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-164-web-plan-changes-tab",
+  "pr": "481",
+  "landing": "landings/PLAN-164.md",
   "seq": 164
 }

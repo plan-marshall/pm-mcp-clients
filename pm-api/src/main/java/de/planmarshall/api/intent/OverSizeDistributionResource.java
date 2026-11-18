@@ -33,13 +33,16 @@ import de.planmarshall.api.json.JsonTree;
  * client never recomputes a bucket; it shows the runtime's distribution and flags only the buckets
  * that carry a change. Without a proposal the runtime serves the distribution under the multiple in
  * force and no flagged comparison, so nothing is flagged and {@link #flagsMore()} is {@code false}.
+ * A role without measured tasks carries no bucket at all, which a client shows as its empty text
+ * rather than drawing a zero bar.
  *
  * @param projectId       the project whose role is measured
  * @param role            the role whose multiple is changed
  * @param currentMultiple the multiple in force
  * @param proposedMultiple the multiple the operator considers, or {@code null} where the runtime
  *                         serves the distribution without a proposal
- * @param buckets         the distribution's buckets, in ascending order and not overlapping
+ * @param buckets         the distribution's buckets, in ascending order and not overlapping; empty
+ *                        where the role has no measured task yet
  */
 public record OverSizeDistributionResource(
         String projectId,
@@ -72,10 +75,9 @@ public record OverSizeDistributionResource(
         if (proposedMultiple != null) {
             requirePositive(proposedMultiple, FIELD_PROPOSED_MULTIPLE);
         }
+        // A role without measured tasks carries no bucket: the absence of a measurement is served,
+        // never an invented zero bar. Every other rule below still holds over whatever is carried.
         buckets = buckets == null ? List.of() : List.copyOf(buckets);
-        if (buckets.isEmpty()) {
-            throw new IllegalArgumentException("buckets must not be empty");
-        }
         for (var i = 1; i < buckets.size(); i++) {
             if (buckets.get(i).fromMultiple() < buckets.get(i - 1).toMultiple()) {
                 throw new IllegalArgumentException("buckets must be ordered and must not overlap");

@@ -56,6 +56,31 @@ class OverviewCatalogueTest {
         }
     }
 
+    @Test
+    @DisplayName("the find list reads the shared kinds: the overview's own kind and wait copies are gone")
+    void shouldNameTheKindsAndTheOneWaitWordOnly() {
+        var retired = List.of(
+                "overview.kind.project",
+                "overview.find.kind.project", "overview.find.kind.epic", "overview.find.kind.plan",
+                "overview.find.kind.decision", "overview.find.kind.report",
+                "overview.needs.operator_wait");
+        var present = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "overview");
+            for (String key : retired) {
+                if (messages.containsKey(key)) {
+                    present.add(locale + ":" + key);
+                }
+            }
+            assertTrue(messages.containsKey("overview.needs.waits_for_you"), locale);
+            // The kinds that a pm-operator reader still asks for stay until the terminal moves.
+            assertTrue(messages.containsKey("overview.kind.epic"), locale);
+            assertTrue(messages.containsKey("overview.kind.plan"), locale);
+        }
+
+        assertTrue(present.isEmpty(), "a retired overview key survives: " + present);
+    }
+
     /**
      * The keys {@code doc/design/shared/plan-overview.adoc#texts} names but the catalogue
      * deliberately does not carry yet: the integrity hold's word, which the design already names
@@ -82,6 +107,10 @@ class OverviewCatalogueTest {
         assertTrue(keys.size() > 70, "the text tables of both documents must be read: " + keys);
         assertTrue(keys.contains("overview.running.title"), keys.toString());
         assertTrue(keys.contains("operator.status.runtime"), keys.toString());
+        // A key that is the final cell of a table: the reader must not need a translation row after
+        // it (terminal-client/15-overview.adoc's refusal table ends with it).
+        assertTrue(keys.contains("operator.tui.unavailable.too_narrow"),
+                "the key in the last cell of a table is read: " + keys);
         assertTrue(keys.containsAll(PENDING_RENAME), "a pending key no document names any more: " + PENDING_RENAME);
         var missing = new ArrayList<String>();
         var stillPending = new ArrayList<String>();

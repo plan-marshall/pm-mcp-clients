@@ -21,6 +21,13 @@ const CONTROL_DIR = path.resolve(__dirname, '../../test/fixtures/templateViews')
 const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'SystemView.svelte', root: '.system-container' },
   { file: 'ReportsView.svelte', root: '.reports-view' },
+  { file: 'StartView.svelte', root: '.start-view' },
+  // PLAN-58 moves the epic onto the object page (`epic-view.adoc#tabs`).
+  { file: 'EpicView.svelte', root: '.epic-view' },
+  // The start page is the lens's list column on the column engine (needs-and-find.adoc#route).
+  { file: 'InboxView.svelte', root: '.inbox-view' },
+  // PLAN-51 moves the decisions lens onto the triage page (`decisions.adoc#order`).
+  { file: 'DecisionView.svelte', root: '.decisions-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */

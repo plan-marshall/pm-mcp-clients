@@ -33,17 +33,34 @@ const EXPECTED: Readonly<Record<Kind, KindExpectation>> = {
   project: { icon: 'kind.project', en: 'project', de: 'Projekt', tone: 'kind-mark__icon--project' },
   epic: { icon: 'kind.epic', en: 'epic', de: 'Epic', tone: 'kind-mark__icon--epic' },
   plan: { icon: 'kind.plan', en: 'plan', de: 'Plan', tone: 'kind-mark__icon--plan' },
-  side_job: { icon: 'kind.side-job', en: 'side job', de: 'Nebenarbeit', tone: 'kind-mark__icon--neutral' },
-  decision: { icon: 'kind.decision', en: 'decision', de: 'Entscheidung', tone: 'kind-mark__icon--neutral' },
+  side_job: {
+    icon: 'kind.side-job',
+    en: 'side job',
+    de: 'Nebenarbeit',
+    tone: 'kind-mark__icon--neutral',
+  },
+  decision: {
+    icon: 'kind.decision',
+    en: 'decision',
+    de: 'Entscheidung',
+    tone: 'kind-mark__icon--neutral',
+  },
   report: { icon: 'kind.report', en: 'report', de: 'Bericht', tone: 'kind-mark__icon--neutral' },
-  machine: { icon: 'kind.machine', en: 'machine', de: 'Maschine', tone: 'kind-mark__icon--neutral' },
+  machine: {
+    icon: 'kind.machine',
+    en: 'machine',
+    de: 'Maschine',
+    tone: 'kind-mark__icon--neutral',
+  },
 };
 
 /** Every kind of `KIND_ICONS`, the authoritative mapping, with its expectation. */
-const KINDS: Array<KindExpectation & { kind: Kind }> = (Object.keys(KIND_ICONS) as Kind[]).map((kind) => ({
-  kind,
-  ...EXPECTED[kind],
-}));
+const KINDS: Array<KindExpectation & { kind: Kind }> = (Object.keys(KIND_ICONS) as Kind[]).map(
+  (kind) => ({
+    kind,
+    ...EXPECTED[kind],
+  }),
+);
 
 /** The classes that colour a kind's icon; exactly one of them sits on every icon. */
 const TONES = [
@@ -69,16 +86,19 @@ describe('KindMark', () => {
     expect(TONES.filter((name) => iconBox.classList.contains(name))).toEqual([tone]);
   });
 
-  it.each(KINDS)('names the $kind kind "$en" in English and "$de" in German', ({ kind, en, de }) => {
-    useCatalogue('en');
-    const english = render(KindMark, { props: { kind } });
-    expect(english.container.querySelector('.kind-mark__word')?.textContent).toBe(en);
-    english.unmount();
+  it.each(KINDS)(
+    'names the $kind kind "$en" in English and "$de" in German',
+    ({ kind, en, de }) => {
+      useCatalogue('en');
+      const english = render(KindMark, { props: { kind } });
+      expect(english.container.querySelector('.kind-mark__word')?.textContent).toBe(en);
+      english.unmount();
 
-    useCatalogue('de');
-    const german = render(KindMark, { props: { kind } });
-    expect(german.container.querySelector('.kind-mark__word')?.textContent).toBe(de);
-  });
+      useCatalogue('de');
+      const german = render(KindMark, { props: { kind } });
+      expect(german.container.querySelector('.kind-mark__word')?.textContent).toBe(de);
+    },
+  );
 
   it('keeps a hidden word as the accessible name and the icon out of the tree', () => {
     useCatalogue('de');
@@ -115,7 +135,9 @@ describe('KindMark', () => {
     const word = container.querySelector('.kind-mark__word') as HTMLElement;
     const mark = container.querySelector('.kind-mark') as HTMLElement;
 
-    expect(word.className.split(/\s+/).filter((name) => name.startsWith('kind-mark__icon'))).toEqual([]);
+    expect(
+      word.className.split(/\s+/).filter((name) => name.startsWith('kind-mark__icon')),
+    ).toEqual([]);
     expect(word.getAttribute('style')).toBeNull();
     expect(mark.getAttribute('style')).toBeNull();
     expect(mark.querySelector('.chip, .badge')).toBeNull();

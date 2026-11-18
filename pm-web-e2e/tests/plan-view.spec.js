@@ -161,9 +161,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     const epicView = page.locator('[data-testid="epic-view"]');
     await expect(epicView).toBeVisible();
 
-    // Verify epic breadcrumbs and title
-    await expect(page.locator('[data-testid="breadcrumb-project"]')).toHaveText('pm-mcp-clients');
-    await expect(page.locator('[data-testid="breadcrumb-epic"]')).toHaveText('relay-hardening');
+    // The epic's head draws no path of its own; it names the epic and its state.
     await expect(page.locator('[data-testid="epic-title"]')).toHaveText('Relay Hardening');
     await expect(page.locator('[data-testid="epic-state"]')).toHaveText('running');
 
@@ -183,22 +181,28 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
       'relay-auth-v2',
     );
 
-    // Verify sources, landings, registers, tokens, and events
-    await expect(page.locator('[data-testid="epic-sources"]')).toBeVisible();
+    // Verify sources, landings, registers, tokens, and events on their tabs (D6-1)
+    await page.getByRole('tab', { name: 'Intent' }).click();
+    await expect(page.locator('[data-testid="epic-intent-sources"]')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Landings' }).click();
     await expect(page.locator('[data-testid="epic-landing-count"]')).toHaveText('1 landing');
+
+    await page.getByRole('tab', { name: 'Reviews' }).click();
     await expect(page.locator('[data-testid="epic-findings"]')).toBeVisible();
     await expect(page.locator('[data-testid="epic-watches"]')).toBeVisible();
+
+    await page.locator('[data-testid="epic-tokens-disclosure"]').click();
     await expect(page.locator('[data-testid="epic-token-breakdown"]')).toBeVisible();
+
+    await page.getByRole('tab', { name: 'Events' }).click();
     await expect(page.locator('[data-testid="epic-events"]')).toBeVisible();
 
-    // Back returns to the plan the epic was opened from, not to the overview
-    const backBtn = page.locator('[data-testid="back-btn"]');
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
-    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
-
-    // The plan's own back then returns to Running Work, where it was opened
-    await page.locator('[data-testid="back-btn"]').click();
+    // The epic's head draws no Back (D6): the rail's lens returns to Running Work
+    await page
+      .locator('.nav-rail')
+      .getByRole('button', { name: /Running work/i })
+      .click();
     await expect(page.locator('.overview')).toBeVisible();
   });
 
@@ -208,7 +212,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
 
     await page.locator('[data-testid="breadcrumb-project"]').click();
 
-    await expect(page).toHaveURL(/\/projects\?project=pm-mcp-clients$/);
+    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients$/);
     await expect(page.locator('[data-testid="project-explorer-view"]')).toBeVisible();
   });
 

@@ -272,6 +272,33 @@ describe('OverviewView component', () => {
     expect(screen.getByText('! landing failed')).toBeInTheDocument();
   });
 
+  it.each([
+    [
+      'a counted reason',
+      { needs_operator_kind: 'decision', needs_operator_count: 2 },
+      '! 2 · decision',
+    ],
+    [
+      'a reason by its word',
+      { needs_operator_kind: 'waits_for_you', needs_operator_count: 1 },
+      '! waits for you',
+    ],
+    ['no reason', { needs_operator_kind: null, needs_operator_count: 1 }, '! another reason'],
+  ])('names %s of a plan and of an epic from the catalogue', async (_case, needs, expected) => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      plans: [{ ...mockDetailClients.plans[0], ...needs }],
+      epics: [{ ...mockDetailClients.epics[0], ...needs }],
+    });
+    render(OverviewView);
+
+    const planBadge = await screen.findByTestId('needs-badge-pln-console-history');
+    expect(planBadge.textContent?.trim()).toBe(expected);
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+    const epicBadge = await screen.findByTestId('needs-badge-epic-epc-client-work');
+    expect(epicBadge.textContent?.trim()).toBe(expected);
+  });
+
   it('toggles view between by-plan and by-epic', async () => {
     render(OverviewView);
 
@@ -295,6 +322,64 @@ describe('OverviewView component', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('plan-card')).toHaveLength(3);
     });
+  });
+
+  it('renders by-plan and by-epic from one plan list and derives the epic head count from its rows', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      epics: [
+        {
+          epic_id: 'epc-client-work',
+          title: 'client work',
+          running_plans_count: 5,
+          staged_plans_count: 3,
+          plans_done: 0,
+          plans_total: 5,
+          plans: [
+            {
+              plan_id: 'pln-overview-resource',
+              title: 'Overview resource of the runtime',
+              current_phase: 'execute',
+              phase_state: 'running',
+            },
+          ],
+        },
+      ],
+    });
+
+    const { container } = render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('plan-card')).toHaveLength(3);
+    });
+
+    const byPlanTitles = Array.from(
+      container.querySelectorAll('[data-testid="plan-card"] .work-card__open'),
+    ).map((el) => el.textContent?.trim() ?? '');
+    expect(byPlanTitles).toEqual([
+      'Console history of answers',
+      'Overview resource of the runtime',
+      'Message catalogue',
+    ]);
+
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('epic-card')).toBeInTheDocument();
+    });
+
+    const byEpicTitles = Array.from(
+      container.querySelectorAll('[data-testid="plan-card"] .work-card__open'),
+    ).map((el) => el.textContent?.trim() ?? '');
+    expect(new Set(byEpicTitles)).toEqual(new Set(byPlanTitles));
+    expect(byEpicTitles).toHaveLength(byPlanTitles.length);
+
+    const epicCard = screen.getByTestId('epic-card');
+    const epicRows = epicCard.querySelectorAll('[data-testid="plan-card"]');
+    expect(epicRows).toHaveLength(2);
+    expect(epicCard.querySelector('.badge--counts')?.textContent?.trim()).toBe(
+      `${epicRows.length} running · 3 staged`,
+    );
   });
 
   it('puts a phase icon in every phase badge', async () => {
@@ -330,6 +415,65 @@ describe('OverviewView component', () => {
       expect(screen.getByText('Session log and generations')).toBeInTheDocument();
       expect(screen.queryByText('Console history of answers')).not.toBeInTheDocument();
     });
+  });
+
+  it('says an ended-work page that could not be read failed, never that nothing ended', async () => {
+    vi.spyOn(apiClient, 'getEndedWork').mockRejectedValue(new ClientError('timeout'));
+    render(OverviewView);
+    await fireEvent.click(await screen.findByText('Ended work'));
+
+    const error = await screen.findByTestId('overview-ended-error');
+    expect(error).toHaveTextContent('The request took too long');
+    expect(screen.queryByText(/No ended work/)).not.toBeInTheDocument();
+
+    vi.spyOn(apiClient, 'getEndedWork').mockResolvedValue(mockEndedPage);
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Relay drops events on reconnect')).toBeInTheDocument();
+  });
+
+  it('retries the ended-work page that failed, not the one that was open before it', async () => {
+    let secondPageFails = true;
+    const ended = vi.spyOn(apiClient, 'getEndedWork').mockImplementation(async (_project, page) => {
+      if (page === 2 && secondPageFails) throw new ClientError('timeout');
+      return mockEndedPage;
+    });
+    render(OverviewView);
+    await fireEvent.click(await screen.findByText('Ended work'));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Older' }));
+    await screen.findByTestId('overview-ended-error');
+
+    secondPageFails = false;
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+    await waitFor(() => expect(ended).toHaveBeenLastCalledWith('pm-mcp-clients', 2));
+    expect(screen.queryByTestId('overview-ended-error')).toBeNull();
+  });
+
+  it.each<[string, string[], string | null]>([
+    ['moves to the first project left when the open one is gone', ['pm-mcp-core'], 'pm-mcp-core'],
+    ['empties the running work when no project is left', [], null],
+  ])('on a live change it %s', async (_case, left, opened) => {
+    let onEvent: ((event: string) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback as (event: string) => void;
+      return () => {};
+    });
+    const detail = vi.spyOn(apiClient, 'getProjectDetail');
+    render(OverviewView);
+    await screen.findByText('Console history of answers');
+
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
+      ...mockProjects,
+      projects: mockProjects.projects.filter((project) => left.includes(project.project_id)),
+    });
+    onEvent?.('project.changed');
+
+    await waitFor(() =>
+      expect(screen.queryByText('Console history of answers')).not.toBeInTheDocument(),
+    );
+    if (opened) {
+      expect(detail).toHaveBeenLastCalledWith(opened);
+    }
   });
 
   it('opens ended work view with outcomes, reasons, and pagination controls', async () => {
@@ -373,6 +517,47 @@ describe('OverviewView component', () => {
     });
   });
 
+  it('renders KindMark in ended-work and alongside rows, ReasonBadge for landing_failed, and fixed table layout for ended-work columns', async () => {
+    const { container } = render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('alongside-section')).toBeInTheDocument();
+    });
+
+    const alongsideRows = container.querySelectorAll('.alongside-row');
+    expect(alongsideRows.length).toBeGreaterThanOrEqual(2);
+    for (const row of alongsideRows) {
+      expect(row.querySelector('.kind-mark')).not.toBeNull();
+    }
+    const landingBadge = alongsideRows[0].querySelector('.reason-badge.reason-badge--danger');
+    expect(landingBadge).not.toBeNull();
+    expect(landingBadge?.textContent?.trim()).toBe('! landing failed');
+
+    await fireEvent.click(screen.getByText('Ended work'));
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
+    });
+
+    const endedRows = screen.getAllByTestId('ended-item');
+    for (const row of endedRows) {
+      expect(row.querySelector('.kind-mark')).not.toBeNull();
+    }
+
+    const table = container.querySelector('.ended-table-wrap table.data-table');
+    expect(table).not.toBeNull();
+    expect(table).toHaveAttribute('data-layout', 'fixed');
+    const columns = Array.from(table!.querySelectorAll('col'));
+    expect(columns.map((c) => c.getAttribute('data-column'))).toEqual([
+      'kind',
+      'title',
+      'outcome',
+      'pull_request',
+      'ended',
+      'actions',
+    ]);
+  });
+
   it('opens an ended plan as it ended and its completion report in one step', async () => {
     render(OverviewView);
 
@@ -395,7 +580,6 @@ describe('OverviewView component', () => {
       reason: null,
       ended_at: '2026-10-14T10:00:00Z',
     });
-    expect(localStorage.getItem('pm_overview_show_ended')).toBe('1');
 
     await fireEvent.click(screen.getByTestId('ended-report-pln-relay-drops'));
 
@@ -404,16 +588,163 @@ describe('OverviewView component', () => {
     expect(state.selectedReportDetailPlanId).toBe('pln-relay-drops');
   });
 
-  it('restores the ended work page after the operator returns to the overview', async () => {
+  it('never reads or writes pm_overview_show_ended or pm_overview_ended_page in localStorage', async () => {
     localStorage.setItem('pm_overview_show_ended', '1');
     localStorage.setItem('pm_overview_ended_page', '2');
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem');
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    runtimeStore.update((s) => ({ ...s, lensMode: 'ended' }));
 
     render(OverviewView);
 
     await waitFor(() => {
-      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 2);
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 1);
       expect(screen.getAllByTestId('ended-item')).toHaveLength(3);
     });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+    await fireEvent.click(screen.getByTestId('ended-open-pln-relay-drops'));
+    await fireEvent.click(screen.getByText('Back'));
+
+    const readKeys = getItemSpy.mock.calls.map(([key]) => key);
+    const writtenKeys = setItemSpy.mock.calls.map(([key]) => key);
+    expect(readKeys).not.toContain('pm_overview_show_ended');
+    expect(readKeys).not.toContain('pm_overview_ended_page');
+    expect(writtenKeys).not.toContain('pm_overview_show_ended');
+    expect(writtenKeys).not.toContain('pm_overview_ended_page');
+  });
+
+  it('applies a project the address names while the project list is still loading', async () => {
+    // Arrange: the projects read does not answer before the address has changed.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+
+    render(OverviewView);
+
+    await waitFor(() => expect(apiClient.getProjects).toHaveBeenCalled());
+
+    // Act: the address names another project while the list is still empty, then the list arrives.
+    runtimeStore.update((s) => ({ ...s, lensProject: 'pm-mcp-core' }));
+    answerProjects(mockProjects);
+
+    // Assert: the view follows the address to the project the list turned out to hold.
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('pm-mcp-core');
+    });
+    expect(apiClient.getProjectDetail).toHaveBeenCalledWith('pm-mcp-core');
+  });
+
+  it('writes the displayed project into the address when the grouping changes', async () => {
+    render(OverviewView);
+
+    await waitFor(() => expect(screen.getByText('Message catalogue')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByRole('radio', { name: 'by epic' }));
+
+    await waitFor(() => {
+      expect(window.location.search).toContain('project=pm-mcp-clients');
+    });
+    expect(window.location.search).toContain('group=epic');
+  });
+
+  it('reads the new project’s ended page when the address changes project while ended work is open', async () => {
+    render(OverviewView);
+
+    await waitFor(() => expect(screen.getByText('Message catalogue')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: 'Ended work' }));
+
+    await waitFor(() => {
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-clients', 1);
+    });
+
+    // The address moves to the other project while the ended section is open.
+    runtimeStore.update((s) => ({ ...s, lensProject: 'pm-mcp-core' }));
+
+    await waitFor(() => {
+      expect(apiClient.getEndedWork).toHaveBeenCalledWith('pm-mcp-core', 1);
+    });
+  });
+
+  it('opens the plan a nested plan title names, not its epic', async () => {
+    runtimeStore.update((s) => ({ ...s, lensGroup: 'epic' }));
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('epic-card')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Message catalogue' }));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('plan');
+    expect(state.selectedPlanId).toBe('pln-message-catalogue');
+  });
+
+  it('leaves a plan that names only a duplicated epic title unassigned', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      ...mockDetailClients,
+      plans: [
+        {
+          plan_id: 'pln-only-title',
+          title: 'Only a title',
+          current_phase: 'execute',
+          phase_state: 'running',
+          epic_title: 'client work',
+        },
+      ],
+      epics: [
+        {
+          epic_id: 'epc-first',
+          title: 'client work',
+          running_plans_count: 0,
+          staged_plans_count: 0,
+          plans_done: 0,
+          plans_total: 0,
+          plans: [],
+        },
+        {
+          epic_id: 'epc-second',
+          title: 'client work',
+          running_plans_count: 0,
+          staged_plans_count: 0,
+          plans_done: 0,
+          plans_total: 0,
+          plans: [],
+        },
+      ],
+      alongside_landings: [],
+    });
+    runtimeStore.update((s) => ({ ...s, lensGroup: 'epic' }));
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Only a title').length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Two epics of one title identify none of them: the plan shows once, under the unassigned group.
+    expect(screen.getAllByText('Only a title')).toHaveLength(1);
+    expect(screen.getByText('without epic')).toBeInTheDocument();
+  });
+
+  it('opens running work when the address names no ended mode, even after ended work was seen', async () => {
+    // A running-work address wins over the section the operator looked at last.
+    localStorage.setItem('pm_overview_show_ended', '1');
+
+    render(OverviewView);
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: /pm-mcp-clients/ })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+    expect(apiClient.getEndedWork).not.toHaveBeenCalled();
   });
 
   it('opens the project another view named in one step', async () => {

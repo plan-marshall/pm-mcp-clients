@@ -77,7 +77,10 @@
       <p class="pr-adopt__files" data-testid="pr-files">
         {$t('git_sources.pr.files_untrusted', { count: observation.changed_files.length })}
       </p>
-      <p class="pr-adopt__screening badge badge--{observation.screening}" data-testid="pr-screening">
+      <p
+        class="pr-adopt__screening badge badge--{observation.screening}"
+        data-testid="pr-screening"
+      >
         {$t('git_sources.screening.' + observation.screening)}
       </p>
 
@@ -114,15 +117,12 @@
   {/if}
 
   {#if error}
-    <p class="pr-adopt__error" data-testid="pr-error">{$t('git_sources.error', { cause: error })}</p>
+    <p class="pr-adopt__error" data-testid="pr-error">
+      {$t('git_sources.error', { cause: error })}
+    </p>
   {/if}
 
-  <button
-    type="button"
-    data-testid="pr-adopt-submit"
-    on:click={adopt}
-    disabled={busy || !canAdopt}
-  >
+  <button type="button" data-testid="pr-adopt-submit" on:click={adopt} disabled={busy || !canAdopt}>
     {$t('git_sources.pr.adopt.action')}
   </button>
 </div>

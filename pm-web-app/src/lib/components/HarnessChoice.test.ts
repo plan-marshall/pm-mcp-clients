@@ -48,7 +48,11 @@ describe('HarnessChoice monograms', () => {
         harnesses: [
           harness({ icon_url: 'https://example.invalid/claude.svg' }),
           harness({ harness_id: 'codex', name: 'Codex', icon_url: '/\\maker.example/i.svg' }),
-          harness({ harness_id: 'opencode', name: 'OpenCode', icon_url: '/\t/maker.example/i.svg' }),
+          harness({
+            harness_id: 'opencode',
+            name: 'OpenCode',
+            icon_url: '/\t/maker.example/i.svg',
+          }),
         ],
       },
     });

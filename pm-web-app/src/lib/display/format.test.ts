@@ -269,11 +269,7 @@ describe('formatTokens', () => {
   });
 
   it('rounds a floor down at the precision shown', () => {
-    expectBothLocales(
-      (locale) => formatTokens(412_680, true, locale),
-      '≥ 412 k',
-      '≥ 412 Tsd.',
-    );
+    expectBothLocales((locale) => formatTokens(412_680, true, locale), '≥ 412 k', '≥ 412 Tsd.');
     expectBothLocales((locale) => formatTokens(4_280, true, locale), '≥ 4.2 k', '≥ 4,2 Tsd.');
     expectBothLocales((locale) => formatTokens(1_249_000, true, locale), '≥ 1.24 M', '≥ 1,24 Mio.');
   });
@@ -286,6 +282,21 @@ describe('formatTokens', () => {
     // A floor over no measured record is the floor of nothing, never the exact zero.
     expectBothLocales((locale) => formatTokens(0, true, locale), '≥ 0', '≥ 0');
     expectBothLocales((locale) => formatTokens(-5, true, locale), '≥ 0', '≥ 0');
+  });
+
+  it('keeps the figure when the pack carries no template for the unit mark', () => {
+    // A first paint that has no catalogue yet must not trade the count for the key's leaf word
+    // (texts-and-languages.adoc#numbers: the figure is never hidden for want of a word).
+    useCatalogue('en', { 'common.tokens.thousands': 'Thousands' });
+    expect(formatTokens(4_200, false, 'en')).toBe('4200');
+  });
+
+  it('keeps the floor’s figure when the pack carries no template for the floor word', () => {
+    useCatalogue('en', {
+      'common.tokens.thousands': 'Thousands',
+      'common.tokens.at_least': 'At least',
+    });
+    expect(formatTokens(4_200, true, 'en')).toBe('≥ 4200');
   });
 });
 
@@ -324,6 +335,15 @@ describe('formatSplit', () => {
     // the split repeats no noun of its own (texts-and-languages.adoc, Numbers: Tokens).
     expect(formatSplit(412_000, 380_000, 32_000, false, 'en')).not.toContain('token');
     expect(formatSplit(412_000, 380_000, 32_000, false, 'de')).not.toContain('Token');
+  });
+
+  it('keeps every figure when the pack carries no template for the split', () => {
+    // The first-paint rule of the unit mark holds for the split's own wrapper too.
+    useCatalogue('en', {
+      'common.tokens.thousands': 'Thousands',
+      'common.tokens.split': 'Split',
+    });
+    expect(formatSplit(4_200, 4_000, 200, false, 'en')).toBe('4200 (4000 · 200)');
   });
 });
 

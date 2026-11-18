@@ -276,7 +276,7 @@ public final class TuiKeyRegistry {
             case ACTIONS, WAITS, ENDED, SYSTEM, REPORTS, MARK_READ, MARK_ALL_READ, WINDOW, GROUP_BY,
                 PER_PROJECT, FAVOURITE, MOVE_FAVOURITE_UP, MOVE_FAVOURITE_DOWN, SORT, ADD_PROJECT,
                 ADD_EPIC, ADD_PLAN, RUNNING_WORK, SETUP, CONTINUE, ABANDON, ENROL_AGAIN, FILTER,
-                RELOAD, EXPAND_ALL, WHERE, NON_LANE, TOKENS, PROJECT, COMPLETION -> HelpGroup.ACT;
+                RELOAD, EXPAND_ALL, WHERE, NON_LANE, TOKENS, CHANGES, PROJECT, COMPLETION -> HelpGroup.ACT;
         };
     }
 
@@ -467,6 +467,7 @@ public final class TuiKeyRegistry {
             case WHERE -> "operator.plan.keys.where";
             case NON_LANE -> "operator.plan.keys.not_in_plan";
             case TOKENS -> "operator.plan.keys.tokens";
+            case CHANGES -> "operator.plan.keys.changes";
             case PROJECT -> "operator.plan.keys.project";
             case EPIC -> "operator.plan.keys.epic";
             case COMPLETION -> "operator.plan.keys.completion";
@@ -634,6 +635,7 @@ public final class TuiKeyRegistry {
                             footer("→", TuiKeyAction.OPEN), footer("←", TuiKeyAction.CLOSE),
                             footer(".", TuiKeyAction.WHERE), footer("*", TuiKeyAction.EXPAND_ALL),
                             footer("n", TuiKeyAction.NON_LANE), footer("t", TuiKeyAction.TOKENS),
+                            footer("d", TuiKeyAction.CHANGES),
                             footer("p", TuiKeyAction.PROJECT), footer("e", TuiKeyAction.EPIC),
                             footer("c", TuiKeyAction.COMPLETION), footer("a", TuiKeyAction.ACTIONS),
                             footer(ESC_LABEL, TuiKeyAction.BACK), footer("q", TuiKeyAction.LEAVE)));
@@ -643,6 +645,11 @@ public final class TuiKeyRegistry {
         activityNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         activityNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
         registry.put(TuiLevel.Kind.PLAN_ACTIVITY, level(activityNavigation,
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
+                            footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
+
+        registry.put(TuiLevel.Kind.PLAN_CHANGES, level(activityNavigation,
                             footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer(ESC_LABEL, TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
@@ -741,6 +748,8 @@ public final class TuiKeyRegistry {
         bindings.add(new Binding(".", TuiKeyAction.WHERE));
         bindings.add(new Binding("n", TuiKeyAction.NON_LANE));
         bindings.add(new Binding("t", TuiKeyAction.TOKENS));
+        // `d` opens the plan's changes as a level of the view (16-plan-view.adoc#changes).
+        bindings.add(new Binding("d", TuiKeyAction.CHANGES));
         bindings.add(new Binding("c", TuiKeyAction.COMPLETION));
         // The keys of the overview hold here too (16-plan-view.adoc#full-screen-keys): what waits
         // in the plan, and the system and reports levels, which the registry binds on every level.

@@ -423,7 +423,7 @@
       {/if}
     </div>
     <Button variant="secondary" on:click={() => navigateTo('projects')} data-testid="project-back">
-      {$t('web.common.back')}
+      {$t('common.action.back')}
     </Button>
   </header>
 
@@ -475,7 +475,8 @@
     {:else if isComplete}
       <div class="state-card" data-testid="project-onboarding-complete">
         <div class="state-card__header">
-          <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
+          <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span
+          >
           <h2 class="state-card__title">
             {$t('project.ready.title', { project: run?.checkout_path ?? '' })}
           </h2>
@@ -738,7 +739,7 @@
           on:click={() => (confirmAbandon = false)}
           data-testid="project-abandon-cancel"
         >
-          {$t('web.common.cancel')}
+          {$t('common.action.cancel')}
         </Button>
         <Button variant="danger" on:click={abandonRun} data-testid="project-abandon-confirm">
           {$t('project.adding.abandon')}

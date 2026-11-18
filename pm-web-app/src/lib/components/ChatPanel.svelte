@@ -102,7 +102,7 @@
         aria-describedby={describedBy}
         on:click={onEnd}
       >
-        {$t('web.common.close')}
+        {$t('common.action.close')}
       </button>
     </header>
 

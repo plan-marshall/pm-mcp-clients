@@ -466,7 +466,9 @@
                       <div class="item-info">
                         <span class="item-title">{item.title}</span>
                         <div class="item-meta">
-                          <span class="badge badge--kind">{displayState('cleanup', item.kind, $t)}</span>
+                          <span class="badge badge--kind"
+                            >{displayState('cleanup', item.kind, $t)}</span
+                          >
                           {#if item.ended_at}
                             <span class="text-muted text-xs">
                               {$t('system.cleanup.details.ended', { time: item.ended_at })}

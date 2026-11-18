@@ -2,10 +2,10 @@
   "id": "PLAN-66",
   "slug": "web-onboarding-frame-and-roles",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "running",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-66-web-onboarding-frame-and-roles",
+  "pr": "478",
+  "landing": "landings/PLAN-66.md",
   "seq": 66
 }

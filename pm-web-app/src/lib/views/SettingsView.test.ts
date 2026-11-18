@@ -5,8 +5,70 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/sve
 import SettingsView from './SettingsView.svelte';
 import { runtimeStore, navigateTo } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
-import { apiClient } from '../api/client';
+import { apiClient, type MachineSettingsRecord } from '../api/client';
 import { ClientError } from '../api/errors';
+
+/** The machine settings a test reads back: every aspect, the consents, the tokens, the durations. */
+const settings: MachineSettingsRecord = {
+  revision: 4,
+  aspects: [
+    { aspect: 'language', step: 1, summary: 'Deutsch, models English', current: 'de' },
+    { aspect: 'harness', step: 2, summary: 'Claude Code 2.4.1 (default)', current: 'claude' },
+    { aspect: 'catalogue', step: 3, summary: '3 models on 2 harnesses', current: '3' },
+    { aspect: 'roles', step: 4, summary: '36 roles', current: '36' },
+    { aspect: 'store', step: 5, summary: 'macOS Keychain', current: 'os' },
+    { aspect: 'providers', step: 6, summary: 'GitHub (gh)', current: 'github' },
+    { aspect: 'defaults', step: 7, summary: 'Pull Request · Test first', current: 'landing' },
+  ],
+  language_interface: 'de',
+  language_model: 'en',
+  documents_mode: 'ask',
+  cleanup_durations: {
+    plans_after_days: 30,
+    epics_after_days: 30,
+    logs_after_days: 30,
+    reports_after_days: 30,
+    unenrolled_after_days: 30,
+    remind_after_days: 3,
+  },
+  plan_defaults: {
+    landing: 'landing.pull-request',
+    method: 'method.test-first',
+    asking: 'ask.key-points',
+  },
+  consents: [
+    {
+      kind: 'scan_harnesses',
+      status: 'remembered',
+      remember: true,
+      granted_at: '2026-10-12T09:00:00Z',
+      channel: 'terminal',
+    },
+    {
+      kind: 'probe_harness_login',
+      status: 'remembered',
+      remember: true,
+      granted_at: '2026-10-12T09:10:00Z',
+      channel: 'Firefox on mbp-oliver',
+    },
+  ],
+  credentials: [
+    {
+      key: 'github',
+      provider: 'GitHub',
+      kind: 'fine-grained',
+      expires_in_days: 9,
+      expired: false,
+    },
+    {
+      key: 'sonar',
+      provider: 'SonarCloud',
+      kind: 'user token',
+      expired: true,
+      held_plan: 'fix-relay',
+    },
+  ],
+};
 
 /**
  * @param id the device id
@@ -14,6 +76,13 @@ import { ClientError } from '../api/errors';
  */
 function deviceRow(id: string): HTMLElement {
   return screen.getByTestId(`device-row-${id}`);
+}
+
+/**
+ * @param name the visible label of the tab
+ */
+async function openTab(name: string): Promise<void> {
+  await fireEvent.click(screen.getByRole('tab', { name }));
 }
 
 /**
@@ -58,6 +127,7 @@ describe('SettingsView component', () => {
         deviceLabel: 'Firefox on mbp-oliver',
         machineName: 'mbp-oliver',
         currentRoute: 'settings',
+        objectTab: 'access',
         currentState: null,
         isRevoked: false,
         revokedReason: '',
@@ -68,6 +138,7 @@ describe('SettingsView component', () => {
       }),
     );
 
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(settings);
     vi.spyOn(apiClient, 'getDevices').mockResolvedValue(mockDevices);
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       status: 'ready',
@@ -264,12 +335,15 @@ describe('SettingsView component', () => {
     render(SettingsView);
 
     await waitFor(() => expect(screen.getByTestId('lan-details-button')).toBeInTheDocument());
-    expect(screen.getByTestId('credential-entry')).toBeInTheDocument();
 
     await fireEvent.click(screen.getByTestId('lan-details-button'));
 
     await waitFor(() => expect(screen.getByTestId('lan-listener-modal')).toBeInTheDocument());
     expect(screen.getByTestId('lan-fingerprint')).toHaveTextContent('4F:1A:9C');
+
+    // The credential entry lives on its own tab of the one settings view.
+    await openTab('Credentials');
+    await waitFor(() => expect(screen.getByTestId('credential-entry')).toBeInTheDocument());
   });
 
   it('ends a devices read that times out in the error state instead of waiting for it', async () => {
@@ -423,5 +497,249 @@ describe('SettingsView component', () => {
     await fireEvent.click(screen.getByTestId('settings-back-button'));
 
     expect(get(runtimeStore).currentRoute).toBe('projects');
+  });
+});
+
+describe('the machine settings panels of the one settings view', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    localStorage.setItem('pm_device_label', 'Firefox on mbp-oliver');
+
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Firefox on mbp-oliver',
+        machineName: 'mbp-oliver',
+        currentRoute: 'settings',
+        objectTab: 'setup',
+        currentState: null,
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 7,
+        activeStep: 8,
+      }),
+    );
+
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue(settings);
+    vi.spyOn(apiClient, 'getDevices').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      status: 'ready',
+      web: { enabled: true, lan: true, port: 7420 },
+    });
+  });
+
+  it('shows the aspects of the setup and the documents mode on the setup tab', async () => {
+    render(SettingsView);
+
+    await waitFor(() => expect(screen.getByTestId('aspect-list')).toBeInTheDocument());
+
+    for (const aspect of ['language', 'harness', 'catalogue', 'roles', 'defaults']) {
+      expect(
+        screen.getByTestId('aspect-list').querySelector(`[data-aspect="${aspect}"]`)?.getAttribute(
+          'data-aspect',
+        ),
+      ).toBe(aspect);
+    }
+    expect(screen.getByTestId('documents-section')).toBeInTheDocument();
+    expect(screen.getByLabelText('Copy')).toBeInTheDocument();
+  });
+
+  it('shows the store and the providers on the credentials tab', async () => {
+    render(SettingsView);
+    await openTab('Credentials');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('aspect-list-credentials')).toBeInTheDocument(),
+    );
+    for (const aspect of ['store', 'providers']) {
+      expect(
+        screen
+          .getByTestId('aspect-list-credentials')
+          .querySelector(`[data-aspect="${aspect}"]`),
+      ).not.toBeNull();
+    }
+    expect(screen.getByText('macOS Keychain')).toBeInTheDocument();
+    expect(screen.getByText(/token expires in 9 days/)).toBeInTheDocument();
+  });
+
+  it('withdraws a remembered consent on the consents tab', async () => {
+    const withdrawSpy = vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
+      applied: true,
+      conflict: false,
+      revision: 5,
+    });
+    vi.spyOn(apiClient, 'getMachineSettings')
+      .mockResolvedValueOnce(settings)
+      .mockResolvedValueOnce({ ...settings, revision: 5, consents: [] });
+
+    render(SettingsView);
+    await openTab('Consents');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('withdraw-scan_harnesses')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('withdraw-scan_harnesses'));
+
+    await waitFor(() => {
+      expect(withdrawSpy).toHaveBeenCalledWith('consent:scan_harnesses', null, 4);
+    });
+  });
+
+  it('sends the reminder interval beside the days on the retention tab', async () => {
+    let recorded: MachineSettingsRecord = settings;
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockImplementation(async (key: string, value: string | null) => {
+        // The runtime keeps what it was sent, so the reload reads it back from the update itself.
+        if (key === 'cleanup_durations' && value) {
+          recorded = {
+            ...recorded,
+            revision: recorded.revision + 1,
+            cleanup_durations: {
+              ...recorded.cleanup_durations,
+              ...(JSON.parse(value) as Record<string, number>),
+            },
+          };
+        }
+        return { applied: true, conflict: false, revision: recorded.revision };
+      });
+    vi.spyOn(apiClient, 'getMachineSettings').mockImplementation(async () => recorded);
+
+    const first = render(SettingsView);
+    await openTab('Retention');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('cleanup_durations', expect.any(String), 4);
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.remind_after_days).toBe(7);
+    // A category the page does not show keeps the value the runtime holds.
+    expect(sent.epics_after_days).toBe(settings.cleanup_durations.epics_after_days);
+
+    // A reload reads the runtime's record back: the saved value is shown again.
+    first.unmount();
+    render(SettingsView);
+    await openTab('Retention');
+    await waitFor(() => {
+      expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(7);
+    });
+  });
+
+  it.each([
+    ['cleanup-days', '2.5', 'At least 7 days, or never.'],
+    ['cleanup-days', '3', 'At least 7 days, or never.'],
+    ['cleanup-remind-days', '', 'At least 1 day.'],
+    ['cleanup-remind-days', '2.5', 'At least 1 day.'],
+  ])('writes nothing when %s holds "%s" and names the minimum', async (testId, value, minimum) => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(SettingsView);
+    await openTab('Retention');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId(testId), { target: { value } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    // Each of these would reach the runtime as a value the contract refuses, or as a missing field
+    // the runtime fills with a default; the refusal names the minimum the value missed.
+    await waitFor(() => {
+      expect(screen.getByText(minimum)).toBeInTheDocument();
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('reports a conflict instead of overwriting the current value', async () => {
+    vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
+      applied: false,
+      conflict: true,
+      revision: 9,
+      current_value: 'copy',
+    });
+
+    render(SettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-documents')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByLabelText('Move'));
+    await fireEvent.click(screen.getByTestId('save-documents'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('conflict-dialog')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('conflict-dialog')).toHaveTextContent('Current value: Copy');
+    expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
+    expect(screen.getByTestId('conflict-keep')).toBeInTheDocument();
+  });
+
+  it('marks an expired token with the plans it holds and offers rotate and replace', async () => {
+    render(SettingsView);
+    await openTab('Credentials');
+
+    await waitFor(() => expect(screen.getByTestId('rotate-sonar')).toBeInTheDocument());
+    expect(screen.getByText(/expired: holds 1 plan/)).toBeInTheDocument();
+    expect(screen.getByText(/token expires in 9 days/)).toBeInTheDocument();
+    expect(screen.getByTestId('replace-github')).toBeInTheDocument();
+    // The row names the provider, never the machine key it is stored under, and the kind in words.
+    expect(screen.getByText(/GitHub · Fine-grained/)).toBeInTheDocument();
+  });
+
+  it('stores a rotated token and never shows it again', async () => {
+    const setCredentialSpy = vi.spyOn(apiClient, 'setCredential').mockResolvedValue();
+    vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
+      applied: true,
+      conflict: false,
+      revision: 5,
+    });
+
+    render(SettingsView);
+    await openTab('Credentials');
+    await waitFor(() => expect(screen.getByTestId('rotate-github')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByTestId('rotate-github'));
+    expect(screen.getByTestId('rotate-modal')).toBeInTheDocument();
+
+    const input = screen.getByTestId('rotate-secret');
+    expect(input).toHaveAttribute('type', 'password');
+    await fireEvent.input(input, { target: { value: 'ghp_new_secret' } });
+    await fireEvent.click(screen.getByTestId('rotate-save'));
+
+    await waitFor(() => expect(setCredentialSpy).toHaveBeenCalledWith('github', 'ghp_new_secret'));
+    await waitFor(() => expect(screen.getByTestId('token-notice')).toBeInTheDocument());
+    expect(screen.queryByTestId('rotate-modal')).not.toBeInTheDocument();
+  });
+
+  it('opens the onboarding at the aspect whose Change was clicked', async () => {
+    render(SettingsView);
+    await openTab('Credentials');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('change-aspect-providers')).toBeInTheDocument();
+    });
+
+    await fireEvent.click(screen.getByTestId('change-aspect-providers'));
+
+    const state = get(runtimeStore);
+    expect(state.currentRoute).toBe('onboarding');
+    expect(state.onboardingStep).toBe(6);
   });
 });

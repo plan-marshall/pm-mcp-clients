@@ -2,10 +2,10 @@
   "id": "PLAN-142",
   "slug": "web-column-engine",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "142-web-column-engine",
+  "pr": "442",
+  "landing": "landings/PLAN-142.md",
   "seq": 142
 }

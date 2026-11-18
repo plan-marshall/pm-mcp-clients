@@ -57,6 +57,8 @@ Status: `AGREED`. The settings of the machine, behind ⚙ in the header of every
 └──────────────────────────────────────────────────────────────────────────────┘
 ----
 
+The page is one view with a tab per part (`/settings?tab=…`, UX-S-12): *Setup* carries ① Language, ② Harnesses, ③ Models, ④ Roles, ⑦ Plans and the documents mode; *Access* the paired devices and the network listener; *Credentials* ⑤ the credential store, ⑥ Providers and the tokens; *Consents* the remembered consents; *Retention* the cleanup's durations. The first tab is `/settings?tab=setup`, the address `/settings/machine` is replaced by it, and the page maps the aspects onto these tabs rather than onto a column chain.
+
 [#aspects]
 == A Later Run of One Aspect
 
@@ -206,6 +208,11 @@ Terminal: `pm-operator config cleanup` (link:../terminal-client/26-cleanup.adoc#
 
 A value changed in another client (the terminal, another device) after this page showed it is not overwritten: the change made here is refused with `conflict`, nothing of it applied, and the line shows the current value beside the operator's choice with _Keep the current value_ and _Apply yours again_ (`common.conflict.*`). This holds for every aspect, the documents mode, and the cleanup's durations (link:../shared/work-actions.adoc#conflict[Changed in Two Clients at Once]; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]). For the cleanup's durations the two records are shown in the catalogue's words, one category each (`system.cleanup.durations.kind` and `system.cleanup.durations.value`), never as JSON; _Apply yours again_ sends the categories the operator changed over the record the other client left, so a category the operator did not touch keeps the other client's value.
 
+* *The 409's `current_value`* is a string carrying the setting's wire value: for `cleanup_durations` the JSON record of days (`{"plans_after_days":30,…}`), for the documents mode the bare word (`copy`, `move`, `ask`), for a consent `withdrawn` and for a credential its kind. Both lines are built from the one record the page read last: the current line renders `current_value` in the catalogue's words, and the _Your value_ line renders what the resend will send — the record the other client left with the operator's changed categories over it — never the record the page held before the other client changed it. A `current_value` the page cannot read as a record (an older client's bare number of days) is replaced by the record the page last read, so the categories the operator did not touch are never reset to the defaults; with no such record the page refuses the resend with `web.settings.conflict.no_record` and sends nothing.
+* *The changed categories* are measured against the record the page read into its fields, not against the store: a `machine.settings_changed` event that refreshes the store without a figure the page shows does not turn that figure into the operator's change.
+* *The record the page writes* is the stored record with the edited figures over it (`{...stored, plans_after_days, remind_after_days}`), so a category the record gains survives a save. `CLEANUP_CATEGORY_ORDER` is a presentation order, not a mirror of `CleanupDurations` in `pm-api`: a category the record adds is shown after the known ones, and the list never decides which keys are sent.
+* *The minimum*: the page's pre-check names it before anything is sent (at least `7` days or never; the reminder at least `1` day). A runtime refusal of the record (`invalid_value` on a `400`, read as its wire code by the client) shows the same retention sentence, and any other failure shows the generic one. Nothing outside the contract is written.
+
 [#credentials]
 == A Token Rotated or Replaced (`settings.credential`, `settings.store-credential`, `settings.verify-providers`)
 
@@ -237,7 +244,7 @@ Terminal: `pm-operator credentials rotate|set <credential_key>` (link:../termina
 [#devices]
 == Paired Devices
 
-The count of paired devices and whether the network listener is on; *Manage* opens the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]); from a browser on the network turning it off asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`, link:../shared/paired-devices.adoc#listener-off[Paired Devices, The Network Listener Turned Off]), and the browser then shows link:entry.adoc#listener-off[Entry, The Network Listener Turned Off]. The list is no state of the settings: it reads and acts through the devices' own endpoints (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[CLI, Coordination & Security, Devices in Both Clients]); leaving it returns to `settings.choose`, unchanged.
+The count of paired devices and whether the network listener is on; the *Access* tab shows the list of the paired devices, to rename one, revoke one or all others, and turn the network listener off (link:../shared/paired-devices.adoc[Paired Devices]); from a browser on the network turning it off asks first, since that browser loses its access with it (`devices.listener_off.confirm_title`, `devices.listener_off.confirm_explain`, link:../shared/paired-devices.adoc#listener-off[Paired Devices, The Network Listener Turned Off]), and the browser then shows link:entry.adoc#listener-off[Entry, The Network Listener Turned Off]. The list is no state of the settings: it reads and acts through the devices' own endpoints (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[CLI, Coordination & Security, Devices in Both Clients]); the tab follows the devices' events without leaving the settings.
 
 Terminal: `pm-operator web devices` (link:../terminal-client/08-transcripts-later.adoc#t-devices[Terminal Client, transcript]).
 
@@ -251,8 +258,8 @@ Keys of the area `web`; the cleanup's durations use the shared `system.cleanup.d
 |Key |English |German
 
 |`web.settings.page.title`
-|Machine settings
-|Einstellungen der Maschine
+|Settings
+|Einstellungen
 
 |`web.settings.aspects.title`
 |How this machine is set up

@@ -162,6 +162,25 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    testTimeout: 20_000,
     setupFiles: ['./src/setupTests.ts'],
+    // Measured only by `npm run test:coverage` (the Maven profile `coverage`); `test:ci` of the
+    // default build collects nothing. The lcov report is the one sonar.javascript.lcov.reportPaths
+    // of pm-web-app/pom.xml names.
+    coverage: {
+      provider: 'v8',
+      reporter: ['lcov', 'text'],
+      reportsDirectory: './target/coverage',
+      include: ['src/**/*.{ts,js,svelte}'],
+      // Test code is not measured: the test files, the setup, and the test support below src/test and
+      // src/lib/test (fixtures, stubs, style helpers).
+      exclude: [
+        'src/**/*.test.{ts,js}',
+        'src/**/*.d.ts',
+        'src/setupTests.ts',
+        'src/test/**',
+        'src/lib/test/**',
+      ],
+    },
   },
 });

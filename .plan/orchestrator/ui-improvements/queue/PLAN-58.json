@@ -2,10 +2,10 @@
   "id": "PLAN-58",
   "slug": "web-epic-page",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-58-web-epic-page",
+  "pr": "456",
+  "landing": "landings/PLAN-58.md",
   "seq": 58
 }

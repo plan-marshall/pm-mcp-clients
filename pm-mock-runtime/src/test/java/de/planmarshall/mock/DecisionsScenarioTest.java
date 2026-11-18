@@ -164,11 +164,11 @@ class DecisionsScenarioTest {
         void waiver() throws Exception {
             try (var runtime = MockRuntime.start(STATE)) {
                 var noReason = new DecisionAnswerRequest(Map.of(), null, null, null, "waive", "",
-                        "cli", null);
+                        "cli", null, null);
                 assertEquals(400, post(runtime, "/api/v1/decisions/WR-2/answer", noReason.toJson()).status());
 
                 var withReason = new DecisionAnswerRequest(Map.of(), null, null, null, "waive",
-                        Generators.letterStrings(4, 12).next(), "cli", null);
+                        Generators.letterStrings(4, 12).next(), "cli", null, null);
                 var response = post(runtime, "/api/v1/decisions/WR-2/answer", withReason.toJson());
                 assertEquals(200, response.status());
                 assertEquals("waived", JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())),
@@ -233,7 +233,7 @@ class DecisionsScenarioTest {
             try (var runtime = MockRuntime.start(STATE)) {
                 var request = new DecisionAnswerRequest(Map.of("1", "2"), "2", null,
                         Generators.letterStrings(4, 12).next(), "answer", null, "cli",
-                        "terminal-" + Generators.integers(1, 99).next());
+                        "terminal-" + Generators.integers(1, 99).next(), null);
                 assertEquals(200, post(runtime, "/api/v1/decisions/Q-007/answer", request.toJson()).status());
                 assertEquals(404, get(runtime, "/api/v1/decisions/Q-007").status());
             }

@@ -2,10 +2,10 @@
   "id": "PLAN-52",
   "slug": "web-running-work",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-52-web-running-work",
+  "pr": "459",
+  "landing": "landings/PLAN-52.md",
   "seq": 52
 }

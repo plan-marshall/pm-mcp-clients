@@ -1,10 +1,13 @@
 import { writable, derived, get } from 'svelte/store';
 import { apiClient } from '../api/client';
+import { reloadDeferred } from '../stores/reloadDeferred';
 
 export type Locale = 'en' | 'de';
 
 /** The storage key of the locale the person last chose. */
 const LOCALE_STORAGE_KEY = 'pm_locale';
+/** The language this browser chose in this visit, kept even where the browser cannot store it. */
+let explicitChoiceThisVisit: Locale | null = null;
 /** The storage key prefix of a cached catalogue, one entry per locale and runtime version. */
 const CATALOGUE_STORAGE_PREFIX = 'pm_i18n_messages_';
 
@@ -38,6 +41,34 @@ interface CachedCatalogue {
 
 export const currentLocale = writable<Locale>('en');
 export const messagesStore = writable<Record<string, string>>({});
+
+/**
+ * Keeps the document's declared language on the language it shows.
+ *
+ * `src/app.html` declares English for the first paint; every page after it — the pairing page
+ * included, which the root layout initialises — declares the locale the screen is written in, so a
+ * screen reader never reads German text as English.
+ */
+currentLocale.subscribe((locale) => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.lang = locale;
+});
+
+/**
+ * The language the operator asked for while the reload was deferred, applied when it is released.
+ *
+ * The page is then the old release's code and its request could ask for keys the newer runtime has
+ * retired, so the choice waits for the reload instead of fetching a pack now
+ * (texts-and-languages.adoc, Keys and Packs, Delivery).
+ */
+let pendingLocale: Locale | null = null;
+
+reloadDeferred.subscribe((deferred) => {
+  if (deferred || pendingLocale === null) return;
+  const requested = pendingLocale;
+  pendingLocale = null;
+  void setLocale(requested);
+});
 
 function skipWhitespace(text: string, startIndex: number): number {
   let i = startIndex;
@@ -447,6 +478,9 @@ async function readCatalogueVersion(): Promise<void> {
  * then replaces or extends it in the background. When the runtime is unreachable the error is
  * swallowed and the cached labels stay on screen.
  *
+ * While the reload is deferred this fetches nothing: it hydrates from the cache and returns, and
+ * the reload it waits for runs the load again against the release it loads.
+ *
  * @param locale the locale to load
  * @param area the catalogue area, `all` for the complete catalogue
  */
@@ -454,8 +488,20 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
   if (area === 'all') {
     hydrateFromCache(locale);
   }
+  if (get(reloadDeferred)) {
+    // The page is still the old release's code. It renders only what it already holds, and the
+    // reload it waits for runs this load again against the release it loads
+    // (texts-and-languages.adoc, Keys and Packs, Delivery).
+    return;
+  }
   try {
     const msgs = await apiClient.getMessages(locale, area);
+    if (get(reloadDeferred)) {
+      // The reload started waiting while this response was in flight: writing it now would put the
+      // newer runtime's pack on the old release's page, so it is dropped and read again after the
+      // reload.
+      return;
+    }
     const merged = area === 'all' ? msgs : { ...baseFor(locale), ...msgs };
     // A slow response must not replace the catalogue of a locale the person has switched to
     // since the request began: the store follows the active locale only.
@@ -493,11 +539,26 @@ function baseFor(locale: Locale): Record<string, string> {
  * locale on the operator's decision; a missing one is fetched from the runtime, not restored from
  * an older copy (2026-11-05).
  *
+ * While the reload is deferred, a pack that is not in hand is not fetched: the page is the old
+ * release's code, so the choice is kept as a pending one and applied when the reload is released.
+ *
  * @param locale the locale to switch to
  */
 export async function setLocale(locale: Locale): Promise<void> {
   const generation = ++switchGeneration;
   if (locale === get(currentLocale) && messagesLocale === locale) {
+    // The language the screen shows is the one asked for, so a pending choice an earlier deferred
+    // request left behind is superseded by this one.
+    pendingLocale = null;
+    rememberLocaleChoice(locale);
+    return;
+  }
+
+  if (get(reloadDeferred) && loadCachedCatalogue(locale) === null) {
+    // The reload waits for unsent input and the page is the old release's code: a pack that is not
+    // in hand is not fetched now, because the newer runtime may have retired the keys this code
+    // asks for. The choice is kept and applied when the reload is released.
+    pendingLocale = locale;
     rememberLocaleChoice(locale);
     return;
   }
@@ -519,9 +580,13 @@ export async function setLocale(locale: Locale): Promise<void> {
  * Keeps the person's choice for this browser; the header switch overrides the machine's recorded
  * language, and says so in its advisory.
  *
+ * The choice also lives in memory for this visit: where the browser refuses to store it, the
+ * explicit choice must still beat the machine's recorded language.
+ *
  * @param locale the chosen locale
  */
 function rememberLocaleChoice(locale: Locale): void {
+  explicitChoiceThisVisit = locale;
   const storage = catalogueStorage();
   try {
     storage?.setItem(LOCALE_STORAGE_KEY, locale);
@@ -531,24 +596,50 @@ function rememberLocaleChoice(locale: Locale): void {
 }
 
 /**
+ * @returns whether this browser chose a language of its own — stored, or made in this visit
+ */
+function browserChoseItsOwnLanguage(): boolean {
+  return explicitChoiceThisVisit !== null || storedLocale() !== null;
+}
+
+/**
+ * Forgets the choice this visit made, so a test starts as a browser that chose nothing.
+ *
+ * The choice lives in memory for the visit because a browser that refuses to store it must still
+ * win over the machine's recorded language; a module lives for the whole test file, so the test
+ * that asserts the adoption clears it first.
+ */
+export function forgetVisitChoice(): void {
+  explicitChoiceThisVisit = null;
+}
+
+/**
  * Loads one locale's complete catalogue, from the cache of the current runtime or from the runtime.
  *
  * A cached catalogue of the runtime version this browser already knows is current by construction
  * (the pack changes only with the runtime), so it is used at once and the switch is instantaneous.
- * Before the version is known the runtime is asked first, and the cache is the offline fallback.
+ * Before the version is known the runtime is asked first, and the cache is the offline fallback —
+ * except while the reload is deferred, where the held pack is what the old page renders and nothing
+ * is fetched at all.
  *
  * @param locale the locale to load
  * @returns its catalogue, or null when neither the cache nor the runtime answered
  */
 async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
   const cached = loadCachedCatalogue(locale);
-  if (cached && catalogueVersion !== null) {
+  if (cached && (catalogueVersion !== null || get(reloadDeferred))) {
     rememberMessages(locale, cached);
     rememberEnglish(locale, cached);
     return cached;
   }
   try {
     const messages = await apiClient.getMessages(locale, 'all');
+    if (get(reloadDeferred)) {
+      // The switch started before the reload began waiting: the answer belongs to the newer
+      // runtime, so the old page keeps the language it shows and the choice is made again after
+      // the reload.
+      return null;
+    }
     rememberMessages(locale, messages);
     rememberEnglish(locale, messages);
     persistCatalogue(locale, messages);
@@ -576,54 +667,60 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
 /**
  * Applies the interface language the machine recorded, where this browser chose none itself.
  *
- * Called after pairing, when the machine can be asked: a browser that paired just now must show
- * the recorded language without a reload (UC-ONB-3).
+ * Called after pairing, when the machine can be asked: the wait is bounded so the first paint is
+ * never held up by a slow runtime, and the read goes on so a late answer still switches the screen.
+ *
+ * @see adoptRecordedLocaleNow for the step that records the language, which waits for it
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
-  let expired = false;
-  const work = adoptRecordedLocaleUntimed(generation, () => expired);
-  await withinBound(work, ADOPTION_BOUND_MS, () => {
-    expired = true;
-  });
+  await withinBound(adoptRecordedLocaleUntimed(generation), ADOPTION_BOUND_MS);
+}
+
+/**
+ * Applies the interface language the machine recorded, and WAITS for it.
+ *
+ * The step that records the language must show the next screen in that language (UC-ONB-3,
+ * `onboarding-step-1.adoc`), so it cannot bound the wait: the screen waits until the machine's
+ * language and its catalogue are in hand, or until the machine cannot be asked at all. Starting the
+ * adoption also invalidates every adoption still in flight, so a language recorded later is never
+ * overwritten by an earlier read.
+ *
+ * @returns when the recorded language is applied, or could not be read
+ */
+export async function adoptRecordedLocaleNow(): Promise<void> {
+  await adoptRecordedLocaleUntimed(++switchGeneration);
 }
 
 /**
  * @param generation the switch generation the adoption was asked under
- * @param hasExpired tells whether the pairing's bound has passed
  */
-async function adoptRecordedLocaleUntimed(
-  generation: number,
-  hasExpired: () => boolean,
-): Promise<void> {
+async function adoptRecordedLocaleUntimed(generation: number): Promise<void> {
   await readCatalogueVersion();
-  if (storedLocale() || hasExpired()) return;
+  if (browserChoseItsOwnLanguage()) return;
   const recorded = await recordedLocale();
   if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
   const loaded = await loadCatalogueFor(recorded);
-  if (!loaded || generation !== switchGeneration || hasExpired() || storedLocale()) return;
+  if (!loaded || generation !== switchGeneration || browserChoseItsOwnLanguage()) return;
   currentLocale.set(recorded);
   messagesStore.set(loaded);
   messagesLocale = recorded;
 }
 
-/** How long a pairing waits for the recorded language before it paints in the browser's own. */
+/** How long a screen waits for the recorded language before it paints in its current one. */
 const ADOPTION_BOUND_MS = 2000;
 
 /**
  * @param work the promise to bound
  * @param ms the bound in milliseconds
- * @param onExpire called when the bound passes first
- * @returns the promise's value, or `null` when the bound passed first
+ * @returns the promise's value, or `null` when the bound passed first — the work itself is left to
+ *          finish, so nothing it applies is lost
  */
-function withinBound<T>(work: Promise<T>, ms: number, onExpire: () => void): Promise<T | null> {
+function withinBound<T>(work: Promise<T>, ms: number): Promise<T | null> {
   return Promise.race([
     work,
     new Promise<null>((resolve) => {
-      setTimeout(() => {
-        onExpire();
-        resolve(null);
-      }, ms);
+      setTimeout(() => resolve(null), ms);
     }),
   ]);
 }
@@ -730,8 +827,7 @@ function warnMissingKey(key: string): void {
  * @returns the template to format
  */
 function resolveTemplate(locale: Locale, key: string): string {
-  const active =
-    locale === get(currentLocale) ? ownMessage(get(messagesStore), key) : undefined;
+  const active = locale === get(currentLocale) ? ownMessage(get(messagesStore), key) : undefined;
   if (active !== undefined) return active;
 
   const own = ownMessage(sessionMessages[locale], key);

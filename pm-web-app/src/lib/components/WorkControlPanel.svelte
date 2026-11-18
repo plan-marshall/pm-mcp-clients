@@ -38,6 +38,8 @@
     scope?: number;
     /** Whether the epic's own resource is read; without it the scope and the count are unknown. */
     scopeKnown?: boolean;
+    /** Whether that read failed, so the bar says the true thing instead of "still being read". */
+    resourceFailed?: boolean;
     /** How many of the epic's plans run; `null` when the view does not know, and then the raise dialogue says the count is unknown. */
     running?: number | null;
     nextPlan?: string;
@@ -57,6 +59,7 @@
     ended = false,
     scope = 0,
     scopeKnown = true,
+    resourceFailed = false,
     running = null,
     nextPlan = '',
     pullRequestNumber = null,
@@ -138,13 +141,18 @@
   let actState = $derived(planState());
   let actSpecs = $derived(
     ended
-      ? [{ id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat_ended.title', role: 'secondary' as const }]
+      ? [
+          {
+            id: 'chat',
+            labelKey: 'control.plan.chat',
+            advisoryKey: 'control.plan.chat_ended.title',
+            role: 'secondary' as const,
+          },
+        ]
       : // Only the acts this panel can run reach the bar: an id the runtime offers beyond this set
         // (the plan page's `decision` among them) would otherwise be posted to a route that does
         // not take it, or drawn with a label no catalogue carries.
-        actsFor(subjectKind, actState, actions?.actions).filter((spec) =>
-          handledActs.has(spec.id),
-        ),
+        actsFor(subjectKind, actState, actions?.actions).filter((spec) => handledActs.has(spec.id)),
   );
   let barActs = $derived(actSpecs.map(toBarAct));
 
@@ -172,7 +180,9 @@
       destructive: spec.destructive,
       disabled: spec.disabled || waitingForEpic,
       disabledReason: waitingForEpic
-        ? $t('control.epic.next_waiting')
+        ? $t(
+            resourceFailed ? 'control.epic.next_unreadable' : 'control.epic.next_waiting',
+          )
         : spec.disabledReason,
     };
   }
@@ -838,11 +848,7 @@
     <p class="work-control__failure" data-testid="control-failure" role="alert">{failure}</p>
   {/if}
   {#if subjectKind === 'plan' && holds.length > 0}
-    <Button
-      variant="secondary"
-      data-testid="open-hold"
-      on:click={openHold}
-    >
+    <Button variant="secondary" data-testid="open-hold" on:click={openHold}>
       {$t('control.hold.resolve_title')}
     </Button>
   {/if}
@@ -885,7 +891,12 @@
           <Button variant="secondary" data-testid="pause-keep" on:click={closeDialog}>
             {$t('control.pause.keep_running')}
           </Button>
-          <Button variant="primary" data-testid="pause-confirm" disabled={busy} on:click={confirmPause}>
+          <Button
+            variant="primary"
+            data-testid="pause-confirm"
+            disabled={busy}
+            on:click={confirmPause}
+          >
             {$t('control.pause.action')}
           </Button>
         </div>
@@ -952,7 +963,12 @@
           <Button variant="secondary" data-testid="raise-leave" on:click={closeDialog}>
             {$t('control.epic.next_leave')}
           </Button>
-          <Button variant="primary" data-testid="raise-confirm" disabled={busy} on:click={confirmRaise}>
+          <Button
+            variant="primary"
+            data-testid="raise-confirm"
+            disabled={busy}
+            on:click={confirmRaise}
+          >
             {$t('control.epic.next_raise', { count: scope + 1 })}
           </Button>
         </div>
@@ -998,7 +1014,9 @@
                       name={line.passed ? 'state.check' : 'state.error'}
                       size={16}
                       label={$t(
-                        line.passed ? 'control.archive.check.passed' : 'control.archive.check.failed',
+                        line.passed
+                          ? 'control.archive.check.passed'
+                          : 'control.archive.check.failed',
                       )}
                     /></span
                   >
@@ -1057,7 +1075,7 @@
   consequences={[$t('control.cancel_epic.afterwards')]}
   actionLabel={$t('control.cancel_epic.action')}
   cancelLabel={$t('control.cancel_epic.keep')}
-  busy={busy}
+  {busy}
   confirmDisabled={!cancelReason.trim()}
   onConfirm={confirmEpicCancel}
   onClose={() => (epicCancelOpen = false)}
@@ -1154,7 +1172,10 @@
       class:work-control__notice={chatNoticeIsInfo}
       class:work-control__failure={!chatNoticeIsInfo}
       data-testid="chat-notice"
-      role={chatNoticeIsInfo ? 'status' : 'alert'}>{chatNotice}</p>
+      role={chatNoticeIsInfo ? 'status' : 'alert'}
+    >
+      {chatNotice}
+    </p>
   {/if}
 {/if}
 

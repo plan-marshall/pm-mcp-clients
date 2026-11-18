@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ApiClient } from './client';
+import { scenario, type ScenarioName } from './scenarioMockFetch';
 
 describe('ApiClient', () => {
   let client: ApiClient;
@@ -130,16 +131,9 @@ describe('ApiClient', () => {
     );
   });
 
-  it('fetches message catalogue and available locales via API', async () => {
+  it('fetches a message catalogue via API', async () => {
     // Arrange
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.endsWith('/api/v1/messages')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({ locales: ['en', 'de'], areas: ['common'] }),
-        });
-      }
       if (url.endsWith('/api/v1/messages/en/common')) {
         return Promise.resolve({
           ok: true,
@@ -151,11 +145,9 @@ describe('ApiClient', () => {
     });
 
     // Act
-    const meta = await client.getAvailableMessages();
     const messages = await client.getMessages('en', 'common');
 
     // Assert
-    expect(meta.locales).toContain('en');
     expect(messages['web.common.copy']).toBe('Copy');
   });
 
@@ -167,18 +159,6 @@ describe('ApiClient', () => {
           ok: true,
           status: 200,
           json: async () => [{ id: 'Q-007', title: 'Rebase conflict', subject: 'plan fix-relay' }],
-        });
-      }
-      if (url.endsWith('/api/v1/decisions/Q-007')) {
-        return Promise.resolve({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            id: 'Q-007',
-            title: 'Rebase conflict',
-            subject: 'plan fix-relay',
-            parts: [],
-          }),
         });
       }
       if (url.endsWith('/api/v1/decisions/Q-007/answer') && init?.method === 'POST') {
@@ -207,7 +187,6 @@ describe('ApiClient', () => {
 
     // Act
     const list = await client.getDecisions({ project: 'pm-mcp-clients' });
-    const single = await client.getDecision('Q-007');
     const answerRes = await client.answerDecision('Q-007', { option: '2' });
     const interp = await client.interpretDecision('Q-007', 'rebase');
     const withdrawRes = await client.withdrawDecision('Q-007');
@@ -215,7 +194,6 @@ describe('ApiClient', () => {
     // Assert
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe('Q-007');
-    expect(single.id).toBe('Q-007');
     expect(answerRes.ok).toBe(true);
     expect(interp.read_back_text).toBe('Rebase onto main');
     expect(withdrawRes.ok).toBe(true);
@@ -996,8 +974,7 @@ describe('ApiClient', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          json: async () =>
-            chatResource({ subject: { kind, id: subjectId }, scope: kind }),
+          json: async () => chatResource({ subject: { kind, id: subjectId }, scope: kind }),
         });
       }) as unknown as typeof fetch;
 
@@ -1016,6 +993,426 @@ describe('ApiClient', () => {
       ]);
     },
   );
+
+  describe('acts sent to the runtime', () => {
+    type Sent = { method: string; url: string; body: unknown };
+    let sent: Sent[];
+
+    /** Answers every request with the given status and body and records what was sent. */
+    function answer(status: number, body: unknown): void {
+      sent = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+        sent.push({
+          method: init?.method ?? 'GET',
+          url: url.replace('http://localhost:7420', ''),
+          body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+        });
+        return Promise.resolve({
+          ok: status >= 200 && status < 300,
+          status,
+          json: async () => body,
+        });
+      }) as unknown as typeof fetch;
+    }
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'not_withdrawable' }, 'not_withdrawable'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'withdraws an upgrade on the runtime route only and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: no second request to a route the contract does not have
+        await expect(client.withdrawUpgrade()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/operator/runtime/upgrade', body: undefined },
+        ]);
+      },
+    );
+
+    it.each([
+      ['a refusal with its code', 409, { error: 'act_not_available' }, 'act_not_available'],
+      ['an answer without a code', 404, {}, 'HTTP 404'],
+    ])(
+      'turns the network listener off on its own route and hands on %s',
+      async (_case, status, body, message) => {
+        // Arrange
+        answer(status, body);
+
+        // Act & Assert: the listener is never re-written through PUT /api/v1/web
+        await expect(client.turnOffLanListener()).rejects.toThrow(message);
+        expect(sent).toEqual([
+          { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+        ]);
+      },
+    );
+
+    it('turns the network listener off with one request', async () => {
+      // Arrange
+      answer(200, {});
+
+      // Act
+      await client.turnOffLanListener();
+
+      // Assert
+      expect(sent).toEqual([
+        { method: 'DELETE', url: '/api/v1/web/listeners/lan', body: undefined },
+      ]);
+    });
+
+    it('sends a machine setting and its withdrawal against the revision read', async () => {
+      // Arrange
+      answer(200, { status: 'applied', revision: 8 });
+
+      // Act
+      const changed = await client.updateMachineSetting('documents_mode', 'copy', 7);
+      await client.withdrawConsent('git_push', 8);
+
+      // Assert: MachineSettingsUpdateRequest {key, value, revision}; a withdrawal has no value
+      expect(changed).toEqual({ status: 'applied', revision: 8 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'documents_mode', value: 'copy', revision: 7 },
+        },
+        {
+          method: 'PUT',
+          url: '/api/v1/machine/settings',
+          body: { key: 'consent:git_push', value: null, revision: 8 },
+        },
+      ]);
+    });
+
+    it('returns a conflicting change of a setting instead of throwing it', async () => {
+      // Arrange
+      answer(409, { status: 'conflict', current_value: 'ask', revision: 9 });
+
+      // Act
+      const result = await client.updatePlanSettings('plan-1', 'landing', 'pr', 3);
+
+      // Assert: the screen shows the current value beside the operator's choice
+      expect(result).toEqual({ status: 'conflict', current_value: 'ask', revision: 9 });
+      expect(sent).toEqual([
+        {
+          method: 'PUT',
+          url: '/api/v1/plans/plan-1/settings',
+          body: { aspect: 'landing', value: 'pr', revision: 3 },
+        },
+      ]);
+    });
+
+    it.each([
+      ['a refusal with its code', { error: 'axis_bound' }, 'axis_bound'],
+      ['an answer without a code', {}, 'HTTP 500'],
+    ])('throws %s of a setting change other than a conflict', async (_case, body, message) => {
+      // Arrange
+      answer(500, body);
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', null, 3)).rejects.toThrow(
+        message,
+      );
+    });
+
+    it('ends a setting change in network_offline when the runtime cannot be reached', async () => {
+      // Arrange
+      const onOffline = vi.fn();
+      client.setOnOffline(onOffline);
+      globalThis.fetch = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+
+      // Act & Assert
+      await expect(client.updateMachineSetting('documents_mode', 'ask', 1)).rejects.toThrow(
+        'network_offline',
+      );
+      expect(onOffline).toHaveBeenCalledTimes(1);
+    });
+
+    it('treats a 401 to a setting change as the loss of the pairing', async () => {
+      // Arrange
+      localStorage.setItem('pm_device_secret', 'pmw_revoked');
+      const onRevoked = vi.fn();
+      client.setOnRevoked(onRevoked);
+      answer(401, {});
+
+      // Act & Assert
+      await expect(client.updatePlanSettings('plan-1', 'landing', 'pr', 1)).rejects.toThrow(
+        'unauthorized',
+      );
+      expect(sent[0]).toMatchObject({ method: 'PUT' });
+      expect(client.isPaired()).toBe(false);
+      expect(onRevoked).toHaveBeenCalledWith('unauthorized');
+    });
+
+    it.each([
+      ['without a reason', undefined, { act: 'continue' }],
+      ['with the reason the act requires', 'superseded', { act: 'abandon', reason: 'superseded' }],
+    ])('resolves a hold %s', async (_case, reason, body) => {
+      // Arrange
+      answer(200, { status: 'resolved' });
+
+      // Act
+      await client.resolveHold('plan 1', 'hold/7', body.act, reason);
+
+      // Assert: HoldResolutionRequest {act, reason?}, ids encoded into the path
+      expect(sent).toEqual([
+        { method: 'POST', url: '/api/v1/plans/plan%201/holds/hold%2F7/resolve', body },
+      ]);
+    });
+  });
+
+  describe('event streams', () => {
+    const encoder = new TextEncoder();
+
+    /** A stream body that sends the given text and stays open, or closes after it. */
+    function sseBody(text: string, close = false): ReadableStream<Uint8Array> {
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          if (text) controller.enqueue(encoder.encode(text));
+          if (close) controller.close();
+        },
+      });
+    }
+
+    beforeEach(() => {
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+    });
+
+    it.each([
+      ['an unreachable runtime', () => Promise.reject(new TypeError('Failed to fetch'))],
+      ['an answer that is no stream', () => Promise.resolve({ ok: false, status: 503 })],
+    ])(
+      'reports %s as reconnecting, gives up offline after ten attempts and connects again on Try again',
+      async (_case, answer) => {
+        // Arrange
+        vi.useFakeTimers();
+        const fetchMock = vi.fn().mockImplementation(answer);
+        globalThis.fetch = fetchMock as unknown as typeof fetch;
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+
+        // Act: the first attempt and the nine retries, two seconds apart
+        const off = client.subscribeEvents(() => {});
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(9 * 2000);
+
+        // Assert: the indicator names what the stream does, and the attempts stop at the limit
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+        expect(states).toEqual(['connecting', 'reconnecting', 'offline']);
+        await vi.advanceTimersByTimeAsync(10 * 2000);
+        expect(fetchMock).toHaveBeenCalledTimes(10);
+
+        // Act: the operator's Try again
+        client.retryEventStream();
+        await vi.advanceTimersByTimeAsync(0);
+
+        // Assert: one new attempt, reported as connecting again
+        expect(fetchMock).toHaveBeenCalledTimes(11);
+        expect(states.slice(3)).toEqual(['connecting', 'reconnecting']);
+        off();
+        expect(states.at(-1)).toBe('offline');
+      },
+    );
+
+    it('does not open a second connection on Try again while the stream is live', async () => {
+      // Arrange
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue({ ok: true, status: 200, body: sseBody('event: a\ndata: {}\n\n') });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const listener = vi.fn();
+      const off = client.subscribeEvents(listener);
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+
+      // Act
+      client.retryEventStream();
+
+      // Assert
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it.each([
+      ['device_revoked', true],
+      ['device_expired', true],
+      ['listener_closed', false],
+    ])(
+      'ends the pairing when the stream closes with %s only if the device lost it',
+      async (reason, revoked) => {
+        // Arrange
+        const onRevoked = vi.fn();
+        client.setOnRevoked(onRevoked);
+        const states: string[] = [];
+        client.setOnStreamState((state) => states.push(state));
+        globalThis.fetch = vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          body: sseBody(`event: stream.closed\ndata: {"reason":"${reason}"}\n\n`),
+        }) as unknown as typeof fetch;
+        const listener = vi.fn();
+
+        // Act
+        const off = client.subscribeEvents(listener);
+        await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('stream.closed', { reason }));
+
+        // Assert
+        if (revoked) {
+          await vi.waitFor(() => expect(onRevoked).toHaveBeenCalledWith({ reason }));
+          expect(client.isPaired()).toBe(false);
+          expect(states.at(-1)).toBe('offline');
+        } else {
+          expect(onRevoked).not.toHaveBeenCalled();
+          expect(client.isPaired()).toBe(true);
+          expect(states.at(-1)).toBe('connected');
+        }
+        off();
+      },
+    );
+
+    it('hands data that is no JSON on as text and skips a message without data', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: ping\n\nevent: log.line\ndata: plain text\n\n'),
+      }) as unknown as typeof fetch;
+      const listener = vi.fn();
+
+      // Act
+      const off = client.subscribeEvents(listener);
+
+      // Assert
+      await vi.waitFor(() => expect(listener).toHaveBeenCalledWith('log.line', 'plain text'));
+      expect(listener).toHaveBeenCalledTimes(1);
+      off();
+    });
+
+    it('keeps delivering to the other listeners when one of them throws', async () => {
+      // Arrange
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody('event: report.sent\ndata: {"subject":"Plan 7"}\n\n'),
+      }) as unknown as typeof fetch;
+      const broken = vi.fn(() => {
+        throw new Error('listener failed');
+      });
+      const healthy = vi.fn();
+      const states: string[] = [];
+      client.setOnStreamState((state) => states.push(state));
+
+      // Act
+      const offBroken = client.subscribeEvents(broken);
+      const offHealthy = client.subscribeEvents(healthy);
+
+      // Assert: the failure stays with its listener and is no stream failure
+      await vi.waitFor(() =>
+        expect(healthy).toHaveBeenCalledWith('report.sent', { subject: 'Plan 7' }),
+      );
+      expect(broken).toHaveBeenCalledTimes(1);
+      expect(states.at(-1)).toBe('connected');
+      offBroken();
+      offHealthy();
+    });
+
+    it('reads the activity of one task from its own route and stops on unsubscribe', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        body: sseBody(
+          'event: activity.entry\ndata: {"kind":"tool"}\n\nevent: activity.note\ndata: raw\n\n',
+        ),
+      });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act
+      const off = client.subscribeTaskActivity('plan 1', 'task/2', onEvent);
+
+      // Assert
+      await vi.waitFor(() => expect(onEvent).toHaveBeenCalledWith('activity.note', 'raw'));
+      expect(onEvent).toHaveBeenCalledWith('activity.entry', { kind: 'tool' });
+      expect(String(fetchMock.mock.calls[0][0])).toBe(
+        'http://localhost:7420/api/v1/plans/plan%201/tasks/task%2F2/activity/events',
+      );
+      const signal = (fetchMock.mock.calls[0][1] as RequestInit).signal as AbortSignal;
+      off();
+      expect(signal.aborted).toBe(true);
+    });
+
+    it('opens no activity stream without a pairing and delivers nothing for a refused one', async () => {
+      // Arrange
+      const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+      globalThis.fetch = fetchMock as unknown as typeof fetch;
+      const onEvent = vi.fn();
+
+      // Act: once unpaired, once refused
+      localStorage.clear();
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent)();
+      localStorage.setItem('pm_device_secret', 'pmw_stored_secret');
+      client.subscribeTaskActivity('plan-1', 'task-1', onEvent);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+      // Assert
+      expect(onEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  it('reads the runtime figures of the system snapshot under their wire names', async () => {
+    // Arrange: the runtime part as RuntimeMetrics writes it
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        runtime: {
+          version: '0.9.1',
+          build: '2026-11-01',
+          heap_used_bytes: 100,
+          heap_max_bytes: 400,
+          resident_memory_bytes: 300,
+          measured_at: '2026-11-13T10:00:00Z',
+          socket_listener: true,
+          loopback_listener: '127.0.0.1:7420',
+          network_listener: 'off',
+          paired_devices_count: 2,
+          newer_version: '0.9.2',
+          newer_version_date: '2026-11-10',
+          newer_version_checked_at: '2026-11-13T09:00:00Z',
+          release_notes_link: 'https://example.invalid/notes',
+          upgrade_supported: true,
+          upgrade_unsupported_reason: 'none',
+        },
+      }),
+    }) as unknown as typeof fetch;
+
+    // Act
+    const { runtime } = await client.getSystemSnapshot('hour');
+
+    // Assert: the view's names carry the wire values; a listener that is off is none
+    expect(runtime).toMatchObject({
+      version: '0.9.1',
+      build_date: '2026-11-01',
+      memory_used_bytes: 100,
+      memory_max_bytes: 400,
+      memory_resident_bytes: 300,
+      cpu_percent: null,
+      cpu_measured: false,
+      disk_measured_at: '2026-11-13T10:00:00Z',
+      socket_listener: true,
+      loopback_address: '127.0.0.1:7420',
+      lan_address: null,
+      lan_devices_count: 2,
+      upgrade_available_version: '0.9.2',
+      upgrade_available_date: '2026-11-10',
+      upgrade_checked_at: '2026-11-13T09:00:00Z',
+      upgrade_release_notes_url: 'https://example.invalid/notes',
+      upgrade_possible: true,
+      upgrade_disabled_reason: 'none',
+    });
+  });
 });
 
 /**
@@ -1425,5 +1822,1176 @@ describe('ApiClient chat on the B1 contract', () => {
 
     // Act & Assert
     expect(await client.getEndedChat('plan', 'codeberg-issues')).toBeNull();
+  });
+});
+
+/** One act of the client: the call, and the request it must send. */
+type RouteRow = [
+  name: string,
+  call: (client: ApiClient) => Promise<unknown>,
+  method: string,
+  path: string,
+  body: unknown,
+];
+
+/**
+ * The routes the client sends its acts and reads to. Each row is a route the mock runtime serves
+ * (its route constants) or the pm-api contract names; the request's method, path and body are the
+ * contract the runtime reads, so a changed segment, a lost optional parameter or a wrong body is
+ * caught here before the runtime refuses it.
+ */
+describe('ApiClient routes', () => {
+  let client: ApiClient;
+  let sent: { url: string; method: string; body: unknown }[];
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_secret');
+    client = new ApiClient('http://localhost:7420');
+    sent = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      sent.push({
+        url,
+        method: init?.method ?? 'GET',
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+      });
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({}) });
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const rows: RouteRow[] = [
+    ['getDevices', (c) => c.getDevices(), 'GET', '/api/v1/web/devices', undefined],
+    [
+      'renameDevice',
+      (c) => c.renameDevice('dev 1', 'Laptop'),
+      'PUT',
+      '/api/v1/web/devices/dev%201',
+      { label: 'Laptop' },
+    ],
+    [
+      'revokeDevice',
+      (c) => c.revokeDevice('dev-1'),
+      'DELETE',
+      '/api/v1/web/devices/dev-1',
+      undefined,
+    ],
+    [
+      'revokeOtherDevices',
+      (c) => c.revokeOtherDevices(),
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+    ],
+    [
+      'stepOnboarding',
+      (c) => c.stepOnboarding('next', { language: 'de' }),
+      'POST',
+      '/api/v1/onboarding/step',
+      { link: 'next', language: 'de' },
+    ],
+    ['startOnboardingAuto', (c) => c.startOnboardingAuto(), 'POST', '/api/v1/onboarding/auto', {}],
+    ['getRecipes for the machine', (c) => c.getRecipes(), 'GET', '/api/v1/recipes', undefined],
+    [
+      'getRecipes for a project',
+      (c) => c.getRecipes('pm mcp'),
+      'GET',
+      '/api/v1/recipes?project=pm%20mcp',
+      undefined,
+    ],
+    [
+      'openEntry',
+      (c) => c.openEntry('p-1', { kind: 'plan' } as never),
+      'POST',
+      '/api/v1/projects/p-1/entries',
+      { kind: 'plan' },
+    ],
+    ['getEntry', (c) => c.getEntry('e-1'), 'GET', '/api/v1/entries/e-1', undefined],
+    [
+      'actEntry without a body',
+      (c) => c.actEntry('e-1', 'chat'),
+      'POST',
+      '/api/v1/entries/e-1/links/chat',
+      {},
+    ],
+    [
+      'actEntry with a body',
+      (c) => c.actEntry('e-1', 'choose:fix', { recipe: 'fix' }),
+      'POST',
+      '/api/v1/entries/e-1/links/choose:fix',
+      { recipe: 'fix' },
+    ],
+    [
+      'listProjectFiles at the checkout root',
+      (c) => c.listProjectFiles('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=checkout',
+      undefined,
+    ],
+    [
+      'listProjectFiles below the home',
+      (c) => c.listProjectFiles('p-1', 'home', 'docs'),
+      'GET',
+      '/api/v1/projects/p-1/files?root=home&path=docs',
+      undefined,
+    ],
+    [
+      'startPlan',
+      (c) => c.startPlan({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/plans/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'startEpic',
+      (c) => c.startEpic({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/start',
+      { project_id: 'p-1' },
+    ],
+    [
+      'getDecomposition',
+      (c) => c.getDecomposition('p-1', 'ep-1'),
+      'GET',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition',
+      undefined,
+    ],
+    [
+      'checkDecomposition',
+      (c) => c.checkDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/check',
+      {},
+    ],
+    [
+      'instructDecomposition',
+      (c) => c.instructDecomposition('p-1', 'ep-1', { action: 'split' } as never),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/instruct',
+      { action: 'split' },
+    ],
+    [
+      'commitDecomposition',
+      (c) => c.commitDecomposition('p-1', 'ep-1'),
+      'POST',
+      '/api/v1/projects/p-1/epics/ep-1/decomposition/commit',
+      {},
+    ],
+    [
+      'getUnclaimedLessons',
+      (c) => c.getUnclaimedLessons('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/lessons',
+      undefined,
+    ],
+    [
+      'checkLessonPremise',
+      (c) => c.checkLessonPremise('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/premise-check',
+      {},
+    ],
+    [
+      'claimLesson',
+      (c) => c.claimLesson('p-1', 'l-1', true),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/claim',
+      { use_anyway: true },
+    ],
+    [
+      'retireLesson without a reason',
+      (c) => c.retireLesson('p-1', 'l-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      {},
+    ],
+    [
+      'retireLesson with a reason',
+      (c) => c.retireLesson('p-1', 'l-1', 'stale'),
+      'POST',
+      '/api/v1/projects/p-1/sources/lessons/l-1/retire',
+      { reason: 'stale' },
+    ],
+    [
+      'observePullRequest',
+      (c) => c.observePullRequest('p-1', '#214'),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/observe',
+      { pr_url: '#214' },
+    ],
+    [
+      'adoptPullRequest',
+      (c) => c.adoptPullRequest({ project_id: 'p-1' } as never),
+      'POST',
+      '/api/v1/projects/p-1/sources/pr/adopt',
+      { project_id: 'p-1' },
+    ],
+    [
+      'previewLocalChanges',
+      (c) => c.previewLocalChanges('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/sources/local-changes/preview',
+      undefined,
+    ],
+    [
+      'captureLocalChanges',
+      (c) => c.captureLocalChanges('p-1', 'pv-1'),
+      'POST',
+      '/api/v1/projects/p-1/sources/local-changes/capture',
+      { project_id: 'p-1', preview_id: 'pv-1', confirmed: true },
+    ],
+    [
+      'setCredential',
+      (c) => c.setCredential('github', 'ghp_x'),
+      'PUT',
+      '/api/v1/credentials/github',
+      { secret: 'ghp_x' },
+    ],
+    ['getProjects', (c) => c.getProjects(), 'GET', '/api/v1/projects', undefined],
+    [
+      'getProjectExplorer',
+      (c) => c.getProjectExplorer(),
+      'GET',
+      '/api/v1/projects?all=true',
+      undefined,
+    ],
+    [
+      'toggleFavourite',
+      (c) => c.toggleFavourite('p-1', true),
+      'PUT',
+      '/api/v1/projects/p-1/favourite',
+      { favourite: true },
+    ],
+    [
+      'startProjectOnboarding',
+      (c) => c.startProjectOnboarding('/src/new'),
+      'POST',
+      '/api/v1/project-onboardings',
+      { path: '/src/new' },
+    ],
+    [
+      'releaseProject by default',
+      (c) => c.releaseProject('p-1'),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: false },
+    ],
+    [
+      'releaseProject forced',
+      (c) => c.releaseProject('p-1', 'moved', true),
+      'POST',
+      '/api/v1/projects/p-1/release',
+      { project_id: 'p-1', confirm_release: true, force: true, reason: 'moved' },
+    ],
+    ['unenrolProject', (c) => c.unenrolProject('p-1'), 'POST', '/api/v1/projects/p-1/unenrol', {}],
+    [
+      'abandonOnboarding by its id',
+      (c) => c.abandonOnboarding('onb 1'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb%201',
+      undefined,
+    ],
+    [
+      'abandonOnboarding by its link',
+      (c) => c.abandonOnboarding('/api/v1/project-onboardings/onb-1/abandon'),
+      'DELETE',
+      '/api/v1/project-onboardings/onb-1/abandon',
+      undefined,
+    ],
+    [
+      'getProjectDetail',
+      (c) => c.getProjectDetail('p-1'),
+      'GET',
+      '/api/v1/projects/p-1',
+      undefined,
+    ],
+    [
+      'getEndedWork on its first page',
+      (c) => c.getEndedWork('p-1'),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=1',
+      undefined,
+    ],
+    [
+      'getEndedWork on a later page',
+      (c) => c.getEndedWork('p-1', 3),
+      'GET',
+      '/api/v1/projects/p-1/ended?page=3',
+      undefined,
+    ],
+    [
+      'getReports older of a project',
+      (c) => c.getReports(true, 'p-1'),
+      'GET',
+      '/api/v1/reports?older=true&project=p-1',
+      undefined,
+    ],
+    ['markReportRead', (c) => c.markReportRead('rep-1'), 'POST', '/api/v1/reports/rep-1/read', {}],
+    [
+      'getDecisions of a plan',
+      (c) => c.getDecisions({ project: 'p-1', plan: 'fix' }),
+      'GET',
+      '/api/v1/decisions?project=p-1&plan=fix',
+      undefined,
+    ],
+    [
+      'answerDecision of a plan',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never, 'fix'),
+      'POST',
+      '/api/v1/plans/fix/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'answerDecision of the machine',
+      (c) => c.answerDecision('Q-7', { option: '2' } as never),
+      'POST',
+      '/api/v1/decisions/Q-7/answer',
+      { option: '2' },
+    ],
+    [
+      'getSystemSnapshot of a window and project',
+      (c) => c.getSystemSnapshot('today', 'p-1'),
+      'GET',
+      '/api/v1/system?window=today&project=p-1',
+      undefined,
+    ],
+    [
+      'getSystemSnapshot by default',
+      (c) => c.getSystemSnapshot(),
+      'GET',
+      '/api/v1/system',
+      undefined,
+    ],
+    [
+      'stopRuntime after a drain',
+      (c) => c.stopRuntime('drain'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: false, drain: true },
+    ],
+    [
+      'stopRuntime now and restart',
+      (c) => c.stopRuntime('now', 'restart'),
+      'POST',
+      '/api/v1/runtime/stop',
+      { now: true, drain: false, then: 'restart' },
+    ],
+    [
+      'upgradeRuntime by default',
+      (c) => c.upgradeRuntime(),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'drain' },
+    ],
+    [
+      'upgradeRuntime to a version now',
+      (c) => c.upgradeRuntime('0.10.0', 'now'),
+      'POST',
+      '/api/v1/operator/runtime/upgrade',
+      { when: 'now', version: '0.10.0' },
+    ],
+    [
+      'executeCleanup of every item',
+      (c) => c.executeCleanup('cln-1'),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: [] },
+    ],
+    [
+      'executeCleanup leaving items out',
+      (c) => c.executeCleanup('cln-1', ['a']),
+      'POST',
+      '/api/v1/system/cleanup/cln-1/delete',
+      { unchecked_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of items',
+      (c) => c.releaseKeptCleanup(['a']),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: ['a'] },
+    ],
+    [
+      'releaseKeptCleanup of none named',
+      (c) => c.releaseKeptCleanup(),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { item_ids: [] },
+    ],
+    [
+      'releaseKeptCleanup of all',
+      (c) => c.releaseKeptCleanup(undefined, true),
+      'PUT',
+      '/api/v1/system/cleanup/kept',
+      { all: true },
+    ],
+    [
+      'getPlanProcess',
+      (c) => c.getPlanProcess('fix'),
+      'GET',
+      '/api/v1/plans/fix/process',
+      undefined,
+    ],
+    [
+      'getTaskActivity',
+      (c) => c.getTaskActivity('fix', 'TASK-3'),
+      'GET',
+      '/api/v1/plans/fix/tasks/TASK-3/activity',
+      undefined,
+    ],
+    [
+      'getEpicProcess',
+      (c) => c.getEpicProcess('relay'),
+      'GET',
+      '/api/v1/epics/relay/process',
+      undefined,
+    ],
+    ['getEpicResource', (c) => c.getEpicResource('relay'), 'GET', '/api/v1/epics/relay', undefined],
+    [
+      'getEpicReview',
+      (c) => c.getEpicReview('relay', 'watches'),
+      'GET',
+      '/api/v1/epics/relay/review?register=watches',
+      undefined,
+    ],
+    [
+      'keepReviewItem',
+      (c) => c.keepReviewItem('relay', 'findings', 'F-1', 'watch'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/keep',
+      { register: 'findings', as: 'watch' },
+    ],
+    [
+      'dropReviewItem',
+      (c) => c.dropReviewItem('relay', 'findings', 'F-1', 'done'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/drop',
+      { register: 'findings', reason: 'done' },
+    ],
+    [
+      'promoteReviewItem for a first draft',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings' },
+    ],
+    [
+      'promoteReviewItem with an instruction',
+      (c) => c.promoteReviewItem('relay', 'findings', 'F-1', 'smaller'),
+      'POST',
+      '/api/v1/epics/relay/review/items/F-1/promote',
+      { register: 'findings', instruction: 'smaller' },
+    ],
+    [
+      'editReviewItem',
+      (c) => c.editReviewItem('relay', 'watches', 'W-1', 'add a rule'),
+      'POST',
+      '/api/v1/epics/relay/review/items/W-1/edit',
+      { register: 'watches', instruction: 'add a rule' },
+    ],
+    [
+      'acceptReviewReadBack',
+      (c) => c.acceptReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/accept',
+      { register: 'watches' },
+    ],
+    [
+      'discardReviewReadBack',
+      (c) => c.discardReviewReadBack('relay', 'watches'),
+      'POST',
+      '/api/v1/epics/relay/review/read-back/discard',
+      { register: 'watches' },
+    ],
+    [
+      'stageReviewPlan',
+      (c) => c.stageReviewPlan('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/plan/stage',
+      { register: 'findings' },
+    ],
+    [
+      'commitReview',
+      (c) => c.commitReview('relay', 'findings'),
+      'POST',
+      '/api/v1/epics/relay/review/commit',
+      { register: 'findings' },
+    ],
+    [
+      'getDecisionChat',
+      (c) => c.getDecisionChat('Q-7'),
+      'GET',
+      '/api/v1/decisions/Q-7/chat',
+      undefined,
+    ],
+    [
+      'decisionChatTurn',
+      (c) => c.decisionChatTurn('Q-7', 'and then?'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/turns',
+      { text: 'and then?' },
+    ],
+    [
+      'answerDecisionChatProposal accepted',
+      (c) => c.answerDecisionChatProposal('Q-7', true),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/accept',
+      {},
+    ],
+    [
+      'answerDecisionChatProposal rejected',
+      (c) => c.answerDecisionChatProposal('Q-7', false),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/proposal/reject',
+      {},
+    ],
+    [
+      'endDecisionChat',
+      (c) => c.endDecisionChat('Q-7'),
+      'POST',
+      '/api/v1/decisions/Q-7/chat/end',
+      {},
+    ],
+    [
+      'applyPlanAction without a body',
+      (c) => c.applyPlanAction('fix', 'pause'),
+      'POST',
+      '/api/v1/plans/fix/actions/pause',
+      {},
+    ],
+    [
+      'applyPlanAction with a body',
+      (c) => c.applyPlanAction('fix', 'abandon', { reason: 'r' }),
+      'POST',
+      '/api/v1/plans/fix/actions/abandon',
+      { reason: 'r' },
+    ],
+    [
+      'applyEpicAction without a body',
+      (c) => c.applyEpicAction('relay', 'auto'),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      {},
+    ],
+    [
+      'applyEpicAction with a body',
+      (c) => c.applyEpicAction('relay', 'auto', { on: true }),
+      'POST',
+      '/api/v1/epics/relay/actions/auto',
+      { on: true },
+    ],
+    [
+      'getPlanSettings',
+      (c) => c.getPlanSettings('fix'),
+      'GET',
+      '/api/v1/plans/fix/settings',
+      undefined,
+    ],
+  ];
+
+  it.each(rows)(
+    '%s sends its request to the runtime route',
+    async (_name, call, method, path, body) => {
+      // Act
+      await call(client);
+
+      // Assert: one request, to the route, with the method and the body the runtime reads
+      expect(sent).toEqual([{ url: `http://localhost:7420${path}`, method, body }]);
+    },
+  );
+});
+
+/**
+ * The four records of the intent and outline design (`intent-and-outline.adoc`): a plan's intent, its
+ * outline, the epic's intent, and the `over_size` distribution. The client's types are the wire's, so
+ * every field the contract carries is pinned against the mock's own record, and a record that does
+ * not fit the contract fails closed instead of reaching a panel half read.
+ */
+describe('ApiClient intent and outline records', () => {
+  let client: ApiClient;
+
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_secret');
+    client = new ApiClient('http://localhost:7420');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * @param name the canonical scenario the runtime serves
+   * @param route the route key of the scenario file
+   * @returns the record the mock answers that route with
+   */
+  function served(name: ScenarioName, route: string): unknown {
+    return scenario(name).routes[route].representation;
+  }
+
+  /**
+   * @param body the answer the runtime gives
+   * @param status the status of the answer
+   */
+  function answer(body: unknown, status = 200): void {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: status < 400,
+      status,
+      json: async () => body,
+    });
+  }
+
+  it('reads a plan intent with every field of the contract', async () => {
+    // Arrange: the mock's own record for fix-relay
+    answer(served('running-work', 'GET /api/v1/plans/fix-relay/intent'));
+
+    // Act
+    const record = await client.getPlanIntent('fix-relay');
+
+    // Assert
+    expect(record).toEqual({
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect without losing queued events.',
+      criteria: [
+        {
+          id: 'AC-001',
+          text: 'When a relay connection drops, the relay shall reconnect within five seconds.',
+          satisfies: [1, 2],
+          status: 'met',
+          status_reason: 'The reconnection and backoff tests pass.',
+        },
+        {
+          id: 'AC-002',
+          text: 'While the relay reconnects, the queue shall keep every accepted event.',
+          satisfies: [2, 3],
+          status: 'met',
+        },
+        {
+          id: 'AC-003',
+          text: 'The relay shall report the number of reconnects it performed.',
+          satisfies: [3],
+          status: 'not_verified',
+          status_reason: 'The mock harness does not expose the reconnect counter.',
+        },
+        {
+          id: 'AC-004',
+          text: 'The old relay endpoint shall keep serving existing clients.',
+          satisfies: [1],
+          status: 'not_met',
+          status_reason: 'The compatibility test still fails for the legacy event shape.',
+        },
+      ],
+      non_goals: [
+        { id: 'NG-1', text: 'Change the on-disk queue format.' },
+        { id: 'NG-2', text: 'Support more than one relay per machine.' },
+      ],
+      decisions: [
+        {
+          id: 'DC-001',
+          text: 'Retry with exponential backoff.',
+          decider: 'operator',
+          options_weighed: ['fixed interval', 'exponential backoff'],
+          question_id: 'Q-007',
+          adr: { adr_id: 'ADR-0001', relation: 'follows' },
+        },
+        {
+          id: 'DC-002',
+          text: 'The quorum set the backoff ceiling at five minutes.',
+          decider: 'quorum',
+          options_weighed: ['30 seconds', '5 minutes'],
+          question_id: 'Q-008',
+        },
+        {
+          id: 'DC-003',
+          text: 'The transport stays HTTP/2.',
+          decider: 'role',
+          options_weighed: ['HTTP/1.1', 'HTTP/2'],
+        },
+        {
+          id: 'DC-004',
+          text: 'The existing queue already persists each accepted event.',
+          decider: 'fact',
+          options_weighed: [],
+          evidence: 'pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java',
+        },
+        {
+          id: 'DC-005',
+          text: 'The reconnect count leaves the status resource for now.',
+          decider: 'operator',
+          options_weighed: ['keep the count', 'leave it out'],
+          question_id: 'Q-009',
+          adr: { adr_id: 'ADR-0002', relation: 'contradicts' },
+        },
+      ],
+      open_questions: ['Does the relay need IPv6 support?'],
+      deferred: [
+        {
+          id: 'DF-001',
+          text: 'Add reconnect metrics to the status resource.',
+          reason: "No metrics endpoint is in this plan's scope.",
+        },
+      ],
+      builder_check: {
+        resolution: 'pending',
+        questions: [
+          {
+            id: 'BQ-001',
+            text: 'Which timeout applies when the queue is full during a reconnect?',
+            sort: 'operator',
+            recommended: true,
+            state: 'open',
+          },
+          {
+            id: 'BQ-002',
+            text: 'Use the existing retry helper from cui-http.',
+            sort: 'minor',
+            recommended: false,
+            state: 'open',
+          },
+          {
+            id: 'BQ-003',
+            text: 'AC-002 answers the event-retention question.',
+            sort: 'answered',
+            recommended: false,
+            state: 'answered',
+            answer: 'AC-002',
+          },
+        ],
+      },
+    });
+  });
+
+  it('reads a plan outline with every field of the contract', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/plans/fix-relay/outline'));
+
+    // Act
+    const record = await client.getPlanOutline('fix-relay');
+
+    // Assert
+    expect(record).toEqual({
+      plan_id: 'fix-relay',
+      revision: 2,
+      summary: 'Reconnect the relay with backoff and keep the queue durable.',
+      deliverables: [
+        {
+          number: 1,
+          title: 'Reconnect the relay',
+          intent_gloss: 'Reconnect with exponential backoff.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/RelayConnection.java',
+              intent: 'write-replace',
+            },
+            {
+              path: 'pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java',
+              intent: 'write-new',
+            },
+          ],
+          depends_on: [],
+          satisfies: ['AC-001', 'AC-004'],
+          verification: 'RelayConnectionTest covers reconnect and legacy event shapes.',
+        },
+        {
+          number: 2,
+          title: 'Keep the queue durable',
+          intent_gloss: 'Persist every accepted event before acknowledging it.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/EventQueue.java',
+              intent: 'write-new',
+            },
+            {
+              path: 'pm-relay/src/test/java/de/planmarshall/relay/EventQueueTest.java',
+              intent: 'write-new',
+            },
+          ],
+          depends_on: [1],
+          satisfies: ['AC-002'],
+          verification: 'EventQueueTest restarts the queue with a full buffer.',
+        },
+        {
+          number: 3,
+          title: 'Expose the reconnect count',
+          intent_gloss: 'Report reconnects on the status resource.',
+          affected_files: [
+            {
+              path: 'pm-relay/src/main/java/de/planmarshall/relay/RelayStatus.java',
+              intent: 'write-conditional',
+            },
+          ],
+          depends_on: [1],
+          satisfies: ['AC-003'],
+        },
+      ],
+      added_dependencies: [
+        {
+          name: 'de.cuioss:cui-http',
+          version: '2.1.0',
+          justification: 'The retry adapter carries the backoff policy.',
+          deliverable: 1,
+        },
+      ],
+    });
+  });
+
+  it('reads the epic intent with its checks, its plans, and the strings it carries', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/epics/relay-hardening/intent'));
+
+    // Act
+    const record = await client.getEpicIntent('relay-hardening');
+
+    // Assert
+    expect(record).toEqual({
+      epic_id: 'relay-hardening',
+      destination: 'The relay survives a dropped connection without losing an event.',
+      done_when: [
+        {
+          text: 'The relay reconnects within five seconds after a dropped connection.',
+          verdict: 'met',
+          evidence: [
+            'pm://plans/fix-relay/report',
+            'pm-relay/src/test/java/de/planmarshall/relay/RelayConnectionTest.java',
+          ],
+        },
+        {
+          text: 'Every accepted event survives a relay restart.',
+          verdict: 'met',
+          evidence: ['pm://plans/fix-relay/report'],
+        },
+        {
+          text: 'The reconnect count is observable on the status resource.',
+          verdict: 'not_met',
+          evidence: ['pm://plans/fix-relay/report'],
+        },
+        {
+          text: 'The legacy relay endpoint keeps serving existing clients.',
+          verdict: 'pending',
+          evidence: [],
+        },
+      ],
+      non_goals: ['Change the on-disk queue format.', 'Support more than one relay per machine.'],
+      not_yet_specified: [
+        'Does the relay need IPv6 support?',
+        'Should reconnects be rate-limited per client?',
+      ],
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          done_when: [
+            'The relay reconnects within five seconds.',
+            'The queue keeps every accepted event.',
+          ],
+        },
+        {
+          plan_id: 'queue-format',
+          title: 'Keep the Queue',
+          done_when: ['The queue survives a restart.'],
+        },
+      ],
+    });
+  });
+
+  it('reads the over_size distributions of every role, with their multiples and buckets', async () => {
+    // Arrange
+    answer(served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
+
+    // Act
+    const record = await client.getOverSize('pm-mcp-clients');
+
+    // Assert
+    expect(record).toEqual({
+      project_id: 'pm-mcp-clients',
+      distributions: [
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'implement',
+          current_multiple: 3,
+          proposed_multiple: 2,
+          buckets: [
+            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
+            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
+            { label: '2-3x', from_multiple: 2, to_multiple: 3, task_count: 3, flagged_tasks: 3 },
+            {
+              label: '3x and more',
+              from_multiple: 3,
+              to_multiple: 6,
+              task_count: 4,
+              flagged_tasks: 4,
+            },
+          ],
+        },
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'module-tester',
+          current_multiple: 3,
+          buckets: [
+            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 6, flagged_tasks: 0 },
+            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 2, flagged_tasks: 0 },
+            {
+              label: '3x and more',
+              from_multiple: 3,
+              to_multiple: 6,
+              task_count: 1,
+              flagged_tasks: 0,
+            },
+          ],
+        },
+        {
+          project_id: 'pm-mcp-clients',
+          role: 'architecture',
+          current_multiple: 3,
+          buckets: [],
+        },
+      ],
+    });
+  });
+
+  it('sends each request to the record route of its own id', async () => {
+    // Arrange: every answer is a valid record of its own kind
+    const urls: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      urls.push(url);
+      const body = url.includes('/metrics/oversize')
+        ? served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize')
+        : url.includes('/epics/')
+          ? served('running-work', 'GET /api/v1/epics/relay-hardening/intent')
+          : url.endsWith('/outline')
+            ? served('running-work', 'GET /api/v1/plans/fix-relay/outline')
+            : served('running-work', 'GET /api/v1/plans/fix-relay/intent');
+      return Promise.resolve({ ok: true, status: 200, json: async () => body });
+    });
+
+    // Act: an id with a space is encoded into one path segment
+    await client.getPlanIntent('fix relay');
+    await client.getPlanOutline('fix relay');
+    await client.getEpicIntent('relay hardening');
+    await client.getOverSize('pm mcp clients');
+
+    // Assert
+    expect(urls).toEqual([
+      'http://localhost:7420/api/v1/plans/fix%20relay/intent',
+      'http://localhost:7420/api/v1/plans/fix%20relay/outline',
+      'http://localhost:7420/api/v1/epics/relay%20hardening/intent',
+      'http://localhost:7420/api/v1/projects/pm%20mcp%20clients/metrics/oversize',
+    ]);
+  });
+
+  it('reads distributions the runtime serves without a proposal, as the mock does', async () => {
+    // Arrange: the fully-onboarded scenario serves no proposed multiple
+    answer(served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
+
+    // Act
+    const record = await client.getOverSize('pm-mcp-clients');
+
+    // Assert
+    const implement = record?.distributions[0];
+    expect(implement?.proposed_multiple).toBeUndefined();
+    expect(implement?.buckets).toHaveLength(4);
+    expect(implement?.buckets[0]).toEqual({
+      label: '0-1x',
+      from_multiple: 0,
+      to_multiple: 1,
+      task_count: 8,
+      flagged_tasks: 0,
+    });
+  });
+
+  it('reads the explicit nulls the engine writes as absent, as the pm-api contract does', async () => {
+    // Arrange: a record whose optional members are present and null
+    answer({
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect.',
+      criteria: [{ id: 'AC-001', text: 'The relay shall reconnect.', satisfies: [], status: null }],
+      non_goals: [{ id: 'NG-1', text: 'Do not change the format.' }],
+      decisions: [
+        {
+          id: 'DC-001',
+          text: 'The transport stays HTTP/2.',
+          decider: 'role',
+          options_weighed: [],
+          question_id: null,
+          evidence: null,
+          adr: null,
+        },
+      ],
+      open_questions: [],
+      deferred: [],
+      builder_check: { resolution: 'pending', questions: [], reason: null },
+    });
+
+    // Act
+    const record = await client.getPlanIntent('fix-relay');
+
+    // Assert
+    expect(record?.criteria[0].status).toBeUndefined();
+    expect(record?.decisions[0].adr).toBeUndefined();
+    expect(record?.decisions[0].evidence).toBeUndefined();
+    expect(record?.decisions[0].question_id).toBeUndefined();
+    expect(record?.builder_check?.reason).toBeUndefined();
+  });
+
+  it('refuses a builder check that breaks its own rules, naming the field', async () => {
+    // Arrange: the three refusals BuilderCheckResource makes, one record each
+    const base = {
+      plan_id: 'fix-relay',
+      revision: 3,
+      goal: 'Make the relay reconnect.',
+      criteria: [{ id: 'AC-001', text: 'The relay shall reconnect.', satisfies: [] }],
+      non_goals: [{ id: 'NG-1', text: 'Do not change the format.' }],
+      decisions: [],
+      open_questions: [],
+      deferred: [],
+    };
+    const question = {
+      id: 'BQ-001',
+      text: 'Which timeout applies?',
+      sort: 'operator',
+      recommended: false,
+      state: 'open',
+    };
+
+    // Act & Assert: a not_run without its reason, a not_run with questions, a pending with a reason
+    answer({ ...base, builder_check: { resolution: 'not_run', questions: [] } });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/reason/);
+
+    answer({
+      ...base,
+      builder_check: { resolution: 'not_run', questions: [question], reason: 'lost' },
+    });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/questions/);
+
+    answer({
+      ...base,
+      builder_check: { resolution: 'pending', questions: [], reason: 'not a reason to carry' },
+    });
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/reason/);
+  });
+
+  it('answers an absent record with null, so a panel can say refine has not written it yet', async () => {
+    // Arrange: the runtime has no record for the plan
+    answer({ error: 'intent_not_found', message: 'No intent record' }, 404);
+
+    // Act
+    const record = await client.getPlanIntent('not-refined-yet');
+
+    // Assert
+    expect(record).toBeNull();
+  });
+
+  it('fails closed on a malformed record instead of answering it half read', async () => {
+    // Arrange: a 200 whose record breaks the contract in three places
+    answer({
+      plan_id: 'fix-relay',
+      revision: 'three',
+      criteria: [{ id: 'AC-001', text: 'x', satisfies: ['one'] }],
+      non_goals: [],
+    });
+
+    // Act & Assert
+    await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/invalid_response/);
+  });
+
+  it('refuses an unknown closed value and a distribution without buckets', async () => {
+    // Arrange: a verdict outside the closed list, and an empty distribution
+    answer({
+      epic_id: 'relay-hardening',
+      destination: 'd',
+      done_when: [{ text: 't', verdict: 'maybe', evidence: [] }],
+      non_goals: ['n'],
+      not_yet_specified: [],
+      plans: [],
+    });
+    await expect(client.getEpicIntent('relay-hardening')).rejects.toThrow(/invalid_response/);
+
+    answer({ project_id: 'p', role: 'implement', current_multiple: 3, buckets: [] });
+    await expect(client.getOverSize('p')).rejects.toThrow(/invalid_response/);
+  });
+});
+
+describe('the list of what waits', () => {
+  /** The URL and page the last read answered. */
+  let requested = '';
+  let answer: unknown = null;
+  /** The client of this block, built on a cleared browser storage. */
+  let thisClient: ApiClient;
+
+  beforeEach(() => {
+    localStorage.clear();
+    thisClient = new ApiClient('http://localhost:7420');
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requested = url;
+      return Promise.resolve({ ok: true, status: 200, json: async () => answer });
+    });
+  });
+
+  it('reads one page with the runtime order, its total and its older page', async () => {
+    answer = {
+      page: 2,
+      total_pages: 3,
+      has_newer: true,
+      has_older: true,
+      total: 21,
+      items: [
+        {
+          kind: 'decision',
+          link: '/api/v1/decisions/Q-009',
+          plan: { id: 'drop-legacy-api', title: 'Drop the legacy endpoints' },
+          since: '2026-10-16T15:05:00Z',
+          blocks: 'plan',
+        },
+        { kind: 'cleanup_due', link: '/api/v1/system/cleanup' },
+      ],
+    };
+
+    const page = await thisClient.getNeedsOperator(2);
+
+    expect(requested).toContain('/api/v1/machine/needs-operator?page=2');
+    expect(page.total).toBe(21);
+    expect(page.has_older).toBe(true);
+    expect(page.items.map((item) => item.kind)).toEqual(['decision', 'cleanup_due']);
+    expect(page.items[0].plan?.title).toBe('Drop the legacy endpoints');
+  });
+
+  it('asks for the first page when the caller names none', async () => {
+    answer = { items: [] };
+
+    await thisClient.getNeedsOperator();
+
+    expect(requested).toContain('/api/v1/machine/needs-operator?page=1');
+  });
+});
+
+describe('ApiClient plan changes', () => {
+  it('encodes the plan id and the file path as the contract does, with /, ., a space and a non-ASCII character', async () => {
+    // Arrange
+    const client = new ApiClient('http://localhost:7420');
+    const requested: string[] = [];
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requested.push(String(url));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ plan_id: 'p', state: 'not_captured' }),
+      });
+    });
+
+    // Act
+    await client.getPlanChanges('plan/with space.ü');
+    await client.getPlanChangeFile('plan/with space.ü', 'dir/a b.ü/File.ts');
+
+    // Assert
+    expect(requested[0]).toBe('http://localhost:7420/api/v1/plans/plan%2Fwith%20space.%C3%BC/changes');
+    expect(requested[1]).toBe(
+      'http://localhost:7420/api/v1/plans/plan%2Fwith%20space.%C3%BC/changes/file' +
+        '?path=dir%2Fa%20b.%C3%BC%2FFile.ts',
+    );
   });
 });

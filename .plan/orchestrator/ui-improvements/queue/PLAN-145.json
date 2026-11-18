@@ -2,10 +2,10 @@
   "id": "PLAN-145",
   "slug": "web-intent-client-and-plan-panels",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "145-web-intent-client-and-plan-panels",
+  "pr": "443",
+  "landing": "landings/PLAN-145.md",
   "seq": 145
 }

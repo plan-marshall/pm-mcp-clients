@@ -5,17 +5,16 @@
       "de": [],
       "en": []
     },
+    "InboxView": {
+      "de": [],
+      "en": []
+    },
     "PlanView": {
       "de": [],
       "en": []
     },
     "EpicView": {
-      "de": [
-        {
-          "rule": "foreign-word",
-          "word": "paused"
-        }
-      ],
+      "de": [],
       "en": []
     },
     "ReportsView": {
@@ -27,18 +26,8 @@
       "en": []
     },
     "DecisionView": {
-      "de": [
-        {
-          "rule": "raw-enum",
-          "word": "ci_check"
-        }
-      ],
-      "en": [
-        {
-          "rule": "raw-enum",
-          "word": "ci_check"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "SystemView": {
       "de": [],
@@ -49,10 +38,6 @@
       "en": []
     },
     "SettingsView": {
-      "de": [],
-      "en": []
-    },
-    "MachineSettingsView": {
       "de": [],
       "en": []
     },

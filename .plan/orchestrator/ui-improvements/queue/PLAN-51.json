@@ -2,10 +2,10 @@
   "id": "PLAN-51",
   "slug": "web-decisions-triage",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-51-web-decisions-triage",
+  "pr": "469",
+  "landing": "landings/PLAN-51.md",
   "seq": 51
 }

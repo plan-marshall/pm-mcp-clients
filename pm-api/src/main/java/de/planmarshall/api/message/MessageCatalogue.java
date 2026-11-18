@@ -58,6 +58,7 @@ public final class MessageCatalogue {
             "lesson_source",
             "git_sources",
             "decomposition",
+            "intent",
             "operator",
             "enrolment",
             "error"

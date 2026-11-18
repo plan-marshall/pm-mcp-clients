@@ -194,6 +194,48 @@
         },
         "links": [
           {
+            "id": "change:language",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/language"
+          },
+          {
+            "id": "change:harness",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/harnesses"
+          },
+          {
+            "id": "change:catalogue",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/models"
+          },
+          {
+            "id": "change:roles",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/roles"
+          },
+          {
+            "id": "change:store",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/credentials"
+          },
+          {
+            "id": "change:providers",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/providers"
+          },
+          {
+            "id": "change:defaults",
+            "rel": "alt",
+            "method": "POST",
+            "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults"
+          },
+          {
             "id": "done",
             "rel": "next",
             "method": "POST",
@@ -203,6 +245,41 @@
         ]
       },
       "links": {
+        "change:language": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/language",
+          "next": "language.reconfigure-result"
+        },
+        "change:harness": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
+          "next": "harness.reconfigure-result"
+        },
+        "change:catalogue": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/models",
+          "next": "catalogue.reconfigure-result"
+        },
+        "change:roles": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/roles",
+          "next": "roles.reconfigure-result"
+        },
+        "change:store": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/credentials",
+          "next": "store.reconfigure-result"
+        },
+        "change:providers": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/providers",
+          "next": "providers.reconfigure-result"
+        },
+        "change:defaults": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults",
+          "next": "defaults.reconfigure-result"
+        },
         "done": {
           "method": "POST",
           "href": "/api/v1/onboarding/auto/result/done",
@@ -960,7 +1037,23 @@
           "level": "machine"
         },
         "facts": {
-          "summary": "No harness can be used"
+          "summary": "No harness can be used",
+          "checks": [
+            {
+              "harness": "claude",
+              "name": "Claude Code",
+              "result": "fail",
+              "cause": "not logged in",
+              "fix": "claude login"
+            },
+            {
+              "harness": "opencode",
+              "name": "OpenCode",
+              "result": "fail",
+              "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
+              "fix": "install a version in 1.5 - 1.x, then check again"
+            }
+          ]
         },
         "links": [
           {
@@ -1486,20 +1579,91 @@
         },
         "facts": {
           "summary": "Give every role a harness and a model",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
           "roles": [
             {
               "role": "outline",
+              "class": "read_only",
+              "phase": "planning",
               "harness_id": "claude",
               "model_id": "opus-5.5",
               "effort": "high",
-              "origin": "default"
+              "origin": "default",
+              "advisory": {
+                "does": "Turns the refined request into deliverables and the plan's lane; reads the whole affected codebase.",
+                "needs": "Deep reasoning over a large context; few tool calls.",
+                "why": "A weak outline makes more work later than a frontier model takes here: every later phase builds on it.",
+                "lower_tier": "More loop-backs from the Q-Gate; the standard tier passed 71 % of the qualification items, the frontier tier 92 %.",
+                "steward": "no departure"
+              }
             },
             {
               "role": "implement",
+              "class": "write",
+              "phase": "execution",
               "harness_id": "claude",
               "model_id": "sonnet-5.5",
               "effort": "medium",
-              "origin": "default"
+              "origin": "default",
+              "advisory": {
+                "does": "Writes the production code of one deliverable and runs its tests.",
+                "needs": "Steady tool use over a bounded set of files.",
+                "why": "The default meets the class without the frontier tier's price.",
+                "lower_tier": "The standard tier passed the qualification items with a wider margin.",
+                "steward": "no departure"
+              }
+            },
+            {
+              "role": "qgate",
+              "class": "read_only",
+              "phase": "review",
+              "harness_id": "opencode",
+              "model_id": "qwen-coder-32b",
+              "effort": "",
+              "origin": "steward",
+              "default": {
+                "harness_id": "claude",
+                "model_id": "sonnet-5.5",
+                "effort": "medium"
+              },
+              "departure": {
+                "harness_id": "opencode",
+                "model_id": "qwen-coder-32b",
+                "effort": "",
+                "reason": "reads only; a fast model suffices"
+              },
+              "advisory": {
+                "does": "Checks the artifacts of a phase against the plan.",
+                "needs": "A steady reader of long documents.",
+                "why": "The default sits above what the checks need.",
+                "lower_tier": "Not qualified for the frontier tier.",
+                "steward": "reads only; a fast model suffices"
+              }
+            },
+            {
+              "role": "screener",
+              "class": "zero_tool",
+              "phase": "review",
+              "harness_id": "",
+              "model_id": "",
+              "effort": "",
+              "origin": "unmet",
+              "advisory": {
+                "does": "Sorts the entry the operator hands over.",
+                "needs": "A model of the fast tier.",
+                "why": "No chosen model is of the fast tier.",
+                "lower_tier": "none",
+                "steward": "no departure"
+              }
             }
           ]
         },
@@ -2144,6 +2308,7 @@
         "facts": {
           "summary": "The provider could not be verified",
           "provider": "SonarCloud",
+          "provider_id": "sonar",
           "cause": "401 \"Invalid token\"",
           "fix": "enter the token again"
         },
@@ -2209,8 +2374,7 @@
           "summary": "How should plans run on this machine?",
           "landing": "landing.pull-request",
           "method": "method.test-first",
-          "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "asking": "ask.key-points"
         },
         "links": [
           {
@@ -2389,6 +2553,272 @@
           "method": "GET",
           "href": "/api/v1/onboarding/settings",
           "next": "settings.choose"
+        }
+      }
+    },
+    "language.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "language.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose your languages",
+          "interface": "de",
+          "model": "same"
+        },
+        "links": [
+          {
+            "id": "set",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/language/set",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "set": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/language/set",
+          "next": "auto.result"
+        }
+      }
+    },
+    "harness.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the harnesses to enrol",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "version": "2.4.1",
+              "path": "~/.local/bin/claude",
+              "supported": true,
+              "workers": true,
+              "tokens": {
+                "coverage": "complete"
+              }
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "choose",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/choose",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "choose": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/choose",
+          "next": "auto.result"
+        }
+      }
+    },
+    "catalogue.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "catalogue.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Choose the models to allow",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code",
+              "models": [
+                {
+                  "model_id": "claude-sonnet-5",
+                  "allowed": true
+                }
+              ]
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "accept",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/catalogue/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/catalogue/record",
+          "next": "auto.result"
+        }
+      }
+    },
+    "roles.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "roles.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "The roles of the planning",
+          "roles": [
+            {
+              "role": "plan",
+              "class": "read_only",
+              "harness_id": "claude",
+              "model_id": "claude-sonnet-5",
+              "effort": "medium",
+              "origin": "default"
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "accept",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/roles/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/roles/record",
+          "next": "auto.result"
+        }
+      }
+    },
+    "store.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "store.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Where should this machine keep its tokens?",
+          "current": "keychain"
+        },
+        "links": [
+          {
+            "id": "os",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/store/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "os": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/store/record",
+          "next": "auto.result"
+        }
+      }
+    },
+    "providers.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "providers.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Which providers should this machine check?",
+          "providers": [
+            {
+              "provider": "github",
+              "variant": "gh",
+              "available": true
+            }
+          ]
+        },
+        "links": [
+          {
+            "id": "accept",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/providers/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/providers/record",
+          "next": "auto.result"
+        }
+      }
+    },
+    "defaults.reconfigure-result": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "defaults.reconfigure-result",
+          "kind": "operator_wait",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "How plans run on this machine",
+          "landing": "landing.pull-request",
+          "method": "method.test-first",
+          "asking": "ask.key-points",
+          "posture": "standard"
+        },
+        "links": [
+          {
+            "id": "accept",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/onboarding/defaults/record",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "accept": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/defaults/record",
+          "next": "auto.result"
         }
       }
     },
@@ -2743,11 +3173,39 @@
         },
         "facts": {
           "summary": "The role assignments run again with the recorded values as the proposal",
-          "aspect": "roles"
-          ,"set": "",
+          "aspect": "roles",
+          "set": "",
           "reset": "",
           "reset_all": "false",
-          "defaults": "false"
+          "defaults": "false",
+          "harnesses": [
+            {
+              "harness_id": "claude",
+              "name": "Claude Code"
+            },
+            {
+              "harness_id": "opencode",
+              "name": "OpenCode"
+            }
+          ],
+          "roles": [
+            {
+              "role": "outline",
+              "class": "read_only",
+              "phase": "planning",
+              "harness_id": "claude",
+              "model_id": "opus-5.5",
+              "effort": "high",
+              "origin": "default",
+              "advisory": {
+                "does": "Turns the refined request into deliverables and the plan's lane; reads the whole affected codebase.",
+                "needs": "Deep reasoning over a large context; few tool calls.",
+                "why": "A weak outline makes more work later than a frontier model takes here: every later phase builds on it.",
+                "lower_tier": "More loop-backs from the Q-Gate; the standard tier passed 71 % of the qualification items, the frontier tier 92 %.",
+                "steward": "no departure"
+              }
+            }
+          ]
         },
         "links": [
           {
@@ -2989,7 +3447,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard"
+          "posture": "standard"
         },
         "links": [
           {
@@ -3182,7 +3640,7 @@
           "landing": "landing.pull-request",
           "method": "method.test-first",
           "asking": "ask.key-points",
-          "posture": "posture.standard",
+          "posture": "standard",
           "runtime": {
             "status": "ready",
             "onboarded": true,

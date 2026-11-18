@@ -72,10 +72,10 @@ class ControlResourcesTest {
         var eventText = Generators.nonBlankStrings().next();
         var summary = Generators.nonBlankStrings().next();
         var row = new WorkRow(rowPlanId, rowPlanId, "staged", "dependency",
-                waitingPlanId, List.of(), null, null, null, rowDescription,
+                waitingPlanId, null, List.of(), null, null, null, rowDescription,
                 List.of(deliverable, testName), List.of(surface), List.of(waitingPlanId));
         var overlap = new WorkRow(overlapPlanId, overlapPlanId, "staged", "overlap", waitingPlanId,
-                List.of(overlapPath), null, null, null, null, List.of(), List.of(), List.of());
+                null, List.of(overlapPath), null, null, null, null, List.of(), List.of(), List.of());
         var resource = new EpicResource(epicId, projectId, projectId,
                 "https://github.com/plan-marshall/pm-mcp-clients/tree/epic/relay-hardening",
                 "running", true, 0, 3, 2, null,
@@ -220,11 +220,12 @@ class ControlResourcesTest {
     @DisplayName("answers the derived states of the resources")
     void derivedStates() throws Exception {
         var shippedPlanId = Generators.nonBlankStrings().next();
-        var shipped = new WorkRow(shippedPlanId, shippedPlanId, "shipped", null, null, List.of(), 211,
+        var shipped = new WorkRow(shippedPlanId, shippedPlanId, "shipped", null, null, null,
+                List.of(), 211,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/211", null, null,
                 List.of(), List.of(), List.of());
-        var staged = new WorkRow("q", "q", "staged", "none", null, List.of(), null, null, null, null,
-                List.of(), List.of(), List.of());
+        var staged = new WorkRow("q", "q", "staged", "none", null, null, List.of(), null, null, null,
+                null, List.of(), List.of(), List.of());
         assertTrue(shipped.isLocked());
         assertFalse(staged.isLocked());
 

@@ -2,10 +2,10 @@
   "id": "PLAN-143",
   "slug": "web-addresses-and-remembered-place",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-143-web-addresses-and-remembered-place",
+  "pr": "446",
+  "landing": "landings/PLAN-143.md",
   "seq": 143
 }

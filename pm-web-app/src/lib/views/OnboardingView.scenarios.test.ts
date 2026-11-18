@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
-import { runtimeStore } from '../stores/runtime';
+import { loadOnboardingState, runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
@@ -120,9 +121,7 @@ describe('OnboardingView against the mock runtime states', () => {
     await fireEvent.click(screen.getByTestId('consent-remember'));
     await fireEvent.click(screen.getByRole('button', { name: /^look for harnesses$/i }));
 
-    await waitFor(() =>
-      expect(stepSpy).toHaveBeenCalledWith('remember', { remember: true }),
-    );
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('remember', { remember: true }));
   });
 
   it('says a consent is for this run only when it is never remembered', () => {
@@ -298,6 +297,817 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.queryByText(/[$€£]/)).not.toBeInTheDocument();
   });
 
+  it.each([
+    [
+      'the roles by their accept link',
+      {
+        state: 'roles.review',
+        roles: [{ role: 'implement', harness_id: 'claude', model_id: 'sonnet-5.5' }],
+        links: {
+          back: { href: '/api/v1/onboarding/roles/back', next: 'catalogue.select' },
+          accept: { href: '/api/v1/onboarding/roles/accept', next: 'store.choose' },
+        },
+      },
+      'roles-record',
+      'accept',
+    ],
+    [
+      'the chosen store by its own link',
+      {
+        state: 'store.choose',
+        stores: [
+          { kind: 'os', name: 'Keychain', available: true },
+          { kind: 'file', name: 'File', available: true, recommended: true },
+        ],
+        links: {
+          os: { href: '/api/v1/onboarding/store/os', next: 'providers.select' },
+          file: { href: '/api/v1/onboarding/store/file', next: 'providers.select' },
+        },
+      },
+      'store-record',
+      'file',
+    ],
+    [
+      'the plan defaults by their accept link',
+      {
+        state: 'defaults.review',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        links: {
+          back: { href: '/api/v1/onboarding/defaults/back', next: 'providers.select' },
+          accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' },
+        },
+      },
+      'defaults-record',
+      'accept',
+    ],
+  ])('records %s', async (_case, partial, button, link) => {
+    arrange(onboardingState(partial as Partial<OnboardingState>));
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'onboard.completed' }));
+    render(OnboardingView);
+
+    await fireEvent.click(await screen.findByTestId(button));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith(link, {}));
+  });
+
+  it('shows each plan-default axis with plain names, a sentence of meaning and no raw unit id', () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.review',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const card = screen.getByTestId('defaults-screen');
+    // Per axis: the name, one sentence of meaning, and the variants with their plain names.
+    expect(card).toHaveTextContent('Landing');
+    expect(card).toHaveTextContent("How a plan's work reaches the base branch.");
+    expect(card).toHaveTextContent('Branch and Pull Request');
+    expect(card).toHaveTextContent('review and merge on the provider');
+    expect(card).toHaveTextContent('Commit on the base branch');
+    expect(card).toHaveTextContent('Files only');
+    expect(card).toHaveTextContent('Method');
+    expect(card).toHaveTextContent('Test first');
+    expect(card).toHaveTextContent('Tests after');
+    expect(card).toHaveTextContent('Asking');
+    expect(card).toHaveTextContent('At the key points');
+
+    // The variant the runtime reports is the one chosen.
+    expect(screen.getByRole('radio', { name: /Branch and Pull Request/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Test first/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /At the key points/ })).toBeChecked();
+
+    // Posture is a later run's line: the first run never offers it.
+    expect(card).not.toHaveTextContent('Posture');
+
+    // No raw unit id of the runtime reaches the page.
+    for (const raw of ['landing.pull-request', 'method.test-first', 'ask.key-points']) {
+      expect(document.body.textContent).not.toContain(raw);
+    }
+  });
+
+  it('greys a variant the machine cannot run with its reason and records a changed axis', async () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.review',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        unavailable: [
+          {
+            axis: 'landing',
+            value: 'landing.main',
+            reason: 'needs a protected base branch: none is known at machine level',
+          },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' } },
+      } as Partial<OnboardingState>),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'onboard.completed' }));
+
+    render(OnboardingView);
+
+    // A variant that cannot run on this machine is disabled, and its reason stands beside it.
+    expect(screen.getByRole('radio', { name: /Commit on the base branch/ })).toBeDisabled();
+    expect(
+      screen.getByText('needs a protected base branch: none is known at machine level'),
+    ).toBeInTheDocument();
+    // Nothing changed yet, so the button offers the shipped defaults.
+    expect(screen.getByTestId('defaults-record')).toHaveTextContent('Use these defaults');
+
+    // A changed line makes the button save the choices, and only the changed axis travels.
+    await fireEvent.click(screen.getByRole('radio', { name: /Files only/ }));
+    expect(screen.getByTestId('defaults-record')).toHaveTextContent('Save these choices');
+    await fireEvent.click(screen.getByTestId('defaults-record'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { landing: 'landing.files' }));
+  });
+
+  it('offers the posture on a later run only, preselected at Not set while it is unset', async () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.reconfigure',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'settings.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'settings.record' }));
+
+    render(OnboardingView);
+
+    const card = screen.getByTestId('defaults-screen');
+    expect(card).toHaveTextContent('Posture');
+    expect(card).toHaveTextContent('How full the plan');
+    expect(screen.getByRole('radio', { name: /Not set: each plan asks/ })).toBeChecked();
+    expect(card).not.toHaveTextContent('posture.unset');
+
+    // The posture travels as its own bare value, and only because this line changed.
+    await fireEvent.click(screen.getByRole('radio', { name: /^Full/ }));
+    await fireEvent.click(screen.getByTestId('defaults-record'));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('accept', { posture: 'full' }));
+  });
+
+  it('waits for an available variant when a refresh greys the chosen one', () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.review',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.main',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        unavailable: [
+          { axis: 'landing', value: 'landing.main', reason: 'needs a protected base branch' },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'onboard.completed' } },
+      } as Partial<OnboardingState>),
+    );
+
+    render(OnboardingView);
+
+    // The chosen line is greyed now: the screen says why it cannot record it.
+    expect(screen.getByTestId('defaults-record')).toBeDisabled();
+    expect(screen.getByTestId('defaults-blocked')).toHaveTextContent(
+      'Choose an available variant for Landing first.',
+    );
+  });
+
+  it('preselects the posture the state records on a later run', () => {
+    arrange(
+      onboardingState({
+        state: 'defaults.reconfigure',
+        summary: 'How should plans run on this machine?',
+        landing: 'landing.pull-request',
+        method: 'method.test-first',
+        asking: 'ask.key-points',
+        posture: 'standard',
+        links: { accept: { href: '/api/v1/onboarding/defaults/accept', next: 'settings.record' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('radio', { name: /^Standard/ })).toBeChecked();
+    expect(screen.getByRole('radio', { name: /Not set: each plan asks/ })).not.toBeChecked();
+  });
+
+  it('groups the roles by phase, marks a departure and shows the advisory of a role', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code' },
+          { harness_id: 'opencode', name: 'OpenCode' },
+        ],
+        roles: [
+          {
+            role: 'outline',
+            class: 'read_only',
+            phase: 'planning',
+            harness_id: 'claude',
+            model_id: 'opus-5.5',
+            effort: 'high',
+            origin: 'default',
+            advisory: {
+              does: 'Turns the refined request into deliverables and the plan lane.',
+              needs: 'Deep reasoning over a large context; few tool calls.',
+              why: 'A weak outline makes more work later than a frontier model takes here.',
+              lower_tier: 'More loop-backs from the Q-Gate.',
+              steward: 'no departure',
+            },
+          },
+          {
+            role: 'qgate',
+            class: 'read_only',
+            phase: 'review',
+            harness_id: 'opencode',
+            model_id: 'qwen-coder-32b',
+            effort: '',
+            origin: 'steward',
+            default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
+            departure: {
+              harness_id: 'opencode',
+              model_id: 'qwen-coder-32b',
+              effort: '',
+              reason: 'reads only; a fast model suffices',
+            },
+            advisory: {
+              does: 'Checks the artifacts against the plan.',
+              needs: 'A steady reader of long documents.',
+              why: 'The default sits above what the checks need.',
+              lower_tier: 'Not qualified for the frontier tier.',
+              steward: 'reads only; a fast model suffices',
+            },
+          },
+          {
+            role: 'screener',
+            class: 'zero_tool',
+            phase: 'review',
+            harness_id: '',
+            model_id: '',
+            effort: '',
+            origin: 'unmet',
+            advisory: {
+              does: 'Sorts the entry the operator hands over.',
+              needs: 'A fast model of the zero-tool class.',
+              why: 'The tier is not met by any chosen model.',
+              lower_tier: 'none',
+              steward: 'no departure',
+            },
+          },
+        ],
+        links: {
+          ask_steward: { href: '/api/v1/onboarding/roles/consent', next: 'roles.consent' },
+          accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const card = screen.getByTestId('roles-screen');
+    // The roles are grouped by the phase they serve.
+    expect(card).toHaveTextContent('Planning');
+    expect(card).toHaveTextContent('Review');
+    expect(screen.getByTestId('roles-phase-planning')).toContainElement(
+      screen.getByTestId('role-row-outline'),
+    );
+    expect(screen.getByTestId('roles-phase-review')).toContainElement(
+      screen.getByTestId('role-row-qgate'),
+    );
+
+    // Each row names its harness (by the name the state reports), model and effort.
+    const outline = screen.getByTestId('role-row-outline');
+    expect(outline).toHaveTextContent('outline');
+    expect(outline).toHaveTextContent('Claude Code');
+    expect(outline).toHaveTextContent('opus-5.5');
+    expect(outline).toHaveTextContent('high');
+    expect(outline).toHaveTextContent('Default');
+
+    // A departure is marked, names what the steward proposes, and carries its own accept and reject.
+    const qgate = screen.getByTestId('role-row-qgate');
+    expect(qgate).toHaveTextContent('Departure from the steward');
+    expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
+      'Proposed: OpenCode · qwen-coder-32b',
+    );
+    expect(screen.getByTestId('role-departure-proposed-qgate')).toHaveTextContent(
+      'reads only; a fast model suffices',
+    );
+    expect(screen.getByTestId('role-departure-accept-qgate')).toBeInTheDocument();
+    expect(screen.getByTestId('role-departure-reject-qgate')).toBeInTheDocument();
+    // The overview counts the roles the default assignment covers.
+    expect(card).toHaveTextContent('The default assignment is applied to all 3 roles.');
+    // The class of each role is a word, never the state's own enum.
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('reads only');
+    expect(card).not.toHaveTextContent('read_only');
+
+    // The advisory of a role opens in place, with what it does and what it needs.
+    await fireEvent.click(screen.getByTestId('role-advisory-outline'));
+    const advisory = screen.getByTestId('role-advisory-body-outline');
+    expect(advisory).toHaveTextContent('Deep reasoning over a large context; few tool calls.');
+    expect(advisory).toHaveTextContent('More loop-backs from the Q-Gate.');
+
+    // An unmet role stands empty and assignable, and the record button waits for it.
+    const screener = screen.getByTestId('role-row-screener');
+    expect(screener).toHaveTextContent('Open');
+    expect(screener).toHaveTextContent('no harness');
+    expect(screen.getByTestId('role-change-screener')).toBeInTheDocument();
+    expect(screen.getByTestId('roles-record')).toBeDisabled();
+    expect(screen.getByTestId('roles-record')).toHaveTextContent('Assign the 1 open role first');
+  });
+
+  it('decides a departure per role and records a role changed by hand', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        roles: [
+          {
+            role: 'qgate',
+            class: 'read_only',
+            phase: 'review',
+            harness_id: 'opencode',
+            model_id: 'qwen-coder-32b',
+            effort: '',
+            origin: 'steward',
+            departure: {
+              harness_id: 'opencode',
+              model_id: 'qwen-coder-32b',
+              effort: '',
+              reason: 'reads only; a fast model suffices',
+            },
+          },
+          {
+            role: 'implement',
+            class: 'write',
+            phase: 'execution',
+            harness_id: 'claude',
+            model_id: 'sonnet-5.5',
+            effort: 'medium',
+            origin: 'default',
+          },
+        ],
+        links: {
+          ask_steward: { href: '/api/v1/onboarding/roles/consent', next: 'roles.consent' },
+          accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' },
+        },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'store.choose' }));
+
+    render(OnboardingView);
+
+    // The steward is one act; a departure is taken or left per role.
+    expect(screen.getByTestId('roles-ask-steward')).toHaveTextContent('Ask the steward');
+    await fireEvent.click(screen.getByTestId('role-departure-accept-qgate'));
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('Departure accepted');
+
+    // The operator changes a role's harness, model and effort in place.
+    await fireEvent.click(screen.getByTestId('role-change-implement'));
+    await fireEvent.change(screen.getByTestId('role-harness-implement'), {
+      target: { value: 'opencode' },
+    });
+    await fireEvent.input(screen.getByTestId('role-model-implement'), {
+      target: { value: 'qwen-coder-32b' },
+    });
+    await fireEvent.change(screen.getByTestId('role-effort-implement'), {
+      target: { value: 'low' },
+    });
+    expect(screen.getByTestId('role-row-implement')).toHaveTextContent('Changed');
+
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('accept', {
+        departures: [{ role: 'qgate', decision: 'accept' }],
+        roles: [
+          {
+            role: 'implement',
+            harness_id: 'opencode',
+            model_id: 'qwen-coder-32b',
+            effort: 'low',
+          },
+        ],
+      }),
+    );
+  });
+
+  it('shows the failed provider under Provider, with its token entry and the three acts', async () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be verified',
+        provider: 'SonarCloud',
+        provider_id: 'sonar',
+        cause: '401 "Invalid token"',
+        fix: 'enter the token again',
+        links: {
+          check_again: { href: '/api/v1/onboarding/providers/check-again', next: 'providers.verify' },
+          continue_without: {
+            href: '/api/v1/onboarding/providers/continue-without',
+            next: 'providers.record',
+          },
+        },
+      } as Partial<OnboardingState>),
+    );
+
+    render(OnboardingView);
+
+    const card = screen.getByTestId('providers-failed');
+    // What the state is about: one provider, under the label Provider.
+    expect(card).toHaveTextContent('Provider');
+    expect(card).toHaveTextContent('SonarCloud');
+    expect(card).toHaveTextContent('401 "Invalid token"');
+
+    // "Enter the token again" opens the token entry for that provider.
+    expect(screen.queryByTestId('credential-entry')).not.toBeInTheDocument();
+    await fireEvent.click(screen.getByTestId('providers-failed-enter-token'));
+    expect(screen.getByTestId('credential-entry')).toBeInTheDocument();
+    expect(screen.getByTestId('credential-secret-input')).toBeInTheDocument();
+
+    // The other two acts are the state's own links, in its words.
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue without' })).toBeInTheDocument();
+  });
+
+  it('offers no token entry for a provider whose state names no id', () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be verified',
+        provider: 'SonarCloud',
+        cause: '401 "Invalid token"',
+        links: {
+          check_again: { href: '/api/v1/onboarding/providers/check-again', next: 'providers.verify' },
+        },
+      } as Partial<OnboardingState>),
+    );
+
+    render(OnboardingView);
+
+    // Storing a token under a guessed key would put it where the check never looks.
+    expect(screen.getByTestId('providers-failed')).toHaveTextContent('SonarCloud');
+    expect(screen.queryByTestId('providers-failed-enter-token')).not.toBeInTheDocument();
+  });
+
+  it('rejects a departure and returns the row to the default of the role', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        roles: [
+          {
+            role: 'qgate',
+            class: 'read_only',
+            phase: 'review',
+            harness_id: 'opencode',
+            model_id: 'qwen-coder-32b',
+            effort: '',
+            origin: 'steward',
+            default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
+            departure: {
+              harness_id: 'opencode',
+              model_id: 'qwen-coder-32b',
+              effort: '',
+              reason: 'reads only; a fast model suffices',
+            },
+          },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'store.choose' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('role-departure-reject-qgate'));
+
+    const row = screen.getByTestId('role-row-qgate');
+    expect(row).toHaveTextContent('Departure rejected');
+    expect(row).toHaveTextContent('claude · sonnet-5.5');
+
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    // The decision is the record; the row is no hand change of its own.
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('accept', {
+        departures: [{ role: 'qgate', decision: 'reject' }],
+      }),
+    );
+  });
+
+  it('marks a role the validation refused with its reason', () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        summary: 'Give every role a harness and a model',
+        roles: [
+          {
+            role: 'outline',
+            class: 'read_only',
+            phase: 'planning',
+            harness_id: 'claude',
+            model_id: 'opus-5.5',
+            effort: 'high',
+            validation: 'no model of that tier on this harness',
+          },
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-validation-outline')).toHaveTextContent(
+      'Not accepted: no model of that tier on this harness',
+    );
+  });
+
+  it('drops a decision whose proposal the state reports differently', async () => {
+    const rolesWith = (reason: string) => [
+      {
+        role: 'qgate',
+        class: 'read_only',
+        phase: 'review',
+        harness_id: 'opencode',
+        model_id: 'qwen-coder-32b',
+        effort: '',
+        origin: 'steward',
+        default: { harness_id: 'claude', model_id: 'sonnet-5.5', effort: 'medium' },
+        departure: {
+          harness_id: 'opencode',
+          model_id: 'qwen-coder-32b',
+          effort: '',
+          reason,
+        },
+      },
+    ];
+    const first = onboardingState({
+      state: 'roles.review',
+      summary: 'Give every role a harness and a model',
+      roles: rolesWith('reads only; a fast model suffices'),
+      links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+    });
+    arrange(first);
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(first);
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('role-departure-accept-qgate'));
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('Departure accepted');
+
+    // A refresh reports another proposal for the same role: the old decision no longer holds.
+    const refreshed = onboardingState({
+      state: 'roles.review',
+      summary: 'Give every role a harness and a model',
+      roles: rolesWith('the checks grew; a stronger model is needed'),
+      links: { accept: { href: '/api/v1/onboarding/roles/validate', next: 'store.choose' } },
+    });
+    runtimeStore.update((store) => ({
+      ...store,
+      onboarding: refreshed,
+      currentState: refreshed as never,
+    }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('role-row-qgate')).not.toHaveTextContent('Departure accepted'),
+    );
+    expect(screen.getByTestId('role-row-qgate')).toHaveTextContent('Departure from the steward');
+  });
+
+  it('shows the provider that failed with its cause and fix, and tries again by its link', async () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be reached',
+        provider: 'github',
+        cause: 'the token was refused',
+        fix: 'gh auth login',
+        links: { retry: { href: '/api/v1/onboarding/providers/retry', next: 'providers.select' } },
+      } as Partial<OnboardingState>),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'providers.select' }));
+    render(OnboardingView);
+
+    expect(await screen.findByText('github')).toBeInTheDocument();
+    expect(screen.getByText('the token was refused')).toBeInTheDocument();
+    expect(screen.getByText('gh auth login')).toBeInTheDocument();
+    const [retry] = screen
+      .getAllByRole('button')
+      .filter((candidate) => candidate.closest('.state-card__actions'));
+    await fireEvent.click(retry);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
+  });
+
+  it('names each harness that failed its check at harness.none, never the raw state id', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            result: 'fail',
+            cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
+            fix: 'install a version in 1.5 - 1.x, then check again',
+          },
+        ],
+        links: {
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.probe-failed' },
+          later: { href: '/api/v1/onboarding/harness/none/later', next: 'harness.none' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // The published shape of a failed check: the harness's name, the answer it gave and the fix.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('Claude Code');
+    expect(failures).toHaveTextContent('not logged in');
+    expect(failures).toHaveTextContent('claude login');
+    expect(failures).toHaveTextContent('OpenCode');
+    expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
+
+    // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
+    expect(document.body).not.toHaveTextContent('harness.none');
+    expect(document.body).not.toHaveTextContent('Machine · harness.none');
+  });
+
+  it('shows a harness’s path and failed check when the runtime reports them', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            check: 'login',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            check: 'wordsmith',
+            result: 'fail',
+            cause: 'refused',
+            fix: 'reinstall',
+          },
+          {
+            harness: 'codex',
+            name: 'Codex',
+            path: '/opt/homebrew/bin/codex',
+            result: 'pass',
+            cause: '',
+            fix: '',
+          },
+        ],
+      }),
+    );
+
+    render(OnboardingView);
+
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('~/.local/bin/claude');
+    expect(failures).toHaveTextContent('the login check');
+    // An id the catalogue does not know reads as a word, never as a raw key or a wire token.
+    expect(failures).toHaveTextContent('Wordsmith');
+    expect(failures).not.toHaveTextContent('onboard.harness.check.');
+    expect(failures).not.toHaveTextContent('wordsmith');
+
+    // A check that passed is not listed under "none passed".
+    expect(failures).not.toHaveTextContent('Codex');
+  });
+
+  it('says what was looked for when nothing was found', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        looks_for: 'claude, opencode',
+        locations: 'your PATH, ~/.local/bin',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByText('Looked for claude, opencode in your PATH, ~/.local/bin.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
+  });
+
+  it('names the harnesses of a list and the place the runtime calls “in”', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        harnesses: [{ name: 'Claude Code' }, { harness_id: 'opencode' }],
+        in: 'your PATH',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
+  });
+
+  it('names the aspect of a change link whose line the result does not report', () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:roles': {
+            href: '/api/v1/onboarding/settings/reconfigure/roles',
+            next: 'roles.reconfigure',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // The row's act and the orphan link's act are told apart by the aspect each opens.
+    expect(screen.getByRole('button', { name: 'Change Language' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change Roles' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^change /i })).toHaveLength(2);
+  });
+
+  it('keeps a state the runtime reported while a step was still in flight', async () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.mode',
+        summary: 'Set up this machine for plan-marshall',
+        links: { begin: { href: '/api/v1/onboarding/language', next: 'language.choose' } },
+      }),
+    );
+    let answer: ((state: OnboardingState) => void) | undefined;
+    vi.spyOn(apiClient, 'stepOnboarding').mockReturnValue(
+      new Promise<OnboardingState>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    render(OnboardingView);
+    await fireEvent.click(await screen.findByRole('button', { name: /begin with step 1/i }));
+
+    // A step-completed event refreshes the state while the step's own answer is still on its way.
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(
+      onboardingState({ state: 'harness.probe', summary: 'Checking 2 harnesses' }),
+    );
+    await loadOnboardingState();
+
+    // The older answer must not overwrite the newer state.
+    answer?.(onboardingState({ state: 'language.choose', summary: 'Choose your languages' }));
+    await waitFor(() =>
+      expect(get(runtimeStore).onboarding?.summary).toBe('Checking 2 harnesses'),
+    );
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({
@@ -317,6 +1127,47 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(result).toHaveTextContent('Deutsch, models too');
     expect(result).toHaveTextContent('every supported one, the first the default');
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+
+  it('offers a Change per row of auto.result that opens that aspect again', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [
+          { aspect: 'language', value: 'Deutsch, models too', reason: 'detected' },
+          { aspect: 'harness', value: 'Claude Code 2.4.1 (default)', reason: 'all_supported' },
+          { aspect: 'store', value: 'macOS Keychain', reason: 'detected' },
+        ],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:harness': {
+            href: '/api/v1/onboarding/settings/reconfigure/harnesses',
+            next: 'harness.reconfigure-consent',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'auto.result' }));
+
+    render(OnboardingView);
+
+    // One Change per line the state can run again, named after that line; the credentials line
+    // offers none because the state carries no link for it.
+    const changes = screen.getAllByRole('button', { name: /^change /i });
+    expect(changes).toHaveLength(2);
+    expect(changes[0]).toHaveAccessibleName('Change Language');
+    expect(changes[1]).toHaveAccessibleName('Change Harnesses');
+    expect(screen.getByTestId('auto-result')).toHaveTextContent('Credentials');
+
+    await fireEvent.click(changes[1]);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('change:harness', {}));
   });
 
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
@@ -343,12 +1194,8 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(completed).toHaveTextContent('Claude Code 2.4.1 (default), OpenCode 1.9.0');
 
     // A runtime that sends the card's own title as the summary does not print it twice.
-    expect(screen.getByTestId('completed-summary')).toHaveTextContent(
-      'Machine setup is complete.',
-    );
-    expect(screen.getByTestId('completed-summary')).not.toHaveTextContent(
-      'This machine is ready',
-    );
+    expect(screen.getByTestId('completed-summary')).toHaveTextContent('Machine setup is complete.');
+    expect(screen.getByTestId('completed-summary')).not.toHaveTextContent('This machine is ready');
 
     // A done step opened from the bar is read-only: it shows its summary, never a link to re-run.
     expect(screen.queryByRole('button', { name: /record this choice/i })).not.toBeInTheDocument();
@@ -441,5 +1288,108 @@ describe('OnboardingView against the mock runtime states', () => {
       );
     });
     expect(screen.getByRole('button', { name: /mit schritt 1 beginnen/i })).toBeInTheDocument();
+  });
+
+  it('draws the missing-screen pattern for a state no screen claims, never its id', () => {
+    arrange(
+      onboardingState({
+        state: 'unknown.mystery',
+        summary: 'Something the app does not know',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'This screen is not available in the web app',
+    );
+    // The terminal command that shows the state is named, and a way back is offered.
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+    // The state's id is never printed as content.
+    expect(document.body.textContent).not.toContain('unknown.mystery');
+  });
+
+  it('sends every entry state to the fallback with the terminal command', () => {
+    arrange(
+      onboardingState({
+        state: 'entry.lan-open',
+        summary: 'Network listener open with its fingerprint',
+        links: {},
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('missing-screen')).toBeInTheDocument();
+    expect(screen.getByTestId('missing-screen')).toHaveTextContent('pm-operator');
+    expect(document.body.textContent).not.toContain('entry.lan-open');
+  });
+
+  it('takes the probe-only answer of a consent that offers one', async () => {
+    const state = onboardingState({
+      state: 'catalogue.consent',
+      summary: 'Ask the harnesses for their models, and a model for advice?',
+      kind: 'probe_harness_models',
+      links: {
+        no: { href: '/api/v1/onboarding/catalogue/decline', next: 'catalogue.consent' },
+        no_advice: { href: '/api/v1/onboarding/catalogue/no-advice', next: 'catalogue.select' },
+        yes: { href: '/api/v1/onboarding/catalogue/advice', next: 'catalogue.models' },
+      },
+    });
+    arrange(state);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.select' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(await screen.findByTestId('consent-no-advice'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('no_advice', {}));
+  });
+
+  it('offers no third answer on a consent that states only yes and no', async () => {
+    arrange(
+      onboardingState({
+        state: 'harness.consent',
+        summary: 'Look for harnesses on this machine?',
+        links: {
+          no: { href: '/api/v1/onboarding/harness/decline', next: 'harness.consent' },
+          yes: { href: '/api/v1/onboarding/harness/scan', next: 'harness.choose' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(await screen.findByTestId('consent-box')).toBeInTheDocument();
+    expect(screen.queryByTestId('consent-no-advice')).not.toBeInTheDocument();
+  });
+
+  it('reviews the recorded setup of every step on the summary screen', () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.summary',
+        summary: 'Review the setup of this machine',
+        aspects: [
+          { aspect: 'language', step: 1, summary: 'Deutsch, models English' },
+          { aspect: 'roles', step: 4, summary: '31 roles assigned' },
+        ],
+        links: { done: { href: '/api/v1/onboarding/summary/done', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Review the setup of this machine',
+    );
+    const summary = screen.getByTestId('setup-summary');
+    expect(summary).toHaveTextContent('Deutsch, models English');
+    expect(summary).toHaveTextContent('31 roles assigned');
+    expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
   });
 });

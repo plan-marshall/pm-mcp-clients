@@ -53,13 +53,15 @@ describe('RowLink', () => {
     expect(container.querySelector('.row-link__acts')).toContainElement(menu);
   });
 
-  it('follows the current row with aria-current', () => {
+  it('marks the current row on its anchor, never on the wrapper', () => {
     const plain = render(RowLink, { props: { href: '/plans/a', title: 'A' } });
     expect(plain.container.querySelector('.row-link')).not.toHaveAttribute('aria-current');
+    expect(plain.container.querySelector('a')).not.toHaveAttribute('aria-current');
     plain.unmount();
 
     const current = render(RowLink, { props: { href: '/plans/a', title: 'A', current: true } });
-    expect(current.container.querySelector('.row-link')).toHaveAttribute('aria-current', 'true');
+    expect(current.container.querySelector('.row-link')).not.toHaveAttribute('aria-current');
+    expect(current.container.querySelector('a')).toHaveAttribute('aria-current', 'page');
     expect(current.container.querySelector('.row-link')).toHaveClass('row-link--current');
   });
 
@@ -117,7 +119,27 @@ describe('RowLink', () => {
       'background-color',
     );
     expect(ruleOf(STYLE, '.row-link--opens')).toContain('cursor: pointer');
-    expect(ruleOf(STYLE, '.row-link:focus-within')).toContain('box-shadow: var(--focus-ring)');
+    // The ring follows the anchor's own keyboard focus, never a mouse click into a nested control.
+    expect(ruleOf(STYLE, '.row-link:has(a:focus-visible)')).toContain(
+      'box-shadow: var(--focus-ring)',
+    );
+    expect(ruleOf(STYLE, '.row-link:focus-within')).toBe('');
+  });
+
+  it('wraps a second line below the title, inside the row', () => {
+    const detail = createRawSnippet(() => ({
+      render: () => '<span data-testid="row-detail">pm-mcp-clients › Relay Hardening</span>',
+    }));
+    const { container } = render(RowLink, {
+      props: { href: '/plans/a', title: 'A', detail },
+    });
+
+    const line = container.querySelector('.row-link__detail');
+    expect(line).not.toBeNull();
+    expect(line).toHaveTextContent('pm-mcp-clients › Relay Hardening');
+    // The second line is text, not a target of its own: one anchor per row stays the rule.
+    expect(container.querySelectorAll('a')).toHaveLength(1);
+    expect(ruleOf(STYLE, '.row-link__detail')).toContain('flex: 1 0 100%');
   });
 
   it('lifts and points on no row that opens nothing', () => {
@@ -152,7 +174,9 @@ describe('RowLink', () => {
   });
 
   it('draws the selected row on the brand-subtle ground', () => {
-    expect(ruleOf(STYLE, '.row-link--current')).toContain('background-color: var(--color-brand-subtle)');
+    expect(ruleOf(STYLE, '.row-link--current')).toContain(
+      'background-color: var(--color-brand-subtle)',
+    );
   });
 
   it('draws a row of 40 px, 32 px compact and 44 px on a phone', () => {

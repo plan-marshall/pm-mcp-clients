@@ -326,7 +326,7 @@ class DecisionRecordsTest {
         var note = Generators.nonBlankStrings().next();
         var device = Generators.nonBlankStrings().next();
         var req = new DecisionAnswerRequest(Map.of("1", "2"), "2", ownWords, note, "answer", null, "cli",
-                device);
+                device, null);
         var json = req.toJson();
         var parsed = DecisionAnswerRequest.fromJson(json);
 
@@ -380,7 +380,7 @@ class DecisionRecordsTest {
         var changedParsed = DecisionChangedEvent.fromJson(changed.toJson());
         assertEquals(changeSummary, changedParsed.changeSummary());
 
-        var answered = new DecisionAnsweredEvent("Q-001", answer, "cli", "mbp-oliver");
+        var answered = new DecisionAnsweredEvent("Q-001", answer, "cli", "mbp-oliver", null);
         assertEquals(DecisionAnsweredEvent.EVENT_NAME, "decision.answered");
         var answeredParsed = DecisionAnsweredEvent.fromJson(answered.toJson());
         assertEquals(answer, answeredParsed.answer());
@@ -411,7 +411,7 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("DecisionAnswerRequest serializes reason and parses option fallback")
     void decisionAnswerRequestReasonAndOptionFallback() throws Exception {
-        var req = new DecisionAnswerRequest(Map.of(), null, null, null, "waive", "build passed", "cli", null);
+        var req = new DecisionAnswerRequest(Map.of(), null, null, null, "waive", "build passed", "cli", null, null);
         var json = req.toJson();
         assertTrue(json.contains("\"reason\":\"build passed\""));
 
@@ -423,7 +423,8 @@ class DecisionRecordsTest {
     @DisplayName("an answer without a channel reads back without one, never as cli")
     void answerRequestWithoutChannelStaysAbsent() {
         var option = Generators.nonBlankStrings().next();
-        var request = new DecisionAnswerRequest(Map.of("1", option), option, null, null, "answer", null, null, null);
+        var request = new DecisionAnswerRequest(Map.of("1", option), option, null, null, "answer", null, null, null,
+                null);
 
         var parsed = DecisionAnswerRequest.fromMap(Map.of("option", option));
 
@@ -438,7 +439,7 @@ class DecisionRecordsTest {
     void answeredEventWithoutChannelStaysAbsent() throws Exception {
         var id = Generators.nonBlankStrings().next();
         var answer = Generators.nonBlankStrings().next();
-        var event = new DecisionAnsweredEvent(id, answer, null, null);
+        var event = new DecisionAnsweredEvent(id, answer, null, null, null);
 
         var parsed = DecisionAnsweredEvent.fromMap(Map.of("id", id, "answer", answer));
 
@@ -456,14 +457,35 @@ class DecisionRecordsTest {
         var answer = Generators.nonBlankStrings().next();
         var device = Generators.nonBlankStrings().next();
         var request = new DecisionAnswerRequest(Map.of("1", answer), answer, null, null, "answer", null, channel,
-                device);
-        var event = new DecisionAnsweredEvent(id, answer, channel, device);
+                device, null);
+        var event = new DecisionAnsweredEvent(id, answer, channel, device, null);
 
         assertAll(
                 () -> assertEquals(channel, DecisionAnswerRequest.fromJson(request.toJson()).channel()),
                 () -> assertEquals(channel, DecisionAnswerRequest.fromMap(request.toMap()).channel()),
                 () -> assertEquals(event, DecisionAnsweredEvent.fromJson(event.toJson())),
                 () -> assertEquals(channel, DecisionAnsweredEvent.fromMap(event.toMap()).channel()));
+    }
+
+    @Test
+    @DisplayName("a client request id round-trips and an absent one stays absent")
+    void requestIdRoundTrips() {
+        var requestId = Generators.nonBlankStrings().next();
+        var id = Generators.nonBlankStrings().next();
+        var answer = Generators.nonBlankStrings().next();
+        var request = new DecisionAnswerRequest(Map.of("1", answer), answer, null, null, "answer", null, "web",
+                null, requestId);
+        var event = new DecisionAnsweredEvent(id, answer, "web", null, requestId);
+        var withoutRequestId = new DecisionAnsweredEvent(id, answer, "web", null, null);
+
+        assertAll(
+                () -> assertEquals(requestId, DecisionAnswerRequest.fromJson(request.toJson()).requestId()),
+                () -> assertEquals(requestId, DecisionAnswerRequest.fromMap(request.toMap()).requestId()),
+                () -> assertEquals(requestId, DecisionAnsweredEvent.fromJson(event.toJson()).requestId()),
+                () -> assertEquals(requestId, DecisionAnsweredEvent.fromMap(event.toMap()).requestId()),
+                () -> assertFalse(withoutRequestId.toMap().containsKey("request_id")),
+                () -> assertNull(DecisionAnsweredEvent
+                        .fromMap(Map.of("id", id, "answer", answer)).requestId()));
     }
 
     @Test

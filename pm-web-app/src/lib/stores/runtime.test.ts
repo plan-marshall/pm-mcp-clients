@@ -1,25 +1,47 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
-import { ClientError } from '../api/errors';
+import {
+  apiClient,
+  type ProjectOverviewResponse,
+  type ReportsPage,
+  type StatusResponse,
+} from '../api/client';
+import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
   checkUrlHashForCode,
+  createDecisionAnnouncer,
+  DECISION_BURST_MS,
+  deriveStepFromState,
   handleRuntimeEvent,
   initRuntime,
   isRuntimeRecovering,
-  landingRoute,
+  startRouteFor,
   navigateTo,
+  openAttention,
+  openEpicDecomposition,
+  openRunningWork,
   openStartPage,
   pairBrowser,
+  pushRoute,
   RECONNECT_INTERVAL_MS,
   replaceDesignerProject,
+  retryEventStream,
   retryRuntime,
   routeParamsOf,
   runtimeStore,
+  startOnboardingAuto,
   stopRuntimeRecovery,
+  storeCredential,
+  updateMachineSetting,
+  withdrawConsent,
+  type AppRoute,
+  type RevokedInfo,
+  type RouteParams,
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { writeRememberedPlace } from '../navigation/rememberedPlace';
+import { resetOpenedFromOutside } from '../navigation/history';
 
 const PAIRED_STATUS: StatusResponse = {
   status: 'ready',
@@ -290,6 +312,55 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
   });
 
+  it('marks the runtime stopped when a stop that exits arrives', () => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', { lifecycle_state: 'stopped', then: 'exit' });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
+  });
+
+  it.each([
+    ['a drain that ended in a restart', { lifecycle_state: 'running', then: 'restart' }],
+    ['a restart now', { lifecycle_state: 'stopping', then: 'restart' }],
+  ])('never shows the stopped page for %s', (_case, payload) => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 1 } }),
+    );
+
+    // Act
+    handleRuntimeEvent('runtime.stopping', payload);
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({
+      isDraining: false,
+      drainInfo: null,
+      isStopped: false,
+    });
+  });
+
+  it.each([
+    ['a drain', 'runtime.draining', { who: 'the console', count: 1 }],
+    ['a restart', 'runtime.stopping', { lifecycle_state: 'stopping', then: 'restart' }],
+  ])('forgets who stopped the runtime once %s shows it running again', (_case, event, payload) => {
+    // Arrange
+    runtimeStore.set(
+      makeRuntimeState({ isStopped: true, stoppedInfo: { who: 'by the console', time: 'noon' } }),
+    );
+
+    // Act
+    handleRuntimeEvent(event, payload);
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isStopped: false, stoppedInfo: null });
+  });
+
   it('reads the who and remaining_count draining fields', () => {
     // Arrange
     runtimeStore.set(makeRuntimeState({ isStopped: true }));
@@ -340,16 +411,20 @@ describe('the runtime store', () => {
   it('leaves the address bar alone when the start page is already shown', async () => {
     // Arrange
     localStorage.setItem('pm_device_secret', 'pmw_valid');
-    window.history.replaceState(null, '', '/projects');
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'projects', isPaired: true }));
+    window.history.replaceState(null, '', '/?lens=waits');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'inbox', isPaired: true, isOnboarded: true }),
+    );
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    const push = vi.spyOn(window.history, 'pushState');
 
     // Act
     await openStartPage();
 
     // Assert: the target is the current route, so no duplicate history entry is pushed.
-    expect(window.location.pathname).toBe('/projects');
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    expect(window.location.pathname).toBe('/');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+    expect(push).not.toHaveBeenCalled();
   });
 
   it('replaces the designer project in the store and the address bar', () => {
@@ -410,10 +485,10 @@ describe('the runtime store', () => {
     const staleStartRouteKey = ['pm', 'start', 'route'].join('_');
     localStorage.setItem(staleStartRouteKey, 'projects');
 
-    // Act & Assert 1: landingRoute lands on overview when work is running, despite stale start route
-    expect(landingRoute(null, true, true)).toBe('overview');
+    // Act & Assert 1: without a remembered place the start rule opens what waits, despite the key
+    expect(startRouteFor(null, true, {}, { workRunning: true }, false)).toBe('inbox');
 
-    // Act & Assert 2: fresh paired browser lands on overview by the rule
+    // Act & Assert 2: a fresh paired browser lands on the list of what waits by the rule
     vi.spyOn(apiClient, 'pair').mockResolvedValue({
       device_secret: 'pmw_fresh',
       device_id: 'dev-1',
@@ -437,16 +512,301 @@ describe('the runtime store', () => {
     vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
 
     await pairBrowser('KXQB-MRTN');
-    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
 
-    // Act & Assert 3: brand click lands on projects when no work runs, despite stale start route
+    // Act & Assert 3: the brand click opens what waits when no work runs, despite the stale key
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     localStorage.setItem(staleStartRouteKey, 'overview');
-    runtimeStore.set(makeRuntimeState({ currentRoute: 'overview', isPaired: true, isOnboarded: true }));
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'overview', isPaired: true, isOnboarded: true }),
+    );
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
 
     await openStartPage();
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+});
+
+/**
+ * The remembered place at the two entry points: a mark-less load is filled by a replace, a click
+ * on Running work by a push, and neither a marked reload nor `/?lens=waits` is filled at all.
+ */
+describe('the remembered place at the start', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.restoreAllMocks();
+    // Each case is another load of the app: the start mark is read once per load.
+    resetOpenedFromOutside();
+    runtimeStore.set(makeRuntimeState({ isInitialized: false, isOnboarded: false }));
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
+      projects: [
+        {
+          project_id: 'p-1',
+          display_name: 'Project 1',
+          active_plans_count: 1,
+          active_epics_count: 0,
+          needs_operator_count: 0,
+          setup_needs_operator: false,
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    writeRememberedPlace({ project: 'p-1', planId: 'fix-relay' });
+  });
+
+  afterEach(() => {
+    stopRuntimeRecovery();
+  });
+
+  it('fills a mark-less load at /overview from the place, by a replace', async () => {
+    // Arrange: a typed address carries no mark of the app.
+    window.history.replaceState(null, '', '/overview');
+    const replace = vi.spyOn(window.history, 'replaceState');
+    const push = vi.spyOn(window.history, 'pushState');
+
+    // Act
+    await initRuntime();
+
+    // Assert: the remembered plan opens, and the entry is replaced rather than pushed.
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(replace).toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('leaves a marked reload where it is', async () => {
+    // Arrange: an entry the app wrote carries its mark.
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).selectedPlanId).toBeNull();
+  });
+
+  it('never fills the lens of what waits', async () => {
+    // Arrange: `/?lens=waits` names its lens, so it is a full address.
+    window.history.replaceState(null, '', '/?lens=waits');
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).selectedPlanId).toBeNull();
+    expect(window.location.pathname).toBe('/');
+  });
+
+  it('fills a mark-less load at the start page from the place, by a replace', async () => {
+    // Arrange: a typed `/` carries no mark of the app, and a place was left.
+    window.history.replaceState(null, '', '/');
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    // Act
+    await initRuntime();
+
+    // Assert: the remembered plan opens, and the entry is replaced rather than pushed.
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(replace).toHaveBeenCalled();
+  });
+
+  it('leaves the destination a person picked while Running work was being read', async () => {
+    // Arrange: the summary read is held open while the person taps What waits.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/', pmApp: true }, '', '/');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'inbox', isPaired: true, isOnboarded: true }),
+    );
+    let release: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    // Act
+    const pending = openRunningWork();
+    openAttention();
+    release({ projects: [] });
+    await pending;
+
+    // Assert: the earlier answer does not move the person back.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
+  it('lets the start page win when Running work began first', async () => {
+    // Arrange: both reads are held open, and Running work's answer arrives first.
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),
+    );
+    const resolvers: Array<(value: ProjectOverviewResponse) => void> = [];
+    vi.spyOn(apiClient, 'getProjects').mockImplementation(
+      () =>
+        new Promise<ProjectOverviewResponse>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    // Act: Running work begins first, the start page second.
+    const running = openRunningWork();
+    const start = openStartPage();
+    resolvers[0]?.({ projects: [] });
+    await running;
+    resolvers[1]?.({ projects: [] });
+    await start;
+
+    // Assert: the later choice is where the person stands.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+  });
+
+  it('opens the list of what waits from the rail with its own lens', () => {    // Arrange: a paired browser that is already somewhere else.
+    window.history.replaceState({ path: '/reports', pmApp: true }, '', '/reports');
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'reports', isPaired: true, isOnboarded: true }),
+    );
+
+    // Act
+    openAttention();
+
+    // Assert: the pushed entry names the lens, so a reload of it stays on the list.
+    expect(get(runtimeStore).currentRoute).toBe('inbox');
+    expect(window.location.pathname).toBe('/');
+    expect(window.location.search).toBe('?lens=waits');
+  });
+
+  it('pushes the filled lens from a click on Running work', async () => {
+    // Arrange
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+    const push = vi.spyOn(window.history, 'pushState');
+
+    // Act
+    await openRunningWork();
+
+    // Assert: the lens opens in running work, scoped to the remembered project, by a push.
+    expect(window.location.pathname).toBe('/overview');
+    expect(window.location.search).toBe('?project=p-1');
+    expect(push).toHaveBeenCalledWith(
+      expect.objectContaining({ pmApp: true, path: '/overview?project=p-1' }),
+      '',
+      '/overview?project=p-1',
+    );
+  });
+
+  it('keeps a destination opened while the projects are read over Running work', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, and another destination opens before the read answers.
+    const running = openRunningWork();
+    navigateTo('reports');
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the newer destination stands; the late Running work navigation was dropped.
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+    expect(window.location.pathname).toBe('/reports');
+  });
+
+  it('keeps a return navigation that lands on the address Running work started from', async () => {
+    // Arrange: the projects read does not answer at once.
+    let answerProjects: (value: ProjectOverviewResponse) => void = () => {};
+    vi.spyOn(apiClient, 'getProjects').mockReturnValue(
+      new Promise<ProjectOverviewResponse>((resolve) => {
+        answerProjects = resolve;
+      }),
+    );
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+
+    // Act: Running work is asked for, another destination opens, and Back returns to the entry
+    // Running work started from — the same address, but a newer navigation.
+    const running = openRunningWork();
+    navigateTo('reports');
+    window.history.replaceState({ path: '/overview', pmApp: true }, '', '/overview');
+    adoptRouteFromLocation();
+    answerProjects({ projects: [] });
+    await running;
+
+    // Assert: the return navigation stands; Running work did not push the remembered project.
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).lensProject).toBeNull();
+  });
+});
+
+/**
+ * The address feeds every view: each one reads the selection its own address names, and an old
+ * address of a moved view is replaced by the scheme's address when it is opened.
+ */
+describe('the address feeds the views', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState({ isInitialized: true, isPaired: true, isOnboarded: true }));
+  });
+
+  it('gives one decision its selection from its own path', () => {
+    window.history.replaceState(null, '', '/decisions/Q-007');
+
+    expect(adoptRouteFromLocation()).toBe('decision');
+    expect(get(runtimeStore).selectedDecisionId).toBe('Q-007');
+  });
+
+  it('gives one report its selection, and the view resolves its plan', () => {
+    window.history.replaceState(null, '', '/reports/r-42');
+
+    expect(adoptRouteFromLocation()).toBe('report');
+    expect(get(runtimeStore).selectedReportId).toBe('r-42');
+  });
+
+  it('gives the project page its project', () => {
+    window.history.replaceState(null, '', '/projects/pm-mcp-clients');
+
+    expect(adoptRouteFromLocation()).toBe('project');
+    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+  });
+
+  it('gives a task its plan and its task', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay/tasks/TASK-4');
+
+    expect(adoptRouteFromLocation()).toBe('task');
+    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    expect(get(runtimeStore).selectedTaskId).toBe('TASK-4');
+  });
+
+  it('gives the overview its scope, grouping and mode from the query', () => {
+    window.history.replaceState(null, '', '/overview?project=p-1&group=epic&mode=ended');
+
+    expect(adoptRouteFromLocation()).toBe('overview');
+    expect(get(runtimeStore).selectedProjectId).toBe('p-1');
+    expect(get(runtimeStore).lensGroup).toBe('epic');
+    expect(get(runtimeStore).lensMode).toBe('ended');
+  });
+
+  it('gives the plan its tab, node, file and chat from the query', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay?tab=changes&file=pm-relay/pom.xml');
+
+    expect(adoptRouteFromLocation()).toBe('plan');
+    expect(get(runtimeStore).objectTab).toBe('changes');
+    expect(get(runtimeStore).changeFile).toBe('pm-relay/pom.xml');
+    expect(get(runtimeStore).phaseNode).toBeNull();
+
+    window.history.replaceState(null, '', '/plans/fix-relay?node=execute/land&chat=open');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).phaseNode).toBe('execute/land');
+    expect(get(runtimeStore).chatOpen).toBe(true);
   });
 });
 
@@ -709,5 +1069,532 @@ describe('the recovery of a failed start', () => {
     await initRuntime();
 
     expect(isRuntimeRecovering()).toBe(true);
+  });
+});
+
+/** The events of the runtime stream the store follows itself. */
+describe('the runtime events the store follows', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+    runtimeStore.set(makeRuntimeState());
+  });
+
+  it('marks the network listener closed and open again as listener.changed names it', () => {
+    // Act: ListenerChangedEvent {listener, state, port}; this browser is on the loopback listener
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'closed', port: 7421 });
+
+    // Assert: the banner changes, the loopback browser stays where it is
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: true, currentRoute: 'overview' });
+    expect(get(runtimeStore).listenerClosedAt).not.toBeNull();
+
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'lan', state: 'open', port: 7421 });
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({ isListenerClosed: false, listenerClosedAt: null });
+  });
+
+  it('ignores a change of the loopback listener', () => {
+    // Act
+    handleRuntimeEvent('listener.changed', { listener: 'loopback', state: 'closed', port: 7420 });
+
+    // Assert
+    expect(get(runtimeStore).isListenerClosed).toBe(false);
+  });
+
+  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+    'tells the project views that %s happened',
+    (event) => {
+      // Act
+      handleRuntimeEvent(event, { project_id: 'pm-mcp-clients' });
+
+      // Assert
+      expect(get(runtimeStore).projectEventNotice).toMatch(new RegExp(`^${event}_\\d+$`));
+    },
+  );
+
+  it.each([
+    ['onboarding.step_completed', 'getOnboardingState'],
+    ['machine.settings_changed', 'getMachineSettings'],
+  ] as const)('reads again what %s changed', async (event, read) => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    const reread = vi.spyOn(apiClient, read).mockRejectedValue(new Error('not needed'));
+
+    // Act
+    handleRuntimeEvent(event, {});
+
+    // Assert
+    await vi.waitFor(() => expect(reread).toHaveBeenCalledTimes(1));
+  });
+});
+
+/** The pairing, the revocation and the stream's Try again, as the shell sees them in the store. */
+describe('the pairing state the store keeps', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/pair');
+    runtimeStore.set(makeRuntimeState());
+  });
+
+  afterEach(() => {
+    stopRuntimeRecovery();
+  });
+
+  it('keeps the code and shows the refusal when the runtime refuses it', async () => {
+    // Arrange: an unpaired browser opens a pairing link whose code the runtime refuses
+    window.history.replaceState(null, '', '/pair#code=KXQB-MRTN');
+    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('invalid_code'));
+
+    // Act
+    const redeemed = await checkUrlHashForCode();
+
+    // Assert: the pairing page names the refusal, and the code stays for the person to read
+    expect(redeemed).toBe(false);
+    expect(get(runtimeStore).pairingFailed).toBe(true);
+    expect(window.location.hash).toBe('#code=KXQB-MRTN');
+  });
+
+  it.each([
+    ['a reason', 'unauthorized', { reason: 'unauthorized' }],
+    [
+      'the revocation record',
+      { reason: 'revoked_by_operator', revoked_by: 'the console' },
+      { reason: 'revoked_by_operator', revoked_by: 'the console' },
+    ],
+  ] as const)(
+    'shows the revoked page when the client reports %s',
+    async (_kind, info, expected) => {
+      // Arrange: the store hands the client its revocation hook when it starts
+      const hook = vi.spyOn(apiClient, 'setOnRevoked');
+      await initRuntime();
+      const onRevoked = hook.mock.calls[0][0] as unknown as (info: string | RevokedInfo) => void;
+
+      // Act
+      onRevoked(info);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({
+        isPaired: false,
+        isRevoked: true,
+        revokedReason: expected.reason,
+        revokedInfo: expected,
+        currentRoute: 'revoked',
+      });
+    },
+  );
+
+  it('reconnects the stream at once and reads the runtime again on Try again', async () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState({ streamState: 'offline' }));
+    const retry = vi.spyOn(apiClient, 'retryEventStream').mockImplementation(() => {});
+    const status = vi.spyOn(apiClient, 'getStatus');
+    const shown: string[] = [];
+    const unsubscribe = runtimeStore.subscribe((s) => shown.push(s.streamState));
+
+    // Act
+    retryEventStream();
+    unsubscribe();
+
+    // Assert: the indicator says it connects, the stream is retried, and the start runs again
+    expect(shown.slice(0, 2)).toEqual(['offline', 'connecting']);
+    expect(retry).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('pair'));
+    expect(status).not.toHaveBeenCalled();
+  });
+});
+
+/** The onboarding's step bar follows the state the runtime reports. */
+describe('the onboarding step of a state', () => {
+  it.each([
+    [undefined, 1],
+    ['onboard.mode', 0],
+    ['onboard.entry', 0],
+    ['language.choose', 1],
+    ['harness.choose', 2],
+    ['models.choose', 3],
+    ['catalogue.review', 3],
+    ['roles.assign', 4],
+    ['store.choose', 5],
+    ['providers.verify', 6],
+    ['defaults.review', 7],
+    ['plans.defaults', 7],
+    ['onboard.completed', 8],
+    ['onboard.summary', 1],
+  ] as [string | undefined, number][])('places %s on step %i', (state, step) => {
+    expect(deriveStepFromState(state)).toBe(step);
+  });
+
+  it('applies the state the automatic run reports, and keeps it when the run is refused', async () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState());
+    const auto = vi
+      .spyOn(apiClient, 'startOnboardingAuto')
+      .mockResolvedValueOnce({ state: 'roles.assign' } as never)
+      .mockRejectedValueOnce(new Error('act_not_available'));
+
+    // Act
+    await startOnboardingAuto();
+
+    // Assert
+    expect(get(runtimeStore).activeStep).toBe(4);
+    expect(get(runtimeStore).completedSteps).toBe(3);
+
+    // Act: a refused run changes nothing
+    await startOnboardingAuto();
+
+    // Assert
+    expect(auto).toHaveBeenCalledTimes(2);
+    expect(get(runtimeStore).activeStep).toBe(4);
+  });
+});
+
+/** The route a view opens, and the identifiers the store keeps for it. */
+describe('the identifiers a route carries', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.history.replaceState(null, '', '/overview');
+    runtimeStore.set(
+      makeRuntimeState({
+        startProjectId: 'shown-project',
+        selectedPlanId: 'shown-plan',
+        selectedEpicId: 'shown-epic',
+      }),
+    );
+  });
+
+  it.each([
+    ['start', { projectId: 'p-1', entryId: 'e-1' }, { startProjectId: 'p-1', startEntryId: 'e-1' }],
+    [
+      'plan',
+      { planId: 'fix', taskId: 'TASK-3' },
+      { selectedPlanId: 'fix', selectedTaskId: 'TASK-3' },
+    ],
+    ['epic', { epicId: 'relay' }, { selectedEpicId: 'relay' }],
+    ['decomposition', { epicId: 'relay' }, { selectedEpicId: 'relay' }],
+    ['reports', { reportPlanId: 'fix' }, { selectedReportDetailPlanId: 'fix' }],
+    ['decisions', { decisionId: 'Q-7' }, { selectedDecisionId: 'Q-7' }],
+    ['projects', { explorerProjectId: 'p-1' }, { selectedProjectId: 'p-1' }],
+    ['designer', { projectId: 'p-1' }, { designerProjectId: 'p-1' }],
+  ] as [AppRoute, RouteParams, Record<string, unknown>][])(
+    'opens %s with the identifiers it names',
+    (route, params, expected) => {
+      // Act
+      pushRoute(route, params);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({ currentRoute: route, ...expected });
+    },
+  );
+
+  it.each([
+    ['start', { startProjectId: 'shown-project', startEntryId: null }],
+    ['plan', { selectedPlanId: 'shown-plan', selectedTaskId: null }],
+    ['epic', { selectedEpicId: 'shown-epic' }],
+    ['reports', { selectedReportDetailPlanId: null }],
+    ['decisions', { selectedDecisionId: null }],
+    ['projects', { selectedProjectId: null }],
+    ['designer', { designerProjectId: null }],
+  ] as [AppRoute, Record<string, unknown>][])(
+    'opens %s without identifiers on the one shown, or on none',
+    (route, expected) => {
+      // Act
+      pushRoute(route);
+
+      // Assert
+      expect(get(runtimeStore)).toMatchObject({ currentRoute: route, ...expected });
+    },
+  );
+
+  it('opens an epic decomposition under the project it belongs to', () => {
+    // Act
+    openEpicDecomposition('relay', 'pm-mcp-clients');
+
+    // Assert
+    expect(get(runtimeStore)).toMatchObject({
+      currentRoute: 'decomposition',
+      selectedEpicId: 'relay',
+      selectedProjectId: 'pm-mcp-clients',
+    });
+  });
+});
+
+/** The machine settings a screen changes, against the revision the store read. */
+describe('the machine settings the store writes', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.restoreAllMocks();
+    runtimeStore.set(makeRuntimeState({ machineSettings: { revision: 4 } as never }));
+  });
+
+  it('reports a token the runtime refused, and reads nothing back', async () => {
+    // Arrange
+    const refusal = new Error('cli_only');
+    vi.spyOn(apiClient, 'setCredential').mockRejectedValue(refusal);
+    const reread = vi.spyOn(apiClient, 'getMachineSettings');
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new');
+
+    // Assert
+    expect(result).toEqual({
+      ok: false,
+      cause: actFailureReason(refusal, ''),
+      kindFailed: false,
+      refreshFailed: false,
+    });
+    expect(reread).not.toHaveBeenCalled();
+  });
+
+  it('records the kind of a replaced token against the revision it read', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    const kind = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({ revision: 5 } as never);
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new', 'pat');
+
+    // Assert
+    expect(kind).toHaveBeenCalledWith('credential:github', 'pat', 4);
+    expect(result).toEqual({ ok: true, cause: '', kindFailed: false, refreshFailed: false });
+    expect(get(runtimeStore).machineSettings?.revision).toBe(5);
+  });
+
+  it('keeps a stored token when its kind and the read-back fail', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    vi.spyOn(apiClient, 'updateMachineSetting').mockRejectedValue(new Error('conflict'));
+    vi.spyOn(apiClient, 'getMachineSettings').mockRejectedValue(new Error('network_offline'));
+
+    // Act
+    const result = await storeCredential('github', 'ghp_new', 'pat');
+
+    // Assert
+    expect(result).toEqual({ ok: true, cause: '', kindFailed: true, refreshFailed: true });
+  });
+
+  it('keeps the refusal’s code when the runtime refuses a setting at no revision', async () => {
+    // Arrange: the store has read no settings yet, so the change applies to revision 0
+    runtimeStore.set(makeRuntimeState({ machineSettings: null }));
+    const update = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockRejectedValue(new Error('invalid_value'));
+
+    // Act
+    const result = await updateMachineSetting('documents_mode', 'copy');
+
+    // Assert: nothing was applied, and the page can name the rule the value missed.
+    expect(result).toEqual({
+      applied: false,
+      conflict: false,
+      revision: 0,
+      errorCode: 'invalid_value',
+    });
+    expect(update).toHaveBeenCalledWith('documents_mode', 'copy', 0);
+  });
+
+  it('answers nothing when the runtime refuses a consent withdrawal', async () => {
+    // Arrange
+    const withdraw = vi
+      .spyOn(apiClient, 'withdrawConsent')
+      .mockRejectedValue(new Error('conflict'));
+
+    // Act
+    const result = await withdrawConsent('telemetry');
+
+    // Assert
+    expect(result).toBeNull();
+    expect(withdraw).toHaveBeenCalledWith('telemetry', 4);
+  });
+});
+
+/**
+ * The decision announcer (`decisions.adoc#announce`): one notification for what is new, none for
+ * what a start, a reload or a reconnect finds by reading everything again, and none for a decision
+ * answered before its window closed. It is driven with a fake clock and a fake browser.
+ */
+describe('the decision announcer', () => {
+  /** One notification the fake browser was asked to show. */
+  interface Shown {
+    title: string;
+    onclick: () => void;
+  }
+
+  let shown: Shown[];
+  let opened: string[];
+  let openList: ReturnType<typeof vi.fn<() => void>>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    shown = [];
+    opened = [];
+    openList = vi.fn<() => void>();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * @param permission the permission the browser gave
+   * @param openDecisions the decisions the silent prime reads
+   * @param visible whether the tab stands in front
+   * @returns the announcer under test, over the fake clock and the fake browser
+   */
+  function announcer(
+    permission: 'granted' | 'denied' = 'granted',
+    openDecisions: ReadonlyArray<{ id: string }> = [],
+    visible = false,
+  ) {
+    return createDecisionAnnouncer({
+      permission: () => permission,
+      visible: () => visible,
+      openDecisions: async () => openDecisions,
+      notify: (notification) => shown.push(notification),
+      openList,
+      openDecision: (id) => opened.push(id),
+      setTimer: (callback, ms) => setTimeout(callback, ms),
+    });
+  }
+
+  it('raises none for what a start, a reload or a reconnect finds by reading everything again', async () => {
+    // Arrange: the prime of a reconnect reads two open decisions.
+    const view = announcer('granted', [{ id: 'dec-1' }, { id: 'dec-2' }]);
+
+    // Act: both are named by events after the prime, as a re-read of the same list does.
+    await view.prime();
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the primed set is silent; only an unannounced decision is announced.
+    expect(shown).toEqual([]);
+  });
+
+  it('announces the first decision the prime did not find', async () => {
+    // Arrange
+    const view = announcer('granted', [{ id: 'dec-1' }]);
+    await view.prime();
+
+    // Act
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown.map((notification) => notification.title)).toEqual(['two asks a decision']);
+  });
+
+  it('makes one notification for three decisions within one second, which opens the list', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act: the three arrive inside the first window.
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(300);
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(300);
+    view.decisionOpened({ id: 'dec-3', subject: 'plan three' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: one title for the three, and its click opens the list of open decisions.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      '3 decisions wait for you',
+    ]);
+    shown[0].onclick();
+    expect(openList).toHaveBeenCalledOnce();
+    expect(opened).toEqual([]);
+  });
+
+  it('makes one notification for a single decision, which opens that decision', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-9', subject: 'plan Rebase onto main' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the title names the subject alone, never the decision's content.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'Rebase onto main asks a decision',
+    ]);
+    shown[0].onclick();
+    expect(opened).toEqual(['dec-9']);
+    expect(openList).not.toHaveBeenCalled();
+  });
+
+  it('names a waiver as a waiver in the single notification', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-w', subject: 'plan Release', is_waiver: true });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'Release asks for a waiver',
+    ]);
+  });
+
+  it('drops a decision answered before its notification shows', () => {
+    // Arrange
+    const view = announcer();
+
+    // Act: the decision closes inside the window it opened.
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    view.decisionClosed('dec-1');
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
+  });
+
+  it('opens a new window after the burst showed, and never announces a decision twice', () => {
+    // Arrange: the window does not slide, so a steady stream still announces.
+    const view = announcer();
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+    view.decisionOpened({ id: 'dec-2', subject: 'plan two' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert: the repeat of a decision already announced adds nothing.
+    expect(shown.map((notification) => notification.title)).toEqual([
+      'one asks a decision',
+      'two asks a decision',
+    ]);
+  });
+
+  it('shows nothing while the browser gave no permission', () => {
+    // Arrange
+    const view = announcer('denied');
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
+  });
+
+  it('shows nothing while the tab stands in front', () => {
+    // Arrange: the app's own notice, badge and tab title carry the arrival on the page itself.
+    const view = announcer('granted', [], true);
+
+    // Act
+    view.decisionOpened({ id: 'dec-1', subject: 'plan one' });
+    vi.advanceTimersByTime(DECISION_BURST_MS);
+
+    // Assert
+    expect(shown).toEqual([]);
   });
 });

@@ -23,7 +23,7 @@ export interface ShellNavItem {
   /** The id an end-to-end test finds it by. */
   testId: string;
   /** The count it carries, when it carries one. */
-  count?: 'decisions' | 'reports';
+  count?: 'decisions' | 'reports' | 'attention';
 }
 
 /** One group of destinations, with the heading that names it. */
@@ -36,14 +36,23 @@ export interface ShellNavGroup {
 /**
  * The rail: three groups, each destination once.
  *
- * The attention inbox (`/`) arrives with its own route; until it exists the rail names the
- * destinations that can be opened today, so no control promises a page the app does not have.
+ * The attention inbox (`/`) is the first destination: it is the app's start page, and it carries
+ * the list's total while anything waits (needs-and-find.adoc, The Route and the Rail). It stays
+ * visible when nothing waits, without a count, so no control disappears under the operator.
  */
 export const RAIL_GROUPS: readonly ShellNavGroup[] = [
   {
     id: 'work',
     labelKey: 'web.frame.rail.groups.work',
     items: [
+      {
+        id: 'needs',
+        route: 'inbox',
+        labelKey: 'web.rail.needs',
+        icon: 'nav.inbox',
+        testId: 'nav-inbox-btn',
+        count: 'attention',
+      },
       {
         id: 'running',
         route: 'overview',
@@ -112,12 +121,15 @@ export const RAIL_GROUPS: readonly ShellNavGroup[] = [
 ];
 
 /** Every destination, flattened in rail order. */
-export const ALL_NAV_ITEMS: readonly ShellNavItem[] = RAIL_GROUPS.flatMap(
-  (group) => group.items,
-);
+export const ALL_NAV_ITEMS: readonly ShellNavItem[] = RAIL_GROUPS.flatMap((group) => group.items);
 
-/** The destinations the phone's bottom bar keeps; the rest live in its "More" sheet. */
-const BOTTOM_IDS: ReadonlySet<string> = new Set(['running', 'decisions', 'reports']);
+/**
+ * The destinations the phone's bottom bar keeps; the rest live in its "More" sheet.
+ *
+ * The phone shows What waits · Running work · Decisions, and More; the reports move into the
+ * sheet, so More carries their unread count (navigation.adoc, The Phone).
+ */
+const BOTTOM_IDS: ReadonlySet<string> = new Set(['needs', 'running', 'decisions']);
 
 /** The destinations the phone's bar carries, before "More" is counted. */
 export const BOTTOM_ITEMS: readonly ShellNavItem[] = ALL_NAV_ITEMS.filter((item) =>
@@ -128,7 +140,7 @@ export const BOTTOM_ITEMS: readonly ShellNavItem[] = ALL_NAV_ITEMS.filter((item)
  * The route a destination is selected for.
  *
  * A detail page keeps the destination it belongs to highlighted: a plan or an epic is work, the
- * cleanup is part of the system, and a machine setting is a setting.
+ * cleanup is part of the system, and the settings are the settings view.
  *
  * @param route the route the store shows
  * @returns the route of the destination that stays selected
@@ -137,13 +149,18 @@ export function activeNavRoute(route: AppRoute): AppRoute {
   switch (route) {
     case 'plan':
     case 'epic':
+    case 'task':
     case 'decomposition':
     case 'start':
       return 'overview';
+    case 'project':
+      return 'projects';
+    case 'decision':
+      return 'decisions';
+    case 'report':
+      return 'reports';
     case 'cleanup':
       return 'system';
-    case 'machine-settings':
-      return 'settings';
     case 'project-onboarding':
       return 'projects';
     default:

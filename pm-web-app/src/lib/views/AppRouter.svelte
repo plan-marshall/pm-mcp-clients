@@ -3,11 +3,11 @@
   import PairingView from './PairingView.svelte';
   import OnboardingView from './OnboardingView.svelte';
   import SettingsView from './SettingsView.svelte';
-  import MachineSettingsView from './MachineSettingsView.svelte';
   import ProcessDesigner from './ProcessDesigner.svelte';
   import RevokedView from './RevokedView.svelte';
   import ListenerOffView from './ListenerOffView.svelte';
   import OverviewView from './OverviewView.svelte';
+  import InboxView from './InboxView.svelte';
   import ReportsView from './ReportsView.svelte';
   import DecisionView from './DecisionView.svelte';
   import SystemView from './SystemView.svelte';
@@ -41,27 +41,26 @@
   {/key}
 {:else if !$runtimeStore.isPaired}
   <PairingView />
-{:else if !$runtimeStore.isOnboarded && !$runtimeStore.isOffline && $runtimeStore.currentRoute !== 'onboarding' && $runtimeStore.currentRoute !== 'project-onboarding'}
+{:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding' || (!$runtimeStore.isOnboarded && !$runtimeStore.isOffline)}
+  <!-- The onboarding routes, and every route of a machine that is not onboarded while it answers. -->
   <OnboardingView />
-{:else if $runtimeStore.currentRoute === 'onboarding' || $runtimeStore.currentRoute === 'project-onboarding'}
-  <OnboardingView />
-{:else if $runtimeStore.currentRoute === 'projects'}
+{:else if $runtimeStore.currentRoute === 'inbox'}
+  <InboxView />
+{:else if $runtimeStore.currentRoute === 'projects' || $runtimeStore.currentRoute === 'project'}
   <ProjectExplorerView />
-{:else if $runtimeStore.currentRoute === 'reports'}
+{:else if $runtimeStore.currentRoute === 'reports' || $runtimeStore.currentRoute === 'report'}
   <ReportsView />
-{:else if $runtimeStore.currentRoute === 'decisions'}
+{:else if $runtimeStore.currentRoute === 'decisions' || $runtimeStore.currentRoute === 'decision'}
   <DecisionView />
 {:else if $runtimeStore.currentRoute === 'settings'}
   <SettingsView />
-{:else if $runtimeStore.currentRoute === 'machine-settings'}
-  <MachineSettingsView />
 {:else if $runtimeStore.currentRoute === 'system'}
   <SystemView />
 {:else if $runtimeStore.currentRoute === 'cleanup'}
   <CleanupView />
 {:else if $runtimeStore.currentRoute === 'designer'}
   <ProcessDesigner projectId={$runtimeStore.designerProjectId ?? null} />
-{:else if $runtimeStore.currentRoute === 'plan'}
+{:else if $runtimeStore.currentRoute === 'plan' || $runtimeStore.currentRoute === 'task'}
   <PlanView />
 {:else if $runtimeStore.currentRoute === 'epic'}
   <EpicView />

@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,14 @@ import java.util.Set;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.changes.PlanChangeCapturedEvent;
+import de.planmarshall.api.changes.PlanChangeFile;
+import de.planmarshall.api.changes.PlanChangeLineKind;
+import de.planmarshall.api.changes.PlanChangedFile;
+import de.planmarshall.api.changes.PlanChangesAnswer;
+import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesNotCaptured;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
@@ -46,6 +55,7 @@ import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.process.EpicProcess;
 import de.planmarshall.api.process.ProcessTree;
@@ -56,6 +66,7 @@ import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.SystemSnapshot;
+import de.planmarshall.mock.runtime.MockRuntimeEngine;
 
 /**
  * Loads and validates scenario files against the closed scenario format specification
@@ -79,9 +90,11 @@ public class ScenarioLoader {
     private static final String FIELD_REPRESENTATION = "representation";
     /** The member of a route and of a link that holds its HTTP status. */
     private static final String FIELD_STATUS = "status";
+    /** The member of the scenario, and of a state's runtime fixture, that holds routes. */
+    private static final String FIELD_ROUTES = "routes";
 
     private static final Set<String> ROOT_FIELDS = Set.of(
-            "format_version", "name", "description", "start", "pairing_code", "routes", "states");
+            "format_version", "name", "description", "start", "pairing_code", FIELD_ROUTES, "states");
     private static final Set<String> STATE_FIELDS = Set.of(
             FIELD_REPRESENTATION, "links", "events", "auto", "chat_failures");
     private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
@@ -92,6 +105,15 @@ public class ScenarioLoader {
 
     /** The engine-only fixture object a state's facts may carry. */
     private static final String RUNTIME_FIXTURE = "runtime";
+    /** The engine-only fixtures a state's runtime fixture may carry. */
+    private static final String FIXTURE_PLAN_CHANGES = "plan_changes";
+    /** The member a fixture entry uses to name its plan. */
+    private static final String FIELD_PLAN_ID = "plan_id";
+    private static final String FIXTURE_CONTENTS = "contents";
+    /** The member a {@code plan.change_captured} payload uses to carry the capture it announces. */
+    private static final String FIELD_CAPTURE = "capture";
+    /** The suffix of an event's field path, so every error names its field the same way. */
+    private static final String EVENT_DATA_SUFFIX = "].data";
     /** The prefix of every chat event's name. */
     private static final String CHAT_EVENT_PREFIX = "chat.";
 
@@ -208,7 +230,7 @@ public class ScenarioLoader {
         var pairingCode = JsonTree.string(root, "pairing_code");
 
         // 6. routes
-        var routes = parseRoutes(root.get("routes"), identifier);
+        var routes = parseRoutes(root.get(FIELD_ROUTES), identifier);
 
         // 7. states
         var statesObj = root.get("states");
@@ -227,7 +249,646 @@ public class ScenarioLoader {
 
         validateTransitions(states, identifier);
 
+        validatePlanChanges(routes, states, identifier);
+
         return new Scenario(formatVersion, name, description, start, pairingCode, routes, states);
+    }
+
+    /**
+     * Holds every captured plan's changes to the plan's size of change, so the list a client reads and
+     * the size the plan carries can only ever be one measurement
+     * ({@code 01-processes-and-transport.adoc#plan-changes}): the files, their lines added and removed
+     * and their count beyond the footprint are added up and compared with every {@code change} the
+     * state serves for that plan — the scenario's static routes and the state's own overrides. The
+     * fixture is decoded with the {@code pm-api} codecs either way, so a malformed changes fixture
+     * fails the load.
+     * <p>
+     * A scenario that models no captures at all ({@code reports-and-system} and the other case
+     * scenarios) serves sizes without a changes fixture; its plans' changes are not part of what it
+     * demonstrates, and the rule does not apply. Once a scenario declares one capture, every state of
+     * it is held to the capture it serves.
+     *
+     * @param routes      the scenario's static routes, which carry the plans' sizes of change
+     * @param states      the scenario's states, whose runtime fixtures may carry {@code plan_changes}
+     * @param scenario    the scenario identifier for error reporting
+     */
+    private static void validatePlanChanges(Map<String, RouteDefinition> routes,
+            Map<String, StateDefinition> states, String scenario) {
+        // The engine merges the base fixture below a case state's own, so a state without a
+        // plan_changes member serves the base state's captures.
+        var baseEntries = planChangesOf(states.get(MockRuntimeEngine.BASE_FIXTURE_STATE), scenario);
+        // Every size is a measurement, in every scenario, whether or not it models captures.
+        var sizesByState = sizesOfEveryState(routes, states, scenario);
+        // A scenario that models no captures at all serves sizes without a changes fixture: its
+        // plans' changes are simply not part of what that scenario demonstrates. A scheduled capture
+        // is still held to the captures of its state, which then has none.
+        if (!modelsCaptures(baseEntries, states, scenario)) {
+            states.forEach((stateId, state) -> requireScheduledCapturesApply(state, List.of(), Map.of(),
+                    scenario, stateId));
+            return;
+        }
+        states.forEach((stateId, state) -> validateCapturesOf(state, stateId, baseEntries, sizesByState, scenario));
+    }
+
+    /**
+     * @param routes   the scenario's static routes
+     * @param states   the scenario's states
+     * @param scenario the scenario identifier for error reporting
+     * @return every state's sizes of change, by state id
+     */
+    private static Map<String, Map<String, List<ChangeSize>>> sizesOfEveryState(
+            Map<String, RouteDefinition> routes, Map<String, StateDefinition> states, String scenario) {
+        var sizesByState = new LinkedHashMap<String, Map<String, List<ChangeSize>>>();
+        for (var stateEntry : states.entrySet()) {
+            try {
+                sizesByState.put(stateEntry.getKey(), effectiveSizes(routes, stateEntry.getValue()));
+            } catch (IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, null, "change",
+                        "a plan's size of change is not a measurement: " + e.getMessage());
+            }
+        }
+        return sizesByState;
+    }
+
+    /**
+     * @param baseEntries the base state's captures, or {@code null} when it declares none
+     * @param states      the scenario's states
+     * @param scenario    the scenario identifier for error reporting
+     * @return {@code true} when the scenario models captures at all
+     */
+    private static boolean modelsCaptures(@Nullable List<Map<String, Object>> baseEntries,
+            Map<String, StateDefinition> states, String scenario) {
+        return baseEntries != null
+                || states.values().stream().anyMatch(state -> planChangesOf(state, scenario) != null);
+    }
+
+    /**
+     * @param state        the state whose captures are validated
+     * @param stateId      the state's id
+     * @param baseEntries  the base state's captures, or {@code null}
+     * @param sizesByState every state's sizes of change
+     * @param scenario     the scenario identifier for error reporting
+     */
+    private static void validateCapturesOf(StateDefinition state, String stateId,
+            @Nullable List<Map<String, Object>> baseEntries,
+            Map<String, Map<String, List<ChangeSize>>> sizesByState, String scenario) {
+        var ownEntries = planChangesOf(state, scenario);
+        final List<Map<String, Object>> effective;
+        if (ownEntries != null) {
+            effective = ownEntries;
+        } else if (baseEntries != null) {
+            effective = baseEntries;
+        } else {
+            effective = List.of();
+        }
+        // A size belongs to the state that serves it: a plan captured in one state says nothing
+        // about the same plan before its capture in another.
+        final Map<String, List<ChangeSize>> sizes = sizesByState.get(stateId);
+        requireEachPlanOnce(effective, scenario);
+        effective.forEach(entry -> validateOnePlansChanges(entry, sizes, scenario));
+        requireEverySizeHasACapture(effective, sizes, scenario);
+        requireScheduledCapturesApply(state, effective, sizes, scenario, stateId);
+    }
+
+    /**
+     * Holds every scheduled {@code plan.change_captured} to what the mock can play, in the order the
+     * state plays them: an announcement that carries no capture may only move the head of a capture the
+     * sequence serves at that point, at the size that capture adds up to, and a carried capture never
+     * sends a plan the sequence serves back to its first capture. Each event moves the simulated
+     * capture on, so the load sees the state the play will reach.
+     *
+     * @param state     the state whose events are validated
+     * @param effective the capture entries the state serves
+     * @param sizes     the sizes of change the state serves, by plan
+     * @param scenario  the scenario identifier for error reporting
+     * @param stateId   the state identifier
+     */
+    private static void requireScheduledCapturesApply(StateDefinition state,
+            List<Map<String, Object>> effective, Map<String, List<ChangeSize>> sizes, String scenario,
+            String stateId) {
+        var served = capturesByPlan(effective, scenario);
+        var retained = retainedSizes(sizes, served);
+        for (var index = 0; index < state.events().size(); index++) {
+            var event = state.events().get(index);
+            if (PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
+                applyScheduledCapture(event.data(), index, served, retained, scenario, stateId);
+            }
+        }
+    }
+
+    /**
+     * The figures each plan keeps while the sequence runs: the captured answers' totals, and the size a
+     * state declares for a capture that is already gone (the plan's last capture).
+     *
+     * @param sizes  the sizes of change the state serves, by plan
+     * @param served the answers the sequence serves at its start, by plan
+     * @return the figures by plan
+     */
+    private static Map<String, ChangeSize> retainedSizes(Map<String, List<ChangeSize>> sizes,
+            Map<String, PlanChangesAnswer> served) {
+        var retained = new LinkedHashMap<String, ChangeSize>();
+        for (var entry : served.entrySet()) {
+            if (entry.getValue() instanceof PlanChangesCaptured captured) {
+                retained.put(entry.getKey(), captured.totals());
+            }
+        }
+        for (var entry : sizes.entrySet()) {
+            retained.putIfAbsent(entry.getKey(), entry.getValue().getFirst());
+        }
+        return retained;
+    }
+
+    /**
+     * Holds one scheduled capture to the answers and the figures the sequence serves, and moves the
+     * simulation on with it — a captured answer, a capture that is gone and a plan never captured all
+     * state what a later event is held to.
+     *
+     * @param data     the event's payload
+     * @param index    the event's position
+     * @param served   the answers the sequence serves so far, by plan
+     * @param retained the figures each plan keeps, by plan
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void applyScheduledCapture(@Nullable Object data, int index,
+            Map<String, PlanChangesAnswer> served, Map<String, ChangeSize> retained, String scenario,
+            String stateId) {
+        var payload = JsonTree.asObject(data);
+        if (payload == null) {
+            return;
+        }
+        var announced = announcedOf(payload, index, scenario, stateId);
+        var carried = JsonTree.asObject(payload.get(FIELD_CAPTURE));
+        if (carried != null) {
+            applyCarriedScheduledCapture(carried, announced, served, retained, index, scenario, stateId);
+            return;
+        }
+        if (!(served.get(announced.planId()) instanceof PlanChangesCaptured current)) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the plan " + announced.planId()
+                            + " has no capture in the state for the announcement to move");
+        }
+        if (!current.totals().equals(announced.size())) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the announced size of " + announced.planId() + " ("
+                            + sizeText(announced.size()) + ") contradicts the files the state serves ("
+                            + sizeText(current.totals()) + ")");
+        }
+    }
+
+    /**
+     * @param size a size of change, or {@code null}
+     * @return its four figures for a refusal message
+     */
+    private static String sizeText(@Nullable ChangeSize size) {
+        if (size == null) {
+            return "none";
+        }
+        return size.files() + " files, " + size.insertions() + " insertions, "
+                + size.deletions() + " deletions, " + size.unplanned() + " unplanned";
+    }
+
+    /**
+     * Holds a scheduled capture that carries its own answer to the one transition the contract names —
+     * a capture moves on to a new capture or to a capture that is gone, never back to the plan's first
+     * capture — and simulates its effect on what later events are held to. A gone capture stays in the
+     * simulation, so a later `not_captured` is refused as the runtime refuses it.
+     *
+     * @param carry     the capture the announcement carries
+     * @param announced the announcement
+     * @param served    the answers the sequence serves so far, by plan
+     * @param index     the event's position
+     * @param scenario  the scenario identifier for error reporting
+     * @param stateId   the state identifier
+     */
+    private static void applyCarriedScheduledCapture(Map<String, Object> carry,
+            PlanChangeCapturedEvent announced, Map<String, PlanChangesAnswer> served,
+            Map<String, ChangeSize> retained, int index, String scenario, String stateId) {
+        final PlanChangesAnswer carried;
+        try {
+            carried = PlanChangesAnswer.fromMap(carry);
+        } catch (IOException | IllegalArgumentException _) {
+            // The capture itself is refused where the event's payload is validated.
+            return;
+        }
+        if (carried instanceof PlanChangesNotCaptured && served.containsKey(announced.planId())) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the capture of " + announced.planId() + " does not go back to "
+                            + PlanChangesAnswer.NOT_CAPTURED);
+        }
+        if (carried instanceof PlanChangesUnavailable) {
+            // The plan keeps the figures of its last successful capture while the capture is gone, so
+            // the announcement names exactly those figures.
+            var kept = retained.get(announced.planId());
+            if (!announced.size().equals(kept)) {
+                throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                        "the announcement of " + announced.planId() + " names the size "
+                                + sizeText(announced.size()) + " beside "
+                                + PlanChangesAnswer.UNAVAILABLE + ", its last capture " + sizeText(kept));
+            }
+        }
+        served.put(announced.planId(), carried);
+        if (carried instanceof PlanChangesCaptured captured) {
+            retained.put(announced.planId(), captured.totals());
+        } else if (carried instanceof PlanChangesNotCaptured) {
+            retained.remove(announced.planId());
+        }
+    }
+
+    /**
+     * @param effective the capture entries the state serves
+     * @param scenario  the scenario identifier for error reporting
+     * @return the answers by plan
+     */
+    private static Map<String, PlanChangesAnswer> capturesByPlan(List<Map<String, Object>> effective,
+            String scenario) {
+        var served = new LinkedHashMap<String, PlanChangesAnswer>();
+        for (var entry : effective) {
+            var answer = readCapture(entry, scenario).answer();
+            served.put(answer.planId(), answer);
+        }
+        return served;
+    }
+
+    /**
+     * @param payload  the event's payload
+     * @param index    the event's position
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     * @return the payload read through its {@code pm-api} record
+     * @throws ScenarioValidationException when the payload is no {@code plan.change_captured}
+     */
+    private static PlanChangeCapturedEvent announcedOf(Map<String, Object> payload, int index,
+            String scenario, String stateId) {
+        try {
+            return PlanChangeCapturedEvent.fromMap(payload);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the payload does not read as " + PlanChangeCapturedEvent.EVENT_NAME + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * @param index the event's position in its state
+     * @return the field path the event's payload errors are reported under
+     */
+    private static String eventField(int index) {
+        return "events[" + index + EVENT_DATA_SUFFIX;
+    }
+
+    /**
+     * @param entries  a state's capture entries
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireEachPlanOnce(List<Map<String, Object>> entries, String scenario) {
+        var seen = new HashSet<String>();
+        for (var entry : entries) {
+            var planId = JsonTree.string(entry, FIELD_PLAN_ID);
+            if (planId != null && !seen.add(planId)) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the fixture names the capture of " + planId + " twice");
+            }
+        }
+    }
+
+    /**
+     * The sizes of change a state serves: the static routes with the state's own overrides applied by
+     * route key, as the engine serves them.
+     *
+     * @param routes the scenario's static routes
+     * @param state  the state
+     * @return the sizes by plan id
+     */
+    private static Map<String, List<ChangeSize>> effectiveSizes(Map<String, RouteDefinition> routes,
+            StateDefinition state) {
+        var effective = new LinkedHashMap<String, Object>();
+        routes.forEach((key, route) -> effective.put(key, route.representation()));
+        var overrides = stateRoutes(state);
+        if (overrides != null) {
+            // The engine replaces a route only with a map-valued override (activeRoute); a fixture
+            // that spells anything else leaves the static route in force, so the sizes follow it.
+            overrides.forEach((key, value) -> {
+                if (value instanceof Map<?, ?>) {
+                    effective.put(key, value);
+                }
+            });
+        }
+        var sizes = new LinkedHashMap<String, List<ChangeSize>>();
+        effective.values().forEach(value -> collectPlanSizes(value, sizes));
+        return sizes;
+    }
+
+    /**
+     * Every size a state serves names a capture of that plan in the entries the state serves: a
+     * capture, or the capture that is gone whose figures the size still states.
+     *
+     * @param effective the entries the state serves
+     * @param sizes     the sizes the state serves
+     * @param scenario  the scenario identifier for error reporting
+     */
+    private static void requireEverySizeHasACapture(List<Map<String, Object>> effective,
+            Map<String, List<ChangeSize>> sizes, String scenario) {
+        for (var planId : sizes.keySet()) {
+            var state = effective.stream()
+                    .filter(entry -> planId.equals(JsonTree.string(entry, FIELD_PLAN_ID)))
+                    .map(entry -> JsonTree.string(entry, "state"))
+                    .findFirst()
+                    .orElse(null);
+            var captured = PlanChangesAnswer.CAPTURED.equals(state)
+                    || PlanChangesAnswer.UNAVAILABLE.equals(state);
+            if (!captured) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the plan " + planId + " carries a size of change and no capture in this state");
+            }
+        }
+    }
+
+    /**
+     * @param state    the state, or {@code null} for a name the scenario does not hold
+     * @param scenario the scenario identifier for error reporting
+     * @return the state's own {@code plan_changes} entries, or {@code null} when it declares none
+     */
+    private static @Nullable List<Map<String, Object>> planChangesOf(@Nullable StateDefinition state,
+            String scenario) {
+        if (state == null) {
+            return null;
+        }
+        var representation = JsonTree.asObject(state.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+        if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
+            return null;
+        }
+        return fixtureEntries(runtime.get(FIXTURE_PLAN_CHANGES), scenario);
+    }
+
+    /**
+     * @param declared the {@code plan_changes} fixture member
+     * @param scenario the scenario identifier for error reporting
+     * @return the fixture's entries
+     * @throws ScenarioValidationException if the member is not an array of objects
+     */
+    private static List<Map<String, Object>> fixtureEntries(@Nullable Object declared, String scenario) {
+        var rows = JsonTree.asArray(declared);
+        if (rows == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "plan_changes must be an array");
+        }
+        var entries = new ArrayList<Map<String, Object>>(rows.size());
+        for (var row : rows) {
+            var entry = JsonTree.asObject(row);
+            if (entry == null) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "plan_changes must be an array of objects");
+            }
+            entries.add(entry);
+        }
+        return entries;
+    }
+
+    /**
+     * One decoded capture of a plan: the answer the plan serves, and the hunks of each of its files
+     * by path.
+     *
+     * @param answer   the plan's changes as the {@code pm-api} codec reads them
+     * @param contents the answer's contents by path, empty for a refusal
+     */
+    public record DecodedCapture(PlanChangesAnswer answer, Map<String, PlanChangeFile> contents) {
+
+        public DecodedCapture {
+            Objects.requireNonNull(answer, "answer");
+            contents = Map.copyOf(contents);
+        }
+    }
+
+    /**
+     * Decodes one plan's changes entry and holds its files and contents to the contract: the files
+     * stand in path order, every content names a path of the list, and every file is answered by
+     * contents whose lines match its counts. A capture's list and its file answers are therefore one
+     * measurement, and a client never reads a row the file route cannot answer.
+     *
+     * @param entry    the entry, as a {@code plan_changes} fixture or as the {@code capture} member of
+     *                 a {@code plan.change_captured} payload spells one
+     * @param scenario the scenario identifier for error reporting
+     * @return the decoded capture
+     * @throws ScenarioValidationException when the entry, a hunk or the contents contradict the
+     *                                     contract
+     */
+    public static DecodedCapture readCapture(Map<String, Object> entry, String scenario) {
+        final PlanChangesAnswer answer;
+        try {
+            answer = PlanChangesAnswer.fromMap(entry);
+        } catch (IOException | IllegalArgumentException e) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the plan's changes do not decode with the pm-api codec: " + e.getMessage());
+        }
+        var contents = new LinkedHashMap<String, PlanChangeFile>();
+        if (answer instanceof PlanChangesCaptured captured) {
+            requirePathOrder(captured, scenario);
+            try {
+                if (entry.containsKey(FIXTURE_CONTENTS)) {
+                    for (var contentEntry : fixtureEntries(entry.get(FIXTURE_CONTENTS), scenario)) {
+                        var content = PlanChangeFile.fromMap(contentEntry);
+                        if (contents.put(content.path(), content) != null) {
+                            throw new ScenarioValidationException(scenario, null,
+                                    "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                                    "the contents of " + captured.planId() + " name " + content.path()
+                                            + " twice");
+                        }
+                    }
+                }
+            } catch (IOException | IllegalArgumentException e) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "a file's hunks do not decode with the pm-api codec: " + e.getMessage());
+            }
+            requireContentsForEveryFile(captured, contents, scenario);
+        }
+        return new DecodedCapture(answer, contents);
+    }
+
+    private static void validateOnePlansChanges(Map<String, Object> entry,
+            Map<String, List<ChangeSize>> sizes, String scenario) {
+        var decoded = readCapture(entry, scenario);
+        var answer = decoded.answer();
+        var declared = sizes.get(answer.planId());
+        if (!(answer instanceof PlanChangesCaptured captured)) {
+            // Before the first capture the plan carries no size; a capture that is gone keeps the
+            // figures of the plan's last capture, because its tab stays present and says so
+            // (`plan-view.adoc`, The Changes: "the tab, which is present then").
+            if (declared != null && !PlanChangesAnswer.UNAVAILABLE.equals(answer.state())) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the plan " + answer.planId() + " answers " + answer.state()
+                                + " and carries a size of change");
+            }
+            return;
+        }
+        if (declared == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the plan " + captured.planId() + " carries no size of change for its list to agree with");
+        }
+        var totals = captured.totals();
+        for (var size : declared) {
+            if (!size.equals(totals)) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the changes of " + captured.planId() + " do not add up to the plan's size of change:"
+                                + " files " + totals.files() + "/" + size.files()
+                                + ", insertions " + totals.insertions() + "/" + size.insertions()
+                                + ", deletions " + totals.deletions() + "/" + size.deletions()
+                                + ", unplanned " + totals.unplanned() + "/" + size.unplanned());
+            }
+        }
+    }
+
+    /**
+     * Holds the list to the order the contract serves it in: the files in path order, each path
+     * once.
+     *
+     * @param captured the decoded capture
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requirePathOrder(PlanChangesCaptured captured, String scenario) {
+        var files = captured.files();
+        for (int index = 1; index < files.size(); index++) {
+            var previous = files.get(index - 1).path();
+            var path = files.get(index).path();
+            if (previous.compareTo(path) >= 0) {
+                throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                        "the files of " + captured.planId() + " are not in path order: " + previous
+                                + " then " + path);
+            }
+        }
+    }
+
+    /**
+     * Holds every file of the list to its contents, so the file route can answer each row: a content
+     * names a path of the list, and every non-binary file of the list has one. A cut file's hunks are
+     * no more than its counts, because the runtime cut them.
+     *
+     * @param captured the decoded capture
+     * @param contents the decoded contents by path
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireContentsForEveryFile(PlanChangesCaptured captured,
+            Map<String, PlanChangeFile> contents, String scenario) {
+        contents.values().forEach(content -> requireNamedByTheList(captured, content, scenario));
+        captured.files().forEach(file -> requireContentsOf(file, contents, captured, scenario));
+    }
+
+    /**
+     * @param captured the decoded capture
+     * @param content  one of its contents
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireNamedByTheList(PlanChangesCaptured captured, PlanChangeFile content,
+            String scenario) {
+        var row = rowOf(captured, content.path());
+        if (row == null) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the contents of " + captured.planId() + " name a path the list does not: "
+                            + content.path());
+        }
+        if (row.binary() != content.binary()) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the contents of " + content.path() + " answer binary " + content.binary()
+                            + ", the list says " + row.binary());
+        }
+    }
+
+    /**
+     * @param file     one file of the list
+     * @param contents the decoded contents by path
+     * @param captured the decoded capture
+     * @param scenario the scenario identifier for error reporting
+     */
+    private static void requireContentsOf(PlanChangedFile file, Map<String, PlanChangeFile> contents,
+            PlanChangesCaptured captured, String scenario) {
+        var content = contents.get(file.path());
+        if (content == null) {
+            // Every row is answered by its contents, the binary ones included: their answer carries
+            // no hunks (the record refuses that), and the file route needs an entry to serve them.
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the file " + file.path() + " of " + captured.planId() + " has no contents");
+        }
+        if (file.binary()) {
+            return;
+        }
+        var added = countLines(content, PlanChangeLineKind.ADDED);
+        var removed = countLines(content, PlanChangeLineKind.REMOVED);
+        // A cut file's hunks show a part of its lines; the count it names is at least every line the
+        // hunks leave out (omitted hunks may also carry context lines, so this is a lower bound).
+        var missing = (file.added() - added) + (file.removed() - removed);
+        var agrees = content.truncated()
+                ? added <= file.added() && removed <= file.removed()
+                && content.linesOmitted() >= missing
+                : added == file.added() && removed == file.removed();
+        if (!agrees) {
+            throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
+                    "the hunks of " + file.path() + " add " + added + " and remove " + removed
+                            + ", the list says " + file.added() + " and " + file.removed()
+                            + (content.truncated() ? ", and it names " + content.linesOmitted()
+                            + " omitted lines for " + missing + " missing edits" : ""));
+        }
+    }
+
+    /**
+     * @param captured the decoded capture
+     * @param path     a path
+     * @return the file the list serves for the path, or {@code null} when it names none
+     */
+    private static @Nullable PlanChangedFile rowOf(PlanChangesCaptured captured, String path) {
+        return captured.files().stream()
+                .filter(file -> file.path().equals(path))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static int countLines(PlanChangeFile file, PlanChangeLineKind kind) {
+        var count = 0;
+        for (var hunk : file.hunks()) {
+            for (var line : hunk.lines()) {
+                if (line.kind() == kind) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Collects every plan's size of change an object tree spells, keyed by plan id: an object that
+     * names a {@code plan_id} and carries a {@code change} the size codec reads.
+     *
+     * @param value the tree value
+     * @param sizes the collected sizes
+     */
+    private static void collectPlanSizes(@Nullable Object value, Map<String, List<ChangeSize>> sizes) {
+        if (value instanceof Map<?, ?> raw) {
+            var map = JsonTree.asObject(raw);
+            var planId = JsonTree.string(map, FIELD_PLAN_ID);
+            var size = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+            if (planId != null && size != null) {
+                sizes.computeIfAbsent(planId, key -> new ArrayList<>()).add(size);
+            }
+            map.values().forEach(member -> collectPlanSizes(member, sizes));
+        } else if (value instanceof List<?> list) {
+            list.forEach(member -> collectPlanSizes(member, sizes));
+        }
+    }
+
+    /**
+     * @param state the state
+     * @return the route overrides the state's runtime fixture carries ({@code facts.runtime.routes},
+     *         which the engine serves in preference to the static routes), or {@code null}
+     */
+    private static @Nullable Map<String, Object> stateRoutes(StateDefinition state) {
+        var representation = JsonTree.asObject(state.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        var runtime = facts == null ? null : JsonTree.asObject(facts.get(RUNTIME_FIXTURE));
+        return runtime == null ? null : JsonTree.asObject(runtime.get(FIELD_ROUTES));
     }
 
     private static void validateTransitions(Map<String, StateDefinition> states, String identifier) {
@@ -436,11 +1097,65 @@ public class ScenarioLoader {
         try {
             read = EventEnvelope.fromMap(envelope);
         } catch (IOException e) {
-            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the event is no envelope: " + e.getMessage());
         }
         if (name.startsWith(CHAT_EVENT_PREFIX)) {
             validateChatEvent(name, read.payload(), index, scenario, stateId);
+        }
+        if (PlanChangeCapturedEvent.EVENT_NAME.equals(name)) {
+            validatePlanChangeCaptured(read.payload(), index, scenario, stateId);
+        }
+    }
+
+    /**
+     * Validates a scheduled {@code plan.change_captured}: the payload reads through its {@code pm-api}
+     * record, and the capture it carries — its {@code capture} member — holds its files, contents and
+     * size to the contract and agrees with the announced plan, head and size. A scheduled capture the
+     * mock could not serve is refused at the load, never played into a list that contradicts it.
+     *
+     * @param payload  the event's payload
+     * @param index    the event's position in the state's events
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void validatePlanChangeCaptured(Map<String, Object> payload, int index, String scenario,
+            String stateId) {
+        var field = eventField(index);
+        var announced = announcedOf(payload, index, scenario, stateId);
+        var capture = JsonTree.asObject(payload.get(FIELD_CAPTURE));
+        if (capture == null) {
+            return;
+        }
+        var answer = readCapture(capture, scenario).answer();
+        if (!announced.planId().equals(answer.planId())) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the announcement of " + announced.planId() + " carries the capture of " + answer.planId());
+        }
+        if (answer instanceof PlanChangesCaptured captured) {
+            if (!announced.head().equals(captured.head())) {
+                throw new ScenarioValidationException(scenario, stateId, field,
+                        "the announcement of " + announced.planId() + " names the head " + announced.head()
+                                + ", its capture " + captured.head());
+            }
+            if (!captured.totals().equals(announced.size())) {
+                var totals = captured.totals();
+                throw new ScenarioValidationException(scenario, stateId, field,
+                        "the changes of " + captured.planId()
+                                + " do not add up to the size the announcement names:"
+                                + " files " + totals.files() + "/" + announced.filesTotal()
+                                + ", insertions " + totals.insertions() + "/" + announced.insertionsTotal()
+                                + ", deletions " + totals.deletions() + "/" + announced.deletionsTotal()
+                                + ", unplanned " + totals.unplanned() + "/" + announced.unplannedTotal());
+            }
+            return;
+        }
+        if (answer instanceof PlanChangesNotCaptured
+                && (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
+                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0)) {
+            throw new ScenarioValidationException(scenario, stateId, field,
+                    "the announcement of " + announced.planId() + " names a size of change beside "
+                            + answer.state());
         }
     }
 
@@ -457,7 +1172,7 @@ public class ScenarioLoader {
      */
     private static void validateChatEvent(String name, Map<String, Object> payload, int index, String scenario,
             String stateId) {
-        var field = "events[" + index + "].data";
+        var field = eventField(index);
         Map<String, Object> read;
         try {
             read = readChatEvent(name, payload);
@@ -563,6 +1278,7 @@ public class ScenarioLoader {
             return List.of();
         }
         var events = new ArrayList<EventDefinition>();
+        var previousAfterMs = 0L;
         for (var i = 0; i < list.size(); i++) {
             var item = list.get(i);
             if (!(item instanceof Map<?, ?> eventMapRaw)) {
@@ -578,6 +1294,13 @@ public class ScenarioLoader {
                 throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].after_ms",
                         "missing or negative after_ms");
             }
+            // A later event never plays before an earlier one: the list order is the order both timing
+            // modes play, and a capture sequence is validated in it.
+            if (afterMs < previousAfterMs) {
+                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].after_ms",
+                        "after_ms " + afterMs + " is earlier than the previous event's " + previousAfterMs);
+            }
+            previousAfterMs = afterMs;
 
             var event = JsonTree.string(eventMap, "event");
             if (event == null || event.isBlank()) {
@@ -587,7 +1310,7 @@ public class ScenarioLoader {
 
             var data = eventMap.get("data");
             if (data == null) {
-                throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].data",
+                throw new ScenarioValidationException(scenario, stateId, eventField(i),
                         "missing event data");
             }
 

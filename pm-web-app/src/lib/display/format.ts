@@ -62,11 +62,7 @@ export function clockParts(timestamp: string | null | undefined): ClockParts | n
  * @param params the ICU parameters of the text
  * @returns the text the catalogue of that locale yields for the key
  */
-function word(
-  locale: Locale,
-  key: string,
-  params?: Record<string, string | number>,
-): string {
+function word(locale: Locale, key: string, params?: Record<string, string | number>): string {
   return translate(locale, key, params);
 }
 
@@ -229,10 +225,7 @@ function shortText(date: Date, locale: Locale, distance: number): string {
  * @param now the instant "now" means, so a test can pin it
  * @returns midnight of that day, in local time, or `null` when the value carries neither
  */
-export function dayOf(
-  timestamp: string | null | undefined,
-  now: Date = new Date(),
-): Date | null {
+export function dayOf(timestamp: string | null | undefined, now: Date = new Date()): Date | null {
   const moment = parseInstant(timestamp) ?? (clockParts(timestamp) ? now : null);
   return moment === null ? null : startOfDay(moment);
 }
@@ -349,18 +342,26 @@ function renderTokens(
   floor: boolean,
   locale: Locale,
 ): string {
-  const figure = unit
-    ? word(locale, unit.key, {
-        value: decimalText(
-          floor
-            ? Math.floor((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits
-            : Math.round((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits,
-          unit.digits,
-          locale,
-        ),
-      })
-    : String(Math.max(0, count));
-  return floor ? word(locale, 'common.tokens.at_least', { value: figure }) : figure;
+  // The exact count is the figure that must never be lost to a missing word, so it is also the
+  // fallback of a first paint that has no catalogue yet (`texts-and-languages.adoc#numbers`).
+  const exact = decimalText(Math.max(0, count), 0, locale);
+  let figure = exact;
+  if (unit) {
+    const value = decimalText(
+      floor
+        ? Math.floor((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits
+        : Math.round((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits,
+      unit.digits,
+      locale,
+    );
+    const withUnit = word(locale, unit.key, { value });
+    // A pack without the unit mark's template (the offline first paint, or a missing key) leaves
+    // the figure in place rather than replacing it with the key's leaf word.
+    if (withUnit.includes(value)) figure = withUnit;
+  }
+  if (!floor) return figure;
+  const atLeast = word(locale, 'common.tokens.at_least', { value: figure });
+  return atLeast.includes(figure) ? atLeast : `≥ ${figure}`;
 }
 
 /**
@@ -384,11 +385,19 @@ export function formatSplit(
   locale: Locale = 'en',
 ): string {
   const unit = tokenUnit(total);
-  return word(locale, 'common.tokens.split', {
-    total: renderTokens(total, unit, floor, locale),
-    in: renderTokens(input, unit, floor, locale),
-    out: renderTokens(output, unit, floor, locale),
+  const figure = renderTokens(total, unit, floor, locale);
+  const inText = renderTokens(input, unit, floor, locale);
+  const outText = renderTokens(output, unit, floor, locale);
+  const split = word(locale, 'common.tokens.split', {
+    total: figure,
+    in: inText,
+    out: outText,
   });
+  // The same first-paint rule as the unit mark: a pack without the split's template leaves the
+  // three figures in place, with the design's own separator, rather than a word alone.
+  return split.includes(figure) && split.includes(inText) && split.includes(outText)
+    ? split
+    : `${figure} (${inText} · ${outText})`;
 }
 
 /**

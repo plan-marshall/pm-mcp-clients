@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import type { AdoptionFailure, AdoptableEpic } from '../api/client';
+  import Button from '../components/Button.svelte';
 
   export let epics: AdoptableEpic[] = [];
   export let failure: AdoptionFailure | null = null;
@@ -27,15 +28,15 @@
     <h2 class="epic-adopt__title">{$t('start.epic.adopt.action', { epic: failure.epic_id })}</h2>
     <p class="epic-adopt__failure" data-testid="epic-adopt-failed">{reasonOf(failure)}</p>
     <div class="epic-adopt__actions">
-      <button type="button" data-testid="adopt-retry" disabled={busy} on:click={onRetry}>
+      <Button variant="secondary" data-testid="adopt-retry" disabled={busy} on:click={onRetry}>
         {$t('start.source.retry')}
-      </button>
-      <button type="button" data-testid="adopt-back" disabled={busy} on:click={onBack}>
-        {$t('web.common.back')}
-      </button>
-      <button type="button" data-testid="adopt-abandon" disabled={busy} on:click={onAbandon}>
+      </Button>
+      <Button variant="ghost" data-testid="adopt-back" disabled={busy} on:click={onBack}>
+        {$t('common.action.back')}
+      </Button>
+      <Button variant="ghost" data-testid="adopt-abandon" disabled={busy} on:click={onAbandon}>
         {$t('start.entry.abandon')}
-      </button>
+      </Button>
     </div>
   {:else}
     <h2 class="epic-adopt__title">{$t('start.sources.title', { kind: 'epic' })}</h2>
@@ -45,21 +46,21 @@
           <p class="epic-adopt__offer">
             {$t('start.epic.adopt.offer', { epic: epic.title, project: projectId })}
           </p>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             data-testid={`adopt-${epic.epic_id}`}
             disabled={busy}
             on:click={() => onAdopt(epic.epic_id)}
           >
             {$t('start.epic.adopt.action', { epic: epic.title })}
-          </button>
+          </Button>
         </li>
       {/each}
     </ul>
     <div class="epic-adopt__actions">
-      <button type="button" data-testid="adopt-new" disabled={busy} on:click={onNew}>
+      <Button variant="secondary" data-testid="adopt-new" disabled={busy} on:click={onNew}>
         {$t('start.epic.adopt.new')}
-      </button>
+      </Button>
     </div>
   {/if}
 </section>
@@ -106,16 +107,9 @@
     color: var(--color-danger-text);
   }
 
-  .epic-adopt__actions,
-  .epic-adopt__item button {
+  .epic-adopt__actions {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2, 0.5rem);
-  }
-
-  .epic-adopt button {
-    min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
-    cursor: pointer;
   }
 </style>
