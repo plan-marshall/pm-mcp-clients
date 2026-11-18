@@ -269,6 +269,25 @@ class CredentialsCommandTest {
     }
 
     @Test
+    @DisplayName("set and rotate stop at the secret prompt under --no-input, and store nothing")
+    void noInputStopsBeforeTheSecretPrompt() throws Exception {
+        present();
+
+        var set = run(context("s3cret\n"), "credentials", "set", "github", "--yes", "--no-input");
+        var setText = out.toString();
+        out.getBuffer().setLength(0);
+        var rotate = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes", "--no-input");
+        var rotateText = out.toString();
+
+        assertAll(
+                            () -> assertEquals(ConfigAspectRun.EXIT_MISSING_INPUT, set, setText),
+                            () -> assertTrue(setText.contains("run it without --no-input"), setText),
+                            () -> assertFalse(setText.contains("stored"), setText),
+                            () -> assertEquals(ConfigAspectRun.EXIT_MISSING_INPUT, rotate, rotateText),
+                            () -> assertFalse(rotateText.contains("stored"), rotateText));
+    }
+
+    @Test
     @DisplayName("status reports a present entry")
     void status() throws Exception {
         present();

@@ -574,11 +574,14 @@ class DecomposeCommandTest {
         });
 
         var decompose = execute("epic", "decompose", "ep-001");
+        var decomposeError = err.toString();
+        err.getBuffer().setLength(0);
         var review = execute("epic", "review", "ep-001");
 
         assertAll(
                             () -> assertEquals(1, decompose),
                             () -> assertEquals(1, review),
+                            () -> assertTrue(decomposeError.contains("The runtime refused: internal"), decomposeError),
                             () -> assertTrue(err.toString().contains("The runtime refused: internal"), err.toString())
         );
     }

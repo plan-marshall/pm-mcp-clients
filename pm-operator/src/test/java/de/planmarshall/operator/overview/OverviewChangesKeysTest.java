@@ -236,7 +236,8 @@ class OverviewChangesKeysTest {
 
             assertAll(
                                 () -> assertEquals(TuiLevel.Kind.PLAN_CHANGES, level().kind()),
-                                () -> assertTrue(statusText().contains("does not exist"), statusText()),
+                                () -> assertTrue(statusText().contains(
+                                                    "No such file in the plan's changes: a/B.java"), statusText()),
                                 () -> assertFalse(rowsText().contains("@@"), "no hunks of a refused read"));
         }
 

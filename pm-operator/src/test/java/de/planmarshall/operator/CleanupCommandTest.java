@@ -1139,15 +1139,15 @@ class CleanupCommandTest {
     }
 
     @Test
-    @DisplayName("the decision bar offers d, r, i, x and o in that order")
+    @DisplayName("the decision bar offers d, r, i, x and o in that order, and names the configured postponement")
     void decisionChoicesAreTheFiveKeys() {
-        var choices = CleanupCommand.decisionChoices("en");
+        var choices = CleanupCommand.decisionChoices("en", 7);
 
         assertAll(
                             () -> assertEquals(List.of("d", "r", "i", "x", "o"),
                                                 choices.stream().map(ChoicePrompt.Choice::key).toList()),
                             () -> assertEquals("delete…", choices.get(0).label()),
-                            () -> assertEquals("ask me again in 3 days", choices.get(1).label()),
+                            () -> assertEquals("ask me again in 7 days", choices.get(1).label()),
                             () -> assertEquals("leave items out", choices.get(3).label())
         );
     }

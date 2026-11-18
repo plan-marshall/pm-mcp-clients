@@ -230,6 +230,9 @@ class PlanCompletionLevelTest {
                             () -> assertEquals("unknown", PlanCompletionLevel.formatOutcome("en", null)),
                             () -> assertEquals("unbekannt", PlanCompletionLevel.formatOutcome("de", " ")),
                             () -> assertEquals("unknown", PlanCompletionLevel.formatDeliverableState("en", null)),
-                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatDeliverableState("de", " ")));
+                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatDeliverableState("de", " ")),
+                            () -> assertEquals("done", PlanCompletionLevel.formatDeliverableState("en", " DONE "),
+                                                "a state the report names in capitals reads as its catalogue word"),
+                            () -> assertEquals("fertig", PlanCompletionLevel.formatDeliverableState("de", "DONE")));
     }
 }

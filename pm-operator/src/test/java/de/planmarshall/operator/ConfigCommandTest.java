@@ -870,6 +870,41 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config cleanup keeps a concurrent edit of another duration when it retries the machine write")
+    void cleanupMachineConflictKeepsAnotherClientsChange() throws Exception {
+        var current = "{\"plans_after_days\":30,\"epics_after_days\":90,\"logs_after_days\":30,"
+                            + "\"reports_after_days\":30,\"unenrolled_after_days\":30,\"remind_after_days\":3}";
+        var bodies = new ArrayList<String>();
+        var concurrent = SETTINGS.replace("\"epics_after_days\":30", "\"epics_after_days\":90");
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, bodies.isEmpty() ? SETTINGS : concurrent);
+            } else if ("/api/v1/machine/settings".equals(request.target()) && "PUT".equals(request.method())) {
+                bodies.add(request.bodyText());
+                if (bodies.size() == 1) {
+                    response.json(409, JsonTree.write(Map.<String, Object>of(
+                                        "applied", false, "conflict", true, "revision", 6,
+                                        "current_value", current)));
+                } else {
+                    response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":7}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("\n", "config", "cleanup", "--plans", "60", "--yes");
+
+        var text = out.toString();
+        var retry = bodies.size() > 1 ? bodies.get(1).replace("\\\"", "\"") : "";
+        assertAll(
+                            () -> assertEquals(0, code, text),
+                            () -> assertEquals(2, bodies.size(), bodies.toString()),
+                            () -> assertTrue(retry.contains("\"plans_after_days\":60"), "the requested change is applied: " + retry),
+                            () -> assertTrue(retry.contains("\"epics_after_days\":90"), "the other client's edit stays: " + retry));
+    }
+
+    @Test
     @DisplayName("config cleanup --project editor d option removes project own values returning to inheritance")
     void cleanupProjectEditorRemovesOwnValues() throws Exception {
         var deleted = new ArrayList<String>();
@@ -1399,7 +1434,8 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
                             () -> assertTrue(err.toString().contains("✗"), err.toString()),
-                            () -> assertTrue(err.toString().contains("the machine settings are not reachable"), err.toString()));
+                            () -> assertTrue(err.toString().contains("The machine settings are not reachable"), err.toString()),
+                            () -> assertTrue(err.toString().contains("no settings link"), err.toString()));
     }
 
     @Test
