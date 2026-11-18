@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { tick } from 'svelte';
 import { fireEvent, render } from '@testing-library/svelte';
 import HarnessChoice from './HarnessChoice.svelte';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /**
  * @param over the fields to override
@@ -83,5 +86,26 @@ describe('HarnessChoice monograms', () => {
     });
 
     expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('C');
+  });
+
+  it('updates token usage wording reactively when switching between English and German', async () => {
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
+
+    const { container } = render(HarnessChoice, {
+      props: { harnesses: [harness({ token_usage: 'complete' })] },
+    });
+    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
+
+    currentLocale.set('de');
+    messagesStore.set(loadMessages('de'));
+    await tick();
+
+    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
+      'Tokenverbrauch vollständig',
+    );
+
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
   });
 });

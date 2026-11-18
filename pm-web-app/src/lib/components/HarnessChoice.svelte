@@ -105,10 +105,6 @@
       .join('');
   }
 
-  function tokenState(row: HarnessRow): string {
-    return harnessUsageText($t, row);
-  }
-
   $: defaultName = harnesses.find((h) => h.harness_id === defaultId)?.name ?? '';
   $: primaryLabel =
     chosen.length === 0
@@ -174,7 +170,7 @@
             {/if}
           </span>
           {#if harness.found}
-            <span class="choice-screen__row-meta">{tokenState(harness)}</span>
+            <span class="choice-screen__row-meta">{harnessUsageText($t, harness)}</span>
           {/if}
         </div>
 
