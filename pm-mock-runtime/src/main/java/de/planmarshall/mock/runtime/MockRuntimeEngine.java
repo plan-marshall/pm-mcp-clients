@@ -8145,6 +8145,28 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return e.getMessage();
         }
         var answer = decoded.answer();
+        var disagreement = disagreementOf(announced, answer);
+        if (disagreement != null) {
+            return disagreement;
+        }
+        synchronized (planChangesLock) {
+            var refusal = transitionRefusal(announced, answer, planChanges.get(answer.planId()));
+            if (refusal != null) {
+                return refusal;
+            }
+            planChanges.put(answer.planId(), answer);
+            planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
+            applyCaptureSize(answer);
+        }
+        return null;
+    }
+
+    /**
+     * @param announced the announcement
+     * @param answer    the capture it carries
+     * @return the reason the announcement and the capture disagree, or {@code null} when they agree
+     */
+    private static @Nullable String disagreementOf(PlanChangeCapturedEvent announced, PlanChangesAnswer answer) {
         if (!announced.planId().equals(answer.planId())) {
             return ANNOUNCEMENT_OF + announced.planId() + " carries the capture of " + answer.planId();
         }
@@ -8157,33 +8179,47 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return "the announced size of " + announced.planId()
                         + " contradicts the files its capture carries";
             }
-        } else if (answer instanceof PlanChangesNotCaptured
-                && (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
-                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0)) {
+            return null;
+        }
+        if (answer instanceof PlanChangesNotCaptured && !namesNoSize(announced)) {
             return ANNOUNCEMENT_OF + announced.planId() + " names a size of change beside "
                     + answer.state();
         }
-        synchronized (planChangesLock) {
-            var previous = planChanges.get(answer.planId());
-            if ((previous instanceof PlanChangesCaptured || previous instanceof PlanChangesUnavailable)
-                    && answer instanceof PlanChangesNotCaptured) {
-                // A capture moves on to a new capture or to a capture that is gone; it never goes back
-                // to the plan's first capture, which no event of the contract announces.
-                return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+        return null;
+    }
+
+    /**
+     * @param announced the announcement
+     * @return whether its figures say that nothing was captured
+     */
+    private static boolean namesNoSize(PlanChangeCapturedEvent announced) {
+        return announced.filesTotal() == 0 && announced.insertionsTotal() == 0
+                && announced.deletionsTotal() == 0 && announced.unplannedTotal() == 0;
+    }
+
+    /**
+     * Holds the capture to the transitions the contract names: a capture moves on to a new capture or to
+     * a capture that is gone, never back to the plan's first capture, and a gone capture keeps the figures
+     * of the plan's last successful capture, which the announcement must name.
+     *
+     * @param announced the announcement
+     * @param answer    the capture it carries
+     * @param previous  the answer the plan serves now, or {@code null}
+     * @return the reason the transition cannot be served, or {@code null} when it can
+     */
+    private @Nullable String transitionRefusal(PlanChangeCapturedEvent announced, PlanChangesAnswer answer,
+            @Nullable PlanChangesAnswer previous) {
+        if ((previous instanceof PlanChangesCaptured || previous instanceof PlanChangesUnavailable)
+                && answer instanceof PlanChangesNotCaptured) {
+            return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+        }
+        if (answer instanceof PlanChangesUnavailable) {
+            var retained = planChangeSizes.get(answer.planId());
+            if (!announced.size().equals(retained)) {
+                return ANNOUNCEMENT_OF + announced.planId() + " names "
+                        + announced.size().files() + " files beside " + answer.state()
+                        + ", its last capture " + (retained == null ? "none" : retained.files() + " files");
             }
-            if (answer instanceof PlanChangesUnavailable) {
-                // The plan keeps the figures of its last successful capture while the capture is gone
-                // (the tab stays present then), so the announcement must name exactly those figures.
-                var retained = planChangeSizes.get(answer.planId());
-                if (!announced.size().equals(retained)) {
-                    return ANNOUNCEMENT_OF + announced.planId() + " names "
-                            + announced.size().files() + " files beside " + answer.state()
-                            + ", its last capture " + (retained == null ? "none" : retained.files() + " files");
-                }
-            }
-            planChanges.put(answer.planId(), answer);
-            planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
-            applyCaptureSize(answer);
         }
         return null;
     }
