@@ -8355,6 +8355,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (!path.contains(SEGMENT_DECISIONS) && !path.startsWith(API_QUESTIONS_PATH)) {
             return false;
         }
+        // A credential or device route that happens to carry a decision segment stays out: its body
+        // is a secret, never a decision the act log may show.
+        if (path.startsWith("/api/v1/credentials") || path.startsWith("/api/v1/web/devices")
+                || path.startsWith("/api/v1/devices")) {
+            return false;
+        }
         return path.endsWith("/answer") || path.endsWith("/answers") || path.endsWith("/withdraw")
                 || path.endsWith("/interpret");
     }
@@ -8653,28 +8659,29 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 reconfigure ? KEY_INTERFACE : KEY_LANGUAGE_INTERFACE);
         var chosenModel = JsonTree.string(body,
                 reconfigure ? KEY_MODEL : KEY_LANGUAGE_MODEL);
-        var nextInterface = isSupportedLanguage(chosenInterface) ? chosenInterface : null;
-        String nextModel;
-        if (choiceSame(chosenModel)) {
-            nextModel = machineLanguageInterface;
-        } else {
-            nextModel = isSupportedLanguage(chosenModel) ? chosenModel : null;
-        }
-        var interfaceApplies = nextInterface != null && !nextInterface.equals(machineLanguageInterface);
-        var modelApplies = nextModel != null && !nextModel.equals(machineLanguageModel);
-        if (!interfaceApplies && !modelApplies) {
-            return;
-        }
         // The language values are part of the settings snapshot: a change moves its revision, so a
         // stale settings write is refused with 409 as any other stale write.
         synchronized (onboardingLock) {
-            if (interfaceApplies) {
-                machineLanguageInterface = nextInterface;
+            var applied = false;
+            if (isSupportedLanguage(chosenInterface)
+                    && !Objects.requireNonNull(chosenInterface).equals(machineLanguageInterface)) {
+                machineLanguageInterface = Objects.requireNonNull(chosenInterface);
+                applied = true;
             }
-            if (modelApplies) {
+            String nextModel;
+            if (choiceSame(chosenModel)) {
+                // `same` follows the interface this submission selects, not the stored one.
+                nextModel = machineLanguageInterface;
+            } else {
+                nextModel = isSupportedLanguage(chosenModel) ? chosenModel : null;
+            }
+            if (nextModel != null && !nextModel.equals(machineLanguageModel)) {
                 machineLanguageModel = nextModel;
+                applied = true;
             }
-            machineSettingsRevision++;
+            if (applied) {
+                machineSettingsRevision++;
+            }
         }
     }
 
@@ -8759,7 +8766,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var facts = id != null ? stateFacts(id) : null;
         if (facts != null) {
             var providers = facts.get("providers");
-            if (providers instanceof List<?> list && !list.isEmpty()) {
+            if (providers instanceof List<?> list) {
+                // An explicit list is the scenario's whole answer, an empty one included.
                 return anyProviderReady(list);
             }
             if (facts.containsKey(KEY_READY)) {

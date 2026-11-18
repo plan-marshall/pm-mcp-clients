@@ -712,10 +712,11 @@ public final class CleanupCommand implements Callable<Integer> {
         var parts = new ArrayList<String>();
         var keptCount = JsonTree.integer(state, "kept_count");
         if (keptCount != null) {
-            parts.add(String.format("Kept for good %d (cleanup --kept)", keptCount));
+            parts.add(MessageCatalogue.format(locale, "operator.cleanup.kept_for_good", Map.of(COUNT_PARAM, keptCount)));
         }
         if (durations != null) {
-            parts.add("durations " + durationsText(locale, durations));
+            parts.add(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
+                                Map.of("durations", durationsText(locale, durations))));
         }
         if (!parts.isEmpty()) {
             out.println(String.join(" · ", parts));
@@ -954,9 +955,11 @@ public final class CleanupCommand implements Callable<Integer> {
             }
         }
 
-        var footer = new StringBuilder(String.format("Kept for good %d (cleanup --kept)", s.keptForGoodCount()));
+        var footer = new StringBuilder(MessageCatalogue.format(locale, "operator.cleanup.kept_for_good",
+                            Map.of(COUNT_PARAM, s.keptForGoodCount())));
         if (durations != null) {
-            footer.append(" · durations ").append(durationsText(locale, durations));
+            footer.append(" \u00b7 ").append(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
+                                Map.of("durations", durationsText(locale, durations))));
         }
         if (s.lastSweepAt() != null) {
             footer.append(" · ").append(lastSweepText(locale, s.lastSweepAt()));

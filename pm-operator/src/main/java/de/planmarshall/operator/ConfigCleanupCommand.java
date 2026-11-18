@@ -309,7 +309,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         }
         var values = ConfigCommand.parseValues(response.bodyText());
         for (var value : values) {
-            if (value.origin() == ConfigOrigin.PROJECT && kindOfKey(value.key()) != null) {
+            var kind = kindOfKey(value.key());
+            if (value.origin() == ConfigOrigin.PROJECT && kind != null && PROJECT_KINDS.contains(kind)) {
                 var write = ConfigCommand.CONFIG_PATH + "/" + ConfigOrigin.PROJECT.wire() + "/"
                                     + OperatorUrlUtil.encodePathSegment(value.key());
                 var change = new ConfigCommand.Change(out, spec.commandLine().getErr(), locale,
