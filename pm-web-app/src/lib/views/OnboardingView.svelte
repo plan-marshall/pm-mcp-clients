@@ -111,7 +111,7 @@
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      await stepOnboarding(id, body);
+      await stepOnboarding(id, body, { adoptLocale: screenNameFor(stateId) === 'language' });
     } finally {
       isSubmitting = false;
     }
