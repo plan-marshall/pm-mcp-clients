@@ -127,7 +127,9 @@ public class OperatorRefusedException extends IOException {
         var parsedMessage = extracted.message();
 
         if (parsedMessage == null && (parsedCode == null || ApiErrorCode.fromWireOrNull(parsedCode) == null)) {
-            parsedMessage = body;
+            // A body that is no JSON object is its own message. A JSON object that names no message
+            // carries only its code, and the raw body is never shown.
+            parsedMessage = body != null && body.trim().startsWith("{") ? parsedCode : body;
         }
         if (parsedCode == null && response.status() == 404) {
             parsedCode = ApiErrorCode.SCOPE_NOT_FOUND.wire();
@@ -165,9 +167,6 @@ public class OperatorRefusedException extends IOException {
             }
         } else if (errorObj instanceof String errStr) {
             parsedCode = errStr;
-            if (ApiErrorCode.fromWireOrNull(errStr) == null) {
-                parsedMessage = errStr;
-            }
         }
         if (parsedCode == null && map.get("code") instanceof String c) {
             parsedCode = c;

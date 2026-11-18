@@ -942,7 +942,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 }
                 itemIndex++;
             }
-            if (project == null && prj.items().size() > PAGE_SIZE) {
+            if (!filterProject && prj.items().size() > PAGE_SIZE) {
                 printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }

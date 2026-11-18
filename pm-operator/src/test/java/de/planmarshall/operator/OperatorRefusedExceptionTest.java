@@ -167,6 +167,32 @@ class OperatorRefusedExceptionTest {
                             () -> assertEquals(ErrorTexts.title((ApiErrorCode) null), blank.getMessage()),
                             () -> assertEquals("", blank.serverMessage()),
                             () -> assertNull(malformed.code()),
-                            () -> assertEquals("{\"error\":", malformed.serverMessage()));
+                            () -> assertNull(malformed.serverMessage(), "a JSON body never reaches the operator"),
+                            () -> assertEquals(ErrorTexts.title((ApiErrorCode) null), malformed.getMessage()));
+    }
+
+    @Test
+    @DisplayName("an unknown code beside a message shows the message, never the raw wire token")
+    void unknownCodeReadsTheMessage() {
+        var json = "{\"error\": \"not_found\", \"message\": \"Question Q-999 not found.\"}";
+        var resp = new HttpResponse(404, "application/json", json.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("answer Q-999", resp);
+
+        assertAll(
+                            () -> assertNull(ex.code()),
+                            () -> assertEquals("not_found", ex.rawCode()),
+                            () -> assertEquals("Question Q-999 not found.", ex.serverMessage()),
+                            () -> assertEquals("The runtime refused: Question Q-999 not found.", ex.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a JSON object without a message shows no body at all")
+    void jsonObjectWithoutMessageShowsNoBody() {
+        var resp = new HttpResponse(500, "application/json", "{}".getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("plan", resp);
+
+        assertAll(
+                            () -> assertNull(ex.serverMessage()),
+                            () -> assertEquals(ErrorTexts.title((ApiErrorCode) null), ex.getMessage()));
     }
 }

@@ -302,7 +302,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get(
                             OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null)));
         if (response.status() != 200) {
-            return 0;
+            RefusalRenderer.render(out, locale, new OperatorRefusedException("config cleanup " + project, response));
+            return PmOperator.EXIT_FAILURE;
         }
         var values = ConfigCommand.parseValues(response.bodyText());
         for (var value : values) {
@@ -492,8 +493,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                                 Map.of("what", whatOf(locale, applied))));
         }
         if (!kept.isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.kept",
-                                Map.of("what", whatOf(locale, kept))));
+            // The runtime kept its own value, never the one this run tried to write.
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.durations.kept_unchanged", Map.of()));
         }
         out.flush();
         return 0;

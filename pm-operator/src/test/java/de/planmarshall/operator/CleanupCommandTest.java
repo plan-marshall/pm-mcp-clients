@@ -1766,6 +1766,29 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("cleanup --project . behaves as the unfiltered view: a page of twenty and the more line")
+    void projectDotBehavesAsTheUnfilteredView() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system/cleanup") && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--project", ".", "--no-input");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("20) ▸ item-20"), output),
+                            () -> assertFalse(output.contains("21) ▸ item-21"), "a page, not every item: " + output),
+                            () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output));
+    }
+
+    @Test
     @DisplayName("r posts the reminder to the job the operator saw")
     void remindFromTheDialoguePostsTheJobId() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);

@@ -205,11 +205,24 @@ class DecomposeCommandTest {
         );
     }
 
-    @ParameterizedTest(name = "an epic answered {0} is refused")
-    @ValueSource(strings = {"500", "200"})
-    @DisplayName("an epic the runtime refuses, or one that names no project, is refused")
-    void epicWithoutProject(int status) throws Exception {
-        fixture.start((request, response) -> response.json(status, "{\"epic_id\":\"ep-001\"}"));
+    @Test
+    @DisplayName("a failed epic read is refused with the catalogue's text, never the runtime's body")
+    void epicReadFailed() throws Exception {
+        fixture.start((request, response) -> response.json(500, "{\"epic_id\":\"ep-001\"}"));
+
+        var code = execute("epic", "decompose", "ep-001");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("\u2717"), err.toString()),
+                            () -> assertFalse(err.toString().contains("{\"epic_id\""), err.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("an epic that names no project is refused and names the epic")
+    void epicWithoutProject() throws Exception {
+        fixture.start((request, response) -> response.json(200, "{\"epic_id\":\"ep-001\"}"));
 
         var code = execute("epic", "decompose", "ep-001");
 

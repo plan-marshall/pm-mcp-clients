@@ -835,7 +835,8 @@ class ConfigCommandTest {
         var text = out.toString();
         assertAll(
                             () -> assertEquals(0, code, text),
-                            () -> assertTrue(text.contains("Durations kept: Archived plans after 60 days."), text),
+                            () -> assertTrue(text.contains("Durations kept: nothing was written."), text),
+                            () -> assertFalse(text.contains("Durations kept: Archived plans after 60 days."), text),
                             () -> assertFalse(text.contains("Durations recorded:"), text));
     }
 
@@ -892,6 +893,28 @@ class ConfigCommandTest {
                             () -> assertTrue(text.contains("d) remove its own values"), text),
                             () -> assertEquals(1, deleted.size(), deleted.toString()),
                             () -> assertTrue(deleted.get(0).contains("/project/cleanup.plans_after_days"), deleted.get(0)));
+    }
+
+    @Test
+    @DisplayName("config cleanup --project d reports a refused config read and exits 1")
+    void cleanupProjectEditorRefusedReadExitsOne() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (request.target().startsWith("/api/v1/config") && "GET".equals(request.method())) {
+                response.json(403, "{\"error\":\"permission_denied\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithTyped("d\n", "config", "cleanup", "--project", "pm-mcp-core");
+
+        var text = out.toString();
+        assertAll(
+                            () -> assertEquals(1, code, text + err),
+                            () -> assertTrue(text.contains("\u2717"), text + err),
+                            () -> assertFalse((text + err).contains("HTTP 403"), text + err));
     }
 
     @Test
