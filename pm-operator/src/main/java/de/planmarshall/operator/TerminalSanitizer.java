@@ -27,10 +27,11 @@ import org.jspecify.annotations.Nullable;
  * <p>Neutralized as well are the characters that are not text the reader can see: the bidi
  * controls ({@code U+202A}–{@code U+202E} and {@code U+2066}–{@code U+2069}) and the direction
  * marks ({@code U+200E}, {@code U+200F}, {@code U+061C}), which reorder what the terminal shows;
- * the line and paragraph separators ({@code U+2028}, {@code U+2029}), which break a line the
- * console did not; the zero-width characters ({@code U+200B}–{@code U+200D}, {@code U+2060}, and
+ * the zero-width characters ({@code U+200B}–{@code U+200D}, {@code U+2060}, and
  * {@code U+FEFF}), which hide between the visible ones; and the tag characters
- * ({@code U+E0000}–{@code U+E007F}), which can carry a whole hidden text. The text is read by code
+ * ({@code U+E0000}–{@code U+E007F}), which can carry a whole hidden text. The line and paragraph
+ * separators ({@code U+2028}, {@code U+2029}) break a line the console did not, so they become a
+ * space instead of vanishing and the words on either side stay apart. The text is read by code
  * point, so a supplementary character is kept or dropped whole. Dropping the zero-width joiner
  * splits a joined emoji into its parts; that loss is accepted.
  *
@@ -94,7 +95,10 @@ public final class TerminalSanitizer {
                 i = skipString(text, i + 1);
             } else {
                 int codePoint = text.codePointAt(i);
-                if (isKept(codePoint)) {
+                if (codePoint == LINE_SEPARATOR || codePoint == PARAGRAPH_SEPARATOR) {
+                    // A line break the console did not make: a space keeps the words apart.
+                    out.append(' ');
+                } else if (isKept(codePoint)) {
                     out.appendCodePoint(codePoint);
                 }
                 i += Character.charCount(codePoint);
@@ -141,8 +145,7 @@ public final class TerminalSanitizer {
      * @return the neutralized single-line text
      */
     public static String sanitizeLine(@Nullable String text) {
-        return sanitize(text).replace(LF, ' ').replace(TAB, ' ').replace((char) LINE_SEPARATOR, ' ')
-                            .replace((char) PARAGRAPH_SEPARATOR, ' ');
+        return sanitize(text).replace(LF, ' ').replace(TAB, ' ');
     }
 
     /**

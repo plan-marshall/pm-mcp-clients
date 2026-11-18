@@ -150,7 +150,7 @@ class ChangesLevelTest {
             assertAll(
                                 () -> assertTrue(level.hasOpenFile()),
                                 () -> assertTrue(text.contains("@@ -20,2 +20,2 @@"), text),
-                                () -> assertTrue(text.contains("\u2212    // the packet name"), text),
+                                () -> assertTrue(text.contains("\u2212    // the packet  name"), text),
                                 () -> assertTrue(text.contains("+    // the frame name"), text),
                                 () -> assertTrue(text.contains("     private final String name;"), text),
                                 () -> assertEquals(4 + 4, level.rows("en").size(), "the list, plus the file's four lines"));
@@ -360,7 +360,7 @@ class ChangesLevelTest {
             assertAll(
                                 () -> assertFalse(text.contains(ESCAPE), text),
                                 () -> assertFalse(text.contains(LINE_SEPARATOR), text),
-                                () -> assertTrue(text.contains("relay/Transport.java"), text));
+                                () -> assertTrue(text.contains("relay/Transport .java"), text));
         }
 
         @Test
