@@ -1,0 +1,146 @@
+= ADR 001: The Specifications of the Clients in This Repository
+:nofooter:
+
+== Status
+
+Accepted.
+
+== Date
+
+2026-11-17.
+
+== Context
+
+The specifications, the implementation watch and the traceability of the requirements lived in
+`plan-marshall-documentation`. A work package of this repository therefore made two pull requests: the code here
+and the documents there — the reduction of the sections it implemented, the watch items it closed and the
+`Implementation:`, `Verified by:` and `Documentation:` lines of the requirements — merged in order, in two
+repositories. A section that was implemented stayed in the documentation as a second statement of what the code
+does, and a reader of the code had to leave the repository to find the contract the code follows.
+
+`pm-mcp-core` ended this for its own modules: its specifications live in `doc/Specification.adoc` and
+`doc/specification/`, its watch in `doc/ImplementationWatch.adoc` and `doc/implementation-watch/`, its traceability
+in `doc/Traceability.adoc` (ADR 007 of `pm-mcp-core`, amended by ADR 016), and an implemented section is condensed
+and pointed instead of deleted (ADR 027 of `pm-mcp-core`). The operator decided that the same holds for every
+repository: the specification of a module lives in the repository that implements it, and the documentation
+repository keeps the requirements, which point into the code ("The spec should be completely in the implementation
+module", `doc-review-2026-11-17-001`, decision O1-A).
+
+The clients of the operator are specified in parts of three families that the daemon also implements, so the move is
+a section-level cut, not a file-level one (`doc/specification-move-cut.md`, agreed with the operator before a
+document moved). This repository already holds a design of its two clients in `doc/design/`, which states how the
+views, the dialogues and the texts look, and which says of itself that "a design is the specification its client's
+implementation follows".
+
+== Decision
+
+The specifications the modules of this repository implement live here, beside the code:
+
+* **The specification and its watch live where the code does.** `doc/Specification.adoc` and `doc/specification/`
+  hold the parts of `cli-and-security`, `runtime-model` and `harness-integration` that the
+  Modules table of `module-structure.adoc` gives a module of this repository (`pm-api`, `pm-exec`, `pm-relay`,
+  `pm-operator`, `pm-mock-runtime`, `pm-web-app`, `pm-web-e2e`); `doc/ImplementationWatch.adoc` and
+  `doc/implementation-watch/` hold their watch items, with their identifiers unchanged. A family whose parts are
+  split keeps one index per repository, each listing and describing only the parts it holds; the other index is one
+  link away. The family's `Overview`, `Traceability` and `Status` stay with the index of the repository that keeps
+  the majority of its parts.
+* **An implemented section is condensed and pointed, never deleted.** A section keeps its heading and its anchor. When
+  the code implements it, it is reduced to the one statement of what it requires and the link to the developer
+  documentation of the module that implements it; the evidence of what implements and verifies a requirement is
+  `doc/Traceability.adoc`, one entry per requirement, and never a paragraph of the specification (ADR 027 of
+  `pm-mcp-core`, which applies here unchanged). A section no class and no test covers stays as it is, so a condensed
+  section never claims more than the code does.
+* **The documentation repository keeps the requirements.** The requirements, the use cases, the roadmap,
+  `later-improvements`, the open questions and the articles stay in `plan-marshall-documentation`, together with the
+  specifications of `pm-mcp-parent` (`module-structure.adoc` and `implementation-watch/module-structure.adoc`) and the
+  archetypes that span every specification (`implementation-watch/cross-cutting.adoc`). Its
+  `Specification.adoc` and `ImplementationWatch.adoc` point at this repository's indexes with absolute URLs, and its
+  links into a moved anchor are rewritten, never left to resolve by luck.
+
+**The relation to `doc/design/`: the design links to the specification.** The specification states the contract: what
+a client is, what it sends, what it refuses, which identifiers and events it uses. The design states how a client
+shows and does it: the views, the dialogues, the interactions, the texts and the visual language. Where the two could
+say the same thing, the specification holds the statement and the design links to it; the design never restates a
+contract, and the specification never restates a view. `doc/design/README.adoc` states this in one paragraph and
+links this decision (operator's decision of 2026-11-17, `doc-review-2026-11-17-001`).
+
+The sections the move touched, and the document that holds each of them now:
+
+[cols="3,3"]
+|===
+|Section |Held by
+
+|`cli-and-security/01-cli-and-installer` (binaries, installation layout, command tree, harness installer, entry)
+|`specification/cli-and-security/01-cli-and-installer.adoc` here
+
+|`cli-and-security/02-operator-channel` (credential acts, operator channel isolation)
+|`specification/cli-and-security/02-operator-channel.adoc` here
+
+|`cli-and-security/03-web-server#web-app` (the web app)
+|`specification/cli-and-security/03-web-app.adoc` here
+
+|`cli-and-security/03-web-server` (the rest: the listeners, the device secret, the pairing, the threat notes)
+|`specification/cli-and-security/03-web-server.adoc` of `plan-marshall-mcp`
+
+|`runtime-model/03-relay`, `05-mock-runtime`, `06-event-catalogue`
+|`specification/runtime-model/` here
+
+|`runtime-model/01-processes-and-transport`, `04-sessions-and-workers`
+|`specification/runtime-model/` of `plan-marshall-mcp`
+
+|`harness-integration/01-harness-detection`, `02-bundle-manifest` (schema, installer, drift)
+|`specification/harness-integration/` here
+
+|`harness-integration/02-bundle-manifest#bundle-content` (what a bundle carries)
+|`specification/harness-integration/02-bundle-manifest.adoc` of `plan-marshall-mcp`, with the model-facing content
+
+|The watch items of `implementation-watch/cli-and-security.adoc` and `implementation-watch/harness-integration.adoc`
+|`implementation-watch/` here
+
+|The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-16`, `PM-WATCH-RUN-10`,
+`PM-WATCH-RUN-11` here; the rest with the runtime's specification in `plan-marshall-mcp`
+|`implementation-watch/runtime-model.adoc` here and there
+
+|What each requirement a moved section implements is implemented by, verified by and documented in
+|`Traceability.adoc` here
+|===
+
+== Alternatives Considered
+
+* **Keep the specifications in `plan-marshall-documentation` and point into the code from there.** Not taken: it is
+  the two-pull-request way of working this decision ends, and the specification of a client would keep stating what
+  its code does without the code in sight.
+* **Let the design become the specification.** Not taken: it would make every contract of a client a statement of
+  how it looks, and it would rewrite the design documents of two clients in this move. The three sections where the
+  two overlap (`01#command-tree`, `03#web-app`, the act list of `02#operator-channel-isolation`) are a small share of
+  the moved text, and the specification is what the implementation is held to; the design links to it.
+* **Rename the client parts to new family names, as `pm-mcp-core` did with `runtime-lifecycle` and
+  `credentials-and-enrolment`.** Not taken: the moved parts keep their paths and their anchors, so no link of another
+  document needs a second rewrite; the index of each repository says which parts of a family it holds.
+* **Delete a section the code implements.** Not taken: it breaks every link to its anchor, and the reader who asks
+  what the contract requires has nothing left to read (ADR 027 of `pm-mcp-core`).
+
+== Consequences
+
+A work package of this repository is one pull request: code, tests, developer documentation, the condensed and
+pointed sections and the traceability lines of the requirements it touches. A section that is implemented is reduced
+where it stands, and its anchor keeps working. The requirements stay in `plan-marshall-documentation`, which links
+into these specifications with absolute URLs; `trace.py` of that repository checks those links, its anchors, the
+watch backlinks and the index counts against a checkout of this repository beside it.
+
+What a later change has to respect: the anchors of the moved parts are never renamed, a watch identifier is never
+renumbered, a condensed section never claims more than the code does, a design document links to the specification
+instead of restating it, and a section that both repositories implement is split at a heading, never inside a
+paragraph.
+
+== Source
+
+Plan: link:../plans/README.adoc[`doc/plans/`] and the epic plan `PLAN-167` of the epic `ui-improvements`
+(`plan-marshall-documentation`'s inbox message `doc-review-2026-11-17-001`, operator decision O1-A).
+
+The cut: `doc/specification-move-cut.md` (this repository, deleted by the pull request that completes the move).
+
+ADRs of `pm-mcp-core` this decision follows:
+link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/007-specifications-of-the-engine-in-this-repository.adoc[007],
+link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/016-schemas-are-files-of-the-implementing-module.adoc[016],
+link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/027-condense-and-point-the-implemented-specification-parts.adoc[027].
