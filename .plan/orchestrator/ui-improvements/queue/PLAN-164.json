@@ -4,8 +4,8 @@
   "workstream": "WS-03",
   "status": "running",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-164-web-plan-changes-tab",
+  "pr": "477",
+  "landing": "landings/PLAN-164.md",
   "seq": 164
 }
