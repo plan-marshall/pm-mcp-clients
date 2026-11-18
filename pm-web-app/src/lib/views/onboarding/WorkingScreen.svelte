@@ -6,7 +6,7 @@
 
   /**
    * A state the runtime is working in: what it does, the tokens it expects where the runtime states
-   * them, and the links that let the operator go on without it.
+   * them, and the links that let the operator go on while it works — each in the words of its own id.
    */
   let { view }: ScreenProps = $props();
 </script>
@@ -37,9 +37,13 @@
   <p class="model-working__note">{$t('common.model.leave_note')}</p>
   {#if view.links.length > 0}
     <div class="state-card__actions">
-      {#each view.links as { id }}
-        <Button variant="secondary" loading={view.busy} on:click={() => view.onLink(id)}>
-          {$t('common.model.continue_without')}
+      {#each view.links as { id, isPrimary }}
+        <Button
+          variant={isPrimary ? 'primary' : 'secondary'}
+          loading={view.busy}
+          on:click={() => view.onLink(id)}
+        >
+          {view.linkLabel(id)}
         </Button>
       {/each}
     </div>

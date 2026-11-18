@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { t } from '../i18n';
+  import { humanizeKey, t } from '../i18n';
   import Button from '../components/Button.svelte';
   import BrandMark from '../components/BrandMark.svelte';
   import StepBar from '../components/StepBar.svelte';
@@ -8,6 +8,7 @@
   import ScreenHost from './onboarding/ScreenHost.svelte';
   import {
     screenFor,
+    screenNameFor,
     type OfferedLink,
     type OnboardingScreenContext,
     type OnboardingState,
@@ -78,11 +79,17 @@
     }));
   }
 
-  /** The label of a link, from the catalogue; a link without a key keeps its id. */
+  /**
+   * The label of a link, from the catalogue. A link id the catalogue does not know reads as words,
+   * never as the raw id: the id is the wire's, and no wire token belongs on screen.
+   *
+   * @param id the link's id
+   * @returns its label
+   */
   function linkLabel(id: string): string {
     const key = `onboard.link.${id}`;
     const label = $t(key);
-    return label === key ? id.replaceAll('_', ' ') : label;
+    return label === key ? humanizeKey(id) : label;
   }
 
   /**
@@ -100,6 +107,9 @@
   /**
    * Takes the step a link names; a refused step leaves the state as it is (the store's own rule).
    *
+   * The language step's answer changes the language of every text after it, so the view asks the
+   * store to apply the machine's recorded interface language before it paints the next screen.
+   *
    * @param id the link's id
    * @param body what the step records
    */
@@ -107,7 +117,7 @@
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      await stepOnboarding(id, body);
+      await stepOnboarding(id, body, { adoptLocale: screenNameFor(stateId) === 'language' });
     } finally {
       isSubmitting = false;
     }

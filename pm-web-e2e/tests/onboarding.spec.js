@@ -77,6 +77,9 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
 
   test('asks the harness-scan consent and holds on not now', async ({ page }) => {
     await page.getByRole('button', { name: /Begin with step 1/i }).click();
+    // The consent's flow is read in English here: the interface language is chosen explicitly so
+    // the recorded language does not turn the very next screen into German.
+    await page.locator('input[name="interface-language"][value="en"]').check();
     await page.getByTestId('language-record').click();
 
     await expect(
@@ -99,6 +102,7 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
 
   test('lists the found harnesses with their tokens and the default', async ({ page }) => {
     await page.getByRole('button', { name: /Begin with step 1/i }).click();
+    await page.locator('input[name="interface-language"][value="en"]').check();
     await page.getByTestId('language-record').click();
     await page.getByRole('button', { name: /^Look for harnesses$/i }).click();
 
@@ -137,6 +141,26 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
     );
     // The catalogue's hex spelling is the formatter's; the token's value is what matters here.
     expect(background.toUpperCase()).toBe('#0E1116');
+  });
+
+  test('shows the screen after "Use Deutsch for both" in German', async ({ page }) => {
+    await page.getByRole('button', { name: /Begin with step 1/i }).click();
+    await expect(page.getByTestId('language-screen')).toBeVisible();
+
+    // The machine's proposal is Deutsch for the interface and "same as above" for the models, so
+    // the button is the design's "Use Deutsch for both".
+    await page.locator('input[name="interface-language"][value="de"]').check();
+    await page.locator('input[name="model-language"][value="same"]').check();
+    await expect(page.getByTestId('language-record')).toHaveText('Use Deutsch for both');
+    await page.getByTestId('language-record').click();
+
+    // The next screen is the harness-scan consent, in the language the step just recorded — no
+    // reload, and no frame still in English. The runtime's own sentence in the card is its
+    // fixture's, so the check reads the words the app itself supplies: the frame's step bar, the
+    // page title and the consent's acts.
+    await expect(page.getByRole('button', { name: 'Nicht jetzt' })).toBeVisible();
+    await expect(page).toHaveTitle('Maschine für plan-marshall einrichten');
+    await expect(page.locator('.step-bar')).toContainText('Sprache');
   });
 });
 

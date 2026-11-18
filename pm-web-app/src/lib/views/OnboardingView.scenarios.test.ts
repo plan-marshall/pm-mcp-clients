@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
-import { runtimeStore } from '../stores/runtime';
+import { loadOnboardingState, runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
@@ -922,6 +923,191 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
   });
 
+  it('names each harness that failed its check at harness.none, never the raw state id', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            result: 'fail',
+            cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
+            fix: 'install a version in 1.5 - 1.x, then check again',
+          },
+        ],
+        links: {
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.probe-failed' },
+          later: { href: '/api/v1/onboarding/harness/none/later', next: 'harness.none' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // The published shape of a failed check: the harness's name, the answer it gave and the fix.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('Claude Code');
+    expect(failures).toHaveTextContent('not logged in');
+    expect(failures).toHaveTextContent('claude login');
+    expect(failures).toHaveTextContent('OpenCode');
+    expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
+
+    // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
+    expect(document.body).not.toHaveTextContent('harness.none');
+    expect(document.body).not.toHaveTextContent('Machine · harness.none');
+  });
+
+  it('shows a harness’s path and failed check when the runtime reports them', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness can be used',
+        checks: [
+          {
+            harness: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            check: 'login',
+            result: 'fail',
+            cause: 'not logged in',
+            fix: 'claude login',
+          },
+          {
+            harness: 'opencode',
+            name: 'OpenCode',
+            check: 'wordsmith',
+            result: 'fail',
+            cause: 'refused',
+            fix: 'reinstall',
+          },
+          {
+            harness: 'codex',
+            name: 'Codex',
+            path: '/opt/homebrew/bin/codex',
+            result: 'pass',
+            cause: '',
+            fix: '',
+          },
+        ],
+      }),
+    );
+
+    render(OnboardingView);
+
+    const failures = screen.getByTestId('harness-none-failures');
+    expect(failures).toHaveTextContent('~/.local/bin/claude');
+    expect(failures).toHaveTextContent('the login check');
+    // An id the catalogue does not know reads as a word, never as a raw key or a wire token.
+    expect(failures).toHaveTextContent('Wordsmith');
+    expect(failures).not.toHaveTextContent('onboard.harness.check.');
+    expect(failures).not.toHaveTextContent('wordsmith');
+
+    // A check that passed is not listed under "none passed".
+    expect(failures).not.toHaveTextContent('Codex');
+  });
+
+  it('says what was looked for when nothing was found', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        looks_for: 'claude, opencode',
+        locations: 'your PATH, ~/.local/bin',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByText('Looked for claude, opencode in your PATH, ~/.local/bin.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
+  });
+
+  it('names the harnesses of a list and the place the runtime calls “in”', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        harnesses: [{ name: 'Claude Code' }, { harness_id: 'opencode' }],
+        in: 'your PATH',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
+  });
+
+  it('names the aspect of a change link whose line the result does not report', () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:roles': {
+            href: '/api/v1/onboarding/settings/reconfigure/roles',
+            next: 'roles.reconfigure',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    // The row's act and the orphan link's act are told apart by the aspect each opens.
+    expect(screen.getByRole('button', { name: 'Change Language' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Change Roles' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /^change /i })).toHaveLength(2);
+  });
+
+  it('keeps a state the runtime reported while a step was still in flight', async () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.mode',
+        summary: 'Set up this machine for plan-marshall',
+        links: { begin: { href: '/api/v1/onboarding/language', next: 'language.choose' } },
+      }),
+    );
+    let answer: ((state: OnboardingState) => void) | undefined;
+    vi.spyOn(apiClient, 'stepOnboarding').mockReturnValue(
+      new Promise<OnboardingState>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    render(OnboardingView);
+    await fireEvent.click(await screen.findByRole('button', { name: /begin with step 1/i }));
+
+    // A step-completed event refreshes the state while the step's own answer is still on its way.
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(
+      onboardingState({ state: 'harness.probe', summary: 'Checking 2 harnesses' }),
+    );
+    await loadOnboardingState();
+
+    // The older answer must not overwrite the newer state.
+    answer?.(onboardingState({ state: 'language.choose', summary: 'Choose your languages' }));
+    await waitFor(() =>
+      expect(get(runtimeStore).onboarding?.summary).toBe('Checking 2 harnesses'),
+    );
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({
@@ -941,6 +1127,47 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(result).toHaveTextContent('Deutsch, models too');
     expect(result).toHaveTextContent('every supported one, the first the default');
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+
+  it('offers a Change per row of auto.result that opens that aspect again', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [
+          { aspect: 'language', value: 'Deutsch, models too', reason: 'detected' },
+          { aspect: 'harness', value: 'Claude Code 2.4.1 (default)', reason: 'all_supported' },
+          { aspect: 'store', value: 'macOS Keychain', reason: 'detected' },
+        ],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:harness': {
+            href: '/api/v1/onboarding/settings/reconfigure/harnesses',
+            next: 'harness.reconfigure-consent',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'auto.result' }));
+
+    render(OnboardingView);
+
+    // One Change per line the state can run again, named after that line; the credentials line
+    // offers none because the state carries no link for it.
+    const changes = screen.getAllByRole('button', { name: /^change /i });
+    expect(changes).toHaveLength(2);
+    expect(changes[0]).toHaveAccessibleName('Change Language');
+    expect(changes[1]).toHaveAccessibleName('Change Harnesses');
+    expect(screen.getByTestId('auto-result')).toHaveTextContent('Credentials');
+
+    await fireEvent.click(changes[1]);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('change:harness', {}));
   });
 
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
