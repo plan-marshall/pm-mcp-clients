@@ -321,6 +321,101 @@ class AnswerRefusalTest {
         assertTrue(out.toString().contains("Choose: 9999999999, 2"), out.toString());
     }
 
+    @ParameterizedTest(name = "{0} refused as {1}")
+    @CsvSource(delimiter = '|', value = {
+                        "later    | conflict         | Something changed in the meantime: the decision was updated.",
+                        "later    | already_answered | The question was already answered elsewhere.",
+                        "withdraw | conflict         | Something changed in the meantime: the decision was updated.",
+                        "withdraw | already_answered | The question was already answered elsewhere."})
+    @DisplayName("a decision refusal of later and withdraw prints the decision and exits 1, never the console's error pattern")
+    void decisionRefusalOfLaterAndWithdraw(String act, String code, String text) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if (request.target().startsWith("/api/v1/decisions/Q-001/")) {
+                response.json(409, "{\"error\":\"%s\"}".formatted(code));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", new byte[0], "answer", "Q-001", act);
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains(text), out.toString()),
+                            () -> assertFalse(out.toString().contains("\u2717"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("a direct answer refused as a conflict prints the decision as it stands and exits 1")
+    void directAnswerConflictPrintsTheDecision() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.json(409, "{\"error\":\"conflict\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains("Something changed in the meantime"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("an interactive answer refused as invalid prints the refusal and asks the part again")
+    void interactiveInvalidAnswerAsksAgain() throws Exception {
+        var posts = new java.util.concurrent.atomic.AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                if (posts.incrementAndGet() == 1) {
+                    response.json(422, "{\"error\":\"invalid_answer\",\"message\":\"no such option\"}");
+                } else {
+                    response.json(200, "{\"ok\":true}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", "1\n1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(0, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains(
+                                                "This answer does not fit the part: no such option"), out.toString()),
+                            () -> assertTrue(out.toString().split("Which\\?", -1).length - 1 >= 2,
+                                                "the part is asked again: " + out),
+                            () -> assertEquals(2, posts.get(), "the answer is sent again, after the part is asked again"));
+    }
+
+    @Test
+    @DisplayName("an interactive answer refused as a conflict prints the decision and exits 1")
+    void interactiveConflictExitsOne() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.json(409, "{\"error\":\"already_answered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", "1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains("already answered elsewhere"), out.toString()));
+    }
+
     private void assertGerman(String expected, String... args) {
         out = new StringWriter();
         err = new StringWriter();

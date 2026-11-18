@@ -811,6 +811,10 @@ public final class AnswerCommand implements Callable<Integer> {
                 if (exit.isPresent()) {
                     return exit.getAsInt();
                 }
+                // The refusal names no part the client can point at, so every answer is asked again
+                // from the first: without this the loop re-sends the same answers and never asks.
+                answers.clear();
+                progress = new Progress(0, progress.note());
             }
         }
     }
