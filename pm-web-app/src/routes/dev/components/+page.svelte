@@ -184,6 +184,9 @@
   /** Which theme's danger dialog is open, one flag per theme so each shows in its own colour. */
   let openDialogs: Record<string, boolean> = {};
 
+  /** Which theme's confirm dialog is open. */
+  let openConfirmDialogs: Record<string, boolean> = {};
+
   /** Which theme's toast is on screen. */
   let openToasts: Record<string, boolean> = {};
 
@@ -481,12 +484,22 @@
           </Button>
         </svelte:fragment>
       </Dialog>
+      <div class="dev__row">
+        <Button
+          variant="secondary"
+          on:click={() => (openConfirmDialogs = { ...openConfirmDialogs, [theme]: true })}
+        >
+          {$t('dev.dialog.open')}
+        </Button>
+      </div>
       <ConfirmDialog
-        open={false}
+        open={openConfirmDialogs[theme] ?? false}
         title={$t('dev.dialog.title')}
         consequences={dialogConsequences}
         actionLabel={$t('dev.dialog.confirm')}
         cancelLabel={$t('common.action.cancel')}
+        onConfirm={() => (openConfirmDialogs = { ...openConfirmDialogs, [theme]: false })}
+        onClose={() => (openConfirmDialogs = { ...openConfirmDialogs, [theme]: false })}
       />
 
       <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
@@ -988,9 +1001,20 @@
       </div>
 
       <div class="dev__grid">
-        <ObjectPage compact inColumn />
-        <WizardPage />
-        <DashboardPage />
+        <ObjectPage compact inColumn>
+          <svelte:fragment slot="kind">{$t('common.kind.epic')}</svelte:fragment>
+          <svelte:fragment slot="title">{$t('dev.examples.title')}</svelte:fragment>
+          <svelte:fragment slot="state">{$t('state.plan.running')}</svelte:fragment>
+        </ObjectPage>
+        <WizardPage>
+          <p class="dev__intro">{$t('dev.components.intro')}</p>
+        </WizardPage>
+        <DashboardPage>
+          <svelte:fragment slot="title">
+            <h2 class="dev__section-title">{$t('dev.components.title')}</h2>
+          </svelte:fragment>
+          <p class="dev__intro">{$t('dev.components.intro')}</p>
+        </DashboardPage>
       </div>
     </section>
   {/each}

@@ -19,17 +19,21 @@ import { parse, parseCss } from 'svelte/compiler';
  */
 
 export const RULES = {
-  button: { name: 'button', component: 'Button' },
-  a: { name: 'a', component: 'Link' },
-  input: { name: 'input', component: 'TextField' },
-  textarea: { name: 'textarea', component: 'TextArea' },
-  select: { name: 'select', component: 'SelectField' },
-  'outline: none': { name: 'outline: none', component: 'tokens.css (--focus-ring)' },
+  button: { type: 'element', component: 'Button' },
+  a: { type: 'element', component: 'Link' },
+  input: { type: 'element', component: 'TextField' },
+  textarea: { type: 'element', component: 'TextArea' },
+  select: { type: 'element', component: 'SelectField' },
+  'outline: none': { type: 'css', component: 'tokens.css (--focus-ring)' },
 };
 
-export const RULE_NAMES = ['button', 'a', 'input', 'textarea', 'select', 'outline: none'];
+export const RULE_NAMES = Object.keys(RULES);
 
-const RAW_ELEMENTS = new Set(['button', 'a', 'input', 'textarea', 'select']);
+const RAW_ELEMENTS = new Set(
+  Object.entries(RULES)
+    .filter(([_, rule]) => rule.type === 'element')
+    .map(([name]) => name),
+);
 
 /**
  * Computes 1-based line number from a character offset.
@@ -265,11 +269,7 @@ export function scanProject(appDir) {
     return true;
   };
 
-  const svelteFiles = [
-    ...collectFiles(libDir, svelteFilter),
-    ...collectFiles(routesDir, svelteFilter),
-  ];
-
+  const svelteFiles = collectFiles(srcDir, svelteFilter);
   const cssFiles = collectFiles(srcDir, cssFilter);
 
   const findings = [];

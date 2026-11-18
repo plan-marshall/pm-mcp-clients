@@ -134,15 +134,26 @@ describe('vocabularyLint', () => {
   });
 
   it('--error exits 1 on findings and 0 on clean project', () => {
-    const exitCodeError = runCli(['--error']);
+    const violatingDir = path.join(APP_DIR, 'target', 'test-violating-app');
+    const violatingSrc = path.join(violatingDir, 'src');
+    fs.mkdirSync(violatingSrc, { recursive: true });
+    fs.writeFileSync(path.join(violatingSrc, 'Violating.svelte'), '<button>Violating</button>');
+
+    const exitCodeError = runCli(['--error'], violatingDir);
     expect(exitCodeError).toBe(1);
 
-    const exitCodeNormal = runCli([]);
+    const exitCodeNormal = runCli([], violatingDir);
     expect(exitCodeNormal).toBe(0);
 
     const emptyDir = path.join(APP_DIR, 'target', 'test-empty-app');
+    const emptySrc = path.join(emptyDir, 'src');
+    fs.mkdirSync(emptySrc, { recursive: true });
+
     const exitCodeClean = runCli(['--error'], emptyDir);
     expect(exitCodeClean).toBe(0);
+
+    fs.rmSync(violatingDir, { recursive: true, force: true });
+    fs.rmSync(emptyDir, { recursive: true, force: true });
   });
 
   it('enforces vocabulary baseline ratchet (clean files stay clean, counted files never grow)', () => {

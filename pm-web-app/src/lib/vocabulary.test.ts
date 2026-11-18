@@ -72,6 +72,9 @@ describe('vocabulary completeness', () => {
 
     const docContent = fs.readFileSync(DOCS_PATH, 'utf-8');
     const devPageSource = fs.readFileSync(DEV_PAGE_PATH, 'utf-8');
+    const templateOnly = devPageSource
+      .replace(/<script[\s\S]*?<\/script>/g, '')
+      .replace(/<!--[\s\S]*?-->/g, '');
 
     const vocabulary = extractVocabularyComponents(docContent);
     expect(vocabulary.length).toBeGreaterThan(30);
@@ -103,10 +106,10 @@ describe('vocabulary completeness', () => {
       ).toBe(true);
 
       // eslint-disable-next-line security/detect-non-literal-regexp
-      const nameRegex = new RegExp(`\\b${name}\\b`);
+      const componentTagRegex = new RegExp(`<${name}\\b`);
       expect(
-        nameRegex.test(devPageSource),
-        `Expected component ${name} to have a fixture / use on routes/dev/components/+page.svelte`,
+        componentTagRegex.test(templateOnly),
+        `Expected component ${name} to have a rendered fixture (<${name} ...) in template of routes/dev/components/+page.svelte`,
       ).toBe(true);
     }
   });
