@@ -109,11 +109,19 @@ function walkCssAst(cssAst, relPath, source, findings) {
 }
 
 /**
+ * @typedef {Object} Finding
+ * @property {string} file
+ * @property {number} line
+ * @property {string} rule
+ * @property {string} component
+ */
+
+/**
  * Lints Svelte source code.
  *
  * @param {string} source
  * @param {string} relPath
- * @returns {Array<object>} findings
+ * @returns {Finding[]} findings
  */
 export function lintSvelteSource(source, relPath = 'anonymous.svelte') {
   const normalized = relPath.replace(/\\/g, '/');
@@ -178,7 +186,7 @@ export function lintSvelteSource(source, relPath = 'anonymous.svelte') {
  *
  * @param {string} source
  * @param {string} relPath
- * @returns {Array<object>} findings
+ * @returns {Finding[]} findings
  */
 export function lintCssSource(source, relPath = 'anonymous.css') {
   const normalized = relPath.replace(/\\/g, '/');
@@ -234,7 +242,7 @@ export function collectFiles(dir, filter) {
  * Scans the project directory for vocabulary violations.
  *
  * @param {string} appDir
- * @returns {Array<object>} findings sorted by file and line
+ * @returns {Finding[]} findings sorted by file and line
  */
 export function scanProject(appDir) {
   const srcDir = path.join(appDir, 'src');

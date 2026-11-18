@@ -12,6 +12,17 @@ import {
 const APP_DIR = path.resolve(__dirname, '../..');
 const BASELINE_PATH = path.join(APP_DIR, 'scripts', 'vocabulary-baseline.json');
 
+interface Finding {
+  file: string;
+  line: number;
+  rule: string;
+  component: string;
+}
+
+function parseFindings(raw: unknown): Finding[] {
+  return raw as Finding[];
+}
+
 describe('vocabularyLint', () => {
   it('fires once on each raw HTML element outside components', () => {
     const svelte = `
@@ -27,7 +38,7 @@ describe('vocabularyLint', () => {
       </div>
     `;
 
-    const findings = lintSvelteSource(svelte, 'src/lib/views/SampleView.svelte');
+    const findings = parseFindings(lintSvelteSource(svelte, 'src/lib/views/SampleView.svelte'));
     expect(findings).toHaveLength(5);
 
     const rules = findings.map((f) => f.rule);
@@ -54,7 +65,7 @@ describe('vocabularyLint', () => {
       <div>Hello</div>
     `;
 
-    const svelteFindings = lintSvelteSource(svelte, 'src/lib/views/StyleView.svelte');
+    const svelteFindings = parseFindings(lintSvelteSource(svelte, 'src/lib/views/StyleView.svelte'));
     expect(svelteFindings).toHaveLength(2);
     expect(svelteFindings[0].rule).toBe('outline: none');
     expect(svelteFindings[0].component).toBe('tokens.css (--focus-ring)');
@@ -69,7 +80,7 @@ describe('vocabularyLint', () => {
       }
     `;
 
-    const cssFindings = lintCssSource(css, 'src/styles/custom.css');
+    const cssFindings = parseFindings(lintCssSource(css, 'src/styles/custom.css'));
     expect(cssFindings).toHaveLength(2);
     expect(cssFindings[0].rule).toBe('outline: none');
     expect(cssFindings[1].rule).toBe('outline: none');
@@ -77,11 +88,11 @@ describe('vocabularyLint', () => {
 
   it('does not fire inside src/lib/components/', () => {
     const svelte = '<button>Click</button><style>.btn { outline: none; }</style>';
-    const findings = lintSvelteSource(svelte, 'src/lib/components/CustomButton.svelte');
+    const findings = parseFindings(lintSvelteSource(svelte, 'src/lib/components/CustomButton.svelte'));
     expect(findings).toHaveLength(0);
 
     const css = '.btn { outline: none; }';
-    const cssFindings = lintCssSource(css, 'src/lib/components/Button.css');
+    const cssFindings = parseFindings(lintCssSource(css, 'src/lib/components/Button.css'));
     expect(cssFindings).toHaveLength(0);
   });
 
@@ -96,7 +107,7 @@ describe('vocabularyLint', () => {
       <SelectField label="Type" options={[]} />
     `;
 
-    const findings = lintSvelteSource(svelte, 'src/lib/views/CleanView.svelte');
+    const findings = parseFindings(lintSvelteSource(svelte, 'src/lib/views/CleanView.svelte'));
     expect(findings).toHaveLength(0);
   });
 
@@ -117,7 +128,7 @@ describe('vocabularyLint', () => {
       {/if}
     `;
 
-    const findings = lintSvelteSource(svelte, 'src/lib/views/BlockView.svelte');
+    const findings = parseFindings(lintSvelteSource(svelte, 'src/lib/views/BlockView.svelte'));
     expect(findings).toHaveLength(3);
     expect(findings.map((f) => f.rule)).toEqual(['button', 'a', 'input']);
   });
@@ -140,7 +151,7 @@ describe('vocabularyLint', () => {
     const baselineRaw = fs.readFileSync(BASELINE_PATH, 'utf-8');
     const baseline = JSON.parse(baselineRaw) as Record<string, Record<string, number>>;
 
-    const actualFindings = scanProject(APP_DIR);
+    const actualFindings = parseFindings(scanProject(APP_DIR));
     const actualCounts: Record<string, Record<string, number>> = {};
 
     for (const f of actualFindings) {
