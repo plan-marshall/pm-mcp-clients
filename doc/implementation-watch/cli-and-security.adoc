@@ -10,9 +10,7 @@ link:../ImplementationWatch.adoc[Implementation Watch] » CLI & Security
 == Overview
 
 Watch items for the link:../specification/cli-and-security.adoc[CLI, Coordination & Security Specification]. The sections mirror the
-specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Implementation Watch]. The items that watch
-the web access of the runtime — `PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `PM-WATCH-CLI-26` and `PM-WATCH-CLI-27` —
-stay with the section they watch.
+specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Implementation Watch].
 
 == Command-Line Binaries (`pm-mcp`, `pm-operator`) & Installation Layout
 
@@ -20,7 +18,7 @@ stay with the section they watch.
 === PM-WATCH-CLI-10: Siblings are started by path, never through PATH
 
 Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[CLI & Security § Installation Layout],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1]
 Hazard:: A binary looked up through `PATH` lets any same-named executable earlier on `PATH` run as the runtime, and a
 `PM_MCP_HOME` derived from an unresolved symlink points at the user bin directory instead of the installation.
 Guard:: Fixture with a `pm-mcpd` and a `pm-exec` earlier on `PATH` that each write a sentinel: neither is ever
@@ -34,7 +32,7 @@ Source:: design review.
 
 Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[CLI & Security § Installation Layout] (Upgrade),
 link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[CLI & Security § Runtime Access & On-Demand Start] (Version),
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4]
 Hazard:: After the symlink switch the new `pm-operator` installed its bundles against the old runtime, the old installation
 directory was removed while the old runtime still started jobs through its own `pm-exec`, or a worker of the old runtime
 connected through the new release's relay.
@@ -53,7 +51,7 @@ Source:: design review.
 
 Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#harness-installer[CLI & Security § Harness Bundle Installer],
 link:../specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Harness Integration § Ownership & Digest Verification],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2]
 Hazard:: Ownership recorded per file or per key let `harness remove` delete a permission rule the user had authored
 with the same value, and let `harness update` overwrite a recorded rule the user had edited.
 Guard:: Fixture with a user-authored rule identical to a bundle rule before `harness install`: it is not recorded as
@@ -65,7 +63,7 @@ Source:: design review.
 === PM-WATCH-CLI-13: Weakening an enforcement rule always needs the terminal
 
 Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#harness-operator-gate[CLI & Security § Operator Gate for Security-Weakening Changes],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
 Hazard:: A change plan that weakened an enforcement rule through a path the gate did not classify (a list move, a
 narrowed pattern, an overriding allow rule) was applied under `--yes` from a model-driven shell.
 Guard:: Table test over bundle versions that move an `enforcement` rule from `deny` to `allow`, narrow it, and add an
@@ -80,7 +78,7 @@ Source:: design review.
 === PM-WATCH-CLI-28: A job token is redacted by value and, after a restart, by its `pmj_` shape
 
 Anchor:: link:../specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[CLI, Coordination & Security § Operator Credential Acts & Runtime Secret Redaction] (Runtime Secrets),
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-6[PM-SEC-6]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-6[PM-SEC-6]
 Hazard:: A job token registered only by value is no longer known after a runtime restart, because only its SHA-256
 survives; a worker that still holds it and echoes it into a log line or an argument leaks it unredacted.
 Guard:: Test: a job token minted for a worker is redacted by value from log, audit, and representation output;
@@ -95,8 +93,8 @@ Source:: design review.
 === PM-WATCH-CLI-3: Every documented operator command form is executed as a test
 
 Anchor:: link:../specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation & Operator Acts],
-link:../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-server[CLI & Security § Web Access & Pairing],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TEST-3[PM-TEST-3]
+link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-server[CLI & Security § Web Access & Pairing],
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-TEST-3[PM-TEST-3]
 Hazard:: A documented invocation form (`--measured-diff-size ""`) was rejected at the barrier; five gate failures
 followed.
 Guard:: Every `pm-operator …` example in documentation and skills, the `pm-operator web …` verbs included, runs in
@@ -108,7 +106,7 @@ Source:: plan-marshall review-apparatus PLAN-PR-051 D3/D1a.
 === PM-WATCH-CLI-14: The operator checks refuse before anything is sent
 
 Anchor:: link:../specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation & Operator Acts],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
 Hazard:: An operator verb that sent its request first and checked the terminal afterwards, or that checked only some
 agent markers, lets a model-driven shell reach an operator endpoint through `pm-operator`.
 Guard:: Every verb of `pm-operator` that carries the operator checks (the `[op]` verbs of `pm-operator web` included)
@@ -135,7 +133,7 @@ Source:: design review.
 === PM-WATCH-CLI-24: A model-relayed operator action is refused
 
 Anchor:: link:../specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI & Security § Operator Channel Isolation],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3]
 Hazard:: The model runs `pm-operator waive` from its shell, or submits an operator choice (an integration
 variant, a waiver) as link arguments, and the runtime treats it as the operator's own act; a harness deny rule that
 names sub-commands misses a verb added later, and one that also matches `pm-mcp` cuts a worker off from its job

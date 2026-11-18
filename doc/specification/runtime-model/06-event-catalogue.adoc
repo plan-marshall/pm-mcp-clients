@@ -12,7 +12,7 @@ link:../../Specification.adoc[Specification] » link:../runtime-model.adoc[Runti
 == Event Catalogue
 _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-11: The Operator's Two Clients & Their Contract]_
 
-The closed catalogue of the events the runtime streams to the operator's clients (link:01-processes-and-transport.adoc#event-streams[Events per Scope]). Every event has a name of the event name grammar (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/identifiers/02-registry-stores-to-web.adoc#id-event-name[Identifier Registry, Event Name]), one payload schema in `pm-api`, and the streams it is sent on; the envelope (`event`, `at`, `scope`, the SSE `id`) is that of link:01-processes-and-transport.adoc#event-streams[Events per Scope] and is not repeated below. A payload carries identifiers, states, counts, and message keys with their arguments; text of a model, a provider, or a harness travels only in the entries of a task's activity stream, marked untrusted, and in the chat's turns (<<chat-events>>), shown by the chat's text rule. A new event, a new payload field, or a new stream for an event is a change of `pm-api`, checked by the mock runtime's load validation and the drift replay (link:05-mock-runtime.adoc[Mock Runtime]).
+The closed catalogue of the events the runtime streams to the operator's clients (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope]). Every event has a name of the event name grammar (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/identifiers/02-registry-stores-to-web.adoc#id-event-name[Identifier Registry, Event Name]), one payload schema in `pm-api`, and the streams it is sent on; the envelope (`event`, `at`, `scope`, the SSE `id`) is that of link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope] and is not repeated below. A payload carries identifiers, states, counts, and message keys with their arguments; text of a model, a provider, or a harness travels only in the entries of a task's activity stream, marked untrusted, and in the chat's turns (<<chat-events>>), shown by the chat's text rule. A new event, a new payload field, or a new stream for an event is a change of `pm-api`, checked by the mock runtime's load validation and the drift replay (link:05-mock-runtime.adoc[Mock Runtime]).
 
 Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project's workspace scope's, *M* the machine scope's, *N* an entry's, *Rep* the reports stream, *A* a task's activity stream.
 
@@ -46,7 +46,7 @@ Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project
 |`device.paired`, `device.renamed`, `device.revoked` |R |`device_id`, `label`, `paired_from`; a pairing code never travels in an event (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[CLI, Coordination & Security Specification, A Fresh Code after a Redemption])
 |`listener.changed` |R |`listener` (`loopback`, `lan`), `state` (`open`, `closed`, `port_occupied`), `port`
 |`settings.changed` |R, M, W, P |`level` (`machine`, `project`, `plan`), the keys changed, the new `revision`, the channel
-|`favourites.changed` |R |the favourite projects by `project_id` in their order, the channel (link:01-processes-and-transport.adoc#project-explorer[The Projects of the Machine])
+|`favourites.changed` |R |the favourite projects by `project_id` in their order, the channel (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#project-explorer[The Projects of the Machine])
 |`workflow.unit_put`, `workflow.unit_deleted` |R |`unit`, `level` (`machine`, `project`), `project_id` for a project's unit, the channel (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/workflow-dsl/04-ast-node-model.adoc#process-designer[Workflow DSL Specification, Designing a Process])
 |===
 
@@ -62,12 +62,12 @@ Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project
 |`scope.ended` |R, E |`kind`, `id`, `outcome` or `terminal_reason`, `reason`
 |`phase.changed` |R, P, E |`plan_id`, `phase`, `phase_entered_at`
 |`activity.changed` |R, P, E |`plan_id`, `activity` (`running`, `pausing`, `paused`), the pause's `point` (`task` or `phase` while `pausing`, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/02-plan-pause-and-stalled-plans.adoc#plan-pause[Pausing and Starting a Plan])
-|`plan.revision_queued` |R, P, E |`plan_id`, and the plan's `queued_revision` as the plan's resource gives it (link:01-processes-and-transport.adoc#local-api[Local API]), or absent, its `chat_open` derived when it is sent; sent when a revision accepted in a chat is queued, when the chat that proposed it ends, and when it leaves the queue, applied, refused, or lapsed (link:01-processes-and-transport.adoc#chat-proposal-states[A Proposal's States])
-|`needs_operator.changed` |R, P, E, W |`kind` and `id` of the summarized scope or project, or the machine (runtime-wide only), the new summary (link:01-processes-and-transport.adoc#needs-operator[What Needs the Operator])
+|`plan.revision_queued` |R, P, E |`plan_id`, and the plan's `queued_revision` as the plan's resource gives it (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API]), or absent, its `chat_open` derived when it is sent; sent when a revision accepted in a chat is queued, when the chat that proposed it ends, and when it leaves the queue, applied, refused, or lapsed (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-proposal-states[A Proposal's States])
+|`needs_operator.changed` |R, P, E, W |`kind` and `id` of the summarized scope or project, or the machine (runtime-wide only), the new summary (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator])
 |`condition.raised`, `condition.cleared` |R, P, E, W |the scope, `condition`, `cleared_by` (`self`, `operator`)
 |`hold.opened`, `hold.changed`, `hold.cleared` |R, P, E, W, N |the scope, `hold_id`, `kind`, `cleared_by` (`act`, `self`) (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/state-catalogue/01-conventions-generic-conditions.adoc#holds[State Catalogue Specification, Holds and Their Acts])
 |`epic.row_changed` |R, E |`epic_id`, `plan_id`, `status`, `waits_for` (`dependency`, `lock`, `scope`, `overlap`) with the plan it waits for
-|`plan.change_captured` |R, P, E |`plan_id`, `head`, `files_total`, `insertions_total`, `deletions_total`, the count of unplanned changes (link:01-processes-and-transport.adoc#plan-changes[The Plan's Changes])
+|`plan.change_captured` |R, P, E |`plan_id`, `head`, `files_total`, `insertions_total`, `deletions_total`, the count of unplanned changes (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#plan-changes[The Plan's Changes])
 |`task.off_track` |R, P, E |`plan_id` or `epic_id`, `queue_task_id`, `signal`, `action` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[Model Work Specification, A Worker Off Track])
 |===
 
@@ -80,7 +80,7 @@ Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project
 |`state.entered`, `state.left` |P, E, W, M, N |`node_id`, `state_id`, the state's kind (`operator_wait` among them), `outcome` (on `left`); an operator wait entered tells a client to read the state's representation
 |`subworkflow.called`, `subworkflow.returned` |P, E, W, M, N |`node_id`, the sub-workflow, `outcome` (on `returned`)
 |`step.opened`, `step.closed` |P |`node_id`, `step_id`, `firing`, `outcome` (on `closed`)
-|`instance.changed` |P |`instance_version`, the composition event (link:01-processes-and-transport.adoc#process-events[Events of the Process])
+|`instance.changed` |P |`instance_version`, the composition event (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process])
 |`tokens.changed` |P, E |`total_tokens`, `tokens_in`, `tokens_out`, the coverage
 |`progress.changed` |P, M, W, N |`done`, `of` (the onboarding's steps, a plan's tasks)
 |`check.result` |M, W, N |`check_id`, `result` (`running`, `pass`, `fail`, `skipped`), `cause` and `fix` as message keys with their arguments
@@ -101,17 +101,17 @@ Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project
 === Chat
 _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-24[PM-WF-24: Chatting with the Planning Role]_
 
-The events of a chat are sent on the stream of the scope that holds it: a plan's chat on *P*, an epic's (its draft and registers included) on *E*, an entry's on *N*, a decision's on the stream of its scope (a plan, an epic, an entry, or a project's workspace; a decision of the machine scope has no chat), and ended work's on *W* (link:01-processes-and-transport.adoc#chat-routes[The Chat's Routes]). Every device that shows the chat sees each turn, proposal, and end as it happens. A client that missed events (a `reset`) reads the chat again; a turn being written is read with its text so far.
+The events of a chat are sent on the stream of the scope that holds it: a plan's chat on *P*, an epic's (its draft and registers included) on *E*, an entry's on *N*, a decision's on the stream of its scope (a plan, an epic, an entry, or a project's workspace; a decision of the machine scope has no chat), and ended work's on *W* (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes]). Every device that shows the chat sees each turn, proposal, and end as it happens. A client that missed events (a `reset`) reads the chat again; a turn being written is read with its text so far.
 
 [cols="2,1,3"]
 |===
 |Event |Streams |Payload
 
-|`chat.turn.started` |P, E, W, N |`chat_id`, `turn_id`, `kind` (`message`), the author (`operator` or the role), `format`, `untrusted`, the `model` of a role's turn, and on a role's turn the chat's `context` as refreshed for this turn, a re-primed worker's included (link:01-processes-and-transport.adoc#chat-routes[The Chat's Routes]); the operator's message carries its `text` and is announced by this event alone
+|`chat.turn.started` |P, E, W, N |`chat_id`, `turn_id`, `kind` (`message`), the author (`operator` or the role), `format`, `untrusted`, the `model` of a role's turn, and on a role's turn the chat's `context` as refreshed for this turn, a re-primed worker's included (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes]); the operator's message carries its `text` and is announced by this event alone
 |`chat.turn.delta` |P, E, W, N |`chat_id`, `turn_id`, `text`: the next piece of the reply, appended in the order of the stream
 |`chat.turn.progress` |P, E, W, N |`chat_id`, `turn_id`, `step`: a step of the role's work the runtime derives from the worker's activity (the target read, the check run) as a message key with its arguments, never the model's own words
 |`chat.turn.completed` |P, E, W, N |`chat_id`, `turn_id`, `kind` (`message`, `notice`), `status` (`complete`, `stopped`, `failed`), `untrusted`, the turn's whole `text`, `refs` (each with its `kind`: `task`, `file`, `decision`, `plan`, `hold`, or `act`, an act the role names), and for `failed` its `reason` (`infeasible`, `lost`, `too_long`: the reply exceeded the chat reply bound) as a message key with its arguments; a notice is announced by this event alone, and a notice the runtime writes about the chat's subject carries `lines[]`, the narrative lines it reports, each `key`, `args`, `refs`, and `at`, written between replies and never inside a reply being written
-|`chat.proposal` |P, E, W, N |`chat_id`, the proposal's own `turn_id`, `reply_turn_id` of the reply that proposed it, the proposal's `kind`, and its `state` (`open`, `replaced`, `accepted`, `rejected`, `applied`, `refused` with its finding, `lapsed`; link:01-processes-and-transport.adoc#chat-proposal-states[A Proposal's States]); a plan's revision `accepted` is its `queued_revision` until it is `applied`, `refused`, or `lapsed`, each announced by `plan.revision_queued`
+|`chat.proposal` |P, E, W, N |`chat_id`, the proposal's own `turn_id`, `reply_turn_id` of the reply that proposed it, the proposal's `kind`, and its `state` (`open`, `replaced`, `accepted`, `rejected`, `applied`, `refused` with its finding, `lapsed`; link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-proposal-states[A Proposal's States]); a plan's revision `accepted` is its `queued_revision` until it is `applied`, `refused`, or `lapsed`, each announced by `plan.revision_queued`
 |`chat.ended` |P, E, W, N |`chat_id`, `ended_by` (`operator`, `proposal_carried`, `answered_elsewhere`, `subject_ended`, `entry_closed`), the channel and device where the operator ended it
 |===
 
@@ -121,7 +121,7 @@ The events of a chat are sent on the stream of the scope that holds it: a plan's
 |===
 |Event |Streams |Payload
 
-|`report.sent` |Rep |`report_id`, `kind`, `from` (link:01-processes-and-transport.adoc#reports[Reports to the Operator])
+|`report.sent` |Rep |`report_id`, `kind`, `from` (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator])
 |`report.read` |Rep |the `report_id` values read
 |`activity` |A |one entry of the task's activity journal, its fields as untrusted plain text (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#worker-activity[Harness Profiles Specification, What a Worker Does])
 |===

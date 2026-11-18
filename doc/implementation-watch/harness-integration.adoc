@@ -18,7 +18,7 @@ specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Imple
 === PM-WATCH-CLIENT-4: A harness started inside another harness is attributed to the outer one
 
 Anchor:: link:../specification/harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration § Harness Integration Table] (Detection precedence, Nested harnesses),
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3]
 Hazard:: Harness markers are inherited, and no harness clears another's: with a fixed precedence alone, Claude Code
 started inside OpenCode is detected as `opencode`, so the refusal of an operator verb names the wrong harness, and
 `AI_AGENT`, inherited from an outer Claude Code, names the wrong harness in a harness started inside it. Codex and
@@ -33,7 +33,7 @@ environment carries none of the harness markers; the process-id marker of `claud
 a live harness before its _(provisional)_ marker is removed.
 Fixture:: OpenCode inside Claude Code is attributed correctly by the fixed order; Claude Code inside OpenCode is
 attributed to `opencode`; Claude Code sets `AI_AGENT=claude-code_2-1-291_agent`, overwriting an inherited value.
-Source:: link:../../plan-marshall-documentation/doc/specification/evaluation.adoc#results[Evaluation Reference], Gate 14.
+Source:: link:../../../plan-marshall-documentation/doc/specification/evaluation.adoc#results[Evaluation Reference], Gate 14.
 
 == Embedded Harness Bundle `bundle-manifest.json` Schema
 
@@ -41,7 +41,7 @@ Source:: link:../../plan-marshall-documentation/doc/specification/evaluation.ado
 === PM-WATCH-CLIENT-5: Harness-side enforcers are scope-bound; only server gates travel with every session
 
 Anchor:: link:../specification/harness-integration/02-bundle-manifest.adoc#_embedded_harness_bundle_bundle_manifest_json_schema[Harness Integration § Embedded Harness Bundle `bundle-manifest.json` Schema],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2], link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1]
 Hazard:: plan-marshall's hooks lived only in git-ignored machine-local configuration, so fresh clones and cloud
 sessions ran with zero mechanical enforcement while documents claimed the rules were enforced.
 Guard:: Server gates are the only enforcement claimed as universal. Every harness-side enforcer (`permission_rule`
@@ -56,7 +56,7 @@ Source:: plan-marshall defect instrumentation-substrate PLAN-08 deliverable 4 an
 === PM-WATCH-CLIENT-7: A permission wildcard ends the rule
 
 Anchor:: link:../specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Harness Integration § Ownership & Digest Verification on Install/Update/Remove],
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1]
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1]
 Hazard:: A mid-rule `*` crossed an argument boundary and pre-approved inserted options.
 Guard:: The bundle-manifest validator rejects any rendered permission rule (every `permission_rule` element of every
 scope section) whose `*` is neither terminal nor `:*`;

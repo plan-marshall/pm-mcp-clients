@@ -16,14 +16,14 @@ This document specifies how *plan-marshall-mcp* (`PM-MCP`) meets the coding agen
 
 _See Requirements:_
 
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-1[PM-CLIENT-1: Harnesses as Workers & Harness Identity]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3: Harness Environment Detection]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1: Single Version Authority & Embedded Harness Bundles]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-3[PM-DIST-3: Worker MCP Connection per Launch]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-5[PM-DIST-5: Multi-Harness Concurrent Coexistence on One Machine]_
-* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SKILL-4[PM-SKILL-4: Skill Delivery to Workers & State through Representations]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-1[PM-CLIENT-1: Harnesses as Workers & Harness Identity]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3: Harness Environment Detection]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1: Single Version Authority & Embedded Harness Bundles]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-3[PM-DIST-3: Worker MCP Connection per Launch]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-5[PM-DIST-5: Multi-Harness Concurrent Coexistence on One Machine]_
+* _See Requirement link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SKILL-4[PM-SKILL-4: Skill Delivery to Workers & State through Representations]_
 
 == Status: IN PROGRESS
 

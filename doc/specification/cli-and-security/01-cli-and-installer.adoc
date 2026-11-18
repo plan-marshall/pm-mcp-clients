@@ -327,7 +327,7 @@ The harness permission rules installed with a bundle as `enforcement` rules (amo
 * The change plan of `pm-operator harness install` and `pm-operator harness update` marks whether it removes or weakens any installed `enforcement` rule (a rule deleted, narrowed, moved from the deny or ask list to a less restrictive list, or overridden by an allow rule). If so, `pm-operator` requires an interactive terminal and interactive confirmation of the listed rule changes; `--yes` is rejected for that change and nothing is applied.
 * `--yes` remains accepted for `install` and `update` changes that keep or strengthen every `enforcement` rule; `convenience` rules are not gated.
 * In the web app the same marked change plan is shown on the paired device, and the change is applied only on the operator's confirmation of the listed rule changes there; no act applies such a change unconfirmed.
-* The gate is a check of the client, like the operator checks of `pm-operator`; its residual risk is the one accepted for the operator channel (link:../../later-improvements.adoc#L-1[Later Improvements, L-1]).
+* The gate is a check of the client, like the operator checks of `pm-operator`; its residual risk is the one accepted for the operator channel (link:../../../../plan-marshall-documentation/doc/later-improvements.adoc#L-1[Later Improvements, L-1]).
 
 [#bundle-drift-notice]
 === Bundle Drift Notice

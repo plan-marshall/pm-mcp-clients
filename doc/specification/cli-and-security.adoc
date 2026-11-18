@@ -12,9 +12,9 @@ This document is the index of the parts of the CLI, Coordination & Security Spec
 repository implement: the two CLI binaries `pm-mcp` and `pm-operator` with their installation layout, command tree and
 entry, the harness bundle installer, the operator's credential acts and the operator channel, and the web app. The
 family is split across two repositories, at a heading: the parts that the daemon implements — the web listeners, the
-device secret, the pairing and the threat notes of `03-web-server.adoc` — are specified beside the code that
-implements them. Until they move into `plan-marshall-mcp`, the family's `Overview`, `Traceability`, `Status` and the
-daemon's `Modules` rows stay with the family index in `plan-marshall-documentation`
+device secret, the pairing and the threat notes of `03-web-server.adoc` — stay in `plan-marshall-documentation` until
+they move into `plan-marshall-mcp`, beside the code that implements them. Until then, the family's `Overview`,
+`Traceability`, `Status` and the daemon's `Modules` rows stay with the family index in `plan-marshall-documentation`
 (link:../../../plan-marshall-documentation/doc/specification/cli-and-security.adoc[the family index]); this document
 lists the parts of this repository alone. The requirements stay in `plan-marshall-documentation`
 (link:../../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]); what implements and verifies

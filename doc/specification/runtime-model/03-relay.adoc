@@ -62,7 +62,7 @@ The relay sends the following HTTP headers on every request it forwards. The run
 |The relay binary's version (for mismatch detection, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#runtime-lifecycle-operations[The Runtime's Lifecycle], Versions apart).
 
 |`PM-MCP-Protocol-Version`, `PM-MCP-Client-Info`, `PM-MCP-Client-Capabilities`
-|The protocol version, `clientInfo`, and capabilities (for example progress and the client capability of the MCP Skills Extension) of the harness, from its `initialize` request or from the request's `params._meta`; the runtime derives every capability-dependent behaviour from these values on each request (link:04-sessions-and-workers.adoc#_connection_scoped_rendering[Connection-Scoped Rendering]).
+|The protocol version, `clientInfo`, and capabilities (for example progress and the client capability of the MCP Skills Extension) of the harness, from its `initialize` request or from the request's `params._meta`; the runtime derives every capability-dependent behaviour from these values on each request (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/04-sessions-and-workers.adoc#_connection_scoped_rendering[Connection-Scoped Rendering]).
 
 |`PM-MCP-Generation`
 |The worker's generation (<<_generations_at_the_relay,Generations at the Relay>>).

@@ -11,8 +11,9 @@ link:../Specification.adoc[Specification] » Runtime & Interaction Model
 This document is the index of the parts of the Runtime & Interaction Model Specification that the modules of this
 repository implement: the relay `pm-mcp serve --job`, the mock runtime, and the event catalogue (the message
 catalogue of `pm-api`). The family is split across two repositories, at a heading: the runtime's own parts —
-`01-processes-and-transport.adoc` and `04-sessions-and-workers.adoc` — are specified beside the code that implements
-them. Until they move into `plan-marshall-mcp`, the family's `Overview`, `Traceability`, `Status` and the daemon's
+`01-processes-and-transport.adoc` and `04-sessions-and-workers.adoc` — stay in `plan-marshall-documentation` until they
+move into `plan-marshall-mcp`, beside the code that implements them. Until then, the family's `Overview`,
+`Traceability`, `Status` and the daemon's
 `Modules` rows stay with the family index in `plan-marshall-documentation`
 (link:../../../plan-marshall-documentation/doc/specification/runtime-model.adoc[the family index]); this document
 lists the parts of this repository alone. The client side of the local API (`01#local-api`, `01#_start_modes`) is
