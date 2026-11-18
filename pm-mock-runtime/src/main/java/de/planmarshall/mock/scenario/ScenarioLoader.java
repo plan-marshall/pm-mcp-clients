@@ -362,7 +362,7 @@ public class ScenarioLoader {
      */
     private static void requireScheduledCapturesApply(StateDefinition state,
             List<Map<String, Object>> effective, String scenario, String stateId) {
-        var served = capturedByPlan(effective, scenario);
+        var served = capturesByPlan(effective, scenario);
         for (var index = 0; index < state.events().size(); index++) {
             var event = state.events().get(index);
             if (PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
@@ -372,17 +372,18 @@ public class ScenarioLoader {
     }
 
     /**
-     * Holds one scheduled capture to the captured answers the state serves, and moves the simulation
-     * on with it.
+     * Holds one scheduled capture to the answers the sequence serves, and moves the simulation on with
+     * it — a captured answer, a capture that is gone and a plan never captured all state what a later
+     * event is held to.
      *
      * @param data     the event's payload
      * @param index    the event's position
-     * @param served   the captured answers the sequence serves so far, by plan
+     * @param served   the answers the sequence serves so far, by plan
      * @param scenario the scenario identifier for error reporting
      * @param stateId  the state identifier
      */
     private static void applyScheduledCapture(@Nullable Object data, int index,
-            Map<String, PlanChangesCaptured> served, String scenario, String stateId) {
+            Map<String, PlanChangesAnswer> served, String scenario, String stateId) {
         var payload = JsonTree.asObject(data);
         if (payload == null) {
             return;
@@ -393,8 +394,7 @@ public class ScenarioLoader {
             applyCarriedScheduledCapture(carried, announced, served, index, scenario, stateId);
             return;
         }
-        var current = served.get(announced.planId());
-        if (current == null) {
+        if (!(served.get(announced.planId()) instanceof PlanChangesCaptured current)) {
             throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the plan " + announced.planId()
                             + " has no capture in the state for the announcement to move");
@@ -409,17 +409,18 @@ public class ScenarioLoader {
     /**
      * Holds a scheduled capture that carries its own answer to the one transition the contract names —
      * a capture moves on to a new capture or to a capture that is gone, never back to the plan's first
-     * capture — and simulates its effect on what later events are held to.
+     * capture — and simulates its effect on what later events are held to. A gone capture stays in the
+     * simulation, so a later `not_captured` is refused as the runtime refuses it.
      *
-     * @param carry    the capture the announcement carries
+     * @param carry     the capture the announcement carries
      * @param announced the announcement
-     * @param served   the captured answers the sequence serves so far, by plan
-     * @param index    the event's position
-     * @param scenario the scenario identifier for error reporting
-     * @param stateId  the state identifier
+     * @param served    the answers the sequence serves so far, by plan
+     * @param index     the event's position
+     * @param scenario  the scenario identifier for error reporting
+     * @param stateId   the state identifier
      */
     private static void applyCarriedScheduledCapture(Map<String, Object> carry,
-            PlanChangeCapturedEvent announced, Map<String, PlanChangesCaptured> served, int index,
+            PlanChangeCapturedEvent announced, Map<String, PlanChangesAnswer> served, int index,
             String scenario, String stateId) {
         final PlanChangesAnswer carried;
         try {
@@ -433,27 +434,22 @@ public class ScenarioLoader {
                     "the capture of " + announced.planId() + " does not go back to "
                             + PlanChangesAnswer.NOT_CAPTURED);
         }
-        if (carried instanceof PlanChangesCaptured capture) {
-            served.put(announced.planId(), capture);
-        } else {
-            served.remove(announced.planId());
-        }
+        served.put(announced.planId(), carried);
     }
 
     /**
      * @param effective the capture entries the state serves
      * @param scenario  the scenario identifier for error reporting
-     * @return the captured answers by plan
+     * @return the answers by plan
      */
-    private static Map<String, PlanChangesCaptured> capturedByPlan(List<Map<String, Object>> effective,
+    private static Map<String, PlanChangesAnswer> capturesByPlan(List<Map<String, Object>> effective,
             String scenario) {
-        var captured = new LinkedHashMap<String, PlanChangesCaptured>();
+        var served = new LinkedHashMap<String, PlanChangesAnswer>();
         for (var entry : effective) {
-            if (readCapture(entry, scenario).answer() instanceof PlanChangesCaptured capture) {
-                captured.put(capture.planId(), capture);
-            }
+            var answer = readCapture(entry, scenario).answer();
+            served.put(answer.planId(), answer);
         }
-        return captured;
+        return served;
     }
 
     /**

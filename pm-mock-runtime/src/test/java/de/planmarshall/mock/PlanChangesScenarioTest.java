@@ -88,6 +88,17 @@ class PlanChangesScenarioTest {
                 .send(HttpRequest.get(path).withHeader(AUTH_HEADER, "Bearer " + runtime.token()));
     }
 
+    /**
+     * @param runtime the runtime
+     * @param state   the state to jump to
+     * @throws IOException on I/O error
+     */
+    private static void goTo(MockRuntime runtime, String state) throws IOException {
+        var response = new UnixSocketHttpClient(runtime.socketPath())
+                .send(HttpRequest.json("POST", "/mock/goto/" + state, "{}"));
+        assertEquals(200, response.status(), response.bodyText());
+    }
+
     private static PlanChangesAnswer readChanges(MockRuntime runtime, String planId) throws IOException {
         var response = get(runtime, PlanChangesRoutes.plan(planId).list());
         assertEquals(200, response.status(), response.bodyText());
@@ -780,6 +791,24 @@ class PlanChangesScenarioTest {
                         "a gone capture moves on to a new capture, never back");
             }
         }
+        @Test
+        @DisplayName("a state without its own captures serves the base capture again after a replacement")
+        void servesTheBaseCaptureAfterATransition() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var replaced = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(1, 2, 0, 0),
+                                oneFileCapture(FIX_RELAY)));
+                assertEquals(200, replaced.status(), replaced.bodyText());
+
+                goTo(runtime, "overview.empty");
+
+                var captured = assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+                assertAll(
+                        () -> assertEquals(12, captured.files().size(),
+                                "the state inherits the base capture, as the loader validates it"),
+                        () -> assertEquals(CAPTURED_HEAD, captured.head()));
+            }
+        }
     }
 
     @Nested
@@ -1206,6 +1235,14 @@ class PlanChangesScenarioTest {
                     StandardScenarios.RUNNING_WORK));
             refusesTheLoad(withScheduledCapture(replaced, announcement(FIX_RELAY, "b2c3d4e5f6a1",
                     new ChangeSize(12, 340, 27, 2), null)), FIX_RELAY);
+
+            // A gone capture stays in the sequence: a later first-capture announcement is refused, as
+            // the runtime refuses it.
+            var gone = withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(0, 0, 0, 0), unavailableCapture(FIX_RELAY, "gone")));
+            assertDoesNotThrow(() -> ScenarioLoader.load(gone, StandardScenarios.RUNNING_WORK));
+            refusesTheLoad(withScheduledCapture(gone, announcement(FIX_RELAY, "b2c3d4e5f6a1",
+                    new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
         }
 
         @Test

@@ -1285,6 +1285,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 var last = planChangeSizes.get(planId);
                 if (last != null) {
                     copy.put(FIELD_CHANGE, last.toMap());
+                    return;
+                }
+                // A state that declares a size for a gone capture states the plan's last figures: keep
+                // them for the reads that follow, so a synthesized route carries them too.
+                var declared = JsonTree.asObject(copy.get(FIELD_CHANGE));
+                if (declared != null) {
+                    try {
+                        planChangeSizes.put(planId, ChangeSize.fromMap(declared));
+                    } catch (IllegalArgumentException _) {
+                        // A size the codec refuses is no measurement: the copy keeps what it serves.
+                    }
                 }
                 return;
             }
@@ -2014,28 +2025,51 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * Seeds a state's own captures when the state declares them: an auto or link transition enters a
-     * state the same way {@code goToState} does, so the changes route answers that state's fixture.
+     * Seeds the captures of the state that was entered: its own where it declares them, and the base
+     * fixture's where it does not — the same inheritance the scenario loader validates the state
+     * against. An auto or link transition enters a state the same way {@code goToState} does, so the
+     * changes route answers what that state models, and a capture a previous state took with it does
+     * not outlive the transition.
      *
      * @param stateDef the state that was entered
      */
     private void applyStateCaptures(StateDefinition stateDef) {
-        var representation = JsonTree.asObject(stateDef.representation());
-        var facts = representation == null
-                ? null
-                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
-        var runtime = facts == null ? null : JsonTree.asObject(facts.get(FIXTURE_RUNTIME));
-        if (runtime == null || !runtime.containsKey(FIXTURE_PLAN_CHANGES)) {
-            return;
-        }
+        var runtime = runtimeFixtureOf(stateDef);
+        var entries = runtime != null && runtime.containsKey(FIXTURE_PLAN_CHANGES)
+                ? fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)
+                : baseCaptures();
         synchronized (planChangesLock) {
             planChanges.clear();
             planChangeFiles.clear();
             planChangeSizes.clear();
-            for (var entry : fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)) {
+            for (var entry : entries) {
                 seedPlanChanges(entry);
             }
         }
+    }
+
+    /**
+     * @param stateDef a state
+     * @return the engine-only fixture object its facts carry, or {@code null}
+     */
+    private static @Nullable Map<String, Object> runtimeFixtureOf(StateDefinition stateDef) {
+        var representation = JsonTree.asObject(stateDef.representation());
+        var facts = representation == null
+                ? null
+                : JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS));
+        return facts == null ? null : JsonTree.asObject(facts.get(FIXTURE_RUNTIME));
+    }
+
+    /**
+     * @return the captures of the scenario's base state, which every state without its own inherits
+     */
+    private List<Map<String, Object>> baseCaptures() {
+        var scenario = currentScenario.get();
+        var base = scenario == null ? null : scenario.state(BASE_FIXTURE_STATE);
+        var runtime = base == null ? null : runtimeFixtureOf(base);
+        return runtime != null && runtime.containsKey(FIXTURE_PLAN_CHANGES)
+                ? fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)
+                : List.of();
     }
 
     /**

@@ -442,6 +442,44 @@ describe('PlanChanges', () => {
     expect(await screen.findByText('second line')).toBeInTheDocument();
   });
 
+  it('drops one plan’s file answer when another plan takes the same row', async () => {
+    // Arrange: the same path, head and counts under two plans are still two plans.
+    const first = deferred<PlanChangeFile>();
+    const second = deferred<PlanChangeFile>();
+    vi.spyOn(apiClient, 'getPlanChanges').mockImplementation(async (id) => ({
+      ...CAPTURED,
+      plan_id: id,
+    }));
+    vi.spyOn(apiClient, 'getPlanChangeFile')
+      .mockReturnValueOnce(first.promise)
+      .mockReturnValueOnce(second.promise);
+
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'pm-relay/src/main/java/Transport.java',
+      onSelectFile: () => {},
+    });
+    await screen.findAllByTestId('change-row');
+
+    // Act: another plan opens on the same row while the first plan's read is open.
+    await view.rerender({
+      planId: 'relay-metrics',
+      change: CHANGE,
+      selectedFile: 'pm-relay/src/main/java/Transport.java',
+      onSelectFile: () => {},
+    });
+    await waitFor(() => expect(apiClient.getPlanChangeFile).toHaveBeenCalledTimes(2));
+    second.resolve(fileAnswer({ hunks: [hunkWith('b plan line')] }));
+    await tick();
+    first.resolve(fileAnswer({ hunks: [hunkWith('a plan line')] }));
+    await tick();
+
+    // Assert
+    expect(screen.getByText('b plan line')).toBeInTheDocument();
+    expect(screen.queryByText('a plan line')).toBeNull();
+  });
+
   it('applies no list completion after the view is gone', async () => {
     // Arrange
     const list = deferred<PlanChangesAnswer>();
