@@ -279,7 +279,7 @@ public class ScenarioLoader {
         // plans' changes are simply not part of what that scenario demonstrates. A scheduled capture
         // is still held to the captures of its state, which then has none.
         if (!modelsCaptures(baseEntries, states, scenario)) {
-            states.forEach((stateId, state) -> requireHeadOnlyCapturesApply(state, List.of(), scenario, stateId));
+            states.forEach((stateId, state) -> requireScheduledCapturesApply(state, List.of(), scenario, stateId));
             return;
         }
         states.forEach((stateId, state) -> validateCapturesOf(state, stateId, baseEntries, sizesByState, scenario));
@@ -342,21 +342,21 @@ public class ScenarioLoader {
         requireEachPlanOnce(effective, scenario);
         effective.forEach(entry -> validateOnePlansChanges(entry, sizes, scenario));
         requireEverySizeHasACapture(effective, sizes, scenario);
-        requireHeadOnlyCapturesApply(state, effective, scenario, stateId);
+        requireScheduledCapturesApply(state, effective, scenario, stateId);
     }
 
     /**
-     * Holds a scheduled {@code plan.change_captured} that carries no capture to the capture its state
-     * serves: such an announcement may only move the head of a capture the state holds, at the size
-     * that capture adds up to. A notice the mock could not play fails the load instead of being
-     * dropped at play time.
+     * Holds every scheduled {@code plan.change_captured} to what the mock can play: an announcement
+     * that carries no capture may only move the head of a capture the state serves, at the size that
+     * capture adds up to, and a carried capture never sends a plan the state serves as captured back to
+     * its first capture. A notice the mock would drop at play time fails the load instead.
      *
      * @param state     the state whose events are validated
      * @param effective the capture entries the state serves
      * @param scenario  the scenario identifier for error reporting
      * @param stateId   the state identifier
      */
-    private static void requireHeadOnlyCapturesApply(StateDefinition state,
+    private static void requireScheduledCapturesApply(StateDefinition state,
             List<Map<String, Object>> effective, String scenario, String stateId) {
         for (var index = 0; index < state.events().size(); index++) {
             var event = state.events().get(index);
@@ -364,7 +364,7 @@ public class ScenarioLoader {
                 continue;
             }
             var payload = JsonTree.asObject(event.data());
-            if (payload == null || JsonTree.asObject(payload.get(FIELD_CAPTURE)) != null) {
+            if (payload == null) {
                 continue;
             }
             final PlanChangeCapturedEvent announced;
@@ -379,7 +379,13 @@ public class ScenarioLoader {
                     .filter(candidate -> announced.planId().equals(JsonTree.string(candidate, FIELD_PLAN_ID)))
                     .findFirst()
                     .orElse(null);
-            var totals = entry != null && PlanChangesAnswer.CAPTURED.equals(JsonTree.string(entry, "state"))
+            var servedState = entry == null ? null : JsonTree.string(entry, "state");
+            var carry = JsonTree.asObject(payload.get(FIELD_CAPTURE));
+            if (carry != null) {
+                requireCarriedCaptionStaysForward(carry, servedState, announced, index, scenario, stateId);
+                continue;
+            }
+            var totals = PlanChangesAnswer.CAPTURED.equals(servedState)
                     ? ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals()
                     : null;
             if (totals == null) {
@@ -392,6 +398,37 @@ public class ScenarioLoader {
                         "the announced size of " + announced.planId()
                                 + " contradicts the files the state serves");
             }
+        }
+    }
+
+    /**
+     * Holds a scheduled capture that carries its own answer to the one transition the contract names:
+     * a capture moves on to a new capture or to a capture that is gone, never back to the plan's first
+     * capture ({@code 01-processes-and-transport.adoc#plan-changes}).
+     *
+     * @param carry       the capture the announcement carries
+     * @param servedState the state of the capture the state serves, or {@code null}
+     * @param announced   the announcement
+     * @param index       the event's position
+     * @param scenario    the scenario identifier for error reporting
+     * @param stateId     the state identifier
+     */
+    private static void requireCarriedCaptionStaysForward(Map<String, Object> carry,
+            @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
+            String stateId) {
+        final PlanChangesAnswer carried;
+        try {
+            carried = PlanChangesAnswer.fromMap(carry);
+        } catch (IOException | IllegalArgumentException e) {
+            // The capture itself is refused where the event's payload is validated.
+            return;
+        }
+        if (PlanChangesAnswer.NOT_CAPTURED.equals(carried.state())
+                && (PlanChangesAnswer.CAPTURED.equals(servedState)
+                || PlanChangesAnswer.UNAVAILABLE.equals(servedState))) {
+            throw new ScenarioValidationException(scenario, stateId, "events[" + index + "].data",
+                    "the capture of " + announced.planId() + " does not go back to "
+                            + PlanChangesAnswer.NOT_CAPTURED);
         }
     }
 
@@ -438,7 +475,8 @@ public class ScenarioLoader {
     }
 
     /**
-     * Every size a state serves names a capture of that plan in the entries the state serves.
+     * Every size a state serves names a capture of that plan in the entries the state serves: a
+     * capture, or the capture that is gone whose figures the size still states.
      *
      * @param effective the entries the state serves
      * @param sizes     the sizes the state serves
@@ -447,10 +485,13 @@ public class ScenarioLoader {
     private static void requireEverySizeHasACapture(List<Map<String, Object>> effective,
             Map<String, List<ChangeSize>> sizes, String scenario) {
         for (var planId : sizes.keySet()) {
-            var captured = effective.stream()
-                    .anyMatch(entry -> planId.equals(JsonTree.string(entry, FIELD_PLAN_ID))
-                            && PlanChangesAnswer.CAPTURED.equals(
-                            JsonTree.string(entry, "state")));
+            var state = effective.stream()
+                    .filter(entry -> planId.equals(JsonTree.string(entry, FIELD_PLAN_ID)))
+                    .map(entry -> JsonTree.string(entry, "state"))
+                    .findFirst()
+                    .orElse(null);
+            var captured = PlanChangesAnswer.CAPTURED.equals(state)
+                    || PlanChangesAnswer.UNAVAILABLE.equals(state);
             if (!captured) {
                 throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                         "the plan " + planId + " carries a size of change and no capture in this state");
@@ -569,9 +610,10 @@ public class ScenarioLoader {
         var answer = decoded.answer();
         var declared = sizes.get(answer.planId());
         if (!(answer instanceof PlanChangesCaptured captured)) {
-            // Before the first capture the plan carries no size, and a capture that is gone carries
-            // none either: a refusal beside a size of change is a contradiction.
-            if (declared != null) {
+            // Before the first capture the plan carries no size; a capture that is gone keeps the
+            // figures of the plan's last capture, because its tab stays present and says so
+            // (`plan-view.adoc`, The Changes: "the tab, which is present then").
+            if (declared != null && !PlanChangesAnswer.UNAVAILABLE.equals(answer.state())) {
                 throw new ScenarioValidationException(scenario, null, "facts.runtime." + FIXTURE_PLAN_CHANGES,
                         "the plan " + answer.planId() + " answers " + answer.state()
                                 + " and carries a size of change");

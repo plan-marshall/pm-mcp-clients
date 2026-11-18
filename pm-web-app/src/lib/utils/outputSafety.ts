@@ -17,8 +17,8 @@ export function stripControlSequences(input?: string | null): string {
     .replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '')
     .replace(
       // C0 and DEL, C1, U+2028 and U+2029, the bidi marks, embeddings, overrides and isolates
-      // (U+200E, U+200F, U+202A..U+202E, U+2066..U+2069), and a byte-order mark.
-      /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\u2028\u2029\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,
+      // (U+061C, U+200E, U+200F, U+202A..U+202E, U+2066..U+2069), and a byte-order mark.
+      /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\u061C\u2028\u2029\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF]/g,
       '',
     );
 }

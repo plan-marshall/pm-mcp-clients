@@ -22,7 +22,7 @@ describe('outputSafety', () => {
     // The characters the wire can carry without showing them (U+0085, U+2028, the bidi
     // embeddings/overrides and isolates); the joiners stay, because some scripts shape with them.
     const raw =
-      'src/\u0085File\u2028na\u2029me\u200E\u202B\u202E\u2066\u2069.ts\uFEFF and\u200C a\u200D word';
+      'src/\u0085File\u2028na\u2029me\u061C\u200E\u202B\u202E\u2066\u2069.ts\uFEFF and\u200C a\u200D word';
     expect(stripControlSequences(raw)).toBe('src/Filename.ts and\u200C a\u200D word');
   });
 });

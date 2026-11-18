@@ -117,7 +117,7 @@ The tab shows the records of link:../shared/intent-and-outline.adoc#web[Intent a
 [#changes]
 == The Changes Tab
 
-The size line of the head is a link to this tab (link:../shared/plan-view.adoc#changes[Plan View, The Changes]): the list of files, and a selected file's hunks on `--color-diff-removed` and `--color-diff-added`, in `--font-mono`, the same diff tokens as a proposal of the chat (link:components-chat.adoc#proposal-card[Chat Pieces, Proposal Card]). The list and the hunks follow the rule of the Process tab: side by side while the object column is at least `720 px` wide, the hunks below the list otherwise. The tab is absent before the first capture; an address that names it then opens the first tab and is replaced.
+The size line of the head is a link to this tab (link:../shared/plan-view.adoc#changes[Plan View, The Changes]): the list of files, and a selected file's hunks on `--color-diff-removed` and `--color-diff-added`, in `--font-mono`, the same diff tokens as a proposal of the chat (link:components-chat.adoc#proposal-card[Chat Pieces, Proposal Card]). The list and the hunks follow the rule of the Process tab: side by side where that tab stacks at 768 px, the hunks below the list below it. The tab is absent before the first capture; an address that names it then opens the first tab and is replaced.
 
 [#addresses]
 == Addresses

@@ -1256,8 +1256,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     /**
      * Writes the size of the capture the changes route serves onto a plan's representation: the
-     * capture's own totals where the plan is captured, and no size where its capture is gone or
-     * absent. A plan the fixture names no capture for keeps the size its scenario serves.
+     * capture's own totals where the plan is captured, no size where its changes were never captured,
+     * and the figures of its last capture where that capture is gone — the tab stays present then and
+     * says its reason (`plan-view.adoc`, The Changes; Absent).
      *
      * @param planId the plan's id
      * @param copy   the representation to patch
@@ -1267,7 +1268,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var answer = planChanges.get(planId);
             if (answer instanceof PlanChangesCaptured captured) {
                 copy.put("change", captured.totals().toMap());
-            } else if (answer != null) {
+            } else if (answer instanceof PlanChangesNotCaptured) {
                 copy.remove("change");
             }
         }

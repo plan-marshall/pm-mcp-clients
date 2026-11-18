@@ -136,6 +136,10 @@ describe('PlanChanges', () => {
     expect(oldNumbers).toEqual(['10', '11', '', '12']);
     expect(newNumbers).toEqual(['10', '', '11', '12']);
     expect(screen.getByTestId('hunk-header')).toHaveTextContent('@@ -10,2 +10,2 @@');
+    // The grounds of the diff are the design's own tokens, one class per side.
+    const lines = screen.getAllByTestId('diff-line');
+    expect(lines[1]).toHaveClass('diff-line--removed');
+    expect(lines[2]).toHaveClass('diff-line--added');
   });
 
   it('renders a line that holds markup as text, never as an element', async () => {

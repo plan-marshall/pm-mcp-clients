@@ -58,8 +58,8 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-kind-plan` |`#3BCDDC` |`#007785` |The plan kind icon only (never a fill or a word).
 |`--color-on-brand` |`#0E1116` |`#FFFFFF` |The label on a brand-coloured fill.
 |`--color-overlay` |`rgb(0 0 0 / 0.7)` |`rgb(15 23 42 / 0.5)` |The scrim behind a dialog.
-|`--color-diff-removed` |`#3D1F24` |`#FBE3E1` |The ground of a removed line in a chat proposal's diff, and nowhere else.
-|`--color-diff-added` |`#132E22` |`#DDF2E5` |The ground of an added line in a chat proposal's diff, and nowhere else.
+|`--color-diff-removed` |`#3D1F24` |`#FBE3E1` |The ground of a removed line in a diff — a chat proposal's and a plan's changes — and nowhere else.
+|`--color-diff-added` |`#132E22` |`#DDF2E5` |The ground of an added line in a diff — a chat proposal's and a plan's changes — and nowhere else.
 |===
 
 Every value above is the proposal of VD-P-02 except the two tuned dark brand values and the two tokens the proposal does not name:

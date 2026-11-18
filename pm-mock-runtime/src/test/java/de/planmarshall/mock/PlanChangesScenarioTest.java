@@ -639,9 +639,13 @@ class PlanChangesScenarioTest {
                 assertEquals(200, broadcast.status(), broadcast.bodyText());
                 var answer = assertInstanceOf(PlanChangesUnavailable.class, readChanges(runtime, FIX_RELAY));
                 var file = get(runtime, PlanChangesRoutes.plan(FIX_RELAY).file(PLAN_CHANGES_FILE));
+                var process = get(runtime, "/api/v1/plans/" + FIX_RELAY + "/process");
+                var tree = ProcessTree.fromMap(JsonTree.asObject(JsonTree.parse(process.body())));
                 assertAll(
                         () -> assertEquals(reason, answer.reason()),
-                        () -> assertEquals(404, file.status(), "a gone capture holds no file"));
+                        () -> assertEquals(404, file.status(), "a gone capture holds no file"),
+                        () -> assertEquals(new ChangeSize(12, 340, 27, 2), tree.change(),
+                                "the tab stays present on the figures of the plan's last capture"));
             }
         }
 
@@ -1131,6 +1135,14 @@ class PlanChangesScenarioTest {
                     new ChangeSize(13, 340, 27, 2), null)), FIX_RELAY);
             refusesTheLoad(withScheduledCapture(valid, announcement("relay-metrics", "a1b2c3d4e5f6",
                     new ChangeSize(0, 0, 0, 0), null)), "relay-metrics");
+
+            // A scheduled capture never sends a plan the state serves as captured back to its first
+            // capture, which the play would drop.
+            var back = new LinkedHashMap<String, Object>();
+            back.put("plan_id", FIX_RELAY);
+            back.put("state", "not_captured");
+            refusesTheLoad(withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
         }
 
         @Test
