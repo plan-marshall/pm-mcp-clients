@@ -139,14 +139,14 @@ describe('vocabularyLint', () => {
 
     const exitCodeNormal = runCli([]);
     expect(exitCodeNormal).toBe(0);
+
+    const emptyDir = path.join(APP_DIR, 'target', 'test-empty-app');
+    const exitCodeClean = runCli(['--error'], emptyDir);
+    expect(exitCodeClean).toBe(0);
   });
 
   it('enforces vocabulary baseline ratchet (clean files stay clean, counted files never grow)', () => {
-    if (!fs.existsSync(BASELINE_PATH)) {
-      const findings = scanProject(APP_DIR);
-      const baseline = generateBaseline(findings);
-      fs.writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
-    }
+    expect(fs.existsSync(BASELINE_PATH), 'vocabulary-baseline.json must exist').toBe(true);
 
     const baselineRaw = fs.readFileSync(BASELINE_PATH, 'utf-8');
     const baseline = JSON.parse(baselineRaw) as Record<string, Record<string, number>>;

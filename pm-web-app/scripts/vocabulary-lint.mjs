@@ -383,13 +383,17 @@ export function formatTable(findings) {
 
 /**
  * Main CLI runner.
+ *
+ * @param {string[]} [argv]
+ * @param {string} [appDirOverride]
+ * @returns {number} exit code
  */
-export function runCli(argv = process.argv.slice(2)) {
+export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   const isErrorMode = argv.includes('--error');
   const isWriteBaseline = argv.includes('--write-baseline');
 
   const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const appDir = path.resolve(scriptDir, '..');
+  const appDir = appDirOverride ?? path.resolve(scriptDir, '..');
 
   const findings = scanProject(appDir);
 
