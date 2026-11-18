@@ -28,8 +28,8 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.Nullable;
 import org.jline.terminal.impl.DumbTerminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
