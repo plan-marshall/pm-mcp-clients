@@ -34,8 +34,9 @@ here unchanged, with the links to the requirements written as relative sibling p
 
 The links between the documents of this tree are relative; a link into another repository is a relative sibling path
 that resolves with the repositories checked out beside each other, and those repositories link into this tree with
-absolute `https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/...` URLs. Both directions are checked by
-`trace.py` of the documentation, which is run locally before every merge.
+absolute `https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/...` URLs. `trace.py` of the documentation
+checks the links of this tree outwards; it checks the links into this tree once its extension for this repository is
+in place, run against a checkout of this repository beside it. It is run locally before every merge.
 
 Three families are split across two repositories at a heading, and each holds a family index here that lists the parts
 of this repository alone: `cli-and-security`, `runtime-model` and `harness-integration`. For `cli-and-security` and
