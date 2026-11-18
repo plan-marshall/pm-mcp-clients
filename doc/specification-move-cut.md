@@ -26,8 +26,9 @@ doc-review session (`doc-review-2026-11-17-001`).
 - A document title is a heading and has a row. Where a family is split, the family's `Overview`, `Traceability`,
   `Status` and the daemon's `Modules` rows stay with the family index of the repository that holds the family's
   daemon part: `cli-and-security` (the listeners, the pairing) and `runtime-model` (the runtime itself) keep them
-  in `plan-marshall-mcp`. `harness-integration` moves whole, so its index moves with it. Each repository's index
-  lists and describes only the parts it holds (new index rows, not moved sections), and links the other one.
+  in `plan-marshall-mcp`. `harness-integration` moves whole, save the `#bundle-content` section named below, so
+  its index moves with it. Each repository's index lists and describes only the parts it holds (new index rows,
+  not moved sections), and links the other one.
 - Two hypotheses of the spec were settled against the source before the table was written, both recorded in
   the progress record: `harness-integration` belongs here (see the note under its rows), and the requirement
   modules of `plan-marshall-documentation` carry no `Implementation:`/`Verified by:`/`Documentation:` blocks
@@ -271,7 +272,7 @@ pipe; that is optional in GFM).
 |`implementation-watch/module-structure.adoc` |7 |7 |
 |**Total** |**205** |**205** |
 
-Homes in totals: `pm-mcp-clients` 88 rows, `plan-marshall-mcp` 92 rows, `stays` 25 rows.
+Homes in totals: `pm-mcp-clients` 89 rows, `plan-marshall-mcp` 91 rows, `stays` 25 rows.
 
 ## Documents that stay untouched
 
@@ -295,13 +296,13 @@ Homes in totals: `pm-mcp-clients` 88 rows, `plan-marshall-mcp` 92 rows, `stays` 
   `#local-api` and `#_start_modes` — the client-relevant statements there are the API contract, which the
   daemon's document states and this repository links. The family index stays with the daemon; this
   repository creates `doc/specification/runtime-model.adoc` for the three parts.
-- `harness-integration`: moves whole. The spec's HYPOTHESIS is **confirmed**: `02` § what the bundle manifest
-  says the installer reads is `pm-operator harness install|update|remove|status` and the runtime act behind the
-  web app (`pm-operator` and `pm-api` of this repository), while the bundle *templates* — the files under
-  `classpath:/bundles/<harness_id>/` — are the private model-facing content of `plan-marshall-mcp`
-  (`module-structure.adoc#model-facing-content`). Split at that line: `#bundle-content` (what a bundle carries)
-  goes to `plan-marshall-mcp`; the manifest schema, the example, the ownership and digest rules and the drift
-  checks stay here.
+- `harness-integration`: moves whole, except its `#bundle-content` section (see below). The spec's HYPOTHESIS is
+  **confirmed**: `02` § what the bundle manifest says the installer reads is `pm-operator harness
+  install|update|remove|status` and the runtime act behind the web app (`pm-operator` and `pm-api` of this
+  repository), while the bundle *templates* — the files under `classpath:/bundles/<harness_id>/` — are the private
+  model-facing content of `plan-marshall-mcp` (`module-structure.adoc#model-facing-content`). Split at that line:
+  `#bundle-content` (what a bundle carries) goes to `plan-marshall-mcp`; the manifest schema, the example, the
+  ownership and digest rules and the drift checks stay here.
 
 ## Appendix: block anchors that are not headings
 
