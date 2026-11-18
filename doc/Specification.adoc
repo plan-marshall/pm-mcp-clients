@@ -18,7 +18,7 @@ specifications of `pm-mcp-parent` (the
 link:../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification] among
 them) and the archetypes that span every specification
 (link:../../plan-marshall-documentation/doc/implementation-watch/cross-cutting.adoc[`cross-cutting.adoc`]). The
-specifications the daemon implements live in `plan-marshall-mcp`. The watch items of the specifications here are
+specifications the daemon implements stay in `plan-marshall-documentation` until they move into `plan-marshall-mcp`. The watch items of the specifications here are
 collected in the link:ImplementationWatch.adoc[Implementation Watch of `pm-mcp-clients`]; what each implemented
 requirement is implemented by, verified by and documented in is recorded in link:Traceability.adoc[Traceability]. How
 the specification relates to the design of the two clients is ADR
@@ -38,9 +38,10 @@ absolute `https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/...` URL
 `trace.py` of the documentation, which is run locally before every merge.
 
 Three families are split across two repositories at a heading, and each holds a family index here that lists the parts
-of this repository alone: `cli-and-security`, `runtime-model` and `harness-integration`. A family's `Overview`,
-`Traceability`, `Status` and the daemon's `Modules` rows stay with the family index of `plan-marshall-documentation`
-until the daemon's parts move into `plan-marshall-mcp`.
+of this repository alone: `cli-and-security`, `runtime-model` and `harness-integration`. For `cli-and-security` and
+`runtime-model`, a family's `Overview`, `Traceability`, `Status` and the daemon's `Modules` rows stay with the family
+index of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`; `harness-integration`
+has all of its parts here, so its family index here carries its `Overview`, `Traceability` and `Status`.
 
 [cols="3,1,3,3,2"]
 |===

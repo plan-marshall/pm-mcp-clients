@@ -42,8 +42,9 @@ The specifications the modules of this repository implement live here, beside th
   `pm-operator`, `pm-mock-runtime`, `pm-web-app`, `pm-web-e2e`); `doc/ImplementationWatch.adoc` and
   `doc/implementation-watch/` hold their watch items, with their identifiers unchanged. A family whose parts are
   split keeps one index per repository, each listing and describing only the parts it holds; the other index is one
-  link away. The family's `Overview`, `Traceability` and `Status` stay with the index of the repository that keeps
-  the majority of its parts.
+  link away. `harness-integration` has all of its parts here, so its index here carries the family's `Overview`,
+  `Traceability` and `Status`; for `cli-and-security` and `runtime-model` they stay with the documentation's index
+  until the daemon's parts move into `plan-marshall-mcp`.
 * **An implemented section is condensed and pointed, never deleted.** A section keeps its heading and its anchor. When
   the code implements it, it is reduced to the one statement of what it requires and the link to the developer
   documentation of the module that implements it; the evidence of what implements and verifies a requirement is
@@ -53,7 +54,7 @@ The specifications the modules of this repository implement live here, beside th
 * **The documentation repository keeps the requirements.** The requirements, the use cases, the roadmap,
   `later-improvements`, the open questions and the articles stay in `plan-marshall-documentation`, together with the
   specifications of `pm-mcp-parent` (`module-structure.adoc` and `implementation-watch/module-structure.adoc`) and the
-  archetypes that span every specification (`implementation-watch/cross-cutting.adoc`). Its
+  archetypes that span every specification (`implementation-watch/cross-cutting.adoc`). Once the move has landed, its
   `Specification.adoc` and `ImplementationWatch.adoc` point at this repository's indexes with absolute URLs, and its
   links into a moved anchor are rewritten, never left to resolve by luck.
 
@@ -80,19 +81,19 @@ The sections the move touched, and the document that holds each of them now:
 |`specification/cli-and-security/03-web-app.adoc` here
 
 |`cli-and-security/03-web-server` (the rest: the listeners, the device secret, the pairing, the threat notes)
-|`specification/cli-and-security/03-web-server.adoc` of `plan-marshall-mcp`
+|`specification/cli-and-security/03-web-server.adoc` of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
 
 |`runtime-model/03-relay`, `05-mock-runtime`, `06-event-catalogue`
 |`specification/runtime-model/` here
 
 |`runtime-model/01-processes-and-transport`, `04-sessions-and-workers`
-|`specification/runtime-model/` of `plan-marshall-mcp`
+|`specification/runtime-model/` of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
 
 |`harness-integration/01-harness-detection`, `02-bundle-manifest` (schema, installer, drift)
 |`specification/harness-integration/` here
 
 |`harness-integration/02-bundle-manifest#bundle-content` (what a bundle carries)
-|`specification/harness-integration/02-bundle-manifest.adoc` of `plan-marshall-mcp`, with the model-facing content
+|`specification/harness-integration/02-bundle-manifest.adoc` of `plan-marshall-documentation`, with the model-facing content, until that content moves into `plan-marshall-mcp`
 
 |The watch items of `implementation-watch/cli-and-security.adoc` and `implementation-watch/harness-integration.adoc`
 |`implementation-watch/` here
