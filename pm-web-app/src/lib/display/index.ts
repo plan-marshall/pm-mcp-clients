@@ -175,3 +175,28 @@ export function displayUnit(id: string | null | undefined, translate?: Translate
   }
   return word(`unit.${normalized}`, UNIT_UNKNOWN_KEY, lookup);
 }
+
+/**
+ * Renders the size of a plan's change as the one line the plan view and its report show
+ * (`plan.change.size`): `12 files · +340 −27 · 2 unplanned`, and without the last part when nothing
+ * lies beyond the plan's footprint.
+ *
+ * One formatter, because the head's line and the report's line are one measurement and must not
+ * drift apart.
+ *
+ * @param size the size the runtime served
+ * @param translate the catalogue look-up a template passes (`$t`)
+ * @returns the catalogue's one-line form of the size
+ */
+export function formatChangeSize(
+  size: { files: number; insertions: number; deletions: number; unplanned?: number | null },
+  translate?: Translate,
+): string {
+  return translator(translate)('plan.change.size', {
+    files: size.files,
+    insertions: size.insertions,
+    deletions: size.deletions,
+    unplanned: size.unplanned ?? 0,
+  });
+}
+
