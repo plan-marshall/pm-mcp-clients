@@ -727,6 +727,7 @@ class PlanChangesScenarioTest {
                 assertInstanceOf(PlanChangesNotCaptured.class, readChanges(runtime, "relay-metrics"));
             }
         }
+
         @Test
         @DisplayName("keeps the figures of the last successful capture when the next one is gone")
         void keepsTheLastCaptureSize() throws Exception {
