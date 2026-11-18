@@ -209,12 +209,12 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose
 
   Or add a harness that is not listed, by its program.
 
-  [ Continue later ]   [ Look again ]   [ Add a harness that is not listed ]
+  [ Later ]   [ Check again ]   [ Add a harness that is not listed ]
 ----
 
 * The install pages open in a new tab; nothing is installed from the app.
-* *Look again* runs `harness.scan` again under the consent already given. *Continue later* sends nothing: the onboarding rests in `harness.none`, and the next visit, here or in `pm-operator`, resumes there; the page says so in one line (`web.onboard.later`).
-* *When every chosen harness fails its check* (<<harness-probe>>), the step comes here as well: the title reads `No harness can be used`, and the list of what was looked for is replaced by each chosen harness with its failed check and its fix; the links are the same. The step cannot finish without one usable harness.
+* *Check again* runs `harness.scan` again under the consent already given. *Later* sends a step for `later` that runs no scan and records no consent: the onboarding rests in `harness.none`, and the next visit, here or in `pm-operator`, resumes there; the page says so in one line (`web.onboard.later`).
+* *When every chosen harness fails its check* (<<harness-probe>>), the step comes here as well: the title reads `No harness can be used`, and the list of what was looked for is replaced by each chosen harness with its name, the answer the harness gave and the fix — and with its path and the check that failed where the runtime reports them; the links are the same. The step cannot finish without one usable harness.
 
 [#harness-probe]
 === Check (`harness.probe-consent`, `harness.probe`, `harness.blocked`)

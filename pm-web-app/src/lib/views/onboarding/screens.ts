@@ -39,6 +39,7 @@ import HarnessBlockedScreen from './HarnessBlockedScreen.svelte';
 import HarnessConfirmScreen from './HarnessConfirmScreen.svelte';
 import ProbeFailedScreen from './ProbeFailedScreen.svelte';
 import HarnessAddScreen from './HarnessAddScreen.svelte';
+import HarnessNoneScreen from './HarnessNoneScreen.svelte';
 import TokensScreen from './TokensScreen.svelte';
 import ModelsScreen from './ModelsScreen.svelte';
 import RolesScreen from './RolesScreen.svelte';
@@ -122,6 +123,7 @@ const CONSENT_ID = /(\.consent|-consent)$/;
 /** States the runtime works in, shown with the one working screen. */
 const WORKING_STATES = new Set([
   'auto.scan',
+  'auto.run',
   'harness.probe',
   'harness.enrol',
   'harness.install-profile',
@@ -140,7 +142,21 @@ const WORKING_STATES = new Set([
 ]);
 
 /** States whose design is a read-only summary: the runtime reports what happened, in its words. */
-const STATUS_STATES = new Set(['harness.none', 'providers.credentials', 'providers.verified', 'sonar.key']);
+const STATUS_STATES = new Set(['providers.credentials', 'providers.verified', 'sonar.key']);
+
+/**
+ * The states whose design is a working state: the ones named above, plus every state whose id
+ * names the work it does (`.probe`, `.working`) — the rule the chain before the registry applied,
+ * so a state of the automatic run outside the mock's list still draws the progress screen.
+ *
+ * @param stateId the state's id
+ * @returns whether the working screen draws it
+ */
+function isWorkingState(stateId: string): boolean {
+  return (
+    WORKING_STATES.has(stateId) || stateId.endsWith('.probe') || stateId.endsWith('.working')
+  );
+}
 
 /**
  * The states of the frames beside the onboarding, which the onboarding frame answers with the
@@ -196,7 +212,10 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'language',
-    claims: (stateId) => stateId === 'language.choose' || stateId === 'language.reconfigure',
+    claims: (stateId) =>
+      stateId === 'language.choose' ||
+      stateId === 'language.reconfigure' ||
+      stateId === 'language.reconfigure-result',
     screen: LanguageScreen,
   },
   {
@@ -205,7 +224,8 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
       stateId === 'harness.choose' ||
       stateId === 'harness.not-logged-in' ||
       stateId === 'harness.all-failed' ||
-      stateId === 'harness.reconfigure',
+      stateId === 'harness.reconfigure' ||
+      stateId === 'harness.reconfigure-result',
     screen: HarnessChooseScreen,
   },
   {
@@ -229,28 +249,45 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
     screen: HarnessAddScreen,
   },
   {
+    id: 'harness-none',
+    claims: (stateId) => stateId === 'harness.none',
+    screen: HarnessNoneScreen,
+  },
+  {
     id: 'harness-tokens',
     claims: (stateId) => stateId.startsWith('harness.tokens-'),
     screen: TokensScreen,
   },
   {
     id: 'catalogue',
-    claims: (stateId) => stateId === 'catalogue.select' || stateId === 'catalogue.reconfigure',
+    claims: (stateId) =>
+      stateId === 'catalogue.select' ||
+      stateId === 'catalogue.reconfigure' ||
+      stateId === 'catalogue.reconfigure-result',
     screen: ModelsScreen,
   },
   {
     id: 'roles',
-    claims: (stateId) => stateId === 'roles.review' || stateId === 'roles.reconfigure',
+    claims: (stateId) =>
+      stateId === 'roles.review' ||
+      stateId === 'roles.reconfigure' ||
+      stateId === 'roles.reconfigure-result',
     screen: RolesScreen,
   },
   {
     id: 'store',
-    claims: (stateId) => stateId === 'store.choose' || stateId === 'store.reconfigure',
+    claims: (stateId) =>
+      stateId === 'store.choose' ||
+      stateId === 'store.reconfigure' ||
+      stateId === 'store.reconfigure-result',
     screen: StoreScreen,
   },
   {
     id: 'providers',
-    claims: (stateId) => stateId === 'providers.select' || stateId === 'providers.reconfigure',
+    claims: (stateId) =>
+      stateId === 'providers.select' ||
+      stateId === 'providers.reconfigure' ||
+      stateId === 'providers.reconfigure-result',
     screen: ProvidersScreen,
   },
   {
@@ -260,7 +297,10 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'defaults',
-    claims: (stateId) => stateId === 'defaults.review' || stateId === 'defaults.reconfigure',
+    claims: (stateId) =>
+      stateId === 'defaults.review' ||
+      stateId === 'defaults.reconfigure' ||
+      stateId === 'defaults.reconfigure-result',
     screen: DefaultsScreen,
   },
   {
@@ -270,7 +310,7 @@ export const SCREEN_RULES: readonly ScreenRule[] = [
   },
   {
     id: 'working',
-    claims: (stateId) => WORKING_STATES.has(stateId),
+    claims: (stateId) => isWorkingState(stateId),
     screen: WorkingScreen,
   },
   {

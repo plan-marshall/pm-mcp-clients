@@ -31,7 +31,7 @@ Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction a
                                                  [ Use Deutsch for both ]
 ----
 
-* The screen stays in the language it was shown in until the choice is recorded (`language.record`); every text after it is in the chosen interface language (the sketch is in English to be read here).
+* The screen stays in the language it was shown in until the choice is recorded (`language.record`); every text after it is in the chosen interface language (the sketch is in English to be read here). A browser that chose a language of its own keeps it: that choice overrides the recorded one for this browser, and the language control's advisory says so.
 * *Why?* shows `onboard.language.choose.why` in place: models do not work equally well in every language, and _same as above_ follows a later change.
 * With two different languages the button reads `Use Deutsch here, English for models`.
 

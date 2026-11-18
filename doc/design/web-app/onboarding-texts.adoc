@@ -42,7 +42,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.scan.progress`, `.found`; `onboard.harness.icons_consent.title`, `.looks_for`, `.runs`, `.never`; `onboard.harness.fetch_icons.done`, `.failed`; `web.onboard.icons_consent.action`, `web.onboard.icons_consent.no_action`; `web.consent.withdraw_hint`
 
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `onboard.harness.tokens.label`, `.complete`, `.partial`, `.not_reported` with `report.tokens.component` for the figures; `web.onboard.harness.advanced`; `common.link.look_again`; `onboard.harness.none.title`, `.looked_for`, `.install`, `.or_add`, `.unusable_title`, `.none_passed`, `.fix_one`; `web.onboard.later`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_moved`, `.note`, `.none_chosen`, `.action`, `.add`; `onboard.harness.tokens.label`, `.complete`, `.partial`, `.not_reported` with `report.tokens.component` for the figures; `web.onboard.harness.advanced`; `onboard.harness.none.title`, `.unusable_title`, `.looked_for`, `.none_passed`, `.fix_one`, `.check`, `.path`, `.answer` with `onboard.harness.check.*` and `onboard.state.fix` for the failure's words; `onboard.link.later`, `onboard.link.recheck`, `onboard.link.add`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
 |`onboard.harness.add.title`, `.executable`, `.name`, `.id`, `.start_from`, `.start_from_hint`, `.headless`, `.arguments`, `.mcp_config`, `.output`, `.usage`, `.version_probe`, `.more`, `.action_verify`, `.edit`; `onboard.harness.add_consent.title`, `.runs`, `.never`, `.tokens`; `onboard.harness.verify.title`, `.answered`, `.fix_field`; `common.check.not_run`; `onboard.harness.add_confirm.title`, `.intro`, `.profile`, `.workers_yes`, `.workers_no`, `.action`; `onboard.harness.tokens.label`, `.partial`; `onboard.harness.install.done`; `common.link.back`
@@ -69,7 +69,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.defaults.review.*` — the title, `override_note`, `action`, `action_defaults`, and the axis names `landing`, `method`, `asking`, `posture` with their `*_meaning` sentences; `onboard.defaults.landing.*`, `onboard.defaults.method.*`, `onboard.defaults.asking.*`, each with its `*_detail`; `onboard.defaults.validate.pull_request_ok`, `onboard.defaults.validate.main_per_project`; `onboard.defaults.done`; in a later run the posture `onboard.defaults.posture.unset`, `.minimal`, `.standard`, `.full`, each with its `*_detail`
 
 |xref:onboarding-steps-4-7.adoc#auto[auto]
-|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.finish`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
+|`onboard.auto.consent.title`, `.intro`, `.detail.<kind>`, `.never`, `.tokens`, `.remembered`; `common.consent.once_only`; `common.consent.no`, `common.consent.nothing_done`; `onboard.auto.result.title`, `.action`, `.action_label`, `.aspect`, `.value`, `.reason`; `onboard.auto.aspect.*`; `onboard.link.change` with `onboard.link.change\:<aspect>`; `onboard.auto.reason.*`, among them `onboard.auto.reason.all_supported`
 
 |xref:onboarding-steps-4-7.adoc#done[done]
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
@@ -266,9 +266,9 @@ The keys of the speech role in the roles step (xref:onboarding-steps-4-7.adoc#sp
 |The automatic run waits for you here.
 |Der automatische Lauf wartet hier auf dich.
 
-|`web.onboard.auto_result.change`
+|`onboard.link.change`
 |Change
-|Ändere
+|Ändern
 
 |`web.onboard.auto_result.no_model`
 |No model was asked; you can ask the steward to refine the roles in the machine settings.

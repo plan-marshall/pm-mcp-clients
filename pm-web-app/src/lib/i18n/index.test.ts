@@ -11,6 +11,8 @@ import {
   persistCatalogue,
   t,
   initI18n,
+  adoptRecordedLocale,
+  forgetVisitChoice,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
@@ -467,7 +469,6 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
   function catalogueEntry(locale: string, messages: Record<string, string>): string {
     return JSON.stringify({ locale, cachedAt: '2026-10-01T08:00:00.000Z', messages });
   }
-
   beforeEach(() => {
     localStorage.clear();
     messagesStore.set({});
@@ -542,7 +543,8 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
   });
 
   it('drops a response that resolves while the reload starts waiting', async () => {
-    // Arrange: the request leaves the page before the upgrade event, its answer arrives after it.
+    // Arrange: the request for the language the screen shows leaves before the upgrade event, and
+    // its answer arrives after it.
     let resolveFetch: (messages: Record<string, string>) => void = () => {};
     vi.spyOn(apiClient, 'getMessages').mockReturnValue(
       new Promise<Record<string, string>>((resolve) => {
@@ -550,15 +552,39 @@ describe('a deferred reload never fetches a pack the old code does not hold', ()
       }),
     );
     messagesStore.set({ 'deferred.held.label': 'Alt' });
-    const pending = loadMessages('de', 'all');
+    const pending = loadMessages('en', 'all');
 
     // Act
     setReloadDeferred(true);
     resolveFetch({ 'deferred.newer.label': 'Neu' });
 
-    // Assert: the old page keeps what it holds and stores nothing of the newer runtime.
+    // Assert: the old page keeps what it holds and caches nothing of the newer runtime.
     await pending;
     expect(get(messagesStore)).toEqual({ 'deferred.held.label': 'Alt' });
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
+  });
+
+  it('keeps the shown language when a switch answer lands after the reload starts waiting', async () => {
+    // Arrange: the switch leaves the page while no reload waits, its answer arrives during one.
+    let resolveFetch: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+    const pending = setLocale('de');
+
+    // Act
+    setReloadDeferred(true);
+    resolveFetch({ 'deferred.switched.label': 'Deutsch' });
+    await pending;
+
+    // Assert: the screen keeps its language and the newer pack is not cached.
+    expect(get(currentLocale)).toBe('en');
+    expect(get(messagesStore)).not.toHaveProperty('deferred.switched.label');
+    const cached = Object.keys(localStorage).filter((key) => key.startsWith('pm_i18n_messages_'));
+    expect(cached).toEqual([]);
   });
 
   it('switches to the held pack of an unknown runtime version instead of fetching', async () => {
@@ -665,5 +691,46 @@ describe('the page declares the language it shows', () => {
 
     // Assert
     expect(document.documentElement.lang).toBe('de');
+  });
+});
+
+describe('the recorded language of the machine', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    forgetVisitChoice();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('applies the recorded language even when its catalogue answers after the bound', async () => {
+    // Arrange: the runtime records Deutsch, but its catalogue answers only after the bound.
+    vi.useFakeTimers();
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      language_interface: 'de',
+    } as never);
+    let answer: ((messages: Record<string, string>) => void) | undefined;
+    vi.spyOn(apiClient, 'getMessages').mockReturnValue(
+      new Promise<Record<string, string>>((resolve) => {
+        answer = resolve;
+      }) as never,
+    );
+
+    // Act: the screen stops waiting at the bound and keeps the language it shows.
+    const adoption = adoptRecordedLocale();
+    await vi.advanceTimersByTimeAsync(2000);
+    await adoption;
+
+    // Assert: nothing switched yet, and the late answer still switches the screen.
+    expect(get(currentLocale)).toBe('en');
+    answer?.({ 'web.pair.page.title': 'Titel' });
+    await vi.advanceTimersByTimeAsync(0);
+    await Promise.resolve();
+    expect(get(currentLocale)).toBe('de');
   });
 });
