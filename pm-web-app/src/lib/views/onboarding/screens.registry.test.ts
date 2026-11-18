@@ -82,4 +82,13 @@ describe('the onboarding screen registry', () => {
 
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it('draws a working state the mock does not list, by its id', () => {
+    // The rule the chain before the registry applied: the automatic run's own state, and any state
+    // whose id names the work it does (PLAN-64's residue, carried by D6).
+    expect(screenNameFor('auto.run')).toBe('working');
+    expect(screenNameFor('catalogue.advise.probe')).toBe('working');
+    expect(screenNameFor('harness.install.working')).toBe('working');
+    expect(screenNameFor('onboard.mode')).toBe('mode');
+  });
 });

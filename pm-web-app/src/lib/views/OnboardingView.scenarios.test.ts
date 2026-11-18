@@ -1033,6 +1033,21 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
   });
 
+  it('names the harnesses of a list and the place the runtime calls “in”', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'No harness found',
+        harnesses: [{ name: 'Claude Code' }, { harness_id: 'opencode' }],
+        in: 'your PATH',
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
+  });
+
   it('shows the automatic run result per aspect and continues', async () => {
     arrange(
       onboardingState({

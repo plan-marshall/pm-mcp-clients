@@ -86,7 +86,7 @@
               <Button
                 variant="secondary"
                 loading={view.busy}
-                aria-label={`${$t('onboard.link.change')} ${aspect}`}
+                aria-label={$t('onboard.auto.result.change_label', { aspect })}
                 onclick={() => view.onLink(changeLinkId(result.aspect))}
                 data-testid={`auto-result-change-${result.aspect}`}
               >

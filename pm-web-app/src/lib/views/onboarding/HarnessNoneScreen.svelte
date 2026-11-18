@@ -67,7 +67,7 @@
   const lookedForText = $derived.by(() => {
     if (failed.length > 0) return null;
     const harnesses = wording('looks_for') ?? wording('harnesses');
-    const locations = wording('locations');
+    const locations = wording('locations') ?? wording('in');
     if (!harnesses || !locations) return null;
     return $t('onboard.harness.none.looked_for', { harnesses, locations });
   });
@@ -80,6 +80,14 @@
   function checkLabel(check: string): string {
     const key = `onboard.harness.check.${check}`;
     return hasMessage(key) ? $t(key) : humanizeKey(check);
+  }
+
+  /**
+   * @param entry the failed check
+   * @returns the harness's name, or a readable form of its id when the runtime names no display name
+   */
+  function harnessName(entry: FailedHarness): string {
+    return entry.name ?? humanizeKey(entry.harness ?? '');
   }
 </script>
 
@@ -96,7 +104,7 @@
     <div class="harness-none__failures" data-testid="harness-none-failures">
       {#each failed as entry}
         <section class="harness-failure">
-          <h2 class="harness-failure__name">{entry.name ?? entry.harness}</h2>
+          <h2 class="harness-failure__name">{harnessName(entry)}</h2>
           <dl class="detail-list">
             {#if entry.check}
               <div class="detail-row">
