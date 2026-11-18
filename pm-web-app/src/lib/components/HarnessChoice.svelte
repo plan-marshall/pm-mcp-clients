@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import { harnessUsageText } from '../display/harnessUsage';
   import Button from './Button.svelte';
 
   /**
@@ -18,6 +19,8 @@
     worker_eligible: boolean;
     token_usage?: string;
     token_detail?: string;
+    missing_figures?: string[];
+    usage?: { coverage?: string; figures?: Record<string, string> };
     default?: boolean;
     reason?: string;
     /** The icon the runtime fetched from the maker, served by the runtime itself. */
@@ -103,12 +106,7 @@
   }
 
   function tokenState(row: HarnessRow): string {
-    if (row.token_usage === 'complete')
-      return $t('onboard.harness.tokens.complete', { figures: '' });
-    if (row.token_usage === 'partial') {
-      return $t('onboard.harness.tokens.partial', { figures: row.token_detail ?? '' });
-    }
-    return $t('onboard.harness.tokens.not_reported');
+    return harnessUsageText($t, row);
   }
 
   $: defaultName = harnesses.find((h) => h.harness_id === defaultId)?.name ?? '';
@@ -148,7 +146,6 @@
             aria-hidden="true"
             data-testid={`harness-icon-${harness.harness_id}`}
             onerror={() => rememberIconFailure(harness.harness_id, iconPath)}
-          />
           />
         {:else}
           <span

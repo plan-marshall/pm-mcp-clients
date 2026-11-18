@@ -1,16 +1,13 @@
 <script lang="ts">
   import Button from '../../components/Button.svelte';
+  import { harnessUsageText, type HarnessTokenInfo } from '../../display/harnessUsage';
   import { t } from '../../i18n';
   import type { ScreenProps } from './screens';
 
   /** One harness as the token states report it. */
-  interface Harness {
+  interface Harness extends HarnessTokenInfo {
     harness_id?: string;
     name?: string;
-    token_usage?: string;
-    token_detail?: string;
-    missing_figures?: string[];
-    usage?: { figures?: Record<string, string> };
   }
 
   /**
@@ -19,22 +16,9 @@
    */
   let { view }: ScreenProps = $props();
 
-  /** The missing figures the runtime named, when it named them instead of a detail line. */
-  function figures(harness: Harness): string {
-    if (harness.token_detail) return harness.token_detail;
-    if (Array.isArray(harness.missing_figures)) return harness.missing_figures.join(', ');
-    return '';
-  }
-
   /** The catalogue sentence of a harness's token reporting. */
   function tokenState(harness: Harness): string {
-    if (harness.token_usage === 'complete') {
-      return $t('onboard.harness.tokens.complete', { figures: figures(harness) });
-    }
-    if (harness.token_usage === 'partial') {
-      return $t('onboard.harness.tokens.partial', { figures: figures(harness) });
-    }
-    return $t('onboard.harness.tokens.not_reported');
+    return harnessUsageText($t, harness);
   }
 </script>
 

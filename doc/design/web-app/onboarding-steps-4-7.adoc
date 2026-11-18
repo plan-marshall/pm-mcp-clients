@@ -116,12 +116,14 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
   Where should this machine keep its tokens?
 
   (•) macOS Keychain                                         ★ recommended
-      Only plan-marshall's runtime reads them without asking you; any
-      other program that tries makes macOS ask first.
+      available
+      Protects a secret against: other programs reading a token without macOS asking first
+      Does not protect against: a program you allow in the macOS dialog
 
   ( ) Files in ~/.plan-marshall-mcp/credentials/
-      Readable by every program you run (mode 0600). Works everywhere,
-      also without a desktop session.
+      available
+      Protects a secret against: other users of the machine (mode 0600)
+      Does not protect against: other programs running as your user
 
   The choice holds until you change it; a change moves the tokens and
   never leaves a copy behind.
@@ -129,7 +131,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
   [ Back ]                                     [ Use the macOS Keychain ]
 ----
 
-* On Linux the first option is the Secret Service, with its own text: every program you run can read it while it is unlocked.
+* Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. On Linux the first option is the Secret Service, naming what it protects against while locked / from confined jobs and what it does not protect against (unconfined programs running as the user while unlocked).
 * The primary button names the store it will use.
 
 [#store-consent]

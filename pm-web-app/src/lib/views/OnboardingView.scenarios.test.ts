@@ -1588,3 +1588,109 @@ describe('store.choose protection lines per option (D9)', () => {
     ).toBeVisible();
   });
 });
+
+describe('harness.choose monogram and token usage wording (D10)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('draws a monogram when no icon is fetched and says usage complete, usage partial or usage not reported', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.choose',
+        summary: 'Choose the harnesses to enrol',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            version: '2.4.1',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'complete',
+            default: true,
+          },
+          {
+            harness_id: 'opencode',
+            name: 'OpenCode',
+            path: '/opt/homebrew/bin/opencode',
+            version: '1.9.0',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'partial',
+            missing_figures: ['cache_read', 'cache_write'],
+          },
+          {
+            harness_id: 'aider',
+            name: 'Aider',
+            path: '/opt/homebrew/bin/aider',
+            version: '0.72.0',
+            found: true,
+            supported: true,
+            worker_eligible: false,
+            token_usage: 'partial',
+          },
+          {
+            harness_id: 'codex',
+            name: 'Codex',
+            path: '/opt/homebrew/bin/codex',
+            version: '0.31.2',
+            found: true,
+            supported: true,
+            worker_eligible: false,
+            token_usage: 'not_reported',
+          },
+        ],
+        links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    expect(screen.getByTestId('harness-monogram-claude')).toHaveTextContent('CC');
+    expect(screen.getByTestId('harness-monogram-opencode')).toHaveTextContent('O');
+    expect(screen.getByTestId('harness-monogram-codex')).toHaveTextContent('C');
+
+    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
+    expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
+    expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
+      'usage partial: no cache_read, cache_write',
+    );
+    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
+    expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
+  });
+
+  it('draws a fetched icon without any stray markup fragment', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.choose',
+        summary: 'Choose the harnesses to enrol',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            version: '2.4.1',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'complete',
+            icon_url: '/api/v1/harness-icons/claude.svg',
+            default: true,
+          },
+        ],
+        links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('harness-icon-claude')).toBeInTheDocument();
+    expect(screen.getByTestId('harness-choose-screen').textContent).not.toContain('/>');
+  });
+});

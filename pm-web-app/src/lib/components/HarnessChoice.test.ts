@@ -40,6 +40,7 @@ describe('HarnessChoice monograms', () => {
     expect(icon).not.toBeNull();
     expect(icon?.getAttribute('src')).toBe('/api/v1/harness-icons/claude.svg');
     expect(queryByTestId('harness-monogram-claude')).toBeNull();
+    expect(container.textContent).not.toContain('/>');
   });
 
   it('refuses an icon from a maker server and keeps the monogram', () => {
