@@ -222,4 +222,14 @@ class PlanCompletionLevelTest {
                             () -> assertFalse(text.contains("done"), text)
         );
     }
+
+    @Test
+    @DisplayName("a missing outcome and a missing deliverable state render the unknown word in both languages")
+    void unknownOutcomeAndState() {
+        assertAll(
+                            () -> assertEquals("unknown", PlanCompletionLevel.formatOutcome("en", null)),
+                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatOutcome("de", " ")),
+                            () -> assertEquals("unknown", PlanCompletionLevel.formatDeliverableState("en", null)),
+                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatDeliverableState("de", " ")));
+    }
 }

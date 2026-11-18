@@ -353,4 +353,32 @@ class MessageCatalogueTest {
                 () -> assertEquals(all, MessageCatalogue.getMessages("en", "ALL")),
                 () -> assertEquals(all, MessageCatalogue.getMessages("en", null)));
     }
+
+    @Test
+    @DisplayName("the resource bundle serves every area's keys for its locale, in the language asked for")
+    void shouldServeTheCatalogueAsAResourceBundle() {
+        var german = MessageCatalogue.resourceBundle("de");
+        var unsupported = MessageCatalogue.resourceBundle("zz");
+
+        assertAll(
+                () -> assertEquals(MessageCatalogue.get("de", "plan.changes.title"),
+                        german.getString("plan.changes.title")),
+                () -> assertTrue(german.keySet().contains("plan.changes.file_not_found")),
+                () -> assertTrue(german.keySet().contains("plan.changes.unavailable")),
+                () -> assertEquals(MessageCatalogue.get("en", "plan.changes.not_captured"),
+                        unsupported.getString("plan.changes.not_captured"),
+                        "an unsupported locale reads English"),
+                () -> assertFalse(unsupported.containsKey("no.such.key")));
+    }
+
+    @Test
+    @DisplayName("a key read without parameters renders the locale's own text")
+    void shouldGetAKeyWithoutParameters() {
+        assertAll(
+                () -> assertEquals(MessageCatalogue.format("de", "plan.changes.unavailable", Map.of()),
+                        MessageCatalogue.get("de", "plan.changes.unavailable")),
+                () -> assertEquals(MessageCatalogue.get("en", "common.unknown"),
+                        MessageCatalogue.get("common.unknown")),
+                () -> assertTrue(MessageCatalogue.get("de", "plan.changes.unavailable").contains("nderungen")));
+    }
 }

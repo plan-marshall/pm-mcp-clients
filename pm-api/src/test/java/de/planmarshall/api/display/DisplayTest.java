@@ -164,6 +164,16 @@ class DisplayTest {
     }
 
     @Test
+    @DisplayName("word renders the unknown word for a missing value, and the gate keeps a rule it cannot read")
+    void wordAndGateUnknowns() {
+        assertEquals("unknown", Display.word("en", "task", null));
+        assertEquals("unbekannt", Display.word("de", "task", " "));
+        assertEquals("coverage > 80", Display.gate("en", "coverage > 80"));
+        assertEquals("coverage=80", Display.gate("en", "coverage=80"));
+        assertEquals("a b<c", Display.gate("en", "a_b<c"));
+    }
+
+    @Test
     @DisplayName("duration since a moment renders the span to now, and nothing for no moment")
     void durationSince() {
         assertEquals("25 min", Display.duration("en", NOW.minusSeconds(1500), CLOCK));

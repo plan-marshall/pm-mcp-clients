@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -152,5 +153,20 @@ class OperatorRefusedExceptionTest {
         var resp = new HttpResponse(500, "application/json", json.getBytes(StandardCharsets.UTF_8));
         var ex = new OperatorRefusedException("plan", resp);
         assertEquals("red error", ex.serverMessage());
+    }
+
+    @Test
+    @DisplayName("a blank body and a malformed JSON object are no refusal the body can name")
+    void blankAndMalformedBodies() {
+        var blank = new OperatorRefusedException("plan", new HttpResponse(503, "application/json",
+                            "   ".getBytes(StandardCharsets.UTF_8)));
+        var malformed = new OperatorRefusedException("plan", new HttpResponse(500, "application/json",
+                            "{\"error\":".getBytes(StandardCharsets.UTF_8)));
+
+        assertAll(
+                            () -> assertEquals(ErrorTexts.title((ApiErrorCode) null), blank.getMessage()),
+                            () -> assertEquals("", blank.serverMessage()),
+                            () -> assertNull(malformed.code()),
+                            () -> assertEquals("{\"error\":", malformed.serverMessage()));
     }
 }
