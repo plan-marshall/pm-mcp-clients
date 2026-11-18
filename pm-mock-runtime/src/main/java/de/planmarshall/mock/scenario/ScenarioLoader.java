@@ -34,6 +34,7 @@ import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.changes.PlanChangesNotCaptured;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
@@ -282,7 +283,8 @@ public class ScenarioLoader {
         // plans' changes are simply not part of what that scenario demonstrates. A scheduled capture
         // is still held to the captures of its state, which then has none.
         if (!modelsCaptures(baseEntries, states, scenario)) {
-            states.forEach((stateId, state) -> requireScheduledCapturesApply(state, List.of(), scenario, stateId));
+            states.forEach((stateId, state) -> requireScheduledCapturesApply(state, List.of(), Map.of(),
+                    scenario, stateId));
             return;
         }
         states.forEach((stateId, state) -> validateCapturesOf(state, stateId, baseEntries, sizesByState, scenario));
@@ -345,7 +347,7 @@ public class ScenarioLoader {
         requireEachPlanOnce(effective, scenario);
         effective.forEach(entry -> validateOnePlansChanges(entry, sizes, scenario));
         requireEverySizeHasACapture(effective, sizes, scenario);
-        requireScheduledCapturesApply(state, effective, scenario, stateId);
+        requireScheduledCapturesApply(state, effective, sizes, scenario, stateId);
     }
 
     /**
@@ -357,33 +359,60 @@ public class ScenarioLoader {
      *
      * @param state     the state whose events are validated
      * @param effective the capture entries the state serves
+     * @param sizes     the sizes of change the state serves, by plan
      * @param scenario  the scenario identifier for error reporting
      * @param stateId   the state identifier
      */
     private static void requireScheduledCapturesApply(StateDefinition state,
-            List<Map<String, Object>> effective, String scenario, String stateId) {
+            List<Map<String, Object>> effective, Map<String, List<ChangeSize>> sizes, String scenario,
+            String stateId) {
         var served = capturesByPlan(effective, scenario);
+        var retained = retainedSizes(sizes, served);
         for (var index = 0; index < state.events().size(); index++) {
             var event = state.events().get(index);
             if (PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
-                applyScheduledCapture(event.data(), index, served, scenario, stateId);
+                applyScheduledCapture(event.data(), index, served, retained, scenario, stateId);
             }
         }
     }
 
     /**
-     * Holds one scheduled capture to the answers the sequence serves, and moves the simulation on with
-     * it — a captured answer, a capture that is gone and a plan never captured all state what a later
-     * event is held to.
+     * The figures each plan keeps while the sequence runs: the captured answers' totals, and the size a
+     * state declares for a capture that is already gone (the plan's last capture).
+     *
+     * @param sizes  the sizes of change the state serves, by plan
+     * @param served the answers the sequence serves at its start, by plan
+     * @return the figures by plan
+     */
+    private static Map<String, ChangeSize> retainedSizes(Map<String, List<ChangeSize>> sizes,
+            Map<String, PlanChangesAnswer> served) {
+        var retained = new LinkedHashMap<String, ChangeSize>();
+        for (var entry : served.entrySet()) {
+            if (entry.getValue() instanceof PlanChangesCaptured captured) {
+                retained.put(entry.getKey(), captured.totals());
+            }
+        }
+        for (var entry : sizes.entrySet()) {
+            retained.putIfAbsent(entry.getKey(), entry.getValue().getFirst());
+        }
+        return retained;
+    }
+
+    /**
+     * Holds one scheduled capture to the answers and the figures the sequence serves, and moves the
+     * simulation on with it — a captured answer, a capture that is gone and a plan never captured all
+     * state what a later event is held to.
      *
      * @param data     the event's payload
      * @param index    the event's position
      * @param served   the answers the sequence serves so far, by plan
+     * @param retained the figures each plan keeps, by plan
      * @param scenario the scenario identifier for error reporting
      * @param stateId  the state identifier
      */
     private static void applyScheduledCapture(@Nullable Object data, int index,
-            Map<String, PlanChangesAnswer> served, String scenario, String stateId) {
+            Map<String, PlanChangesAnswer> served, Map<String, ChangeSize> retained, String scenario,
+            String stateId) {
         var payload = JsonTree.asObject(data);
         if (payload == null) {
             return;
@@ -391,7 +420,7 @@ public class ScenarioLoader {
         var announced = announcedOf(payload, index, scenario, stateId);
         var carried = JsonTree.asObject(payload.get(FIELD_CAPTURE));
         if (carried != null) {
-            applyCarriedScheduledCapture(carried, announced, served, index, scenario, stateId);
+            applyCarriedScheduledCapture(carried, announced, served, retained, index, scenario, stateId);
             return;
         }
         if (!(served.get(announced.planId()) instanceof PlanChangesCaptured current)) {
@@ -401,9 +430,22 @@ public class ScenarioLoader {
         }
         if (!current.totals().equals(announced.size())) {
             throw new ScenarioValidationException(scenario, stateId, eventField(index),
-                    "the announced size of " + announced.planId()
-                            + " contradicts the files the state serves");
+                    "the announced size of " + announced.planId() + " ("
+                            + sizeText(announced.size()) + ") contradicts the files the state serves ("
+                            + sizeText(current.totals()) + ")");
         }
+    }
+
+    /**
+     * @param size a size of change, or {@code null}
+     * @return its four figures for a refusal message
+     */
+    private static String sizeText(@Nullable ChangeSize size) {
+        if (size == null) {
+            return "none";
+        }
+        return size.files() + " files, " + size.insertions() + " insertions, "
+                + size.deletions() + " deletions, " + size.unplanned() + " unplanned";
     }
 
     /**
@@ -420,8 +462,8 @@ public class ScenarioLoader {
      * @param stateId   the state identifier
      */
     private static void applyCarriedScheduledCapture(Map<String, Object> carry,
-            PlanChangeCapturedEvent announced, Map<String, PlanChangesAnswer> served, int index,
-            String scenario, String stateId) {
+            PlanChangeCapturedEvent announced, Map<String, PlanChangesAnswer> served,
+            Map<String, ChangeSize> retained, int index, String scenario, String stateId) {
         final PlanChangesAnswer carried;
         try {
             carried = PlanChangesAnswer.fromMap(carry);
@@ -434,7 +476,23 @@ public class ScenarioLoader {
                     "the capture of " + announced.planId() + " does not go back to "
                             + PlanChangesAnswer.NOT_CAPTURED);
         }
+        if (carried instanceof PlanChangesUnavailable) {
+            // The plan keeps the figures of its last successful capture while the capture is gone, so
+            // the announcement names exactly those figures.
+            var kept = retained.get(announced.planId());
+            if (!announced.size().equals(kept)) {
+                throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                        "the announcement of " + announced.planId() + " names the size "
+                                + sizeText(announced.size()) + " beside "
+                                + PlanChangesAnswer.UNAVAILABLE + ", its last capture " + sizeText(kept));
+            }
+        }
         served.put(announced.planId(), carried);
+        if (carried instanceof PlanChangesCaptured captured) {
+            retained.put(announced.planId(), captured.totals());
+        } else if (carried instanceof PlanChangesNotCaptured) {
+            retained.remove(announced.planId());
+        }
     }
 
     /**
@@ -1092,8 +1150,9 @@ public class ScenarioLoader {
             }
             return;
         }
-        if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
-                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
+        if (answer instanceof PlanChangesNotCaptured
+                && (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
+                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0)) {
             throw new ScenarioValidationException(scenario, stateId, field,
                     "the announcement of " + announced.planId() + " names a size of change beside "
                             + answer.state());
