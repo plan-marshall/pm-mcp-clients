@@ -8,6 +8,7 @@
   export interface ModelRow {
     harness_id: string;
     model_id: string;
+    harness_name?: string;
     source?: string;
     recommended?: boolean;
     allowed?: boolean;
@@ -20,6 +21,7 @@
   export interface ModelHarnessInfo {
     harness_id?: string;
     name?: string;
+    display_name?: string;
     cannot_list?: boolean;
     models_listed?: boolean;
     reason?: string;
@@ -32,15 +34,6 @@
   import Button from './Button.svelte';
   import Marker from './Marker.svelte';
   import TextField from './TextField.svelte';
-
-  const KNOWN_HARNESS_NAMES: Readonly<Record<string, string>> = {
-    claude: 'Claude Code',
-    opencode: 'OpenCode',
-    codex: 'Codex',
-    gemini: 'Gemini',
-    agy: 'Antigravity',
-    antigravity: 'Antigravity',
-  };
 
   export let models: readonly ModelRow[] = [];
   export let harnesses: readonly ModelHarnessInfo[] = [];
@@ -60,7 +53,7 @@
     if (rows.some((r) => r.allowed !== undefined)) {
       return rows.filter((r) => r.allowed !== false).map(key);
     }
-    if (rows.some((r) => r.recommended === false)) {
+    if (rows.some((r) => typeof r.recommended === 'boolean')) {
       return rows
         .filter((r) => r.recommended === true || (r.source === 'operator' && r.recommended !== false))
         .map(key);
@@ -116,7 +109,7 @@
     harnessInfos: readonly ModelHarnessInfo[],
     initialRows: readonly ModelRow[],
   ): Array<[string, ModelRow[]]> {
-    const grouped: Record<string, ModelRow[]> = {};
+    const grouped: Record<string, ModelRow[]> = Object.create(null);
     // Show one group for every enrolled harness, even when it reports zero listed models.
     for (const info of harnessInfos) {
       if (info.harness_id) {
@@ -144,7 +137,7 @@
   }
 
   function addOperatorModel(harnessId: string): void {
-    const modelId = (draftByHarness[harnessId] ?? '').trim();
+    const modelId = (Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim();
     if (!modelId) return;
     const id = key({ harness_id: harnessId, model_id: modelId });
     // Inspect incoming `models` and `extraModels` directly rather than deferred `$: allModels`
@@ -173,10 +166,15 @@
   }
 
   function resolveHarnessName(harnessId: string): string {
-    if (harnessNames[harnessId]) return harnessNames[harnessId];
-    const fromProp = harnesses.find((h) => h.harness_id === harnessId)?.name;
-    if (fromProp) return fromProp;
-    return KNOWN_HARNESS_NAMES[harnessId] ?? humanizeKey(harnessId);
+    const fromProp = harnesses.find((h) => h.harness_id === harnessId);
+    const propLabel = fromProp?.display_name ?? fromProp?.name;
+    if (propLabel) return propLabel;
+    if (Object.hasOwn(harnessNames, harnessId) && harnessNames[harnessId]) {
+      return harnessNames[harnessId];
+    }
+    const fromModel = allModels.find((m) => m.harness_id === harnessId)?.harness_name;
+    if (fromModel) return fromModel;
+    return humanizeKey(harnessId);
   }
 
   function cannotList(harnessId: string, rows: readonly ModelRow[]): boolean {
@@ -285,7 +283,7 @@
                 harness: resolveHarnessName(harnessId),
               })}
               placeholder={$t('onboard.catalogue.select.model_id_placeholder')}
-              value={draftByHarness[harnessId] ?? ''}
+              value={Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : ''}
               testid={`models-input-${harnessId}`}
               oninput={(e) => setDraft(harnessId, e.currentTarget.value)}
               onkeydown={(e) => {
@@ -299,7 +297,7 @@
           <Button
             variant="secondary"
             size="md"
-            disabled={!(draftByHarness[harnessId] ?? '').trim()}
+            disabled={!(Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim()}
             on:click={() => addOperatorModel(harnessId)}
             data-testid={`models-add-${harnessId}`}
           >

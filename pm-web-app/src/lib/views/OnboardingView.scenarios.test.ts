@@ -288,7 +288,8 @@ describe('OnboardingView against the mock runtime states', () => {
     render(OnboardingView);
 
     expect(screen.getByTestId('model-toggle-claude-opus-5.5')).toBeChecked();
-    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 3 models');
+    expect(screen.getByTestId('model-toggle-claude-sonnet-5.5')).not.toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
 
     await fireEvent.click(screen.getByTestId('models-record'));
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set', {}));
@@ -1438,13 +1439,18 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     expect(screen.getByText('Best for planning and review')).toBeVisible();
     expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
 
-    const opusRow = opusToggle.closest('li');
+    const opusRow = opusToggle.closest('li') as HTMLElement;
+    const sonnetRow = sonnetToggle.closest('li') as HTMLElement;
     expect(opusRow).not.toBeNull();
-    expect(within(opusRow as HTMLElement).getByText('recommended')).toBeVisible();
+    expect(sonnetRow).not.toBeNull();
+    expect(within(opusRow).getByText('recommended')).toBeVisible();
+    expect(within(sonnetRow).getByText('recommended')).toBeVisible();
 
     await fireEvent.click(opusToggle);
 
     expect(opusToggle).not.toBeChecked();
+    expect(within(opusRow).queryByText('recommended')).toBeNull();
+    expect(within(sonnetRow).getByText('recommended')).toBeVisible();
     expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
     expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
   });
@@ -1680,7 +1686,8 @@ describe('store.choose protection lines per option (D9)', () => {
         stores: [
           {
             kind: 'os',
-            name: 'Linux Secret Service',
+            name: 'GNOME Keyring',
+            platform: 'linux',
             available: true,
             recommended: true,
           },
@@ -1701,6 +1708,27 @@ describe('store.choose protection lines per option (D9)', () => {
         'Does not protect against: unconfined programs running as your user while unlocked',
       ),
     ).toBeVisible();
+  });
+
+  it('keeps the store reconfiguration action enabled when store.reconfigure-result carries no stores array', async () => {
+    arrange(
+      onboardingState({
+        state: 'store.reconfigure-result',
+        summary: 'Where should this machine keep its tokens?',
+        current: 'keychain',
+        links: { os: { href: '/api/v1/onboarding/store/record', next: 'auto.result' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'auto.result' }));
+
+    render(OnboardingView);
+
+    const recordBtn = screen.getByTestId('store-record');
+    expect(recordBtn).toBeEnabled();
+    await fireEvent.click(recordBtn);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('os', {}));
   });
 });
 

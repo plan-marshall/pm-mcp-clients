@@ -1,3 +1,26 @@
+<script lang="ts" module>
+  export interface StoreRow {
+    kind: string;
+    name: string;
+    available: boolean;
+    recommended?: boolean;
+    backend?: string;
+    platform?: string;
+    os?: string;
+    protects_against?: string;
+    does_not_protect_against?: string;
+  }
+
+  export interface ProviderRow {
+    provider: string;
+    name: string;
+    available: boolean;
+    variant?: string;
+    token_stored?: boolean;
+    cause?: string;
+  }
+</script>
+
 <script lang="ts">
   import { t } from '../i18n';
   import Button from './Button.svelte';
@@ -11,27 +34,10 @@
    * plans' own choice screens (`defaults.review`) and the role assignment (`roles.review`) are
    * screens of their own beside this one.
    */
-  interface StoreRow {
-    kind: string;
-    name: string;
-    available: boolean;
-    recommended?: boolean;
-    protects_against?: string;
-    does_not_protect_against?: string;
-  }
-
-  interface ProviderRow {
-    provider: string;
-    name: string;
-    available: boolean;
-    variant?: string;
-    token_stored?: boolean;
-    cause?: string;
-  }
-
   export let kind: 'store' | 'providers' = 'store';
   export let stores: readonly StoreRow[] = [];
   export let providers: readonly ProviderRow[] = [];
+  export let platform: string | undefined = undefined;
 
   export let busy = false;
 
@@ -89,9 +95,16 @@
     if (store.kind === 'file') {
       target = 'file';
     } else if (store.kind === 'os') {
-      target = (store.name ?? '').toLowerCase().includes('secret service')
-        ? 'os.secret_service'
-        : 'os.keychain';
+      const backend = (store.backend ?? store.platform ?? store.os ?? platform ?? '')
+        .trim()
+        .toLowerCase();
+      if (['linux', 'secret_service', 'secret-service', 'org.freedesktop.secrets'].includes(backend)) {
+        target = 'os.secret_service';
+      } else if (backend === '' || ['macos', 'darwin', 'keychain'].includes(backend)) {
+        target = 'os.keychain';
+      } else {
+        target = 'other';
+      }
     }
     const keys = {
       file: {
@@ -119,6 +132,8 @@
   {#if kind === 'store'}
     <ul class="choice-screen__list">
       {#each stores as store (store.kind)}
+        {@const protectsId = `store-${store.kind}-protects`}
+        {@const doesNotProtectId = `store-${store.kind}-does-not-protect`}
         <li class="choice-screen__row" class:choice-screen__row--disabled={!store.available}>
           <input
             type="radio"
@@ -127,6 +142,7 @@
             checked={selectedStore === store.kind}
             disabled={!store.available}
             aria-label={store.name}
+            aria-describedby={`${protectsId} ${doesNotProtectId}`}
             onchange={() => (selectedStore = store.kind)}
             data-testid={`store-${store.kind}`}
           />
@@ -137,12 +153,12 @@
                 ? $t('onboard.providers.select.available')
                 : $t('onboard.providers.select.not_available')}
             </span>
-            <span class="choice-screen__row-meta">
+            <span class="choice-screen__row-meta" id={protectsId}>
               {$t('onboard.store.choose.protects_against', {
                 value: protectionDetail(store, 'protects'),
               })}
             </span>
-            <span class="choice-screen__row-meta">
+            <span class="choice-screen__row-meta" id={doesNotProtectId}>
               {$t('onboard.store.choose.does_not_protect_against', {
                 value: protectionDetail(store, 'does_not_protect'),
               })}

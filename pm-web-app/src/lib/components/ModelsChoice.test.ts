@@ -24,13 +24,12 @@ describe('ModelsChoice', () => {
 
     await rerender({
       models: [{ harness_id: 'codex', model_id: 'gpt-5', source: 'probe' }],
-      harnesses: [{ harness_id: 'gemini', name: 'Gemini', cannot_list: true }],
+      harnesses: [{ harness_id: 'opencode', name: 'OpenCode', cannot_list: true }],
     });
 
     expect(queryByTestId('model-toggle-claude-opus-4.6')).toBeNull();
-    expect(queryByTestId('models-input-opencode')).toBeNull();
     expect(getByTestId('model-toggle-codex-gpt-5')).toBeChecked();
-    expect((getByTestId('models-input-gemini') as HTMLInputElement).value).toBe('');
+    expect((getByTestId('models-input-opencode') as HTMLInputElement).value).toBe('');
   });
 
   it('gives each operator Remove button a model-specific accessible name and updates token figures on locale switch', async () => {
@@ -41,7 +40,7 @@ describe('ModelsChoice', () => {
             { harness_id: 'opencode', model_id: 'model-a', source: 'operator', tokens: 2000 },
             { harness_id: 'opencode', model_id: 'model-b', source: 'operator', tokens_floor: true, tokens: 5000 },
           ],
-          harnesses: [{ harness_id: 'opencode', cannot_list: true }],
+          harnesses: [{ harness_id: 'opencode', display_name: 'OpenCode', cannot_list: true }],
         },
       });
 
@@ -131,5 +130,55 @@ describe('ModelsChoice', () => {
 
     expect(getByTestId('model-toggle-claude-opus-4.6')).not.toBeChecked();
     expect(getByTestId('model-toggle-opencode-qwen-32b')).toBeChecked();
+  });
+
+  it('uses profile display_name rather than a static harness map and humanizes unknown ids', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [
+          { harness_id: 'claude', model_id: 'opus-4.6', source: 'operator' },
+          { harness_id: 'custom_cli', model_id: 'small-1', source: 'operator' },
+        ],
+        harnesses: [{ harness_id: 'claude', display_name: 'Claude Profile Custom', cannot_list: true }],
+      },
+    });
+
+    expect(screen.getByRole('heading', { name: 'Claude Profile Custom' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Remove opus-4.6 from Claude Profile Custom' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Custom cli' })).toBeVisible();
+  });
+
+  it('preselects recommended models even when sibling rows omit recommended', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [
+          { harness_id: 'claude', model_id: 'opus-4.6', source: 'probe', recommended: true },
+          { harness_id: 'claude', model_id: 'haiku-4.5', source: 'probe' },
+        ],
+      },
+    });
+
+    expect(screen.getByTestId('model-toggle-claude-opus-4.6')).toBeChecked();
+    expect(screen.getByTestId('model-toggle-claude-haiku-4.5')).not.toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
+
+  it('handles a harness id named constructor with zero or listed models without inheriting Object prototype', async () => {
+    const { container, rerender, getByTestId } = render(ModelsChoice, {
+      props: {
+        harnesses: [{ harness_id: 'constructor', display_name: 'Constructor', cannot_list: true }],
+        models: [],
+      },
+    });
+
+    expect(container.querySelector('[data-harness="constructor"]')).toHaveTextContent('no model allowed');
+    expect((getByTestId('models-input-constructor') as HTMLInputElement).value).toBe('');
+
+    await rerender({
+      harnesses: [{ harness_id: 'constructor', display_name: 'Constructor', models_listed: true }],
+      models: [{ harness_id: 'constructor', model_id: 'c-1', source: 'probe' }],
+    });
+
+    expect(getByTestId('model-toggle-constructor-c-1')).toBeChecked();
   });
 });

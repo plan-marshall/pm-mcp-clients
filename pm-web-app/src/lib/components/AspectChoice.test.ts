@@ -135,6 +135,54 @@ describe('AspectChoice', () => {
       );
       expect(container).not.toHaveTextContent(en['onboard.store.choose.file.protects']);
     });
+
+    it('selects Secret Service copy for a Linux os store regardless of its display name', () => {
+      const en = loadMessages('en');
+      const { container } = render(AspectChoice, {
+        kind: 'store',
+        stores: [{ kind: 'os', name: 'GNOME Keyring', available: true, platform: 'linux' }],
+      });
+
+      const row = screen.getByRole('radio', { name: 'GNOME Keyring' }).closest('li');
+      expect(row ?? container).toHaveTextContent(en['onboard.store.choose.os.secret_service.protects']);
+      expect(row ?? container).toHaveTextContent(
+        en['onboard.store.choose.os.secret_service.does_not_protect'],
+      );
+      expect(container).not.toHaveTextContent(en['onboard.store.choose.os.keychain.protects']);
+    });
+
+    it('associates both protection statements with each store radio via aria-describedby', () => {
+      render(AspectChoice, { kind: 'store', stores: STORES });
+
+      for (const store of STORES) {
+        const radio = screen.getByRole('radio', { name: store.name });
+        const describedBy = radio.getAttribute('aria-describedby') ?? '';
+        const ids = describedBy.split(/\s+/).filter(Boolean);
+        expect(ids).toHaveLength(2);
+        const texts = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '');
+        expect(texts[0]).toMatch(/^Protects a secret against:/);
+        expect(texts[1]).toMatch(/^Does not protect against:/);
+      }
+    });
+
+    it('resyncs the selected store when a refresh changes only store availability', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: STORES.map((s) => (s.kind === 'file' ? { ...s, available: false } : { ...s })),
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in the keychain',
+      );
+    });
   });
 
   describe('providers', () => {
