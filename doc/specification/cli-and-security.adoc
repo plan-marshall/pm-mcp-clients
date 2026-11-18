@@ -1,0 +1,55 @@
+= CLI, Coordination & Security Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:nofooter:
+
+link:../Specification.adoc[Specification] » CLI, Coordination & Security
+
+== Overview
+
+This document is the index of the parts of the CLI, Coordination & Security Specification that the modules of this
+repository implement: the two CLI binaries `pm-mcp` and `pm-operator` with their installation layout, command tree and
+entry, the harness bundle installer, the operator's credential acts and the operator channel, and the web app. The
+family is split across two repositories, at a heading: the parts that the daemon implements — the web listeners, the
+device secret, the pairing and the threat notes of `03-web-server.adoc` — are specified beside the code that
+implements them. Until they move into `plan-marshall-mcp`, the family's `Overview`, `Traceability`, `Status` and the
+daemon's `Modules` rows stay with the family index in `plan-marshall-documentation`
+(link:../../../plan-marshall-documentation/doc/specification/cli-and-security.adoc[the family index]); this document
+lists the parts of this repository alone. The requirements stay in `plan-marshall-documentation`
+(link:../../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]); what implements and verifies
+each of them is recorded in link:../Traceability.adoc[Traceability].
+
+== Modules
+
+The modules of this repository that implement a part of this family, with the row of the Module Structure
+Specification each carries (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module
+Structure Specification], `Specified in`):
+
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`]:
+  part 01, the `pm-mcp` binary (the worker relay `serve --job`)
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`]:
+  part 01, the `pm-operator` binary with its entry and console, its command tree, what it sends, the harness bundle
+  installer and the bundle drift notice; part 02, the credential acts and the operator channel with the operator acts
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 01,
+  the CLI implementation the two binaries share (the socket client, the on-demand start procedure, the read-only file
+  codec with the drift checks) and the bundle drift notice
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-web-app[`pm-web-app`]:
+  part 03, the web app
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-web-e2e[`pm-web-e2e`]:
+  part 03, the browser end-to-end tests of the web app, with its accessibility and readability checks
+
+== Parts
+
+* link:cli-and-security/01-cli-and-installer.adoc[CLI Binaries, Harness Installer & Entry] — the `pm-mcp` and
+  `pm-operator` binaries, installation layout and command tree, runtime access and what the terminal client sends,
+  process coordination, the operator choices of both clients, the terminal client as the entry, the automatic
+  onboarding, and the harness bundle installer
+* link:cli-and-security/02-operator-channel.adoc[Operator Credential Acts & Operator Channel] — the operator's
+  credential acts and runtime secret redaction, and operator channel isolation with the operator acts (waivers, the
+  ends of plans and epics, the integrity hold, cross-project grants, harness enrolment, roles)
+* link:cli-and-security/03-web-app.adoc[Web App] — the web app `pm-web-app`: its build, its views, its texts, its live
+  updates and its browser storage. The rest of `03-web-server.adoc` — the listeners, the device secret, the pairing,
+  the paired devices and the threat notes — is specified with the runtime that serves the app
+  (link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc[Web Access &
+  Pairing])

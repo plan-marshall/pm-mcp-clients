@@ -1,0 +1,41 @@
+= Harness Integration & Bundle Manifest Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../Specification.adoc[Specification] » Harness Integration & Bundle Manifest (link:../Specification.adoc[Back to Main Specification])
+
+== Overview
+
+This document specifies how *plan-marshall-mcp* (`PM-MCP`) meets the coding agents installed on a machine: the detection of a coding agent's environment for the operator checks, the Harness Integration Table, the version probes, and the embedded harness bundle with its `bundle-manifest.json` schema. The harness profile schema and the placeholder rendering are specified in the link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles.adoc[Harness Profiles Specification].
+
+== Traceability
+
+_See Requirements:_
+
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-1[PM-CLIENT-1: Harnesses as Workers & Harness Identity]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3: Harness Environment Detection]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1: Single Version Authority & Embedded Harness Bundles]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-3[PM-DIST-3: Worker MCP Connection per Launch]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-5[PM-DIST-5: Multi-Harness Concurrent Coexistence on One Machine]_
+* _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SKILL-4[PM-SKILL-4: Skill Delivery to Workers & State through Representations]_
+
+== Status: IN PROGRESS
+
+== Modules
+
+Implemented in (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]):
+
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 01: the compiled harness-detection table (detection signals and precedence, version probes)
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mcp-server[`pm-mcp-server`]: part 02: the harness bundles embedded in the runtime binary `pm-mcpd`, and their packaging in the release profile
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`]: parts 01 and 02: the operator checks against the harness-detection table, and the `harness` verbs with the drift checks of `pm-operator harness status`
+
+== Parts
+
+* link:harness-integration/01-harness-detection.adoc[Harness Environment Detection] — the detection of a coding agent's environment for the operator checks, the Harness Integration Table, and the version probes
+* link:harness-integration/02-bundle-manifest.adoc[Bundle Manifest] — the `bundle-manifest.json` schema, a concrete example, ownership and digest verification, and open harness-bundle items; what a bundle carries per harness (the permission rules and the shim skill) is stated with the model-facing content in `plan-marshall-mcp`
