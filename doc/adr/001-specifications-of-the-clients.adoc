@@ -95,11 +95,11 @@ The sections the move touched, and the document that holds each of them now:
 |`harness-integration/02-bundle-manifest#bundle-content` (what a bundle carries)
 |`specification/harness-integration/02-bundle-manifest.adoc` of `plan-marshall-documentation`, with the model-facing content, until that content moves into `plan-marshall-mcp`
 
-|The watch items of `implementation-watch/cli-and-security.adoc` and `implementation-watch/harness-integration.adoc`
+|The watch items of `implementation-watch/cli-and-security.adoc` (except `PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `-26` and `-27`, which watch the web access section that stays) and of `implementation-watch/harness-integration.adoc`
 |`implementation-watch/` here
 
 |The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-16`, `PM-WATCH-RUN-10`,
-`PM-WATCH-RUN-11` here; the rest with the runtime's specification in `plan-marshall-mcp`
+`PM-WATCH-RUN-11` here; the rest with the runtime's specification in `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
 |`implementation-watch/runtime-model.adoc` here and there
 
 |What each requirement a moved section implements is implemented by, verified by and documented in
