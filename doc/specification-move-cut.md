@@ -20,12 +20,14 @@ doc-review session (`doc-review-2026-11-17-001`).
   prefixed with `_`).
 - Block anchors that are not headings (a paragraph carrying `[[id]]` or `[#id]`) travel with the section they
   sit in and are listed in the appendix; they are not rows.
-- The count check (file tools only, no program): `grep -c '^=+ '` per source document against the rows of that
-  document in the table. Totals at the end.
-- A document title is a heading and has a row. Where a file is split, the title, the family `Overview`,
-  `Traceability` and `Status` stay with the family index in the repository that keeps the majority of the
-  family's parts; the other repository creates a small family index of its own whose `Modules` and `Parts`
-  tables list only its parts (new index rows, not moved sections).
+- The count check (file tools only, no program): `grep -Ec '^=+ '` per source document (`-E`, because `+` is
+  literal in the basic regular expressions of `grep`) against the rows of that document in the table. Totals at
+  the end.
+- A document title is a heading and has a row. Where a family is split, the family's `Overview`, `Traceability`,
+  `Status` and the daemon's `Modules` rows stay with the family index of the repository that holds the family's
+  daemon part: `cli-and-security` (the listeners, the pairing) and `runtime-model` (the runtime itself) keep them
+  in `plan-marshall-mcp`. `harness-integration` moves whole, so its index moves with it. Each repository's index
+  lists and describes only the parts it holds (new index rows, not moved sections), and links the other one.
 - Two hypotheses of the spec were settled against the source before the table was written, both recorded in
   the progress record: `harness-integration` belongs here (see the note under its rows), and the requirement
   modules of `plan-marshall-documentation` carry no `Implementation:`/`Verified by:`/`Documentation:` blocks
@@ -33,17 +35,17 @@ doc-review session (`doc-review-2026-11-17-001`).
 
 ## The Table
 
-[cols="1,3,3,2,2"]
-|===
-|# |Document |Anchor |Section |Home
+This is a plain Markdown file, and the table is a GitHub-flavoured Markdown table (the rows carry no trailing
+pipe; that is optional in GFM).
 
+| # | Document | Anchor | Section | Home |
+|---|---|---|---|---|
 |1 |`cli-and-security.adoc` |`_cli_coordination_security_specification` |(title) CLI, Coordination & Security Specification |plan-marshall-mcp
 |2 |`cli-and-security.adoc` |`_overview` |Overview |plan-marshall-mcp
 |3 |`cli-and-security.adoc` |`_traceability` |Traceability |plan-marshall-mcp
 |4 |`cli-and-security.adoc` |`_status_in_progress` |Status: IN PROGRESS |plan-marshall-mcp
 |5 |`cli-and-security.adoc` |`_modules` |Modules |plan-marshall-mcp
 |6 |`cli-and-security.adoc` |`_parts` |Parts |plan-marshall-mcp
-
 |7 |`cli-and-security/01-cli-and-installer.adoc` |`_cli_coordination_security_specification_cli_binaries_harness_installer_entry` |(title) CLI Binaries, Harness Installer & Entry |pm-mcp-clients
 |8 |`cli-and-security/01-cli-and-installer.adoc` |`cli-binary` |Command-Line Binaries (`pm-mcp`, `pm-operator`) & Installation Layout |pm-mcp-clients
 |9 |`cli-and-security/01-cli-and-installer.adoc` |`installation-layout` |Installation Layout |pm-mcp-clients
@@ -61,11 +63,9 @@ doc-review session (`doc-review-2026-11-17-001`).
 |21 |`cli-and-security/01-cli-and-installer.adoc` |`_pm_operator_harness_cli_subcommands_install_update_remove_status` |`pm-operator harness` CLI Subcommands (`install`, `update`, `remove`, `status`) |pm-mcp-clients
 |22 |`cli-and-security/01-cli-and-installer.adoc` |`harness-operator-gate` |Operator Gate for Security-Weakening Changes |pm-mcp-clients
 |23 |`cli-and-security/01-cli-and-installer.adoc` |`bundle-drift-notice` |Bundle Drift Notice |pm-mcp-clients
-
 |24 |`cli-and-security/02-operator-channel.adoc` |`_cli_coordination_security_specification_operator_credential_acts_operator_channel` |(title) Operator Credential Acts & Operator Channel |pm-mcp-clients
 |25 |`cli-and-security/02-operator-channel.adoc` |`operator-credential-cli` |Operator Credential Acts & Runtime Secret Redaction |pm-mcp-clients
 |26 |`cli-and-security/02-operator-channel.adoc` |`operator-channel-isolation` |Operator Channel Isolation & Operator Acts (`pm-operator`) |pm-mcp-clients
-
 |27 |`cli-and-security/03-web-server.adoc` |`_cli_coordination_security_specification_web_access_pairing` |(title) Web Access & Pairing |plan-marshall-mcp
 |28 |`cli-and-security/03-web-server.adoc` |`web-server` |Web Access & Pairing (`pm-operator web`) |plan-marshall-mcp
 |29 |`cli-and-security/03-web-server.adoc` |`two-listeners` |Loopback and LAN Listeners Side by Side |plan-marshall-mcp
@@ -80,14 +80,12 @@ doc-review session (`doc-review-2026-11-17-001`).
 |38 |`cli-and-security/03-web-server.adoc` |`web-auth-seam` |Authentication Seam |plan-marshall-mcp
 |39 |`cli-and-security/03-web-server.adoc` |`web-app` |Web App (`pm-web-app`) |pm-mcp-clients
 |40 |`cli-and-security/03-web-server.adoc` |`web-threats` |Threat Notes |plan-marshall-mcp
-
 |41 |`runtime-model.adoc` |`_runtime_interaction_model_specification` |(title) Runtime & Interaction Model Specification |plan-marshall-mcp
 |42 |`runtime-model.adoc` |`_overview` |Overview |plan-marshall-mcp
 |43 |`runtime-model.adoc` |`_traceability` |Traceability |plan-marshall-mcp
 |44 |`runtime-model.adoc` |`_status_in_progress` |Status: IN PROGRESS |plan-marshall-mcp
 |45 |`runtime-model.adoc` |`_modules` |Modules |plan-marshall-mcp
 |46 |`runtime-model.adoc` |`_parts` |Parts |plan-marshall-mcp
-
 |47 |`runtime-model/01-processes-and-transport.adoc` |`_runtime_interaction_model_specification_processes_transport_local_trust` |(title) Processes, Transport & Local Trust |plan-marshall-mcp
 |48 |`runtime-model/01-processes-and-transport.adoc` |`_terminology` |Terminology |plan-marshall-mcp
 |49 |`runtime-model/01-processes-and-transport.adoc` |`_process_topology` |Process Topology |plan-marshall-mcp
@@ -115,7 +113,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |71 |`runtime-model/01-processes-and-transport.adoc` |`epic-resource` |The Epic as a Resource |plan-marshall-mcp
 |72 |`runtime-model/01-processes-and-transport.adoc` |`ended-work` |Ended Work |plan-marshall-mcp
 |73 |`runtime-model/01-processes-and-transport.adoc` |`reports` |Reports to the Operator |plan-marshall-mcp
-
 |74 |`runtime-model/03-relay.adoc` |`_runtime_interaction_model_specification_relay` |(title) Relay |pm-mcp-clients
 |75 |`runtime-model/03-relay.adoc` |`_relay_pm_mcp_serve_job` |Relay (`pm-mcp serve --job`) |pm-mcp-clients
 |76 |`runtime-model/03-relay.adoc` |`_contract` |Contract |pm-mcp-clients
@@ -127,7 +124,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |82 |`runtime-model/03-relay.adoc` |`_normal_call` |Normal Call |pm-mcp-clients
 |83 |`runtime-model/03-relay.adoc` |`_messages_from_runtime_to_harness` |Messages from Runtime to Harness |pm-mcp-clients
 |84 |`runtime-model/03-relay.adoc` |`_cancellation` |Cancellation |pm-mcp-clients
-
 |85 |`runtime-model/05-mock-runtime.adoc` |`_runtime_interaction_model_specification_mock_runtime` |(title) Mock Runtime |pm-mcp-clients
 |86 |`runtime-model/05-mock-runtime.adoc` |`mock-runtime` |Mock Runtime (`pm-mock-runtime`) |pm-mcp-clients
 |87 |`runtime-model/05-mock-runtime.adoc` |`mock-endpoints` |Endpoints & Start |pm-mcp-clients
@@ -135,7 +131,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |89 |`runtime-model/05-mock-runtime.adoc` |`mock-timing` |Realistic and Deterministic Timing |pm-mcp-clients
 |90 |`runtime-model/05-mock-runtime.adoc` |`scenario-coverage` |Scenarios per Flow |pm-mcp-clients
 |91 |`runtime-model/05-mock-runtime.adoc` |`scenario-drift` |Drift Against the Real Runtime |pm-mcp-clients
-
 |92 |`runtime-model/06-event-catalogue.adoc` |`_runtime_interaction_model_specification_event_catalogue` |(title) Event Catalogue |pm-mcp-clients
 |93 |`runtime-model/06-event-catalogue.adoc` |`event-catalogue` |Event Catalogue |pm-mcp-clients
 |94 |`runtime-model/06-event-catalogue.adoc` |`_stream_control` |Stream Control |pm-mcp-clients
@@ -144,33 +139,28 @@ doc-review session (`doc-review-2026-11-17-001`).
 |97 |`runtime-model/06-event-catalogue.adoc` |`_states_process_decisions` |States, Process & Decisions |pm-mcp-clients
 |98 |`runtime-model/06-event-catalogue.adoc` |`chat-events` |Chat |pm-mcp-clients
 |99 |`runtime-model/06-event-catalogue.adoc` |`_reports_activity` |Reports & Activity |pm-mcp-clients
-
 |100 |`harness-integration.adoc` |`_harness_integration_bundle_manifest_specification` |(title) Harness Integration & Bundle Manifest Specification |pm-mcp-clients
 |101 |`harness-integration.adoc` |`_overview` |Overview |pm-mcp-clients
 |102 |`harness-integration.adoc` |`_traceability` |Traceability |pm-mcp-clients
 |103 |`harness-integration.adoc` |`_status_in_progress` |Status: IN PROGRESS |pm-mcp-clients
 |104 |`harness-integration.adoc` |`_modules` |Modules |pm-mcp-clients
 |105 |`harness-integration.adoc` |`_parts` |Parts |pm-mcp-clients
-
 |106 |`harness-integration/01-harness-detection.adoc` |`_harness_integration_bundle_manifest_specification_harness_environment_detection` |(title) Harness Environment Detection |pm-mcp-clients
 |107 |`harness-integration/01-harness-detection.adoc` |`harness-environment-detection` |Harness Environment Detection |pm-mcp-clients
 |108 |`harness-integration/01-harness-detection.adoc` |`harness-integration-table` |Harness Integration Table (Normative) |pm-mcp-clients
 |109 |`harness-integration/01-harness-detection.adoc` |`harness-identity-probes` |Harness Identity Probes (Normative) |pm-mcp-clients
-
 |110 |`harness-integration/02-bundle-manifest.adoc` |`_harness_integration_bundle_manifest_specification_bundle_manifest` |(title) Bundle Manifest |pm-mcp-clients
 |111 |`harness-integration/02-bundle-manifest.adoc` |`_embedded_harness_bundle_bundle_manifest_json_schema` |Embedded Harness Bundle `bundle-manifest.json` Schema |pm-mcp-clients
 |112 |`harness-integration/02-bundle-manifest.adoc` |`bundle-content` |Bundle Content per Harness |plan-marshall-mcp
 |113 |`harness-integration/02-bundle-manifest.adoc` |`_normative_bundle_manifest_json_json_schema_draft_2020_12` |Normative `bundle-manifest.json` JSON Schema (Draft 2020-12) |pm-mcp-clients
 |114 |`harness-integration/02-bundle-manifest.adoc` |`_concrete_bundle_manifest_json_example_claude` |Concrete `bundle-manifest.json` Example (`claude`) |pm-mcp-clients
 |115 |`harness-integration/02-bundle-manifest.adoc` |`_ownership_digest_verification_on_install_update_remove` |Ownership & Digest Verification on Install/Update/Remove |pm-mcp-clients
-
 |116 |`mcp-tools.adoc` |`_mcp_tool_resource_surface_specification` |(title) MCP Tool & Resource Surface Specification |plan-marshall-mcp
 |117 |`mcp-tools.adoc` |`_overview` |Overview |plan-marshall-mcp
 |118 |`mcp-tools.adoc` |`_traceability` |Traceability |plan-marshall-mcp
 |119 |`mcp-tools.adoc` |`_status_in_progress` |Status: IN PROGRESS |plan-marshall-mcp
 |120 |`mcp-tools.adoc` |`_modules` |Modules |plan-marshall-mcp
 |121 |`mcp-tools.adoc` |`_parts` |Parts |plan-marshall-mcp
-
 |122 |`mcp-tools/04-errors-and-testing.adoc` |`_mcp_tool_resource_surface_specification_errors_failure_states_protocol_testing` |(title) Errors, Failure States & Protocol Testing |plan-marshall-mcp
 |123 |`mcp-tools/04-errors-and-testing.adoc` |`_protocol_errors_tool_execution_errors_iserror_true_domain_workflow_failure_states_iserror_false` |Protocol Errors, Tool Execution Errors (`isError: true`) & Domain Workflow Failure States (`isError: false`) |plan-marshall-mcp
 |124 |`mcp-tools/04-errors-and-testing.adoc` |`_normative_classification_matrix` |Normative Classification Matrix |plan-marshall-mcp
@@ -180,7 +170,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |128 |`mcp-tools/04-errors-and-testing.adoc` |`_automated_mcp_protocol_stdio_testing_with_mcpassured_quarkus_mcp_server_test` |Automated MCP Protocol & STDIO Testing with `McpAssured` (`quarkus-mcp-server-test`) |plan-marshall-mcp
 |129 |`mcp-tools/04-errors-and-testing.adoc` |`_end_to_end_stdio_integration_testing_mcpstdiotestclient_in_it_java` |End-to-End STDIO Integration Testing (`McpStdioTestClient` in `*IT.java`) |plan-marshall-mcp
 |130 |`mcp-tools/04-errors-and-testing.adoc` |`_normative_mcpassured_verification_requirements` |Normative `McpAssured` Verification Requirements |plan-marshall-mcp
-
 |131 |`module-structure.adoc` |`_module_structure_specification` |(title) Module Structure Specification |stays
 |132 |`module-structure.adoc` |`_overview` |Overview |stays
 |133 |`module-structure.adoc` |`_traceability` |Traceability |stays
@@ -199,7 +188,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |146 |`module-structure.adoc` |`binaries` |Binaries & Build Types |stays
 |147 |`module-structure.adoc` |`test-placement` |Test Placement |stays
 |148 |`module-structure.adoc` |`module-cuts` |Module Cuts |stays
-
 |149 |`implementation-watch/cli-and-security.adoc` |`_cli_security_implementation_watch` |(title) CLI & Security Implementation Watch |pm-mcp-clients
 |150 |`implementation-watch/cli-and-security.adoc` |`_overview` |Overview |pm-mcp-clients
 |151 |`implementation-watch/cli-and-security.adoc` |`_command_line_binaries_pm_mcp_pm_operator_installation_layout` |Command-Line Binaries (`pm-mcp`, `pm-operator`) & Installation Layout |pm-mcp-clients
@@ -225,7 +213,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |171 |`implementation-watch/cli-and-security.adoc` |`PM-WATCH-CLI-21` |PM-WATCH-CLI-21: A web listener exists only while enabled and never routes `/mcp` |plan-marshall-mcp
 |172 |`implementation-watch/cli-and-security.adoc` |`PM-WATCH-CLI-26` |PM-WATCH-CLI-26: The listener decides what is web-originated, never a header |plan-marshall-mcp
 |173 |`implementation-watch/cli-and-security.adoc` |`PM-WATCH-CLI-27` |PM-WATCH-CLI-27: The route table of the web listener is a closed allowlist |plan-marshall-mcp
-
 |174 |`implementation-watch/runtime-model.adoc` |`_runtime_model_implementation_watch` |(title) Runtime Model Implementation Watch |plan-marshall-mcp
 |175 |`implementation-watch/runtime-model.adoc` |`_overview` |Overview |plan-marshall-mcp
 |176 |`implementation-watch/runtime-model.adoc` |`_runtime` |Runtime |plan-marshall-mcp
@@ -243,7 +230,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |188 |`implementation-watch/runtime-model.adoc` |`PM-WATCH-RUN-11` |PM-WATCH-RUN-11: Identity arguments never appear in a tool schema |pm-mcp-clients
 |189 |`implementation-watch/runtime-model.adoc` |`_verification` |Verification |plan-marshall-mcp
 |190 |`implementation-watch/runtime-model.adoc` |`PM-WATCH-RUN-3` |PM-WATCH-RUN-3: Tests never observe machine-wide state |plan-marshall-mcp
-
 |191 |`implementation-watch/harness-integration.adoc` |`_harness_integration_implementation_watch` |(title) Harness Integration Implementation Watch |pm-mcp-clients
 |192 |`implementation-watch/harness-integration.adoc` |`_overview` |Overview |pm-mcp-clients
 |193 |`implementation-watch/harness-integration.adoc` |`_normative_harness_profile_json_schema` |Normative Harness Profile JSON Schema |pm-mcp-clients
@@ -252,7 +238,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |196 |`implementation-watch/harness-integration.adoc` |`PM-WATCH-CLIENT-5` |PM-WATCH-CLIENT-5: Harness-side enforcers are scope-bound; only server gates travel with every session |pm-mcp-clients
 |197 |`implementation-watch/harness-integration.adoc` |`PM-WATCH-CLIENT-7` |PM-WATCH-CLIENT-7: A permission wildcard ends the rule |pm-mcp-clients
 |198 |`implementation-watch/harness-integration.adoc` |`PM-WATCH-CLIENT-9` |PM-WATCH-CLIENT-9: Bundle artifacts never carry a `plan-marshall` name |pm-mcp-clients
-
 |199 |`implementation-watch/module-structure.adoc` |`_module_structure_implementation_watch` |(title) Module Structure Implementation Watch |stays
 |200 |`implementation-watch/module-structure.adoc` |`_overview` |Overview |stays
 |201 |`implementation-watch/module-structure.adoc` |`_repositories_artifact_flow` |Repositories & Artifact Flow |stays
@@ -260,7 +245,6 @@ doc-review session (`doc-review-2026-11-17-001`).
 |203 |`implementation-watch/module-structure.adoc` |`PM-WATCH-MOD-6` |PM-WATCH-MOD-6: No private model-facing content in a public repository |stays
 |204 |`implementation-watch/module-structure.adoc` |`_binaries_build_types` |Binaries & Build Types |stays
 |205 |`implementation-watch/module-structure.adoc` |`PM-WATCH-MOD-2` |PM-WATCH-MOD-2: The release is exactly four binaries with a complete SBOM |stays
-|===
 
 ## Totals
 
