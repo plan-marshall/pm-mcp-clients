@@ -57,6 +57,18 @@
   import RadioGroup from '../../../lib/components/RadioGroup.svelte';
   import CheckField from '../../../lib/components/CheckField.svelte';
   import CheckGroup from '../../../lib/components/CheckGroup.svelte';
+  import ConfirmDialog from '../../../lib/components/ConfirmDialog.svelte';
+  import Field from '../../../lib/components/Field.svelte';
+  import FieldError from '../../../lib/components/FieldError.svelte';
+  import FilterInput from '../../../lib/components/FilterInput.svelte';
+  import EvidenceView from '../../../lib/components/EvidenceView.svelte';
+  import Icon from '../../../lib/components/Icon.svelte';
+  import Spinner from '../../../lib/components/Spinner.svelte';
+  import BrandMark from '../../../lib/components/BrandMark.svelte';
+  import StepBar from '../../../lib/components/StepBar.svelte';
+  import ObjectPage from '../../../lib/templates/ObjectPage.svelte';
+  import WizardPage from '../../../lib/templates/WizardPage.svelte';
+  import DashboardPage from '../../../lib/templates/DashboardPage.svelte';
   import { LAYER_TOKENS } from '../../../styles/layers';
 
   /**
@@ -317,6 +329,7 @@
 </script>
 
 <div class="dev">
+  <BrandMark size={28} />
   <h1 class="dev__title">{$t('dev.components.title')}</h1>
   <p class="dev__intro">{$t('dev.components.intro')}</p>
 
@@ -343,6 +356,7 @@
 
       <h3 class="dev__section-title">{$t('dev.section.icons')}</h3>
       <div class="dev__row">
+        <Icon name="act.copy" size={20} />
         <IconButton
           icon="act.copy"
           label={$t('web.common.copy')}
@@ -467,6 +481,13 @@
           </Button>
         </svelte:fragment>
       </Dialog>
+      <ConfirmDialog
+        open={false}
+        title={$t('dev.dialog.title')}
+        consequences={dialogConsequences}
+        actionLabel={$t('dev.dialog.confirm')}
+        cancelLabel={$t('common.action.cancel')}
+      />
 
       <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
       <div class="dev__row">
@@ -543,6 +564,9 @@
           actionLabel={$t('dev.error.act')}
           onAct={() => {}}
         />
+        <Card>
+          <EvidenceView evidence={{ endpoints: '/api/v1', waiver_gate: 'coverage' }} />
+        </Card>
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.skeleton')}</h3>
@@ -555,6 +579,10 @@
       <h3 class="dev__section-title">{$t('dev.section.brand')}</h3>
       <div class="dev__row">
         <WaitingMark label={$t('dev.waiting.label')} />
+        <Spinner label={$t('state.plan.running')} />
+      </div>
+      <div class="dev__row">
+        <StepBar activeStep={2} completedSteps={[1]} />
       </div>
       <div class="dev__row">
         <MascotFigure pose="welcome" crop="full" height={200} />
@@ -949,6 +977,20 @@
         <Card title={$t('dev.field.demo_form')}>
           <DemoFormFixture />
         </Card>
+
+      </div>
+
+      <div class="dev__stack">
+        <Field label={$t('dev.field.sample_label')} hint={$t('dev.field.sample_hint')}>
+          <FilterInput label={$t('dev.field.sample_label')} onchange={() => {}} />
+        </Field>
+        <FieldError message={$t('dev.field.sample_error')} />
+      </div>
+
+      <div class="dev__grid">
+        <ObjectPage compact inColumn />
+        <WizardPage />
+        <DashboardPage />
       </div>
     </section>
   {/each}
