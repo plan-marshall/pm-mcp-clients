@@ -480,6 +480,58 @@ describe('PlanChanges', () => {
     expect(screen.queryByText('a plan line')).toBeNull();
   });
 
+  it('shows a failed row’s own error and retry, never another row’s hunks', async () => {
+    // Arrange: a.ts fails, b.ts loads, and a.ts is selected again.
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue({
+      plan_id: 'fix-relay',
+      state: 'captured',
+      head: '9f3c2ab41d7e5',
+      base_ref: 'main',
+      files: [
+        { path: 'src/a.ts', status: 'modified', added: 1, removed: 1, binary: false, unplanned: false },
+        { path: 'src/b.ts', status: 'modified', added: 2, removed: 0, binary: false, unplanned: false },
+      ],
+    });
+    const readFile = vi
+      .spyOn(apiClient, 'getPlanChangeFile')
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(fileAnswer({ path: 'src/b.ts', hunks: [hunkWith('b line')] }))
+      .mockResolvedValueOnce(fileAnswer({ path: 'src/a.ts', hunks: [hunkWith('a line')] }));
+
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'src/a.ts',
+      onSelectFile: () => {},
+    });
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+    await view.rerender({
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'src/b.ts',
+      onSelectFile: () => {},
+    });
+    expect(await screen.findByText('b line')).toBeInTheDocument();
+
+    // Act: back to the failed row.
+    await view.rerender({
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'src/a.ts',
+      onSelectFile: () => {},
+    });
+
+    // Assert: the failed row shows its own error and retry, and no other row's hunks.
+    expect(screen.queryByText('b line')).toBeNull();
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(readFile).toHaveBeenCalledTimes(2);
+
+    // The retry reads the failed row again.
+    screen.getByRole('button', { name: 'Try again' }).click();
+    expect(await screen.findByText('a line')).toBeInTheDocument();
+  });
+
   it('applies no list completion after the view is gone', async () => {
     // Arrange
     const list = deferred<PlanChangesAnswer>();

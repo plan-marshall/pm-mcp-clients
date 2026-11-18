@@ -8157,8 +8157,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return "the announced size of " + announced.planId()
                         + " contradicts the files its capture carries";
             }
-        } else if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
-                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
+        } else if (answer instanceof PlanChangesNotCaptured
+                && (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
+                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0)) {
             return ANNOUNCEMENT_OF + announced.planId() + " names a size of change beside "
                     + answer.state();
         }
@@ -8169,6 +8170,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 // A capture moves on to a new capture or to a capture that is gone; it never goes back
                 // to the plan's first capture, which no event of the contract announces.
                 return "the capture of " + announced.planId() + " does not go back to " + answer.state();
+            }
+            if (answer instanceof PlanChangesUnavailable) {
+                // The plan keeps the figures of its last successful capture while the capture is gone
+                // (the tab stays present then), so the announcement must name exactly those figures.
+                var retained = planChangeSizes.get(answer.planId());
+                if (!announced.size().equals(retained)) {
+                    return ANNOUNCEMENT_OF + announced.planId() + " names "
+                            + announced.size().files() + " files beside " + answer.state()
+                            + ", its last capture " + (retained == null ? "none" : retained.files() + " files");
+                }
             }
             planChanges.put(answer.planId(), answer);
             planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));

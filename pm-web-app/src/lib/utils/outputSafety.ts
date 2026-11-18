@@ -1,13 +1,12 @@
 /**
- * Output safety utility for stripping ANSI escape sequences and every control or format character a
- * wire answer can carry without showing it.
+ * Output safety utility for stripping ANSI escape sequences and the control or format characters a
+ * wire answer can carry without showing them: the C0 and C1 controls, the Unicode line and paragraph
+ * separators, the bidirectional controls that reorder what a reader sees, and a byte-order mark.
  *
- * A path or a diff line comes from the project: besides the C0 controls it may carry C1 controls
- * (U+0085 among them), the Unicode line and paragraph separators, and the bidirectional controls
- * that reorder what a reader sees. None of them is part of the text, so all of them are removed
- * before the text reaches a text sink (`plan-view.adoc`, The Changes: "shown as plain text after
- * removing every control sequence"). The joiners U+200C and U+200D are kept: some scripts need them
- * to shape a word, and they reorder nothing.
+ * A path or a diff line comes from the project, so all of these are removed before the text reaches
+ * a text sink (`plan-view.adoc`, The Changes: "shown as plain text after removing every control
+ * sequence"). The joiners U+200C and U+200D are kept: some scripts need them to shape a word, and
+ * they reorder nothing.
  */
 
 /* eslint-disable no-control-regex */

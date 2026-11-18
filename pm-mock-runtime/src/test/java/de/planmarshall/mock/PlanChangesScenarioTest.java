@@ -644,7 +644,7 @@ class PlanChangesScenarioTest {
                 assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
 
                 var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
-                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(12, 340, 27, 2),
                                 unavailableCapture(FIX_RELAY, reason)));
 
                 assertEquals(200, broadcast.status(), broadcast.bodyText());
@@ -749,7 +749,7 @@ class PlanChangesScenarioTest {
                                 oneFileCapture(FIX_RELAY)));
                 assertEquals(200, replaced.status(), replaced.bodyText());
                 var gone = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
-                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(1, 2, 0, 0),
                                 unavailableCapture(FIX_RELAY, reason)));
                 assertEquals(200, gone.status(), gone.bodyText());
 
@@ -770,12 +770,30 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a gone capture whose announcement names another size than the plan keeps")
+        void refusesAContradictingUnavailableSize() throws Exception {
+            var reason = "the captured commit a1b2c3d4e5f6 is no longer in the repository";
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY));
+
+                var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(2, 340, 27, 2),
+                                unavailableCapture(FIX_RELAY, reason)));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertEquals(CAPTURED_HEAD,
+                        assertInstanceOf(PlanChangesCaptured.class, readChanges(runtime, FIX_RELAY)).head(),
+                        "the refused announcement moved nothing");
+            }
+        }
+
+        @Test
         @DisplayName("refuses a carried capture that would send a gone capture back to its first capture")
         void refusesBackFromUnavailable() throws Exception {
             var reason = "the captured commit a1b2c3d4e5f6 is no longer in the repository";
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
                 var gone = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
-                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(12, 340, 27, 2),
                                 unavailableCapture(FIX_RELAY, reason)));
                 assertEquals(200, gone.status(), gone.bodyText());
                 var back = new LinkedHashMap<String, Object>();
@@ -1263,10 +1281,12 @@ class PlanChangesScenarioTest {
                     new ChangeSize(12, 340, 27, 2), null)), FIX_RELAY);
 
             // A gone capture stays in the sequence: a later first-capture announcement is refused, as
-            // the runtime refuses it.
+            // the runtime refuses it, and the announcement names the figures the plan keeps.
             var gone = withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
-                    new ChangeSize(0, 0, 0, 0), unavailableCapture(FIX_RELAY, "gone")));
+                    new ChangeSize(12, 340, 27, 2), unavailableCapture(FIX_RELAY, "gone")));
             assertDoesNotThrow(() -> ScenarioLoader.load(gone, StandardScenarios.RUNNING_WORK));
+            refusesTheLoad(withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(0, 0, 0, 0), unavailableCapture(FIX_RELAY, "gone"))), FIX_RELAY);
             refusesTheLoad(withScheduledCapture(gone, announcement(FIX_RELAY, "b2c3d4e5f6a1",
                     new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
         }

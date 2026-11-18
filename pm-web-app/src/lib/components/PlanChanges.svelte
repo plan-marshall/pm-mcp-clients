@@ -45,11 +45,10 @@
   let listError = $state<string | null>(null);
   let currentFile = $state<PlanChangeFile | null>(null);
   let isFileLoading = $state(false);
-  let fileError = $state<string | null>(null);
+  /** The error of each row whose read failed, by row identity: a failed row keeps its own account. */
+  let fileErrors = $state<Record<string, string>>({});
   /** The row the shown file answer belongs to; a different row is a different set of hunks. */
   let loadedIdentity = $state<string | null>(null);
-  /** The row whose read failed, so a failed read is not retried on every render. */
-  let failedIdentity = $state<string | null>(null);
   /** The row whose read is open, so a re-render does not open a second read of the same hunks. */
   let inFlightIdentity = $state<string | null>(null);
   /** A count a person's retry raises, so a failed row is read again rather than staying failed. */
@@ -215,6 +214,29 @@
     }
   }
 
+  /**
+   * The selected row's identity, or `null` when the list names none.
+   */
+  const selectedIdentity = $derived(
+    selectedFile === null || answer === null ? null : rowIdentity(answer, selectedFile),
+  );
+
+  /** The selected row's error, where its read failed; another row never inherits it. */
+  const fileError = $derived(
+    selectedIdentity === null ? null : (fileErrors[selectedIdentity] ?? null),
+  );
+
+  /**
+   * @param errors the errors by row identity
+   * @param identity the row whose error is dropped
+   * @returns the errors without that row
+   */
+  function withoutRow(errors: Record<string, string>, identity: string): Record<string, string> {
+    const next = { ...errors };
+    delete next[identity];
+    return next;
+  }
+
   $effect(() => {
     // The plan, and the token a capture raises: each reads the list again.
     void planId;
@@ -226,24 +248,25 @@
     const path = selectedFile;
     // A person's retry clears the failed row and reads it again.
     void fileRetryToken;
-    if (path === null || answer === null) {
+    const identity = selectedIdentity;
+    if (path === null || identity === null) {
       currentFile = null;
       loadedIdentity = null;
-      failedIdentity = null;
-      return;
-    }
-    const identity = rowIdentity(answer, path);
-    if (identity === null) {
-      currentFile = null;
-      loadedIdentity = null;
-      failedIdentity = null;
+      isFileLoading = false;
       return;
     }
     if (currentFile !== null && loadedIdentity === identity) {
       // The list was read again and the row did not change: the hunks it owns stay as they are.
       return;
     }
-    if (failedIdentity === identity || inFlightIdentity === identity || disposed) {
+    if (fileError !== null) {
+      // This row failed: the panel shows its own error and retry, never another row's hunks.
+      currentFile = null;
+      loadedIdentity = null;
+      isFileLoading = false;
+      return;
+    }
+    if (inFlightIdentity === identity || disposed) {
       return;
     }
     // The hunks of another row are no longer the ones the tab stands on: the panel shows the read in
@@ -251,7 +274,6 @@
     currentFile = null;
     loadedIdentity = null;
     isFileLoading = true;
-    fileError = null;
     inFlightIdentity = identity;
     void (async () => {
       try {
@@ -264,19 +286,16 @@
         }
         currentFile = read;
         loadedIdentity = identity;
-        failedIdentity = null;
+        fileErrors = withoutRow(fileErrors, identity);
       } catch (error) {
         if (!disposed && selectedFile === path && rowIdentity(answer, path) === identity) {
           currentFile = null;
           loadedIdentity = null;
-          failedIdentity = identity;
-          fileError = errorCodeOf(error);
+          fileErrors = { ...fileErrors, [identity]: errorCodeOf(error) };
         }
       } finally {
         if (inFlightIdentity === identity) {
           inFlightIdentity = null;
-        }
-        if (!disposed) {
           isFileLoading = false;
         }
       }
@@ -290,8 +309,9 @@
 
   /** Reads the selected file again after a failed read, instead of leaving the row failed for good. */
   function retryFile(): void {
-    failedIdentity = null;
-    fileError = null;
+    if (selectedIdentity !== null) {
+      fileErrors = withoutRow(fileErrors, selectedIdentity);
+    }
     fileRetryToken += 1;
   }
 </script>

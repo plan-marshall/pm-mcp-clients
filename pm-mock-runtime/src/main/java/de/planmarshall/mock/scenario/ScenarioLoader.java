@@ -34,6 +34,7 @@ import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.changes.PlanChangesNotCaptured;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
@@ -433,6 +434,20 @@ public class ScenarioLoader {
             throw new ScenarioValidationException(scenario, stateId, eventField(index),
                     "the capture of " + announced.planId() + " does not go back to "
                             + PlanChangesAnswer.NOT_CAPTURED);
+        }
+        if (carried instanceof PlanChangesUnavailable) {
+            // The plan keeps the figures of its last successful capture while the capture is gone, so
+            // the announcement names exactly those figures.
+            var current = served.get(announced.planId());
+            if (!(current instanceof PlanChangesCaptured captured)
+                    || !captured.totals().equals(announced.size())) {
+                throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                        "the announcement of " + announced.planId() + " names "
+                                + announced.size().files() + " files beside "
+                                + PlanChangesAnswer.UNAVAILABLE + ", its last capture "
+                                + (current instanceof PlanChangesCaptured last
+                                ? last.totals().files() + " files" : "none"));
+            }
         }
         served.put(announced.planId(), carried);
     }
@@ -1092,8 +1107,9 @@ public class ScenarioLoader {
             }
             return;
         }
-        if (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
-                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0) {
+        if (answer instanceof PlanChangesNotCaptured
+                && (announced.filesTotal() != 0 || announced.insertionsTotal() != 0
+                || announced.deletionsTotal() != 0 || announced.unplannedTotal() != 0)) {
             throw new ScenarioValidationException(scenario, stateId, field,
                     "the announcement of " + announced.planId() + " names a size of change beside "
                             + answer.state());
