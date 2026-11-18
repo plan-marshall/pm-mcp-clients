@@ -190,7 +190,7 @@
           {$t('control.review.open_count', { count: openItems.length })}
         </span>
         <button type="button" data-testid="review-close" onclick={close}>
-          {$t('common.close')}
+          {$t('common.action.close')}
         </button>
       </header>
 

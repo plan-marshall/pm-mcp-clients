@@ -423,7 +423,7 @@
       {/if}
     </div>
     <Button variant="secondary" on:click={() => navigateTo('projects')} data-testid="project-back">
-      {$t('web.common.back')}
+      {$t('common.action.back')}
     </Button>
   </header>
 
@@ -739,7 +739,7 @@
           on:click={() => (confirmAbandon = false)}
           data-testid="project-abandon-cancel"
         >
-          {$t('web.common.cancel')}
+          {$t('common.action.cancel')}
         </Button>
         <Button variant="danger" on:click={abandonRun} data-testid="project-abandon-confirm">
           {$t('project.adding.abandon')}

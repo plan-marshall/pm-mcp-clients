@@ -14,6 +14,7 @@
     type EnrolledProject,
   } from '../api/client';
   import { runtimeStore, navigateTo, advanceLifecycleEpoch } from '../stores/runtime';
+  import { setReloadDeferred } from '../stores/reloadDeferred';
   import { displayState } from '../display';
   import {
     hasUnsentInput,
@@ -139,6 +140,9 @@
 
   onDestroy(() => {
     isMounted = false;
+    // The deferred reload is this view's obligation: when it goes, the deferral goes with it, so a
+    // language change is not blocked for the rest of the session.
+    setReloadDeferred(false);
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -234,6 +238,7 @@
   function maybeReloadAfterUpgrade(force = false): void {
     if (!force && hasUnsentInput()) {
       reloadWaitsForInput = true;
+      setReloadDeferred(true);
       return;
     }
     reloadWaitsForInput = false;
@@ -242,7 +247,12 @@
     } catch {
       // A browser that refuses the reload keeps the notice with its own Load again button.
       reloadWaitsForInput = true;
+      setReloadDeferred(true);
+      return;
     }
+    // Only a reload that returned without navigating leaves the page running the old code: the
+    // held catalogue is released then, never before the call that unloads the page.
+    setReloadDeferred(false);
   }
 
   // The reload waits while a field holds text; once the operator sends or clears it, the wait

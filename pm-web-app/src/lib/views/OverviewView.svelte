@@ -823,9 +823,9 @@
           <Button
             variant="secondary"
             on:click={closeEndedWork}
-            data-advisory={$t('common.actions.back.title')}
+            data-advisory={$t('common.action.back.title')}
           >
-            {$t('common.actions.back')}
+            {$t('common.action.back')}
           </Button>
         </div>
 
@@ -849,7 +849,7 @@
         {:else}
           <FilterInput
             value={endedQuery}
-            label={$t('common.filter.label')}
+            label={$t('common.filter.label', { what: $t('overview.ended.title') })}
             placeholder={$t('common.filter.placeholder')}
             resultCount={filteredEndedItems.length}
             onchange={(value) => (endedQuery = value)}
@@ -1017,7 +1017,7 @@
           <section class="overview-control" data-testid="overview-control">
             <div class="overview-control__head">
               <button type="button" class="overview-control__close" on:click={closeControls}>
-                {$t('common.close')}
+                {$t('common.action.close')}
               </button>
             </div>
             <WorkControlPanel
@@ -1192,7 +1192,7 @@
             {#if (viewMode === 'plan' ? detail.plans.length : detail.epics.length + detail.plans.length) > 0}
               <FilterInput
                 value={runningQuery}
-                label={$t('common.filter.label')}
+                label={$t('common.filter.label', { what: $t('overview.running.title') })}
                 placeholder={$t('common.filter.placeholder')}
                 resultCount={viewMode === 'plan' ? filteredPlans.length : filteredEpics.length}
                 onchange={(value) => (runningQuery = value)}

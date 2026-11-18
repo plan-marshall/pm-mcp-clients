@@ -56,6 +56,31 @@ class OverviewCatalogueTest {
         }
     }
 
+    @Test
+    @DisplayName("the find list reads the shared kinds: the overview's own kind and wait copies are gone")
+    void shouldNameTheKindsAndTheOneWaitWordOnly() {
+        var retired = List.of(
+                "overview.kind.project",
+                "overview.find.kind.project", "overview.find.kind.epic", "overview.find.kind.plan",
+                "overview.find.kind.decision", "overview.find.kind.report",
+                "overview.needs.operator_wait");
+        var present = new ArrayList<String>();
+        for (var locale : List.of("en", "de")) {
+            var messages = MessageCatalogue.getMessages(locale, "overview");
+            for (String key : retired) {
+                if (messages.containsKey(key)) {
+                    present.add(locale + ":" + key);
+                }
+            }
+            assertTrue(messages.containsKey("overview.needs.waits_for_you"), locale);
+            // The kinds that a pm-operator reader still asks for stay until the terminal moves.
+            assertTrue(messages.containsKey("overview.kind.epic"), locale);
+            assertTrue(messages.containsKey("overview.kind.plan"), locale);
+        }
+
+        assertTrue(present.isEmpty(), "a retired overview key survives: " + present);
+    }
+
     /**
      * The keys {@code doc/design/shared/plan-overview.adoc#texts} names but the catalogue
      * deliberately does not carry yet: the integrity hold's word, which the design already names
