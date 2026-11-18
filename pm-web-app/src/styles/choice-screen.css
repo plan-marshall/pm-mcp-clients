@@ -85,6 +85,7 @@
   font-size: var(--text-sm);
   font-weight: 600;
   color: var(--color-text-primary);
+  overflow-wrap: anywhere;
 }
 
 .choice-screen__row-meta {
@@ -151,6 +152,13 @@
   .choice-screen__actions {
     flex-direction: column-reverse;
     align-items: stretch;
+  }
+
+  .choice-screen__actions button.btn {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: center;
   }
 
   .choice-screen__row {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
 import { loadOnboardingState, runtimeStore } from '../stores/runtime';
@@ -288,7 +288,8 @@ describe('OnboardingView against the mock runtime states', () => {
     render(OnboardingView);
 
     expect(screen.getByTestId('model-toggle-claude-opus-5.5')).toBeChecked();
-    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 3 models');
+    expect(screen.getByTestId('model-toggle-claude-sonnet-5.5')).not.toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
 
     await fireEvent.click(screen.getByTestId('models-record'));
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set', {}));
@@ -1391,5 +1392,533 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(summary).toHaveTextContent('Deutsch, models English');
     expect(summary).toHaveTextContent('31 roles assigned');
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+});
+
+describe('catalogue.select recommendation and manual model entry (D8)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('preselects the recommendation with a recommended mark and reason, and drops the mark when unchecked', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        reason: 'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
+        models: [
+          {
+            harness_id: 'claude',
+            model_id: 'opus-4.6',
+            source: 'probe',
+            recommended: true,
+            reason: 'Best for planning and review',
+          },
+          { harness_id: 'claude', model_id: 'sonnet-4.6', source: 'probe', recommended: true },
+          { harness_id: 'claude', model_id: 'haiku-4.5', source: 'probe', recommended: false },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opusToggle = screen.getByTestId('model-toggle-claude-opus-4.6');
+    const sonnetToggle = screen.getByTestId('model-toggle-claude-sonnet-4.6');
+    const haikuToggle = screen.getByTestId('model-toggle-claude-haiku-4.5');
+    expect(opusToggle).toBeChecked();
+    expect(sonnetToggle).toBeChecked();
+    expect(haikuToggle).not.toBeChecked();
+
+    expect(screen.getByTestId('model-recommendation')).toHaveTextContent(
+      'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
+    );
+    expect(screen.getByText('Best for planning and review')).toBeVisible();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
+
+    const opusRow = opusToggle.closest('li') as HTMLElement;
+    const sonnetRow = sonnetToggle.closest('li') as HTMLElement;
+    expect(opusRow).not.toBeNull();
+    expect(sonnetRow).not.toBeNull();
+    expect(within(opusRow).getByText('recommended')).toBeVisible();
+    expect(within(sonnetRow).getByText('recommended')).toBeVisible();
+
+    await fireEvent.click(opusToggle);
+
+    expect(opusToggle).not.toBeChecked();
+    expect(within(opusRow).queryByText('recommended')).toBeNull();
+    expect(within(sonnetRow).getByText('recommended')).toBeVisible();
+    expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
+
+  it('offers a text field to enter model ids for a harness that cannot list its models', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [
+          { harness_id: 'claude', model_id: 'opus-5.5', source: 'probe' },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' },
+          { harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.record' }));
+
+    const { container } = render(OnboardingView);
+
+    const claudeGroup = container.querySelector('[data-harness="claude"]');
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]');
+    expect(claudeGroup).not.toBeNull();
+    expect(opencodeGroup).not.toBeNull();
+
+    expect(within(claudeGroup as HTMLElement).queryByTestId('models-input-claude')).toBeNull();
+    expect(opencodeGroup).toHaveTextContent('cannot list its models');
+
+    const input = within(opencodeGroup as HTMLElement).getByTestId('models-input-opencode');
+    await fireEvent.input(input, { target: { value: 'anthropic/claude-opus-4-6' } });
+    await fireEvent.click(within(opencodeGroup as HTMLElement).getByTestId('models-add-opencode'));
+
+    const addedToggle = screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6');
+    expect(addedToggle).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 4 models');
+
+    await fireEvent.click(screen.getByTestId('models-record'));
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('set', {
+        models: expect.arrayContaining([
+          expect.objectContaining({
+            harness_id: 'opencode',
+            model_id: 'anthropic/claude-opus-4-6',
+            source: 'operator',
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it('keeps the manual TextField when removing the sole operator model and avoids duplicates on re-add', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [{ harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]') as HTMLElement;
+    expect(opencodeGroup).not.toBeNull();
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+
+    await fireEvent.click(within(opencodeGroup).getByRole('button', { name: /Remove/i }));
+
+    expect(container.querySelector('[data-harness="opencode"]')).not.toBeNull();
+    expect(opencodeGroup).toHaveTextContent('no model allowed');
+    expect(within(opencodeGroup).getByTestId('models-input-opencode')).toBeVisible();
+
+    await fireEvent.input(within(opencodeGroup).getByTestId('models-input-opencode'), {
+      target: { value: 'qwen-coder-32b' },
+    });
+    await fireEvent.click(within(opencodeGroup).getByTestId('models-add-opencode'));
+
+    expect(
+      within(opencodeGroup).getAllByTestId('model-toggle-opencode-qwen-coder-32b'),
+    ).toHaveLength(1);
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+  });
+
+  it('respects explicit cannot_list: false and renders no_advice_reason when advice did not run', () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        no_advice_reason: 'steward timed out',
+        harnesses: [{ harness_id: 'opencode', cannot_list: false, models_listed: true }],
+        models: [{ harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]') as HTMLElement;
+    expect(within(opencodeGroup).queryByTestId('models-input-opencode')).toBeNull();
+    expect(container.textContent).toContain('steward timed out');
+    expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+  });
+
+  it('keeps probe models preselected when prose recommendation carries no per-row recommended flags', () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        recommendation: 'All listed models fit standard coding tasks.',
+        models: [
+          { harness_id: 'claude', model_id: 'opus-5.5', source: 'probe', reason: 'strongest planner' },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('model-recommendation')).toHaveTextContent(
+      'All listed models fit standard coding tasks.',
+    );
+    expect(screen.getByTestId('model-toggle-claude-opus-5.5')).toBeChecked();
+    expect(screen.getByTestId('model-toggle-claude-sonnet-5.5')).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
+    expect(screen.getByTestId('models-record')).toBeEnabled();
+  });
+
+  it('keeps added operator models when models is absent during store updates and a failed submit', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        harnesses: [{ harness_id: 'opencode', name: 'OpenCode', cannot_list: true }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockRejectedValueOnce(new Error('temporary failure'));
+
+    render(OnboardingView);
+
+    await fireEvent.input(screen.getByTestId('models-input-opencode'), {
+      target: { value: 'anthropic/claude-opus-4-6' },
+    });
+    await fireEvent.click(screen.getByTestId('models-add-opencode'));
+    expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked();
+
+    runtimeStore.update((store) => ({
+      ...store,
+      unreadReportsCount: store.unreadReportsCount + 1,
+    }));
+    await waitFor(() =>
+      expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked(),
+    );
+
+    await fireEvent.click(screen.getByTestId('models-record'));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByTestId('models-record')).toBeEnabled());
+
+    expect(screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6')).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
+});
+
+describe('store.choose protection lines per option (D9)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('shows Protects a secret against and Does not protect against on every store option', () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          {
+            kind: 'os',
+            name: 'macOS Keychain',
+            available: true,
+            recommended: true,
+          },
+          {
+            kind: 'file',
+            name: 'Files in ~/.plan-marshall-mcp/credentials/',
+            available: true,
+            recommended: false,
+          },
+        ],
+        links: {
+          os: { href: '/api/v1/onboarding/store/os', next: 'store.consent' },
+          file: { href: '/api/v1/onboarding/store/file', next: 'store.check' },
+        },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    expect(screen.getAllByText(/^Protects a secret against:/)).toHaveLength(2);
+    expect(screen.getAllByText(/^Does not protect against:/)).toHaveLength(2);
+
+    const osOption = screen.getByTestId('store-os').closest('li') as HTMLElement;
+    expect(osOption).toHaveTextContent(
+      'Protects a secret against: other programs reading a token without macOS asking first',
+    );
+    expect(osOption).toHaveTextContent(
+      'Does not protect against: a program you allow in the macOS dialog',
+    );
+    expect(within(osOption).getByText('recommended')).toBeVisible();
+
+    const fileOption = screen.getByTestId('store-file').closest('li') as HTMLElement;
+    expect(fileOption).toHaveTextContent(
+      'Protects a secret against: other users of the machine (mode 0600)',
+    );
+    expect(fileOption).toHaveTextContent(
+      'Does not protect against: other programs running as your user',
+    );
+    expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
+  });
+
+  it('shows Secret Service protection lines when the Linux Secret Service is offered', () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          {
+            kind: 'os',
+            name: 'GNOME Keyring',
+            platform: 'linux',
+            available: true,
+            recommended: true,
+          },
+        ],
+        links: { os: { href: '/api/v1/onboarding/store/os', next: 'store.consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByText(
+        'Protects a secret against: reading while the collection is locked and from sandboxes that deny access to Secret Service',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Does not protect against: unconfined programs running as your user while unlocked',
+      ),
+    ).toBeVisible();
+  });
+
+  it('keeps the store reconfiguration action enabled when store.reconfigure-result carries no stores array', async () => {
+    arrange(
+      onboardingState({
+        state: 'store.reconfigure-result',
+        summary: 'Where should this machine keep its tokens?',
+        current: 'keychain',
+        links: { os: { href: '/api/v1/onboarding/store/record', next: 'auto.result' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'auto.result' }));
+
+    render(OnboardingView);
+
+    const recordBtn = screen.getByTestId('store-record');
+    expect(recordBtn).toBeEnabled();
+    await fireEvent.click(recordBtn);
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('os', {}));
+  });
+});
+
+describe('harness.choose monogram and token usage wording (D10)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('draws a monogram when no icon is fetched and says usage complete, usage partial or usage not reported', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.choose',
+        summary: 'Choose the harnesses to enrol',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            version: '2.4.1',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'complete',
+            default: true,
+          },
+          {
+            harness_id: 'opencode',
+            name: 'OpenCode',
+            path: '/opt/homebrew/bin/opencode',
+            version: '1.9.0',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'partial',
+            missing_figures: ['cache_read', 'cache_write'],
+          },
+          {
+            harness_id: 'aider',
+            name: 'Aider',
+            path: '/opt/homebrew/bin/aider',
+            version: '0.72.0',
+            found: true,
+            supported: true,
+            worker_eligible: false,
+            token_usage: 'partial',
+          },
+          {
+            harness_id: 'codex',
+            name: 'Codex',
+            path: '/opt/homebrew/bin/codex',
+            version: '0.31.2',
+            found: true,
+            supported: true,
+            worker_eligible: false,
+            token_usage: 'not_reported',
+          },
+        ],
+        links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    expect(screen.getByTestId('harness-monogram-claude')).toHaveTextContent('CC');
+    expect(screen.getByTestId('harness-monogram-opencode')).toHaveTextContent('O');
+    expect(screen.getByTestId('harness-monogram-codex')).toHaveTextContent('C');
+
+    expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
+    expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
+    expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
+      'usage partial: no cache read, cache write',
+    );
+    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
+    expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
+  });
+
+  it('localises partial missing figures in German on harness.choose', () => {
+    try {
+      messagesStore.set(loadMessages('de'));
+      currentLocale.set('de');
+      arrange(
+        onboardingState({
+          state: 'harness.choose',
+          summary: 'Wähle die Harnesses zum Eintragen',
+          harnesses: [
+            {
+              harness_id: 'claude',
+              name: 'Claude Code',
+              found: true,
+              supported: true,
+              worker_eligible: true,
+              token_usage: 'complete',
+              default: true,
+            },
+            {
+              harness_id: 'opencode',
+              name: 'OpenCode',
+              found: true,
+              supported: true,
+              worker_eligible: true,
+              token_usage: 'partial',
+              missing_figures: ['cache_read', 'cache_write'],
+            },
+          ],
+          links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+        }),
+      );
+
+      const { container } = render(OnboardingView);
+
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
+        'Tokenverbrauch vollständig',
+      );
+      expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
+        'Tokenverbrauch teilweise: ohne aus dem Cache gelesen, in den Cache geschrieben',
+      );
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      currentLocale.set('en');
+    }
+  });
+
+  it('renders TokensScreen for harness.tokens-* with detail on complete and localised missing figures', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.tokens-partial',
+        summary: 'How each harness reports tokens',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            token_usage: 'complete',
+            token_detail: 'input, cache read, output',
+          },
+          {
+            harness_id: 'opencode',
+            name: 'OpenCode',
+            token_usage: 'partial',
+            missing_figures: ['cache_read', 'cache_write'],
+          },
+          {
+            harness_id: 'codex',
+            name: 'Codex',
+            token_usage: 'not_reported',
+          },
+        ],
+        links: { ok: { href: '/api/v1/onboarding/harness/tokens', next: 'catalogue.consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const list = screen.getByTestId('token-reporting');
+    expect(list).toHaveTextContent('Claude Code');
+    expect(list).toHaveTextContent('complete: input, cache read, output');
+    expect(list).toHaveTextContent('OpenCode');
+    expect(list).toHaveTextContent('usage partial: no cache read, cache write');
+    expect(list).toHaveTextContent('Codex');
+    expect(list).toHaveTextContent('usage not reported');
+  });
+
+  it('draws a fetched icon without any stray markup fragment', () => {
+    arrange(
+      onboardingState({
+        state: 'harness.choose',
+        summary: 'Choose the harnesses to enrol',
+        harnesses: [
+          {
+            harness_id: 'claude',
+            name: 'Claude Code',
+            path: '~/.local/bin/claude',
+            version: '2.4.1',
+            found: true,
+            supported: true,
+            worker_eligible: true,
+            token_usage: 'complete',
+            icon_url: '/api/v1/harness-icons/claude.svg',
+            default: true,
+          },
+        ],
+        links: { choose: { href: '/api/v1/onboarding/harness/choose', next: 'harness.probe-consent' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('harness-icon-claude')).toBeInTheDocument();
+    expect(screen.getByTestId('harness-choose-screen').textContent).not.toContain('/>');
   });
 });

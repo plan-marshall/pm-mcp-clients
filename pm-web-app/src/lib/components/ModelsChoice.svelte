@@ -1,53 +1,196 @@
-<script lang="ts">
-  import { t } from '../i18n';
-  import Button from './Button.svelte';
-  import { formatTokens } from '../display/format';
-  import { currentLocale } from '../i18n';
-
+<script lang="ts" module>
   /**
    * ③ Models: the models plans may use, grouped by harness.
    *
    * Tokens, never money: every figure is a token count or a floor estimate, and no price or
    * cost of a model is ever shown.
    */
-  interface ModelRow {
+  export interface ModelRow {
     harness_id: string;
     model_id: string;
+    harness_name?: string;
     source?: string;
     recommended?: boolean;
+    allowed?: boolean;
+    reason?: string;
+    rationale?: string;
     tokens?: number;
     tokens_floor?: boolean;
   }
 
-  export let models: ModelRow[] = [];
+  export interface ModelHarnessInfo {
+    harness_id?: string;
+    name?: string;
+    display_name?: string;
+    cannot_list?: boolean;
+    models_listed?: boolean;
+    reason?: string;
+  }
+</script>
+
+<script lang="ts">
+  import { t, currentLocale, humanizeKey, type Locale } from '../i18n';
+  import { formatTokens } from '../display/format';
+  import Button from './Button.svelte';
+  import Marker from './Marker.svelte';
+  import TextField from './TextField.svelte';
+
+  export let models: readonly ModelRow[] = [];
+  export let harnesses: readonly ModelHarnessInfo[] = [];
   export let harnessNames: Record<string, string> = {};
   export let defaultHarness: string | undefined = undefined;
   export let recommendation: string | undefined = undefined;
+  export let noAdviceReason: string | undefined = undefined;
   export let busy = false;
 
-  export let onRecord: (allowed: ModelRow[]) => void = () => {};
+  export let onRecord: (allowed: ModelRow[], modified: boolean) => void = () => {};
 
-  let selected: string[] = models.map((m) => `${m.harness_id}::${m.model_id}`);
-
-  function key(row: ModelRow): string {
+  function key(row: Pick<ModelRow, 'harness_id' | 'model_id'>): string {
     return `${row.harness_id}::${row.model_id}`;
+  }
+
+  function initiallySelected(rows: readonly ModelRow[]): string[] {
+    if (rows.some((r) => r.allowed !== undefined)) {
+      return rows.filter((r) => r.allowed !== false).map(key);
+    }
+    if (rows.some((r) => typeof r.recommended === 'boolean')) {
+      return rows
+        .filter((r) => r.recommended === true || (r.source === 'operator' && r.recommended !== false))
+        .map(key);
+    }
+    return rows.map(key);
+  }
+
+  function proposalSignature(
+    rows: readonly ModelRow[],
+    harnessInfos: readonly ModelHarnessInfo[],
+    rec?: string,
+  ): string {
+    return JSON.stringify([
+      rec ?? '',
+      rows.map((r) => [
+        r.harness_id,
+        r.model_id,
+        r.source ?? '',
+        r.recommended ?? null,
+        r.allowed ?? null,
+      ]),
+      harnessInfos.map((h) => [h.harness_id ?? '', h.cannot_list ?? null, h.models_listed ?? null]),
+    ]);
+  }
+
+  let extraModels: ModelRow[] = [];
+  let removedKeys: string[] = [];
+  let modified = false;
+  let draftByHarness: Record<string, string> = {};
+  let prevProposalSignature = proposalSignature(models, harnesses, recommendation);
+  let selected: string[] = initiallySelected(models);
+
+  $: {
+    const nextSignature = proposalSignature(models, harnesses, recommendation);
+    if (nextSignature !== prevProposalSignature) {
+      prevProposalSignature = nextSignature;
+      extraModels = [];
+      removedKeys = [];
+      modified = false;
+      draftByHarness = {};
+      selected = initiallySelected(models);
+    }
+  }
+
+  $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
+
+  $: groups = buildGroups(allModels, harnesses, models);
+
+  $: allowed = allModels.filter((row) => selected.includes(key(row)));
+
+  function buildGroups(
+    rows: readonly ModelRow[],
+    harnessInfos: readonly ModelHarnessInfo[],
+    initialRows: readonly ModelRow[],
+  ): Array<[string, ModelRow[]]> {
+    const grouped: Record<string, ModelRow[]> = Object.create(null);
+    // Show one group for every enrolled harness, even when it reports zero listed models.
+    for (const info of harnessInfos) {
+      if (info.harness_id) {
+        grouped[info.harness_id] ??= [];
+      }
+    }
+    // Keep initial harnesses even if all their models are later removed.
+    for (const row of initialRows) {
+      grouped[row.harness_id] ??= [];
+    }
+    for (const row of rows) {
+      (grouped[row.harness_id] ??= []).push(row);
+    }
+    return Object.entries(grouped);
   }
 
   function toggle(row: ModelRow): void {
     const id = key(row);
     selected = selected.includes(id) ? selected.filter((v) => v !== id) : [...selected, id];
+    modified = true;
   }
 
-  $: groups = models.reduce<Record<string, ModelRow[]>>((acc, row) => {
-    (acc[row.harness_id] ??= []).push(row);
-    return acc;
-  }, {});
+  function setDraft(harnessId: string, value: string): void {
+    draftByHarness = { ...draftByHarness, [harnessId]: value };
+  }
 
-  $: allowed = models.filter((row) => selected.includes(key(row)));
+  function addOperatorModel(harnessId: string): void {
+    const modelId = (Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim();
+    if (!modelId) return;
+    const id = key({ harness_id: harnessId, model_id: modelId });
+    // Inspect incoming `models` and `extraModels` directly rather than deferred `$: allModels`
+    // so re-adding a removed initial model does not create a duplicate row.
+    if (models.some((m) => key(m) === id)) {
+      removedKeys = removedKeys.filter((k) => k !== id);
+    } else if (!extraModels.some((m) => key(m) === id)) {
+      extraModels = [...extraModels, { harness_id: harnessId, model_id: modelId, source: 'operator' }];
+    }
+    if (!selected.includes(id)) {
+      selected = [...selected, id];
+    }
+    draftByHarness = { ...draftByHarness, [harnessId]: '' };
+    modified = true;
+  }
 
-  function tokensLabel(row: ModelRow): string {
+  function removeOperatorModel(row: ModelRow): void {
+    const id = key(row);
+    selected = selected.filter((v) => v !== id);
+    if (extraModels.some((m) => key(m) === id)) {
+      extraModels = extraModels.filter((m) => key(m) !== id);
+    } else if (!removedKeys.includes(id)) {
+      removedKeys = [...removedKeys, id];
+    }
+    modified = true;
+  }
+
+  function resolveHarnessName(harnessId: string): string {
+    const fromProp = harnesses.find((h) => h.harness_id === harnessId);
+    const propLabel = fromProp?.display_name ?? fromProp?.name;
+    if (propLabel) return propLabel;
+    if (Object.hasOwn(harnessNames, harnessId) && harnessNames[harnessId]) {
+      return harnessNames[harnessId];
+    }
+    const fromModel = allModels.find((m) => m.harness_id === harnessId)?.harness_name;
+    if (fromModel) return fromModel;
+    return humanizeKey(harnessId);
+  }
+
+  function cannotList(harnessId: string, rows: readonly ModelRow[]): boolean {
+    const info = harnesses.find((h) => h.harness_id === harnessId);
+    if (info?.cannot_list !== undefined) return info.cannot_list;
+    if (info?.models_listed !== undefined) return !info.models_listed;
+    const initialForHarness = models.filter((m) => m.harness_id === harnessId);
+    if (initialForHarness.length > 0) {
+      return !initialForHarness.some((r) => r.source === 'probe');
+    }
+    return !rows.some((r) => r.source === 'probe');
+  }
+
+  function tokensLabel(row: ModelRow, locale: Locale, _translate?: unknown): string {
     if (row.tokens === undefined) return '';
-    return formatTokens(row.tokens, Boolean(row.tokens_floor), $currentLocale);
+    return formatTokens(row.tokens, Boolean(row.tokens_floor), locale);
   }
 </script>
 
@@ -57,41 +200,111 @@
       <h3 class="recommendation__title">{$t('onboard.catalogue.select.recommendation')}</h3>
       <p class="recommendation__text">{recommendation}</p>
     </div>
+  {:else if noAdviceReason}
+    <p class="choice-screen__note" data-testid="model-no-advice">
+      {$t('onboard.catalogue.models.no_advice', { reason: noAdviceReason })}
+    </p>
   {/if}
 
-  {#each Object.entries(groups) as [harnessId, rows]}
+  {#each groups as [harnessId, rows] (harnessId)}
     <div class="model-group" data-harness={harnessId}>
-      <h3 class="choice-screen__label">
-        {$t('onboard.catalogue.select.group', {
-          harness: harnessNames[harnessId] ?? harnessId,
-          mark:
-            defaultHarness === harnessId ? `· ${$t('onboard.harness.choose.default_label')}` : '',
-        })}
-      </h3>
-      <ul class="choice-screen__list">
-        {#each rows as row}
-          <li class="choice-screen__row">
-            <input
-              type="checkbox"
-              checked={selected.includes(key(row))}
-              aria-label={row.model_id}
-              onchange={() => toggle(row)}
-              data-testid={`model-toggle-${harnessId}-${row.model_id}`}
+      <div class="model-group__header">
+        <h3 class="choice-screen__label">{resolveHarnessName(harnessId)}</h3>
+        {#if defaultHarness === harnessId}
+          <Marker kind="default" label={resolveHarnessName(harnessId)} />
+        {/if}
+        {#if cannotList(harnessId, rows)}
+          <span class="choice-screen__row-meta" data-testid={`models-cannot-list-${harnessId}`}>
+            {$t('onboard.catalogue.models.cannot_list')}
+          </span>
+        {/if}
+      </div>
+
+      {#if rows.length > 0}
+        <ul class="choice-screen__list">
+          {#each rows as row (key(row))}
+            {@const rowKey = key(row)}
+            {@const isChecked = selected.includes(rowKey)}
+            {@const rowReason = row.reason ?? row.rationale}
+            <li class="choice-screen__row">
+              <input
+                type="checkbox"
+                checked={isChecked}
+                aria-label={row.model_id}
+                onchange={() => toggle(row)}
+                data-testid={`model-toggle-${harnessId}-${row.model_id}`}
+              />
+              <div class="choice-screen__row-main">
+                <span class="choice-screen__row-title mono">{row.model_id}</span>
+                {#if rowReason}
+                  <span class="choice-screen__row-meta">{rowReason}</span>
+                {/if}
+                {#if row.tokens !== undefined}
+                  <span class="choice-screen__row-meta">
+                    {tokensLabel(row, $currentLocale, $t)}
+                  </span>
+                {/if}
+              </div>
+              <div class="choice-screen__row-side">
+                {#if row.recommended && isChecked}
+                  <Marker kind="recommended" label={row.model_id} />
+                {/if}
+                {#if row.source === 'operator'}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={$t('onboard.catalogue.select.remove_model_for', {
+                      model: row.model_id,
+                      harness: resolveHarnessName(row.harness_id),
+                    })}
+                    on:click={() => removeOperatorModel(row)}
+                    data-testid={`model-remove-${harnessId}-${row.model_id}`}
+                  >
+                    {$t('onboard.catalogue.select.remove_model')}
+                  </Button>
+                {/if}
+              </div>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      {#if !rows.some((r) => selected.includes(key(r)))}
+        <p class="choice-screen__note" data-testid={`models-none-${harnessId}`}>
+          {$t('onboard.catalogue.select.no_models')}
+        </p>
+      {/if}
+
+      {#if cannotList(harnessId, rows)}
+        <div class="model-group__add">
+          <div class="model-group__add-field">
+            <TextField
+              mono
+              label={$t('onboard.catalogue.select.model_id_prompt', {
+                harness: resolveHarnessName(harnessId),
+              })}
+              placeholder={$t('onboard.catalogue.select.model_id_placeholder')}
+              value={Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : ''}
+              testid={`models-input-${harnessId}`}
+              oninput={(e) => setDraft(harnessId, e.currentTarget.value)}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  addOperatorModel(harnessId);
+                }
+              }}
             />
-            <div class="choice-screen__row-main">
-              <span class="choice-screen__row-title mono">{row.model_id}</span>
-              {#if tokensLabel(row)}
-                <span class="choice-screen__row-meta">{tokensLabel(row)}</span>
-              {/if}
-            </div>
-            {#if row.recommended}
-              <span class="choice-screen__badge choice-screen__badge--default">
-                {$t('onboard.catalogue.select.recommendation')}
-              </span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
+          </div>
+          <Button
+            variant="secondary"
+            size="md"
+            disabled={!(Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim()}
+            on:click={() => addOperatorModel(harnessId)}
+            data-testid={`models-add-${harnessId}`}
+          >
+            {$t('onboard.catalogue.select.add_model')}
+          </Button>
+        </div>
+      {/if}
     </div>
   {/each}
 
@@ -100,7 +313,7 @@
       variant="primary"
       disabled={allowed.length === 0}
       loading={busy}
-      on:click={() => onRecord(allowed)}
+      on:click={() => onRecord(allowed, modified)}
       data-testid="models-record"
     >
       {$t('onboard.catalogue.select.action', { count: allowed.length })}
@@ -111,15 +324,15 @@
 <style>
   .recommendation {
     padding: var(--space-4);
-    background-color: var(--color-primary-subtle);
-    border: 1px solid var(--color-primary);
+    background-color: var(--color-brand-subtle);
+    border: 1px solid var(--color-brand);
     border-radius: var(--radius-md);
   }
 
   .recommendation__title {
     font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-primary);
+    color: var(--color-brand);
     margin-bottom: var(--space-1);
   }
 
@@ -134,28 +347,23 @@
     gap: var(--space-2);
   }
 
-  .recommendation {
-    padding: var(--space-4);
-    background-color: var(--color-primary-subtle);
-    border: 1px solid var(--color-primary);
-    border-radius: var(--radius-md);
-  }
-
-  .recommendation__title {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-primary);
-    margin-bottom: var(--space-1);
-  }
-
-  .recommendation__text {
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-  }
-
-  .model-group {
+  .model-group__header {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--space-2);
+  }
+
+  .model-group__add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  .model-group__add-field {
+    flex: 1 1 16rem;
+    min-width: 0;
   }
 </style>

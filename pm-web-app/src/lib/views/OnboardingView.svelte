@@ -191,18 +191,22 @@
     return $t('onboard.completed.summary');
   }
 
-  function arrayField<T>(name: string): T[] {
+  // Shared frozen sentinel so absent array fields keep reference identity across store updates.
+  const EMPTY_ARRAY: readonly unknown[] = Object.freeze([]);
+
+  function arrayField<T>(name: string): readonly T[] {
     const value = currentState?.[name];
-    return Array.isArray(value) ? (value as T[]) : [];
+    return Array.isArray(value) ? (value as readonly T[]) : (EMPTY_ARRAY as readonly T[]);
   }
 
   function harnessNames(): Record<string, string> {
-    const names: Record<string, string> = {};
-    const harnesses = $runtimeStore.onboarding?.harnesses;
+    const names: Record<string, string> = Object.create(null);
+    const harnesses = currentState?.harnesses ?? $runtimeStore.onboarding?.harnesses;
     if (Array.isArray(harnesses)) {
       for (const harness of harnesses as Array<Record<string, unknown>>) {
-        if (harness.harness_id && harness.name) {
-          names[String(harness.harness_id)] = String(harness.name);
+        const label = harness.display_name ?? harness.name;
+        if (harness.harness_id && label) {
+          names[String(harness.harness_id)] = String(label);
         }
       }
     }
