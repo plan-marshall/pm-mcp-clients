@@ -811,6 +811,19 @@ class PlanChangesScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a gone capture of a plan whose figures nobody stated")
+        void refusesAGoneCaptureWithoutFigures() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement("relay-metrics", "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                                unavailableCapture("relay-metrics", "gone")));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertInstanceOf(PlanChangesNotCaptured.class, readChanges(runtime, "relay-metrics"));
+            }
+        }
+
+        @Test
         @DisplayName("a state without its own captures serves the base capture again after a replacement")
         void servesTheBaseCaptureAfterATransition() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
@@ -1294,6 +1307,27 @@ class PlanChangesScenarioTest {
             assertDoesNotThrow(() -> ScenarioLoader.load(twice, StandardScenarios.RUNNING_WORK));
             refusesTheLoad(withScheduledCapture(gone, announcement(FIX_RELAY, "b2c3d4e5f6a1",
                     new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
+        }
+
+        @Test
+        @DisplayName("validates a scheduled capture of a plan whose fixture is already gone")
+        void validatesAGoneFixture() throws Exception {
+            var valid = scenarioJson();
+            var root = JsonTree.asObject(JsonTree.parse(valid));
+            var runtime = startRuntime(root);
+            var routes = JsonTree.object(runtime, "routes");
+            if (routes == null) {
+                routes = new LinkedHashMap<>();
+                runtime.put("routes", routes);
+            }
+            var override = new LinkedHashMap<String, Object>();
+            override.put("plan_id", "docs-typo");
+            override.put("change", Map.of("files", 1, "insertions", 2, "deletions", 0, "unplanned", 0));
+            routes.put("GET /api/v1/plans/docs-typo/process", override);
+            var gone = withScheduledCapture(JsonTree.write(root), announcement("docs-typo", "a1b2c3d4e5f6",
+                    new ChangeSize(1, 2, 0, 0), unavailableCapture("docs-typo", "gone")));
+
+            assertDoesNotThrow(() -> ScenarioLoader.load(gone, StandardScenarios.RUNNING_WORK));
         }
 
         @Test

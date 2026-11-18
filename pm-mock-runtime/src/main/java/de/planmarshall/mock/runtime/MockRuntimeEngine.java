@@ -8234,7 +8234,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return the size the plan's process route declares, or {@code null} when it declares none
      */
     private @Nullable ChangeSize declaredChangeOf(String planId) {
-        var route = activeRoute("GET", "/api/v1/plans/" + planId + "/process");
+        var route = activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS);
         if (route == null || !(route.representation() instanceof Map<?, ?> representation)) {
             return null;
         }

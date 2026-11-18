@@ -1716,7 +1716,7 @@ describe('PlanView’s Changes tab', () => {
 
     // Assert: neither the size nor the open list moved for another plan's capture.
     expect(screen.getByTestId('plan-change-size').textContent).toBe(sizeBefore);
-    expect(readList.mock.calls.length).toBe(readsBefore);
+    expect(readList).toHaveBeenCalledTimes(readsBefore);
   });
 
   it('opens Process and replaces an address that names a tab this view does not draw', async () => {
