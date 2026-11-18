@@ -209,7 +209,7 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#bundle-content[Bundle Manifest § the shim skill the installer places]
+Documentation: link:../../plan-marshall-documentation/doc/specification/harness-integration/02-bundle-manifest.adoc#bundle-content[Bundle Manifest § the shim skill the installer places]
 
 == link:../../plan-marshall-documentation/doc/requirements/04-tools.adoc[Tools]
 
@@ -225,6 +225,17 @@ Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of 
 Documentation: link:specification/runtime-model/03-relay.adoc#relay-rules[Relay § Relay Rules]
 
 == link:../../plan-marshall-documentation/doc/requirements/06-execution.adoc[Execution]
+
+[#PM-EXEC-1]
+=== PM-EXEC-1: Wrapper-First Execution & Enrolled Host Tools
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-EXEC-1[PM-EXEC-1]
+
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the `enrol-harness` verb and the harness enrolment it records)
+
+Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
+
+Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-enrol-harness[Operator Acts § Harness Enrolment]
 
 [#PM-IMPL-4]
 === PM-IMPL-4: Bounded Long-Poll & Progress-Reset Waiting Primitives
@@ -272,6 +283,17 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts & Runtime Secret Redaction]
 
+[#PM-CRED-3]
+=== PM-CRED-3: Permission-Guarded File Credential Store
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CRED-3[PM-CRED-3]
+
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the machine-root deny rules the bundle installs over `<PM_MCP_BASE>`, which holds the file credential store)
+
+Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
+
+Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#bundle-manifest-scopes[Bundle Manifest § Machine Root Deny Rules]
+
 [#PM-CRED-4]
 === PM-CRED-4: Operator-Only Secret Entry & Zero Model Exposure
 
@@ -306,6 +328,17 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`], lin
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`], link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
 Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
+
+[#PM-SEC-2]
+=== PM-SEC-2: Workspace Confinement & Path Traversal Prevention
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-2[PM-SEC-2]
+
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the containment of the target a client names, the harness install targets, and the cross-project grant check)
+
+Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
+
+Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-grant-access[Cross-Project Access], link:specification/harness-integration/02-bundle-manifest.adoc#bundle-manifest-scopes[Bundle Manifest § Machine Root Deny Rules]
 
 [#PM-SEC-3]
 === PM-SEC-3: Operator Channel Isolation (Operator CLI & Paired Web Devices)
@@ -430,7 +463,7 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_install_update_remove[Ownership & Digest Verification]
+Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Ownership & Digest Verification]
 
 [#PM-DIST-2]
 === PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer
@@ -474,7 +507,7 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_install_update_remove[Ownership & Digest Verification]
+Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Ownership & Digest Verification]
 
 == link:../../plan-marshall-documentation/doc/requirements/11-migration.adoc[Migration]
 
