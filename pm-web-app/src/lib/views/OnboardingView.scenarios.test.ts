@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
 import { loadOnboardingState, runtimeStore } from '../stores/runtime';
@@ -1391,5 +1391,110 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(summary).toHaveTextContent('Deutsch, models English');
     expect(summary).toHaveTextContent('31 roles assigned');
     expect(screen.getByRole('button', { name: /continue/i })).toBeInTheDocument();
+  });
+});
+
+describe('catalogue.select recommendation and manual model entry (D8)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  it('preselects the recommendation with a recommended mark and reason, and drops the mark when unchecked', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        reason: 'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
+        models: [
+          {
+            harness_id: 'claude',
+            model_id: 'opus-4.6',
+            source: 'probe',
+            recommended: true,
+            reason: 'Best for planning and review',
+          },
+          { harness_id: 'claude', model_id: 'sonnet-4.6', source: 'probe', recommended: true },
+          { harness_id: 'claude', model_id: 'haiku-4.5', source: 'probe', recommended: false },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+
+    const { container } = render(OnboardingView);
+
+    const opusToggle = screen.getByTestId('model-toggle-claude-opus-4.6');
+    const sonnetToggle = screen.getByTestId('model-toggle-claude-sonnet-4.6');
+    const haikuToggle = screen.getByTestId('model-toggle-claude-haiku-4.5');
+    expect(opusToggle).toBeChecked();
+    expect(sonnetToggle).toBeChecked();
+    expect(haikuToggle).not.toBeChecked();
+
+    expect(screen.getByTestId('model-recommendation')).toHaveTextContent(
+      'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
+    );
+    expect(screen.getByText('Best for planning and review')).toBeVisible();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
+
+    const opusRow = opusToggle.closest('li');
+    expect(opusRow).not.toBeNull();
+    expect(within(opusRow as HTMLElement).getByText('recommended')).toBeVisible();
+
+    await fireEvent.click(opusToggle);
+
+    expect(opusToggle).not.toBeChecked();
+    expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
+
+  it('offers a text field to enter model ids for a harness that cannot list its models', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [
+          { harness_id: 'claude', model_id: 'opus-5.5', source: 'probe' },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' },
+          { harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.record' }));
+
+    const { container } = render(OnboardingView);
+
+    const claudeGroup = container.querySelector('[data-harness="claude"]');
+    const opencodeGroup = container.querySelector('[data-harness="opencode"]');
+    expect(claudeGroup).not.toBeNull();
+    expect(opencodeGroup).not.toBeNull();
+
+    expect(within(claudeGroup as HTMLElement).queryByTestId('models-input-claude')).toBeNull();
+    expect(opencodeGroup).toHaveTextContent('cannot list its models');
+
+    const input = within(opencodeGroup as HTMLElement).getByTestId('models-input-opencode');
+    await fireEvent.input(input, { target: { value: 'anthropic/claude-opus-4-6' } });
+    await fireEvent.click(within(opencodeGroup as HTMLElement).getByTestId('models-add-opencode'));
+
+    const addedToggle = screen.getByTestId('model-toggle-opencode-anthropic/claude-opus-4-6');
+    expect(addedToggle).toBeChecked();
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 4 models');
+
+    await fireEvent.click(screen.getByTestId('models-record'));
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('set', {
+        models: expect.arrayContaining([
+          expect.objectContaining({
+            harness_id: 'opencode',
+            model_id: 'anthropic/claude-opus-4-6',
+            source: 'operator',
+          }),
+        ]),
+      }),
+    );
   });
 });
