@@ -91,7 +91,9 @@ public final class CleanupCommand implements Callable<Integer> {
     /** A kind of ended work, as the runtime names it and as the summary's placeholders read it. */
     private static final String KIND_PLANS = "plans";
     private static final String KIND_EPICS = "epics";
+    private static final String KIND_LOGS = "logs";
     private static final String KIND_REPORTS = "reports";
+    private static final String KIND_PROJECTS = "projects";
 
     private final OperatorContext context;
     private final PromptFactory prompts;
@@ -766,7 +768,7 @@ public final class CleanupCommand implements Callable<Integer> {
             return MessageCatalogue.format(locale, "system.cleanup.durations.summary",
                                 Map.of("days", days.getFirst(), "remind", durations.remindAfterDays(), "own", 0));
         }
-        var kinds = List.of(KIND_PLANS, KIND_EPICS, "logs", KIND_REPORTS, "unenrolled");
+        var kinds = List.of(KIND_PLANS, KIND_EPICS, KIND_LOGS, KIND_REPORTS, "unenrolled");
         var parts = new ArrayList<String>();
         for (int i = 0; i < kinds.size(); i++) {
             var value = days.get(i);
@@ -926,8 +928,8 @@ public final class CleanupCommand implements Callable<Integer> {
                             Map.of("id", job.jobId(), "time", OutputSafety.stripControlSequences(job.dueSince()))));
         var s = job.summary();
         out.println(MessageCatalogue.format(locale, "operator.cleanup.summary",
-                            Map.of(KIND_PLANS, s.plansCount(), KIND_EPICS, s.epicsCount(), "logs", s.logsCount(),
-                                                KIND_REPORTS, s.reportsCount(), "projects", s.projectsCount())));
+                            Map.of(KIND_PLANS, s.plansCount(), KIND_EPICS, s.epicsCount(), KIND_LOGS, s.logsCount(),
+                                                KIND_REPORTS, s.reportsCount(), KIND_PROJECTS, s.projectsCount())));
         out.println(MessageCatalogue.format(locale, "operator.cleanup.summary_frees",
                             Map.of("size", SystemCommand.formatBytes(s.freedBytes()))));
         printWholeJobActionNote(out);
@@ -1262,8 +1264,8 @@ public final class CleanupCommand implements Callable<Integer> {
     static String previewText(String locale, DeletePreview preview, int unchecked) {
         var text = new StringBuilder();
         text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview", Map.of(
-                            "plans", preview.plans(), "epics", preview.epics(), "logs", preview.logs(),
-                            "reports", preview.reports(), "projects", preview.projects()))).append('\n');
+                            KIND_PLANS, preview.plans(), KIND_EPICS, preview.epics(), KIND_LOGS, preview.logs(),
+                            KIND_REPORTS, preview.reports(), KIND_PROJECTS, preview.projects()))).append('\n');
         text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_frees",
                             Map.of("size", SystemCommand.formatBytes(preview.freedBytes())))).append('\n');
         text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_keep", Map.of()));
