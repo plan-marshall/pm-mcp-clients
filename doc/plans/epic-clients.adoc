@@ -51,7 +51,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 
 Beside the rules of `CLAUDE.md` and of link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work], for every plan of the epic:
 
-* *Use cases and specification first.* A package implements what the use cases, the specification sections its file names, and the design state; a gap found in a use case or the specification is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`, `doc/specification/`), a gap in a client's design here (`doc/design/`).
+* *Use cases and specification first.* A package implements what the use cases, the specification sections its file names, and the design state; a gap found in a use case is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`), a gap in a client's specification here (`doc/Specification.adoc`, `doc/specification/`), a gap in a client's design here (`doc/design/`).
 * *Both clients, one state.* A state is never designed or built for one client only; the texts come from the message catalogue, never from a client's code.
 * *The design principles of the onboarding hold everywhere*: nothing happens without the operator's consent; preselect as much as possible and hide nothing; every check reports a checkmark or an error with its fix (link:../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc[UC-ONB]).
 * *Mock first.* Every client-facing flow ships its scenarios; a client test runs against the mock runtime, never against a hand-made fake.

@@ -26,7 +26,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+Requirements and use cases stay in `plan-marshall-documentation`; the specifications of the client modules,
+their implementation watch and the traceability live in this repository (`doc/Specification.adoc`,
+`doc/specification/`, `doc/ImplementationWatch.adoc`, `doc/implementation-watch/`, `doc/Traceability.adoc`); the
+specifications of the engine and their watch documents stay in `pm-mcp-core`.
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11], link:../../../plan-marshall-documentation/doc/requirements/03-skills.adoc#PM-SKILL-2[PM-SKILL-2]
 * Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-layout[Runtime & Interaction Model § Layout], link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[CLI, Coordination & Security § Diagrams], link:../../../pm-mcp-core/doc/specification/workflow-dsl/07-loop-back-diagrams-verification.adoc#diagram-layout[Workflow DSL § Positioned Layout], link:../../../pm-mcp-core/doc/specification/store-schemas/08-project-configuration-local.adoc#project-levels[Store Schemas § Project Values over Machine Values]

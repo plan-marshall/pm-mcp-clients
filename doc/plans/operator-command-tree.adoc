@@ -23,7 +23,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
+Requirements and use cases stay in `plan-marshall-documentation`; the specifications of the client modules,
+their implementation watch and the traceability live in this repository (`doc/Specification.adoc`,
+`doc/specification/`, `doc/ImplementationWatch.adoc`, `doc/implementation-watch/`, `doc/Traceability.adoc`); the
+specifications of the engine and their watch documents stay in `pm-mcp-core`. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
 
 * Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-3[PM-SEC-3]
 * Specification: link:../specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]; link:../specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[§ Operator Channel Isolation]
