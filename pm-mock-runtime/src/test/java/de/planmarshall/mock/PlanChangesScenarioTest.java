@@ -791,6 +791,7 @@ class PlanChangesScenarioTest {
                         "a gone capture moves on to a new capture, never back");
             }
         }
+
         @Test
         @DisplayName("a state without its own captures serves the base capture again after a replacement")
         void servesTheBaseCaptureAfterATransition() throws Exception {
