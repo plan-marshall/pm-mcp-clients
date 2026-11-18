@@ -1262,6 +1262,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return copy;
     }
 
+    /** The member a plan's representation carries the size of its change in. */
+    private static final String FIELD_CHANGE = "change";
+
     /**
      * Writes the size of the capture the changes route serves onto a plan's representation: the
      * capture's own totals where the plan is captured, no size where its changes were never captured,
@@ -1275,18 +1278,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (planChangesLock) {
             var answer = planChanges.get(planId);
             if (answer instanceof PlanChangesCaptured captured) {
-                copy.put("change", captured.totals().toMap());
+                copy.put(FIELD_CHANGE, captured.totals().toMap());
                 return;
             }
             if (answer instanceof PlanChangesUnavailable) {
                 var last = planChangeSizes.get(planId);
                 if (last != null) {
-                    copy.put("change", last.toMap());
+                    copy.put(FIELD_CHANGE, last.toMap());
                 }
                 return;
             }
             if (answer instanceof PlanChangesNotCaptured) {
-                copy.remove("change");
+                copy.remove(FIELD_CHANGE);
             }
         }
     }
