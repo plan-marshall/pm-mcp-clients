@@ -44,13 +44,20 @@
 
   /**
    * @param name the fact's name @returns the sentence's half: the string the runtime sent, or the
-   *         items of its list, or `null` when it sent neither
+   *         items of its list (their names where they are objects), or `null` when it sent neither
    */
   function wording(name: string): string | null {
     const value = (view.state as Record<string, unknown> | null)?.[name];
     if (typeof value === 'string' && value.length > 0) return value;
-    if (Array.isArray(value) && value.length > 0) return value.map(String).join(', ');
-    return null;
+    if (!Array.isArray(value) || value.length === 0) return null;
+    return value
+      .map((item: unknown) => {
+        if (typeof item === 'string') return item;
+        const entry = item as Record<string, unknown> | null;
+        return String(entry?.name ?? entry?.harness_id ?? '');
+      })
+      .filter((word) => word.length > 0)
+      .join(', ');
   }
 
   /**
@@ -59,7 +66,7 @@
    */
   const lookedForText = $derived.by(() => {
     if (failed.length > 0) return null;
-    const harnesses = wording('harnesses');
+    const harnesses = wording('looks_for') ?? wording('harnesses');
     const locations = wording('locations');
     if (!harnesses || !locations) return null;
     return $t('onboard.harness.none.looked_for', { harnesses, locations });

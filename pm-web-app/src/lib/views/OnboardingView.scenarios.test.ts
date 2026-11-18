@@ -1020,7 +1020,7 @@ describe('OnboardingView against the mock runtime states', () => {
       onboardingState({
         state: 'harness.none',
         summary: 'No harness found',
-        harnesses: ['claude', 'opencode'],
+        looks_for: 'claude, opencode',
         locations: 'your PATH, ~/.local/bin',
       }),
     );
