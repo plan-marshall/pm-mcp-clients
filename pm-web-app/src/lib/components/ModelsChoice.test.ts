@@ -45,8 +45,8 @@ describe('ModelsChoice', () => {
         },
       });
 
-      expect(screen.getByRole('button', { name: 'Remove model-a' })).toBeVisible();
-      expect(screen.getByRole('button', { name: 'Remove model-b' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Remove model-a from OpenCode' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Remove model-b from OpenCode' })).toBeVisible();
       expect(container).toHaveTextContent('2.0 k');
       expect(container).toHaveTextContent('≥ 5.0 k');
 
@@ -54,13 +54,82 @@ describe('ModelsChoice', () => {
       messagesStore.set(loadMessages('de'));
       await tick();
 
-      expect(screen.getByRole('button', { name: 'model-a entfernen' })).toBeVisible();
-      expect(screen.getByRole('button', { name: 'model-b entfernen' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'model-a bei OpenCode entfernen' })).toBeVisible();
+      expect(screen.getByRole('button', { name: 'model-b bei OpenCode entfernen' })).toBeVisible();
       expect(container).toHaveTextContent('2,0 Tsd.');
       expect(container).toHaveTextContent('≥ 5,0 Tsd.');
     } finally {
       currentLocale.set('en');
       messagesStore.set(loadMessages('en'));
     }
+  });
+
+  it('gives duplicate model ids in different harnesses distinct Remove accessible names', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [
+          { harness_id: 'claude', model_id: 'shared-model', source: 'operator' },
+          { harness_id: 'opencode', model_id: 'shared-model', source: 'operator' },
+        ],
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code', cannot_list: true },
+          { harness_id: 'opencode', name: 'OpenCode', cannot_list: true },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove shared-model from Claude Code' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Remove shared-model from OpenCode' })).toBeVisible();
+  });
+
+  it('shows an enrolled models_listed harness with zero models and shows no model allowed when all models are unchecked', async () => {
+    const { container, getByTestId } = render(ModelsChoice, {
+      props: {
+        models: [{ harness_id: 'claude', model_id: 'opus-4.6', source: 'probe' }],
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code', models_listed: true },
+          { harness_id: 'codex', name: 'Codex', models_listed: true },
+        ],
+      },
+    });
+
+    const codexGroup = container.querySelector('[data-harness="codex"]');
+    expect(codexGroup).not.toBeNull();
+    expect(codexGroup).toHaveTextContent('no model allowed');
+    expect(container.querySelector('[data-testid="models-input-codex"]')).toBeNull();
+
+    await fireEvent.click(getByTestId('model-toggle-claude-opus-4.6'));
+    expect(getByTestId('model-toggle-claude-opus-4.6')).not.toBeChecked();
+    expect(getByTestId('models-none-claude')).toHaveTextContent('no model allowed');
+  });
+
+  it('preserves operator edits when rerendered with identical proposal content in new arrays', async () => {
+    const models = [{ harness_id: 'claude', model_id: 'opus-4.6', source: 'probe' }];
+    const harnesses = [
+      { harness_id: 'claude', name: 'Claude Code', models_listed: true },
+      { harness_id: 'opencode', name: 'OpenCode', cannot_list: true },
+    ];
+    const { rerender, getByTestId } = render(ModelsChoice, {
+      props: {
+        models: models.map((m) => ({ ...m })),
+        harnesses: harnesses.map((h) => ({ ...h })),
+        recommendation: 'Pick Opus',
+      },
+    });
+
+    await fireEvent.click(getByTestId('model-toggle-claude-opus-4.6'));
+    await fireEvent.input(getByTestId('models-input-opencode'), { target: { value: 'qwen-32b' } });
+    await fireEvent.click(getByTestId('models-add-opencode'));
+    expect(getByTestId('model-toggle-claude-opus-4.6')).not.toBeChecked();
+    expect(getByTestId('model-toggle-opencode-qwen-32b')).toBeChecked();
+
+    await rerender({
+      models: models.map((m) => ({ ...m })),
+      harnesses: harnesses.map((h) => ({ ...h })),
+      recommendation: 'Pick Opus',
+    });
+
+    expect(getByTestId('model-toggle-claude-opus-4.6')).not.toBeChecked();
+    expect(getByTestId('model-toggle-opencode-qwen-32b')).toBeChecked();
   });
 });

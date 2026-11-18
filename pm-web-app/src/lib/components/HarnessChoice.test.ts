@@ -145,4 +145,27 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-toggle-codex')).toBeChecked();
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, Codex the default');
   });
+
+  it('keeps pending harness and default choices when selection-relevant content is unchanged', async () => {
+    const base = [
+      harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+      harness({ harness_id: 'opencode', name: 'OpenCode' }),
+    ];
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: { harnesses: base.map((h) => ({ ...h })) },
+    });
+
+    await fireEvent.click(getByTestId('harness-default-opencode'));
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+
+    await rerender({
+      harnesses: base.map((h) => ({ ...h, token_detail: 'refreshed-metadata-only' })),
+    });
+
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-toggle-opencode')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+  });
 });

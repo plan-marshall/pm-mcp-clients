@@ -194,9 +194,9 @@
   // Shared frozen sentinel so absent array fields keep reference identity across store updates.
   const EMPTY_ARRAY: readonly unknown[] = Object.freeze([]);
 
-  function arrayField<T>(name: string): T[] {
+  function arrayField<T>(name: string): readonly T[] {
     const value = currentState?.[name];
-    return Array.isArray(value) ? (value as T[]) : (EMPTY_ARRAY as T[]);
+    return Array.isArray(value) ? (value as readonly T[]) : (EMPTY_ARRAY as readonly T[]);
   }
 
   function harnessNames(): Record<string, string> {

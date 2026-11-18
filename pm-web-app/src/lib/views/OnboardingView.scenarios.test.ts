@@ -1693,7 +1693,7 @@ describe('store.choose protection lines per option (D9)', () => {
 
     expect(
       screen.getByText(
-        'Protects a secret against: reading while the collection is locked and from confined jobs',
+        'Protects a secret against: reading while the collection is locked and from sandboxes that deny access to Secret Service',
       ),
     ).toBeVisible();
     expect(

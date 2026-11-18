@@ -30,14 +30,14 @@
   }
 
   export let kind: 'store' | 'providers' = 'store';
-  export let stores: StoreRow[] = [];
-  export let providers: ProviderRow[] = [];
+  export let stores: readonly StoreRow[] = [];
+  export let providers: readonly ProviderRow[] = [];
 
   export let busy = false;
 
   export let onRecord: (choice: unknown) => void = () => {};
 
-  function pickDefaultStore(list: StoreRow[]): string {
+  function pickDefaultStore(list: readonly StoreRow[]): string {
     return (
       list.find((s) => s.available && s.recommended)?.kind ??
       list.find((s) => s.available)?.kind ??
@@ -45,19 +45,33 @@
     );
   }
 
-  let prevStores = stores;
-  let prevProviders = providers;
+  function storesSignature(list: readonly StoreRow[]): string {
+    return JSON.stringify(list.map((s) => [s.kind, s.name, s.available, Boolean(s.recommended)]));
+  }
+
+  function providersSignature(list: readonly ProviderRow[]): string {
+    return JSON.stringify(list.map((p) => [p.provider, p.name, p.available]));
+  }
+
+  let prevStoresSignature = storesSignature(stores);
+  let prevProvidersSignature = providersSignature(providers);
   let selectedStore = pickDefaultStore(stores);
   let selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
 
-  $: if (stores !== prevStores) {
-    prevStores = stores;
-    selectedStore = pickDefaultStore(stores);
+  $: {
+    const nextStoresSignature = storesSignature(stores);
+    if (nextStoresSignature !== prevStoresSignature) {
+      prevStoresSignature = nextStoresSignature;
+      selectedStore = pickDefaultStore(stores);
+    }
   }
 
-  $: if (providers !== prevProviders) {
-    prevProviders = providers;
-    selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
+  $: {
+    const nextProvidersSignature = providersSignature(providers);
+    if (nextProvidersSignature !== prevProvidersSignature) {
+      prevProvidersSignature = nextProvidersSignature;
+      selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
+    }
   }
 
   $: canRecordStore = stores.some((s) => s.kind === selectedStore && s.available);

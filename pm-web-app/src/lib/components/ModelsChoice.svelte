@@ -42,8 +42,8 @@
     antigravity: 'Antigravity',
   };
 
-  export let models: ModelRow[] = [];
-  export let harnesses: ModelHarnessInfo[] = [];
+  export let models: readonly ModelRow[] = [];
+  export let harnesses: readonly ModelHarnessInfo[] = [];
   export let harnessNames: Record<string, string> = {};
   export let defaultHarness: string | undefined = undefined;
   export let recommendation: string | undefined = undefined;
@@ -56,7 +56,7 @@
     return `${row.harness_id}::${row.model_id}`;
   }
 
-  function initiallySelected(rows: ModelRow[]): string[] {
+  function initiallySelected(rows: readonly ModelRow[]): string[] {
     if (rows.some((r) => r.allowed !== undefined)) {
       return rows.filter((r) => r.allowed !== false).map(key);
     }
@@ -68,28 +68,41 @@
     return rows.map(key);
   }
 
+  function proposalSignature(
+    rows: readonly ModelRow[],
+    harnessInfos: readonly ModelHarnessInfo[],
+    rec?: string,
+  ): string {
+    return JSON.stringify([
+      rec ?? '',
+      rows.map((r) => [
+        r.harness_id,
+        r.model_id,
+        r.source ?? '',
+        r.recommended ?? null,
+        r.allowed ?? null,
+      ]),
+      harnessInfos.map((h) => [h.harness_id ?? '', h.cannot_list ?? null, h.models_listed ?? null]),
+    ]);
+  }
+
   let extraModels: ModelRow[] = [];
   let removedKeys: string[] = [];
   let modified = false;
   let draftByHarness: Record<string, string> = {};
-  let prevModels = models;
-  let prevHarnesses = harnesses;
-  let prevRecommendation = recommendation;
+  let prevProposalSignature = proposalSignature(models, harnesses, recommendation);
   let selected: string[] = initiallySelected(models);
 
-  $: if (
-    models !== prevModels ||
-    harnesses !== prevHarnesses ||
-    recommendation !== prevRecommendation
-  ) {
-    prevModels = models;
-    prevHarnesses = harnesses;
-    prevRecommendation = recommendation;
-    extraModels = [];
-    removedKeys = [];
-    modified = false;
-    draftByHarness = {};
-    selected = initiallySelected(models);
+  $: {
+    const nextSignature = proposalSignature(models, harnesses, recommendation);
+    if (nextSignature !== prevProposalSignature) {
+      prevProposalSignature = nextSignature;
+      extraModels = [];
+      removedKeys = [];
+      modified = false;
+      draftByHarness = {};
+      selected = initiallySelected(models);
+    }
   }
 
   $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
@@ -99,22 +112,23 @@
   $: allowed = allModels.filter((row) => selected.includes(key(row)));
 
   function buildGroups(
-    rows: ModelRow[],
-    harnessInfos: ModelHarnessInfo[],
-    initialRows: ModelRow[],
+    rows: readonly ModelRow[],
+    harnessInfos: readonly ModelHarnessInfo[],
+    initialRows: readonly ModelRow[],
   ): Array<[string, ModelRow[]]> {
     const grouped: Record<string, ModelRow[]> = {};
+    // Show one group for every enrolled harness, even when it reports zero listed models.
+    for (const info of harnessInfos) {
+      if (info.harness_id) {
+        grouped[info.harness_id] ??= [];
+      }
+    }
     // Keep initial harnesses even if all their models are later removed.
     for (const row of initialRows) {
       grouped[row.harness_id] ??= [];
     }
     for (const row of rows) {
       (grouped[row.harness_id] ??= []).push(row);
-    }
-    for (const info of harnessInfos) {
-      if (info.harness_id && (info.cannot_list || info.models_listed === false)) {
-        grouped[info.harness_id] ??= [];
-      }
     }
     return Object.entries(grouped);
   }
@@ -165,7 +179,7 @@
     return KNOWN_HARNESS_NAMES[harnessId] ?? humanizeKey(harnessId);
   }
 
-  function cannotList(harnessId: string, rows: ModelRow[]): boolean {
+  function cannotList(harnessId: string, rows: readonly ModelRow[]): boolean {
     const info = harnesses.find((h) => h.harness_id === harnessId);
     if (info?.cannot_list !== undefined) return info.cannot_list;
     if (info?.models_listed !== undefined) return !info.models_listed;
@@ -243,6 +257,7 @@
                     size="sm"
                     aria-label={$t('onboard.catalogue.select.remove_model_for', {
                       model: row.model_id,
+                      harness: resolveHarnessName(row.harness_id),
                     })}
                     on:click={() => removeOperatorModel(row)}
                     data-testid={`model-remove-${harnessId}-${row.model_id}`}
@@ -254,8 +269,11 @@
             </li>
           {/each}
         </ul>
-      {:else}
-        <p class="choice-screen__note">{$t('onboard.catalogue.select.no_models')}</p>
+      {/if}
+      {#if !rows.some((r) => selected.includes(key(r)))}
+        <p class="choice-screen__note" data-testid={`models-none-${harnessId}`}>
+          {$t('onboard.catalogue.select.no_models')}
+        </p>
       {/if}
 
       {#if cannotList(harnessId, rows)}

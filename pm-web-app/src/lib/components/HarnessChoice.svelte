@@ -27,12 +27,12 @@
     icon_url?: string;
   }
 
-  export let harnesses: HarnessRow[] = [];
+  export let harnesses: readonly HarnessRow[] = [];
   export let busy = false;
 
   export let onCheck: (chosen: string[], defaultId: string) => void = () => {};
 
-  function initialSelection(list: HarnessRow[]): { chosen: string[]; defaultId: string } {
+  function initialSelection(list: readonly HarnessRow[]): { chosen: string[]; defaultId: string } {
     const eligible = list.filter((h) => h.found && h.supported && h.worker_eligible);
     const recorded = list.find((h) => h.default && eligible.includes(h));
     return {
@@ -41,7 +41,13 @@
     };
   }
 
-  let prevHarnesses = harnesses;
+  function selectionSignature(list: readonly HarnessRow[]): string {
+    return JSON.stringify(
+      list.map((h) => [h.harness_id, h.found, h.supported, h.worker_eligible, Boolean(h.default)]),
+    );
+  }
+
+  let prevSignature = selectionSignature(harnesses);
   let initial = initialSelection(harnesses);
   let chosen: string[] = [...initial.chosen];
   let defaultId = initial.defaultId;
@@ -49,12 +55,17 @@
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
 
-  $: if (harnesses !== prevHarnesses) {
-    prevHarnesses = harnesses;
-    const next = initialSelection(harnesses);
-    chosen = [...next.chosen];
-    defaultId = next.defaultId;
-    failedIconPaths = {};
+  // Only resync when selection-relevant scan/default facts change so same-content reloads preserve
+  // in-progress edits; when the recorded `default` itself changes, the replaced proposal wins.
+  $: {
+    const nextSignature = selectionSignature(harnesses);
+    if (nextSignature !== prevSignature) {
+      prevSignature = nextSignature;
+      const next = initialSelection(harnesses);
+      chosen = [...next.chosen];
+      defaultId = next.defaultId;
+      failedIconPaths = {};
+    }
   }
 
   function rememberIconFailure(harnessId: string, path: string): void {

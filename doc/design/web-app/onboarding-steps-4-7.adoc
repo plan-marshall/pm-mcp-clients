@@ -131,7 +131,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
   [ Back ]                                     [ Use the macOS Keychain ]
 ----
 
-* Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. On Linux the first option is the Secret Service, naming what it protects against while locked / from confined jobs and what it does not protect against (unconfined programs running as the user while unlocked).
+* Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. On Linux the first option is the Secret Service, naming what it protects against (while locked, and from sandboxes that deny D-Bus access to Secret Service) and what it does not protect against (unconfined programs running as the user while unlocked).
 * The primary button names the store it will use.
 
 [#store-consent]

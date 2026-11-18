@@ -102,6 +102,25 @@ describe('AspectChoice', () => {
       );
     });
 
+    it('keeps a pending store choice when rerendered with identical rows in a new array', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in the file store',
+      );
+    });
+
     it('renders the generic other protection copy for non-os, non-file stores', () => {
       const en = loadMessages('en');
       const { container } = render(AspectChoice, {
@@ -163,6 +182,24 @@ describe('AspectChoice', () => {
       });
 
       expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
+    });
+
+    it('keeps pending provider selections when rerendered with identical rows in a new array', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: PROVIDERS.map((p) => ({ ...p })),
+      });
+
+      await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+
+      await rerender({
+        kind: 'providers',
+        providers: PROVIDERS.map((p) => ({ ...p })),
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
       expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
     });
   });

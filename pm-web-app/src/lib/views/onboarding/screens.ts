@@ -89,7 +89,7 @@ export interface OnboardingScreenContext {
   /** A non-empty string field of the state. */
   field: (name: string) => string | undefined;
   /** An array field of the state. */
-  arrayField: <T>(name: string) => T[];
+  arrayField: <T>(name: string) => readonly T[];
   /** The label of a link, from the catalogue. */
   linkLabel: (id: string) => string;
   /** The action a consent's primary button names. */
