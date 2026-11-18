@@ -33,6 +33,8 @@ import de.planmarshall.api.changes.PlanChangeLineKind;
 import de.planmarshall.api.changes.PlanChangedFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
+import de.planmarshall.api.changes.PlanChangesNotCaptured;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.chat.ChatEndedEvent;
 import de.planmarshall.api.chat.ChatMessageKeys;
 import de.planmarshall.api.chat.ChatProposalEvent;
@@ -348,10 +350,11 @@ public class ScenarioLoader {
     }
 
     /**
-     * Holds every scheduled {@code plan.change_captured} to what the mock can play: an announcement
-     * that carries no capture may only move the head of a capture the state serves, at the size that
-     * capture adds up to, and a carried capture never sends a plan the state serves as captured back to
-     * its first capture. A notice the mock would drop at play time fails the load instead.
+     * Holds every scheduled {@code plan.change_captured} to what the mock can play, in the order the
+     * state plays them: an announcement that carries no capture may only move the head of a capture the
+     * sequence serves at that point, at the size that capture adds up to, and a carried capture never
+     * sends a plan the sequence serves back to its first capture. Each event moves the simulated
+     * capture on, so the load sees the state the play will reach.
      *
      * @param state     the state whose events are validated
      * @param effective the capture entries the state serves
@@ -360,39 +363,98 @@ public class ScenarioLoader {
      */
     private static void requireScheduledCapturesApply(StateDefinition state,
             List<Map<String, Object>> effective, String scenario, String stateId) {
+        var served = capturedByPlan(effective, scenario);
         for (var index = 0; index < state.events().size(); index++) {
             var event = state.events().get(index);
             if (PlanChangeCapturedEvent.EVENT_NAME.equals(event.event())) {
-                requireScheduledCaptureApplies(event.data(), index, effective, scenario, stateId);
+                applyScheduledCapture(event.data(), index, served, scenario, stateId);
             }
         }
     }
 
     /**
-     * Holds one scheduled capture to what the mock can play: a carried capture to the transition the
-     * contract names, and one that only moves a head to the capture the state serves.
+     * Holds one scheduled capture to the captured answers the state serves, and moves the simulation
+     * on with it.
      *
-     * @param data      the event's payload
-     * @param index     the event's position
-     * @param effective the capture entries the state serves
-     * @param scenario  the scenario identifier for error reporting
-     * @param stateId   the state identifier
+     * @param data     the event's payload
+     * @param index    the event's position
+     * @param served   the captured answers the sequence serves so far, by plan
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
      */
-    private static void requireScheduledCaptureApplies(@Nullable Object data, int index,
-            List<Map<String, Object>> effective, String scenario, String stateId) {
+    private static void applyScheduledCapture(@Nullable Object data, int index,
+            Map<String, PlanChangesCaptured> served, String scenario, String stateId) {
         var payload = JsonTree.asObject(data);
         if (payload == null) {
             return;
         }
         var announced = announcedOf(payload, index, scenario, stateId);
-        var entry = captureEntryOf(effective, announced.planId());
-        var servedState = entry == null ? null : JsonTree.string(entry, "state");
         var carried = JsonTree.asObject(payload.get(FIELD_CAPTURE));
         if (carried != null) {
-            requireCarriedCaptureGoesForward(carried, servedState, announced, index, scenario, stateId);
-        } else {
-            requireHeadOnlyCaptureAgrees(entry, servedState, announced, index, scenario, stateId);
+            applyCarriedScheduledCapture(carried, announced, served, index, scenario, stateId);
+            return;
         }
+        var current = served.get(announced.planId());
+        if (current == null) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the plan " + announced.planId()
+                            + " has no capture in the state for the announcement to move");
+        }
+        if (!current.totals().equals(announced.size())) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the announced size of " + announced.planId()
+                            + " contradicts the files the state serves");
+        }
+    }
+
+    /**
+     * Holds a scheduled capture that carries its own answer to the one transition the contract names —
+     * a capture moves on to a new capture or to a capture that is gone, never back to the plan's first
+     * capture — and simulates its effect on what later events are held to.
+     *
+     * @param carry    the capture the announcement carries
+     * @param announced the announcement
+     * @param served   the captured answers the sequence serves so far, by plan
+     * @param index    the event's position
+     * @param scenario the scenario identifier for error reporting
+     * @param stateId  the state identifier
+     */
+    private static void applyCarriedScheduledCapture(Map<String, Object> carry,
+            PlanChangeCapturedEvent announced, Map<String, PlanChangesCaptured> served, int index,
+            String scenario, String stateId) {
+        final PlanChangesAnswer carried;
+        try {
+            carried = PlanChangesAnswer.fromMap(carry);
+        } catch (IOException | IllegalArgumentException _) {
+            // The capture itself is refused where the event's payload is validated.
+            return;
+        }
+        if (carried instanceof PlanChangesNotCaptured && served.containsKey(announced.planId())) {
+            throw new ScenarioValidationException(scenario, stateId, eventField(index),
+                    "the capture of " + announced.planId() + " does not go back to "
+                            + PlanChangesAnswer.NOT_CAPTURED);
+        }
+        if (carried instanceof PlanChangesCaptured capture) {
+            served.put(announced.planId(), capture);
+        } else {
+            served.remove(announced.planId());
+        }
+    }
+
+    /**
+     * @param effective the capture entries the state serves
+     * @param scenario  the scenario identifier for error reporting
+     * @return the captured answers by plan
+     */
+    private static Map<String, PlanChangesCaptured> capturedByPlan(List<Map<String, Object>> effective,
+            String scenario) {
+        var captured = new LinkedHashMap<String, PlanChangesCaptured>();
+        for (var entry : effective) {
+            if (readCapture(entry, scenario).answer() instanceof PlanChangesCaptured capture) {
+                captured.put(capture.planId(), capture);
+            }
+        }
+        return captured;
     }
 
     /**
@@ -414,82 +476,11 @@ public class ScenarioLoader {
     }
 
     /**
-     * @param effective the capture entries the state serves
-     * @param planId    a plan's id
-     * @return the entry the state serves for the plan, or {@code null} when it names none
-     */
-    private static @Nullable Map<String, Object> captureEntryOf(List<Map<String, Object>> effective,
-            String planId) {
-        return effective.stream()
-                .filter(candidate -> planId.equals(JsonTree.string(candidate, FIELD_PLAN_ID)))
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
      * @param index the event's position in its state
      * @return the field path the event's payload errors are reported under
      */
     private static String eventField(int index) {
         return "events[" + index + EVENT_DATA_SUFFIX;
-    }
-
-    /**
-     * Holds an announcement that carries no capture to the capture its state serves: it may only move
-     * that capture's head, at the size the capture adds up to.
-     *
-     * @param entry       the capture entry the state serves, or {@code null}
-     * @param servedState its state, or {@code null}
-     * @param announced   the announcement
-     * @param index       the event's position
-     * @param scenario    the scenario identifier for error reporting
-     * @param stateId     the state identifier
-     */
-    private static void requireHeadOnlyCaptureAgrees(@Nullable Map<String, Object> entry,
-            @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
-            String stateId) {
-        if (entry == null || !PlanChangesAnswer.CAPTURED.equals(servedState)) {
-            throw new ScenarioValidationException(scenario, stateId, eventField(index),
-                    "the plan " + announced.planId()
-                            + " has no capture in the state for the announcement to move");
-        }
-        var totals = ((PlanChangesCaptured) readCapture(entry, scenario).answer()).totals();
-        if (!totals.equals(announced.size())) {
-            throw new ScenarioValidationException(scenario, stateId, eventField(index),
-                    "the announced size of " + announced.planId()
-                            + " contradicts the files the state serves");
-        }
-    }
-
-    /**
-     * Holds a scheduled capture that carries its own answer to the one transition the contract names:
-     * a capture moves on to a new capture or to a capture that is gone, never back to the plan's first
-     * capture ({@code 01-processes-and-transport.adoc#plan-changes}).
-     *
-     * @param carry       the capture the announcement carries
-     * @param servedState the state of the capture the state serves, or {@code null}
-     * @param announced   the announcement
-     * @param index       the event's position
-     * @param scenario    the scenario identifier for error reporting
-     * @param stateId     the state identifier
-     */
-    private static void requireCarriedCaptureGoesForward(Map<String, Object> carry,
-            @Nullable String servedState, PlanChangeCapturedEvent announced, int index, String scenario,
-            String stateId) {
-        final PlanChangesAnswer carried;
-        try {
-            carried = PlanChangesAnswer.fromMap(carry);
-        } catch (IOException | IllegalArgumentException _) {
-            // The capture itself is refused where the event's payload is validated.
-            return;
-        }
-        if (PlanChangesAnswer.NOT_CAPTURED.equals(carried.state())
-                && (PlanChangesAnswer.CAPTURED.equals(servedState)
-                || PlanChangesAnswer.UNAVAILABLE.equals(servedState))) {
-            throw new ScenarioValidationException(scenario, stateId, eventField(index),
-                    "the capture of " + announced.planId() + " does not go back to "
-                            + PlanChangesAnswer.NOT_CAPTURED);
-        }
     }
 
     /**

@@ -1629,6 +1629,31 @@ describe('PlanView’s Changes tab', () => {
     );
   });
 
+  it('keeps the open file when the size line is clicked on the tab it already shows', async () => {
+    // Arrange: the Changes tab is open on a file, as a reload of its address shows it.
+    runtimeStore.update((state) => ({
+      ...state,
+      objectTab: 'changes',
+      changeFile: 'pm-relay/src/main/java/Transport.java',
+    }));
+    window.history.replaceState(
+      {},
+      '',
+      '/plans/fix-relay?tab=changes&file=pm-relay/src/main/java/Transport.java',
+    );
+    render(PlanView);
+    await screen.findByTestId('change-hunks');
+
+    // Act
+    screen.getByTestId('plan-change-size').click();
+    await tick();
+
+    // Assert
+    expect(window.location.search).toContain(
+      'file=pm-relay/src/main/java/Transport.java',
+    );
+  });
+
   it('opens Process and replaces an address that names a tab this view does not draw', async () => {
     // Arrange: `intent` belongs to PLAN-55's tab set, which is not in this view yet.
     runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));

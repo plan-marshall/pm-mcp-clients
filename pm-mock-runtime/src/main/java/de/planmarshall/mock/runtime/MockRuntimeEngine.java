@@ -52,6 +52,7 @@ import de.planmarshall.api.changes.PlanChangeFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.changes.PlanChangesNotCaptured;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -772,6 +773,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final Map<String, PlanChangesAnswer> planChanges = new LinkedHashMap<>();
     /** One file's hunks per plan and path, guarded by {@link #planChangesLock}. */
     private final Map<String, Map<String, PlanChangeFile>> planChangeFiles = new LinkedHashMap<>();
+    /**
+     * The figures of each plan's last successful capture, guarded by {@link #planChangesLock}: a capture
+     * that turns unavailable keeps them, because the tab stays present on them.
+     */
+    private final Map<String, ChangeSize> planChangeSizes = new LinkedHashMap<>();
     private final Object decisionsLock = new Object();
     private final Map<String, DecisionEnvelope> openDecisions = new LinkedHashMap<>();
     /**
@@ -1270,7 +1276,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var answer = planChanges.get(planId);
             if (answer instanceof PlanChangesCaptured captured) {
                 copy.put("change", captured.totals().toMap());
-            } else if (answer instanceof PlanChangesNotCaptured) {
+                return;
+            }
+            if (answer instanceof PlanChangesUnavailable) {
+                var last = planChangeSizes.get(planId);
+                if (last != null) {
+                    copy.put("change", last.toMap());
+                }
+                return;
+            }
+            if (answer instanceof PlanChangesNotCaptured) {
                 copy.remove("change");
             }
         }
@@ -1300,6 +1315,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 if (queued != null) {
                     copy.put("queued_revision", queued.toMap());
                 }
+            }
+            if (planId != null) {
+                // The row's size follows the capture the changes route serves, as the plan's own
+                // representation does: a carried capture moves both figures together.
+                applyServedChange(planId, copy);
             }
             result.add(copy);
         }
@@ -1417,6 +1437,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (planChangesLock) {
             planChanges.clear();
             planChangeFiles.clear();
+            planChangeSizes.clear();
             for (var entry : fixtureObjects(startRuntimeFixture(), FIXTURE_PLAN_CHANGES,
                     PATH_PLAN_CHANGES)) {
                 seedPlanChanges(entry);
@@ -1434,11 +1455,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var answer = readFixture(() -> PlanChangesAnswer.fromMap(entry), PATH_PLAN_CHANGES);
         planChanges.put(answer.planId(), answer);
         var files = new LinkedHashMap<String, PlanChangeFile>();
-        if (answer instanceof PlanChangesCaptured) {
+        if (answer instanceof PlanChangesCaptured captured) {
+            planChangeSizes.put(answer.planId(), captured.totals());
             for (var content : fixtureObjects(entry, FIXTURE_CONTENTS, PATH_PLAN_CHANGES_CONTENTS)) {
                 var file = readFixture(() -> PlanChangeFile.fromMap(content), PATH_PLAN_CHANGES_CONTENTS);
                 files.put(file.path(), file);
             }
+        } else {
+            planChangeSizes.remove(answer.planId());
         }
         planChangeFiles.put(answer.planId(), files);
     }
@@ -2004,6 +2028,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (planChangesLock) {
             planChanges.clear();
             planChangeFiles.clear();
+            planChangeSizes.clear();
             for (var entry : fixtureObjects(runtime, FIXTURE_PLAN_CHANGES, PATH_PLAN_CHANGES)) {
                 seedPlanChanges(entry);
             }
@@ -2047,7 +2072,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private boolean applyScheduledStateEffect(String event, Object data) {
         if (PlanChangeCapturedEvent.EVENT_NAME.equals(event)) {
-            return applyCapturedChange(data) == null;
+            // The engine's own monitor is the one a transition holds, so a scheduled capture never
+            // writes after a transition, reset or scenario switch has reseeded the served captures.
+            synchronized (this) {
+                return applyCapturedChange(data) == null;
+            }
         }
         return true;
     }
@@ -8098,15 +8127,31 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         synchronized (planChangesLock) {
             var previous = planChanges.get(answer.planId());
-            if (previous instanceof PlanChangesCaptured && answer instanceof PlanChangesNotCaptured) {
+            if ((previous instanceof PlanChangesCaptured || previous instanceof PlanChangesUnavailable)
+                    && answer instanceof PlanChangesNotCaptured) {
                 // A capture moves on to a new capture or to a capture that is gone; it never goes back
                 // to the plan's first capture, which no event of the contract announces.
                 return "the capture of " + announced.planId() + " does not go back to " + answer.state();
             }
             planChanges.put(answer.planId(), answer);
             planChangeFiles.put(answer.planId(), new LinkedHashMap<>(decoded.contents()));
+            applyCaptureSize(answer);
         }
         return null;
+    }
+
+    /**
+     * Records the figures a capture leaves the plan with: the capture's own where it is captured, the
+     * last successful capture's where it is gone, and none where the plan was never captured.
+     *
+     * @param answer the answer just served
+     */
+    private void applyCaptureSize(PlanChangesAnswer answer) {
+        if (answer instanceof PlanChangesCaptured captured) {
+            planChangeSizes.put(answer.planId(), captured.totals());
+        } else if (answer instanceof PlanChangesNotCaptured) {
+            planChangeSizes.remove(answer.planId());
+        }
     }
 
     /**

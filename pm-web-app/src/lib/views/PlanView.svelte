@@ -1028,7 +1028,11 @@
             type="button"
             class="change-size-link mono"
             data-testid="plan-change-size"
-            onclick={() => selectObjectTab('changes')}
+            onclick={() => {
+              if (activeTab !== 'changes') {
+                selectObjectTab('changes');
+              }
+            }}
           >
             {changeText(changeSize)}
           </button>

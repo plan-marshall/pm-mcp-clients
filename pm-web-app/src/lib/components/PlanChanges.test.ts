@@ -368,6 +368,101 @@ describe('PlanChanges', () => {
     expect(readList).toHaveBeenCalledTimes(1);
   });
 
+  it('reads the hunks of the row a person selects, even where two rows look alike', async () => {
+    // Arrange: two files of the same status and counts at one head are still two files.
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue({
+      plan_id: 'fix-relay',
+      state: 'captured',
+      head: '9f3c2ab41d7e5',
+      base_ref: 'main',
+      files: [
+        { path: 'src/a.ts', status: 'modified', added: 1, removed: 1, binary: false, unplanned: false },
+        { path: 'src/b.ts', status: 'modified', added: 1, removed: 1, binary: false, unplanned: false },
+      ],
+    });
+    vi.spyOn(apiClient, 'getPlanChangeFile').mockImplementation(async (_planId, path) =>
+      fileAnswer({ path, hunks: [hunkWith(`${path} line`)] }),
+    );
+
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'src/a.ts',
+      onSelectFile: () => {},
+    });
+    expect(await screen.findByText('src/a.ts line')).toBeInTheDocument();
+
+    // Act
+    await view.rerender({
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'src/b.ts',
+      onSelectFile: () => {},
+    });
+
+    // Assert
+    expect(await screen.findByText('src/b.ts line')).toBeInTheDocument();
+    expect(screen.queryByText('src/a.ts line')).toBeNull();
+  });
+
+  it('hides the previous row’s hunks while the row it now stands on is read', async () => {
+    // Arrange
+    const second = deferred<PlanChangeFile>();
+    vi.spyOn(apiClient, 'getPlanChanges')
+      .mockResolvedValueOnce(CAPTURED)
+      .mockResolvedValueOnce({
+        ...CAPTURED,
+        head: 'a1b2c3d4e5f6a',
+        files: [{ ...CAPTURED.files[0], added: 60 }, ...CAPTURED.files.slice(1)],
+      });
+    vi.spyOn(apiClient, 'getPlanChangeFile')
+      .mockResolvedValueOnce(fileAnswer({ hunks: [hunkWith('first line')] }))
+      .mockReturnValueOnce(second.promise);
+
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'pm-relay/src/main/java/Transport.java',
+      onSelectFile: () => {},
+    });
+    expect(await screen.findByText('first line')).toBeInTheDocument();
+
+    // Act: the capture moves the row, and the new read is still open.
+    await view.rerender({
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'pm-relay/src/main/java/Transport.java',
+      onSelectFile: () => {},
+      reloadToken: 1,
+    });
+
+    // Assert: no line of the row the tab no longer stands on is left on screen.
+    await waitFor(() => expect(screen.queryAllByTestId('diff-line')).toHaveLength(0));
+    second.resolve(fileAnswer({ hunks: [hunkWith('second line')] }));
+    expect(await screen.findByText('second line')).toBeInTheDocument();
+  });
+
+  it('applies no list completion after the view is gone', async () => {
+    // Arrange
+    const list = deferred<PlanChangesAnswer>();
+    vi.spyOn(apiClient, 'getPlanChanges').mockReturnValueOnce(list.promise);
+    const onSelectFile = vi.fn();
+    const view = render(PlanChanges, {
+      planId: 'fix-relay',
+      change: CHANGE,
+      selectedFile: 'pom.xml',
+      onSelectFile,
+    });
+
+    // Act: the view goes before its list arrives, and the answer no longer names the file.
+    view.unmount();
+    list.resolve({ ...CAPTURED, files: CAPTURED.files.slice(0, 1) });
+    await tick();
+
+    // Assert
+    expect(onSelectFile).not.toHaveBeenCalled();
+  });
+
   it('drops the previous plan’s list when another plan is opened', async () => {
     // Arrange: the first plan's list is served, then the view is asked for another plan.
     const readList = vi

@@ -727,6 +727,58 @@ class PlanChangesScenarioTest {
                 assertInstanceOf(PlanChangesNotCaptured.class, readChanges(runtime, "relay-metrics"));
             }
         }
+        @Test
+        @DisplayName("keeps the figures of the last successful capture when the next one is gone")
+        void keepsTheLastCaptureSize() throws Exception {
+            var reason = "the captured commit a1b2c3d4e5f6 is no longer in the repository";
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var replaced = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(1, 2, 0, 0),
+                                oneFileCapture(FIX_RELAY)));
+                assertEquals(200, replaced.status(), replaced.bodyText());
+                var gone = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                                unavailableCapture(FIX_RELAY, reason)));
+                assertEquals(200, gone.status(), gone.bodyText());
+
+                var process = get(runtime, "/api/v1/plans/" + FIX_RELAY + "/process");
+                var tree = ProcessTree.fromMap(JsonTree.asObject(JsonTree.parse(process.body())));
+                var project = get(runtime, "/api/v1/projects/pm-mcp-clients");
+                var rowChange = JsonTree.asObject(
+                        planOf(JsonTree.asObject(JsonTree.parse(project.body())), FIX_RELAY).get("change"));
+
+                assertAll(
+                        () -> assertEquals(new ChangeSize(1, 2, 0, 0), tree.change(),
+                                "the plan keeps the figures of its last successful capture"),
+                        () -> assertNotNull(rowChange, "the project row carries a size"),
+                        () -> assertEquals(1L,
+                                JsonTree.integralNumber(rowChange, "files", 0, Integer.MAX_VALUE),
+                                "the project row carries the last capture's figure"));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a carried capture that would send a gone capture back to its first capture")
+        void refusesBackFromUnavailable() throws Exception {
+            var reason = "the captured commit a1b2c3d4e5f6 is no longer in the repository";
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var gone = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0),
+                                unavailableCapture(FIX_RELAY, reason)));
+                assertEquals(200, gone.status(), gone.bodyText());
+                var back = new LinkedHashMap<String, Object>();
+                back.put("plan_id", FIX_RELAY);
+                back.put("state", "not_captured");
+
+                var broadcast = broadcastPayload(runtime, PlanChangeCapturedEvent.EVENT_NAME,
+                        announcement(FIX_RELAY, "a1b2c3d4e5f6", new ChangeSize(0, 0, 0, 0), back));
+
+                assertEquals(400, broadcast.status(), broadcast.bodyText());
+                assertEquals(reason,
+                        assertInstanceOf(PlanChangesUnavailable.class, readChanges(runtime, FIX_RELAY)).reason(),
+                        "a gone capture moves on to a new capture, never back");
+            }
+        }
     }
 
     @Nested
@@ -1143,6 +1195,16 @@ class PlanChangesScenarioTest {
             back.put("state", "not_captured");
             refusesTheLoad(withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
                     new ChangeSize(0, 0, 0, 0), back)), FIX_RELAY);
+
+            // The events are held to the sequence they play: a replacement moves the size a later
+            // head-only announcement is held to, and the size it left behind is refused.
+            var replaced = withScheduledCapture(valid, announcement(FIX_RELAY, "a1b2c3d4e5f6",
+                    new ChangeSize(1, 2, 0, 0), oneFileCapture(FIX_RELAY)));
+            assertDoesNotThrow(() -> ScenarioLoader.load(withScheduledCapture(replaced,
+                    announcement(FIX_RELAY, "b2c3d4e5f6a1", new ChangeSize(1, 2, 0, 0), null)),
+                    StandardScenarios.RUNNING_WORK));
+            refusesTheLoad(withScheduledCapture(replaced, announcement(FIX_RELAY, "b2c3d4e5f6a1",
+                    new ChangeSize(12, 340, 27, 2), null)), FIX_RELAY);
         }
 
         @Test

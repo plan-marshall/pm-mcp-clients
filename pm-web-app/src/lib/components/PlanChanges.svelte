@@ -110,8 +110,9 @@
   }
 
   /**
-   * The identity of a row: the head and the figures its hunks belong to. A file answer carries no
-   * head, so this is what tells a current answer from one the list moved under.
+   * The identity of a row: the path and the figures its hunks belong to. A file answer carries no head,
+   * so this is what tells a current answer from one the list moved under, and two files of the same
+   * status and counts apart.
    *
    * @param read the answer the row belongs to, or none
    * @param path the file's path
@@ -123,6 +124,7 @@
       return null;
     }
     return [
+      path,
       read.head,
       row.status,
       row.added,
@@ -192,7 +194,7 @@
     listError = null;
     try {
       const read = await apiClient.getPlanChanges(plan);
-      if (generation !== listGeneration) {
+      if (disposed || generation !== listGeneration) {
         return;
       }
       answer = read;
@@ -201,12 +203,12 @@
         onSelectFile(null);
       }
     } catch (error) {
-      if (generation === listGeneration) {
+      if (!disposed && generation === listGeneration) {
         answer = null;
         listError = errorCodeOf(error);
       }
     } finally {
-      if (generation === listGeneration) {
+      if (!disposed && generation === listGeneration) {
         isLoading = false;
       }
     }
@@ -243,6 +245,10 @@
     if (failedIdentity === identity || inFlightIdentity === identity || disposed) {
       return;
     }
+    // The hunks of another row are no longer the ones the tab stands on: the panel shows the read in
+    // flight, never the previous row's lines under the new capture's title.
+    currentFile = null;
+    loadedIdentity = null;
     isFileLoading = true;
     fileError = null;
     inFlightIdentity = identity;
