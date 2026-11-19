@@ -456,6 +456,57 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project add leaves with exit 3 when operator enters q")
+    void projectAddQExitsNeedsInput() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.identity","step":1,"total_steps":10,
+                                     "links":{"set":{"href":"/api/v1/entries/ent-cui-parent/links/set"}}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("q\n", "project", "add", "/git/cui-parent");
+        assertEquals(3, code);
+    }
+
+    @Test
+    @DisplayName("project add reports unused --pilot when no state asked for it")
+    void projectAddReportsUnusedPilot() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui-parent/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui-parent".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("--pilot was not used: no state of the run asks for it."), output));
+    }
+
+    @Test
     @DisplayName("project add with every answer given runs through to enrolment without a prompt")
     void projectAddWithAllAnswersRunsWithoutPrompt() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);

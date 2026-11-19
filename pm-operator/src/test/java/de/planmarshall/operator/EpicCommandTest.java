@@ -17,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -25,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -74,7 +77,14 @@ class EpicCommandTest {
     }
 
     private int execute(PrintWriter console, String... args) {
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
+        var context = new OperatorContext(
+                            fixture.environment(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null
+        );
         return PmOperator.execute(context, console, new PrintWriter(err), args);
     }
 
@@ -429,6 +439,21 @@ class EpicCommandTest {
         }
 
         @Test
+        @DisplayName("a plain run over an unknown running count with a launchable plan launches it without raising scope")
+        void plainRunUnknownCount() throws Exception {
+            var server = serve(epic("\"scope\":3", "none"));
+
+            int code = execute("epic", "next", epicId);
+            var bodies = posted(server);
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertEquals(List.of("{\"raise_scope\":false}"), bodies),
+                                () -> assertTrue(out.toString().contains(planId), out.toString()),
+                                () -> assertTrue(out.toString().contains("? of 3 at once"), out.toString())
+            );
+        }
+
+        @Test
         @DisplayName("--raise-scope answers yes on a full scope and the started line names the raised scope")
         void raiseOnFullScope() throws Exception {
             var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
@@ -458,13 +483,14 @@ class EpicCommandTest {
         }
 
         @Test
-        @DisplayName("--no-raise answers no on a full scope and sends nothing")
+        @DisplayName("--no-raise answers no on a full scope, sends nothing, and prints the leave line")
         void noRaiseOnFullScope() throws Exception {
             var server = serve(epic("\"scope\":3,\"running\":3", "scope"));
 
             int code = execute("epic", "next", epicId, "--no-raise");
             assertAll(
                                 () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("Left epic.raise-scope. Nothing was sent."), out.toString()),
                                 () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
             );
         }
@@ -484,7 +510,7 @@ class EpicCommandTest {
         @Test
         @DisplayName("--no-input without an answer stops on an unknown count with exit 3 and sends nothing")
         void noInputStopsOnUnknownCount() throws Exception {
-            var server = serve(epic("\"scope\":3", "none"));
+            var server = serve(epic("\"scope\":3", "scope"));
 
             int code = execute("epic", "next", epicId, "--no-input");
             assertAll(

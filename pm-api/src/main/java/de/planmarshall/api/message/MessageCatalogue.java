@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -67,6 +69,28 @@ public final class MessageCatalogue {
 
     private MessageCatalogue() {
         // Utility class
+    }
+
+    /**
+     * Returns a {@link java.util.ResourceBundle} for the given locale backed by this MessageCatalogue.
+     *
+     * @param locale the requested locale
+     * @return ResourceBundle containing messages for all areas
+     */
+    public static ResourceBundle resourceBundle(String locale) {
+        String effectiveLocale = normalizeLocale(locale);
+        Map<String, String> messages = getMessages(effectiveLocale, "all");
+        return new ResourceBundle() {
+            @Override
+            protected Object handleGetObject(String key) {
+                return messages.get(key);
+            }
+
+            @Override
+            public Enumeration<String> getKeys() {
+                return Collections.enumeration(messages.keySet());
+            }
+        };
     }
 
     /**
@@ -170,7 +194,29 @@ public final class MessageCatalogue {
      * @return the message string
      */
     public static String get(String key) {
-        return format(DEFAULT_LOCALE, key, Map.of());
+        return template(DEFAULT_LOCALE, key);
+    }
+
+    /**
+     * Retrieves a message template in the specified locale without parameter substitution: the text
+     * as the pack holds it, a selector or a plural unevaluated.
+     *
+     * @param locale the requested locale
+     * @param key    the message key
+     * @return the message template
+     */
+    public static String get(String locale, String key) {
+        return template(normalizeLocale(locale), key);
+    }
+
+    /**
+     * @param effectiveLocale the normalized locale
+     * @param key             the message key
+     * @return the pack's own text, the default locale's, or the key when neither holds it
+     */
+    private static String template(String effectiveLocale, String key) {
+        var text = getMessages(effectiveLocale, "all").get(key);
+        return text != null ? text : getMessages(DEFAULT_LOCALE, "all").getOrDefault(key, key);
     }
 
     /**

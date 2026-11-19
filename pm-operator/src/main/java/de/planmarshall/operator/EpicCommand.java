@@ -28,6 +28,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.epicview.EpicViewFormatting;
@@ -117,8 +118,7 @@ public final class EpicCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                out.printf("Epic %s not found.%n", epicId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             throw new OperatorRefusedException("epic " + epicId, response);
@@ -393,7 +393,7 @@ public final class EpicCommand implements Callable<Integer> {
         if (MessageCatalogue.hasKey(locale, "state.task." + state)) {
             return Display.word(locale, "task", state);
         }
-        return state;
+        return Display.word(locale, "landing", state);
     }
 
     @Command(name = "add", description = "Starts an epic from its sources or adopts one.")

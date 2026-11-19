@@ -87,6 +87,14 @@ public final class CleanupCommand implements Callable<Integer> {
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
     private static final String KEPT_API = CLEANUP_API + "/kept";
     private static final String COUNT_PARAM = "count";
+    private static final String DURATIONS_KEY = "durations";
+
+    /** A kind of ended work, as the runtime names it and as the summary's placeholders read it. */
+    private static final String KIND_PLANS = "plans";
+    private static final String KIND_EPICS = "epics";
+    private static final String KIND_LOGS = "logs";
+    private static final String KIND_REPORTS = "reports";
+    private static final String KIND_PROJECTS = "projects";
 
     private final OperatorContext context;
     private final PromptFactory prompts;
@@ -223,7 +231,7 @@ public final class CleanupCommand implements Callable<Integer> {
             // q left the dialogue: what it printed says that nothing was sent
             return 0;
         } catch (RuntimeUnavailableException _) {
-            out.println("runtime   not running");
+            out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.status_not_running"));
             out.flush();
             return 0;
         }
@@ -374,7 +382,8 @@ public final class CleanupCommand implements Callable<Integer> {
     private void printReleaseAllNeedsChoice(PrintWriter out, int count) {
         out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.kept.confirm_all",
                             Map.of(COUNT_PARAM, count)));
-        out.println("Needs a choice: --yes");
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice",
+                            Map.of("option", "--yes")));
         out.flush();
     }
 
@@ -615,9 +624,10 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the exit code of a run stopped at a choice it was not given
      */
     int previewThenStop(PrintWriter out, DeletePreview preview, int unchecked) {
-        out.println(previewText(preview, unchecked));
+        out.println(previewText(context.clientEnvironment().locale(), preview, unchecked));
         printWholeJobNote(out);
-        out.println("Needs a choice: --yes");
+        out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.common.needs_choice",
+                            Map.of("option", "--yes")));
         out.flush();
         return 3;
     }
@@ -703,10 +713,11 @@ public final class CleanupCommand implements Callable<Integer> {
         var parts = new ArrayList<String>();
         var keptCount = JsonTree.integer(state, "kept_count");
         if (keptCount != null) {
-            parts.add(String.format("Kept for good %d (cleanup --kept)", keptCount));
+            parts.add(MessageCatalogue.format(locale, "operator.cleanup.kept_for_good", Map.of(COUNT_PARAM, keptCount)));
         }
         if (durations != null) {
-            parts.add("durations " + durationsText(locale, durations));
+            parts.add(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
+                                Map.of(DURATIONS_KEY, durationsText(locale, durations))));
         }
         if (!parts.isEmpty()) {
             out.println(String.join(" · ", parts));
@@ -716,7 +727,7 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private static @Nullable CleanupDurations durationsOf(Map<String, Object> state) throws IOException {
-        var object = JsonTree.asObject(state.get("durations"));
+        var object = JsonTree.asObject(state.get(DURATIONS_KEY));
         if (object == null) {
             return null;
         }
@@ -759,7 +770,7 @@ public final class CleanupCommand implements Callable<Integer> {
             return MessageCatalogue.format(locale, "system.cleanup.durations.summary",
                                 Map.of("days", days.getFirst(), "remind", durations.remindAfterDays(), "own", 0));
         }
-        var kinds = List.of("plans", "epics", "logs", "reports", "unenrolled");
+        var kinds = List.of(KIND_PLANS, KIND_EPICS, KIND_LOGS, KIND_REPORTS, "unenrolled");
         var parts = new ArrayList<String>();
         for (int i = 0; i < kinds.size(); i++) {
             var value = days.get(i);
@@ -880,8 +891,11 @@ public final class CleanupCommand implements Callable<Integer> {
          * @param locale the interface locale
          * @return the rendered label
          */
-        String label(String locale) {
-            return MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
+        String label(String locale, int remindDays) {
+            return this == REMIND
+                                ? MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey,
+                                Map.of("days", remindDays))
+                                : MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
         }
 
         /**
@@ -910,37 +924,43 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the printed items, in their numbering order
      */
     List<CleanupItemEntry> printJob(PrintWriter out, CleanupJob job, Set<String> leftOut) {
+        var locale = context.clientEnvironment().locale();
         var items = new ArrayList<CleanupItemEntry>();
-        out.printf("Cleanup %s · due since %s%n", job.jobId(), OutputSafety.stripControlSequences(job.dueSince()));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.job_header",
+                            Map.of("id", job.jobId(), "time", OutputSafety.stripControlSequences(job.dueSince()))));
         var s = job.summary();
-        out.printf("Summary   %d plans · %d epics · %d logs · %d read reports · %d unenrolled project%n",
-                            s.plansCount(), s.epicsCount(), s.logsCount(), s.reportsCount(), s.projectsCount());
-        out.printf("          frees %s%n", SystemCommand.formatBytes(s.freedBytes()));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.summary",
+                            Map.of(KIND_PLANS, s.plansCount(), KIND_EPICS, s.epicsCount(), KIND_LOGS, s.logsCount(),
+                                                KIND_REPORTS, s.reportsCount(), KIND_PROJECTS, s.projectsCount())));
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.summary_frees",
+                            Map.of("size", SystemCommand.formatBytes(s.freedBytes()))));
         printWholeJobActionNote(out);
 
         int itemIndex = 1;
+        boolean filterProject = project != null && !".".equals(project);
         for (var prj : job.projectItems()) {
             var isUnenrolled = isUnenrolled(prj.projectId());
-            out.println(isUnenrolled ? "Unenrolled projects"
+            out.println(isUnenrolled ? MessageCatalogue.get(locale, "operator.cleanup.durations.kind.unenrolled")
                                 : OutputSafety.stripControlSequences(prj.projectId()));
             int shown = 0;
             for (var item : prj.items()) {
                 items.add(item);
-                if (shown < PAGE_SIZE) {
+                if (filterProject || shown < PAGE_SIZE) {
                     printItem(out, item, leftOut, isUnenrolled, itemIndex);
                     shown++;
                 }
                 itemIndex++;
             }
-            if (project == null && prj.items().size() > PAGE_SIZE) {
+            if (!filterProject && prj.items().size() > PAGE_SIZE) {
                 printMore(out, prj.items().size() - PAGE_SIZE, prj.projectId());
             }
         }
 
-        var locale = context.clientEnvironment().locale();
-        var footer = new StringBuilder(String.format("Kept for good %d (cleanup --kept)", s.keptForGoodCount()));
+        var footer = new StringBuilder(MessageCatalogue.format(locale, "operator.cleanup.kept_for_good",
+                            Map.of(COUNT_PARAM, s.keptForGoodCount())));
         if (durations != null) {
-            footer.append(" · durations ").append(durationsText(locale, durations));
+            footer.append(" \u00b7 ").append(MessageCatalogue.format(locale, "operator.cleanup.durations_in_force",
+                                Map.of(DURATIONS_KEY, durationsText(locale, durations))));
         }
         if (s.lastSweepAt() != null) {
             footer.append(" · ").append(lastSweepText(locale, s.lastSweepAt()));
@@ -965,7 +985,7 @@ public final class CleanupCommand implements Callable<Integer> {
     static String kindWord(String kind) {
         var known = CleanupKind.fromValue(kind);
         return switch (known) {
-            case READ_REPORTS -> "reports";
+            case READ_REPORTS -> KIND_REPORTS;
             case UNENROLLED_PROJECT -> "project";
             case PLAN, EPIC, LOGS -> known.value();
             case null -> kind;
@@ -1083,22 +1103,24 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private ChoicePrompt decisionPrompt(PrintWriter out) {
         var locale = context.clientEnvironment().locale();
+        var remindDays = durations != null ? durations.remindAfterDays() : CleanupDurations.DEFAULT_REMIND_DAYS;
         var prompt = prompts.create(DECISION_STATE, cleanupLabel(locale), out)
                             .keyed()
                             .leaveKeyLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.leave", Map.of()));
-        for (var choice : decisionChoices(locale)) {
+        for (var choice : decisionChoices(locale, remindDays)) {
             prompt.addChoice(choice);
         }
         return prompt;
     }
 
     /**
-     * @param locale the interface locale
+     * @param locale     the interface locale
+     * @param remindDays the postponement the runtime holds, so the bar names it
      * @return the five decisions of the bar, in the order they are drawn
      */
-    static List<ChoicePrompt.Choice> decisionChoices(String locale) {
+    static List<ChoicePrompt.Choice> decisionChoices(String locale, int remindDays) {
         return Arrays.stream(Decision.values())
-                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale)))
+                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale, remindDays)))
                             .toList();
     }
 
@@ -1125,6 +1147,8 @@ public final class CleanupCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var consent = prompts.create(CONFIRM_STATE, cleanupLabel(locale), out);
         consent.title(consentTitle(preview, unchecked, locale, project != null && !".".equals(project)));
+        consent.consentPromptLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.delete_prompt", Map.of()));
+        consent.explanation(MessageCatalogue.format(locale, "operator.cleanup.delete.explain", Map.of()));
         return consent.askConsent();
     }
 
@@ -1135,7 +1159,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the consent prompt's title: the preview and its own question
      */
     static String consentTitle(DeletePreview preview, int unchecked, String locale, boolean wholeJob) {
-        var text = previewText(preview, unchecked);
+        var text = previewText(locale, preview, unchecked);
         if (wholeJob) {
             text = text + "\n  " + MessageCatalogue.format(locale, "operator.cleanup.choose.whole_job", Map.of());
         }
@@ -1150,9 +1174,10 @@ public final class CleanupCommand implements Callable<Integer> {
             return deleteRefused(out, res.bodyText());
         }
         if (res.status() == 200) {
-            out.printf("✓ Deleted %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project; %s freed.%n",
-                                preview.plans(), preview.epics(), preview.logs(), preview.reports(),
-                                preview.projects(), SystemCommand.formatBytes(preview.freedBytes()));
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.cleanup.deleted_summary",
+                                Map.of(KIND_PLANS, preview.plans(), KIND_EPICS, preview.epics(), KIND_LOGS, preview.logs(),
+                                                    KIND_REPORTS, preview.reports(), KIND_PROJECTS, preview.projects(),
+                                                    "size", SystemCommand.formatBytes(preview.freedBytes()))));
             out.flush();
             return 0;
         }
@@ -1178,7 +1203,7 @@ public final class CleanupCommand implements Callable<Integer> {
             out.flush();
             return 1;
         }
-        out.println("The runtime is stopping; nothing new starts.");
+        out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.cleanup.runtime_stopping"));
         out.flush();
         return 1;
     }
@@ -1240,15 +1265,17 @@ public final class CleanupCommand implements Callable<Integer> {
                             Math.max(reports, 0), Math.max(projects, 0), Math.max(freed, 0L));
     }
 
-    static String previewText(DeletePreview preview, int unchecked) {
+    static String previewText(String locale, DeletePreview preview, int unchecked) {
         var text = new StringBuilder();
-        text.append(String.format("Delete %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project?%n",
-                            preview.plans(), preview.epics(), preview.logs(), preview.reports(), preview.projects()));
-        text.append(String.format("  This frees %s. It cannot be undone.%n", SystemCommand.formatBytes(preview.freedBytes())));
-        text.append("  Branches, pull requests, the remote, the checkout, and an epic's ledger in the").append('\n');
-        text.append("  repository stay.");
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview", Map.of(
+                            KIND_PLANS, preview.plans(), KIND_EPICS, preview.epics(), KIND_LOGS, preview.logs(),
+                            KIND_REPORTS, preview.reports(), KIND_PROJECTS, preview.projects()))).append('\n');
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_frees",
+                            Map.of("size", SystemCommand.formatBytes(preview.freedBytes())))).append('\n');
+        text.append(MessageCatalogue.format(locale, "operator.cleanup.delete_preview_keep", Map.of()));
         if (unchecked > 0) {
-            text.append(String.format("%n  %d unchecked item is kept for good.", unchecked));
+            text.append('\n').append(MessageCatalogue.format(locale,
+                                "operator.cleanup.delete_preview_unchecked", Map.of(COUNT_PARAM, unchecked)));
         }
         return text.toString();
     }

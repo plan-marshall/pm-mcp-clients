@@ -349,11 +349,14 @@ class OnboardingScenarioTest {
                 var summaries = JsonTree.asObject(stateMap.get("step_summaries"));
                 assertEquals("Deutsch, models Deutsch", JsonTree.string(summaries, "1"));
 
-                assertEquals(200, put(client, auth,
+                // The language step moved the settings revision: the revision read before it is stale.
+                assertEquals(409, put(client, auth,
                         "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":4}"));
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":5}"));
                 // A code the machine does not support changes nothing.
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":5}"));
+                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":6}"));
 
                 var changed = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
@@ -645,6 +648,23 @@ class OnboardingScenarioTest {
 
                 runtime.goToState("defaults.review");
                 assertEquals("defaults.validate", step(client, auth, "accept").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("settings.verify-providers records providers.enabled as verified when scenario declares ready")
+        void verifyProvidersRecordsVerified() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                runtime.goToState("settings.verify-providers");
+                var step = step(client, auth, "yes");
+                assertEquals("providers.verified", step.get("state"));
+
+                var config = client.send(HttpRequest.get("/api/v1/config").withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, config.status());
+                assertTrue(new String(config.body(), StandardCharsets.UTF_8).contains("github (verified)"));
             }
         }
 

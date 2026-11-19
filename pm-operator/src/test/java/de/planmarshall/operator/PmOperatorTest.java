@@ -370,7 +370,7 @@ class PmOperatorTest {
             runtime((request, response) -> response.json(500, "{\"code\":\"internal_fault\"}"));
 
             assertEquals(PmOperator.EXIT_FAILURE, run("status"));
-            assertTrue(err.toString().contains("HTTP 500"));
+            assertTrue(err.toString().contains("The runtime hit an unexpected fault"), err.toString());
 
             fixture.stop();
             fixture.start((request, response) -> response.json(200, "[]"));
@@ -481,7 +481,7 @@ class PmOperatorTest {
             runtime((request, response) -> response.json(409, "{\"code\":\"web_listener_conflict\"}"));
 
             assertEquals(PmOperator.EXIT_FAILURE, run("web", "enable"));
-            assertTrue(err.toString().contains("web_listener_conflict"));
+            assertTrue(err.toString().contains("The port is already in use"), err.toString());
         }
 
         @Test
@@ -975,7 +975,7 @@ class PmOperatorTest {
 
             assertEquals(1, run("runtime", "stop", "--withdraw"));
             assertAll(
-                                () -> assertTrue(err.toString().contains("refused by the runtime (HTTP 500)"), err.toString()),
+                                () -> assertTrue(err.toString().contains("The runtime refused the request"), err.toString()),
                                 () -> assertFalse(err.toString().contains("Failed to withdraw"), err.toString()));
         }
 

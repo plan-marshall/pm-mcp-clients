@@ -51,11 +51,13 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.planview.ChangesLevel;
 import de.planmarshall.operator.planview.PlanChangeSizes;
+import de.planmarshall.operator.planview.PlanCompletionLevel;
 import de.planmarshall.operator.planview.PlanViewLevel;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiRow;
@@ -168,8 +170,7 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
                 if (response.status() == 404) {
-                    out.printf("Task %s or plan %s not found.%n", activity, planId);
-                    out.flush();
+                    RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                     return 1;
                 }
                 throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
@@ -196,8 +197,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             throw new OperatorRefusedException("plan " + planId, response);
@@ -290,8 +290,7 @@ public final class PlanCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
         if (response.status() == 404) {
-            out.printf("Plan %s not found.%n", OutputSafety.stripControlSequences(planId));
-            out.flush();
+            RefusalRenderer.render(out, locale, ApiErrorCode.SCOPE_NOT_FOUND);
             return 1;
         }
         if (response.status() != 200) {
@@ -331,22 +330,22 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
         if (fileResponse.status() == 404) {
-            return noSuchFile(out);
+            return noSuchFile(out, locale);
         }
         if (fileResponse.status() != 200) {
             throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
         }
         if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
             // The list moved between the two reads: the file it answered is no longer one of its rows.
-            return noSuchFile(out);
+            return noSuchFile(out, locale);
         }
         printRows(out, level.openFileRows(locale));
         return 0;
     }
 
-    private int noSuchFile(PrintWriter out) {
-        out.printf("No such file in the plan's changes: %s%n",
-                            OutputSafety.stripControlSequences(changesFile));
+    private int noSuchFile(PrintWriter out, String locale) {
+        out.println(MessageCatalogue.format(locale, "plan.changes.file_not_found",
+                            Map.of("path", OutputSafety.stripControlSequences(changesFile))));
         out.flush();
         return 1;
     }
@@ -474,7 +473,7 @@ public final class PlanCommand implements Callable<Integer> {
         }
 
         if (tree.tokensSoFar() != null) {
-            out.printf("  tokens so far   %-25s plan %s --tokens%n", formatTokens(tree.tokensSoFar()), planStr);
+            out.printf("  tokens so far   %-25s plan %s --tokens%n", formatTokens(tree.tokensSoFar(), locale), planStr);
         }
 
         int maxDepth = parseDepth(depth, all);
@@ -583,16 +582,19 @@ public final class PlanCommand implements Callable<Integer> {
         }
     }
 
-    static String formatTokens(ProcessTokens tokens) {
+    static String formatTokens(ProcessTokens tokens, String locale) {
         if (tokens.noneYet()) {
-            return "none yet";
+            return MessageCatalogue.format(locale, "plan.view.tokens_none", Map.of());
         }
-        var prefix = tokens.floor() ? "≥ " : "";
-        return String.format("%s%s (%s in · %s out)",
-                            prefix,
-                            TokenFormat.formatTokens(tokens.total(), false, "en"),
-                            TokenFormat.formatTokens(tokens.input(), false, "en"),
-                            TokenFormat.formatTokens(tokens.output(), false, "en"));
+        var prefix = tokens.floor() ? "\u2265 " : "";
+        return prefix + MessageCatalogue.format(locale, "operator.plan.tokens.split", Map.of(
+                            "total", TokenFormat.formatTokens(tokens.total(), false, locale),
+                            "input", TokenFormat.formatTokens(tokens.input(), false, locale),
+                            "output", TokenFormat.formatTokens(tokens.output(), false, locale)));
+    }
+
+    static String formatTokens(ProcessTokens tokens) {
+        return formatTokens(tokens, "en");
     }
 
     private static int parseDepth(@Nullable Integer depth, boolean all) {
@@ -976,8 +978,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 1;
             }
             if (response.status() == 404) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             if (response.status() == 200) {
@@ -1001,10 +1002,32 @@ public final class PlanCommand implements Callable<Integer> {
             var report = PlanCompletionReport.fromJson(body);
             var locale = context.clientEnvironment().locale();
 
+            printReportHeader(out, report, locale);
+            var ran = formatRan(report, locale, context.clock().getZone());
+            printReportMetadata(out, report, locale, ran);
+
+            printDeliverables(out, report.deliverables(), locale);
+            printReplanning(out, report.replanningRecords());
+            printDecisions(out, report.decisionRecords(), locale);
+            printOwnCalls(out, report.ownCalls(), locale);
+            printChangeMap(out, report.changeMap());
+
+            var usage = report.tokenUsage();
+            if (usage != null) {
+                printTokensSummary(out, usage, ran, report.planId(), showTokens, showComponents, locale);
+            }
+            out.flush();
+        }
+
+        private static void printReportHeader(PrintWriter out, PlanCompletionReport report, String locale) {
             var headParts = new ArrayList<String>();
             headParts.add(ConsoleNotice.stripControlSequences(report.planId()));
-            headParts.add("completion report");
-            headParts.add(ConsoleNotice.stripControlSequences(report.outcome()));
+            var reportTitle = MessageCatalogue.get(locale, "report.completion.open");
+            if (!"de".equalsIgnoreCase(locale) && !locale.startsWith("de")) {
+                reportTitle = reportTitle.toLowerCase(Locale.ROOT);
+            }
+            headParts.add(reportTitle);
+            headParts.add(ConsoleNotice.stripControlSequences(PlanCompletionLevel.formatOutcome(locale, report.outcome())));
             if (report.pullRequestNumber() != null) {
                 headParts.add("#" + report.pullRequestNumber());
             }
@@ -1013,7 +1036,9 @@ public final class PlanCommand implements Callable<Integer> {
                                 ? ConsoleNotice.stripControlSequences(ended)
                                 : MessageCatalogue.format(locale, "common.unknown", Map.of()));
             out.println(String.join(" · ", headParts));
+        }
 
+        private static void printReportMetadata(PrintWriter out, PlanCompletionReport report, String locale, @Nullable String ran) {
             var from = report.from();
             if (from != null && from.project() != null) {
                 var path = "in " + ConsoleNotice.stripControlSequences(from.project());
@@ -1034,23 +1059,9 @@ public final class PlanCommand implements Callable<Integer> {
                                 : MessageCatalogue.format(locale, "common.none", Map.of());
             out.printf(FMT_14S, "reason", ConsoleNotice.stripControlSequences(reason));
 
-            var ran = formatRan(report, locale, context.clock().getZone());
             if (ran != null) {
                 out.printf(FMT_14S, "ran", ran);
             }
-
-            printDeliverables(out, report.deliverables());
-            printReplanning(out, report.replanningRecords());
-            printDecisions(out, report.decisionRecords(), locale);
-            printOwnCalls(out, report.ownCalls());
-            printChangeMap(out, report.changeMap());
-
-            var usage = report.tokenUsage();
-            if (usage != null) {
-                printTokensSummary(out, usage, ran, ConsoleNotice.stripControlSequences(report.planId()),
-                                    showTokens, showComponents);
-            }
-            out.flush();
         }
 
         private static @Nullable String formatRan(PlanCompletionReport report, String locale, ZoneId zone) {
@@ -1079,15 +1090,15 @@ public final class PlanCommand implements Callable<Integer> {
                                 "paused", paused));
         }
 
-        private static void printDeliverables(PrintWriter out, List<DeliverableSummary> deliverables) {
+        private static void printDeliverables(PrintWriter out, List<DeliverableSummary> deliverables, String locale) {
             if (deliverables.isEmpty()) {
                 out.printf(FMT_14S, "deliverables", "no deliverables yet: it ended in refine");
             } else {
                 long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
                 out.printf("  %-14s %d of %d done%n", "deliverables", doneCount, deliverables.size());
                 for (var deliv : deliverables) {
-                    out.printf("                   %-5s %s%n", ConsoleNotice.stripControlSequences(deliv.state()),
-                                        ConsoleNotice.stripControlSequences(deliv.name()));
+                    var stateStr = Display.word(locale, "task", deliv.state());
+                    out.printf("                   %-5s %s%n", stateStr, ConsoleNotice.stripControlSequences(deliv.name()));
                 }
             }
         }
@@ -1135,7 +1146,7 @@ public final class PlanCommand implements Callable<Integer> {
                                 "channel", channel != null ? ConsoleNotice.stripControlSequences(channel) : ""));
         }
 
-        private static void printOwnCalls(PrintWriter out, List<OwnCallRecord> ownCalls) {
+        private static void printOwnCalls(PrintWriter out, List<OwnCallRecord> ownCalls, String locale) {
             if (ownCalls.isEmpty()) {
                 return;
             }
@@ -1143,7 +1154,7 @@ public final class PlanCommand implements Callable<Integer> {
             for (var ownCall : ownCalls) {
                 var kind = ownCallKind(ownCall.kind());
                 var description = ConsoleNotice.stripControlSequences(ownCall.description());
-                var judgment = ownCallJudgment(ownCall);
+                var judgment = ownCallJudgment(ownCall, locale);
                 if (hasOwnCallDetails(ownCall)) {
                     out.printf("                   %-19s %s%n", kind, description);
                     var details = new ArrayList<String>();
@@ -1175,12 +1186,12 @@ public final class PlanCommand implements Callable<Integer> {
                                 || ownCall.endsWhen() != null && !ownCall.endsWhen().isBlank();
         }
 
-        private static String ownCallJudgment(OwnCallRecord ownCall) {
+        private static String ownCallJudgment(OwnCallRecord ownCall, String locale) {
             if ("conflicts".equalsIgnoreCase(ownCall.judgment())) {
                 var target = ownCall.conflictTarget();
                 var item = target != null && !target.isBlank()
                                     ? ConsoleNotice.stripControlSequences(target)
-                                    : MessageCatalogue.get("common.unknown");
+                                    : MessageCatalogue.get(locale, "common.unknown");
                 return "conflicts with " + item;
             }
             if ("consistent".equalsIgnoreCase(ownCall.judgment())) {
@@ -1208,11 +1219,11 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
-        private void printTokensSummary(PrintWriter out, TokenUsageRecord usage, @Nullable String ran, String planId, boolean showTokens, boolean showComponents) {
-            var totalSplit = TokenFormat.formatSplit(usage.total(), usage.input(), usage.output(), usage.floor(), "en");
+        private void printTokensSummary(PrintWriter out, TokenUsageRecord usage, @Nullable String ran, String planId, boolean showTokens, boolean showComponents, String locale) {
+            var totalSplit = TokenFormat.formatSplit(usage.total(), usage.input(), usage.output(), usage.floor(), locale);
             if (showTokens) {
                 out.printf("tokens         %s · ran %s%n", totalSplit, ran != null ? ran : "");
-                printTokensDetail(out, usage, planId, showComponents);
+                printTokensDetail(out, usage, planId, showComponents, locale);
             } else {
                 out.printf(FMT_14S, "tokens", totalSplit + " · " + (ran != null ? ran : ""));
                 int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
@@ -1236,7 +1247,7 @@ public final class PlanCommand implements Callable<Integer> {
                                 : pin;
         }
 
-        private void printTokensDetail(PrintWriter out, TokenUsageRecord usage, String planId, boolean showComponents) {
+        private void printTokensDetail(PrintWriter out, TokenUsageRecord usage, String planId, boolean showComponents, String locale) {
             int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
             if (unmeasured > 0) {
                 var reason = usage.unmeasuredReason() != null
@@ -1247,23 +1258,23 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf("  %-12s %d of %d tasks measured%n", "coverage", usage.tasksTotal(), usage.tasksTotal());
             }
 
-            printBreakdown(out, "  by phase", usage.byPhase(), 10, false, showComponents);
-            printBreakdown(out, "  by role", usage.byRole(), 13, true, showComponents);
-            printBreakdown(out, "  by model", usage.byModel(), 20, false, showComponents);
-            printWaste(out, usage);
+            printBreakdown(out, "  by phase", usage.byPhase(), 10, false, showComponents, locale);
+            printBreakdown(out, "  by role", usage.byRole(), 13, true, showComponents, locale);
+            printBreakdown(out, "  by model", usage.byModel(), 20, false, showComponents, locale);
+            printWaste(out, usage, locale);
 
             if (!showComponents) {
                 out.printf("raw components: plan report %s --tokens --components%n", planId);
             }
         }
 
-        private static void printBreakdown(PrintWriter out, String header, List<TokenBreakdownItem> items, int nameWidth, boolean isRole, boolean showComponents) {
+        private static void printBreakdown(PrintWriter out, String header, List<TokenBreakdownItem> items, int nameWidth, boolean isRole, boolean showComponents, String locale) {
             if (items.isEmpty()) {
                 return;
             }
             out.println(header);
             for (var item : items) {
-                var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), "en");
+                var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), locale);
                 var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + NOT_MEASURED) : "";
                 var paddedName = padRight(ConsoleNotice.stripControlSequences(item.name()), nameWidth);
                 if (isRole) {
@@ -1273,7 +1284,7 @@ public final class PlanCommand implements Callable<Integer> {
                     out.printf("               %s %s%s%n", paddedName, val, unmeasuredItem);
                 }
                 if (showComponents && item.components() != null) {
-                    out.printf(FMT_INDENT, formatComponents(item.components()));
+                    out.printf(FMT_INDENT, formatComponents(item.components(), locale));
                 }
             }
         }
@@ -1285,9 +1296,9 @@ public final class PlanCommand implements Callable<Integer> {
             return s + " ".repeat(width - s.length());
         }
 
-        private static void printWaste(PrintWriter out, TokenUsageRecord usage) {
+        private static void printWaste(PrintWriter out, TokenUsageRecord usage, String locale) {
             if (usage.totalWasteTokens() > 0 || !usage.wasteRecords().isEmpty()) {
-                var wasteTotal = TokenFormat.formatTokens(usage.totalWasteTokens(), false, "en");
+                var wasteTotal = TokenFormat.formatTokens(usage.totalWasteTokens(), false, locale);
                 out.printf("  %-12s %s tokens (%d %% of measured)%n", "waste", wasteTotal, usage.wasteSharePercent());
                 for (var w : usage.wasteRecords()) {
                     var label = switch (w.wasteClass()) {
@@ -1296,7 +1307,7 @@ public final class PlanCommand implements Callable<Integer> {
                         case "remediation" -> "remediation";
                         default -> ConsoleNotice.stripControlSequences(w.wasteClass());
                     };
-                    var amount = TokenFormat.formatTokens(w.tokens(), false, "en");
+                    var amount = TokenFormat.formatTokens(w.tokens(), false, locale);
                     var extra = w.causeSummary() != null
                                         ? ConsoleNotice.stripControlSequences(w.causeSummary())
                                         : (w.tasksCount() + " tasks");
@@ -1305,16 +1316,16 @@ public final class PlanCommand implements Callable<Integer> {
             }
         }
 
-        private static String formatComponents(@Nullable TokenComponentRecord c) {
+        private static String formatComponents(@Nullable TokenComponentRecord c, String locale) {
             if (c == null) {
                 return "";
             }
             return String.format("input %s · cache read %s · cache write %s · output %s · reasoning %s",
-                                TokenFormat.formatTokens(c.input(), false, "en"),
-                                TokenFormat.formatTokens(c.cacheRead(), false, "en"),
-                                TokenFormat.formatTokens(c.cacheWrite(), false, "en"),
-                                TokenFormat.formatTokens(c.output(), false, "en"),
-                                TokenFormat.formatTokens(c.reasoning(), false, "en"));
+                                TokenFormat.formatTokens(c.input(), false, locale),
+                                TokenFormat.formatTokens(c.cacheRead(), false, locale),
+                                TokenFormat.formatTokens(c.cacheWrite(), false, locale),
+                                TokenFormat.formatTokens(c.output(), false, locale),
+                                TokenFormat.formatTokens(c.reasoning(), false, locale));
         }
     }
 
@@ -1412,8 +1423,7 @@ public final class PlanCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var settings = loadSettings();
             if (settings == null) {
-                out.printf("Plan %s not found.%n", planId);
-                out.flush();
+                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
 

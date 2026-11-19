@@ -285,6 +285,29 @@ class WebDevicesCommandTest {
     }
 
     @Test
+    @DisplayName("paired date in German carries the dot after the day and uses German month names")
+    void pairedDateGermanDot() throws Exception {
+        seedRuntimeRoutes(true);
+
+        var inStream = new ByteArrayInputStream("".getBytes(StandardCharsets.UTF_8));
+        var terminal = new DumbTerminal(inStream, new ByteArrayOutputStream());
+        var clientEnv = new ClientEnvironment("de", false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute();
+        var output = writer.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("12. Mai"), output),
+                            () -> assertTrue(output.contains("20. Mai"), output),
+                            () -> assertTrue(output.contains("2. Juni"), output)
+        );
+    }
+
+    @Test
     @DisplayName("renames device directly via CLI arguments")
     void renamesDeviceDirectly() throws Exception {
         seedRuntimeRoutes(true);

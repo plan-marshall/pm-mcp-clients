@@ -2599,4 +2599,40 @@ class MockRuntimeEngineTest {
         reader.setDaemon(true);
         reader.start();
     }
+
+    @Test
+    @DisplayName("an act body on a credential path or chat path is not recorded")
+    void actBodyOnCredentialPathIsNotRecorded() throws Exception {
+        try (var recordingEngine = new MockRuntimeEngine(registry,
+                     registry.resolve(StandardScenarios.STATUS_ONLY),
+                     runtimeToken, deviceSecret, true)) {
+            send(recordingEngine, "PUT", "/api/v1/credentials/github", auth,
+                    "{\"token\":\"secret\"}".getBytes(StandardCharsets.UTF_8), false);
+            send(recordingEngine, "POST", "/api/v1/decisions/d-1/chat", auth,
+                    "{\"message\":\"hello\"}".getBytes(StandardCharsets.UTF_8), false);
+            send(recordingEngine, "POST", "/api/v1/questions/q-1/answer", auth,
+                    "{\"answer\":\"yes\"}".getBytes(StandardCharsets.UTF_8), false);
+
+            var actsResponse = send(recordingEngine, "GET", "/mock/acts", Map.of(), new byte[0], false);
+            assertEquals(200, actsResponse.status());
+            var acts = JsonTree.asArray(actsResponse.json().get("acts"));
+            assertNotNull(acts);
+            assertEquals(3, acts.size());
+
+            var credAct = JsonTree.asObject(acts.get(0));
+            assertNotNull(credAct);
+            assertEquals("/api/v1/credentials/github", credAct.get("path"));
+            assertFalse(credAct.containsKey("body"), "credential body must not be recorded in acts");
+
+            var chatAct = JsonTree.asObject(acts.get(1));
+            assertNotNull(chatAct);
+            assertEquals("/api/v1/decisions/d-1/chat", chatAct.get("path"));
+            assertFalse(chatAct.containsKey("body"), "decision chat body must not be recorded in acts");
+
+            var answerAct = JsonTree.asObject(acts.get(2));
+            assertNotNull(answerAct);
+            assertEquals("/api/v1/questions/q-1/answer", answerAct.get("path"));
+            assertTrue(answerAct.containsKey("body"), "decision answer body must be recorded in acts");
+        }
+    }
 }

@@ -298,9 +298,7 @@ public final class ProjectWorkLevel {
     private static TuiRow formatLandingRow(String locale, AlongsideLanding landing) {
         boolean failed = "failed".equalsIgnoreCase(landing.state()) || landing.holdKind() != null;
         String rawState = landing.state() != null ? landing.state() : RUNNING;
-        String state = MessageCatalogue.hasKey(locale, "state.landing." + rawState)
-                            ? Display.word(locale, "landing", rawState)
-                            : OverviewFormatting.clean(rawState);
+        String state = Display.word(locale, "landing", rawState);
         String text;
         if ("removal".equalsIgnoreCase(landing.kind())) {
             int count = landing.count() != null ? landing.count() : 1;

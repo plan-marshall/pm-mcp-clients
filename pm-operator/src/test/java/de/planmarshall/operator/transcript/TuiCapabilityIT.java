@@ -511,7 +511,7 @@ class TuiCapabilityIT {
             assertEquals(0, session.exitCode(), session.rawOutput());
             var questionsScreen = session.screenText();
             assertNoRawResidue("questions", questionsScreen);
-            assertTrue(questionsScreen.contains("CI check · integration tests"), questionsScreen);
+            assertTrue(questionsScreen.contains("CI check · integration-tests"), questionsScreen);
         }
     }
 

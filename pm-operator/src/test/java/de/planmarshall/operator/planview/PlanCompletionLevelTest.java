@@ -210,4 +210,29 @@ class PlanCompletionLevelTest {
                             () -> assertTrue(text.contains("  +--> sse"), text)
         );
     }
+
+    @Test
+    @DisplayName("completion report in German translates outcome, summary and deliverable state")
+    void germanCompletionReport() throws Exception {
+        var level = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT));
+        var text = level.rows("de").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+        assertAll(
+                            () -> assertTrue(text.contains("zusammengeführt"), text),
+                            () -> assertTrue(text.contains("fertig"), text),
+                            () -> assertFalse(text.contains("done"), text)
+        );
+    }
+
+    @Test
+    @DisplayName("a missing outcome and a missing deliverable state render the unknown word in both languages")
+    void unknownOutcomeAndState() {
+        assertAll(
+                            () -> assertEquals("unknown", PlanCompletionLevel.formatOutcome("en", null)),
+                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatOutcome("de", " ")),
+                            () -> assertEquals("unknown", PlanCompletionLevel.formatDeliverableState("en", null)),
+                            () -> assertEquals("unbekannt", PlanCompletionLevel.formatDeliverableState("de", " ")),
+                            () -> assertEquals("done", PlanCompletionLevel.formatDeliverableState("en", " DONE "),
+                                                "a state the report names in capitals reads as its catalogue word"),
+                            () -> assertEquals("fertig", PlanCompletionLevel.formatDeliverableState("de", "DONE")));
+    }
 }

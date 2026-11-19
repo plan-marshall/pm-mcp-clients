@@ -101,6 +101,13 @@ class CleanupCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
+    private int executeWithLocale(Clock clock, String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            clientEnv, null, null, clock);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
     private CleanupJob sampleJob() {
         var items1 = List.of(
                             new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null),
@@ -844,6 +851,27 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("the reminder's date is counted from the clock and in German carries the dot after the day")
+    void cleanupRemindCountsFromTheClockGerman() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_after_days\":3}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC);
+
+        executeWithLocale(clock, "de", "cleanup", "--remind");
+
+        assertTrue(out.toString().contains("16. Okt."), out.toString());
+    }
+
+    @Test
     @DisplayName("cleanup --remind without a date names the next check")
     void cleanupRemindWithoutADate() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -1098,7 +1126,7 @@ class CleanupCommandTest {
     void previewTextNamesTheCounts() {
         var preview = new CleanupCommand.DeletePreview(11, 2, 29, 5, 1, 1806906163L);
 
-        var text = CleanupCommand.previewText(preview, 1);
+        var text = CleanupCommand.previewText("en", preview, 1);
 
         assertAll(
                             () -> assertTrue(text.contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?"), text),
@@ -1111,14 +1139,15 @@ class CleanupCommandTest {
     }
 
     @Test
-    @DisplayName("the decision bar offers d, r, i, x and o in that order")
+    @DisplayName("the decision bar offers d, r, i, x and o in that order, and names the configured postponement")
     void decisionChoicesAreTheFiveKeys() {
-        var choices = CleanupCommand.decisionChoices("en");
+        var choices = CleanupCommand.decisionChoices("en", 7);
 
         assertAll(
                             () -> assertEquals(List.of("d", "r", "i", "x", "o"),
                                                 choices.stream().map(ChoicePrompt.Choice::key).toList()),
                             () -> assertEquals("delete…", choices.get(0).label()),
+                            () -> assertEquals("ask me again in 7 days", choices.get(1).label()),
                             () -> assertEquals("leave items out", choices.get(3).label())
         );
     }
@@ -1711,6 +1740,52 @@ class CleanupCommandTest {
                             () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output),
                             () -> assertTrue(posted.get().contains("\"item-25\""), posted.get())
         );
+    }
+
+    @Test
+    @DisplayName("a project-filtered cleanup prints every item beyond twenty and omits the more line")
+    void projectPaginationShowsAllItemsForSpecificProject() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system/cleanup") && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--project", "pm-mcp-clients", "--no-input");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("25) ▸ item-25"), output),
+                            () -> assertFalse(output.contains("more: cleanup --project"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("cleanup --project . behaves as the unfiltered view: a page of twenty and the more line")
+    void projectDotBehavesAsTheUnfilteredView() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = jobOf(25);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/system/cleanup") && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--project", ".", "--no-input");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("20) ▸ item-20"), output),
+                            () -> assertFalse(output.contains("21) ▸ item-21"), "a page, not every item: " + output),
+                            () -> assertTrue(output.contains("5 more: cleanup --project pm-mcp-clients"), output));
     }
 
     @Test

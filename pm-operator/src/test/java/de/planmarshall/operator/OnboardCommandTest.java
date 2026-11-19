@@ -226,7 +226,7 @@ class OnboardCommandTest {
 
             assertAll(
                                 () -> assertEquals(1, code),
-                                () -> assertTrue(err.toString().contains("HTTP 409"), err.toString()));
+                                () -> assertTrue(err.toString().contains("The runtime refused"), err.toString()));
         }
 
         private static final String ONBOARD_COMPLETED = """

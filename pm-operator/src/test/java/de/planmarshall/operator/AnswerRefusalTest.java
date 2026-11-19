@@ -27,7 +27,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -47,8 +49,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @DisplayName("AnswerCommand checks responses and takes its nouns from the envelope")
 @EnableGeneratorController
 class AnswerRefusalTest {
-
-    private static final String REFUSED = "refused by the runtime";
 
     @TempDir
     Path tempDir;
@@ -89,7 +89,7 @@ class AnswerRefusalTest {
         var code = run("en", "x\n\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -115,7 +115,7 @@ class AnswerRefusalTest {
         var code = run("en", ("w\n" + words + "\n\n").getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
 
         assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertTrue(err.toString().contains("The runtime refused"), err.toString());
     }
 
     @Test
@@ -125,8 +125,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-999", "later");
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
     }
 
     @Test
@@ -216,8 +216,8 @@ class AnswerRefusalTest {
 
         var code = run("en", new byte[0], "answer", "Q-001", "1", "--plan", planId);
 
-        assertNotEquals(0, code);
-        assertTrue(err.toString().contains(REFUSED), err.toString());
+        assertEquals(1, code);
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
         assertTrue(targets.stream().noneMatch(t -> t.contains("/api/v1/questions/")), targets.toString());
     }
 
@@ -321,6 +321,154 @@ class AnswerRefusalTest {
 
         assertEquals(3, code, err.toString());
         assertTrue(out.toString().contains("Choose: 9999999999, 2"), out.toString());
+    }
+
+    @ParameterizedTest(name = "{0} refused as {1}")
+    @CsvSource(delimiter = '|', value = {
+                        "later    | conflict         | Something changed in the meantime: the decision was updated.",
+                        "later    | already_answered | The question was already answered elsewhere.",
+                        "withdraw | conflict         | Something changed in the meantime: the decision was updated.",
+                        "withdraw | already_answered | The question was already answered elsewhere."})
+    @DisplayName("a decision refusal of later and withdraw prints the decision and exits 1, never the console's error pattern")
+    void decisionRefusalOfLaterAndWithdraw(String act, String code, String text) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if (request.target().startsWith("/api/v1/decisions/Q-001/")) {
+                response.json(409, "{\"error\":\"%s\"}".formatted(code));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", new byte[0], "answer", "Q-001", act);
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains(text), out.toString()),
+                            () -> assertFalse(out.toString().contains("\u2717"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("a direct answer refused as a conflict prints the decision as it stands and exits 1")
+    void directAnswerConflictPrintsTheDecision() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.json(409, "{\"error\":\"conflict\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", new byte[0], "answer", "Q-001", "1");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains("Something changed in the meantime"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("an interactive answer refused as invalid prints the refusal and asks the part again")
+    void interactiveInvalidAnswerAsksAgain() throws Exception {
+        var posts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                if (posts.incrementAndGet() == 1) {
+                    response.json(422, "{\"error\":\"invalid_answer\",\"message\":\"no such option\"}");
+                } else {
+                    response.json(200, "{\"ok\":true}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", "1\n1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(0, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains(
+                                                "This answer does not fit the part: no such option"), out.toString()),
+                            () -> assertTrue(out.toString().split("Which\\?", -1).length - 1 >= 2,
+                                                "the part is asked again: " + out),
+                            () -> assertEquals(2, posts.get(), "the answer is sent again, after the part is asked again"));
+    }
+
+    @Test
+    @DisplayName("an interactive answer refused as a conflict prints the decision and exits 1")
+    void interactiveConflictExitsOne() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.json(409, "{\"error\":\"already_answered\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", "1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains("already answered elsewhere"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("an interactive answer refused as dependency_unanswered names the part and asks again")
+    void interactiveDependencyUnansweredAsksAgain() throws Exception {
+        var posts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                if (posts.incrementAndGet() == 1) {
+                    response.json(422, "{\"error\":\"dependency_unanswered\"}");
+                } else {
+                    response.json(200, "{\"ok\":true}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("en", "1\n1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(0, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains("Answer part 1 first."), out.toString()),
+                            () -> assertEquals(2, posts.get(), "the answer is sent again after the part is asked again"));
+    }
+
+    @ParameterizedTest(name = "{0} refused as {1} in German")
+    @CsvSource(delimiter = '|', nullValues = "NULL", value = {
+                        "later    | conflict              | NULL           | In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert.",
+                        "withdraw | already_answered      | NULL           | Die Frage wurde bereits an anderer Stelle beantwortet.",
+                        "later    | invalid_answer        | no such option | Diese Antwort passt nicht zu dem Teil: no such option",
+                        "withdraw | dependency_unanswered | NULL           | Beantworte zuerst Teil 1."})
+    @DisplayName("the decision refusals read German in German, with the decision's own exit 1")
+    void decisionRefusalInGerman(String act, String code, @Nullable String message, String text) throws Exception {
+        var body = message == null || message.isBlank() ? "{\"error\":\"%s\"}".formatted(code)
+                            : "{\"error\":\"%s\",\"message\":\"%s\"}".formatted(code, message);
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if (request.target().startsWith("/api/v1/decisions/Q-001/")) {
+                response.json(409, body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run("de", new byte[0], "answer", "Q-001", act);
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(out.toString().contains(text), out.toString()));
     }
 
     private void assertGerman(String expected, String... args) {
