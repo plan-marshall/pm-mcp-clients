@@ -139,7 +139,7 @@ paragraph.
 Plan: link:../plans/README.adoc[`doc/plans/`] and the epic plan `PLAN-167` of the epic `ui-improvements`
 (`plan-marshall-documentation`'s inbox message `doc-review-2026-11-17-001`, operator decision O1-A).
 
-The cut: `doc/specification-move-cut.md` (this repository, deleted by the pull request that completes the move).
+The cut: `doc/specification-move-cut.md` as it stood in commit `3f912c18` of this repository, deleted by the pull request that completed the move (this ADR is its record).
 
 ADRs of `pm-mcp-core` this decision follows:
 link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/007-specifications-of-the-engine-in-this-repository.adoc[007],
