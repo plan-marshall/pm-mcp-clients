@@ -151,10 +151,14 @@ describe('ModelsChoice', () => {
   });
 
   it('reads no models_listed or cannot_list flag: a group without a probed row offers the field', () => {
+    // The state may carry facts no source publishes; the screen must ignore them.
+    const harnesses = [
+      { harness_id: 'codex', name: 'Codex', models_listed: true, cannot_list: false },
+    ] as unknown as { harness_id: string; name: string }[];
     render(ModelsChoice, {
       props: {
         models: [],
-        harnesses: [{ harness_id: 'codex', name: 'Codex', models_listed: true, cannot_list: false }],
+        harnesses,
       },
     });
 
@@ -162,10 +166,13 @@ describe('ModelsChoice', () => {
   });
 
   it('reads no display_name or harness_name: the group is named by the published name or the id', () => {
+    const harnesses = [
+      { harness_id: 'claude', name: 'Claude Profile', display_name: 'Profile Custom' },
+    ] as unknown as { harness_id: string; name: string }[];
     render(ModelsChoice, {
       props: {
         models: [model({ harness_id: 'custom', model_id: 'small-1', source: 'operator', harness_name: 'Row Name' })],
-        harnesses: [{ harness_id: 'claude', name: 'Claude Profile', display_name: 'Profile Custom' }],
+        harnesses,
       },
     });
 
