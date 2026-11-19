@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { uniqueId } from '../utils/uniqueId';
+  import { portal } from '../utils/portal';
 
   /**
    * The dialog of the design system (VD-P-05, VD-S-03): radius 12 px, `--shadow-overlay`, the
@@ -22,6 +23,8 @@
   export let onClose: () => void = () => {};
   /** The test id of the dialog's own box; a composing dialog names itself. */
   export let testid = 'dialog';
+  /** Optional element focus returns to when the dialog is removed. */
+  export let returnFocusElement: HTMLElement | null = null;
 
   /** The elements the Tab key walks, in document order. */
   const FOCUSABLE =
@@ -47,12 +50,17 @@
    */
   function takeFocus(node: HTMLElement): { destroy: () => void } {
     panel = node;
-    returnFocus = document.activeElement as HTMLElement | null;
+    returnFocus = returnFocusElement ?? (document.activeElement as HTMLElement | null);
     // The page behind the backdrop must not scroll under the dialog; its own position survives.
     const root = document.documentElement;
     const previousOverflow = root.style.overflow;
     root.style.overflow = 'hidden';
     node.focus();
+    queueMicrotask(() => {
+      if (panel === node) {
+        node.focus();
+      }
+    });
     return {
       destroy(): void {
         root.style.overflow = previousOverflow;
@@ -134,7 +142,7 @@
 </script>
 
 {#if open}
-  <div class="dialog-backdrop">
+  <div class="dialog-backdrop" use:portal>
     <div
       class="dialog"
       class:dialog--danger={danger}

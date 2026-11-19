@@ -105,6 +105,9 @@
 
   export async function openMenu(): Promise<void> {
     if (disabled || open || items.length === 0) return;
+    if (!triggerElement && rootElement) {
+      triggerElement = rootElement.querySelector('button');
+    }
     above = false;
     open = true;
     await tick();

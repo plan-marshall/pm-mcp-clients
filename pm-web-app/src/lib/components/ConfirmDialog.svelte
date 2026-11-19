@@ -31,6 +31,8 @@
   export let confirmDisabled = false;
   /** The test id of the dialog's own box; a composing dialog names itself. */
   export let testid = 'confirm-dialog';
+  /** Optional element focus returns to when the dialog is removed. */
+  export let returnFocusElement: HTMLElement | null = null;
   /** Reports the confirmed act. */
   export let onConfirm: () => void = () => {};
   /** Reports the close the dialog asks for; the view decides when it is gone. */
@@ -60,7 +62,7 @@
   }
 </script>
 
-<Dialog {open} {title} danger {consequences} onClose={close} {testid}>
+<Dialog {open} {title} danger {consequences} onClose={close} {testid} {returnFocusElement}>
   <slot />
 
   {#if typedName !== undefined}
