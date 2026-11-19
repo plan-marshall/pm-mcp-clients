@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,7 +30,6 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.PmOperator;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,13 +44,14 @@ import picocli.CommandLine;
 /**
  * A plan chat turn end to end on a real pseudo-terminal (PLAN-161, D3): {@code plan chat <id>
  * --message} posts a B1 {@code …/chat/turns} body carrying the client's own {@code client_turn_id}
- * — the runtime refuses a body without it, so an old-shape {@code {"message":…}} body draws no
- * reply — and renders the transcript it read while the role's reply was being written.
+ * beside the message, and renders the transcript it read while the role's reply was being written.
  *
  * <p>The runtime behind this case is a fake that keeps every request it received, so the turn's
- * body is read back and the message it carries is asserted, not only the count of turns: the mock
- * machine of the dialogue harness records the bodies of decision answers alone, and a chat turn is
- * not one of those.
+ * body is read back and both the message and the {@code client_turn_id} it carries are asserted,
+ * not only the count of turns: the mock machine of the dialogue harness records the bodies of
+ * decision answers alone, and a chat turn is not one of those. The old-shape refusal itself — a
+ * body without the id drawing no reply — is the mock runtime's contract, proven where the mock
+ * defines it; this case proves what the client puts on the wire.
  */
 @EnableGeneratorController
 @DisplayName("pm-operator plan chat turn against the recording runtime")
@@ -86,12 +87,12 @@ class PlanChatIT {
     @Test
     @DisplayName("a message is sent as a B1 turn carrying it, and the role's reply is rendered")
     void planChatTurn() throws Exception {
-        Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
+        assertTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not executable");
         var message = "message-" + Generators.letterStrings(6, 12).next();
         var turnBodies = new CopyOnWriteArrayList<String>();
         writeLiveRecord();
         fixture.start((request, response) -> {
-            if (request.target().endsWith("/chat/turns")) {
+            if ("POST".equals(request.method()) && request.target().endsWith("/chat/turns")) {
                 turnBodies.add(request.bodyText());
                 response.json(202, "{\"turn_id\":\"T-1\"}");
             } else if (request.target().endsWith("/chat")) {
@@ -116,8 +117,11 @@ class PlanChatIT {
         }
 
         assertEquals(1, turnBodies.size(), "expected one chat turn, got " + turnBodies);
-        assertTrue(turnBodies.getFirst().contains(message),
-                            "the turn's body must carry the message, got " + turnBodies.getFirst());
+        var body = turnBodies.getFirst();
+        assertAll(
+                            () -> assertTrue(body.contains(message), "the turn's body must carry the message, got " + body),
+                            () -> assertTrue(body.contains("\"client_turn_id\""),
+                                                "the turn's body must carry the client's turn id, got " + body));
     }
 
     /** @param message the operator's message @return the transcript the runtime serves for it */

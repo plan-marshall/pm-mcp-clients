@@ -64,6 +64,9 @@ class RuntimeActDialogueTest {
     /** The short snapshot bound the test that waits it out passes instead of the production 5 s. */
     private static final Duration SNAPSHOT_BOUND = Duration.ofMillis(300);
 
+    /** The one deploy slot the snapshot serves, and the one slot the expected line counts. */
+    private static final int DEPLOY_SLOTS = 1;
+
     private RuntimeFixture fixture;
     private StringWriter out;
 
@@ -119,7 +122,7 @@ class RuntimeActDialogueTest {
 
         // The counts are drawn, so the line is derived from them: the deploy slot of the snapshot
         // is the one slot the signature does not carry.
-        var jobs = build + test + 1;
+        var jobs = build + test + DEPLOY_SLOTS;
         var running = plans + " plans \u00b7 " + epics + " epics \u00b7 " + tasks + " tasks \u00b7 "
                             + jobs + " jobs \u00b7 " + workers + " workers";
         var screen = out.toString();
@@ -420,9 +423,9 @@ class RuntimeActDialogueTest {
             roster.add(new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, null));
         }
         var jobs = Map.<String, Object>of(
-                            "build", Map.of("slots_used", build, "slots_total", 2, "queued", 0),
-                            "test", Map.of("slots_used", test, "slots_total", 1, "queued", 0),
-                            "deploy", Map.of("slots_used", 1, "slots_total", 1, "queued", 0),
+                            "build", Map.of("slots_used", build, "slots_total", Math.max(build, 1), "queued", 0),
+                            "test", Map.of("slots_used", test, "slots_total", Math.max(test, 1), "queued", 0),
+                            "deploy", Map.of("slots_used", DEPLOY_SLOTS, "slots_total", DEPLOY_SLOTS, "queued", 0),
                             "locks_held", 0);
         var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, "today 03:00", "tomorrow 03:00");
         var snapshot = new SystemSnapshot(runtime, work, roster, jobs, List.of(), cleanup,
