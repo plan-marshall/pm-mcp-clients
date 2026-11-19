@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.system.CleanupDurations;

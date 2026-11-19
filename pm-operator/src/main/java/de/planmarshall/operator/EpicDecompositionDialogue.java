@@ -75,21 +75,8 @@ final class EpicDecompositionDialogue {
     record PlanKey(String key, PlanAct act) implements KeyAct {
     }
 
-    /** The decision the read-back prompt takes, with the answer it hands back. */
-    enum ReadBackAct {
-        INSTRUCT_AGAIN("i"),
-        DISCARD("x");
-
-        private final String answer;
-
-        ReadBackAct(String answer) {
-            this.answer = answer;
-        }
-
-        String answer() {
-            return answer;
-        }
-    }
+    /** The decision the read-back prompt takes for a key that is not <em>Enter</em> or the leave key. */
+    enum ReadBackAct { INSTRUCT_AGAIN, DISCARD }
 
     /** One key of the read-back prompt and the decision it takes. */
     record ReadBackKey(String key, ReadBackAct act) implements KeyAct {
@@ -192,7 +179,10 @@ final class EpicDecompositionDialogue {
             } else {
                 var cutKey = accepted(CUT_KEYS, answer);
                 if (cutKey != null) {
-                    current = cutKey.act() == CutAct.ADD ? add(current) : rewrite(current);
+                    current = switch (cutKey.act()) {
+                        case ADD -> add(current);
+                        case REWRITE -> rewrite(current);
+                    };
                 } else {
                     var target = planAt(current, answer);
                     if (target != null) {
@@ -292,10 +282,13 @@ final class EpicDecompositionDialogue {
             var answer = prompt.askRaw(text(KEY_PLAN_PROMPT, Map.of()), STATE_ID,
                                 text("decomposition.edit", Map.of()), epicId);
             var planKey = accepted(PLAN_KEYS, answer);
-            if (planKey != null && planKey.act() == PlanAct.EDIT) {
-                return edit(cut, placed.plan());
+            if (planKey != null) {
+                return switch (planKey.act()) {
+                    case EDIT -> edit(cut, placed.plan());
+                    case KEEP, BACK -> cut;
+                };
             }
-            if (answer.isEmpty() || planKey != null || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+            if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return cut;
             }
             notOffered(answer, offeredLine(PLAN_KEYS));
@@ -309,15 +302,15 @@ final class EpicDecompositionDialogue {
             return before;
         }
         var after = instructEdit(before, plan, words);
-        var answer = readBackDecision();
-        while ("i".equalsIgnoreCase(answer)) {
+        var decision = readBackDecision();
+        while (decision == ReadBackAct.INSTRUCT_AGAIN) {
             var more = askEditWords(plan);
             if (!more.isEmpty()) {
                 after = instructEdit(after, plan, more);
             }
-            answer = readBackDecision();
+            decision = readBackDecision();
         }
-        if ("x".equalsIgnoreCase(answer)) {
+        if (decision == ReadBackAct.DISCARD) {
             prompt.raw(text("start.decomposition.discarded", Map.of()));
             var reloaded = api.decomposition(project, epicId);
             return reloaded != null ? reloaded : before;
@@ -344,16 +337,16 @@ final class EpicDecompositionDialogue {
      * The edit is already in the draft, so the leave key keeps it as it is, like Enter; any other
      * input is answered with one line and the same prompt.
      */
-    private String readBackDecision() {
+    private @Nullable ReadBackAct readBackDecision() {
         while (true) {
             var answer = prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
                                 text("decomposition.accept", Map.of()), epicId);
             var readBackKey = accepted(READ_BACK_KEYS, answer);
             if (readBackKey != null) {
-                return readBackKey.act().answer();
+                return readBackKey.act();
             }
             if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
-                return answer;
+                return null;
             }
             notOffered(answer, offeredLine(READ_BACK_KEYS));
         }
