@@ -628,7 +628,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     // stands after it and the reason is named once.
     const failed = await screen.findByTestId('designer-place-failed');
     expect(failed.textContent?.trim()).toBe(
-      'The landing failed: Start the act again; if it fails again, look the audit id up in the log. The unit is not in force.',
+      'The landing failed: Start the act again; if it fails again, report it with the command you ran. The unit is not in force.',
     );
     expect(screen.getByTestId('place-retry')).toBeInTheDocument();
   });
