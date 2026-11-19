@@ -6,18 +6,26 @@
   /** The models a plan may use (`catalogue.select`, `catalogue.reconfigure`). */
   let { view }: ScreenProps = $props();
 
-  let recommendationText = $derived.by(() => {
-    const direct = view.field('recommendation') ?? view.field('reason') ?? view.field('rationale');
-    if (direct) return direct;
-    const raw = view.state?.recommendation ?? view.state?.advice;
-    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-      const rec = raw as Record<string, unknown>;
-      for (const key of ['rationale', 'reason', 'summary']) {
-        if (typeof rec[key] === 'string' && rec[key]) return rec[key] as string;
-      }
-    }
-    return undefined;
-  });
+  // The row names the recommendation ("the recommendation preselected"), and nothing more: the
+  // screen reads no `reason`, `rationale` or advice object a state might carry, because no row and
+  // no pm-api type publishes them.
+  let recommendationText = $derived(view.field('recommendation'));
+
+  /**
+   * The recorded entry is the one `catalogue.record` states (`19-…:58-64`) and
+   * `ModelCatalogueEntry` (pm-api) types: the harness, the model id and the row's source. The
+   * screen's own marks and token figures never travel to the runtime.
+   *
+   * @param allowed the rows the operator allowed
+   * @returns the `models` body the state's link records
+   */
+  function recordedModels(allowed: readonly ModelRow[]): Array<Record<string, string>> {
+    return allowed.map((row) => ({
+      harness_id: row.harness_id,
+      model_id: row.model_id,
+      source: row.source ?? 'operator',
+    }));
+  }
 </script>
 
 <div class="state-card">
@@ -32,11 +40,10 @@
     harnessNames={view.harnessNames()}
     defaultHarness={view.field('default')}
     recommendation={recommendationText}
-    noAdviceReason={view.field('no_advice_reason')}
     busy={view.busy}
     onRecord={(allowed, modified) => {
       const target = view.linkBy('set', 'record') ?? view.links[view.links.length - 1];
-      if (target) view.onLink(target.id, modified ? { models: allowed } : {});
+      if (target) view.onLink(target.id, modified ? { models: recordedModels(allowed) } : {});
     }}
   />
 </div>

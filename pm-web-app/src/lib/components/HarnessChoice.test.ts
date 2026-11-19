@@ -111,16 +111,62 @@ describe('HarnessChoice monograms', () => {
     }
   });
 
-  it('keeps complete wording without detail even when token_detail is also set', () => {
+  it('keeps complete wording without figures', () => {
     const { container } = render(HarnessChoice, {
       props: {
-        harnesses: [harness({ token_usage: 'complete', token_detail: 'input, output' })],
+        harnesses: [harness({ token_usage: 'complete' })],
       },
     });
 
     const row = container.querySelector('[data-harness="claude"]');
     expect(row).toHaveTextContent('usage complete');
-    expect(row).not.toHaveTextContent('input, output');
+    expect(row).not.toHaveTextContent('complete:');
+  });
+
+  it('keeps the operator\u2019s ticks and default across a refresh that changes the proposal', async () => {
+    const base = [
+      harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+      harness({ harness_id: 'opencode', name: 'OpenCode' }),
+    ];
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: { harnesses: base.map((h) => ({ ...h })) },
+    });
+
+    await fireEvent.click(getByTestId('harness-default-opencode'));
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+
+    await rerender({
+      harnesses: [
+        ...base.map((h) => ({ ...h })),
+        harness({ harness_id: 'codex', name: 'Codex' }),
+      ],
+    });
+
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-toggle-codex')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent(
+      'Check 2 harnesses, OpenCode the default',
+    );
+  });
+
+  it('says so when a refresh removes a harness the operator had unticked', async () => {
+    const base = [
+      harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+      harness({ harness_id: 'opencode', name: 'OpenCode' }),
+    ];
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: { harnesses: base.map((h) => ({ ...h })) },
+    });
+
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+
+    await rerender({ harnesses: [harness({ harness_id: 'opencode', name: 'OpenCode' })] });
+
+    expect(getByTestId('harness-dropped')).toHaveTextContent('Claude Code');
+    expect(getByTestId('harness-toggle-opencode')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
   });
 
   it('resyncs chosen harnesses and default when the harnesses prop changes', async () => {
@@ -146,7 +192,7 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, Codex the default');
   });
 
-  it('keeps pending harness and default choices when selection-relevant content is unchanged', async () => {
+  it('keeps pending harness and default choices when only a non-selection fact changes', async () => {
     const base = [
       harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
       harness({ harness_id: 'opencode', name: 'OpenCode' }),
@@ -161,7 +207,7 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
 
     await rerender({
-      harnesses: base.map((h) => ({ ...h, token_detail: 'refreshed-metadata-only' })),
+      harnesses: base.map((h) => ({ ...h, version: 'refreshed-metadata-only' })),
     });
 
     expect(getByTestId('harness-toggle-claude')).not.toBeChecked();

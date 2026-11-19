@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import { harnessUsageText } from '../display/harnessUsage';
+  import { proposalDelta } from './choiceProposal';
   import Button from './Button.svelte';
 
   /**
@@ -8,6 +9,11 @@
    *
    * Every found harness is listed with its version, its path and whether it can run workers;
    * what it reports of its tokens stands below it as information, never as a condition.
+   *
+   * The row is the published `HarnessScanResult` (pm-api) and the `harness.choose` row
+   * (`14-machine-onboarding.adoc:301-307`): its id, name, path, version, whether it is found,
+   * supported and worker-eligible, what it reports of its token usage and its missing figures, and
+   * its default mark. No source publishes a `token_detail` field, so the screen reads none.
    */
   interface HarnessRow {
     harness_id: string;
@@ -18,7 +24,6 @@
     supported: boolean;
     worker_eligible: boolean;
     token_usage?: string;
-    token_detail?: string;
     missing_figures?: string[];
     usage?: { coverage?: string; figures?: Record<string, string> };
     default?: boolean;
@@ -32,39 +37,50 @@
 
   export let onCheck: (chosen: string[], defaultId: string) => void = () => {};
 
+  function eligible(row: HarnessRow): boolean {
+    return row.found && row.supported && row.worker_eligible;
+  }
+
   function initialSelection(list: readonly HarnessRow[]): { chosen: string[]; defaultId: string } {
-    const eligible = list.filter((h) => h.found && h.supported && h.worker_eligible);
-    const recorded = list.find((h) => h.default && eligible.includes(h));
+    const choosable = list.filter(eligible);
+    const recorded = list.find((h) => h.default && choosable.includes(h));
     return {
-      chosen: eligible.map((h) => h.harness_id),
-      defaultId: recorded?.harness_id ?? eligible[0]?.harness_id ?? '',
+      chosen: choosable.map((h) => h.harness_id),
+      defaultId: recorded?.harness_id ?? choosable[0]?.harness_id ?? '',
     };
   }
 
-  function selectionSignature(list: readonly HarnessRow[]): string {
-    return JSON.stringify(
-      list.map((h) => [h.harness_id, h.found, h.supported, h.worker_eligible, Boolean(h.default)]),
-    );
-  }
-
-  let prevSignature = selectionSignature(harnesses);
+  let prevHarnesses: readonly HarnessRow[] = harnesses;
   let initial = initialSelection(harnesses);
   let chosen: string[] = [...initial.chosen];
   let defaultId = initial.defaultId;
+  // The edits a refreshed proposal dropped because the harness they belonged to is gone.
+  let droppedEdits: string[] = [];
   // A path the runtime serves but the browser cannot load falls back to the monogram, so a broken
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
 
-  // Only resync when selection-relevant scan/default facts change so same-content reloads preserve
-  // in-progress edits; when the recorded `default` itself changes, the replaced proposal wins.
+  // A refresh keeps the operator's ticks and default for every harness that stays, proposes a
+  // newly found eligible one, and takes a vanished one's edit with it — saying so.
   $: {
-    const nextSignature = selectionSignature(harnesses);
-    if (nextSignature !== prevSignature) {
-      prevSignature = nextSignature;
-      const next = initialSelection(harnesses);
-      chosen = [...next.chosen];
-      defaultId = next.defaultId;
-      failedIconPaths = {};
+    const delta = proposalDelta(
+      prevHarnesses.map((h) => h.harness_id),
+      harnesses.map((h) => h.harness_id),
+    );
+    if (delta.added.length > 0 || delta.removed.length > 0) {
+      const previous = prevHarnesses;
+      prevHarnesses = harnesses;
+      const untickedGone = previous.filter(
+        (h) => delta.removed.includes(h.harness_id) && eligible(h) && !chosen.includes(h.harness_id),
+      );
+      if (untickedGone.length > 0) {
+        droppedEdits = [...droppedEdits, ...untickedGone.map((h) => h.name)];
+      }
+      const present = harnesses.filter(eligible).map((h) => h.harness_id);
+      const kept = chosen.filter((id) => present.includes(id));
+      const added = present.filter((id) => delta.added.includes(id) && !kept.includes(id));
+      chosen = [...kept, ...added];
+      if (!chosen.includes(defaultId)) defaultId = chosen[0] ?? '';
     }
   }
 
@@ -219,6 +235,12 @@
       </li>
     {/each}
   </ul>
+
+  {#if droppedEdits.length > 0}
+    <p class="choice-screen__note" role="status" data-testid="harness-dropped">
+      {$t('onboard.choice.edit_dropped', { rows: droppedEdits.join(', ') })}
+    </p>
+  {/if}
 
   <div class="choice-screen__actions">
     <Button

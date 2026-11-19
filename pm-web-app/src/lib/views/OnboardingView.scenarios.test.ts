@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
@@ -55,8 +55,11 @@ describe('OnboardingView against the mock runtime states', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
-    vi.restoreAllMocks();
     vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders the seven steps of the start screen in the message catalogue', () => {
@@ -1399,23 +1402,25 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
-    vi.restoreAllMocks();
     vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
   });
 
-  it('preselects the recommendation with a recommended mark and reason, and drops the mark when unchecked', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('preselects the recommendation with a recommended mark, and drops the mark when unchecked', async () => {
     arrange(
       onboardingState({
         state: 'catalogue.select',
         summary: 'Choose the models plans may use',
-        reason: 'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
+        recommendation: 'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
         models: [
           {
             harness_id: 'claude',
             model_id: 'opus-4.6',
             source: 'probe',
             recommended: true,
-            reason: 'Best for planning and review',
           },
           { harness_id: 'claude', model_id: 'sonnet-4.6', source: 'probe', recommended: true },
           { harness_id: 'claude', model_id: 'haiku-4.5', source: 'probe', recommended: false },
@@ -1436,7 +1441,6 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     expect(screen.getByTestId('model-recommendation')).toHaveTextContent(
       'Opus 4.6 for planning and review; Sonnet 4.6 for implementation.',
     );
-    expect(screen.getByText('Best for planning and review')).toBeVisible();
     expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 2 models');
 
     const opusRow = opusToggle.closest('li') as HTMLElement;
@@ -1537,13 +1541,13 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
     expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
   });
 
-  it('respects explicit cannot_list: false and renders no_advice_reason when advice did not run', () => {
+  it('renders no advice reason and reads no cannot-list flag: only the published shape speaks', () => {
     arrange(
       onboardingState({
         state: 'catalogue.select',
         summary: 'Choose the models plans may use',
         no_advice_reason: 'steward timed out',
-        harnesses: [{ harness_id: 'opencode', cannot_list: false, models_listed: true }],
+        harnesses: [{ harness_id: 'opencode', name: 'OpenCode', cannot_list: false, models_listed: true }],
         models: [{ harness_id: 'opencode', model_id: 'qwen-coder-32b', source: 'operator' }],
         links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
       }),
@@ -1551,9 +1555,9 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
 
     const { container } = render(OnboardingView);
 
+    expect(container.textContent).not.toContain('steward timed out');
     const opencodeGroup = container.querySelector('[data-harness="opencode"]') as HTMLElement;
-    expect(within(opencodeGroup).queryByTestId('models-input-opencode')).toBeNull();
-    expect(container.textContent).toContain('steward timed out');
+    expect(within(opencodeGroup).getByTestId('models-input-opencode')).toBeVisible();
     expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
   });
 
@@ -1624,11 +1628,14 @@ describe('store.choose protection lines per option (D9)', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
-    vi.restoreAllMocks();
     vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
   });
 
-  it('shows Protects a secret against and Does not protect against on every store option', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('shows the generic protection line and no platform claim on the published store rows', () => {
     arrange(
       onboardingState({
         state: 'store.choose',
@@ -1661,33 +1668,29 @@ describe('store.choose protection lines per option (D9)', () => {
 
     const osOption = screen.getByTestId('store-os').closest('li') as HTMLElement;
     expect(osOption).toHaveTextContent(
-      'Protects a secret against: other programs reading a token without macOS asking first',
+      'Protects a secret against: anything the store itself guarantees',
     );
     expect(osOption).toHaveTextContent(
-      'Does not protect against: a program you allow in the macOS dialog',
+      'Does not protect against: anything the store itself does not guarantee',
     );
+    expect(osOption).not.toHaveTextContent('macOS asking first');
     expect(within(osOption).getByText('recommended')).toBeVisible();
 
     const fileOption = screen.getByTestId('store-file').closest('li') as HTMLElement;
-    expect(fileOption).toHaveTextContent(
-      'Protects a secret against: other users of the machine (mode 0600)',
-    );
-    expect(fileOption).toHaveTextContent(
-      'Does not protect against: other programs running as your user',
-    );
+    expect(fileOption).not.toHaveTextContent('mode 0600');
     expect(container.querySelectorAll('[data-marker="recommended"]')).toHaveLength(1);
   });
 
-  it('shows Secret Service protection lines when the Linux Secret Service is offered', () => {
+  it('reads no platform fact: a Linux Secret Service option carries no macOS or Secret Service copy', () => {
     arrange(
       onboardingState({
         state: 'store.choose',
         summary: 'Where should this machine keep its tokens?',
+        platform: 'linux',
         stores: [
           {
             kind: 'os',
             name: 'GNOME Keyring',
-            platform: 'linux',
             available: true,
             recommended: true,
           },
@@ -1696,18 +1699,63 @@ describe('store.choose protection lines per option (D9)', () => {
       }),
     );
 
+    const { container } = render(OnboardingView);
+
+    expect(container).not.toHaveTextContent('without macOS asking first');
+    expect(container).not.toHaveTextContent('Secret Service');
+    expect(container).toHaveTextContent('anything the store itself guarantees');
+  });
+
+  it('records os_unavailable for an unavailable OS store', async () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'GNOME Keyring', available: false },
+        ],
+        links: {
+          file: { href: '/api/v1/onboarding/store/file', next: 'store.check' },
+          os_unavailable: {
+            href: '/api/v1/onboarding/store/unavailable',
+            next: 'store.unavailable',
+          },
+        },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'store.unavailable' }));
+
     render(OnboardingView);
 
-    expect(
-      screen.getByText(
-        'Protects a secret against: reading while the collection is locked and from sandboxes that deny access to Secret Service',
-      ),
-    ).toBeVisible();
-    expect(
-      screen.getByText(
-        'Does not protect against: unconfined programs running as your user while unlocked',
-      ),
-    ).toBeVisible();
+    await fireEvent.change(screen.getByTestId('store-os'));
+    await fireEvent.click(screen.getByTestId('store-record'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('os_unavailable', {}));
+  });
+
+  it('records no link for a store of a kind the state offers no link for', async () => {
+    arrange(
+      onboardingState({
+        state: 'store.choose',
+        summary: 'Where should this machine keep its tokens?',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'vault', name: 'Vault', available: true },
+        ],
+        links: { file: { href: '/api/v1/onboarding/store/file', next: 'store.check' } },
+      }),
+    );
+    const stepSpy = vi.spyOn(apiClient, 'stepOnboarding');
+
+    render(OnboardingView);
+
+    await fireEvent.change(screen.getByTestId('store-vault'));
+    await fireEvent.click(screen.getByTestId('store-record'));
+
+    expect(stepSpy).not.toHaveBeenCalled();
   });
 
   it('keeps the store reconfiguration action enabled when store.reconfigure-result carries no stores array', async () => {
@@ -1736,8 +1784,11 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem('pm_device_secret', 'secret123');
-    vi.restoreAllMocks();
     vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('draws a monogram when no icon is fetched and says usage complete, usage partial or usage not reported', () => {
@@ -1802,7 +1853,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
     expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
     expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-      'usage partial: no cache read, cache write',
+      'usage partial (not reported: cache read, cache write)',
     );
     expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
     expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
@@ -1846,7 +1897,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
         'Tokenverbrauch vollständig',
       );
       expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-        'Tokenverbrauch teilweise: ohne aus dem Cache gelesen, in den Cache geschrieben',
+        'Tokenverbrauch teilweise (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
       );
     } finally {
       messagesStore.set(loadMessages('en'));
@@ -1854,7 +1905,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     }
   });
 
-  it('renders TokensScreen for harness.tokens-* with detail on complete and localised missing figures', () => {
+  it('renders TokensScreen for harness.tokens-* with the one usage wording of harness.choose', () => {
     arrange(
       onboardingState({
         state: 'harness.tokens-partial',
@@ -1864,7 +1915,6 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
             harness_id: 'claude',
             name: 'Claude Code',
             token_usage: 'complete',
-            token_detail: 'input, cache read, output',
           },
           {
             harness_id: 'opencode',
@@ -1886,9 +1936,10 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
 
     const list = screen.getByTestId('token-reporting');
     expect(list).toHaveTextContent('Claude Code');
-    expect(list).toHaveTextContent('complete: input, cache read, output');
+    expect(list).toHaveTextContent('usage complete');
+    expect(list).not.toHaveTextContent('complete:');
     expect(list).toHaveTextContent('OpenCode');
-    expect(list).toHaveTextContent('usage partial: no cache read, cache write');
+    expect(list).toHaveTextContent('usage partial (not reported: cache read, cache write)');
     expect(list).toHaveTextContent('Codex');
     expect(list).toHaveTextContent('usage not reported');
   });

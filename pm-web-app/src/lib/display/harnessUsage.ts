@@ -1,17 +1,15 @@
 /**
  * Token-reporting descriptor shared by `HarnessChoice` and `TokensScreen` so both format
- * `complete`, `partial` (with missing figures when present), and `not_reported` identically.
+ * `complete`, `partial` (with missing figures when present), and `not_reported` with one wording.
+ *
+ * The descriptor is the published `HarnessScanResult` / `HarnessUsageReport` (pm-api) and the
+ * `harness.choose` row (`14-machine-onboarding.adoc:305`); no source publishes a `token_detail`
+ * field, so both screens read it from neither and print the same line for the same fact.
  */
 export interface HarnessTokenInfo {
   token_usage?: string;
-  token_detail?: string;
   missing_figures?: string[];
   usage?: { coverage?: string; figures?: Record<string, string> };
-}
-
-export interface HarnessUsageFormatOptions {
-  /** Include `complete: {figures}` when `token_detail` is supplied (`TokensScreen`). */
-  preferDetailOnComplete?: boolean;
 }
 
 type Translator = (key: string, params?: Record<string, string | number>) => string;
@@ -21,7 +19,6 @@ function formatComponent(translate: Translator, component: string): string {
 }
 
 function missingFiguresText(translate: Translator, harness: HarnessTokenInfo): string {
-  if (harness.token_detail?.trim()) return harness.token_detail.trim();
   if (Array.isArray(harness.missing_figures) && harness.missing_figures.length > 0) {
     return harness.missing_figures.map((name) => formatComponent(translate, name)).join(', ');
   }
@@ -41,19 +38,11 @@ function missingFiguresText(translate: Translator, harness: HarnessTokenInfo): s
  *
  * @param translate catalogue translator function (`$t`)
  * @param harness harness scan or token-report row
- * @param options formatting options (`preferDetailOnComplete` defaults to `false`)
  * @returns localised usage line
  */
-export function harnessUsageText(
-  translate: Translator,
-  harness: HarnessTokenInfo,
-  options: HarnessUsageFormatOptions = {},
-): string {
+export function harnessUsageText(translate: Translator, harness: HarnessTokenInfo): string {
   const coverage = harness.token_usage ?? harness.usage?.coverage;
   if (coverage === 'complete') {
-    if (options.preferDetailOnComplete && harness.token_detail?.trim()) {
-      return translate('onboard.harness.tokens.complete', { figures: harness.token_detail.trim() });
-    }
     return translate('onboard.harness.choose.usage_complete');
   }
   if (coverage === 'partial') {
