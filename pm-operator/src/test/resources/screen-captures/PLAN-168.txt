@@ -1,10 +1,9 @@
-# Screen captures for PLAN-168: the refusal path, the dialogue lines and the cleanup captures
+# Screen captures for PLAN-168: the refusal path and the dialogue lines
 # name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
 #
-# `plan nope` and `epic nope` are the one-shot refusals now on stderr; the console lines show that
-# the interactive console keeps its one stream and shows the same three lines.
-# `answer Q-999 1` is the decision refusal; `epic next` is the launch without asking.
-# `cleanup` captures the choice bar (item opened) and the delete confirmation (d, then the prompt).
+# `plan nope`, `epic nope`, `answer Q-999 1` and `config cleanup --remind never --yes` are the
+# refusals; the console lines show that the interactive console keeps its one stream and shows the
+# same three lines. `epic next` shows the launch without asking when a plan is launchable.
 
 PLAN-168-plan-nope-80x24-en | running-work | - | plan nope | - | 80x24 | en_US.UTF-8 | - | - | - | 1
 PLAN-168-plan-nope-80x24-de | running-work | - | plan nope | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
@@ -26,13 +25,3 @@ PLAN-168-answer-nope-80x24-de | running-work | - | answer Q-999 1 | - | 80x24 | 
 
 PLAN-168-epic-next-80x24-en | running-work | - | epic next relay-hardening | - | 80x24 | en_US.UTF-8 | - | - | - | 0
 PLAN-168-epic-next-80x24-de | running-work | - | epic next relay-hardening | - | 80x24 | de_DE.UTF-8 | - | - | - | 0
-
-PLAN-168-cleanup-choice-120x30-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 120x30 | en_US.UTF-8 | - | 1\n
-PLAN-168-cleanup-choice-120x30-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 120x30 | de_DE.UTF-8 | - | 1\n
-PLAN-168-cleanup-choice-80x24-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 80x24 | en_US.UTF-8 | - | 1\n
-PLAN-168-cleanup-choice-80x24-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 80x24 | de_DE.UTF-8 | - | 1\n
-
-PLAN-168-cleanup-delete-120x30-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 120x30 | en_US.UTF-8 | - | 1\nd\n
-PLAN-168-cleanup-delete-120x30-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 120x30 | de_DE.UTF-8 | - | 1\nd\n
-PLAN-168-cleanup-delete-80x24-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 80x24 | en_US.UTF-8 | - | 1\nd\n
-PLAN-168-cleanup-delete-80x24-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 80x24 | de_DE.UTF-8 | - | 1\nd\n
