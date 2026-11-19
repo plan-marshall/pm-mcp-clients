@@ -60,7 +60,7 @@ class RuntimeStopDialogueIT {
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText(KEEP, DialogueHarness.TIMEOUT), session.rawOutput());
 
             // The "unknown" answer is derived from the choices the dialogue itself prints, and the
             // assumption this test rests on — two choices, so any number above 2 is unknown — is

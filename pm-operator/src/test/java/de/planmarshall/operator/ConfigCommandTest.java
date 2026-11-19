@@ -644,7 +644,7 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(!steps.isEmpty(), "the refused request must be a step POST: " + steps),
+                            () -> assertFalse(steps.isEmpty(), "the refused request must be a step POST: " + steps),
                             () -> assertTrue(err.toString().contains("The runtime refused"), err.toString()));
     }
 
