@@ -11,10 +11,12 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -30,11 +32,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * One accepted set per prompt: the line a prompt prints as offered is the collection of keys its
- * branches accept, so a key added to one and not the other turns this class red.
+ * One accepted set per prompt: the line a prompt prints as offered is built from the same
+ * collection of keys its branches accept, so a key added to one and not the other turns this class
+ * red.
  * <p>
- * The offered line is read twice: from the dialogue's own builder (the set the branches use) and
- * from a rendered not-offered answer, so the builder cannot drift from what the operator sees.
+ * The offered line is read from the dialogue's own builder, and each key of each set is fed to the
+ * rendered dialogue: a branch that stops accepting a key the set still names shows up as a
+ * not-offered answer, which no assertion on the builder alone could see. The refused key shows the
+ * line the operator reads back.
  */
 @DisplayName("EpicDecompositionDialogue: the offered keys")
 class EpicDecompositionDialogueKeysTest {
@@ -93,7 +98,7 @@ class EpicDecompositionDialogueKeysTest {
 
         assertAll(
                             () -> assertEquals("1-3, +, r, q, ?", offered),
-                            () -> assertEquals(offeredExpectation(EN, EpicDecompositionDialogue.CUT_KEYS, 3),
+                            () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.CUT_KEYS), 3),
                                                 offeredKeys(offered)),
                             () -> assertTrue(render(EN, "z\n").contains("z is not offered here: 1-3, +, r, q, ?"))
         );
@@ -106,7 +111,7 @@ class EpicDecompositionDialogueKeysTest {
 
         assertAll(
                             () -> assertEquals("k, e, b, q, ?", offered),
-                            () -> assertEquals(offeredExpectation(EN, EpicDecompositionDialogue.PLAN_KEYS, 0),
+                            () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.PLAN_KEYS), 0),
                                                 offeredKeys(offered)),
                             () -> assertTrue(render(EN, "1\nz\n").contains("z is not offered here: k, e, b, q, ?"))
         );
@@ -119,11 +124,35 @@ class EpicDecompositionDialogueKeysTest {
 
         assertAll(
                             () -> assertEquals("i, x, q, ?", offered),
-                            () -> assertEquals(offeredExpectation(EN, EpicDecompositionDialogue.READ_BACK_KEYS, 0),
+                            () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.READ_BACK_KEYS), 0),
                                                 offeredKeys(offered)),
                             () -> assertTrue(render(EN, "1\ne\nsmaller\nz\n")
                                                 .contains("z is not offered here: i, x, q, ?"))
         );
+    }
+
+    @Test
+    @DisplayName("every key the cut prompt offers is accepted by its branches")
+    void theCutPromptAcceptsEveryKeyItOffers() throws Exception {
+        for (var key : keysOf(EpicDecompositionDialogue.CUT_KEYS)) {
+            assertFalse(render(EN, key + "\n").contains("is not offered here"), key);
+        }
+    }
+
+    @Test
+    @DisplayName("every key the plan prompt offers is accepted by its branches")
+    void thePlanPromptAcceptsEveryKeyItOffers() throws Exception {
+        for (var key : keysOf(EpicDecompositionDialogue.PLAN_KEYS)) {
+            assertFalse(render(EN, "1\n" + key + "\n").contains("is not offered here"), key);
+        }
+    }
+
+    @Test
+    @DisplayName("every key the read-back prompt offers is accepted by its branches")
+    void theReadBackPromptAcceptsEveryKeyItOffers() throws Exception {
+        for (var key : keysOf(EpicDecompositionDialogue.READ_BACK_KEYS)) {
+            assertFalse(render(EN, "1\ne\nsmaller\n" + key + "\n").contains("is not offered here"), key);
+        }
     }
 
     @Test
@@ -137,11 +166,11 @@ class EpicDecompositionDialogueKeysTest {
                             () -> assertEquals("1-3, +, r, v, ?", cut),
                             () -> assertEquals("k, e, b, v, ?", plan),
                             () -> assertEquals("i, x, v, ?", readBack),
-                            () -> assertEquals(offeredExpectation(DE, EpicDecompositionDialogue.CUT_KEYS, 3),
+                            () -> assertEquals(offeredExpectation(DE, keysOf(EpicDecompositionDialogue.CUT_KEYS), 3),
                                                 offeredKeys(cut)),
-                            () -> assertEquals(offeredExpectation(DE, EpicDecompositionDialogue.PLAN_KEYS, 0),
+                            () -> assertEquals(offeredExpectation(DE, keysOf(EpicDecompositionDialogue.PLAN_KEYS), 0),
                                                 offeredKeys(plan)),
-                            () -> assertEquals(offeredExpectation(DE, EpicDecompositionDialogue.READ_BACK_KEYS, 0),
+                            () -> assertEquals(offeredExpectation(DE, keysOf(EpicDecompositionDialogue.READ_BACK_KEYS), 0),
                                                 offeredKeys(readBack)),
                             () -> assertTrue(render(DE, "1\nz\n").contains("z wird hier nicht angeboten: k, e, b, v, ?"))
         );
@@ -157,7 +186,8 @@ class EpicDecompositionDialogueKeysTest {
     }
 
     /** @return a prompt's offered line, read from the dialogue's own builder */
-    private String offeredLine(String locale, List<String> keys) throws IOException {
+    private String offeredLine(String locale, List<? extends EpicDecompositionDialogue.KeyAct> keys)
+                        throws IOException {
         try (var driver = dialogue(locale, "")) {
             return dialogue(new StartApi(driver.context()), driver, locale).offeredLine(keys);
         }
@@ -170,7 +200,7 @@ class EpicDecompositionDialogueKeysTest {
             try {
                 dialogue.run();
             } catch (StartPrompt.StartLeftException _) {
-                // The script ends after the not-offered answer; leaving is the expected end.
+                // The script ends after the answer under test; leaving is the expected end.
             }
             return driver.render();
         }
@@ -189,6 +219,14 @@ class EpicDecompositionDialogueKeysTest {
     private static EpicDecompositionDialogue dialogue(StartApi api, TerminalTestDriver driver, String locale) {
         var prompt = new StartPrompt(driver.context(), driver.writer(), locale, false);
         return new EpicDecompositionDialogue(api, prompt, PROJECT, EPIC, null);
+    }
+
+    private static List<String> keysOf(List<? extends EpicDecompositionDialogue.KeyAct> keys) {
+        var names = new ArrayList<String>();
+        for (var key : keys) {
+            names.add(key.key());
+        }
+        return names;
     }
 
     /** The accepted set of one prompt: its keys, the leave key, Enter and every plan number. */

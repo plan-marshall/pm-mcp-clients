@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.system.CleanupDurations;
@@ -33,17 +34,21 @@ import org.junit.jupiter.api.Test;
 class CleanupDurationsKindsTest {
 
     @Test
-    @DisplayName("every constant of CleanupKind carries a label and a duration")
+    @DisplayName("every constant of CleanupKind carries a label and its own duration")
     void everyKindHasALabelAndADuration() {
         var displays = CleanupCommand.kindDisplays();
+        // One distinct figure per kind, so a mapping that reads another kind's duration shows up as
+        // a column carrying the wrong number rather than passing on a shared default.
+        var figures = new CleanupDurations(11, 12, 13, 14, 15, 3);
 
         assertAll(
                             () -> assertEquals(EnumSet.allOf(CleanupKind.class), displays.keySet()),
                             () -> assertTrue(displays.values().stream().allMatch(display -> !display.label().isBlank())),
-                            () -> assertTrue(displays.values().stream()
-                                                                    .allMatch(display -> display.days().applyAsInt(
-                                                                                        CleanupDurations.defaults()) >= 0),
-                                                displays.toString())
+                            () -> assertEquals(EnumSet.allOf(CleanupKind.class).size(),
+                                                new LinkedHashSet<>(displays.values().stream()
+                                                                    .map(display -> display.days().applyAsInt(figures))
+                                                                    .toList()).size(),
+                                                "each kind reads a duration of its own")
         );
     }
 
@@ -60,18 +65,19 @@ class CleanupDurationsKindsTest {
     @DisplayName("the rendered durations name one column per constant, each with its own figure")
     void theRenderedDurationsCarryOneColumnPerKind() {
         var differing = new CleanupDurations(31, 32, 33, 34, 35, 3);
+        // Keyed by the constant rather than by position, so a reordering cannot re-pair a label and
+        // a figure without the assertion naming it.
+        var figures = Map.of(CleanupKind.PLAN, 31, CleanupKind.EPIC, 32, CleanupKind.LOGS, 33,
+                            CleanupKind.READ_REPORTS, 34, CleanupKind.UNENROLLED_PROJECT, 35);
 
         var text = CleanupCommand.durationsText("en", differing);
 
         var expected = new LinkedHashSet<String>();
         var displays = CleanupCommand.kindDisplays();
-        var figures = new int[]{31, 32, 33, 34, 35};
-        var index = 0;
         for (var kind : CleanupKind.values()) {
             var label = displays.get(kind).label();
             expected.add(MessageCatalogue.format("en", "system.cleanup.durations.kind", Map.of("kind", label))
-                                + " " + figures[index] + " days");
-            index++;
+                                + " " + figures.get(kind) + " days");
         }
         assertAll(
                             () -> assertEquals(expected.size(), CleanupKind.values().length),

@@ -59,22 +59,72 @@ final class EpicDecompositionDialogue {
     private static final String KEY_PLAN = "plan";
 
     /**
-     * The keys the cut prompt accepts besides a plan number, <em>Enter</em> and the leave key — the
-     * one collection its branches read and its offered line is built from.
+     * The act the cut prompt runs for a key that is not a plan number, <em>Enter</em> or the leave
+     * key.
      */
-    static final List<String> CUT_KEYS = List.of("+", "r");
+    enum CutAct { ADD, REWRITE }
+
+    /** One key of the cut prompt and the act it runs. */
+    record CutKey(String key, CutAct act) implements KeyAct {
+    }
+
+    /** The act the plan prompt runs for a key that is not <em>Enter</em> or the leave key. */
+    enum PlanAct { KEEP, EDIT, BACK }
+
+    /** One key of the plan prompt and the act it runs. */
+    record PlanKey(String key, PlanAct act) implements KeyAct {
+    }
+
+    /** The decision the read-back prompt takes, with the answer it hands back. */
+    enum ReadBackAct {
+        INSTRUCT_AGAIN("i"),
+        DISCARD("x");
+
+        private final String answer;
+
+        ReadBackAct(String answer) {
+            this.answer = answer;
+        }
+
+        String answer() {
+            return answer;
+        }
+    }
+
+    /** One key of the read-back prompt and the decision it takes. */
+    record ReadBackKey(String key, ReadBackAct act) implements KeyAct {
+    }
 
     /**
-     * The keys a plan prompt accepts besides <em>Enter</em> and the leave key — the one collection
-     * its branches read and its offered line is built from.
+     * One key a prompt accepts: its spelling and the act or decision it runs. A prompt's branches
+     * and its offered line read the same list of these, so a key and its act cannot separate.
      */
-    static final List<String> PLAN_KEYS = List.of("k", "e", "b");
+    interface KeyAct {
+        String key();
+    }
 
     /**
-     * The keys the read-back prompt accepts besides <em>Enter</em> and the leave key — the one
-     * collection its branches read and its offered line is built from.
+     * The keys the cut prompt accepts besides a plan number, <em>Enter</em> and the leave key, with
+     * the act each one runs — the one structure its branches read and its offered line is built from.
      */
-    static final List<String> READ_BACK_KEYS = List.of("i", "x");
+    static final List<CutKey> CUT_KEYS =
+                        List.of(new CutKey("+", CutAct.ADD), new CutKey("r", CutAct.REWRITE));
+
+    /**
+     * The keys the plan prompt accepts besides <em>Enter</em> and the leave key, with the act each
+     * one runs — the one structure its branches read and its offered line is built from.
+     */
+    static final List<PlanKey> PLAN_KEYS = List.of(new PlanKey("k", PlanAct.KEEP),
+                        new PlanKey("e", PlanAct.EDIT), new PlanKey("b", PlanAct.BACK));
+
+    /**
+     * The keys the read-back prompt accepts besides <em>Enter</em> and the leave key, with the
+     * decision each one takes — the one structure its branches read and its offered line is built from.
+     */
+    static final List<ReadBackKey> READ_BACK_KEYS = List.of(
+                        new ReadBackKey("i", ReadBackAct.INSTRUCT_AGAIN),
+                        new ReadBackKey("x", ReadBackAct.DISCARD));
+
 
     private final StartApi api;
     private final StartPrompt prompt;
@@ -139,14 +189,17 @@ final class EpicDecompositionDialogue {
             } else if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
-            } else if (accepts(CUT_KEYS, answer)) {
-                current = "+".equals(answer) ? add(current) : rewrite(current);
             } else {
-                var target = planAt(current, answer);
-                if (target != null) {
-                    current = openPlan(current, target);
+                var cutKey = accepted(CUT_KEYS, answer);
+                if (cutKey != null) {
+                    current = cutKey.act() == CutAct.ADD ? add(current) : rewrite(current);
                 } else {
-                    notOffered(answer, offered(current));
+                    var target = planAt(current, answer);
+                    if (target != null) {
+                        current = openPlan(current, target);
+                    } else {
+                        notOffered(answer, offered(current));
+                    }
                 }
             }
         }
@@ -161,15 +214,15 @@ final class EpicDecompositionDialogue {
     }
 
     /**
-     * @param keys the collection a prompt's branches accept
+     * @param keys the structure a prompt's branches read
      * @return the line the prompt prints as offered
      */
-    String offeredLine(List<String> keys) {
-        return String.join(", ", keys) + ", " + leaveKey() + ", ?";
+    String offeredLine(List<? extends KeyAct> keys) {
+        return String.join(", ", keys.stream().map(KeyAct::key).toList()) + ", " + leaveKey() + ", ?";
     }
 
-    private static boolean accepts(List<String> keys, String answer) {
-        return keys.stream().anyMatch(key -> key.equalsIgnoreCase(answer));
+    private static <T extends KeyAct> @Nullable T accepted(List<T> keys, String answer) {
+        return keys.stream().filter(key -> key.key().equalsIgnoreCase(answer)).findFirst().orElse(null);
     }
 
     private static String plansOffered(int count) {
@@ -238,11 +291,11 @@ final class EpicDecompositionDialogue {
         while (true) {
             var answer = prompt.askRaw(text(KEY_PLAN_PROMPT, Map.of()), STATE_ID,
                                 text("decomposition.edit", Map.of()), epicId);
-            if ("e".equalsIgnoreCase(answer)) {
+            var planKey = accepted(PLAN_KEYS, answer);
+            if (planKey != null && planKey.act() == PlanAct.EDIT) {
                 return edit(cut, placed.plan());
             }
-            if (answer.isEmpty() || accepts(PLAN_KEYS, answer)
-                                || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+            if (answer.isEmpty() || planKey != null || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return cut;
             }
             notOffered(answer, offeredLine(PLAN_KEYS));
@@ -295,8 +348,11 @@ final class EpicDecompositionDialogue {
         while (true) {
             var answer = prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
                                 text("decomposition.accept", Map.of()), epicId);
-            if (answer.isEmpty() || accepts(READ_BACK_KEYS, answer)
-                                || ChoicePrompt.isLeave(prompt.locale(), answer)) {
+            var readBackKey = accepted(READ_BACK_KEYS, answer);
+            if (readBackKey != null) {
+                return readBackKey.act().answer();
+            }
+            if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return answer;
             }
             notOffered(answer, offeredLine(READ_BACK_KEYS));

@@ -96,6 +96,9 @@ public final class CleanupCommand implements Callable<Integer> {
     private static final String KIND_EPICS = "epics";
     private static final String KIND_LOGS = "logs";
     private static final String KIND_REPORTS = "reports";
+    private static final String KIND_UNENROLLED = "unenrolled";
+    /** The word an unenrolled project's item line carries, which is not the durations line's. */
+    private static final String KIND_PROJECT_ITEM = "project";
     private static final String KIND_PROJECTS = "projects";
 
     private final OperatorContext context;
@@ -781,7 +784,7 @@ public final class CleanupCommand implements Callable<Integer> {
         displays.put(CleanupKind.LOGS, new KindDisplay(KIND_LOGS, CleanupDurations::logsAfterDays));
         displays.put(CleanupKind.READ_REPORTS, new KindDisplay(KIND_REPORTS, CleanupDurations::reportsAfterDays));
         displays.put(CleanupKind.UNENROLLED_PROJECT,
-                            new KindDisplay("unenrolled", CleanupDurations::unenrolledAfterDays));
+                            new KindDisplay(KIND_UNENROLLED, CleanupDurations::unenrolledAfterDays));
         return Map.copyOf(displays);
     }
 
@@ -1016,6 +1019,10 @@ public final class CleanupCommand implements Callable<Integer> {
      * The word an item is named by in front of its id ({@code 26-cleanup.adoc#commands}):
      * {@code plan:}, {@code epic:}, {@code logs:}, {@code reports:}, {@code project:}. Read reports
      * and an unenrolled project carry a longer kind on the wire than the word the operator types.
+     * <p>
+     * This is deliberately not {@code KIND_DISPLAYS}: that maps a kind to the word of the durations
+     * line, which names an unenrolled project in full ({@code unenrolled}), while an item's line names
+     * it {@code project}.
      *
      * @param kind the item's kind as the runtime sends it
      * @return the word that names the kind
@@ -1024,7 +1031,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var known = CleanupKind.fromValue(kind);
         return switch (known) {
             case READ_REPORTS -> KIND_REPORTS;
-            case UNENROLLED_PROJECT -> "project";
+            case UNENROLLED_PROJECT -> KIND_PROJECT_ITEM;
             case PLAN, EPIC, LOGS -> known.value();
             case null -> kind;
         };
