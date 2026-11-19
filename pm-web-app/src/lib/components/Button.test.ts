@@ -129,6 +129,16 @@ describe('Button', () => {
     expect(clicked).not.toHaveBeenCalled();
   });
 
+  it('an icon button with loading shows the spinner and no icon', () => {
+    const { container } = render(Button, {
+      props: { loading: true, icon: 'act.copy' },
+    });
+    const button = buttonIn(container);
+
+    expect(button.querySelector('.btn__spinner')).not.toBeNull();
+    expect(button.querySelector('.ui-icon')).toBeNull();
+  });
+
   it('submit button inside form does not submit when disabled with reason or loading', async () => {
     const form = document.createElement('form');
     const onSubmit = vi.fn((e) => e.preventDefault());

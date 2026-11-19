@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/svelte';
 import path from 'node:path';
 import fs from 'node:fs';
 import Toggle from './Toggle.svelte';
+import ToggleOnClickFixture from '../../test/fixtures/ToggleOnClickFixture.svelte';
 
 function styleOf(filePath: string): string {
   const content = fs.readFileSync(filePath, 'utf-8');
@@ -130,6 +131,53 @@ describe('Toggle component', () => {
 
     await fireEvent.click(button);
     expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('a Toggle with disabled and disabledReason shows the reason as its advisory and does not call onToggle through on:click or onclick', async () => {
+    const onToggle = vi.fn();
+    const onClick = vi.fn();
+    render(ToggleOnClickFixture, {
+      props: {
+        label: 'Reveal secret',
+        icon: 'act.view',
+        disabled: true,
+        disabledReason: 'You do not have permission',
+        onToggle,
+        onClick,
+      },
+    });
+
+    const button = screen.getByRole('button', { name: 'Reveal secret' });
+    expect(button).not.toBeDisabled();
+    expect(button).toHaveAttribute('aria-disabled', 'true');
+    expect(button.getAttribute('title')).toBe('You do not have permission');
+    const describedBy = button.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)?.textContent).toBe('You do not have permission');
+
+    await fireEvent.click(button);
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('a Toggle with disabled and disabledReason does not call onToggle or onclick on direct Toggle', async () => {
+    const onToggle = vi.fn();
+    const onClick = vi.fn();
+    render(Toggle, {
+      props: {
+        label: 'Reveal secret',
+        icon: 'act.view',
+        disabled: true,
+        disabledReason: 'You do not have permission',
+        onToggle,
+        onclick: onClick,
+      },
+    });
+
+    const button = screen.getByRole('button', { name: 'Reveal secret' });
+    await fireEvent.click(button);
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(onClick).not.toHaveBeenCalled();
   });
 
   it('conforms to design tokens: pressed ground brand-subtle, focus ring, 24px and phone 44px', () => {

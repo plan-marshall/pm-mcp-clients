@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { advisory } from '../utils/advisoryTitle';
   import Icon from './Icon.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   /**
    * Toggle (VD-P-05): one thing on or off (favourite, follow mode, reveal secret).
@@ -7,18 +9,39 @@
    * A `<button>` with `aria-pressed`, its label naming the thing, not the state.
    * The pressed state is drawn by the icon and the pressed ground (--color-brand-subtle),
    * never by colour alone.
+   *
+   * A toggle that cannot act because of a reason (`disabledReason`) stays in the tab order
+   * (`aria-disabled="true"` instead of native `disabled`; title and `aria-describedby` carry the
+   * reason; click does nothing). A toggle with no reason keeps native `disabled`.
    */
   export let pressed = false;
   export let label: string;
   export let icon: string;
   export let pressedIcon: string | undefined = undefined;
   export let disabled = false;
+  /** Why the control cannot act; the reason becomes its advisory and its description. */
+  export let disabledReason: string | null | undefined = undefined;
   export let onToggle: (pressed: boolean) => void = () => {};
 
+  /** The id of the element that carries the reason, for `aria-describedby`. */
+  const reasonId = uniqueId('toggle-reason');
+
+  $: hasReason = disabled && !!disabledReason;
+  $: isAriaDisabled = hasReason;
+  $: isNativeDisabled = disabled && !disabledReason;
+  $: reason = hasReason ? (disabledReason as string) : '';
+  $: describedBy =
+    [reason ? reasonId : null, $$restProps['aria-describedby']].filter(Boolean).join(' ') ||
+    undefined;
   $: effectiveIcon = pressed && pressedIcon ? pressedIcon : icon;
 
-  function handleClick(): void {
-    if (disabled) return;
+  function handleClick(event: MouseEvent): void {
+    if (disabled) {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      return;
+    }
     const next = !pressed;
     pressed = next;
     onToggle(next);
@@ -29,11 +52,16 @@
   type="button"
   class="toggle"
   class:toggle--no-pressed-icon={!pressedIcon}
+  class:toggle--disabled={disabled}
   aria-pressed={pressed}
   aria-label={label}
-  title={label}
-  {disabled}
+  title={reason || label || $$restProps['title']}
+  disabled={isNativeDisabled ? true : undefined}
+  aria-disabled={isAriaDisabled ? 'true' : undefined}
+  aria-describedby={describedBy}
+  use:advisory
   on:click={handleClick}
+  on:click
   {...$$restProps}
 >
   <span class="toggle__icon" data-testid="toggle-icon" data-icon={effectiveIcon}>
@@ -43,6 +71,10 @@
     {/if}
   </span>
 </button>
+
+{#if reason}
+  <span class="sr-only" id={reasonId}>{reason}</span>
+{/if}
 
 <style>
   .toggle {
@@ -62,7 +94,7 @@
       border-color 150ms ease;
   }
 
-  .toggle:hover:not(:disabled) {
+  .toggle:hover:not(:disabled):not([aria-disabled='true']) {
     background-color: var(--color-bg-subtle);
   }
 
@@ -77,7 +109,8 @@
     box-shadow: var(--focus-ring);
   }
 
-  .toggle:disabled {
+  .toggle:disabled,
+  .toggle[aria-disabled='true'] {
     opacity: 0.5;
     cursor: not-allowed;
   }
