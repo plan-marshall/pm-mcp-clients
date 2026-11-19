@@ -27,7 +27,7 @@ describe('AspectChoice', () => {
       render(AspectChoice, { kind: 'store', stores: STORES });
 
       expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
-      expect(screen.getByText('Recommendation by steward')).toBeVisible();
+      expect(screen.getByText('recommended')).toBeVisible();
       expect(screen.getByRole('radio', { name: 'Vault' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Keep the tokens in the keychain' })).toBeVisible();
     });
@@ -48,6 +48,140 @@ describe('AspectChoice', () => {
       );
 
       expect(onRecord).toHaveBeenCalledWith('file');
+    });
+
+    it('falls back to the first available store when an unavailable store is marked recommended', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false, recommended: true },
+          { kind: 'file', name: 'the file store', available: true },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeDisabled();
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Keep the tokens in the file store' })).toBeEnabled();
+    });
+
+    it('disables the confirm button when no store is available', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false, recommended: true },
+          { kind: 'file', name: 'the file store', available: false },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).not.toBeChecked();
+      expect(screen.getByRole('radio', { name: 'the file store' })).not.toBeChecked();
+      const recordBtn = screen.getByTestId('store-record');
+      expect(recordBtn).toBeDisabled();
+      expect(recordBtn).toHaveTextContent('No store available');
+    });
+
+    it('resyncs the selected store when stores prop changes', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES,
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'Secret Service', available: true, recommended: true },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'Secret Service' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in Secret Service',
+      );
+    });
+
+    it('keeps a pending store choice when rerendered with identical rows in a new array', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in the file store',
+      );
+    });
+
+    it('renders the generic other protection copy for non-os, non-file stores', () => {
+      const en = loadMessages('en');
+      const { container } = render(AspectChoice, {
+        kind: 'store',
+        stores: [{ kind: 'vault', name: 'Vault', available: true }],
+      });
+
+      const vaultOption = screen.getByRole('radio', { name: 'Vault' }).closest('label, li');
+      expect(vaultOption ?? container).toHaveTextContent(en['onboard.store.choose.other.protects']);
+      expect(vaultOption ?? container).toHaveTextContent(
+        en['onboard.store.choose.other.does_not_protect'],
+      );
+      expect(container).not.toHaveTextContent(en['onboard.store.choose.file.protects']);
+    });
+
+    it('selects Secret Service copy for a Linux os store regardless of its display name', () => {
+      const en = loadMessages('en');
+      const { container } = render(AspectChoice, {
+        kind: 'store',
+        stores: [{ kind: 'os', name: 'GNOME Keyring', available: true, platform: 'linux' }],
+      });
+
+      const row = screen.getByRole('radio', { name: 'GNOME Keyring' }).closest('li');
+      expect(row ?? container).toHaveTextContent(en['onboard.store.choose.os.secret_service.protects']);
+      expect(row ?? container).toHaveTextContent(
+        en['onboard.store.choose.os.secret_service.does_not_protect'],
+      );
+      expect(container).not.toHaveTextContent(en['onboard.store.choose.os.keychain.protects']);
+    });
+
+    it('associates both protection statements with each store radio via aria-describedby', () => {
+      render(AspectChoice, { kind: 'store', stores: STORES });
+
+      for (const store of STORES) {
+        const radio = screen.getByRole('radio', { name: store.name });
+        const describedBy = radio.getAttribute('aria-describedby') ?? '';
+        const ids = describedBy.split(/\s+/).filter(Boolean);
+        expect(ids).toHaveLength(2);
+        const texts = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '');
+        expect(texts[0]).toMatch(/^Protects a secret against:/);
+        expect(texts[1]).toMatch(/^Does not protect against:/);
+      }
+    });
+
+    it('resyncs the selected store when a refresh changes only store availability', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: STORES.map((s) => ({ ...s })),
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+
+      await rerender({
+        kind: 'store',
+        stores: STORES.map((s) => (s.kind === 'file' ? { ...s, available: false } : { ...s })),
+      });
+
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toHaveTextContent(
+        'Keep the tokens in the keychain',
+      );
     });
   });
 
@@ -77,6 +211,44 @@ describe('AspectChoice', () => {
       await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
       await fireEvent.click(screen.getByRole('button', { name: 'Use 2 providers' }));
       expect(onRecord).toHaveBeenLastCalledWith(['github', 'sonar']);
+    });
+
+    it('resyncs selected providers when the providers prop changes', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: PROVIDERS,
+      });
+
+      await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+
+      await rerender({
+        kind: 'providers',
+        providers: [
+          { provider: 'gitlab', name: 'GitLab', available: true, variant: 'glab', token_stored: true },
+        ],
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
+    });
+
+    it('keeps pending provider selections when rerendered with identical rows in a new array', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: PROVIDERS.map((p) => ({ ...p })),
+      });
+
+      await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+
+      await rerender({
+        kind: 'providers',
+        providers: PROVIDERS.map((p) => ({ ...p })),
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
     });
   });
 });

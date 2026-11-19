@@ -1,0 +1,340 @@
+= CLI, Coordination & Security Specification: CLI Binaries, Harness Installer & Entry
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../../Specification.adoc[Specification] » link:../cli-and-security.adoc[CLI, Coordination & Security Specification] » CLI Binaries, Harness Installer & Entry
+
+[#cli-binary]
+== Command-Line Binaries (`pm-mcp`, `pm-operator`) & Installation Layout
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1: Single Version Authority & Embedded Harness Bundles]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7: Runtime & Relay Lifecycle, Crash Recovery & Job Drain]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-TECH-3[PM-TECH-3: GraalVM Native Executable & Startup/Memory Bounds]_
+
+One release ships four native executables. Two of them are command lines, cut by caller: the MCP connection the runtime composes into a worker's launch invokes `pm-mcp`; the operator at a terminal invokes `pm-operator`, the terminal client. No other binary is a user command.
+
+[cols="1,2,4"]
+|===
+|Binary |Built from |Role
+
+|`pm-mcp`
+|link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`] (plain GraalVM native image, <<cli-implementation>>)
+|The worker-facing command line, with one verb: `serve --job`, the relay of a worker's MCP connection (link:../runtime-model/03-relay.adoc[Runtime & Interaction Model Specification, Relay]). Only the MCP connection the runtime composes into a worker's launch starts it (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/04-worker-launch.adoc[Model Work Specification, Worker Launch]); no harness configuration and no bundle file names it. A client of the runtime; it holds no store logic and never starts the runtime.
+
+|`pm-operator`
+|link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`] (plain GraalVM native image, <<cli-implementation>>)
+|The terminal client, one of the operator's two clients (<<two-channels>>): without a verb the operator's entry and console (<<start>>), and every verb the operator runs at a terminal, without an `operator` sub-level (<<command-tree>>). A client of the runtime's local API; it holds no store logic. The bundles deny the whole binary to the model (<<harness-operator-gate>>).
+
+|`pm-mcpd`
+|link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mcp-server[`pm-mcp-server`] (Quarkus native)
+|The always-on runtime (daemon), one per machine and `PM_MCP_BASE`, started on demand by `pm-operator` (<<cli-daemon-access>>), by the service manager, or as the successor of its own restart (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#runtime-lifecycle-operations[Runtime Lifecycle Specification, The Runtime's Lifecycle]). It serves the web app, the operator's other client, and opens no TCP listener unless the operator enabled web access (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-server[Web Access & Pairing (`pm-operator web`)]), apart from the loopback listener fallback (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_transport_endpoint[Runtime & Interaction Model Specification, Transport Endpoint]).
+
+|`pm-exec`
+|link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-exec[`pm-exec`]
+|The job launcher the runtime starts for every job (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/job-runtime.adoc[Job Runtime Specification]); not a user command.
+|===
+
+No binary of its own serves the web access: the web listeners and the web app are part of `pm-mcpd` (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-server[Web Access & Pairing (`pm-operator web`)]).
+
+[#installation-layout]
+=== Installation Layout
+_Implementation watch: link:../../implementation-watch/cli-and-security.adoc#PM-WATCH-CLI-10[PM-WATCH-CLI-10], link:../../implementation-watch/cli-and-security.adoc#PM-WATCH-CLI-11[PM-WATCH-CLI-11], link:../../../../plan-marshall-documentation/doc/implementation-watch/module-structure.adoc#PM-WATCH-MOD-2[PM-WATCH-MOD-2]_
+
+* *Installation directory*: `<PM_MCP_HOME>/` is read-only after installation and holds `bin/pm-mcp`, `bin/pm-operator`, `bin/pm-mcpd`, `bin/pm-exec`, beside `pm-mcpd` the Netty native transport library of the platform (`bin/libnetty_transport_native_kqueue_<arch>.jnilib` on macOS, `bin/libnetty_transport_native_epoll_<arch>.so` on Linux), which the runtime loads from there and never extracts into the temporary directory (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_transport_endpoint[Runtime & Interaction Model Specification, Transport Endpoint]), the CycloneDX SBOM of the release in `sbom/` (Java dependencies and the npm packages of the web application), and the release notes. It holds no configuration file: machine settings live in `<PM_MCP_BASE>/machine-config.json` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/filesystem-layout/02-machine-runtime.adoc#machine-layout[Filesystem Layout Specification]).
+* [[installation-root]]*Installation root*: A release is installed into a directory named by its version, `<install_root>/<version>/`, which is its `<PM_MCP_HOME>`; `<install_root>` is a directory of the user that holds the versioned installation directories side by side. The installation is *runtime-upgradable* when `<PM_MCP_HOME>` is such a versioned directory inside a user-writable `<install_root>`, was resolved from the running binary (not named by `PM_MCP_HOME`), and both `PATH` links point into it.
+* *Resolution of `PM_MCP_HOME`*: When the environment variable `PM_MCP_HOME` is set it names the installation directory; otherwise it is the parent of the directory that contains the running executable (`pm-mcp`, `pm-operator`, or `pm-mcpd`), with every symbolic link resolved (so a binary reached through a `PATH` symlink finds its own installation).
+* *Siblings by path, never by `PATH`*: `pm-operator` starts `pm-mcpd` by its absolute path in `<PM_MCP_HOME>/bin/`, and `pm-mcpd` starts `pm-exec` from its own installation directory the same way; the MCP connection it composes for a worker starts the job relay as `<PM_MCP_HOME>/bin/pm-mcp` of that same installation, by absolute path (a job's `PATH` holds only the directories of enrolled tools, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/job-runtime/02-confinement-and-environment.adoc[Job Runtime Specification, Confinement & Environment]). No binary is looked up through `PATH`, so a same-named executable earlier on `PATH` is never started.
+* *Two `PATH` entries*: The installation places exactly two symbolic links, `pm-mcp` → `<PM_MCP_HOME>/bin/pm-mcp` and `pm-operator` → `<PM_MCP_HOME>/bin/pm-operator`, into a user bin directory that is on `PATH` (for example `~/.local/bin`), or prints the commands that create them when no such directory is writable. The operator runs `pm-operator` through its entry; a worker's composed MCP connection never uses the `pm-mcp` entry; `pm-mcpd` and `pm-exec` get no entry.
+* [[service-unit]]*Service unit*: `pm-operator runtime install` has the runtime write the per-user service unit (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_start_modes[Runtime & Interaction Model Specification, Start Modes]), which names `<PM_MCP_HOME>/bin/pm-mcpd` of this installation by its absolute path. The unit, its restart rules, its installation and removal, and its rewrite by an upgrade are specified with the runtime's lifecycle (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#service-unit[Runtime Lifecycle Specification, Service Unit]).
+* *Upgrade*: An upgrade is an operator act of either client, performed by the runtime by the procedure of link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#runtime-lifecycle-operations[Runtime Lifecycle Specification, The Runtime's Lifecycle]. In the installation it unpacks the verified release into a new versioned installation directory in `<install_root>`, rewrites the service unit where one is installed, and switches both `PATH` links. The previous installation directory stays as the way back until the next upgrade removes it; it also serves the old runtime, which starts its jobs through its own `pm-exec`, until that runtime has exited. An installation that is not runtime-upgradable is refused the upgrade with its reason and is upgraded by hand with the same steps: unpack the release beside the current one, switch both links, then `pm-operator drain`; the next command that needs the runtime starts `pm-mcpd` of the new installation.
+
+[#command-tree]
+=== Command Tree
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-11: The Operator's Two Clients & Their Contract]_
+
+The verbs are divided between the two binaries by caller. `pm-mcp` has only the *worker-facing* verb `serve --job`, which grants nothing beyond the worker's own tool surface and is no operator verb. `pm-operator` has the *terminal* verbs, which serve the operator; those marked `[op]` are operator verbs, accepted only when the operator checks of `pm-operator` pass (xref:02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts (`pm-operator`)]). A read is no operator act; every act is one, opening a web listener and issuing a pairing code included. The other terminal verbs, the one list of the verbs that are no operator verbs, keep running without those checks: `status`, `system`, `profile show`, and the reads `harness status`, `credentials status`, `quality-report`, `plan settings` without a change, `pm-operator` without a verb (the entry and the console; every act typed in it runs the checks), `config` without an aspect and `config show`, `projects`, `plan findings|watches`, `epic findings|watches`, `lesson check`, `questions`, `needs`, `find`, `reports` without `read|open`, `roles list|show`, `web devices list`, `waivers`, `audit verify`, and `sweep` without `--apply`. Two acts run without them as well, because every process of the operator's OS user already has their effect, so the checks would protect nothing: `drain`, a signal to the recorded runtime process that any such process can send, and `runtime start`, which every command that needs the runtime performs anyway (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_start_modes[Runtime & Interaction Model, Start Modes]). The harness deny rule of the bundles covers the binary as a whole, with or without `[op]` (<<harness-operator-gate>>). Every verb runs as one shell command and, without the program name, inside the console of the terminal client (<<start>>). The options of each verb and the console's own commands are the terminal client's design (link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/design/terminal-client/01-commands.adoc#command-tree[`pm-mcp-clients`, Terminal Client, The Verbs]); this listing names the verbs and the specification that owns each act.
+
+----
+pm-mcp (worker-facing)
+  pm-mcp serve --job --socket <path>             STDIO relay of a worker (job token; Runtime & Interaction Model, Relay)
+
+pm-operator (terminal)
+  pm-operator                                          the terminal client: the entry, then the console (The Terminal Client as the Entry)
+  pm-operator config                                   the machine settings
+  pm-operator config <aspect> ...                [op]  a later run of one aspect of the onboarding
+  pm-operator config show ...                          effective configuration values with their origin
+  pm-operator config set|unset ...               [op]  one plain key at one level
+  pm-operator status [--ended] [--watch]               running work, ended work, and the runtime
+  pm-operator system [--watch]                         the runtime's figures and lifecycle state (Runtime Lifecycle, The Runtime's Metrics)
+  pm-operator drain                                    signal the recorded runtime process to drain and wait the bounded drain time
+  pm-operator runtime start                            on-demand start
+  pm-operator runtime install|uninstall          [op]  the runtime writes or removes the per-user service unit
+  pm-operator runtime stop|restart [--when-done|--now]
+                                                 [op]  stop or restart the runtime by its drain (the default) or now (Runtime Lifecycle)
+  pm-operator runtime stop --withdraw            [op]  withdraw a drain the operator asked from a client
+  pm-operator runtime upgrade ...                [op]  check for and install a newer release (Runtime Lifecycle)
+  pm-operator harness install|update|remove ... [op]  install, update, or remove a harness bundle (Harness Bundle Installer)
+  pm-operator harness status                           the installed bundles and their drift (Bundle Drift Notice)
+  pm-operator web enable|disable [--lan]         [op]  web access of the runtime (Web Access & Pairing)
+  pm-operator web pair [--label <label>]         [op]  pairing code, URL, and QR code
+  pm-operator web open [--pair]                  [op]  open the web app in the local browser, pairing it when needed
+  pm-operator web devices [list]                       the paired devices (Devices in Both Clients)
+  pm-operator web devices rename|revoke ...      [op]  rename or revoke paired devices
+  pm-operator projects                                 the machine's projects (Runtime & Interaction Model, The Projects of the Machine)
+  pm-operator project add|setup ...              [op]  a project's onboarding (Onboarding a Project as One Process)
+  pm-operator project favourite <project_id> ... [op]  mark or unmark a favourite (Runtime & Interaction Model, The Projects of the Machine)
+  pm-operator project release|unenrol <project_id>
+                                                 [op]  a project's release and unenrolment (Releasing Ends Work as the Operator Ends It)
+  pm-operator plan add|pause|start|cancel|abandon|chat|report ...
+                                                 [op]  start a plan and act on it (Operator Channel Isolation, Operator Acts on Plans and Epics)
+  pm-operator plan resolve <plan_id> ...         [op]  resolve what holds a plan (State Catalogue, Holds and Their Acts)
+  pm-operator plan settings <plan_id>                  a plan's own values (Workflow DSL, Plan Overrides)
+  pm-operator plan settings <plan_id> ...        [op]  change a plan's own values
+  pm-operator plan findings|watches <plan_id>          the plan's review findings, and the watches on it (Store Schemas, Findings and Review Records; Model Work, An Epic's Findings and Watches)
+  pm-operator epic add|next|auto|decompose|archive|chat|cancel ...
+                                                 [op]  start an epic and act on it
+  pm-operator epic findings|watches <epic_id>          the epic's findings and watches (Model Work, An Epic's Findings and Watches)
+  pm-operator epic review|instruct <epic_id> ... [op]  check the decomposition and agree the cut; shape one staged plan (Model Work, The Decomposition Is Reviewed)
+  pm-operator recipe run ...                     [op]  start a recipe of a project
+  pm-operator lesson check <lesson_id> ...             a lesson's premise against the repository (State Catalogue, Starting from the Clients, `source-lesson`)
+  pm-operator lesson release --lesson <lesson_id>
+                                                 [op]  the content-reviewed upstream release of a lesson (Store Schemas, Lesson Record)
+  pm-operator questions                                the open decisions and waiver requests (Model Work, The Decision Structure)
+  pm-operator answer <id> [<option>]             [op]  answer a decision or a waiver request (Store Schemas, Answers from the Terminal Client)
+  pm-operator needs                                    everything that waits, as one list (Runtime & Interaction Model, Everything That Waits)
+  pm-operator find <text>                              work by name (Runtime & Interaction Model, Finding Work by Name)
+  pm-operator reports                                  the unread reports (Runtime & Interaction Model, Reports to the Operator)
+  pm-operator reports read|open ...              [op]  mark reports read; open one, which reads it
+  pm-operator cleanup [--delete|--remind|--ignore] [--yes]
+                                                 [op]  the cleanup job of work history (Timeouts & Budgets, One Cleanup)
+  pm-operator roles list|show ...                      the effective role set (Operator Channel Isolation)
+  pm-operator roles qualify ...                  [op]  role qualification (Operator Channel Isolation)
+  pm-operator upstream add|remove <server_id>    [op]  an upstream MCP server of the machine (MCP Tools, Selective Upstream MCP Proxy)
+  pm-operator upstream allow|deny <server_id> --project <project_id> ...
+                                                 [op]  switch a server on for a project with its allowed tools, or off
+  pm-operator profile verify|install|remove <harness_id> [--project]
+                                                 [op]  test a harness and emit, install, or remove its machine profile (Harness Profiles, Profile Verification)
+  pm-operator profile show <harness_id>                 effective profile, its set, and its verification record
+  pm-operator decision-log export ... --out <dir>   [op]  decision-log records as draft corpus items (Operator Channel Isolation)
+  pm-operator <verb> ...                         [op]  the other operator verbs (Operator Channel Isolation); of them
+                                                       credentials status, quality-report, waivers, audit verify, and sweep
+                                                       without --apply are reads
+----
+
+`pm-mcp serve --job` is never configured by a bundle: only the MCP connection the runtime composes into a worker's launch starts it, with the job's token and generation in its environment (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#job-token[Runtime & Interaction Model Specification, Local Trust: Job Token]). The job launcher is not a verb of either command line: it is the separate binary `pm-exec`. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine (<<start>>). The operator verbs and their endpoints are listed in xref:02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts (`pm-operator`)]; the `web` verbs are specified with the web access (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-server[Web Access & Pairing (`pm-operator web`)]).
+
+[#cli-daemon-access]
+=== Runtime Access & On-Demand Start
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-4[PM-SEC-4: Local Transport Isolation, Operator-Gated Network Exposure & Stream Hygiene]_
+
+_Implementation watch: link:../../implementation-watch/cli-and-security.adoc#PM-WATCH-CLI-11[PM-WATCH-CLI-11], link:../../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc#PM-WATCH-RUN-5[PM-WATCH-RUN-5]_
+
+* *Single writer*: The runtime is the only writer of the stores under `<PM_MCP_BASE>`. Every verb of `pm-operator` that reads live state or changes state is a request to the runtime's local API `/api/v1`, and `pm-mcp serve --job` forwards a worker's requests to the MCP endpoint `/mcp`, both on the runtime's Unix domain socket (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime & Interaction Model Specification, Local API]). Neither binary holds store logic or writes a store file; the runtime validates, locks, audits, and writes. A damaged store blocks only its own scope or project, so the repair acts (for example `pm-operator accept-edit`) also run through the runtime.
+* *On-demand start*: When no live runtime answers, `pm-operator` starts `<PM_MCP_HOME>/bin/pm-mcpd` by the on-demand start procedure of the link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#_start_modes[Runtime & Interaction Model Specification, Start Modes] (creation of `<PM_MCP_BASE>`, `locks/`, and `logs/` where absent, start lock, liveness re-check, detached start with its output appended to `logs/daemon.log`) and then sends its request. It holds `<PM_MCP_BASE>/locks/runtime-start.lock`, its only lock, until its first authenticated round trip with the started runtime succeeds or the runtime start timeout (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/timeouts/02-runtime-leases-operator-web.adoc#runtime-start-timeout[Timeouts & Budgets Specification]) expires. No command requires the operator to start the runtime first. `pm-mcp serve --job` never starts the runtime: a worker exists only as a job of a running runtime.
+* [[cli-without-runtime]]*Without the runtime*: This is the normative, closed list of the commands that work without a running runtime; exactly these five work, none of them starts the runtime, and none writes. `pm-operator status` and `pm-operator system` read `state/runtime.json` and report that the runtime is not running; `pm-operator drain` signals the process recorded in `state/runtime.json` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#runtime-lifecycle-operations[Runtime Lifecycle Specification, The Runtime's Lifecycle]), does nothing when none is recorded, and waits at most the bound defined with the drain timeout (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/timeouts/02-runtime-leases-operator-web.adoc#drain-timeout[Timeouts & Budgets Specification, Drain Timeout]); `pm-operator runtime stop`, with `--withdraw` too, reports that there is nothing to stop; `pm-operator harness status` evaluates the drift checks from files (<<bundle-drift-notice>>). A drain is withdrawn only with `pm-operator runtime stop --withdraw`, and only a drain the operator asked from a client; the drain of the signal cannot be withdrawn.
+* [[cli-file-reads]]*Direct file reads*: This is the normative, closed list of the files under `<PM_MCP_BASE>` the two CLI binaries read directly, and neither writes any of them: `state/runtime.json`; `state/install-records.json` with the target files it records (drift checks); `machine-config.json` (the drain timeout that bounds `pm-operator drain`, and `language.interface` while no runtime answers, <<client-environment>>); and `run/runtime.token` for authentication. Every other state reaches a CLI binary through the runtime's API. The read-only codec of these files lives in `pm-api`. Per binary:
+** `pm-mcp`: none. `serve --job` takes its token from its environment and its socket path from its arguments.
+** `pm-operator`: `run/runtime.token` and `state/runtime.json` (every verb that sends a request, the on-demand start, `status`, `system`, `drain`, and the version check of `harness install|update`); `state/install-records.json` with its target files (`harness status`); `machine-config.json` (`drain`, and the interface language while no runtime answers).
++
+Outside `<PM_MCP_BASE>`, whose only writer is the runtime, the terminal client keeps its own state per user in `$XDG_STATE_HOME/pm-operator/` (default `~/.local/state/pm-operator/`, directory `0700`, files `0600`): the console's history of typed commands and where the operator left its views. It is the only directory a CLI binary writes, it holds no answer, secret, or state of the runtime, and the runtime never reads it.
+* *Runtime token*: Before a request, `pm-operator` verifies that `<PM_MCP_BASE>/run/` and `run/runtime.token` are owned by the current user, have modes `0700` and `0600`, and are not symbolic links; it refuses to send anything otherwise. It sends the token as `Authorization: Bearer <runtime token>`; on `401` it re-reads the file once (the runtime was restarted) and retries once. The token never appears in arguments, in the environment of a process a CLI binary starts, in output, or in logs (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#runtime-token[Runtime & Interaction Model Specification, Local Trust: Runtime Token]). `pm-mcp serve --job` never reads the runtime token: it presents the job token of its environment (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#job-token[Runtime & Interaction Model Specification, Local Trust: Job Token]).
+* *Version*: Both binaries send their release version with every request, the relay included (link:../runtime-model/03-relay.adoc#_connection_metadata[Runtime & Interaction Model Specification, Connection Metadata]). `pm-operator` compares its version with the runtime's on its first request and says so when they differ, naming the restart of the runtime (`pm-operator runtime restart`, or `pm-operator drain`); the web app does the same with the version the runtime status carries. `pm-operator harness install|update` refuse while the running runtime's version (`state/runtime.json`) differs from that of `pm-operator`, so an upgrade never installs the bundles of the old release.
+
+[#client-environment]
+=== What the Terminal Client Sends
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1: Process Ownership & Always-On Runtime]_
+
+The runtime's own environment belongs to whichever process started it and is never an input of a decision (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#runtime-environment[Runtime & Interaction Model Specification, Environment]). What only the operator's terminal can see travels in the requests of `pm-operator`:
+
+* *Locale*: every request carries the locale of the terminal (from `LC_ALL`, `LC_MESSAGES`, `LANG`, in this order) as `Accept-Language`; the runtime uses it only where no interface language is recorded yet (the first state of the machine's onboarding, link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure Specification, Languages and Internationalisation]). `pm-operator` renders its texts from the message catalogue of `pm-api` in the interface language the runtime status names; while no runtime answers, in `language.interface` of `machine-config.json`, else in the terminal's locale where a pack exists, else in English.
+* *Login environment*: the requests that need the operator's login environment carry it: the harness scan and the probes of the machine's onboarding take the directories of the login `PATH` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#harness-scan[Harness Profiles Specification, Harness Scan]); a project's onboarding and `pm-operator enrol` take the build environment, the variables of the job environment with provenance `enrolment` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/job-runtime/02-confinement-and-environment.adoc#_job_environment_pm_sec_5[Job Runtime Specification, Job Environment]), captured from the process environment of `pm-operator`, which the operator's login shell started. The runtime keeps the build environment last captured on the machine with its time, for an onboarding run from the web app (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/credentials-and-enrolment/02-enrolment-and-project-lifecycle.adoc#project-onboarding[Credentials & Enrolment Specification, Onboarding a Project as One Process]). A variable matching the credential patterns of the job environment is never captured or sent.
+* *SSH session*: `pm-operator` recognises an SSH session by `SSH_CONNECTION` or `SSH_TTY` itself and decides on that how it offers the web app (<<start>>); the request that issues a pairing code names only whether the code is meant for another computer.
+
+[#cli-implementation]
+=== CLI Implementation
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-TECH-3[PM-TECH-3: GraalVM Native Executable & Startup/Memory Bounds]_
+
+Both command lines are built for start time and size, without an application framework. Each row applies to both binaries unless it names one:
+
+[cols="1,3"]
+|===
+|Concern |Implementation
+
+|Modules
+|`pm-mcp` is built from link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`] (package `de.planmarshall.relay`), `pm-operator` from link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`] (package `de.planmarshall.operator`). What they share is not a third CLI module but part of link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`].
+
+|Native image
+|Plain GraalVM `native-image` through `org.graalvm.buildtools:native-maven-plugin`; no Quarkus, no CDI, no configuration bootstrap. The relay's start budget is defined in `PM-TECH-3`.
+
+|Command parsing
+|`info.picocli:picocli` with the `info.picocli:picocli-codegen` annotation processor, which generates the reflection and resource metadata at compile time; help, completion, and ANSI output come from picocli.
+
+|Transport
+|One minimal HTTP/1.1 and Server-Sent Events client over the JDK `SocketChannel` with `UnixDomainSocketAddress` (`java.net.http.HttpClient` cannot use Unix domain sockets). It lives in `pm-api` and is shared by both binaries.
+
+|On-demand start
+|`pm-operator` only: one implementation of the on-demand start procedure (<<cli-daemon-access>>): the start lock `runtime-start.lock`, the liveness re-check, the detached spawn of `pm-mcpd` by its path (FFM `posix_spawn`, JDK only), and the runtime-token file checks. It lives in `pm-api` beside the socket client and the drift checks (<<bundle-drift-notice>>).
+
+|JSON
+|`jackson-core` streaming only (with the minimal tree of `pm-api` where one is needed), no data binding and no reflection metadata.
+
+|Texts
+|`pm-operator` only: the message catalogue of `pm-api` (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure Specification, Languages and Internationalisation]); `pm-mcp` writes diagnostics to `stderr` only, in English, as log messages.
+
+|QR code
+|`pm-operator` only: `io.nayuki:qrcodegen` for the pairing code, rendered with Unicode half blocks, a quiet zone of 4 modules, forced black on white.
+
+|Terminal
+|`pm-mcp`: none (its `stdout` carries only MCP messages). `pm-operator`: JLine 4 (`jline-reader`, `jline-terminal`, `jline-terminal-ffm`) for its console: line editing, history, completion, secret input without echo, and printing what the runtime pushes above the line being typed (`LineReader.printAbove`, link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/design/terminal-client/04-console.adoc[`pm-mcp-clients`, Terminal Client, The Console]). Terminal access through the providers `ffm`, then `exec`; the JNI provider, which unpacks a native library at runtime, is not used.
+
+|Harness detection
+|The harness-detection data of the link:../harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration Table] (environment signals and their precedence) is a compiled, data-only table in `pm-api`. `pm-operator` reads it for its operator checks (xref:02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation], item 2); the harness profiles of `pm-core` read the same table, so there is one source, and profile overrides do not touch it.
+|===
+
+The modules `pm-relay` and `pm-operator` each depend, of the modules of the product, on `pm-api` only (resource records, link relations, error codes, codecs, the message catalogue, the socket client, the on-demand start procedure, the drift checks, the read-only codec of the files they read directly, <<cli-file-reads>>, and the harness-detection table) and never on each other (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#dependency-rules[Module Structure Specification, Dependency Rules]), so engine and store code cannot reach a CLI binary; their third-party libraries are the ones the table above names.
+
+== Process Coordination
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1: Process Ownership & Always-On Runtime]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-2[PM-ARCH-2: Local-by-Design & Zero External Cloud Dependency]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7: Runtime & Relay Lifecycle, Crash Recovery & Job Drain]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-4[PM-SEC-4: Local Transport Isolation, Operator-Gated Network Exposure & Stream Hygiene]_
+
+The runtime (`pm-mcpd`) is the only writer of the machine-level state under `<PM_MCP_BASE>` (default `~/.plan-marshall-mcp/`; layout and permissions in link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/filesystem-layout/02-machine-runtime.adoc#machine-layout[Filesystem Layout Specification]). No `plan-marshall` process reads, writes, or locks this state, and `PM-MCP` takes no lock of the `plan-marshall` trees (`PM-MIG-2`). Every read-modify-write of a shared store is performed under the `FileChannel.lock()` of the store's sibling lock file in `<PM_MCP_BASE>/locks/`, or, for a per-project store such as `build-timings.json`, in the project's machine store (`<PM_MCP_BASE>/projects/<project_id>/locks/build-timings.lock`), never under a lock on the store file itself, which the atomic write-and-rename that completes the write replaces (the lock files: link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/13-leases-integrity-testing.adoc#lock-free-snapshot-reads[Store Schemas Specification, Sibling Lock Files]). The append-only journals are the leaves of the lock order: the operating-system lock of each is taken on its sidecar `<file>.lock` beside the journal, never on the journal itself (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/13-leases-integrity-testing.adoc#lock-free-snapshot-reads[Store Schemas Specification, Transaction Locks]). Locks are acquired in the one total order of link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/13-leases-integrity-testing.adoc#lock-free-snapshot-reads[Store Schemas Specification, Transaction Locks]. The CLI binaries (`pm-mcp` with `serve --job`; `pm-operator` with every verb) write none of these stores and take none of these locks; the only lock of a CLI binary is the process lock `locks/runtime-start.lock` of the on-demand start of `pm-operator`. Every state change is a request to the runtime's API, which performs it under these locks (<<cli-daemon-access>>).
+
+Runtime process lifecycle, singleton discovery (`locks/runtime.lock`, `state/runtime.json`), the Unix domain socket endpoint, relay `stdout` hygiene, startup permission verification, crash recovery, and drain are specified in the link:../runtime-model.adoc[Runtime & Interaction Model Specification].
+
+[#two-channels]
+== Operator Choices in the Web App and the Terminal
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-11: The Operator's Two Clients & Their Contract]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-3[PM-SEC-3: Operator Channel Isolation (Operator CLI & Paired Web Devices)]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-12[PM-WF-12: Question Records vs Operator Overrides]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-EXT-6[PM-EXT-6: Configuration Split by Owner Class (Team, Operator, Server State)]_
+
+The operator acts only in the operator's two clients, the web app and the terminal client (`pm-operator`); a harness is a worker, never a channel of the operator (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/workflow-dsl/02-units-jobs-decisions.adoc#clients-only[Workflow DSL Specification, All Interaction in the Operator's Clients]). Both clients are renderings of one contract of the runtime:
+
+. *One state, two renderings*: Every operator wait (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/workflow-dsl/02-units-jobs-decisions.adoc#operator-wait[Workflow DSL Specification, Waiting for the Operator]), among them the choice states (`[O]`) of the machine's onboarding, of a project's onboarding, and of a start, offers its operator links as operator endpoints of the local API (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime & Interaction Model Specification, Local API]). The web app and the terminal client render them, each as its design says (link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/design/README.adoc[`pm-mcp-clients`, Design]); both show the same state, the same proposal, and the same texts, and a run started in one continues in the other. Of two answers to one operator wait the first valid one wins; the later one is refused (`already_answered`), and the client that showed the wait says it was answered in the other one and withdraws it.
+. *An operator act, never relayed*: A choice, an answer, and every other act through these endpoints is an operator act, audited with its channel: `web` with the `device_id` of the paired device, or `cli`. No harness, session, or model relays an operator's choice, and MCP elicitation is no channel of the operator. The terminal client keeps the operator checks of `pm-operator` (an interactive terminal, no coding-agent environment; xref:02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation], item 2).
+. *The answers of a plan*: The same two channels answer what a plan or an epic asks. The terminal client is the channel `cli`: while it is open it follows the runtime's events, announces every open decision and waiver request of the operator's plans and epics, and answers a decision through the same scope-qualified answer endpoint as the web app, validated the same way (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/14-plan-instance-waivers-questions.adoc#cli-answers[Store Schemas Specification, Answers from the Terminal Client]). An answer is a content answer, never an override; a waiver request is answered by `waive` or `decline` (xref:02-operator-channel.adoc#operator-waive[Waivers]).
+. *A later run of one aspect*: Every aspect of the machine's onboarding can be changed alone later, with its current values as the proposal: its sub-workflow runs as a later run (`onboard_run: reconfigure`) from the machine settings (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/workflow-dsl/01-grammar.adoc#machine-scope[Workflow DSL Specification, Machine Scope]). A client may take the choices of an aspect as answers given in advance and ask only for the ones it was not given: `pm-operator config <aspect>` starts the run and answers each choice state from its arguments (link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/design/terminal-client/01-commands.adoc#direct-verbs[`pm-mcp-clients`, Terminal Client, A Direct Verb Runs a Sub-Workflow]); an argument never answers a consent state except the explicit consent of that kind, and a secret is never an argument.
+. *Aspect-owned keys*: A configuration key that an aspect or a setting of the machine owns (`language.*`, `harnesses.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, `sources.documents_mode`, the role assignment) is changed only through its aspect, which validates and checks it; the plain configuration endpoint (`pm-operator config set|unset`) refuses it with `aspect_owned` (`409`), naming the aspect.
+. [[concurrent-changes]]*Concurrent changes of a setting*: A change of a recorded value (a machine setting, a project's operator value, a plan's own value) carries the revision of the settings it was made against. The first change wins; a later one made against an older revision is refused with `conflict` (`409`), and the client shows the current value, on top of which the operator may apply theirs again. Nothing is merged, and nothing is overwritten unseen.
+. *The onboarding first*: An act that needs a step of the machine's onboarding not done yet (a credential before the credential store is chosen, a role before the model catalogue exists, a project's onboarding before the machine's is complete) is refused with `onboarding_incomplete` (`409`), naming the missing step and both ways to complete it, the terminal client (`pm-operator`) and the web app. A secret entered in the onboarding follows `PM-CRED-4` like every other (xref:02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts]).
+. *One surface in every language*: Identifiers, state ids, link relations, store keys, and the commands and options of a client are the same in every language; only the texts are translated (link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure Specification, Languages and Internationalisation]).
+
+[#start]
+== The Terminal Client as the Entry
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-7[PM-SEC-7: Optional Web Access, Device Pairing & Browser Channel Hardening]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-11: The Operator's Two Clients & Their Contract]_
+
+`pm-operator` without a verb is the operator's entry (link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1]). Opening it is a read and runs without the operator checks; each act it takes (opening the loopback or the LAN listener, issuing a pairing code) runs them like every operator act, and where they refuse, the console opens without the web app and the refusal is shown when an act is typed. It starts the runtime on demand and follows the state of the machine, without waiting in it:
+
+* *Not fully onboarded* (the machine scope has not reached `onboard.completed`): it asks where to go on, here or in the web app; _here_ runs the onboarding in the console from where it stands, _in the web app_ connects the web app as below, and the web app shows the onboarding where it stands.
+* *Onboarded*: it connects the web app at once. It opens the loopback listener where it is closed (as `web enable`) and then:
+** on the desktop (no SSH session), it opens the browser of this machine with a pairing code (as `web open --pair`) while no browser of this machine is paired, and otherwise prints the loopback URL;
+** in an SSH session (`SSH_CONNECTION` or `SSH_TTY` set), it opens no browser, always issues a code, as `web pair` does, since the browser is on the operator's own computer, and shows the forward command built from the user name and the machine's host name (`ssh -L <port>:127.0.0.1:<port> <user>@<host>`) with the URL; a browser that holds a valid device secret does not redeem the code (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[Pairing Protocol]).
+* *Other devices*: only on the operator's yes it opens the LAN listener beside the loopback listener, as `web enable --lan` does (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners[Loopback and LAN Listeners Side by Side]), with the same certificate and fingerprint, and shows the QR code of the pairing URL with the fingerprint.
+* *The console*: the ways in are no screen of their own (the entry's wait is the console itself): they stay at hand while the operator works on, a pairing is reported above the prompt, and while the console is open every redeemed code is replaced at once by a fresh one (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]). Every verb is typed there without the program name.
+
+`pm-operator web open` stays as the explicit verb of the same opening on this machine (xref:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-open[Open on the Same Machine]). There is no verb `start` and no verb `onboard`.
+
+[#auto]
+== Automatic Onboarding
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-26[PM-WF-26: Machine Onboarding & the Machine Scope]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-8[PM-SEC-8: Consent Before Acting]_
+
+The state `onboard.mode` of the machine's onboarding (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/workflow-dsl/01-grammar.adoc#machine-scope[Workflow DSL Specification, Machine Scope]) offers _guided_ and _automatic_, in both clients alike (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]):
+
+* *One consent*: `auto.consent` lists every scan and probe the run takes, the consent kinds of the aspects it covers (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas Specification, Consent Before Acting]), and the bundles of the enrolled harnesses it applies at the user scope, and covers exactly those, once, for this run (what it lists in full is specified with the state, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-auto.consent[State Catalogue Specification, `auto.consent`]); it is never remembered, and its _no_ returns to `onboard.mode` with nothing done. The automatic run starts no role task: its only tokens are those of the login probes of harnesses without an `auth_probe` (one minimal headless call each), listed with their expected tokens in `auto.consent`; the steward can be asked later from the machine settings.
+* *Every proposal accepted*: `auto.run` records the automatic run (`onboard_run: auto`) with the consents it covers, and the router `onboard.next` calls each aspect's sub-workflow with its proposal accepted, in the order of the guided run (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-onboard.next[State Catalogue Specification, `onboard.next`]): the system language for both languages, every supported harness found (the first in the order of the `harness_id` the default, as in `harness.choose`) and their models, the default role assignment, the OS credential store where available, the providers whose tools are found, the bundles of the harnesses its scan found at the user scope (a change plan that removes or weakens an `enforcement` rule waits for the operator), and the default plan behaviour; every check reports its line with ✓ or ✗.
+* *Where the operator is needed*: a state that cannot be decided without the operator (a login, a secret, no harness found, the model ids of a harness that cannot list its models) and a step whose proposal fails its check are shown in their own state as in the guided run, an operator wait with its failure and fix; the run continues after it.
+* *The result*: `auto.result` is an operator wait that lists every value the run decided, per aspect, as one item each: the aspect, the key, the value, its reason from the closed list `system` (from the operator's system), `only_supported`, `all_supported` (every supported one found, the first the default), `all_found`, `default`, `available` (available on this machine), `tool_logged_in` (with the tool), and `asked` (the operator was asked in the run), and the check line that confirmed it. Each item opens its aspect as a later run to change it; _finish_ ends in `onboard.completed`. The reasons are message keys of the catalogue (`onboard.auto.reason.<reason>`).
+
+[#harness-installer]
+== Harness Bundle Installer (`pm-operator harness`)
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1: Single Version Authority & Embedded Harness Bundles]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer]_
+
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation]_
+
+_Implementation watch: link:../../implementation-watch/cli-and-security.adoc#PM-WATCH-CLI-12[PM-WATCH-CLI-12]_
+
+The release is the single version authority for all harness bundles: the bundle version is the release version. A harness is a worker only: a bundle carries the shim skill and the permission rules, and nothing else; it installs no entry command, no MCP connection of a harness session, no lifecycle hook, and no agent file (a worker's launch, its MCP connection included, is composed by the runtime at spawn, link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/04-worker-launch.adoc[Model Work Specification, Worker Launch]). The bundle manifests and templates are compiled into the runtime binary `pm-mcpd` under `classpath:/bundles/<harness_id>/` (`claude`, `opencode`, `antigravity`, `codex`), which renders and applies them; every binary of a release carries the release version, so `pm-operator` evaluates the drift checks against its own (<<bundle-drift-notice>>), without the runtime. Nothing is downloaded.
+
+=== Embedded Classpath Bundle Layout
+
+[cols="2,2,3"]
+|===
+|Classpath Resource Path |Harness IDs |Normative Contract
+
+|`classpath:/bundles/{harness_id}/bundle-manifest.json`
+|`claude`, `opencode`, `antigravity`, `codex`
+|Contains the normative `HarnessBundleManifest` (see link:../harness-integration/02-bundle-manifest.adoc#_embedded_harness_bundle_bundle_manifest_json_schema[Harness Integration & Bundle Manifest Specification]): one manifest per harness with `bundle_version`, `manifest_sha256`, the shared `files[]` declared once, and a `scopes` object with a `user` and a `project` section (target root, directories, `shared_configs[]` with owned keys and owned elements, scope-only files).
+
+|`classpath:/bundles/{harness_id}/files/{bundle_path}`
+|`claude`, `opencode`, `antigravity`, `codex`
+|Immutable UTF-8 bytes of the shim skill, in the harness's own skill format and directory, referenced in `bundle-manifest.json` (link:../../../../plan-marshall-documentation/doc/specification/mcp-tools/02-service-and-skill-tools.adoc[MCP Tools Specification, Skill Tools]). No bundle file calls `pm-operator` or `pm-mcp`.
+|===
+
+=== Path Traversal & Integrity Guards During Bundle Extraction
+
+1. Every `bundle_path` and `target_path` in `bundle-manifest.json` is validated against the link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/identifiers/02-registry-stores-to-web.adoc#id-bundle-path[bundle path grammar] before touching the filesystem.
+2. Target installation paths are resolved against the canonical target root of the selected scope (`user` home directory or `project` repository root) via `Path.resolve(targetPath).normalize()` and verified with `startsWith(canonicalScopeRoot)` (`PM-SEC-2`).
+3. Before writing any extracted file, the runtime computes the SHA-256 digest of the classpath resource bytes and verifies that it matches the `sha256` declared in `bundle-manifest.json`.
+
+=== `pm-operator harness` CLI Subcommands (`install`, `update`, `remove`, `status`)
+
+Every subcommand but `status` is a request to the runtime (<<cli-daemon-access>>). `install`, `update`, and `remove` are operator acts of both clients, run with the operator checks in the terminal client and offered by the web app on a paired device with the same change plan and confirmation (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Runtime & Interaction Model Specification, Local API]); the machine's onboarding offers the bundle of each enrolled harness, preselected with its change plan, for the operator's confirmation, and a later run from the machine settings updates or removes it (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]). A changing subcommand takes two requests: the runtime computes the change plan and returns it; `pm-operator` shows it and asks for confirmation (<<harness-operator-gate>>); the apply request names the plan's digest, and the runtime recomputes the plan under `<PM_MCP_BASE>/locks/install-records.lock` and refuses when the target files changed in between. The runtime writes every file atomically (`*.tmp` + `fsync` + `Files.move(..., ATOMIC_MOVE)`) and records the result in `<PM_MCP_BASE>/state/install-records.json` (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/store-schemas/12-machine-stores.adoc#machine-state-records[Store Schemas Specification, Machine State Records]).
+
+* `pm-operator harness install <claude|opencode|antigravity|codex> [--scope user|project]`:
+** Selects the manifest's section of the chosen scope (default `user`; a harness that declares a single scope accepts only that scope) together with the shared `files[]`.
+** With `--scope project`, refuses with `scope_active` while the project has non-terminal plans or epics or running jobs, naming them; `--scope user` is not affected.
+** Plans the missing files and the owned keys and owned elements of `shared_configs[]` for the harness configuration files of the link:../harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration Table]: an owned key is merged at its key; an owned element (`permission_rule`) is appended to its array when no element with the same normalized value is present. An element that is already present with that value (for example authored by the user) is neither duplicated nor recorded as owned, so `remove` never deletes it.
+** Displays the complete planned file, key, and element changes and requires interactive confirmation (`--yes` skips the confirmation, never the terminal check of the operator verbs, link:02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation], item 2; see <<harness-operator-gate>>).
+** Records `scope`, target root, `bundle_version`, and the SHA-256 of every written file, owned key value, and owned element in the install record of `(harness_id, scope, target root)`.
+* `pm-operator harness update [<harness_id>] [--scope user|project]`:
+** With `--scope project`, refuses with `scope_active` while the project has non-terminal plans or epics or running jobs, naming them, like `install`.
+** Compares the runtime's embedded manifest with the install record: replaces recorded files, keys, and elements whose on-disk value still matches the recorded digest or value, appends new ones, and removes the recorded ones that the new bundle version retired.
+** A recorded file or key whose on-disk digest differs, or a recorded element that is no longer present with its recorded normalized value (edited or deleted by the user), is *modified*: it is listed and left untouched unless `--force` is confirmed interactively on a terminal (`--force` is never accepted together with `--yes`).
+* `pm-operator harness remove <harness_id> [--scope user|project]`:
+** Removes only the recorded files, keys, and elements that are unmodified, leaving every unrecorded key and element (the user's own, those of sibling harness installations, and those of a `plan-marshall` plugin) intact; modified entries stay and are listed unless `--force` is confirmed interactively.
+* `pm-operator harness status`:
+** Reports, per harness and scope, the installed `bundle_version`, the drift checks `bundle_outdated` and `bundle_modified` with the modified and missing entries (<<bundle-drift-notice>>), and the harness-side enforcers (the `enforcement` permission rules) installed in that scope. It reads files only and writes nothing.
+
+[#harness-operator-gate]
+=== Operator Gate for Security-Weakening Changes
+_Implementation watch: link:../../implementation-watch/cli-and-security.adoc#PM-WATCH-CLI-13[PM-WATCH-CLI-13]_
+
+The harness permission rules installed with a bundle as `enforcement` rules (among them the deny rules covering `<PM_MCP_BASE>/**`, which include the file credential store `<PM_MCP_BASE>/credentials/`, `PM-CRED-3`, and the one deny rule for the whole operator binary `pm-operator`, which covers every verb of it and names no sub-command, while `pm-mcp serve --job`, a worker's connection, stays allowed; link:../harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Harness Integration & Bundle Manifest Specification]) are a defense-in-depth boundary against the model; a model-driven shell bypasses them. A model-driven shell must not be able to remove them through the installer:
+
+* `pm-operator harness remove` always requires an interactive terminal (`System.console() != null && System.console().isTerminal()`) and interactive confirmation; `--yes` is rejected.
+* The change plan of `pm-operator harness install` and `pm-operator harness update` marks whether it removes or weakens any installed `enforcement` rule (a rule deleted, narrowed, moved from the deny or ask list to a less restrictive list, or overridden by an allow rule). If so, `pm-operator` requires an interactive terminal and interactive confirmation of the listed rule changes; `--yes` is rejected for that change and nothing is applied.
+* `--yes` remains accepted for `install` and `update` changes that keep or strengthen every `enforcement` rule; `convenience` rules are not gated.
+* In the web app the same marked change plan is shown on the paired device, and the change is applied only on the operator's confirmation of the listed rule changes there; no act applies such a change unconfirmed.
+* The gate is a check of the client, like the operator checks of `pm-operator`; its residual risk is the one accepted for the operator channel (link:../../../../plan-marshall-documentation/doc/later-improvements.adoc#L-1[Later Improvements, L-1]).
+
+[#bundle-drift-notice]
+=== Bundle Drift Notice
+_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-4[PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation]_
+
+Two drift checks are evaluated against the install records of a harness, the user-scope record and every project-scope record, by `pm-operator harness status` and by the runtime against its own release version. Both checks read files only (`state/install-records.json` and the recorded target files) and write nothing; `harness status` needs no runtime. Their one implementation lives in `pm-api` beside the read-only codec of these files.
+
+* *`bundle_outdated`*: the record's `bundle_version` differs from the release version of `pm-operator`. Every binary of a release carries the release version, which is the bundle version.
+* *`bundle_modified`*: the recomputed SHA-256 of a recorded file or owned key value differs from the recorded digest, or a recorded owned element is no longer present with its recorded normalized value; the edited and missing entries are listed.
+* *Reporting*: `pm-operator harness status` lists each affected record with the check, its entries, and the fix, `pm-operator harness update <harness_id> [--scope <scope>]` (with `--force` for modified entries). In both clients an affected record is a need of the operator, the `needs_operator` kind `bundle_drift` (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[Runtime & Interaction Model Specification, What Needs the Operator]), whose act is the update. No record for the harness yields no notice. Drift never enters a model-facing representation.

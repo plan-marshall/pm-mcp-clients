@@ -1,0 +1,87 @@
+= Harness Integration Implementation Watch
+:toc: left
+:toclevels: 2
+:toc-title: Table of Contents
+:sectnums:
+:nofooter:
+
+link:../ImplementationWatch.adoc[Implementation Watch] » Harness Integration
+
+== Overview
+
+Watch items for the link:../specification/harness-integration.adoc[Harness Integration & Bundle Manifest Specification]. The sections mirror the
+specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Implementation Watch].
+
+== Normative Harness Profile JSON Schema
+
+[#PM-WATCH-CLIENT-4]
+=== PM-WATCH-CLIENT-4: A harness started inside another harness is attributed to the outer one
+
+Anchor:: link:../specification/harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration § Harness Integration Table] (Detection precedence, Nested harnesses),
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIENT-3]
+Hazard:: Harness markers are inherited, and no harness clears another's: with a fixed precedence alone, Claude Code
+started inside OpenCode is detected as `opencode`, so the refusal of an operator verb names the wrong harness, and
+`AI_AGENT`, inherited from an outer Claude Code, names the wrong harness in a harness started inside it. Codex and
+Antigravity pass their markers only to the commands they run, so a detection attempted anywhere but in
+`pm-operator` never sees them.
+Guard:: Table test of the harness-detection table, read from the profile documents, over environments with the markers of one harness, of both
+nestings of every pair of harnesses (process tree fixtures with the process-id markers), and with an inherited
+`AI_AGENT`: the detected harness is the one of the nearest ancestor, the fixed order decides only where no
+process-id marker resolves, and `AI_AGENT` never overrides a primary signal; detection runs only in the operator checks of `pm-operator`,
+whose refusal names the detected harness, and `pm-mcp serve --job` computes no environment signature; a worker's
+environment carries none of the harness markers; the process-id marker of `claude` is verified against
+a live harness before its _(provisional)_ marker is removed.
+Fixture:: OpenCode inside Claude Code is attributed correctly by the fixed order; Claude Code inside OpenCode is
+attributed to `opencode`; Claude Code sets `AI_AGENT=claude-code_2-1-291_agent`, overwriting an inherited value.
+Source:: link:../../../plan-marshall-documentation/doc/specification/evaluation.adoc#results[Evaluation Reference], Gate 14.
+
+== Embedded Harness Bundle `bundle-manifest.json` Schema
+
+[#PM-WATCH-CLIENT-5]
+=== PM-WATCH-CLIENT-5: Harness-side enforcers are scope-bound; only server gates travel with every session
+
+Anchor:: link:../specification/harness-integration/02-bundle-manifest.adoc#_embedded_harness_bundle_bundle_manifest_json_schema[Harness Integration § Embedded Harness Bundle `bundle-manifest.json` Schema],
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2], link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-1[PM-ARCH-1]
+Hazard:: plan-marshall's hooks lived only in git-ignored machine-local configuration, so fresh clones and cloud
+sessions ran with zero mechanical enforcement while documents claimed the rules were enforced.
+Guard:: Server gates are the only enforcement claimed as universal. Every harness-side enforcer (`permission_rule`
+elements) is declared in a scope section of the bundle manifest and recorded with its scope in
+`install-records.json`; `pm-operator harness status` reports which enforcers are installed and in which scope; documents
+never call a harness-side enforcer universal.
+Fixture:: plan-marshall's checked-in `.claude/settings.json` has no `hooks` key; all 6 hook events live in the
+git-ignored `settings.local.json`.
+Source:: plan-marshall defect instrumentation-substrate PLAN-08 deliverable 4 and § Claim Labels (hook surface machine-local only).
+
+[#PM-WATCH-CLIENT-7]
+=== PM-WATCH-CLIENT-7: A permission wildcard ends the rule
+
+Anchor:: link:../specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Harness Integration § Ownership & Digest Verification on Install/Update/Remove],
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-1[PM-DIST-1]
+Hazard:: A mid-rule `*` crossed an argument boundary and pre-approved inserted options.
+Guard:: The bundle-manifest validator rejects any rendered permission rule (every `permission_rule` element of every
+scope section) whose `*` is neither terminal nor `:*`;
+malformed grammar is counted apart from dangerous targets, and the check reports the rules scanned and files
+resolved.
+Fixture:: `Bash(cp -r .plan/project-architecture/* /tmp/arch-snap)` and its fixed form
+`Bash(cp -r .plan/project-architecture /tmp/arch-snap)`.
+Source:: plan-marshall defect truthful-signals PLAN-TRUTH-165 D1.
+
+[#PM-WATCH-CLIENT-9]
+=== PM-WATCH-CLIENT-9: Bundle artifacts never carry a `plan-marshall` name
+
+Anchor:: link:../specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Harness Integration § Ownership & Digest Verification on Install/Update/Remove] (Side-by-Side with Legacy `plan-marshall`),
+link:../specification/harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration § Harness Integration Table] (user skill directories)
+Hazard:: A bundle file or skill directory named like an artifact of the `plan-marshall` plugin (`plan-marshall`,
+`plan-orchestrator`, `marshall-steward`, a `plan-marshall` skill) shadows or is shadowed by the plugin's artifact in
+a mixed installation, so the harness runs the other system's instructions; a user skill directory inside a plugin
+directory of the plugin (Antigravity's `~/.gemini/config/plugins/plan-marshall/`) mixes the two installations the same way; a command file or agent file in a bundle
+reintroduces an entry into a harness, which is never a channel of the operator.
+Guard:: Bundle manifest test per harness and scope: the bundle installs exactly the shim skill
+`mcp-plan-marshall-skills` and its permission rules, no command file and no agent file; no compared name (the
+`target_name` without its extension for a file, the first segment of `target_name` for a skill directory) equals a
+name the `plan-marshall` plugin installs, and no user skill directory of a harness profile lies in a plugin directory
+of the `plan-marshall` plugin (for Antigravity `~/.gemini/config/plugins/plan-marshall-mcp/`, never
+`~/.gemini/config/plugins/plan-marshall/`); control: a fixture manifest with a command file, one with an unprefixed
+skill directory, and a profile whose user skill directory lies in the `plan-marshall` plugin directory each fail the
+build.
+Source:: design review.

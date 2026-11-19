@@ -200,3 +200,110 @@ State facts, and what the screen shows against the real shape:
 - **A PLAN-66 residue plan** (named, NOT staged): render `harness.none` as the catalogue states it (install hints; `recheck`, `add`) and drop the mock-only `checks[]` and `later`; drop the seven `*.reconfigure-result` states, 14 keys and the mock lines and run the aspect through `onboard.next`; the reasons and the aspect spelling against the catalogue; the German heading shadowed by `summary`; the revision guard; adoption on the SSE path and the auto path; the missing unit tests; the stale design lines.
 - **For the plan-marshall repository:** the aspect spelling of the `change:<aspect>` and `reconfigure:<aspect>` links differs between two states of the same catalogue (`harnesses` against `harness`); the CLI specification's reason list and `AutoResultReason` differ.
 - **The emit of D8 to D10** (the operator's choice of 2026-11-17, "Emit D5-10 now", covers the remainder) carries an amendment: read the catalogue's rows for `catalogue.select`, `store.choose`, `harness.choose`; build no mock-only fact or state; the real `harness.choose` scan result (`HarnessScanResult`) is the home of `path`.
+
+# Third landing: deliverables 8 to 10 (#485)
+
+epic: ui-improvements
+workstream: WS-03
+pr: #485 (https://github.com/plan-marshall/pm-mcp-clients/pull/485), merge commit `321985ac` on `main`
+
+> Written by `analyze` on 2026-11-18 from the inbox message `rb-66-web-onboarding-frame-and-roles-003.md` (a lead, not a fact), git, the provider, and one read-only three-layer leaf. The orchestrator re-read the points marked "re-read" at `321985ac`, and the engine rows in `../pm-mcp-core/doc/specification/state-catalogue/`; every other point is **leaf-reported, not re-read**. The reading is by reading: no build, no test run, no write.
+>
+> **The last landing of the split.** Deliverables 1 to 4 (#467 `735318df`), 5 to 7 (#478 `98ca84d0`) and 8 to 10 (this one) are all on `main`; the lane reports `deliverables_done=10` of 10. `landing-check`: `complete: false`, `missing_keys` `total_tokens`, `model`, `effort`, `unresolved_review_threads`, `review_body_findings_total`, `review_body_findings_handled`, recorded as an Open Defect.
+
+## Deliverable Fidelity vs Spec (third landing)
+
+| Deliverable (spec) | Verdict | Evidence |
+|--------------------|---------|----------|
+| D8 `catalogue.select`: recommendation preselected and marked, reason inline, a text field per harness that cannot list its models | shipped-modified | Preselection, marker, reason and the field exist and are pinned by tests that can fail (`OnboardingView.scenarios.test.ts:1398-1538`, `ModelsChoice.test.ts`); the field is missing for a cannot-list harness with no rows when the state has no `harnesses[]` (layer 3, re-read `ModelsChoice.svelte:107-127`) |
+| D9 `store.choose`: two lines per option | shipped-modified | Both lines are pinned (`scenarios.test.ts:1623-1669`, `AspectChoice.test.ts:154`); the text is wrong for the published shape (layer 3, re-read `AspectChoice.svelte:98-104`); an unavailable store is disabled, which cuts off the catalogue's `os_unavailable` exit (re-read `AspectChoice.svelte:83,209`) |
+| D10 `harness.choose`: monogram when no icon, the token line says complete / partial / not reported | shipped-as-specified | stray `/>` removed (`HarnessChoice.svelte:164`, guarded by `HarnessChoice.test.ts:46` and `scenarios.test.ts:1896`); wording pinned in en and de |
+
+## Three-Layer Analysis (third landing)
+
+- **Dispatch:** one read-only leaf per landing, because reading merged code across 20 files against the engine's catalogue rows is the depth the dispatch rule exists for; the leaf's report was returned as data and the orchestrator performed every write.
+- **Verdict:** layer 1 findings (2 major, 1 minor); layer 2 findings (2 major, 9 minor); layer 3 findings (2 major, 9 minor, 2 not shown by reading). **No blocker.**
+
+### Layer 1 — Specified
+
+| Finding | Claim | Verdict | Polarity | Evidence (file:line) |
+|---------|-------|---------|----------|----------------------|
+| L1-1 | D8 to D10 add **no mock-only fact or state**: the diff touches no file of `pm-mock-runtime` and no `pm-api` Java; the mock's `catalogue.select` and `store.choose` are unchanged | checked (leaf) | confirms | `pm-mock-runtime/.../onboarding.json:1485,1773` |
+| L1-2 | The spec's premises for D8 to D10 are consistent with each other and with the engine's `harness.choose` row ("usage complete, partial naming what is missing, not_reported") | checked (re-read) | confirms | `14-machine-onboarding.adoc:305` |
+| L1-3 | The web reads facts no source publishes (`catalogue.select`: `models[].allowed/reason/rationale/harness_name`, `harnesses[].cannot_list/models_listed/display_name`, `no_advice_reason`; `store.choose`: `stores[].protects_against/does_not_protect_against/backend/platform/os`; `harness`: `token_detail`). They are web-local types, not in the mock and not in `pm-api`; the Emit Amendment requires each to be **reported as a contract gap** and the lane reports none | checked (leaf) | refutes | `ModelsChoice.svelte:21`, `AspectChoice.svelte`, `TokensScreen.svelte` |
+| L1-4 | The engine row for `store.choose` routes `os_unavailable` to `store.unavailable`; the web disables an unavailable store, so the operator can never take that exit and the spec's D9 does not ask for the disabling | checked (re-read) | refutes | `19-onboarding-aspects-models-providers.adoc:185` against `AspectChoice.svelte:83,209` |
+| L1-5 | The spec's Expected Surface lists 13 files, the diff touches 20 | checked (leaf) | refutes | the 7 unlisted: `harnessUsage.ts` and its test, `StoreScreen`, `ModelsScreen`, `TokensScreen`, `screens.ts`, `choice-screen.css` |
+
+**Layer 1 verdict:** findings — L1-3 and L1-4 major, L1-5 minor. No spec claim of the corpus is named by a layer-1 finding, so no `corpus set-verdict` call is made.
+
+### Layer 2 — Implemented
+
+| Deliverable | Code trace | Test that can fail | Unexplained file / unborne claim | Verdict |
+|-------------|------------|--------------------|---------------------------------|---------|
+| D8 | `ModelsChoice.svelte:52-180`, `ModelsScreen.svelte` | `scenarios.test.ts:1406-1451` (preselection, marker, reason, marker dropped on uncheck), `:1458-1538` (manual field, no duplicate), `ModelsChoice.test.ts:84,151` | the lane's "`prevHarnesses`" does not exist (the variable is `prevProposalSignature`, `ModelsChoice.svelte:85`); the Remove label reads "Remove {model} from {harness}", not "Remove {model}" | checked (leaf) |
+| D9 | `AspectChoice.svelte:46-125,209-221` | `scenarios.test.ts:1631-1669`, `AspectChoice.test.ts:124,139,154` | the providers resync (`AspectChoice.svelte:75-81`, tests `:216,236`) belongs to D4, not to `store.choose` | checked (leaf) |
+| D10 | `HarnessChoice.svelte:164`, `harnessUsage.ts` | `scenarios.test.ts:1796-1804,1896`, `HarnessChoice.test.ts:46,91`, `harnessUsage.test.ts:34` | `TokensScreen` (a `harness.tokens-*` state that is **mock-only**, no row in the catalogue) was edited and tested (`scenarios.test.ts:1857`) although the amendment forbids building against mock-only states; it prints `complete: {token_detail}` while `harness.choose` prints "usage complete" (two wordings of one fact) | checked (leaf) |
+
+**Claims of the lane's report the diff does not bear out (leaf-reported, the first two re-read):**
+- "Test names `onboarding scenario 33` to `36`": **no such names exist**; the added describes are `catalogue.select recommendation and manual model entry (D8)` (`scenarios.test.ts:1398`), `store.choose protection lines per option (D9)` (`:1623`), `harness.choose monogram and token usage wording (D10)` (`:1735`) (re-read, grep: 0 hits for "scenario 33-36").
+- "`test-first`, failing run commit `fee07a5f` for D8, D9 and D10": `fee07a5f` is `fix(web): export ModelRow and ModelHarnessInfo from module script (D8)`, one file, no test, and the **latest** of the lane's feature commits; `9895ca48` (D8), `10abf4d1` (D9) and `1d690a22` (D10) each carry code and test together, so the history shows no test-first order (re-read, `git show --stat`). The failing runs may exist as daemon jobs; by reading they are unverifiable.
+- `AspectChoice.test.ts:30` does not cover the two lines (it asserts the marker only).
+- Unexplained by D8 to D10: the `HarnessChoice` resync (`HarnessChoice.svelte:50-70`), the `harnessNames()` change (`OnboardingView.svelte:202`, a non-contract fact), and design-document edits that delete the "Why?" rationale lines (`onboarding.adoc:190,458`) with `onboarding-texts.adoc:57` still listing keys that do not exist.
+
+**Layer 2 verdict:** findings — 2 major (the two claims above), 9 minor.
+
+### Layer 3 — Correct
+
+| Defect | File:line | Triggering input | Effect | Severity |
+|--------|-----------|------------------|--------|----------|
+| L3-1 | `AspectChoice.svelte:98-104` (re-read) | the published store shape `{kind:'os', name:'GNOME Keyring', available, recommended}` on Linux: no `backend`, `platform` or `os` field exists, `backend === ''` selects the macOS copy | the **recommended, preselected** Secret Service option says "Protects a secret against: other programs reading a token without macOS asking first"; the credentials specification says the Secret Service lets every process of the user read an unlocked collection (`01-provider-credentials.adoc:127,143`). Every test passes `platform:'linux'`, none passes the published shape | **major** |
+| L3-2 | `ModelsChoice.svelte:107-127,209` (re-read) | a harness that cannot list models, with zero rows, in a state with no `harnesses[]` (the published shape) | no group, so **no text field**: D8's field is missing exactly where it is needed; the mock's one visible case works by accident of its operator row | **major** |
+| L3-3 | `StoreScreen.svelte:27` (re-read) | the operator chooses a store of a kind other than `os` or `file` (D9 added generic "other" copy that invites it) | `linkBy(..., 'os', 'file') ?? links[0]` records the `os` link: a different store than the one shown as chosen | minor |
+| L3-4 | `AspectChoice.svelte:109-113` | a store of unknown protection | the "other" copy is an invented protection claim | minor |
+| L3-5 | `ModelsChoice.svelte:89-98`, `AspectChoice.svelte:67-81`, `HarnessChoice.svelte:60-70` | a refreshed state that changes one flag of the proposal | the operator's added models, deselections and drafts are wiped without notice | minor |
+| L3-6 | `ModelsChoice.svelte:139-151,289-293` | case variants, `::` in an id, an IME confirm | separate rows, a key collision, a half-typed id added (no `isComposing` check), no feedback for an ignored add | minor |
+| L3-7 | `ModelsChoice.svelte:233` | the same model id under two harnesses | two identical checkbox names, no group role tying a checkbox to its harness | minor |
+| L3-8 | `reports.en.properties:96`, `reports.de.properties` | a partial usage report | "usage partial: no cache read, cache write" is ambiguous; the German line is ungrammatical; both are locked in as expected values (`scenarios.test.ts:1828`, `harnessUsage.test.ts:52`) | minor |
+| L3-9 | `onboarding.en.properties` | none | dead keys (`onboard.catalogue.select.group`, `onboard.harness.tokens.partial`, `.not_reported`) and a duplicate (`onboard.link.yes_remember`) against the no-dead-code rule | minor |
+
+**Layer 3 not shown by reading:** the `models` payload of `ModelsScreen.svelte:39` (full UI rows rather than `{harness_id, model_id, source}`; an unmodified screen sends `{}` and relies on the engine preselecting what the web preselected): whether the engine accepts it needs a run against the daemon; `recommendationText` falling back to `reason` where the engine's `facts.reason` names a cause (`ModelsScreen.svelte:10`).
+
+**Layer 3 verdict:** findings — L3-1 and L3-2 major, L3-3 to L3-9 minor; 2 not shown by reading. No `{@html}`, `innerHTML` or timer in any touched source or test (leaf-reported).
+
+### Conformance to the Project's Own Rules
+
+| Rule source | Rule | Verdict | Evidence |
+|-------------|------|---------|----------|
+| CLAUDE.md Web Standards | no `innerHTML`/`{@html}` with untrusted text; no arbitrary timer wait in a test | conforms (leaf) | grep of the touched files: none |
+| CLAUDE.md Dependencies | no dependency without asking | conforms (leaf) | no `pom.xml`, `package.json` or lockfile in the 20 files |
+| CLAUDE.md Git Workflow | commit trailer | conforms (leaf) | the merge commit carries the trailer |
+| CLAUDE.md Code Standards | pre-1.0: no dead code | deviates (leaf) | L3-9 |
+| Emit Amendment 2026-11-18 | name every state fact's contract and report a gap; no new mock-only state | deviates | L1-3 (no gap reported), L2 (`TokensScreen`, a mock-only state, edited) |
+| `pm-dev-frontend:jest-testing` | spies restored in `afterEach` | deviates (leaf) | `vi.restoreAllMocks()` in `beforeEach` (`scenarios.test.ts:1402,1627,1739`) |
+| CLAUDE.md Build; spec Standing Constraints | verify, e2e, browser check en/de, light/dark, two sizes | not_shown_by_reading | a run is needed; the mock's `catalogue.select` carries no `recommended`/`allowed`, so the marker and the Linux copy cannot appear in a mock browser check |
+
+## Metrics and Anomalies (third landing)
+
+- Tokens: `total_tokens=unknown`, `model=unknown`, `effort=unknown` (harness `antigravity`): unobserved, not a zero.
+- Duration: not stated by the lane.
+- Anomalies: four self-review rounds (round 4 clean); a transient 429 from Maven Central in CI, rerun green (lane-reported); the narrative names test names and a test-first commit the tree does not bear out (layer 2).
+
+## Routing and Merge Behavior (third landing)
+
+- Review: coderabbit (required) reviewed heads `9d0b5607`, `07e48541` and `659b94b5` (read through GraphQL); 12 review threads, **0 unresolved** (re-read; the landing says `unknown`, which is a failed read, not a false claim); `review_body_findings_total`: `runbook_lane review-gate --pr-number 485` answers `merge_allowed: false`, `reason: undecidable_read`, `detail: unreadable review-body section "<picture>… Minor comments: 1"` (re-read): the number is **not re-verified**, the same plan-marshall label gap as before; `review_body_findings_handled` not re-verified (the progress file was not read). Sourcery: weekly quota notice, skipped.
+- CI/merge: merged through the queue as `321985ac` (re-read: `state: merged`, `merge_commit_sha 321985ac…`); the lane records the operator's authorisation of the enqueue on the recorded evidence (lane-reported, the question and the answer are in its message section 6). CodeRabbit's last review was on `07e48541`/`659b94b5`, not the final head `e52d0ba3` (the standing rule: one review is the review).
+- Sonar: `sonar_open_new_issues=0` and `quality_gate_status=ok` (lane); the Sonar MCP search for PR 485 returns no issues (re-read this run). **Zero open new-code findings.**
+- Parallelization: no collision reported; the surface was under-declared (L1-5), and PLAN-165 shares 7 declared files with PLAN-66.
+
+## Reconciliation Actions (third landing)
+
+- [x] row `pr` restamped `485`; `landing` stays `landings/PLAN-66.md` (all three landings are in this file); `plan_marshall_plan_id` unchanged
+- [x] row `status` stays `running` until the operator's word (the standing decision of 2026-11-18); not transitioned to `shipped` by this run
+- [x] epic.md: Open Defect `PLAN-66 (D8-D10) landed`; an Open Defect for the incomplete landing facts
+- [x] the inbox message archived on consume; resume anchor and `queue-view.md`
+
+## Follow-Ups (third landing)
+
+- **Layer 3, reported to the operator at once, never fixed inline:** L3-1 (a wrong security claim on the recommended store option) and L3-2 (D8's field missing for a cannot-list harness with no rows). Neither is staged; a fix plan only on the operator's word.
+- **The PLAN-66 residue plan** (named, NOT staged; it already takes the minors of the three landings, the mock cut-back and the contract cut-back of 2026-11-18) now also takes: report the unpublished facts of L1-3 as contract gaps or cut the screens back to the published shape; the `os_unavailable` exit (L1-4: an unavailable store stays selectable as a way into `store.unavailable`); L3-1 and L3-2; L3-3 to L3-9; `TokensScreen`'s mock-only state; the stale design lines and the dead keys.
+- **For the plan-marshall repository (lane process):** a landing narrative that cites test names and a test-first commit the tree does not bear out; the `undecidable_read` label gap again.

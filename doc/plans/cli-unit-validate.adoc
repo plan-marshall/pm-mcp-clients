@@ -21,7 +21,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Trace
 
-Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+Requirements and use cases stay in `plan-marshall-documentation`; the specifications of the client modules,
+their implementation watch and the traceability live in this repository (`doc/Specification.adoc`,
+`doc/specification/`, `doc/ImplementationWatch.adoc`, `doc/implementation-watch/`, `doc/Traceability.adoc`); the
+specifications of the engine and their watch documents stay in `pm-mcp-core`.
 
 * Requirement: link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-22[PM-WF-22]
 * Specification: link:../../../pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc#process-designer[Workflow DSL § Designing a Process] (items 1 to 3 and 8)

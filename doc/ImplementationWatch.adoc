@@ -1,0 +1,46 @@
+= `pm-mcp-clients` Implementation Watch
+:toc: left
+:toclevels: 2
+:toc-title: Table of Contents
+:sectnums:
+:nofooter:
+
+== Overview
+
+Defect archetypes, real-corpus fixtures and verification hints that guard the specifications of
+link:Specification.adoc[this repository] during implementation. The item format and the lifecycle of an item are those
+of the link:../../plan-marshall-documentation/doc/ImplementationWatch.adoc[Implementation Watch] of the documentation;
+the archetypes that span all specifications are in its
+link:../../plan-marshall-documentation/doc/implementation-watch/cross-cutting.adoc[`cross-cutting.adoc`].
+
+The watch items stay with the specification section they watch and keep their identifiers: an item whose section moved
+here moved here with it, and an item whose section stayed behind stays with it. No identifier is renumbered.
+
+== Watch Documents
+
+[cols="3,2,1,4"]
+|===
+|Document |Area |Items |Mirrors
+
+|link:implementation-watch/cli-and-security.adoc[CLI & Security]
+|`CLI`
+|9
+|link:specification/cli-and-security.adoc[CLI, Coordination & Security Specification] (the parts here)
+
+|link:implementation-watch/harness-integration.adoc[Harness Integration]
+|`CLIENT`
+|4
+|link:specification/harness-integration.adoc[Harness Integration & Bundle Manifest Specification]
+
+|link:implementation-watch/runtime-model.adoc[Runtime Model]
+|`RUN`
+|3
+|link:specification/runtime-model.adoc[Runtime & Interaction Model Specification] (the relay rules)
+|===
+
+== Items Whose Section Stayed Behind
+
+The watch items of the same area codes that watch a section which is not held here keep their place with it:
+`PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `PM-WATCH-CLI-26` and `PM-WATCH-CLI-27` (web access and pairing),
+`PM-WATCH-RUN-1`, `-4`, `-5`, `-7`, `-12`, `-14`, `-17`, `-18` (the runtime) and `PM-WATCH-RUN-3` (verification). They
+are not repeated here, and their identifiers are not reused.
