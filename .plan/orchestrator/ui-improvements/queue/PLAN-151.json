@@ -2,10 +2,10 @@
   "id": "PLAN-151",
   "slug": "web-foundation-vocabulary-lint",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "151-web-foundation-vocabulary-lint",
+  "pr": "495",
+  "landing": "landings/PLAN-151.md",
   "seq": 151
 }
