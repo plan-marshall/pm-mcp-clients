@@ -262,6 +262,81 @@ describe('vocabularyLint', () => {
     expect(result.errors.some((e) => e.includes('Stale baseline'))).toBe(false);
   });
 
+  it('--write-baseline refuses to increase baseline counts and leaves baseline byte-identical', () => {
+    const tempDir = path.join(APP_DIR, 'target', 'test-increase-baseline-app');
+    const tempSrc = path.join(tempDir, 'src');
+    const tempScripts = path.join(tempDir, 'scripts');
+    try {
+      fs.mkdirSync(tempSrc, { recursive: true });
+      fs.mkdirSync(tempScripts, { recursive: true });
+      const initialBaseline = {
+        'src/Sample.svelte': { button: 1 },
+      };
+      const baselineFile = path.join(tempScripts, 'vocabulary-baseline.json');
+      const initialContent = JSON.stringify(initialBaseline, null, 2) + '\n';
+      fs.writeFileSync(baselineFile, initialContent, 'utf-8');
+
+      fs.writeFileSync(
+        path.join(tempSrc, 'Sample.svelte'),
+        '<button>1</button>\n<button>2</button>',
+      );
+
+      const exitCode = runCli(['--write-baseline'], tempDir);
+      expect(exitCode).toBe(1);
+
+      const contentAfter = fs.readFileSync(baselineFile, 'utf-8');
+      expect(contentAfter).toBe(initialContent);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--write-baseline lowers count and removes files that reached zero', () => {
+    const tempDir = path.join(APP_DIR, 'target', 'test-shrink-baseline-app');
+    const tempSrc = path.join(tempDir, 'src');
+    const tempScripts = path.join(tempDir, 'scripts');
+    try {
+      fs.mkdirSync(tempSrc, { recursive: true });
+      fs.mkdirSync(tempScripts, { recursive: true });
+      const initialBaseline = {
+        'src/FileA.svelte': { button: 2 },
+        'src/FileB.svelte': { button: 1 },
+      };
+      const baselineFile = path.join(tempScripts, 'vocabulary-baseline.json');
+      fs.writeFileSync(baselineFile, JSON.stringify(initialBaseline, null, 2) + '\n', 'utf-8');
+
+      fs.writeFileSync(path.join(tempSrc, 'FileA.svelte'), '<button>A1</button>');
+      fs.writeFileSync(path.join(tempSrc, 'FileB.svelte'), '<div>No buttons</div>');
+
+      const exitCode = runCli(['--write-baseline'], tempDir);
+      expect(exitCode).toBe(0);
+
+      const updated = JSON.parse(fs.readFileSync(baselineFile, 'utf-8'));
+      expect(updated['src/FileA.svelte']).toEqual({ button: 1 });
+      expect(updated['src/FileB.svelte']).toBeUndefined();
+      expect(Object.keys(updated)).toEqual(['src/FileA.svelte']);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--write-baseline with missing scripts directory outputs error and does not throw', () => {
+    const tempDir = path.join(APP_DIR, 'target', 'test-missing-scripts-app');
+    const tempSrc = path.join(tempDir, 'src');
+    try {
+      fs.mkdirSync(tempSrc, { recursive: true });
+      fs.writeFileSync(path.join(tempSrc, 'Sample.svelte'), '<button>1</button>');
+
+      let exitCode: number | undefined;
+      expect(() => {
+        exitCode = runCli(['--write-baseline'], tempDir);
+      }).not.toThrow();
+      expect(exitCode).toBe(1);
+    } finally {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
   it('enforces vocabulary baseline ratchet (clean files stay clean, counted files never grow)', () => {
     expect(fs.existsSync(BASELINE_PATH), 'vocabulary-baseline.json must exist').toBe(true);
 

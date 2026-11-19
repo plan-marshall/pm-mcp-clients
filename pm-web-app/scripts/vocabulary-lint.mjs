@@ -407,10 +407,71 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   const findings = scanProject(appDir);
 
   if (isWriteBaseline) {
-    const baseline = generateBaseline(findings);
-    const baselinePath = path.join(appDir, 'scripts', 'vocabulary-baseline.json');
-    fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
-    console.info(`Updated baseline with ${findings.length} findings across ${Object.keys(baseline).length} files.`);
+    const scriptsDir = path.join(appDir, 'scripts');
+    if (!fs.existsSync(scriptsDir)) {
+      console.error(`Error: scripts directory does not exist: ${scriptsDir}`);
+      return 1;
+    }
+
+    const baselinePath = path.join(scriptsDir, 'vocabulary-baseline.json');
+    if (!fs.existsSync(baselinePath)) {
+      console.error(`Error: baseline file does not exist: ${baselinePath}`);
+      return 1;
+    }
+
+    let existingBaseline;
+    try {
+      const baselineRaw = fs.readFileSync(baselinePath, 'utf-8');
+      existingBaseline = JSON.parse(baselineRaw);
+    } catch (err) {
+      console.error(`Error reading baseline at ${baselinePath}: ${err.message}`);
+      return 1;
+    }
+
+    const newBaseline = generateBaseline(findings);
+
+    // Verify baseline can only shrink: refuse new files or increased counts
+    for (const file of Object.keys(newBaseline)) {
+      if (!existingBaseline[file]) {
+        const fileTotal = Object.values(newBaseline[file]).reduce((a, b) => a + b, 0);
+        console.error(
+          `Cannot add new file ${file} to baseline (found ${fileTotal} finding(s), baseline had 0)`,
+        );
+        return 1;
+      }
+      for (const rule of Object.keys(newBaseline[file])) {
+        const newCount = newBaseline[file][rule];
+        const oldCount = existingBaseline[file][rule] ?? 0;
+        if (newCount > oldCount) {
+          console.error(
+            `Cannot increase baseline for ${file} rule ${rule}: new count is ${newCount}, baseline is ${oldCount}`,
+          );
+          return 1;
+        }
+      }
+    }
+
+    // Lower counts and remove files that reached zero
+    const updatedBaseline = {};
+    for (const file of Object.keys(existingBaseline).sort()) {
+      const fileCounts = {};
+      let fileTotal = 0;
+      for (const rule of Object.keys(existingBaseline[file]).sort()) {
+        const currentCount = newBaseline[file]?.[rule] ?? 0;
+        if (currentCount > 0) {
+          fileCounts[rule] = currentCount;
+          fileTotal += currentCount;
+        }
+      }
+      if (fileTotal > 0) {
+        updatedBaseline[file] = fileCounts;
+      }
+    }
+
+    fs.writeFileSync(baselinePath, JSON.stringify(updatedBaseline, null, 2) + '\n', 'utf-8');
+    console.info(
+      `Updated baseline with ${findings.length} findings across ${Object.keys(updatedBaseline).length} files.`,
+    );
     return 0;
   }
 
