@@ -52,7 +52,7 @@ class PauseDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
-        var unknown = Generators.integers(3, 9).next();
+        var unknown = Generators.integers(4, 9).next();
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("plan", "pause", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());

@@ -77,7 +77,7 @@ class AcceptEditDialogueIT {
     @Test
     @DisplayName("an unknown input is no confirmation: nothing is sent and the project stays refused")
     void unknownInputSendsNothing() throws Exception {
-        var unknown = Generators.letterStrings(3, 8).next();
+        var unknown = "x" + Generators.letterStrings(3, 8).next();
         assertNotConfirmed(unknown + "\n");
     }
 

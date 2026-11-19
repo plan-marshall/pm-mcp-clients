@@ -736,9 +736,13 @@ class OverviewFullScreenAppTest {
         // 5. Jump to epic (key 'e') pops back to PROJECT_BY_EPIC and calls refreshPoppedLevel()
         assertTrue(handler.handle(TuiKeyAction.EPIC));
         assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+        assertEquals("pm-mcp-clients", app.stack().level().id());
+        assertFalse(app.stack().rows().isEmpty(), "restored PROJECT_BY_EPIC must carry project rows");
 
         // 6. Switching view from PROJECT_BY_EPIC must switch to PROJECT_BY_PLAN
         assertTrue(handler.handle(TuiKeyAction.SWITCH_VIEW));
         assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals("pm-mcp-clients", app.stack().level().id());
+        assertFalse(app.stack().rows().isEmpty(), "restored PROJECT_BY_PLAN must carry project rows");
     }
 }

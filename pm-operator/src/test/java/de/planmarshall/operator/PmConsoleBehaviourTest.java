@@ -899,7 +899,7 @@ class PmConsoleBehaviourTest {
         var flowContext = new OperatorContext(fixture.environment(), tempDir, true);
         var flow = new EntryFlow(flowContext, aspects);
         flow.run(new PrintWriter(renderedFlow), createReader("h\nq\n"));
-        assertTrue(renderedFlow.toString().contains("[2/8]"),
+        assertTrue(renderedFlow.toString().contains("[2/8] Harnesses"),
                    "EntryFlow.runOnboardingDialogue must run dialogue with injected aspect count (8), got: " + renderedFlow);
     }
 
