@@ -811,10 +811,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var path = OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan);
             var response = context.runtime(true).send(HttpRequest.get(path));
             if (response.status() != 200) {
-                out.println(MessageCatalogue.format(locale, "operator.config.settings_failed",
-                                    Map.of(STATUS, response.status())));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                throw new OperatorRefusedException(CONFIG_VERB, response);
             }
             List<ConfigValueResource> values;
             try {
@@ -1286,20 +1283,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             var owner = new ConfigCommand(context);
-            MachineSettingsRecord settings;
-            try {
-                settings = owner.readSettingsQuiet();
-            } catch (OperatorRefusedException e) {
-                out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                    Map.of(STATUS, e.status() > 0 ? String.valueOf(e.status()) : "unreachable")));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
-            }
+            var settings = owner.readSettingsQuiet();
             if (settings == null) {
-                out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                    Map.of(STATUS, "unreachable")));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                throw new OperatorRefusedException(
+                                    MessageCatalogue.format(locale, "operator.settings.list_failed", Map.of()));
             }
             var consents = settings.consents();
             if (consents.isEmpty()) {

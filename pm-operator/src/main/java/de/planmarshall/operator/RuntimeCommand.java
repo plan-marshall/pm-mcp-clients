@@ -132,7 +132,10 @@ public final class RuntimeCommand implements Callable<Integer> {
             var status = StatusCommand.fetch(context.runtime(true));
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
-            out.println(MessageCatalogue.format(locale, "operator.runtime.status_running", Map.of("pid", status.get("pid"))));
+            var pid = status.get("pid");
+            out.println(pid != null
+                                ? MessageCatalogue.format(locale, "operator.runtime.status_running", Map.of("pid", pid))
+                                : MessageCatalogue.format(locale, "operator.runtime.status_running_no_pid", Map.of()));
             out.flush();
             return 0;
         }
@@ -192,7 +195,11 @@ public final class RuntimeCommand implements Callable<Integer> {
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
-                out.println(stopNow ? "runtime   stopping" : "runtime   draining");
+                out.println(stopNow
+                                    ? MessageCatalogue.get(context.clientEnvironment().locale(),
+                                                        "operator.runtime.status_stopping")
+                                    : MessageCatalogue.get(context.clientEnvironment().locale(),
+                                                        "operator.runtime.status_draining"));
             } catch (RuntimeUnavailableException e) {
                 var refusal = RuntimeActDialogue.notStopped(context);
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
@@ -359,11 +366,10 @@ public final class RuntimeCommand implements Callable<Integer> {
         private int showNotes(PrintWriter out) throws IOException {
             var url = "/api/v1/system/release-notes" + (version != null ? "?version=" + version : "");
             var response = context.runtime(false).send(HttpRequest.get(url));
-            if (response.status() == 200) {
-                out.println(response.bodyText());
-            } else {
-                out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.runtime.upgrade.no_release_notes"));
+            if (response.status() != 200) {
+                throw new OperatorRefusedException("runtime upgrade --notes", response);
             }
+            out.println(response.bodyText());
             out.flush();
             return 0;
         }
@@ -371,11 +377,10 @@ public final class RuntimeCommand implements Callable<Integer> {
         private int runCheck(PrintWriter out) throws IOException {
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade/check", "{}"));
             var locale = context.clientEnvironment().locale();
-            if (response.status() == 200) {
-                out.println(MessageCatalogue.get(locale, "operator.runtime.upgrade.check_completed"));
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.runtime.upgrade.check_failed", Map.of("status", response.status())));
+            if (response.status() != 200) {
+                throw new OperatorRefusedException("runtime upgrade --check", response);
             }
+            out.println(MessageCatalogue.get(locale, "operator.runtime.upgrade.check_completed"));
             out.flush();
             return 0;
         }
@@ -383,11 +388,10 @@ public final class RuntimeCommand implements Callable<Integer> {
         private int withdrawUpgrade(PrintWriter out) throws IOException {
             var response = context.runtime(false).send(HttpRequest.delete("/api/v1/operator/runtime/upgrade"));
             var locale = context.clientEnvironment().locale();
-            if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.get(locale, "operator.runtime.status_upgrade_withdrawn"));
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.runtime.upgrade.withdraw_failed", Map.of("status", response.status())));
+            if (response.status() != 200 && response.status() != 204) {
+                throw new OperatorRefusedException("runtime upgrade --withdraw", response);
             }
+            out.println(MessageCatalogue.get(locale, "operator.runtime.status_upgrade_withdrawn"));
             out.flush();
             return 0;
         }

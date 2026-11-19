@@ -487,7 +487,7 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return 0;
             }
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                FAILED, Map.of(KEY, key, STATUS, response.status())));
+                                "operator.credentials.remove_failed", Map.of(KEY, key, STATUS, response.status())));
             out.flush();
             return PmOperator.EXIT_FAILURE;
         }

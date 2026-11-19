@@ -125,9 +125,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         }
         var settings = new ConfigCommand(context).readSettingsQuiet();
         if (settings == null) {
-            out.println(MessageCatalogue.format(locale, "operator.settings.list_failed",
-                                Map.of("status", "unreachable")));
-            out.flush();
+            RefusalRenderer.render(err, locale, new OperatorRefusedException(
+                                MessageCatalogue.format(locale, "operator.settings.list_failed", Map.of())));
             return PmOperator.EXIT_FAILURE;
         }
         var durations = project == null
@@ -230,8 +229,10 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         for (var entry : givenValues().entrySet()) {
             var days = parseDays(entry.getValue());
             if (days == null || !isAllowed(entry.getKey(), days)) {
-                err.println(MessageCatalogue.format(locale, "operator.cleanup.durations.minimum",
-                                    Map.of("min", minimumOf(entry.getKey()))));
+                var key = KIND_REMIND.equals(entry.getKey())
+                                    ? "operator.cleanup.durations.minimum.remind"
+                                    : "operator.cleanup.durations.minimum";
+                err.println(MessageCatalogue.format(locale, key, Map.of("min", minimumOf(entry.getKey()))));
                 err.flush();
                 return null;
             }
@@ -304,7 +305,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
         var response = context.runtime(true).send(HttpRequest.get(
                             OperatorUrlUtil.appendScope(ConfigCommand.CONFIG_PATH, project, null)));
         if (response.status() != 200) {
-            RefusalRenderer.render(out, locale, new OperatorRefusedException("config cleanup " + project, response));
+            RefusalRenderer.render(spec.commandLine().getErr(), locale,
+                                new OperatorRefusedException("config cleanup " + project, response));
             return PmOperator.EXIT_FAILURE;
         }
         var values = ConfigCommand.parseValues(response.bodyText());
@@ -420,7 +422,8 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() != 409) {
-                RefusalRenderer.render(out, locale, new OperatorRefusedException("config cleanup", response));
+                RefusalRenderer.render(spec.commandLine().getErr(), locale,
+                                    new OperatorRefusedException("config cleanup", response));
                 return PmOperator.EXIT_FAILURE;
             }
             var conflict = MachineSettingsUpdateResult.fromJson(response.bodyText());

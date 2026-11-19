@@ -75,7 +75,7 @@ public final class DecomposeCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(context, project, epicId);
         var cut = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
         if (projectId == null || cut == null) {
-            return DecompositionSupport.notFound(out, epicId);
+            return DecompositionSupport.notFound(out, context.clientEnvironment().locale(), epicId);
         }
         if (instruction != null && !instruction.isBlank()) {
             var requested = new DecompositionInstructRequest(null, instruction, InstructAction.REWRITE);
@@ -121,7 +121,7 @@ final class ReviewCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(context, project, epicId);
         var cut = projectId != null ? DecompositionSupport.check(context, projectId, epicId) : null;
         if (projectId == null || cut == null) {
-            return DecompositionSupport.notFound(out, epicId);
+            return DecompositionSupport.notFound(out, locale, epicId);
         }
         DecompositionSupport.printTree(out, locale, cut);
         if (!agree) {
@@ -187,20 +187,20 @@ final class InstructCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
         if (instruction == null || instruction.isBlank()) {
-            out.println(MessageCatalogue.format(locale, "decomposition.instruct.prompt", Map.of()) + " (--instruction)");
+            out.println(MessageCatalogue.format(locale, "decomposition.instruct.instruction_required", Map.of()));
             out.flush();
             return 1;
         }
         var resolvedAction = parseAction(action);
         if (resolvedAction == InstructAction.EDIT && (plan == null || plan.isBlank())) {
-            out.println("--plan is required to edit a staged plan.");
+            out.println(MessageCatalogue.format(locale, "decomposition.instruct.plan_required", Map.of()));
             out.flush();
             return 1;
         }
         var projectId = DecompositionSupport.project(context, project, epicId);
         var before = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
         if (projectId == null || before == null) {
-            return DecompositionSupport.notFound(out, epicId);
+            return DecompositionSupport.notFound(out, locale, epicId);
         }
         var requested = new DecompositionInstructRequest(plan, instruction, resolvedAction);
         var after = DecompositionSupport.instruct(context, projectId, epicId, requested);
@@ -267,8 +267,9 @@ final class DecompositionSupport {
      * @param epicId the epic the runtime does not know
      * @return the exit code of an epic not found
      */
-    static int notFound(PrintWriter out, String epicId) {
-        out.printf("Epic %s not found.%n", OutputSafety.stripControlSequences(epicId));
+    static int notFound(PrintWriter out, String locale, String epicId) {
+        out.println(MessageCatalogue.format(locale, "decomposition.epic_not_found",
+                            Map.of("epic", OutputSafety.stripControlSequences(epicId))));
         out.flush();
         return 1;
     }

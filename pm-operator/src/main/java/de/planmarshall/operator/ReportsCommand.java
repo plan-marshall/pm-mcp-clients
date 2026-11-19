@@ -71,16 +71,16 @@ public final class ReportsCommand implements Callable<Integer> {
 
         var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 200) {
-            printReports(out, response.bodyText());
+            printReports(out, context.clientEnvironment().locale(), response.bodyText());
             return 0;
         }
         throw new OperatorRefusedException("reports", response);
     }
 
-    private static void printReports(PrintWriter out, String bodyText) throws IOException {
+    private static void printReports(PrintWriter out, String locale, String bodyText) throws IOException {
         var page = ReportsPage.fromJson(bodyText);
         if (page.items().isEmpty()) {
-            out.println(MessageCatalogue.get("report.list.empty"));
+            out.println(MessageCatalogue.get(locale, "report.list.empty"));
             out.flush();
             return;
         }

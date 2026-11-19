@@ -138,10 +138,7 @@ public final class ProjectsCommand implements Callable<Integer> {
             var explorer = parseExplorer(response.body());
             renderExplorer(out, explorer, filter, context.clientEnvironment().locale(), context.clock());
         } else {
-            var err = spec.commandLine().getErr();
-            err.printf("Failed to list projects: HTTP %d%n", response.status());
-            err.flush();
-            return 1;
+            throw new OperatorRefusedException("projects", response);
         }
         out.flush();
         return 0;
