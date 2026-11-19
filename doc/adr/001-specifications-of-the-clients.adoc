@@ -44,8 +44,9 @@ The specifications the modules of this repository implement live here, beside th
   split keeps one index per repository, each listing and describing only the parts it holds; the other index is one
   link away. `harness-integration` has all of its parts here except the `Bundle Content per Harness` section, which stays
   with the model-facing content in `plan-marshall-documentation` until it moves into `plan-marshall-mcp`; its index here
-  carries the family's `Overview`, `Traceability` and `Status`, and so does the index of `cli-and-security` and
-  `runtime-model` for the parts of theirs that stay.
+  carries the family's `Overview`, `Traceability` and `Status` for the parts it holds. For `cli-and-security` and
+  `runtime-model` those three sections stay with the family index of `plan-marshall-documentation` until the daemon's
+  parts move into `plan-marshall-mcp`, and the index here lists only the parts this repository holds.
 * **An implemented section is condensed and pointed, never deleted.** A section keeps its heading and its anchor. When
   the code implements it, it is reduced to the one statement of what it requires and the link to the developer
   documentation of the module that implements it; the evidence of what implements and verifies a requirement is
