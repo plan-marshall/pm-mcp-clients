@@ -67,7 +67,8 @@
   let selectedProviders = providers.filter((p) => p.available).map((p) => p.provider);
   // The edits a refreshed proposal dropped because the row they belonged to is gone; the screen
   // says so rather than losing them silently.
-  let droppedEdits: string[] = [];
+  let droppedStores: string[] = [];
+  let droppedProviders: string[] = [];
 
   // A refresh keeps the operator's choice: only a selection that is no longer selectable is
   // resynced (a store that vanished, or one that cannot be recorded any more), and a vanished row
@@ -94,7 +95,7 @@
         const gone = previous
           .filter((s) => delta.removed.includes(s.kind))
           .map((s) => s.name);
-        if (gone.length > 0) droppedEdits = gone;
+        droppedStores = gone;
         selectedStore = pickDefaultStore(stores);
       }
     }
@@ -120,9 +121,7 @@
       const untickedGone = previous.filter(
         (p) => delta.removed.includes(p.provider) && p.available && !selectedProviders.includes(p.provider),
       );
-      if (untickedGone.length > 0) {
-        droppedEdits = [...droppedEdits, ...untickedGone.map((p) => p.name)];
-      }
+      droppedProviders = untickedGone.map((p) => p.name);
       const present = new Set(providers.filter((p) => p.available).map((p) => p.provider));
       const kept = selectedProviders.filter((id) => present.has(id));
       const added = providers
@@ -134,6 +133,18 @@
   }
 
   $: activeStore = stores.find((s) => s.kind === selectedStore);
+
+  /**
+   * An OS store that is not available now stays a legal choice: choosing it records
+   * `os_unavailable` and opens `store.unavailable` (state catalogue `19-…:185-191`). Every other
+   * unavailable store cannot be recorded, so it is not offered.
+   *
+   * @param store the store row
+   * @returns whether the row can be chosen at all
+   */
+  function selectable(store: StoreRow): boolean {
+    return store.available || store.kind === 'os';
+  }
 
   function toggleProvider(id: string): void {
     selectedProviders = selectedProviders.includes(id)
@@ -166,12 +177,13 @@
       {#each stores as store (store.kind)}
         {@const protectsId = `store-${store.kind}-protects`}
         {@const doesNotProtectId = `store-${store.kind}-does-not-protect`}
-        <li class="choice-screen__row" class:choice-screen__row--disabled={!store.available}>
+        <li class="choice-screen__row" class:choice-screen__row--disabled={!selectable(store)}>
           <input
             type="radio"
             name="credential-store"
             value={store.kind}
             checked={selectedStore === store.kind}
+            disabled={!selectable(store)}
             aria-label={store.name}
             aria-describedby={`${protectsId} ${doesNotProtectId}`}
             onchange={() => (selectedStore = store.kind)}
@@ -234,9 +246,13 @@
     </ul>
   {/if}
 
-  {#if droppedEdits.length > 0}
-    <p class="choice-screen__note" role="status" data-testid={`${kind}-dropped`}>
-      {$t('onboard.choice.edit_dropped', { rows: droppedEdits.join(', ') })}
+  {#if kind === 'store' && droppedStores.length > 0}
+    <p class="choice-screen__note" role="status" data-testid="store-dropped">
+      {$t('onboard.choice.edit_dropped', { rows: droppedStores.join(', ') })}
+    </p>
+  {:else if kind === 'providers' && droppedProviders.length > 0}
+    <p class="choice-screen__note" role="status" data-testid="providers-dropped">
+      {$t('onboard.choice.edit_dropped', { rows: droppedProviders.join(', ') })}
     </p>
   {/if}
 

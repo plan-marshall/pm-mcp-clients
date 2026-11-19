@@ -455,7 +455,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
   [ Back ]                                            [ Allow 3 models ]
 ----
 
-* One group per enrolled harness, the default marked. The steward's recommendation is shown in its own box, its rows preselected and marked `recommended` (`Marker`); the operator's change of a preselected box removes the mark from it. The screen prints no per-row reason, because no state row and no `pm-api` type publishes one.
+* One group per enrolled harness, the default marked. The steward's recommendation is shown in its own box; the operator's change of a preselected box removes the mark from it. The `recommended` mark appears where the state marks a row — no state row and no `pm-api` type publishes a per-row recommendation — and the screen prints no per-row reason, because none is published either.
 * A harness the state names without a listed model (`cannot list its models`) shows a `TextField` (`Model id for <harness>`) paired with *Add a model id*; a model id the steward recommended for it is filled in, marked `recommended`, and can be removed. Whether a group lists nothing is read from the published `source` of its rows: a group without a `probe` row is the one the operator fills in.
 * *Without a recommendation* the box is not drawn — no state row publishes why the advice did not run; every model the state lists is preselected, and a harness without a probed row starts empty.
 

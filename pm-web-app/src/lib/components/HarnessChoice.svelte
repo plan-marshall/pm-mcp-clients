@@ -54,31 +54,53 @@
   let initial = initialSelection(harnesses);
   let chosen: string[] = [...initial.chosen];
   let defaultId = initial.defaultId;
-  // The edits a refreshed proposal dropped because the harness they belonged to is gone.
+  // The edits a refreshed proposal dropped because the harness they belonged to is gone or is no
+  // longer a choice.
   let droppedEdits: string[] = [];
   // A path the runtime serves but the browser cannot load falls back to the monogram, so a broken
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
 
-  // A refresh keeps the operator's ticks and default for every harness that stays, proposes a
-  // newly found eligible one, and takes a vanished one's edit with it — saying so.
+  /**
+   * @param a one harness row
+   * @param b another row of the same harness
+   * @returns whether the two rows propose the same choice for that harness
+   */
+  function sameChoice(a: HarnessRow, b: HarnessRow): boolean {
+    return (
+      a.found === b.found &&
+      a.supported === b.supported &&
+      a.worker_eligible === b.worker_eligible &&
+      Boolean(a.default) === Boolean(b.default)
+    );
+  }
+
+  // A refresh keeps the operator's ticks and default for every harness that stays a legal choice,
+  // proposes a newly eligible one, and drops a tick a refreshed scan or default makes meaningless
+  // — saying so.
   $: {
     const delta = proposalDelta(
       prevHarnesses.map((h) => h.harness_id),
       harnesses.map((h) => h.harness_id),
     );
-    if (delta.added.length > 0 || delta.removed.length > 0) {
+    const choiceChanged = harnesses.some((row) => {
+      const before = prevHarnesses.find((h) => h.harness_id === row.harness_id);
+      return before !== undefined && !sameChoice(before, row);
+    });
+    if (delta.added.length > 0 || delta.removed.length > 0 || choiceChanged) {
       const previous = prevHarnesses;
       prevHarnesses = harnesses;
+      const offered = harnesses.filter(eligible).map((h) => h.harness_id);
+      const lostChoice = previous.filter(
+        (h) => chosen.includes(h.harness_id) && !offered.includes(h.harness_id),
+      );
       const untickedGone = previous.filter(
         (h) => delta.removed.includes(h.harness_id) && eligible(h) && !chosen.includes(h.harness_id),
       );
-      if (untickedGone.length > 0) {
-        droppedEdits = [...droppedEdits, ...untickedGone.map((h) => h.name)];
-      }
-      const present = harnesses.filter(eligible).map((h) => h.harness_id);
-      const kept = chosen.filter((id) => present.includes(id));
-      const added = present.filter((id) => delta.added.includes(id) && !kept.includes(id));
+      droppedEdits = [...new Set([...lostChoice, ...untickedGone].map((h) => h.name))];
+      const previouslyOffered = previous.filter(eligible).map((h) => h.harness_id);
+      const kept = chosen.filter((id) => offered.includes(id));
+      const added = offered.filter((id) => !previouslyOffered.includes(id) && !kept.includes(id));
       chosen = [...kept, ...added];
       if (!chosen.includes(defaultId)) defaultId = chosen[0] ?? '';
     }

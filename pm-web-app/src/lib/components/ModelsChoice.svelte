@@ -51,9 +51,10 @@
   export let onRecord: (allowed: ModelRow[], modified: boolean) => void = () => {};
 
   /**
-   * The identity of a model row: its harness and its model id. The engine compares its ids case-
-   * insensitively, and the two parts are encoded rather than joined, so an id that itself carries
-   * the separator can never collide with another harness's row.
+   * The identity of a model row: its harness and its model id. The ids are compared as one row
+   * where the engine compares them case-insensitively (PLAN-169 D3), and the two parts are encoded
+   * rather than joined, so an id that itself carries the separator can never collide with another
+   * harness's row.
    *
    * @param row a model row
    * @returns the row's identity
@@ -142,20 +143,46 @@
     droppedEdits = [...dropped, ...draftsGone];
   }
 
-  $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
+  $: allModels = dedupe([...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels]);
 
   $: groups = buildGroups(allModels, harnesses, models, harnessNames, defaultHarness);
 
   $: allowed = allModels.filter((row) => selected.includes(key(row)));
 
   /**
+   * @param rows the rows in the order they are shown
+   * @returns the rows with one per identity, the first winning: the ids are compared as one row
+   *   (PLAN-169 D3), so a state that reports the same id twice cannot break the list
+   */
+  function dedupe(rows: readonly ModelRow[]): ModelRow[] {
+    const seen = new Set<string>();
+    return rows.filter((row) => {
+      const id = key(row);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  /** One group of the screen: the harness, its label, its rows and why it carries no list. */
+  interface ModelGroup {
+    harnessId: string;
+    label: string;
+    rows: ModelRow[];
+    listsNothing: boolean;
+  }
+
+  /**
    * Builds one group per harness the state names — its own `harnesses[]`, the names the view
    * reports, the default harness, the initial rows and the rows — so a harness whose models the
    * operator must type gets its group and its field even when the state lists no row for it.
    *
+   * The label is resolved here, not in the template, so a renamed harness refreshes it: a template
+   * call hides the props it reads from the compiler.
+   *
    * @param rows the rows the screen shows
    * @param harnessInfos the state's enrolled harnesses
-   * @param initialRows the proposal's own rows
+   * @param proposal the state's own rows, the source of "this harness lists nothing"
    * @param names the harness names the view knows
    * @param defaultId the harness the state marks as the default
    * @returns the groups, in the order the state names them
@@ -163,10 +190,10 @@
   function buildGroups(
     rows: readonly ModelRow[],
     harnessInfos: readonly ModelHarnessInfo[],
-    initialRows: readonly ModelRow[],
+    proposal: readonly ModelRow[],
     names: Record<string, string>,
     defaultId: string | undefined,
-  ): Array<[string, ModelRow[]]> {
+  ): ModelGroup[] {
     const grouped: Record<string, ModelRow[]> = Object.create(null);
     const nameIt = (harnessId: string | undefined): void => {
       if (harnessId) grouped[harnessId] ??= [];
@@ -174,7 +201,7 @@
     for (const info of harnessInfos) {
       nameIt(info.harness_id);
     }
-    for (const row of initialRows) {
+    for (const row of proposal) {
       nameIt(row.harness_id);
     }
     for (const row of rows) {
@@ -184,7 +211,14 @@
       nameIt(harnessId);
     }
     nameIt(defaultId);
-    return Object.entries(grouped);
+    return Object.entries(grouped).map(([harnessId, groupRows]) => ({
+      harnessId,
+      label: resolveHarnessName(harnessId),
+      rows: groupRows,
+      listsNothing: !proposal.some(
+        (row) => row.harness_id === harnessId && row.source === 'probe',
+      ),
+    }));
   }
 
   function toggle(row: ModelRow): void {
@@ -250,10 +284,6 @@
    * @param rows the rows of the group
    * @returns whether the group carries no probed row
    */
-  function cannotList(rows: readonly ModelRow[]): boolean {
-    return !rows.some((r) => r.source === 'probe');
-  }
-
   function tokensLabel(row: ModelRow, locale: Locale, _translate?: unknown): string {
     if (row.tokens === undefined) return '';
     return formatTokens(row.tokens, Boolean(row.tokens_floor), locale);
@@ -274,9 +304,7 @@
     </p>
   {/if}
 
-  {#each groups as [harnessId, rows] (harnessId)}
-    {@const harnessLabel = resolveHarnessName(harnessId)}
-    {@const listsNothing = cannotList(rows)}
+  {#each groups as { harnessId, label, rows, listsNothing } (harnessId)}
     {@const draft = Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : ''}
     <div
       class="model-group"
@@ -285,9 +313,9 @@
       data-harness={harnessId}
     >
       <div class="model-group__header">
-        <h3 class="choice-screen__label" id={`model-group-${harnessId}`}>{harnessLabel}</h3>
+        <h3 class="choice-screen__label" id={`model-group-${harnessId}`}>{label}</h3>
         {#if defaultHarness === harnessId}
-          <Marker kind="default" label={harnessLabel} />
+          <Marker kind="default" label={label} />
         {/if}
         {#if listsNothing}
           <span class="choice-screen__row-meta" data-testid={`models-cannot-list-${harnessId}`}>
@@ -307,7 +335,7 @@
                 checked={isChecked}
                 aria-label={$t('onboard.catalogue.select.model_for', {
                   model: row.model_id,
-                  harness: harnessLabel,
+                  harness: label,
                 })}
                 onchange={() => toggle(row)}
                 data-testid={`model-toggle-${harnessId}-${row.model_id}`}
@@ -330,7 +358,7 @@
                     size="sm"
                     aria-label={$t('onboard.catalogue.select.remove_model_for', {
                       model: row.model_id,
-                      harness: harnessLabel,
+                      harness: label,
                     })}
                     on:click={() => removeOperatorModel(row)}
                     data-testid={`model-remove-${harnessId}-${row.model_id}`}
@@ -355,7 +383,7 @@
             <TextField
               mono
               label={$t('onboard.catalogue.select.model_id_prompt', {
-                harness: harnessLabel,
+                harness: label,
               })}
               placeholder={$t('onboard.catalogue.select.model_id_placeholder')}
               value={draft}

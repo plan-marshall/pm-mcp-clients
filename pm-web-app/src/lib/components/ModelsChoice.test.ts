@@ -140,6 +140,24 @@ describe('ModelsChoice', () => {
     expect(within(opencodeGroup).getByRole('checkbox', { name: 'shared-model on OpenCode' })).toBeVisible();
   });
 
+  it('gives duplicate model ids in different harnesses distinct Remove accessible names', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [
+          model({ harness_id: 'claude', model_id: 'shared-model', source: 'operator' }),
+          model({ harness_id: 'opencode', model_id: 'shared-model', source: 'operator' }),
+        ],
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code' },
+          { harness_id: 'opencode', name: 'OpenCode' },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Remove shared-model from Claude Code' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Remove shared-model from OpenCode' })).toBeVisible();
+  });
+
   it('reads no allowed flag: every listed row is preselected where the proposal marks none', () => {
     render(ModelsChoice, {
       props: {

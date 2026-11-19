@@ -169,6 +169,55 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
   });
 
+  it('drops a tick a refreshed scan makes meaningless and says so', async () => {
+    const base = [
+      harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+      harness({ harness_id: 'opencode', name: 'OpenCode' }),
+    ];
+    const { rerender, getByTestId, queryByTestId } = render(HarnessChoice, {
+      props: { harnesses: base.map((h) => ({ ...h })) },
+    });
+
+    expect(getByTestId('harness-toggle-claude')).toBeChecked();
+
+    await rerender({
+      harnesses: [
+        harness({ harness_id: 'claude', name: 'Claude Code', worker_eligible: false }),
+        harness({ harness_id: 'opencode', name: 'OpenCode', default: true }),
+      ],
+    });
+
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-dropped')).toHaveTextContent('Claude Code');
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+    expect(queryByTestId('harness-toggle-opencode')).toBeChecked();
+  });
+
+  it('proposes a harness a refreshed scan makes eligible', async () => {
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: {
+        harnesses: [
+          harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+          harness({ harness_id: 'codex', name: 'Codex', found: false }),
+        ],
+      },
+    });
+
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+    expect(getByTestId('harness-toggle-codex')).not.toBeChecked();
+
+    await rerender({
+      harnesses: [
+        harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+        harness({ harness_id: 'codex', name: 'Codex' }),
+      ],
+    });
+
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-toggle-codex')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, Codex the default');
+  });
+
   it('resyncs chosen harnesses and default when the harnesses prop changes', async () => {
     const { rerender, getByTestId, queryByTestId } = render(HarnessChoice, {
       props: {

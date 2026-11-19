@@ -69,6 +69,13 @@ describe('AspectChoice', () => {
       expect(screen.getByRole('button', { name: 'Keep the tokens in the file store' })).toBeEnabled();
     });
 
+    it('disables an unavailable store of a kind with no unavailability exit', () => {
+      render(AspectChoice, { kind: 'store', stores: STORES });
+
+      expect(screen.getByRole('radio', { name: 'Vault' })).toBeDisabled();
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeEnabled();
+    });
+
     it('keeps an unavailable OS store selectable and recordable as the way into store.unavailable', async () => {
       const onRecord = vi.fn();
       render(AspectChoice, {

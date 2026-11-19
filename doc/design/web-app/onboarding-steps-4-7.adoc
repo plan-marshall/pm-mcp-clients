@@ -128,7 +128,7 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
   The choice holds until you change it; a change moves the tokens and
   never leaves a copy behind.
 
-  [ Back ]                                     [ Use the macOS Keychain ]
+                                                    [ Keep the tokens in macOS Keychain ]
 ----
 
 * Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. The text is the store's own where the state states one; otherwise the generic line (`onboard.store.choose.unknown.protects`, `.does_not_protect`) says that only the store itself knows. The screen derives no protection from a platform: no state row and no `pm-api` type publishes a store's backend, platform or operating system, so the Keychain, Secret Service and file options carry the same generic line where the state states nothing.
