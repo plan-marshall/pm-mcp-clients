@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import java.util.concurrent.locks.ReentrantLock;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -779,18 +780,20 @@ class PmConsoleBehaviourTest {
 
                 // While the first refresh holds the lock and its read is open, the second must not
                 // reach the runtime: a second status request in this window is the interleaving.
+                var lock = consoleLock(console);
                 var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-                while (statusRequests.get() == 1 && System.nanoTime() < deadline) {
-                    var blocker = LockSupport.getBlocker(t2);
-                    if (t2.getState() == Thread.State.TIMED_WAITING && blocker != null && !(blocker instanceof Thread)) {
-                        break;
-                    }
+                while (statusRequests.get() == 1 && System.nanoTime() < deadline
+                                    && !lock.hasQueuedThread(t2)) {
                     Thread.onSpinWait();
                 }
                 var blocker = LockSupport.getBlocker(t2);
-                assertNotNull(blocker, "the second refresh must have a lock blocker");
-                assertFalse(blocker instanceof Thread, "blocker must be the lock synchronizer, not thread.join: " + blocker);
-                assertEquals(Thread.State.TIMED_WAITING, t2.getState(), "the second refresh must be waiting on the lock");
+                assertAll(
+                                    () -> assertNotNull(blocker, "the second refresh must have a lock blocker"),
+                                    () -> assertTrue(lock.isLocked(), "the first refresh must hold the console's lock"),
+                                    () -> assertTrue(lock.hasQueuedThread(t2),
+                                                        "the second refresh must wait on the console's lock: " + blocker),
+                                    () -> assertEquals(Thread.State.TIMED_WAITING, t2.getState(),
+                                                        "the second refresh must be waiting on the lock"));
 
                 // Check the negative over a window rather than at a single instant
                 long windowEnd = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(50);
@@ -1032,5 +1035,16 @@ class PmConsoleBehaviourTest {
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
             assertTrue(entrySetupRequested.get(), "Enter on project badge must continue project onboarding");
         }
+    }
+
+    /**
+     * @param console the console under test
+     * @return the lock the console guards its badge refreshes with
+     * @throws ReflectiveOperationException when the console no longer keeps that lock
+     */
+    private static ReentrantLock consoleLock(PmConsole console) throws ReflectiveOperationException {
+        var field = PmConsole.class.getDeclaredField("badgeRefreshLock");
+        field.setAccessible(true);
+        return (ReentrantLock) field.get(console);
     }
 }
