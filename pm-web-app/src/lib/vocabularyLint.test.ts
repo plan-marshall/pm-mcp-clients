@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import {
   lintSvelteSource,
   lintCssSource,
@@ -101,6 +102,7 @@ describe('vocabularyLint', () => {
 
     const buttonFinding = findings.find((f) => f.rule === 'button');
     expect(buttonFinding?.component).toBe('Button');
+    expect(buttonFinding?.line).toBe(6);
   });
 
   it('fires on outline: none and outline: 0 in <style> block and .css file', () => {
@@ -120,7 +122,9 @@ describe('vocabularyLint', () => {
     expect(svelteFindings).toHaveLength(2);
     expect(svelteFindings[0].rule).toBe('outline: none');
     expect(svelteFindings[0].component).toBe('tokens.css (--focus-ring)');
+    expect(svelteFindings[0].line).toBe(4);
     expect(svelteFindings[1].rule).toBe('outline: none');
+    expect(svelteFindings[1].line).toBe(7);
 
     const css = `
       button:focus-visible {
@@ -134,6 +138,9 @@ describe('vocabularyLint', () => {
     const cssFindings = parseFindings(lintCssSource(css, 'src/styles/custom.css'));
     expect(cssFindings).toHaveLength(2);
     expect(cssFindings[0].rule).toBe('outline: none');
+    expect(cssFindings[0].line).toBe(3);
+    expect(cssFindings[1].rule).toBe('outline: none');
+    expect(cssFindings[1].line).toBe(6);
     expect(cssFindings[1].rule).toBe('outline: none');
   });
 
@@ -334,6 +341,47 @@ describe('vocabularyLint', () => {
       expect(exitCode).toBe(1);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('the script run through a symlink to the app directory prints its findings and exits 1 under --error on a violating tree', () => {
+    const tempTarget = path.join(APP_DIR, 'target', 'symlink-real-app');
+    const tempSymlink = path.join(APP_DIR, 'target', 'symlink-linked-app');
+    const realScripts = path.join(tempTarget, 'scripts');
+    const realSrc = path.join(tempTarget, 'src');
+
+    try {
+      fs.mkdirSync(realScripts, { recursive: true });
+      fs.mkdirSync(realSrc, { recursive: true });
+
+      const realScriptPath = path.join(APP_DIR, 'scripts', 'vocabulary-lint.mjs');
+      fs.copyFileSync(realScriptPath, path.join(realScripts, 'vocabulary-lint.mjs'));
+
+      fs.writeFileSync(path.join(realSrc, 'Violating.svelte'), '<button>Violate</button>');
+
+      fs.symlinkSync(tempTarget, tempSymlink, 'dir');
+
+      const symlinkScript = path.join(tempSymlink, 'scripts', 'vocabulary-lint.mjs');
+      const targetScript = path.join(realScripts, 'vocabulary-lint.mjs');
+
+      // Matched positive control: run by real path
+      const posControl = spawnSync(process.execPath, [targetScript, '--error'], {
+        cwd: tempTarget,
+        encoding: 'utf-8',
+      });
+      expect(posControl.status, 'Positive control must exit 1 on violating tree').toBe(1);
+      expect(posControl.stderr).toContain('warning:');
+
+      // Test run: run through symlinked directory
+      const symlinkRun = spawnSync(process.execPath, [symlinkScript, '--error'], {
+        cwd: tempSymlink,
+        encoding: 'utf-8',
+      });
+      expect(symlinkRun.status, 'Symlinked run must exit 1 on violating tree').toBe(1);
+      expect(symlinkRun.stderr).toContain('warning:');
+    } finally {
+      fs.rmSync(tempSymlink, { recursive: true, force: true });
+      fs.rmSync(tempTarget, { recursive: true, force: true });
     }
   });
 

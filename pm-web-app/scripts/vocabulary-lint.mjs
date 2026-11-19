@@ -496,10 +496,21 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   return 0;
 }
 
-const currentFile = fileURLToPath(import.meta.url);
-if (process.argv[1] && path.resolve(process.argv[1]) === currentFile) {
-  const exitCode = runCli();
-  if (exitCode !== 0) {
-    process.exit(exitCode);
+if (process.argv[1]) {
+  let isMain = false;
+  try {
+    const realArgv1 = fs.realpathSync(process.argv[1]);
+    const realCurrentFile = fs.realpathSync(fileURLToPath(import.meta.url));
+    isMain = realArgv1 === realCurrentFile;
+  } catch (err) {
+    console.error(`Failed to resolve entry script path: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (isMain) {
+    const exitCode = runCli();
+    if (exitCode !== 0) {
+      process.exit(exitCode);
+    }
   }
 }
