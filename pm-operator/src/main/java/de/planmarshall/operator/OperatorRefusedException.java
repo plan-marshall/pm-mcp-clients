@@ -41,10 +41,11 @@ public class OperatorRefusedException extends IOException {
     /** The catalogue key of the prefix of an unknown refusal whose message the body carries. */
     static final String PREFIX_KEY = "operator.refusal.prefix";
 
-    private static final Set<String> NON_ARGUMENTS = Set.of("error", "message", "code", "reason");
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_ERROR = "error";
     private static final String KEY_CODE = "code";
+
+    private static final Set<String> NON_ARGUMENTS = Set.of(KEY_ERROR, KEY_MESSAGE, KEY_CODE, "reason");
 
     /** What kind of refusal the exception carries. */
     enum Kind {
@@ -200,7 +201,7 @@ public class OperatorRefusedException extends IOException {
             // capped, and a JSON object that names no message carries only its code.
             if (shape == BodyShape.BLANK) {
                 parsedMessage = "";
-            } else if (!looksLikeJsonObject(body)) {
+            } else if (body != null && !looksLikeJsonObject(body)) {
                 parsedMessage = cap(body);
             }
         }
@@ -245,7 +246,7 @@ public class OperatorRefusedException extends IOException {
     }
 
     private static String cap(String body) {
-        var stripped = body == null ? "" : TerminalSanitizer.sanitizeLine(body).strip();
+        var stripped = TerminalSanitizer.sanitizeLine(body).strip();
         if (stripped.length() <= MAX_MESSAGE_LENGTH) {
             return stripped;
         }

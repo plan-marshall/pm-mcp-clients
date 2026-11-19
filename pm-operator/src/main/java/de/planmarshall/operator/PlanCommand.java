@@ -788,11 +788,11 @@ public final class PlanCommand implements Callable<Integer> {
                                 HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (PausePoint.NOW.value().equals(point)) {
-                    out.println("\u2713 " + MessageCatalogue.format(
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(
                                         context.clientEnvironment().locale(), "operator.actions.result.paused",
                                         Map.of("plan", OutputSafety.stripControlSequences(planId))));
                 } else {
-                    out.println("\u2713 " + MessageCatalogue.format(
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(
                                         context.clientEnvironment().locale(), "operator.actions.result.pausing",
                                         Map.of("plan", OutputSafety.stripControlSequences(planId),
                                                             "point", PausePoint.AFTER_PHASE.value().equals(point) ? "phase" : "task")));
@@ -858,7 +858,7 @@ public final class PlanCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", endpoint, "{}"));
             if (response.status() == 200 || response.status() == 202) {
-                out.println("\u2713 " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.actions.result.started",
                                     Map.of("plan", OutputSafety.stripControlSequences(planId))));
                 out.flush();
@@ -1158,7 +1158,7 @@ public final class PlanCommand implements Callable<Integer> {
                                                         Map.of("phase", "refine")));
             } else {
                 long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
-                out.printf("  %-14s %s%n", text(locale, "report.completion.deliverables"),
+                out.printf(FMT_14S, text(locale, "report.completion.deliverables"),
                                     MessageCatalogue.format(locale, "report.completion.deliverables_done", Map.of(
                                                         "done", doneCount,
                                                         KEY_TOTAL, deliverables.size())));
@@ -1303,7 +1303,7 @@ public final class PlanCommand implements Callable<Integer> {
                                                         KEY_TOTAL, usage.tasksTotal()))));
                 out.printf(FMT_INDENT, covText);
                 var hint = MessageCatalogue.format(locale, "operator.reports.tokens_hint", Map.of("plan", planId));
-                out.printf("                 %s%n", hint);
+                out.printf(FMT_INDENT, hint);
             }
         }
 

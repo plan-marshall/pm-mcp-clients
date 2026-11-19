@@ -110,7 +110,7 @@ class OperatorRefusedExceptionTest {
         var ex = new OperatorRefusedException("answer", resp);
         assertEquals(ApiErrorCode.DEPENDENCY_UNANSWERED, ex.code());
         assertTrue(ex.arguments().containsKey("part"), "arguments: " + ex.arguments());
-        assertEquals(3, Integer.parseInt(ex.arguments().get("part").toString()));
+        assertEquals("3", ex.arguments().get("part"));
     }
 
     @Test

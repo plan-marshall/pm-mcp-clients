@@ -601,12 +601,12 @@ public final class EpicCommand implements Callable<Integer> {
                                 HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (commonFiles != null) {
-                    out.println("\u2713 " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.epic.auto_common_files", Map.of(
                                                             "epic", OutputSafety.stripControlSequences(epicId),
                                                             "count", commonFiles)));
                 } else {
-                    out.println("\u2713 " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.epic.auto_mode", Map.of(
                                                             "epic", OutputSafety.stripControlSequences(epicId),
                                                             "mode", OutputSafety.stripControlSequences(mode))));
@@ -639,7 +639,7 @@ public final class EpicCommand implements Callable<Integer> {
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/archive";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             if (response.status() == 200 || response.status() == 204) {
-                out.println("\u2713 " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.epic.archived",
                                     Map.of("epic", OutputSafety.stripControlSequences(epicId))));
                 out.flush();
@@ -782,7 +782,7 @@ public final class EpicCommand implements Callable<Integer> {
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(options.id != null ? options.id : "") + "/cancel";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
-                out.println("\u2713 " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.epic.cancelled",
                                     Map.of("epic", OutputSafety.stripControlSequences(
                                                         options.id != null ? options.id : ""))));
