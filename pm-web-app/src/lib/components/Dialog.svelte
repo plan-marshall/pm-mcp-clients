@@ -83,7 +83,16 @@
       return;
     }
     if (event.key === 'Escape') {
+      if (event.defaultPrevented) {
+        return;
+      }
+      const target = event.target;
+      const targetElement = target instanceof Element ? target : null;
+      if (panel?.querySelector('[role="menu"]') || targetElement?.closest('[role="menu"]')) {
+        return;
+      }
       // Captured before the page's own Escape handlers, so the dialog closes on its own.
+      event.preventDefault();
       event.stopPropagation();
       onClose();
       return;
@@ -196,7 +205,8 @@
     line-height: var(--line-height-xl);
   }
 
-  .dialog--danger .dialog__title {
+  .dialog--danger .dialog__title,
+  .dialog--danger .dialog__consequences {
     color: var(--color-danger);
   }
 
