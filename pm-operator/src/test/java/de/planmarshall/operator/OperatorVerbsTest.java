@@ -11,20 +11,75 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.jline.reader.Candidate;
 import org.jline.reader.impl.DefaultParser;
+import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.testsupport.RuntimeFixture;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("OperatorVerbs")
 class OperatorVerbsTest {
+
+    private static final String STATUS_JSON = """
+                        {"status":"ready","onboarded":true,"version":"0.9.0",
+                         "needs_operator":{"question":0},
+                         "web":{"enabled":false,"port":7420}}
+                        """;
+
+    @TempDir
+    Path tempDir;
+
+    private RuntimeFixture fixture;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        fixture = RuntimeFixture.create();
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, STATUS_JSON);
+            } else if ("/api/v1/reports".equals(request.target())) {
+                response.json(200, "{\"unread_count\":0}");
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        if (fixture != null) {
+            fixture.close();
+        }
+    }
+
+    private PmConsole console() {
+        var rendered = new ByteArrayOutputStream();
+        var input = new ByteArrayInputStream("exit\n".getBytes(StandardCharsets.UTF_8));
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(input, rendered), null);
+        return new PmConsole(context);
+    }
 
     @Test
     @DisplayName("the completer carries the registered verbs and the console's own commands, each once")
@@ -37,11 +92,16 @@ class OperatorVerbsTest {
     }
 
     @Test
-    @DisplayName("the console builds its completer from OperatorVerbs.completer()")
-    void consoleCompleterMatchesOperatorVerbs() {
-        var completer = PmConsole.completer();
+    @DisplayName("the completer the console installs in its reader is OperatorVerbs.completer()")
+    void consoleCompleterMatchesOperatorVerbs() throws Exception {
+        var console = console();
+
+        assertEquals(0, console.run());
+
+        var installed = console.installedCompleter();
+        assertNotNull(installed, "the console ran without installing a completer");
         var candidates = new ArrayList<Candidate>();
-        completer.complete(null, new DefaultParser().parse("", 0), candidates);
+        installed.complete(null, new DefaultParser().parse("", 0), candidates);
         var words = candidates.stream().map(Candidate::value).toList();
         assertEquals(Set.copyOf(OperatorVerbs.completer()), Set.copyOf(words));
     }

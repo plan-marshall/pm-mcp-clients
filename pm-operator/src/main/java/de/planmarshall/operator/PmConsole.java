@@ -90,6 +90,9 @@ public final class PmConsole {
     private final ConsoleNoticeBuffer noticeBuffer;
     private final NeedsOperatorNotices needsNotices = new NeedsOperatorNotices();
 
+    /** The completer the console installed in its line reader, read back by the pin in the test. */
+    private @Nullable StringsCompleter installedCompleter;
+
     private volatile @Nullable String activePairingCode;
     private volatile @Nullable String activePairingUrl;
     private volatile int webPort = EntryFlow.DEFAULT_WEB_PORT;
@@ -133,6 +136,14 @@ public final class PmConsole {
     }
 
     /**
+     * @return the completer {@link #run()} installed in its line reader, or {@code null} before the
+     *         console ran
+     */
+    @Nullable StringsCompleter installedCompleter() {
+        return installedCompleter;
+    }
+
+    /**
      * Runs the console entry flow and main REPL loop.
      *
      * @return exit code (0 on normal exit)
@@ -153,6 +164,7 @@ public final class PmConsole {
         // The console commands and the verbs of the design's command tree (01-commands.adoc), and
         // nothing else: the completer is the registered registry, never a second copy of it.
         var completer = completer();
+        installedCompleter = completer;
 
         var reader = LineReaderBuilder.builder()
                             .terminal(terminal)
