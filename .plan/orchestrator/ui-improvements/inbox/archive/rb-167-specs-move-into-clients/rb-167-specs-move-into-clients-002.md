@@ -4,6 +4,8 @@ sender_id=rb-167-specs-move-into-clients
 epic=ui-improvements
 kind=landing
 created=2026-11-18T12:35:24Z
+lifecycle=superseded
+superseded_by=rb-167-specs-move-into-clients-003.md
 
 ```landing-facts
 schema=landing-facts/1

@@ -2,10 +2,10 @@
   "id": "PLAN-167",
   "slug": "specs-move-into-clients",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "167-specs-move-into-clients",
+  "pr": "480",
+  "landing": "landings/PLAN-167.md",
   "seq": 167
 }
