@@ -42,6 +42,7 @@ import {
 import { makeRuntimeState } from '../test/runtimeState';
 import { writeRememberedPlace } from '../navigation/rememberedPlace';
 import { resetOpenedFromOutside } from '../navigation/history';
+import { PROJECT_REFRESH_EVENTS } from './refreshEvents';
 
 const PAIRED_STATUS: StatusResponse = {
   status: 'ready',
@@ -1103,7 +1104,7 @@ describe('the runtime events the store follows', () => {
     expect(get(runtimeStore).isListenerClosed).toBe(false);
   });
 
-  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+  it.each(PROJECT_REFRESH_EVENTS)(
     'tells the project views that %s happened',
     (event) => {
       // Act

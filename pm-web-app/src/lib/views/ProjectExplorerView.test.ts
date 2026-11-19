@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
+import { PROJECT_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ProjectExplorer } from '../api/client';
 import { ClientError } from '../api/errors';
@@ -380,7 +381,7 @@ describe('ProjectExplorerView component', () => {
     expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['project.changed', 'project.released', 'project.enrolled'])(
+  it.each(PROJECT_REFRESH_EVENTS)(
     'reads the explorer again once on %s',
     async (event) => {
       let emit: (name: string) => void = () => {};

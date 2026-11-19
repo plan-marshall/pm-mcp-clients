@@ -5,6 +5,7 @@ import StartView from './StartView.svelte';
 import { apiClient, type EpicDecomposition } from '../api/client';
 import { ClientError } from '../api/errors';
 import { runtimeStore } from '../stores/runtime';
+import { ENTRY_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { PROJECT, entry, representation, source, sources } from './startFixtures';
 
@@ -133,16 +134,7 @@ describe('StartView', () => {
       return { emit: (event) => listener?.(event, {}) };
     }
 
-    it.each([
-      'reset',
-      'source.added',
-      'source.removed',
-      'source.flagged',
-      'progress.changed',
-      'check.result',
-      'entry.moved',
-      'state.entered',
-    ])('re-reads the entry on %s and shows what changed', async (event) => {
+    it.each(ENTRY_REFRESH_EVENTS)('re-reads the entry on %s and shows what changed', async (event) => {
       arrangeOpen();
       const { emit } = arrangeEvents();
       const read = vi
