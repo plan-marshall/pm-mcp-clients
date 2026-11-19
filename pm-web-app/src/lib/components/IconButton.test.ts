@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import IconButton from './IconButton.svelte';
+import IconButtonOnClickFixture from '../../test/fixtures/IconButtonOnClickFixture.svelte';
 
 /**
  * `IconButton`: the square ghost control of the design system (components.adoc#icon-button).
@@ -62,5 +63,39 @@ describe('IconButton component', () => {
     await fireEvent.click(screen.getByRole('button'));
 
     expect(clicked).toHaveBeenCalledOnce();
+  });
+
+  it('a click on a disabled-with-reason IconButton through on:click calls nothing', async () => {
+    const onClick = vi.fn();
+    render(IconButtonOnClickFixture, {
+      props: { disabled: true, disabledReason: 'Nothing to copy', label: 'Copy', onClick },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('forwards the click of an enabled control through on:click', async () => {
+    const onClick = vi.fn();
+    render(IconButtonOnClickFixture, {
+      props: { disabled: false, label: 'Copy', onClick },
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('a click on a disabled-with-reason IconButton stops immediate propagation on the button element', async () => {
+    const directListener = vi.fn();
+    render(IconButton, {
+      props: { icon: 'act.copy', label: 'Copy', disabled: true, disabledReason: 'Nothing to copy' },
+    });
+    const button = screen.getByRole('button', { name: 'Copy' });
+    button.addEventListener('click', directListener);
+
+    await fireEvent.click(button);
+    expect(directListener).not.toHaveBeenCalled();
   });
 });

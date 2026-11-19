@@ -50,6 +50,7 @@
     if (disabled || loading) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       return;
     }
   }
