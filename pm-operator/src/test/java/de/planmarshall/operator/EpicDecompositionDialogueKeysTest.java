@@ -117,14 +117,14 @@ class EpicDecompositionDialogueKeysTest {
     /** @return the cut the fixture serves, with ids drawn for this run */
     private String threePlans() {
         return """
-                        {"epic_id":"%s","status":"review","revision":3,
-                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
-                           "staged_plans":[
-                             {"plan_id":"%s","title":"a","expected_surface":["a"],"dependencies":[],"status":"staged"},
-                             {"plan_id":"%s","title":"b","expected_surface":["b"],"dependencies":[],"status":"staged"},
-                             {"plan_id":"%s","title":"c","expected_surface":["c"],"dependencies":[],"status":"staged"}]}],
-                         "findings":[]}
-                        """.formatted(epic, firstPlan, secondPlan, thirdPlan);
+                            {"epic_id":"%s","status":"review","revision":3,
+                             "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                               "staged_plans":[
+                                 {"plan_id":"%s","title":"a","expected_surface":["a"],"dependencies":[],"status":"staged"},
+                                 {"plan_id":"%s","title":"b","expected_surface":["b"],"dependencies":[],"status":"staged"},
+                                 {"plan_id":"%s","title":"c","expected_surface":["c"],"dependencies":[],"status":"staged"}]}],
+                             "findings":[]}
+                            """.formatted(epic, firstPlan, secondPlan, thirdPlan);
     }
 
     /** @return a key none of the prompts offers, drawn so the probe is not one fixed letter */

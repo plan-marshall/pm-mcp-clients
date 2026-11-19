@@ -471,8 +471,8 @@ class EntryFlowTest {
                                 () -> assertTrue(outcome.screen().contains("Choose the harnesses to enrol"),
                                                     outcome.screen()),
                                 () -> assertTrue(server.requests().stream().anyMatch(recorded ->
-                                                        OnboardingSource.STEP_PATH.equals(recorded.target())
-                                                                            && recorded.bodyText().contains("yes")),
+                                                                        OnboardingSource.STEP_PATH.equals(recorded.target())
+                                                                                            && recorded.bodyText().contains("yes")),
                                                     "the chosen link was sent"));
         }
 
@@ -486,7 +486,7 @@ class EntryFlowTest {
             assertAll(
                                 () -> assertEquals(0, outcome.code()),
                                 () -> assertFalse(server.requests().stream().anyMatch(recorded ->
-                                                        OnboardingSource.STEP_PATH.equals(recorded.target())),
+                                                                        OnboardingSource.STEP_PATH.equals(recorded.target())),
                                                     "no step was sent"));
         }
 

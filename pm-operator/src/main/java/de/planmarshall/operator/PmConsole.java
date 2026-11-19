@@ -139,7 +139,8 @@ public final class PmConsole {
      * @return the completer {@link #run()} installed in its line reader, or {@code null} before the
      *         console ran
      */
-    @Nullable StringsCompleter installedCompleter() {
+    @Nullable
+    StringsCompleter installedCompleter() {
         return installedCompleter;
     }
 
