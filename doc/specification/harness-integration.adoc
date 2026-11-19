@@ -38,4 +38,4 @@ Implemented in (link:../../../plan-marshall-documentation/doc/specification/modu
 == Parts
 
 * link:harness-integration/01-harness-detection.adoc[Harness Environment Detection] — the detection of a coding agent's environment for the operator checks, the Harness Integration Table, and the version probes
-* link:harness-integration/02-bundle-manifest.adoc[Bundle Manifest] — the `bundle-manifest.json` schema, a concrete example, ownership and digest verification, and open harness-bundle items; what a bundle carries per harness (the permission rules and the shim skill) is stated with the model-facing content in `plan-marshall-mcp`
+* link:harness-integration/02-bundle-manifest.adoc[Bundle Manifest] — the `bundle-manifest.json` schema, a concrete example, ownership and digest verification, and open harness-bundle items; what a bundle carries per harness (the permission rules and the shim skill) stays with the model-facing content in `plan-marshall-documentation` until it moves into `plan-marshall-mcp`
