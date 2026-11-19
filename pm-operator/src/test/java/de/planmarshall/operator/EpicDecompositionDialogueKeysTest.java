@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +55,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 @EnableGeneratorController
 class EpicDecompositionDialogueKeysTest {
 
-    /** The keys no prompt of the decomposition offers: the refused-key probes are drawn from them. */
-    private static final String UNOFFERED_KEYS = "cfg";
+    /** The alphabet the refused-key probes are drawn from. */
+    private static final String LETTERS = "abcdefghijklmnopqrstuvwxyz";
 
     private static final String EN = "en";
     private static final String DE = "de";
@@ -127,10 +128,23 @@ class EpicDecompositionDialogueKeysTest {
                             """.formatted(epic, firstPlan, secondPlan, thirdPlan);
     }
 
-    /** @return a key none of the prompts offers, drawn so the probe is not one fixed letter */
+    /**
+     * @return a single letter none of the three prompts offers, derived at run time from the keys
+     *         the dialogue itself declares, so the probe cannot drift from them
+     */
     private static String unofferedKey() {
-        var offset = Generators.integers(0, UNOFFERED_KEYS.length() - 1).next();
-        return String.valueOf(UNOFFERED_KEYS.charAt(offset));
+        var accepted = new HashSet<String>();
+        accepted.addAll(keysOf(EpicDecompositionDialogue.CUT_KEYS));
+        accepted.addAll(keysOf(EpicDecompositionDialogue.PLAN_KEYS));
+        accepted.addAll(keysOf(EpicDecompositionDialogue.READ_BACK_KEYS));
+        accepted.add("q");
+        accepted.add("v");
+        accepted.add("?");
+        var candidates = LETTERS.chars()
+                            .mapToObj(letter -> String.valueOf((char) letter))
+                            .filter(letter -> !accepted.contains(letter))
+                            .toList();
+        return candidates.get(Generators.integers(0, candidates.size() - 1).next());
     }
 
     @Test

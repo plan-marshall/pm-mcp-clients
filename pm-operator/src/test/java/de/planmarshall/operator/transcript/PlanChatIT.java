@@ -11,6 +11,7 @@ package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -25,6 +26,7 @@ import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.PmOperator;
@@ -117,11 +119,16 @@ class PlanChatIT {
         }
 
         assertEquals(1, turnBodies.size(), "expected one chat turn, got " + turnBodies);
-        var body = turnBodies.getFirst();
+        var body = JsonTree.asObject(JsonTree.parse(turnBodies.getFirst()));
+        var clientTurnId = body != null ? JsonTree.string(body, "client_turn_id") : null;
         assertAll(
-                            () -> assertTrue(body.contains(message), "the turn's body must carry the message, got " + body),
-                            () -> assertTrue(body.contains("\"client_turn_id\""),
-                                                "the turn's body must carry the client's turn id, got " + body));
+                            () -> assertNotNull(body,
+                                                "the turn's body must be a JSON object, got " + turnBodies.getFirst()),
+                            () -> assertEquals(message, JsonTree.string(body, "text"),
+                                                "the turn's body must carry the message: " + turnBodies.getFirst()),
+                            () -> assertTrue(clientTurnId != null && !clientTurnId.isBlank(),
+                                                "the turn's body must carry a non-blank client_turn_id: "
+                                                                    + turnBodies.getFirst()));
     }
 
     /** @param message the operator's message @return the transcript the runtime serves for it */

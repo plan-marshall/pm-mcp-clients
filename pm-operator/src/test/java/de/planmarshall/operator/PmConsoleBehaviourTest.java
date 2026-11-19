@@ -783,7 +783,7 @@ class PmConsoleBehaviourTest {
                 var lock = consoleLock(console);
                 var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
                 while (statusRequests.get() == 1 && System.nanoTime() < deadline
-                                    && !lock.hasQueuedThread(t2)) {
+                                    && !parkedOnTheLock(t2, lock)) {
                     Thread.onSpinWait();
                 }
                 var blocker = LockSupport.getBlocker(t2);
@@ -1035,6 +1035,17 @@ class PmConsoleBehaviourTest {
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
             assertTrue(entrySetupRequested.get(), "Enter on project badge must continue project onboarding");
         }
+    }
+
+    /**
+     * @param waiting the refresh that must queue behind the console's lock
+     * @param lock    the console's own lock
+     * @return {@code true} when the refresh has queued AND parked on that lock — queue membership
+     *         alone is published before the park, so it is not the state the assertions read
+     */
+    private static boolean parkedOnTheLock(Thread waiting, ReentrantLock lock) {
+        return lock.hasQueuedThread(waiting) && LockSupport.getBlocker(waiting) != null
+                            && waiting.getState() == Thread.State.TIMED_WAITING;
     }
 
     /**

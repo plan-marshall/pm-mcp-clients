@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -48,6 +50,7 @@ import org.junit.jupiter.api.io.TempDir;
  * remembered consent, and the documents mode with the concurrent-change conflict.
  */
 @DisplayName("config settings, consents, and documents")
+@EnableGeneratorController
 class ConfigSettingsTest {
 
     private static final String SETTINGS = """
@@ -306,8 +309,10 @@ class ConfigSettingsTest {
     @Test
     @DisplayName("round-trips the machine settings contract through its own record")
     void contractRoundTrip() throws Exception {
-        var settings = new MachineSettingsRecord(3,
-                            List.of(new MachineSettingsAspectSummary(OnboardingAspect.PLANS, "Pull Request",
+        var revision = Generators.integers(2, 90).next();
+        var summary = Generators.letterStrings(6, 12).next();
+        var settings = new MachineSettingsRecord(revision,
+                            List.of(new MachineSettingsAspectSummary(OnboardingAspect.PLANS, summary,
                                                 "landing.pull-request")),
                             "en", "same", DocumentsMode.ASK, CleanupDurations.defaults(), PlanDefaults.shipped(),
                             List.of(new ConsentRecord(ConsentKind.SCAN_HARNESSES, ConsentStatus.REMEMBERED, true,
@@ -317,7 +322,8 @@ class ConfigSettingsTest {
         var parsed = MachineSettingsRecord.fromJson(settings.toJson());
 
         assertAll(
-                            () -> assertEquals(3, parsed.revision()),
-                            () -> assertFalse(parsed.aspects().isEmpty()));
+                            () -> assertEquals(revision, parsed.revision()),
+                            () -> assertFalse(parsed.aspects().isEmpty()),
+                            () -> assertEquals(summary, parsed.aspects().getFirst().summary()));
     }
 }
