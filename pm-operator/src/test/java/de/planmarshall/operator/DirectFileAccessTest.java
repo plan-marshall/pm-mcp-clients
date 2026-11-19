@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("DirectFileAccess")
+@EnableGeneratorController
 class DirectFileAccessTest {
 
     @TempDir
@@ -89,12 +92,14 @@ class DirectFileAccessTest {
         @Test
         @DisplayName("reads machineConfig and installRecords when present")
         void readsConfigAndRecords() throws Exception {
+            var port = Generators.integers(20_000, 29_999).next();
+            var config = "{\"web\":{\"port\":" + port + "}}";
             Files.createDirectories(paths.stateDir());
-            Files.writeString(direct.machineConfigPath(), "{\"web\":{\"port\":7420}}");
+            Files.writeString(direct.machineConfigPath(), config);
             Files.writeString(direct.installRecordsPath(), "{\"bundles\":[]}");
 
             assertAll(
-                                () -> assertEquals("{\"web\":{\"port\":7420}}", direct.readMachineConfig().orElseThrow()),
+                                () -> assertEquals(config, direct.readMachineConfig().orElseThrow()),
                                 () -> assertEquals("{\"bundles\":[]}", direct.readInstallRecords().orElseThrow())
             );
         }

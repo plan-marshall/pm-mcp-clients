@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.util.List;
 
 import de.planmarshall.mock.StandardScenarios;
 
@@ -57,10 +58,17 @@ class RuntimeStopDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
-        var unknown = Generators.integers(3, 9).next();
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText(KEEP, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            // The "unknown" answer is derived from the choices the dialogue itself prints, and the
+            // assumption this test rests on — two choices, so any number above 2 is unknown — is
+            // asserted, so a third choice added to the dialogue turns this test red instead of
+            // leaving the answer silently offered.
+            var choices = offeredChoices(session.rawOutput());
+            assertEquals(List.of(1, 2), choices, "the stop offers exactly what this test assumes: " + choices);
+            var unknown = choices.getLast() + 1 + Generators.integers(0, 6).next();
 
             DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -68,6 +76,17 @@ class RuntimeStopDialogueIT {
             assertEquals(2, DialogueHarness.times(session.rawOutput(), PROMPT), session.screenText());
             harness.assertNoAct();
         }
+    }
+
+    /** @param rendered what the pseudo-terminal showed @return the choice numbers it printed, ascending */
+    private static List<Integer> offeredChoices(String rendered) {
+        return rendered.lines()
+                            .map(String::strip)
+                            .filter(line -> line.matches("\\d+\\) .*"))
+                            .map(line -> Integer.parseInt(line.substring(0, line.indexOf(')'))))
+                            .distinct()
+                            .sorted()
+                            .toList();
     }
 
     @Test
