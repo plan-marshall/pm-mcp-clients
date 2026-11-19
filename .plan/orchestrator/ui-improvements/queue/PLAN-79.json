@@ -2,10 +2,10 @@
   "id": "PLAN-79",
   "slug": "cui-testing-operator",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "79-cui-testing-operator",
+  "pr": "502",
+  "landing": "landings/PLAN-79.md",
   "seq": 79
 }
