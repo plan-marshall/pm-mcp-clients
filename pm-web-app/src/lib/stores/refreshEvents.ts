@@ -6,10 +6,13 @@
  */
 
 /**
- * The events of the project stream that change what the explorer and the runtime store show. The
- * closed `EventName` catalogue names one of them; the release and the enrolment are readings of the
- * project resource (`ProjectReleasedEvent`, `ProjectEnrolledEvent`), not events the runtime streams,
- * so no name is listed for them here.
+ * The events of the project stream that change what the explorer and the runtime store show.
+ * <p>
+ * The closed `EventName` catalogue holds `project.changed` for this stream and no name for a release
+ * or an enrolment, so neither is listed here. A release still reaches the views: the runtime reports
+ * the act as `project.changed` beside its own `project.released` payload event
+ * (`MockRuntimeEngine`, release), and the enrolment does the same — so the refresh survives on the
+ * catalogued name, and no view refreshes differently from before.
  */
 export const PROJECT_REFRESH_EVENTS: readonly string[] = ['project.changed'];
 

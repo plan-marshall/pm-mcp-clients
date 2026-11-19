@@ -56,12 +56,12 @@ describe('projectCountsText', () => {
     expect(projectCountsText(project({}), translate)).toBe('');
   });
 
-  it('reads missing counts as none rather than as a blank figure', () => {
+  it('reads a missing count as none rather than as a blank figure', () => {
     const text = projectCountsText(
-      project({ active_plans_count: undefined, active_epics_count: undefined }),
+      project({ active_plans_count: undefined, active_epics_count: 2 }),
       translate,
     );
 
-    expect(text).toBe('');
+    expect(text).toBe('overview.project.epics_only {"epics":2}');
   });
 });

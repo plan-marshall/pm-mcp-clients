@@ -399,6 +399,24 @@ describe('ProjectExplorerView component', () => {
     },
   );
 
+  it('reads the explorer once for a release, which the runtime reports as a project change', async () => {
+    // The mock runtime broadcasts its own `project.released` event AND `project.changed` in the same
+    // act (MockRuntimeEngine, release), and only the second is a member of the closed EventName
+    // catalogue. The explorer therefore reads once, on the catalogued name.
+    let emit: (name: string) => void = () => {};
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
+      emit = (name) => handler(name, {});
+      return () => {};
+    });
+    render(ProjectExplorerView);
+    await screen.findByTestId('section-favourites');
+
+    emit('project.released');
+    emit('project.changed');
+
+    await waitFor(() => expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2));
+  });
+
   it.each([
     ['release-btn-pm-mcp-clients', 'release-modal', 'cancel-release-btn'],
     ['unenrol-btn-pm-mcp-clients', 'unenrol-modal', 'cancel-unenrol-btn'],

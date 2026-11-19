@@ -52,7 +52,7 @@ describe('the refresh events', () => {
     }
   });
 
-  it('keeps one set per stream, and a name is in one set only', () => {
+  it('keeps one set per stream, so a name has one home', () => {
     const seen = new Map<string, string>();
 
     for (const [stream, events] of SETS) {
@@ -61,6 +61,9 @@ describe('the refresh events', () => {
         seen.set(event, stream);
       }
     }
+    // `reset` is the catalogue's stream-control event and is sent on every stream; the entry's set is
+    // the only one of these three that re-reads on it, so it stays there alone.
+    expect(refreshesEntry('reset')).toBe(true);
   });
 
   it('answers each predicate from its own set only', () => {
@@ -72,16 +75,21 @@ describe('the refresh events', () => {
     for (const event of ENTRY_REFRESH_EVENTS) {
       expect(refreshesEntry(event)).toBe(true);
       expect(refreshesProjectView(event)).toBe(false);
+      expect(refreshesPlanProcess(event)).toBe(false);
     }
     for (const event of PLAN_PROCESS_REFRESH_EVENTS) {
       expect(refreshesPlanProcess(event)).toBe(true);
       expect(refreshesProjectView(event)).toBe(false);
+      expect(refreshesEntry(event)).toBe(false);
     }
     expect(refreshesProjectView('stream.closed')).toBe(false);
     expect(refreshesEntry('not.a.catalogued.event')).toBe(false);
     expect(refreshesPlanProcess('chat.turn.delta')).toBe(false);
   });
 
+  // The three assertions below pin the sets as they stand before and after the consolidation. They
+  // are the behaviour-unchanged contract, not a second source of truth: a deliberate new event
+  // changes the set and this line together, which is the review the pin asks for.
   it('refreshes the project explorer on the one project event the catalogue holds', () => {
     expect(PROJECT_REFRESH_EVENTS).toEqual(['project.changed']);
   });
