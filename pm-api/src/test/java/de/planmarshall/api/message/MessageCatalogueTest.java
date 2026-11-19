@@ -15,9 +15,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -254,6 +260,50 @@ class MessageCatalogueTest {
                 () -> assertEquals("dieses Gerät", de.get("common.marker.this_one")));
     }
 
+    @Test
+    @DisplayName("no message pack has duplicate keys, read as the production loader reads them")
+    void shouldHaveNoDuplicateKeysInAnyMessagePack() throws Exception {
+        var duplicates = new ArrayList<String>();
+        for (String area : MessageCatalogue.SUPPORTED_AREAS) {
+            for (String locale : MessageCatalogue.SUPPORTED_LOCALES) {
+                var path = "messages/" + area + "." + locale + ".properties";
+                try (var stream = getClass().getClassLoader().getResourceAsStream(path)) {
+                    assertNotNull(stream, "Missing resource: " + path);
+                    try (var reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                        duplicates.addAll(duplicateKeysOf(path, reader));
+                    }
+                }
+            }
+        }
+        assertTrue(duplicates.isEmpty(), "Duplicate keys found in message packs:\n" + String.join("\n", duplicates));
+    }
+
+    /**
+     * The packs are read with {@link Properties#load(java.io.Reader)}, which accepts whitespace as a
+     * key separator as well: a scan for {@code =} and {@code :} alone would miss that form.
+     *
+     * @param path   the pack, for the message
+     * @param reader its text
+     * @return one entry per key the pack defines twice
+     * @throws IOException when the pack cannot be read
+     */
+    private static List<String> duplicateKeysOf(String path, Reader reader) throws IOException {
+        var seen = new HashSet<String>();
+        var duplicates = new ArrayList<String>();
+        var properties = new Properties() {
+            @Override
+            public synchronized Object put(Object key, Object value) {
+                var name = String.valueOf(key);
+                if (!seen.add(name)) {
+                    duplicates.add(path + " duplicate key: " + name);
+                }
+                return super.put(key, value);
+            }
+        };
+        properties.load(reader);
+        return duplicates;
+    }
+
     @Nested
     @DisplayName("an unknown key is its own template")
     class KeyAsTemplate {
@@ -307,5 +357,36 @@ class MessageCatalogueTest {
                 () -> assertEquals(all, MessageCatalogue.getMessages("en", " ")),
                 () -> assertEquals(all, MessageCatalogue.getMessages("en", "ALL")),
                 () -> assertEquals(all, MessageCatalogue.getMessages("en", null)));
+    }
+
+    @Test
+    @DisplayName("the resource bundle serves every area's keys for its locale, in the language asked for")
+    void shouldServeTheCatalogueAsAResourceBundle() {
+        var german = MessageCatalogue.resourceBundle("de");
+        var unsupported = MessageCatalogue.resourceBundle("zz");
+
+        assertAll(
+                () -> assertEquals(MessageCatalogue.get("de", "plan.changes.title"),
+                        german.getString("plan.changes.title")),
+                () -> assertTrue(german.keySet().contains("plan.changes.file_not_found")),
+                () -> assertTrue(german.keySet().contains("plan.changes.unavailable")),
+                () -> assertEquals(MessageCatalogue.get("en", "plan.changes.not_captured"),
+                        unsupported.getString("plan.changes.not_captured"),
+                        "an unsupported locale reads English"),
+                () -> assertFalse(unsupported.containsKey("no.such.key")));
+    }
+
+    @Test
+    @DisplayName("a key read without parameters renders the locale's own text, and a selector key stays a template")
+    void shouldGetAKeyWithoutParameters() {
+        assertAll(
+                () -> assertEquals(MessageCatalogue.format("de", "plan.changes.unavailable", Map.of()),
+                        MessageCatalogue.get("de", "plan.changes.unavailable")),
+                () -> assertEquals(MessageCatalogue.get("en", "common.unknown"),
+                        MessageCatalogue.get("common.unknown")),
+                () -> assertTrue(MessageCatalogue.get("de", "plan.changes.unavailable").contains("nderungen")),
+                () -> assertTrue(MessageCatalogue.get("de", "operator.cleanup.durations.after")
+                        .contains("{days, plural"), "a template is returned unevaluated: "
+                        + MessageCatalogue.get("de", "operator.cleanup.durations.after")));
     }
 }

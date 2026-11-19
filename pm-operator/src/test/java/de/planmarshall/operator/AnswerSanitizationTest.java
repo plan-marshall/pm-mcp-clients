@@ -225,7 +225,6 @@ class AnswerSanitizationTest {
         var message = new OperatorRefusedException("answer Q-001", response).getMessage();
 
         assertNoControlSequences(message);
-        assertTrue(message.contains("409"), message);
         assertTrue(message.contains(anchor), message);
     }
 

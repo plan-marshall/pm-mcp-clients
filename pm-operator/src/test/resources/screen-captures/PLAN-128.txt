@@ -1,15 +1,48 @@
 # Screen captures for PLAN-128: cleanup, project add, the release block, the step overview, config cleanup
-# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
 #
-# `config cleanup` is the durations editor of 26-cleanup.adoc#t-durations. The first pair shows the
-# list it opens (the machine's six durations); the second pair records an archived-plans duration
-# through the one shell command the design names, with its result line.
+# `config cleanup` is the durations editor of 26-cleanup.adoc#t-durations (machine, record, project).
+# `cleanup` shows the 25-item job (unfiltered with more line, and filtered by project).
+# `project add` shows the non-interactive refusal at a later state (--no-input --pilot, exit 3).
+# `project release` shows the release block confirmation (What ends / What stays).
+# `config` shows the machine settings overview with a reduced aspect list.
 
-PLAN-128-config-cleanup-120x30-en | fully-onboarded | | config cleanup | q\n | 120x30 | en_US.UTF-8 | - |
-PLAN-128-config-cleanup-120x30-de | fully-onboarded | | config cleanup | v\n | 120x30 | de_DE.UTF-8 | - |
+PLAN-128-config-cleanup-120x30-en | fully-onboarded | - | config cleanup | q\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-120x30-de | fully-onboarded | - | config cleanup | v\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-config-cleanup-80x24-en | fully-onboarded | - | config cleanup | q\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-80x24-de | fully-onboarded | - | config cleanup | v\n | 80x24 | de_DE.UTF-8 | -
 
-PLAN-128-config-cleanup-record-120x30-en | fully-onboarded | | config cleanup --plans 60 --yes |  | 120x30 | en_US.UTF-8 | - |
-PLAN-128-config-cleanup-record-120x30-de | fully-onboarded | | config cleanup --plans 60 --yes |  | 120x30 | de_DE.UTF-8 | - |
+PLAN-128-config-cleanup-record-120x30-en | fully-onboarded | - | config cleanup --plans 60 --yes | - | 120x30 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-record-120x30-de | fully-onboarded | - | config cleanup --plans 60 --yes | - | 120x30 | de_DE.UTF-8 | -
+PLAN-128-config-cleanup-record-80x24-en | fully-onboarded | - | config cleanup --plans 60 --yes | - | 80x24 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-record-80x24-de | fully-onboarded | - | config cleanup --plans 60 --yes | - | 80x24 | de_DE.UTF-8 | -
 
-PLAN-128-config-cleanup-project-120x30-en | fully-onboarded | | config cleanup --project . | q\n | 120x30 | en_US.UTF-8 | - |
-PLAN-128-config-cleanup-project-120x30-de | fully-onboarded | | config cleanup --project . | v\n | 120x30 | de_DE.UTF-8 | - |
+PLAN-128-config-cleanup-project-120x30-en | fully-onboarded | - | config cleanup --project . | q\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-project-120x30-de | fully-onboarded | - | config cleanup --project . | v\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-config-cleanup-project-80x24-en | fully-onboarded | - | config cleanup --project . | q\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-config-cleanup-project-80x24-de | fully-onboarded | - | config cleanup --project . | v\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-128-cleanup-25-items-120x30-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-cleanup-25-items-120x30-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-cleanup-25-items-80x24-en | reports-and-system | cleanup.items-25 | cleanup | q\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-cleanup-25-items-80x24-de | reports-and-system | cleanup.items-25 | cleanup | v\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-128-cleanup-project-25-items-120x30-en | reports-and-system | cleanup.items-25 | cleanup --project pm-mcp-clients | q\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-cleanup-project-25-items-120x30-de | reports-and-system | cleanup.items-25 | cleanup --project pm-mcp-clients | v\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-cleanup-project-25-items-80x24-en | reports-and-system | cleanup.items-25 | cleanup --project pm-mcp-clients | q\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-cleanup-project-25-items-80x24-de | reports-and-system | cleanup.items-25 | cleanup --project pm-mcp-clients | v\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-128-project-add-120x30-en | projects-and-start | projects.being-added | project add /git/new-service --no-input --pilot | - | 120x30 | en_US.UTF-8 | - | - | - | 3
+PLAN-128-project-add-120x30-de | projects-and-start | projects.being-added | project add /git/new-service --no-input --pilot | - | 120x30 | de_DE.UTF-8 | - | - | - | 3
+PLAN-128-project-add-80x24-en | projects-and-start | projects.being-added | project add /git/new-service --no-input --pilot | - | 80x24 | en_US.UTF-8 | - | - | - | 3
+PLAN-128-project-add-80x24-de | projects-and-start | projects.being-added | project add /git/new-service --no-input --pilot | - | 80x24 | de_DE.UTF-8 | - | - | - | 3
+
+PLAN-128-project-release-120x30-en | fully-onboarded | - | project release pm-mcp-clients | \nn\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-project-release-120x30-de | fully-onboarded | - | project release pm-mcp-clients | \nn\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-project-release-80x24-en | fully-onboarded | - | project release pm-mcp-clients | \nn\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-project-release-80x24-de | fully-onboarded | - | project release pm-mcp-clients | \nn\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-128-config-reduced-aspects-120x30-en | fully-onboarded | settings.reduced-aspects | config | q\n | 120x30 | en_US.UTF-8 | -
+PLAN-128-config-reduced-aspects-120x30-de | fully-onboarded | settings.reduced-aspects | config | v\n | 120x30 | de_DE.UTF-8 | -
+PLAN-128-config-reduced-aspects-80x24-en | fully-onboarded | settings.reduced-aspects | config | q\n | 80x24 | en_US.UTF-8 | -
+PLAN-128-config-reduced-aspects-80x24-de | fully-onboarded | settings.reduced-aspects | config | v\n | 80x24 | de_DE.UTF-8 | -

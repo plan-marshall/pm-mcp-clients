@@ -55,7 +55,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 @EnableGeneratorController
 class AnswerDirectFormTest {
 
-    private static final String REFUSED = "refused by the runtime";
 
     @TempDir
     Path tempDir;
@@ -144,7 +143,7 @@ class AnswerDirectFormTest {
             var code = run("en", "", "answer", "Q-31", argument);
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(err.toString().contains(REFUSED), err.toString());
+            assertTrue(err.toString().contains("This entry does not exist"), err.toString());
             assertTrue(acts.isEmpty(), acts.toString());
         }
 

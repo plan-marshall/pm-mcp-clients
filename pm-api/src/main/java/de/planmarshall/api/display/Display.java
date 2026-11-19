@@ -48,6 +48,7 @@ public final class Display {
     private static final long DAYS_PER_MONTH = 30L;
     private static final long DAYS_PER_YEAR = 365L;
     private static final String COUNT = "count";
+    private static final String COMMON_UNKNOWN = "common.unknown";
 
     /**
      * The three renderings of a moment the design defines
@@ -78,12 +79,15 @@ public final class Display {
      *                                  id can never reach the operator
      */
     public static String word(String locale, String kind, @Nullable String value) {
-        if (kind == null || kind.isBlank() || value == null || value.isBlank()) {
-            throw new IllegalArgumentException("A display word needs a kind and a value");
+        if (kind == null || kind.isBlank()) {
+            throw new IllegalArgumentException("A display word needs a kind");
+        }
+        if (value == null || value.isBlank()) {
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         var key = "state." + kind + "." + value;
         if (!MessageCatalogue.hasKey(locale, key)) {
-            throw new IllegalArgumentException("No display word for the server value " + key);
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
         return MessageCatalogue.format(locale, key, Map.of());
     }
@@ -127,22 +131,29 @@ public final class Display {
         if (gate == null || gate.isBlank()) {
             return "";
         }
-        var kind = GateKind.fromValue(gate);
         var colon = gate.indexOf(':');
-        if (kind == null) {
-            return colon < 0
-                    ? gate.replace('_', ' ')
-                    : gate.substring(0, colon).replace('_', ' ') + " \u00b7 " + gateScope(gate.substring(colon + 1));
+        if (colon < 0) {
+            var kind = GateKind.fromValue(gate);
+            if (kind != null) {
+                return word(locale, "gate", kind.value());
+            }
+            if (gate.contains(" ") || gate.contains(">") || gate.contains("<") || gate.contains("=")) {
+                return gate.replace('_', ' ');
+            }
+            return MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
         }
-        var kindWord = word(locale, "gate", kind.value());
-        if (colon < 0 || colon == gate.length() - 1) {
+        var kind = GateKind.fromValue(gate);
+        var kindWord = kind != null
+                ? word(locale, "gate", kind.value())
+                : MessageCatalogue.format(locale, COMMON_UNKNOWN, Map.of());
+        if (colon == gate.length() - 1) {
             return kindWord;
         }
         return kindWord + " \u00b7 " + gateScope(gate.substring(colon + 1));
     }
 
     private static String gateScope(String scope) {
-        return scope.replace('_', ' ').replace('-', ' ').trim();
+        return scope.replace('_', ' ').trim();
     }
 
     /**

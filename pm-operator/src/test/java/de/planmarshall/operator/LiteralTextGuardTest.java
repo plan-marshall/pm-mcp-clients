@@ -62,11 +62,21 @@ class LiteralTextGuardTest {
                         "PlanSettingsDialogue.java",
                         "OperatorActions.java",
                         "ProjectCommand.java",
-                        "FindCommand.java");
+                        "FindCommand.java",
+                        "AnswerCommand.java",
+                        "CleanupCommand.java",
+                        "RuntimeCommand.java",
+                        "AspectRunSource.java",
+                        "ChoicePrompt.java",
+                        "OverviewFullScreenApp.java",
+                        "ProjectWorkLevel.java",
+                        "PlanCompletionLevel.java",
+                        "PlanViewFormatting.java",
+                        "TuiLayout.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(
-                        "(?:(?:out|err|writer)\\.(?:print|println|printf|readLine|printAbove)"
+                        "(?:(?:out|err|writer|terminal\\.writer\\(\\)|session\\.out\\(\\))\\.(?:print|println|printf|readLine|printAbove)"
                                             + "|prompt\\.(?:raw|askRaw|askInline))\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
 
     /** A prompt passed to a line reader. */
@@ -184,8 +194,10 @@ class LiteralTextGuardTest {
             directory = Path.of("pm-operator", "src", "main", "java", "de", "planmarshall", "operator");
         }
         assertTrue(Files.isDirectory(directory), "the operator sources must be found from " + Path.of("").toAbsolutePath());
-        try (Stream<Path> files = Files.list(directory)) {
-            var found = files.filter(path -> GUARDED.contains(path.getFileName().toString())).toList();
+        try (Stream<Path> files = Files.walk(directory)) {
+            var found = files.filter(Files::isRegularFile)
+                                .filter(path -> GUARDED.contains(path.getFileName().toString()))
+                                .toList();
             var names = found.stream().map(path -> path.getFileName().toString()).toList();
             var missing = GUARDED.stream().filter(name -> !names.contains(name)).toList();
             assertTrue(missing.isEmpty(), "guarded sources not found: " + missing);

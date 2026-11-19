@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
+import { tick } from 'svelte';
 import { fireEvent, render } from '@testing-library/svelte';
 import HarnessChoice from './HarnessChoice.svelte';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /**
  * @param over the fields to override
@@ -40,6 +43,7 @@ describe('HarnessChoice monograms', () => {
     expect(icon).not.toBeNull();
     expect(icon?.getAttribute('src')).toBe('/api/v1/harness-icons/claude.svg');
     expect(queryByTestId('harness-monogram-claude')).toBeNull();
+    expect(container.textContent).not.toContain('/>');
   });
 
   it('refuses an icon from a maker server and keeps the monogram', () => {
@@ -82,5 +86,86 @@ describe('HarnessChoice monograms', () => {
     });
 
     expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('C');
+  });
+
+  it('updates token usage wording reactively when switching between English and German', async () => {
+    try {
+      currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
+
+      const { container } = render(HarnessChoice, {
+        props: { harnesses: [harness({ token_usage: 'complete' })] },
+      });
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
+
+      currentLocale.set('de');
+      messagesStore.set(loadMessages('de'));
+      await tick();
+
+      expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent(
+        'Tokenverbrauch vollständig',
+      );
+    } finally {
+      currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
+    }
+  });
+
+  it('keeps complete wording without detail even when token_detail is also set', () => {
+    const { container } = render(HarnessChoice, {
+      props: {
+        harnesses: [harness({ token_usage: 'complete', token_detail: 'input, output' })],
+      },
+    });
+
+    const row = container.querySelector('[data-harness="claude"]');
+    expect(row).toHaveTextContent('usage complete');
+    expect(row).not.toHaveTextContent('input, output');
+  });
+
+  it('resyncs chosen harnesses and default when the harnesses prop changes', async () => {
+    const { rerender, getByTestId, queryByTestId } = render(HarnessChoice, {
+      props: {
+        harnesses: [
+          harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+          harness({ harness_id: 'opencode', name: 'OpenCode' }),
+        ],
+      },
+    });
+
+    expect(getByTestId('harness-toggle-claude')).toBeChecked();
+    await fireEvent.click(getByTestId('harness-default-opencode'));
+    expect(getByTestId('harness-check')).toHaveTextContent('OpenCode the default');
+
+    await rerender({
+      harnesses: [harness({ harness_id: 'codex', name: 'Codex', default: true })],
+    });
+
+    expect(queryByTestId('harness-toggle-claude')).toBeNull();
+    expect(getByTestId('harness-toggle-codex')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, Codex the default');
+  });
+
+  it('keeps pending harness and default choices when selection-relevant content is unchanged', async () => {
+    const base = [
+      harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+      harness({ harness_id: 'opencode', name: 'OpenCode' }),
+    ];
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: { harnesses: base.map((h) => ({ ...h })) },
+    });
+
+    await fireEvent.click(getByTestId('harness-default-opencode'));
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+
+    await rerender({
+      harnesses: base.map((h) => ({ ...h, token_detail: 'refreshed-metadata-only' })),
+    });
+
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+    expect(getByTestId('harness-toggle-opencode')).toBeChecked();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
   });
 });

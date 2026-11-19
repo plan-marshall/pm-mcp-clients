@@ -284,7 +284,7 @@ class EnrolHarnessCommandTest {
 
         assertEquals(1, execute("", "enrol-harness", "claude", "--yes"));
 
-        assertTrue(err.toString().contains("HTTP 500"), err.toString());
+        assertTrue(err.toString().contains("The runtime hit an unexpected fault"), err.toString());
         assertEquals(1, server.requests().size(), "no enrolment request may be sent");
     }
 }

@@ -157,7 +157,7 @@ class ConsoleNoticeTest {
                                 "WR-2", "plan fix-relay", "ci_check:integration-tests");
 
             assertAll(
-                                () -> assertTrue(notice.contains("◆ Waiver request WR-2 · plan fix-relay · gate CI check · integration tests")),
+                                () -> assertTrue(notice.contains("◆ Waiver request WR-2 · plan fix-relay · gate CI check · integration-tests")),
                                 () -> assertTrue(notice.contains("answer WR-2   ·   questions"))
             );
         }
@@ -405,7 +405,7 @@ class ConsoleNoticeTest {
             assertAll(
                                 () -> assertNotNull(notice),
                                 () -> assertTrue(notice.contains(
-                                                                        "◆ Waiver request WR-2 · plan fix-relay · gate CI check · integration tests"),
+                                                                        "◆ Waiver request WR-2 · plan fix-relay · gate CI check · integration-tests"),
                                                     notice),
                                 () -> assertTrue(notice.contains("answer WR-2"), notice)
             );

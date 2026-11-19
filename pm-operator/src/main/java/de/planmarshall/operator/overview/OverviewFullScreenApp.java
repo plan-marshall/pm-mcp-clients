@@ -105,6 +105,7 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 import de.planmarshall.operator.tui.TuiRow;
 import de.planmarshall.operator.tui.TuiScreen;
 import de.planmarshall.operator.tui.TuiScreenDriver;
+import de.planmarshall.operator.tui.TuiScreenDriver.Result;
 import de.planmarshall.operator.tui.TuiViewStack;
 
 /**
@@ -320,10 +321,10 @@ public final class OverviewFullScreenApp {
      * Runs the full-screen overview.
      *
      * @param out output writer for notice summaries and fallback messages
-     * @return the driver execution result
+     * @return the driver execution result, or {@code null} if initial selection failed to load
      * @throws IOException on terminal or network error
      */
-    public TuiScreenDriver.Result run(PrintWriter out) throws IOException {
+    public @Nullable Result run(PrintWriter out) throws IOException {
         if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
             var driver = new TuiScreenDriver(terminal, locale);
             return driver.run(this::buildScreen, _ -> false);
@@ -331,6 +332,9 @@ public final class OverviewFullScreenApp {
 
         var runtime = context.runtime(true);
         loadInitialData(runtime);
+        if (initialSelection.plan() != null && currentPlanView.get() == null) {
+            return null;
+        }
 
         noticeBuffer.activate();
         Thread sseThread = startEventListener();
@@ -2787,8 +2791,8 @@ public final class OverviewFullScreenApp {
             }
             try {
                 openChanges(context.runtime(true), view.planId());
-            } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            } catch (IOException _) {
+                statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
         }
 
@@ -2822,8 +2826,14 @@ public final class OverviewFullScreenApp {
             try {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
+                if (response.status() == 404) {
+                    // A file the held list does not name: the status line must say which file.
+                    statusMessage = MessageCatalogue.format(locale, "plan.changes.file_not_found",
+                                        Map.of("path", OutputSafety.stripControlSequences(path)));
+                    return;
+                }
                 if (response.status() != 200) {
-                    statusMessage = fileRefusalOf(response);
+                    statusMessage = refusalOf(response);
                     return;
                 }
                 synchronized (OverviewFullScreenApp.this) {
@@ -2831,26 +2841,9 @@ public final class OverviewFullScreenApp {
                         stack.refresh(changes.rows(locale));
                     }
                 }
-            } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
-            }
-        }
-
-        /**
-         * @param response a refused file read
-         * @return the runtime's own message, which names the file, or the level's refusal text
-         */
-        private String fileRefusalOf(HttpResponse response) {
-            try {
-                var map = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-                var message = map != null ? JsonTree.string(map, "message") : null;
-                if (message != null) {
-                    return OutputSafety.stripControlSequences(message);
-                }
             } catch (IOException _) {
-                // A refusal that carries no JSON still has its status.
+                statusMessage = LoadRefusal.unreachable(locale, PLAN_LEVEL).line();
             }
-            return LoadRefusal.of(locale, response, PLAN_LEVEL).line();
         }
 
         /**

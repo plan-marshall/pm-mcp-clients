@@ -58,7 +58,7 @@ The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states w
 |<<data>>
 
 |Supporting
-|`Icon`, `Spinner`; `BrandMark`, `MascotFigure`, `WaitingMark`
+|`Icon`, `Spinner`, `StepBar`; `BrandMark`, `MascotFigure`, `WaitingMark`
 |<<supporting>>; the brand pieces in link:components-brand.adoc[Brand Pieces]
 
 |Chat
@@ -479,6 +479,8 @@ The loading pattern has two forms, and the shapes are the first: a *first read* 
 `BrandMark` (the brand icon), `MascotFigure` (a figure of the mascot) and `WaitingMark` (the long wait beside a text) are specified in link:components-brand.adoc[Brand Pieces].
 
 `Spinner` (`Spinner.svelte`) is the single-line wait of a check that has not answered yet, and every wait on a screen with a mascot figure; its label comes from the catalogue.
+
+`StepBar` (`StepBar.svelte`) is the step progress bar used by `WizardPage` and the onboarding. Feature composites (`ConsentBox`, `PairingQr`, `HarnessChoice`, `LessonPicker` and the like) are built from the vocabulary and are not part of it.
 
 [#new-component]
 == A New Component

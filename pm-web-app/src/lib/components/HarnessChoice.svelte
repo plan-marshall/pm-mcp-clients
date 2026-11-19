@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import { harnessUsageText } from '../display/harnessUsage';
   import Button from './Button.svelte';
 
   /**
@@ -18,26 +19,54 @@
     worker_eligible: boolean;
     token_usage?: string;
     token_detail?: string;
+    missing_figures?: string[];
+    usage?: { coverage?: string; figures?: Record<string, string> };
     default?: boolean;
     reason?: string;
     /** The icon the runtime fetched from the maker, served by the runtime itself. */
     icon_url?: string;
   }
 
-  export let harnesses: HarnessRow[] = [];
+  export let harnesses: readonly HarnessRow[] = [];
   export let busy = false;
 
   export let onCheck: (chosen: string[], defaultId: string) => void = () => {};
 
-  const selectable = harnesses.filter((h) => h.found && h.supported && h.worker_eligible);
-  const initialChosen = selectable.map((h) => h.harness_id);
-  const recordedDefault = harnesses.find((h) => h.default && selectable.includes(h));
+  function initialSelection(list: readonly HarnessRow[]): { chosen: string[]; defaultId: string } {
+    const eligible = list.filter((h) => h.found && h.supported && h.worker_eligible);
+    const recorded = list.find((h) => h.default && eligible.includes(h));
+    return {
+      chosen: eligible.map((h) => h.harness_id),
+      defaultId: recorded?.harness_id ?? eligible[0]?.harness_id ?? '',
+    };
+  }
 
-  let chosen: string[] = [...initialChosen];
-  let defaultId = recordedDefault?.harness_id ?? selectable[0]?.harness_id ?? '';
+  function selectionSignature(list: readonly HarnessRow[]): string {
+    return JSON.stringify(
+      list.map((h) => [h.harness_id, h.found, h.supported, h.worker_eligible, Boolean(h.default)]),
+    );
+  }
+
+  let prevSignature = selectionSignature(harnesses);
+  let initial = initialSelection(harnesses);
+  let chosen: string[] = [...initial.chosen];
+  let defaultId = initial.defaultId;
   // A path the runtime serves but the browser cannot load falls back to the monogram, so a broken
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
+
+  // Only resync when selection-relevant scan/default facts change so same-content reloads preserve
+  // in-progress edits; when the recorded `default` itself changes, the replaced proposal wins.
+  $: {
+    const nextSignature = selectionSignature(harnesses);
+    if (nextSignature !== prevSignature) {
+      prevSignature = nextSignature;
+      const next = initialSelection(harnesses);
+      chosen = [...next.chosen];
+      defaultId = next.defaultId;
+      failedIconPaths = {};
+    }
+  }
 
   function rememberIconFailure(harnessId: string, path: string): void {
     failedIconPaths = { ...failedIconPaths, [harnessId]: path };
@@ -102,15 +131,6 @@
       .join('');
   }
 
-  function tokenState(row: HarnessRow): string {
-    if (row.token_usage === 'complete')
-      return $t('onboard.harness.tokens.complete', { figures: '' });
-    if (row.token_usage === 'partial') {
-      return $t('onboard.harness.tokens.partial', { figures: row.token_detail ?? '' });
-    }
-    return $t('onboard.harness.tokens.not_reported');
-  }
-
   $: defaultName = harnesses.find((h) => h.harness_id === defaultId)?.name ?? '';
   $: primaryLabel =
     chosen.length === 0
@@ -122,7 +142,7 @@
   <p class="choice-screen__label">{$t('onboard.harness.choose.found')}</p>
 
   <ul class="choice-screen__list">
-    {#each harnesses as harness}
+    {#each harnesses as harness (harness.harness_id)}
       {@const canChoose = harness.found && harness.supported && harness.worker_eligible}
       {@const iconPath = harnessIconPath(harness)}
       {@const iconFailed = failedIconPaths[harness.harness_id] === iconPath}
@@ -148,7 +168,6 @@
             aria-hidden="true"
             data-testid={`harness-icon-${harness.harness_id}`}
             onerror={() => rememberIconFailure(harness.harness_id, iconPath)}
-          />
           />
         {:else}
           <span
@@ -177,7 +196,7 @@
             {/if}
           </span>
           {#if harness.found}
-            <span class="choice-screen__row-meta">{tokenState(harness)}</span>
+            <span class="choice-screen__row-meta">{harnessUsageText($t, harness)}</span>
           {/if}
         </div>
 

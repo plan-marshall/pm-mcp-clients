@@ -1,0 +1,22 @@
+# Screen captures for PLAN-30: terminal texts and errors
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expectedExit
+
+PLAN-30-answer-120x30-en | running-work | - | answer Q-999 1 | - | 120x30 | en_US.UTF-8 | - | - | - | 1
+PLAN-30-answer-120x30-de | running-work | - | answer Q-999 1 | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
+PLAN-30-answer-80x24-en | running-work | - | answer Q-999 1 | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-30-answer-80x24-de | running-work | - | answer Q-999 1 | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-30-plan-nope-120x30-en | running-work | - | plan nope | - | 120x30 | en_US.UTF-8 | - | - | - | 1
+PLAN-30-plan-nope-120x30-de | running-work | - | plan nope | - | 120x30 | de_DE.UTF-8 | - | - | - | 1
+PLAN-30-plan-nope-80x24-en | running-work | - | plan nope | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-30-plan-nope-80x24-de | running-work | - | plan nope | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-30-bogus-120x30-en | running-work | - | bogus | - | 120x30 | en_US.UTF-8 | - | - | - | 2
+PLAN-30-bogus-120x30-de | running-work | - | bogus | - | 120x30 | de_DE.UTF-8 | - | - | - | 2
+PLAN-30-bogus-80x24-en | running-work | - | bogus | - | 80x24 | en_US.UTF-8 | - | - | - | 2
+PLAN-30-bogus-80x24-de | running-work | - | bogus | - | 80x24 | de_DE.UTF-8 | - | - | - | 2
+
+PLAN-30-help-120x30-en | running-work | - | -h | - | 120x30 | en_US.UTF-8 | - | - | - | 0
+PLAN-30-help-120x30-de | running-work | - | -h | - | 120x30 | de_DE.UTF-8 | - | - | - | 0
+PLAN-30-help-80x24-en | running-work | - | -h | - | 80x24 | en_US.UTF-8 | - | - | - | 0
+PLAN-30-help-80x24-de | running-work | - | -h | - | 80x24 | de_DE.UTF-8 | - | - | - | 0

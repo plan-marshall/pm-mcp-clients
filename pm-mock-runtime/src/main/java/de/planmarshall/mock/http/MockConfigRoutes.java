@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 
@@ -56,9 +57,6 @@ public final class MockConfigRoutes {
     private static final int LEVEL_AND_KEY = 2;
     private static final String CONFLICT = "conflict";
     private static final String ASPECT_OWNED = "aspect_owned";
-
-    /** The keys an aspect owns, and the one family a project's own value writes at its level. */
-    private static final String CLEANUP_KEY_PREFIX = "cleanup.";
 
     /** The levels an operator may write, from the one catalogue that defines them. */
     private static final List<ConfigOrigin> OPERATOR_LEVELS = ConfigOrigin.operatorLevels().stream()
@@ -269,17 +267,17 @@ public final class MockConfigRoutes {
      * Forgets every value a {@code PUT} wrote, so a reset or a scenario switch does not carry a
      * previous state's configuration.
      */
-    public void clear() {
+    public synchronized void clear() {
         written.clear();
         revisions.clear();
         revision = 0;
     }
 
-    private Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
+    private synchronized Map<String, Object> byLevel(ConfigOrigin level, @Nullable String scope) {
         return written.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
     }
 
-    private Map<String, Long> revisionsByLevel(ConfigOrigin level, @Nullable String scope) {
+    private synchronized Map<String, Long> revisionsByLevel(ConfigOrigin level, @Nullable String scope) {
         return revisions.computeIfAbsent(keyOf(level, scope), _ -> new LinkedHashMap<>());
     }
 
@@ -311,7 +309,7 @@ public final class MockConfigRoutes {
         return new ConfigValueChange(parsed, 0);
     }
 
-    private List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
+    private synchronized List<Map<String, Object>> effective(Map<String, Object> machineValues, @Nullable String query,
             Map<String, String> planProjects) {
         var project = scopeValue(query, KEY_PROJECT);
         var plan = scopeValue(query, KEY_PLAN);
@@ -461,6 +459,12 @@ public final class MockConfigRoutes {
         return AspectOwnedKeys.isAspectOwned(key);
     }
 
+    private static final Set<String> PROJECT_CLEANUP_KEYS = Set.of(
+            "cleanup.plans_after_days",
+            "cleanup.epics_after_days",
+            "cleanup.logs_after_days"
+    );
+
     /**
      * @param level the level the change addresses
      * @param key   the key a change addresses
@@ -472,7 +476,9 @@ public final class MockConfigRoutes {
         if (!AspectOwnedKeys.isAspectOwned(key)) {
             return false;
         }
-        return !(key.startsWith(CLEANUP_KEY_PREFIX)
-                && (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM));
+        if (level == ConfigOrigin.PROJECT || level == ConfigOrigin.TEAM) {
+            return !PROJECT_CLEANUP_KEYS.contains(key);
+        }
+        return true;
     }
 }

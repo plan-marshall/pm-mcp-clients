@@ -21,8 +21,10 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.OperatorGate;
+import de.planmarshall.operator.OperatorRefusedException;
 import de.planmarshall.operator.StartPrompt;
 
 /**
@@ -44,25 +46,6 @@ public final class AspectRunSource implements StateDialogue.Source {
     /** The machine settings' operator wait, from which a later run is called and where it ends. */
     public static final String SETTINGS_STATE = "settings.choose";
 
-    /** The runtime refused a read or a step of the run: the status it answered with. */
-    public static final class RefusedException extends IOException {
-
-        private static final long serialVersionUID = 1L;
-        private final int status;
-
-        RefusedException(String what, int status) {
-            super(what + " answered HTTP " + status);
-            this.status = status;
-        }
-
-        /**
-         * @return the HTTP status the runtime answered with
-         */
-        public int status() {
-            return status;
-        }
-    }
-
     private static final String SETTINGS_LINK = "settings";
     private static final String RECONFIGURE_PREFIX = "reconfigure:";
     private static final String KIND = "kind";
@@ -79,6 +62,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private final RuntimeClient runtime;
     private final OperatorGate gate;
     private final String linkId;
+    private final String locale;
     private final Map<String, String> facts;
     private final Set<String> consents;
     private final Flags flags;
@@ -86,6 +70,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private boolean started;
     private boolean returned;
     private Map<String, Object> lastFacts = Map.of();
+    private String lastStateId = "";
 
     /**
      * The boolean answers a verb carries.
@@ -102,15 +87,17 @@ public final class AspectRunSource implements StateDialogue.Source {
      * @param runtime  the runtime client
      * @param gate     the operator gate every answer is sent through
      * @param linkId   the id of the machine settings' link that calls the aspect again
+     * @param locale   the interface locale a refusal is written in
      * @param facts    the facts the verb answers a state with, by field name
      * @param consents the consent kinds the verb carries
      * @param flags    the boolean answers the verb carries
      */
-    public AspectRunSource(RuntimeClient runtime, OperatorGate gate, String linkId, Map<String, String> facts,
-                        List<String> consents, Flags flags) {
+    public AspectRunSource(RuntimeClient runtime, OperatorGate gate, String linkId, String locale,
+                        Map<String, String> facts, List<String> consents, Flags flags) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.gate = Objects.requireNonNull(gate, "gate");
         this.linkId = Objects.requireNonNull(linkId, "linkId");
+        this.locale = Objects.requireNonNull(locale, "locale");
         this.facts = Map.copyOf(Objects.requireNonNull(facts, "facts"));
         this.consents = Set.copyOf(Objects.requireNonNull(consents, "consents"));
         this.flags = Objects.requireNonNull(flags, "flags");
@@ -166,6 +153,13 @@ public final class AspectRunSource implements StateDialogue.Source {
         return lastFacts;
     }
 
+    /**
+     * @return the state id of the last state the run reported before it returned to the settings
+     */
+    public String lastStateId() {
+        return lastStateId;
+    }
+
     @Override
     public StateDialogue.Frame fetch() throws IOException {
         var frame = read();
@@ -190,6 +184,7 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return asFinal(current);
             }
             lastFacts = current.facts();
+            lastStateId = current.stateId();
             if (current.isFinal()) {
                 return current;
             }
@@ -234,12 +229,14 @@ public final class AspectRunSource implements StateDialogue.Source {
                 return send(linkId, current);
             }
             if (current.links().stream().noneMatch(link -> SETTINGS_LINK.equals(link.id()))) {
-                throw new IOException("the machine settings are not reachable: the runtime offers neither "
-                                    + SETTINGS_LINK + " nor " + linkId);
+                throw new OperatorRefusedException(
+                                    MessageCatalogue.format(locale, "operator.config.settings_unreachable",
+                                                        Map.of("link", SETTINGS_LINK)));
             }
             current = send(SETTINGS_LINK);
         }
-        throw new IOException("the machine settings were not reached");
+        throw new OperatorRefusedException(
+                            MessageCatalogue.format(locale, "operator.config.settings_not_reached", Map.of()));
     }
 
     private @Nullable String answerFor(StateDialogue.Frame frame) {
@@ -294,7 +291,7 @@ public final class AspectRunSource implements StateDialogue.Source {
     private StateDialogue.Frame read() throws IOException {
         var response = runtime.send(HttpRequest.get(STATE_PATH));
         if (response.status() != 200) {
-            throw new RefusedException("the onboarding state", response.status());
+            throw new OperatorRefusedException("the onboarding state", response);
         }
         return StateDialogue.fromJson(response.bodyText(), 1, false);
     }
@@ -324,7 +321,7 @@ public final class AspectRunSource implements StateDialogue.Source {
         }
         var response = runtime.send(HttpRequest.json("POST", OnboardingSource.STEP_PATH, JsonTree.write(body)));
         if (response.status() != 200) {
-            throw new RefusedException("the onboarding step", response.status());
+            throw new OperatorRefusedException("the onboarding step", response);
         }
         return StateDialogue.fromJson(response.bodyText(), 1, false);
     }

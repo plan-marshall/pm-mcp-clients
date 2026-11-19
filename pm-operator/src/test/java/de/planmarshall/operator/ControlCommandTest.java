@@ -127,7 +127,7 @@ class ControlCommandTest {
 
         int code = execute("plan", "resolve", "fix-relay", "H-9999", "--act", "retry");
         assertEquals(1, code);
-        assertTrue(err.toString().contains("refused by the runtime"));
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
     }
 
     @Test
@@ -261,7 +261,7 @@ class ControlCommandTest {
         int code = execute("plan", "settings", "p-missing");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Plan p-missing not found."))
+                            () -> assertTrue(out.toString().contains("This entry does not exist"))
         );
     }
 }

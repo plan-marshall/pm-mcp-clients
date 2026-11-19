@@ -61,10 +61,12 @@ Unenrolled projects
   14) ▪ legacy-portal       unenrolled 2 Sep · 7 plans, 1 epic    1.1 GB
 Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep 03:00
 
-d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   › x
+d) delete…   r) ask me again in 3 days   i) ignore
+x) leave items out   o) open   q) leave   › x
 Leave out: 6
   6) ▸ token-usage  ✎ kept for good
-d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   › d
+d) delete…   r) ask me again in 3 days   i) ignore
+x) leave items out   o) open   q) leave   › d
 Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?
   This frees 1.7 GB. It cannot be undone.
   Branches, pull requests, the remote, the checkout, and an epic's ledger in the
@@ -159,7 +161,8 @@ pm ›
 pm › cleanup
 Cleanup cln-0007 · due since today 03:00
   …
-d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out   o) open   q) leave   ›
+d) delete…   r) ask me again in 3 days   i) ignore
+x) leave items out   o) open   q) leave   ›
 ▪ This cleanup was decided in the web app (iPad): deleted.
 pm ›
 ----

@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -92,10 +93,18 @@ class CredentialsCommandTest {
      * @param failed whether the check reports a failure instead of the plans it released
      */
     private void verification(boolean failed) throws Exception {
-        stub("os", 1, failed);
+        verification(failed, true);
+    }
+
+    private void verification(boolean failed, boolean rememberedConsent) throws Exception {
+        stub("os", 1, failed, rememberedConsent);
     }
 
     private void stub(String tokenPath, int dropped, boolean failed) throws Exception {
+        stub(tokenPath, dropped, failed, true);
+    }
+
+    private void stub(String tokenPath, int dropped, boolean failed, boolean rememberedConsent) throws Exception {
         var current = new AtomicReference<>("settings.choose");
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
@@ -105,6 +114,12 @@ class CredentialsCommandTest {
                 response.json(200, "{\"derived_tokens_dropped\":" + dropped + "}");
             } else if ("/api/v1/credentials/github".equals(request.target()) && "DELETE".equals(request.method())) {
                 response.send(204, null, "");
+            } else if ("/api/v1/machine/settings".equals(request.target()) && "GET".equals(request.method())) {
+                if (rememberedConsent) {
+                    response.json(200, "{\"revision\":1,\"consents\":[{\"kind\":\"verify_providers\",\"status\":\"remembered\",\"remember\":true}]}");
+                } else {
+                    response.json(200, "{\"revision\":1,\"consents\":[]}");
+                }
             } else if ("/api/v1/onboarding/state".equals(request.target())) {
                 response.json(200, state(current.get(), failed));
             } else if ("/api/v1/onboarding/step".equals(request.target())) {
@@ -203,9 +218,24 @@ class CredentialsCommandTest {
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         var text = out.toString();
 
-        assertEquals(0, code, text + " | " + err);
+        assertEquals(1, code, text + " | " + err);
         assertTrue(text.contains("The check failed: 401 Invalid token. The hold stays."), text);
         assertTrue(text.contains("Token github stored"), text);
+    }
+
+    @Test
+    @DisplayName("rotate without recorded consent asks and exits 3 when the consent is left")
+    void rotateWithoutRecordedConsentNeedsConsent() throws Exception {
+        verification(false, false);
+
+        var code = run(context("s3cret\nb\n"), "credentials", "rotate", "github", "--yes");
+        var text = out.toString();
+
+        assertAll(
+                            () -> assertEquals(3, code, text + " | " + err),
+                            () -> assertFalse(text.contains("Consent remembered"), text),
+                            () -> assertFalse(text.contains("verified"), text),
+                            () -> assertFalse(steps.isEmpty(), "the run reached the settings steps: " + steps));
     }
 
     @Test
@@ -238,6 +268,25 @@ class CredentialsCommandTest {
         var code = run(context(""), "credentials", "rotate", "github", "--yes");
         assertEquals(PmOperator.EXIT_FAILURE, code);
         assertTrue(out.toString().contains("No entry github exists"), out.toString());
+    }
+
+    @Test
+    @DisplayName("set and rotate stop at the secret prompt under --no-input, and store nothing")
+    void noInputStopsBeforeTheSecretPrompt() throws Exception {
+        present();
+
+        var set = run(context("s3cret\n"), "credentials", "set", "github", "--yes", "--no-input");
+        var setText = out.toString();
+        out.getBuffer().setLength(0);
+        var rotate = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes", "--no-input");
+        var rotateText = out.toString();
+
+        assertAll(
+                            () -> assertEquals(ConfigAspectRun.EXIT_MISSING_INPUT, set, setText),
+                            () -> assertTrue(setText.contains("run it without --no-input"), setText),
+                            () -> assertFalse(setText.contains("stored"), setText),
+                            () -> assertEquals(ConfigAspectRun.EXIT_MISSING_INPUT, rotate, rotateText),
+                            () -> assertFalse(rotateText.contains("stored"), rotateText));
     }
 
     @Test
