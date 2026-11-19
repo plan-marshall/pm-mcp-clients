@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -49,28 +51,25 @@ import org.junit.jupiter.params.provider.MethodSource;
  * alone could not see. The refused key shows the line the operator reads back.
  */
 @DisplayName("EpicDecompositionDialogue: the offered keys")
+@EnableGeneratorController
 class EpicDecompositionDialogueKeysTest {
 
-    private static final String PROJECT = "pm-mcp-clients";
-    private static final String EPIC = "ep-001";
-    private static final String BASE = "/api/v1/projects/" + PROJECT + "/epics/" + EPIC + "/decomposition";
+    /** The keys no prompt of the decomposition offers: the refused-key probes are drawn from them. */
+    private static final String UNOFFERED_KEYS = "cfg";
+
     private static final String EN = "en";
     private static final String DE = "de";
-
-    private static final String THREE_PLANS = """
-                        {"epic_id":"relay-hardening","status":"review","revision":3,
-                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
-                           "staged_plans":[
-                             {"plan_id":"a-plan","title":"a","expected_surface":["a"],"dependencies":[],"status":"staged"},
-                             {"plan_id":"b-plan","title":"b","expected_surface":["b"],"dependencies":[],"status":"staged"},
-                             {"plan_id":"c-plan","title":"c","expected_surface":["c"],"dependencies":[],"status":"staged"}]}],
-                         "findings":[]}
-                        """;
 
     @TempDir
     Path tempDir;
 
     private RuntimeFixture fixture;
+    private String project;
+    private String epic;
+    private String base;
+    private String firstPlan;
+    private String secondPlan;
+    private String thirdPlan;
     /** Every request the dialogue sent, as {@code METHOD target}. */
     private final List<String> requests = new CopyOnWriteArrayList<>();
     /** The body of every instruct request, in the order it was sent. */
@@ -78,18 +77,24 @@ class EpicDecompositionDialogueKeysTest {
 
     @BeforeEach
     void setUp() throws IOException {
+        project = "project-" + Generators.integers(100, 999).next();
+        epic = "epic-" + Generators.integers(100, 999).next();
+        base = "/api/v1/projects/" + project + "/epics/" + epic + "/decomposition";
+        firstPlan = planId(1);
+        secondPlan = planId(2);
+        thirdPlan = planId(3);
         fixture = RuntimeFixture.create();
         PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> {
             requests.add(request.method() + " " + request.target());
-            if ((BASE + "/instruct").equals(request.target()) && "POST".equals(request.method())) {
+            if ((base + "/instruct").equals(request.target()) && "POST".equals(request.method())) {
                 instructs.add(request.bodyText());
-                response.json(200, THREE_PLANS);
-            } else if (BASE.equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, THREE_PLANS);
-            } else if ((BASE + "/check").equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, THREE_PLANS);
-            } else if ((BASE + "/commit").equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, threePlans());
+            } else if (base.equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, threePlans());
+            } else if ((base + "/check").equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, threePlans());
+            } else if ((base + "/commit").equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"status\":\"committed\",\"ledger_revision\":4,\"launchable_plan_count\":3}");
             } else {
                 response.send(404, null, "");
@@ -104,16 +109,42 @@ class EpicDecompositionDialogueKeysTest {
         }
     }
 
+    /** @param index the plan's position @return the plan id the cut serves at that position */
+    private String planId(int index) {
+        return "plan-" + index + "-" + Generators.integers(100, 999).next();
+    }
+
+    /** @return the cut the fixture serves, with ids drawn for this run */
+    private String threePlans() {
+        return """
+                        {"epic_id":"%s","status":"review","revision":3,
+                         "workstreams":[{"id":"WS-1","name":"Reconnect","order":1,
+                           "staged_plans":[
+                             {"plan_id":"%s","title":"a","expected_surface":["a"],"dependencies":[],"status":"staged"},
+                             {"plan_id":"%s","title":"b","expected_surface":["b"],"dependencies":[],"status":"staged"},
+                             {"plan_id":"%s","title":"c","expected_surface":["c"],"dependencies":[],"status":"staged"}]}],
+                         "findings":[]}
+                        """.formatted(epic, firstPlan, secondPlan, thirdPlan);
+    }
+
+    /** @return a key none of the prompts offers, drawn so the probe is not one fixed letter */
+    private static String unofferedKey() {
+        var offset = Generators.integers(0, UNOFFERED_KEYS.length() - 1).next();
+        return String.valueOf(UNOFFERED_KEYS.charAt(offset));
+    }
+
     @Test
     @DisplayName("the cut prompt offers exactly the keys its branches accept")
     void cutPromptOffersWhatItAccepts() throws Exception {
         var offered = offeredCut(EN);
+        var unknown = unofferedKey();
 
         assertAll(
                             () -> assertEquals("1-3, +, r, q, ?", offered),
                             () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.CUT_KEYS), 3),
                                                 offeredKeys(offered)),
-                            () -> assertTrue(render(EN, "z\n").contains("z is not offered here: 1-3, +, r, q, ?"))
+                            () -> assertTrue(render(EN, unknown + "\n")
+                                                .contains(unknown + " is not offered here: 1-3, +, r, q, ?"))
         );
     }
 
@@ -121,12 +152,14 @@ class EpicDecompositionDialogueKeysTest {
     @DisplayName("the plan prompt offers exactly the keys its branches accept")
     void planPromptOffersWhatItAccepts() throws Exception {
         var offered = offeredLine(EN, EpicDecompositionDialogue.PLAN_KEYS);
+        var unknown = unofferedKey();
 
         assertAll(
                             () -> assertEquals("k, e, b, q, ?", offered),
                             () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.PLAN_KEYS), 0),
                                                 offeredKeys(offered)),
-                            () -> assertTrue(render(EN, "1\nz\n").contains("z is not offered here: k, e, b, q, ?"))
+                            () -> assertTrue(render(EN, "1\n" + unknown + "\n")
+                                                .contains(unknown + " is not offered here: k, e, b, q, ?"))
         );
     }
 
@@ -134,13 +167,15 @@ class EpicDecompositionDialogueKeysTest {
     @DisplayName("the read-back prompt offers exactly the keys its branches accept")
     void readBackPromptOffersWhatItAccepts() throws Exception {
         var offered = offeredLine(EN, EpicDecompositionDialogue.READ_BACK_KEYS);
+        var unknown = unofferedKey();
+        var edit = freeText();
 
         assertAll(
                             () -> assertEquals("i, x, q, ?", offered),
                             () -> assertEquals(offeredExpectation(EN, keysOf(EpicDecompositionDialogue.READ_BACK_KEYS), 0),
                                                 offeredKeys(offered)),
-                            () -> assertTrue(render(EN, "1\ne\nsmaller\nz\n")
-                                                .contains("z is not offered here: i, x, q, ?"))
+                            () -> assertTrue(render(EN, "1\ne\n" + edit + "\n" + unknown + "\n")
+                                                .contains(unknown + " is not offered here: i, x, q, ?"))
         );
     }
 
@@ -174,7 +209,7 @@ class EpicDecompositionDialogueKeysTest {
     static Stream<Arguments> cutKeys() {
         var cases = new ArrayList<Arguments>();
         for (var key : keysOf(EpicDecompositionDialogue.CUT_KEYS)) {
-            cases.add(Arguments.of(key, CUT_ACTIONS.get(key), key + "\nsplit the work\n"));
+            cases.add(Arguments.of(key, CUT_ACTIONS.get(key), key + "\n" + freeText() + "\n"));
         }
         return cases.stream();
     }
@@ -198,7 +233,7 @@ class EpicDecompositionDialogueKeysTest {
         var cases = new ArrayList<Arguments>();
         for (var key : keysOf(EpicDecompositionDialogue.PLAN_KEYS)) {
             var edits = PLAN_EDITS.get(key);
-            cases.add(Arguments.of(key, edits, "1\n" + key + "\n" + (edits == 1 ? "smaller\n" : "")));
+            cases.add(Arguments.of(key, edits, "1\n" + key + "\n" + (edits == 1 ? freeText() + "\n" : "")));
         }
         return cases.stream();
     }
@@ -214,7 +249,7 @@ class EpicDecompositionDialogueKeysTest {
                             () -> assertEquals(edits, instructs.size(), instructs.toString()),
                             () -> assertEquals(edits == 1, !instructs.isEmpty() && instructs.stream()
                                                 .allMatch(body -> body.contains("\"edit\"")
-                                                                    && body.contains("a-plan")),
+                                                                    && body.contains(firstPlan)),
                                                 instructs.toString())
         );
     }
@@ -225,7 +260,7 @@ class EpicDecompositionDialogueKeysTest {
         for (var key : keysOf(EpicDecompositionDialogue.READ_BACK_KEYS)) {
             var effect = READ_BACK_EFFECTS.get(key);
             cases.add(Arguments.of(key, effect[0], effect[1],
-                                "1\ne\nsmaller\n" + key + "\n" + (effect[0] == 2 ? "second\n" : "")));
+                                "1\ne\n" + freeText() + "\n" + key + "\n" + (effect[0] == 2 ? freeText() + "\n" : "")));
         }
         return cases.stream();
     }
@@ -240,7 +275,7 @@ class EpicDecompositionDialogueKeysTest {
         assertAll(
                             () -> assertFalse(rendered.contains("is not offered here"), key),
                             () -> assertEquals(edits, instructs.size(), instructs.toString()),
-                            () -> assertEquals(reads, readsOf(BASE), requests.toString())
+                            () -> assertEquals(reads, readsOf(base), requests.toString())
         );
     }
 
@@ -250,6 +285,7 @@ class EpicDecompositionDialogueKeysTest {
         var cut = offeredCut(DE);
         var plan = offeredLine(DE, EpicDecompositionDialogue.PLAN_KEYS);
         var readBack = offeredLine(DE, EpicDecompositionDialogue.READ_BACK_KEYS);
+        var unknown = unofferedKey();
 
         assertAll(
                             () -> assertEquals("1-3, +, r, v, ?", cut),
@@ -261,7 +297,8 @@ class EpicDecompositionDialogueKeysTest {
                                                 offeredKeys(plan)),
                             () -> assertEquals(offeredExpectation(DE, keysOf(EpicDecompositionDialogue.READ_BACK_KEYS), 0),
                                                 offeredKeys(readBack)),
-                            () -> assertTrue(render(DE, "1\nz\n").contains("z wird hier nicht angeboten: k, e, b, v, ?"))
+                            () -> assertTrue(render(DE, "1\n" + unknown + "\n")
+                                                .contains(unknown + " wird hier nicht angeboten: k, e, b, v, ?"))
         );
     }
 
@@ -270,7 +307,7 @@ class EpicDecompositionDialogueKeysTest {
         try (var driver = dialogue(locale, "")) {
             var api = new StartApi(driver.context());
             var dialogue = dialogue(api, driver, locale);
-            return dialogue.offered(api.decomposition(PROJECT, EPIC));
+            return dialogue.offered(api.decomposition(project, epic));
         }
     }
 
@@ -310,9 +347,14 @@ class EpicDecompositionDialogueKeysTest {
         return driver;
     }
 
-    private static EpicDecompositionDialogue dialogue(StartApi api, TerminalTestDriver driver, String locale) {
+    private EpicDecompositionDialogue dialogue(StartApi api, TerminalTestDriver driver, String locale) {
         var prompt = new StartPrompt(driver.context(), driver.writer(), locale, false);
-        return new EpicDecompositionDialogue(api, prompt, PROJECT, EPIC, null);
+        return new EpicDecompositionDialogue(api, prompt, project, epic, null);
+    }
+
+    /** @return a free text the operator types as an answer, drawn so no prompt key collides with it */
+    private static String freeText() {
+        return "answer-" + Generators.integers(100, 999).next();
     }
 
     private static List<String> keysOf(List<? extends EpicDecompositionDialogue.KeyAct> keys) {
