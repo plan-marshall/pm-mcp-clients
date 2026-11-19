@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -6,7 +6,7 @@ import {
   lintSvelteSource,
   lintCssSource,
   scanProject,
-  generateBaseline,
+  formatTable,
   runCli,
 } from '../../scripts/vocabulary-lint.mjs';
 
@@ -191,27 +191,40 @@ describe('vocabularyLint', () => {
     expect(findings.map((f) => f.rule)).toEqual(['button', 'a', 'input']);
   });
 
-  it('--error exits 1 on findings and 0 on clean project', () => {
+  describe('CLI error mode and clean project handling', () => {
     const violatingDir = path.join(APP_DIR, 'target', 'test-violating-app');
-    const violatingSrc = path.join(violatingDir, 'src');
-    fs.mkdirSync(violatingSrc, { recursive: true });
-    fs.writeFileSync(path.join(violatingSrc, 'Violating.svelte'), '<button>Violating</button>');
-
-    const exitCodeError = runCli(['--error'], violatingDir);
-    expect(exitCodeError).toBe(1);
-
-    const exitCodeNormal = runCli([], violatingDir);
-    expect(exitCodeNormal).toBe(0);
-
     const emptyDir = path.join(APP_DIR, 'target', 'test-empty-app');
-    const emptySrc = path.join(emptyDir, 'src');
-    fs.mkdirSync(emptySrc, { recursive: true });
 
-    const exitCodeClean = runCli(['--error'], emptyDir);
-    expect(exitCodeClean).toBe(0);
+    afterEach(() => {
+      fs.rmSync(violatingDir, { recursive: true, force: true });
+      fs.rmSync(emptyDir, { recursive: true, force: true });
+    });
 
-    fs.rmSync(violatingDir, { recursive: true, force: true });
-    fs.rmSync(emptyDir, { recursive: true, force: true });
+    it('--error exits 1 on project with findings', () => {
+      const violatingSrc = path.join(violatingDir, 'src');
+      fs.mkdirSync(violatingSrc, { recursive: true });
+      fs.writeFileSync(path.join(violatingSrc, 'Violating.svelte'), '<button>Violating</button>');
+
+      const exitCode = runCli(['--error'], violatingDir);
+      expect(exitCode).toBe(1);
+    });
+
+    it('exits 0 on project with findings when --error is omitted', () => {
+      const violatingSrc = path.join(violatingDir, 'src');
+      fs.mkdirSync(violatingSrc, { recursive: true });
+      fs.writeFileSync(path.join(violatingSrc, 'Violating.svelte'), '<button>Violating</button>');
+
+      const exitCode = runCli([], violatingDir);
+      expect(exitCode).toBe(0);
+    });
+
+    it('--error exits 0 on clean project without findings', () => {
+      const emptySrc = path.join(emptyDir, 'src');
+      fs.mkdirSync(emptySrc, { recursive: true });
+
+      const exitCode = runCli(['--error'], emptyDir);
+      expect(exitCode).toBe(0);
+    });
   });
 
   it('yields an unparseable finding on .svelte syntax error and exits 1 under --error', () => {
@@ -383,6 +396,13 @@ describe('vocabularyLint', () => {
       fs.rmSync(tempSymlink, { recursive: true, force: true });
       fs.rmSync(tempTarget, { recursive: true, force: true });
     }
+  });
+
+  it('a lint rule added to the rule list appears as a column of the printed table', () => {
+    const table = formatTable([
+      { file: 'src/Sample.svelte', line: 1, rule: 'unparseable', component: 'syntax error' },
+    ]);
+    expect(table).toContain('unparseable');
   });
 
   it('enforces vocabulary baseline ratchet (clean files stay clean, counted files never grow)', () => {

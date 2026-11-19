@@ -259,8 +259,6 @@ export function collectFiles(dir, filter) {
  */
 export function scanProject(appDir) {
   const srcDir = path.join(appDir, 'src');
-  const libDir = path.join(srcDir, 'lib');
-  const routesDir = path.join(srcDir, 'routes');
 
   const svelteFilter = (filePath) => {
     if (!filePath.endsWith('.svelte')) return false;
@@ -327,21 +325,25 @@ export function generateBaseline(findings) {
  * Formats findings as a Markdown table.
  *
  * @param {Array<object>} findings
+ * @param {string[]} [ruleNames]
  * @returns {string}
  */
-export function formatTable(findings) {
+export function formatTable(findings, ruleNames = null) {
+  const distinctRules = new Set(RULE_NAMES);
+  for (const f of findings) {
+    if (f.rule) {
+      distinctRules.add(f.rule);
+    }
+  }
+  const activeRuleNames = ruleNames ?? Array.from(distinctRules);
+
   const countsByFile = {};
   for (const f of findings) {
     if (!countsByFile[f.file]) {
-      countsByFile[f.file] = {
-        total: 0,
-        button: 0,
-        a: 0,
-        input: 0,
-        textarea: 0,
-        select: 0,
-        'outline: none': 0,
-      };
+      countsByFile[f.file] = { total: 0 };
+      for (const r of activeRuleNames) {
+        countsByFile[f.file][r] = 0;
+      }
     }
     countsByFile[f.file][f.rule] = (countsByFile[f.file][f.rule] || 0) + 1;
     countsByFile[f.file].total += 1;
@@ -354,38 +356,31 @@ export function formatTable(findings) {
     return a.localeCompare(b);
   });
 
-  const totals = {
-    total: 0,
-    button: 0,
-    a: 0,
-    input: 0,
-    textarea: 0,
-    select: 0,
-    'outline: none': 0,
-  };
+  const totals = { total: 0 };
+  for (const r of activeRuleNames) {
+    totals[r] = 0;
+  }
 
   for (const f of sortedFiles) {
-    for (const rule of RULE_NAMES) {
+    for (const rule of activeRuleNames) {
       totals[rule] += countsByFile[f][rule] || 0;
     }
     totals.total += countsByFile[f].total;
   }
 
   const lines = [
-    '| File | button | a | input | textarea | select | outline: none | Total |',
-    '| :--- | :---: | :-: | :---: | :------: | :----: | :-----------: | :---: |',
+    `| File | ${activeRuleNames.join(' | ')} | Total |`,
+    `| :--- | ${activeRuleNames.map(() => ':-:').join(' | ')} | :---: |`,
   ];
 
   for (const file of sortedFiles) {
     const c = countsByFile[file];
-    lines.push(
-      `| ${file} | ${c.button} | ${c.a} | ${c.input} | ${c.textarea} | ${c.select} | ${c['outline: none']} | ${c.total} |`,
-    );
+    const cells = activeRuleNames.map((r) => c[r] || 0);
+    lines.push(`| ${file} | ${cells.join(' | ')} | ${c.total} |`);
   }
 
-  lines.push(
-    `| **Total** | **${totals.button}** | **${totals.a}** | **${totals.input}** | **${totals.textarea}** | **${totals.select}** | **${totals['outline: none']}** | **${totals.total}** |`,
-  );
+  const totalCells = activeRuleNames.map((r) => `**${totals[r]}**`);
+  lines.push(`| **Total** | ${totalCells.join(' | ')} | **${totals.total}** |`);
 
   return lines.join('\n');
 }
