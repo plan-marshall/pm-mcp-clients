@@ -39,6 +39,7 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 
@@ -442,6 +443,100 @@ class EntryFlowTest {
                                 () -> assertTrue(text.contains("Nothing was sent.")),
                                 () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
             );
+        }
+
+        @Test
+        @DisplayName("the bare pm-operator runs the onboarding from where it stands, as the dialogue's first frame")
+        void bareOnboardingShowsTheCurrentState() throws Exception {
+            seedHarnessOnboarding();
+
+            var outcome = runBare("h\nq\nexit\n");
+
+            assertAll(
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertTrue(outcome.screen().contains("Look for harnesses on this machine?"),
+                                                    outcome.screen()),
+                                () -> assertTrue(outcome.screen().contains("Nothing was sent."), outcome.screen()));
+        }
+
+        @Test
+        @DisplayName("the bare pm-operator follows the link the operator chooses to the next state")
+        void bareOnboardingFollowsAStep() throws Exception {
+            var server = seedHarnessOnboarding();
+
+            var outcome = runBare("h\n1\nq\nexit\n");
+
+            assertAll(
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertTrue(outcome.screen().contains("Choose the harnesses to enrol"),
+                                                    outcome.screen()),
+                                () -> assertTrue(server.requests().stream().anyMatch(recorded ->
+                                                        OnboardingSource.STEP_PATH.equals(recorded.target())
+                                                                            && recorded.bodyText().contains("yes")),
+                                                    "the chosen link was sent"));
+        }
+
+        @Test
+        @DisplayName("the bare pm-operator sends no step while the operator leaves the dialogue at once")
+        void bareOnboardingLeavingSendsNothing() throws Exception {
+            var server = seedHarnessOnboarding();
+
+            var outcome = runBare("h\nq\nexit\n");
+
+            assertAll(
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertFalse(server.requests().stream().anyMatch(recorded ->
+                                                        OnboardingSource.STEP_PATH.equals(recorded.target())),
+                                                    "no step was sent"));
+        }
+
+        private static final String UNONBOARDED_FOR_ONBOARDING = """
+                            {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},
+                             "web":{"enabled":true,"port":7420}}
+                            """;
+
+        private static final String HARNESS_CONSENT = """
+                            {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
+                             "completed_steps":1,"auto":false,
+                             "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
+                                      "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
+                            """;
+
+        private static final String HARNESS_CHOOSE = """
+                            {"scope":"machine","state":"harness.choose","summary":"Choose the harnesses to enrol",
+                             "completed_steps":1,"auto":false,
+                             "links":{"choose":{"href":"/api/v1/onboarding/harness/choose","method":"POST","next":"harness.probe-consent"}}}
+                            """;
+
+        private FakeRuntimeServer seedHarnessOnboarding() throws Exception {
+            PmOperatorTest.writeLiveRecord(fixture);
+            return fixture.start((request, response) -> {
+                var path = request.target();
+                if ("/api/v1/status".equals(path)) {
+                    response.json(200, UNONBOARDED_FOR_ONBOARDING);
+                } else if (OnboardingSource.STATE_PATH.equals(path)) {
+                    response.json(200, HARNESS_CONSENT);
+                } else if (OnboardingSource.STEP_PATH.equals(path) && "POST".equals(request.method())) {
+                    response.json(200, HARNESS_CHOOSE);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        private BareOutcome runBare(String input) {
+            var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+            var screen = new ByteArrayOutputStream();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(inStream, screen), null);
+            var code = PmOperator.execute(context, new PrintWriter(new StringWriter()),
+                                new PrintWriter(new StringWriter()));
+            return new BareOutcome(code, screen.toString(StandardCharsets.UTF_8));
+        }
+
+        /** One run of the bare {@code pm-operator}: its exit code and what the terminal showed. */
+        private record BareOutcome(int code, String screen) {
         }
 
         @Test
