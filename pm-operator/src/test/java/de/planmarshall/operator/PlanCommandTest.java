@@ -394,12 +394,13 @@ class PlanCommandTest {
     @DisplayName("plan <id> reports not found on 404 and asks no other resource")
     void planDetailNotFound() throws Exception {
         var planId = Generators.letterStrings(6, 12).next();
-        var server = fixture.start((request, response) -> response.send(404, null, ""));
+        var server = fixture.start((request, response) -> response.send(404, null,
+                            "{\"error\":\"scope_not_found\"}"));
 
         int code = execute("plan", planId, "--print");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("This entry does not exist"), out.toString()),
+                            () -> assertTrue(err.toString().contains("This entry does not exist"), err.toString()),
                             () -> assertTrue(server.requests().stream()
                                                                     .noneMatch(request -> ("/api/v1/plans/" + planId).equals(request.target())),
                                                 server.requests().toString())
@@ -817,7 +818,16 @@ class PlanCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(output.contains("Abschlussbericht"), output),
                             () -> assertTrue(output.contains("zusammengeführt"), output),
-                            () -> assertFalse(output.contains("completion report"), output)
+                            () -> assertTrue(output.contains("Ergebnis"), output),
+                            () -> assertTrue(output.contains("Grund"), output),
+                            () -> assertTrue(output.contains("Entscheidungen"), output),
+                            () -> assertTrue(output.contains("Eigene Entscheidungen"), output),
+                            () -> assertTrue(output.contains("Änderungskarte"), output),
+                            () -> assertFalse(output.contains("completion report"), output),
+                            () -> assertFalse(output.contains("Outcome"), output),
+                            () -> assertFalse(output.contains("Reason"), output),
+                            () -> assertFalse(output.contains("Own calls"), output),
+                            () -> assertFalse(output.contains("Change map"), output)
         );
     }
 
@@ -830,13 +840,13 @@ class PlanCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("own calls")),
+                            () -> assertTrue(output.contains("Own calls")),
                             () -> assertTrue(output.contains("shortcut")),
                             () -> assertTrue(output.contains("limit single subscriber")),
                             () -> assertTrue(output.contains("ends when a second subscriber connects")),
                             () -> assertTrue(output.contains("conflicts with the transport test")),
                             () -> assertTrue(output.contains("design call")),
-                            () -> assertTrue(output.contains("change map")),
+                            () -> assertTrue(output.contains("Change map")),
                             () -> assertTrue(output.contains("partial · cause: the vendored tree is not tracked")),
                             () -> assertTrue(output.contains("relay -> cursor"))
         );
@@ -851,12 +861,12 @@ class PlanCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("by phase")),
+                            () -> assertTrue(output.contains("By phase")),
                             () -> assertTrue(output.contains("refine")),
-                            () -> assertTrue(output.contains("by role")),
+                            () -> assertTrue(output.contains("By role")),
                             () -> assertTrue(output.contains("planner")),
                             () -> assertTrue(output.contains("claude:opus-5.5")),
-                            () -> assertTrue(output.contains("waste")),
+                            () -> assertTrue(output.contains("Waste")),
                             () -> assertTrue(output.contains("13 % of measured")),
                             () -> assertTrue(output.contains("raw components: plan report fix-relay --tokens --components"))
         );
@@ -899,11 +909,11 @@ class PlanCommandTest {
     @Test
     @DisplayName("plan report reports 404 when plan not found")
     void planReportNotFound() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        fixture.start((request, response) -> response.send(404, null, "{\"error\":\"scope_not_found\"}"));
 
         int code = execute("plan", "report", "non-existent");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("This entry does not exist"));
+        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
     }
 
     @Test
@@ -1005,13 +1015,13 @@ class PlanCommandTest {
                                     () -> assertTrue(unavailableText.contains(
                                                         "The changes are no longer in the repository"), unavailableText),
                                     () -> assertEquals(1, unknown, err.toString()),
-                                    () -> assertTrue(unknownText.contains("\u2717 This entry does not exist"), unknownText),
-                                    () -> assertTrue(unknownText.contains(
+                                    () -> assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString()),
+                                    () -> assertTrue(err.toString().contains(
                                                                             "No plan, epic, decision, report or entry carries this id."),
-                                                        unknownText),
-                                    () -> assertTrue(unknownText.contains(
+                                                        err.toString()),
+                                    () -> assertTrue(err.toString().contains(
                                                                             "\u2192 Check the id or pick the entry from the list again."),
-                                                        unknownText),
+                                                        err.toString()),
                                     () -> assertFalse(unknownText.contains("Plan not-a-plan not found."),
                                                         "the English literal is gone: " + unknownText));
             }

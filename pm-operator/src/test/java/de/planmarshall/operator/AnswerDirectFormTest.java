@@ -137,7 +137,7 @@ class AnswerDirectFormTest {
                 if ("POST".equals(request.method())) {
                     acts.add(request.target());
                 }
-                response.send(404, null, "");
+                response.send(404, null, "{\"error\":\"scope_not_found\"}");
             });
 
             var code = run("en", "", "answer", "Q-31", argument);
@@ -318,6 +318,46 @@ class AnswerDirectFormTest {
             } else if (target.startsWith(decision + "/") && "POST".equals(request.method())) {
                 acts.add(target + " " + request.bodyText());
                 response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("a dependency_unanswered refusal names the part its body names, not part 1")
+    void dependencyRefusalNamesThePart() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409,
+                            "{\"error\":\"dependency_unanswered\",\"part\":3}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(out.toString().contains("Answer part 3 first.")
+                            || out.toString().contains("Answer the parts in order"), out.toString());
+    }
+
+    @Test
+    @DisplayName("an invalid_answer refusal with no message ends in no colon and no empty reason")
+    void invalidAnswerWithoutAReasonEndsInNoColon() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409, "{\"error\":\"invalid_answer\"}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(out.toString().contains("This answer does not fit the part."), out.toString());
+        assertFalse(out.toString().contains("part: "), out.toString());
+    }
+
+    private void serveRefusal(String id, String envelope, int status, String body) throws IOException {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            var decision = "/api/v1/decisions/" + id;
+            if (decision.equals(target) && "GET".equals(request.method())) {
+                response.json(200, envelope);
+            } else if (target.startsWith(decision + "/") && "POST".equals(request.method())) {
+                acts.add(target + " " + request.bodyText());
+                response.json(status, body);
             } else {
                 response.send(404, null, "");
             }

@@ -490,7 +490,8 @@ class EpicCommandTest {
             int code = execute("epic", "next", epicId, "--no-raise");
             assertAll(
                                 () -> assertEquals(0, code, err.toString()),
-                                () -> assertTrue(out.toString().contains("Left epic.raise-scope. Nothing was sent."), out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                "Left the epic; its scope stays as it is. Nothing was sent."), out.toString()),
                                 () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
             );
         }

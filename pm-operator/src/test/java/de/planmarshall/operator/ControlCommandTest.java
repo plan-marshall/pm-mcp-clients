@@ -123,7 +123,7 @@ class ControlCommandTest {
     @Test
     @DisplayName("plan resolve fails when the runtime refuses the hold")
     void resolveRefused() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        fixture.start((request, response) -> response.send(404, null, "{\"error\":\"scope_not_found\"}"));
 
         int code = execute("plan", "resolve", "fix-relay", "H-9999", "--act", "retry");
         assertEquals(1, code);
@@ -256,12 +256,12 @@ class ControlCommandTest {
     @Test
     @DisplayName("plan settings reports a missing plan")
     void settingsMissingPlan() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        fixture.start((request, response) -> response.send(404, null, "{\"error\":\"scope_not_found\"}"));
 
         int code = execute("plan", "settings", "p-missing");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("This entry does not exist"))
+                            () -> assertTrue(err.toString().contains("This entry does not exist"), err.toString())
         );
     }
 }

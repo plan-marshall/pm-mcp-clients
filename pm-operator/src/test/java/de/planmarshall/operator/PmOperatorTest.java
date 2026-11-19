@@ -1159,12 +1159,14 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("upgrade --notes reports when not found")
+        @DisplayName("upgrade --notes reports a refused read as the runtime's refusal and exits 1")
         void upgradeNotesNotFound() throws Exception {
             runtime((request, response) -> response.send(404, null, ""));
 
-            assertEquals(0, run("runtime", "upgrade", "--notes"));
-            assertTrue(out.toString().contains("No release notes found."));
+            assertEquals(1, run("runtime", "upgrade", "--notes"));
+            assertTrue(err.toString().contains("\u2717"), err.toString());
+            assertTrue(err.toString().contains("does not know the request"), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
         }
 
         @Test
@@ -1183,12 +1185,24 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("upgrade --withdraw reports failure")
+        @DisplayName("upgrade --check reports a refusal and exits 1, printing no HTTP status")
+        void upgradeCheckFailedIsARefusal() throws Exception {
+            runtime((request, response) -> response.send(500, null,
+                                "{\"error\":\"internal_error\",\"message\":\"the check failed\"}"));
+
+            assertEquals(1, run("runtime", "upgrade", "--check"));
+            assertTrue(err.toString().contains("the check failed"), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
+        }
+
+        @Test
+        @DisplayName("upgrade --withdraw reports failure as the runtime's refusal and exits 1")
         void upgradeWithdrawFailed() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
-            assertEquals(0, run("runtime", "upgrade", "--withdraw"));
-            assertTrue(out.toString().contains("Failed to withdraw upgrade: HTTP 500"));
+            assertEquals(1, run("runtime", "upgrade", "--withdraw"));
+            assertTrue(err.toString().contains("\u2717"), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
         }
     }
 }

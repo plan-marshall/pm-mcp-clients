@@ -671,12 +671,12 @@ class WebDevicesCommandTest {
     private static Stream<Arguments> refusedInteractiveActs() {
         return Stream.of(
                             // choose the one device, revoke it, and confirm the prompt
-                            Arguments.of("revoke", "DELETE", "1\nx\n\n", "Failed to revoke: HTTP 400"),
+                            Arguments.of("revoke", "DELETE", "1\nx\n\n", "Failed to revoke."),
                             // choose device 1, rename with 'r', enter the new label
                             Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n",
-                                                "Failed to rename device: HTTP 400"),
+                                                "Failed to rename device."),
                             // choose listener-off 'n'
-                            Arguments.of("listener-off", "DELETE", "n\n", "Failed to turn listener off: HTTP 400"));
+                            Arguments.of("listener-off", "DELETE", "n\n", "Failed to turn listener off."));
     }
 
     @Test
@@ -800,9 +800,9 @@ class WebDevicesCommandTest {
 
     @ParameterizedTest
     @CsvSource({
-                        "rename, Failed to rename device: HTTP 400",
-                        "revoke, Failed to revoke: HTTP 400",
-                        "listener-off, Failed to turn listener off: HTTP 400"
+                        "rename, Failed to rename device.",
+                        "revoke, Failed to revoke.",
+                        "listener-off, Failed to turn listener off."
     })
     @DisplayName("a refused act on a device names the refusal and leaves with 1")
     void aRefusedActLeavesWithOne(String action, String expectedOutput) throws Exception {

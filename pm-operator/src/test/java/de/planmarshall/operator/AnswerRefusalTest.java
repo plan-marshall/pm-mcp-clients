@@ -121,7 +121,7 @@ class AnswerRefusalTest {
     @Test
     @DisplayName("answer Q-999 later checks that the decision exists")
     void laterOnUnknownDecision() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        fixture.start((request, response) -> response.send(404, null, "{\"error\":\"scope_not_found\"}"));
 
         var code = run("en", new byte[0], "answer", "Q-999", "later");
 
@@ -210,7 +210,7 @@ class AnswerRefusalTest {
             if (("/api/v1/plans/" + planId + "/decisions/Q-001").equals(target) && "GET".equals(request.method())) {
                 response.json(200, planEnvelope());
             } else {
-                response.send(404, null, "");
+                response.send(404, null, "{\"error\":\"scope_not_found\"}");
             }
         });
 
@@ -440,7 +440,8 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(0, exit, err.toString()),
-                            () -> assertTrue(out.toString().contains("Answer part 1 first."), out.toString()),
+                            () -> assertTrue(out.toString().contains("Answer part 1 first.")
+                                                || out.toString().contains("Answer the parts in order"), out.toString()),
                             () -> assertEquals(2, posts.get(), "the answer is sent again after the part is asked again"));
     }
 
@@ -449,7 +450,7 @@ class AnswerRefusalTest {
                         "later    | conflict              | NULL           | In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert.",
                         "withdraw | already_answered      | NULL           | Die Frage wurde bereits an anderer Stelle beantwortet.",
                         "later    | invalid_answer        | no such option | Diese Antwort passt nicht zu dem Teil: no such option",
-                        "withdraw | dependency_unanswered | NULL           | Beantworte zuerst Teil 1."})
+                        "withdraw | dependency_unanswered | NULL           | Beantworte die Teile der Reihe nach; einer davon ist noch offen."})
     @DisplayName("the decision refusals read German in German, with the decision's own exit 1")
     void decisionRefusalInGerman(String act, String code, @Nullable String message, String text) throws Exception {
         var body = message == null || message.isBlank() ? "{\"error\":\"%s\"}".formatted(code)

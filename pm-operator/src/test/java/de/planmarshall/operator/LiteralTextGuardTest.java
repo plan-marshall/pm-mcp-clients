@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -29,12 +30,13 @@ import org.junit.jupiter.api.Test;
  * The bilingual text guard (the plan's "no text is written in the client's code"): a test that
  * fails for a literal user-facing string.
  *
- * <p>It scans the production sources of the console, the entry, the settings, the devices, and the
- * credentials for a string literal that is printed or used as a prompt. A literal is allowed only
- * when it is not a sentence: an empty string, a single symbol or punctuation mark, a format
- * specifier, an ANSI/OSC sequence, a command name or option, a URL fragment, a JSON field name, or
- * a value the runtime defines (a state id, a mode, a key). Everything the operator reads comes
- * from {@code messages/*.properties}.
+ * <p>It scans the production sources of the console, the entry, the settings, the devices, the
+ * credentials and every command that prints a screen for a string literal that is printed or used
+ * as a prompt, in the direct form, in a ternary, and inside a {@code String.format}. A literal is
+ * allowed only when it is not a sentence: an empty string, a single symbol or punctuation mark, a
+ * format specifier, an ANSI/OSC sequence, a command name or option, a URL fragment, a JSON field
+ * name, a catalogue key, or a value the runtime defines (a state id, a mode, a key). Everything the
+ * operator reads comes from {@code messages/*.properties}.
  */
 @DisplayName("bilingual text integrity")
 class LiteralTextGuardTest {
@@ -72,16 +74,25 @@ class LiteralTextGuardTest {
                         "ProjectWorkLevel.java",
                         "PlanCompletionLevel.java",
                         "PlanViewFormatting.java",
-                        "TuiLayout.java");
+                        "TuiLayout.java",
+                        "PlanCommand.java",
+                        "EpicCommand.java",
+                        "StatusCommand.java",
+                        "RolesCommand.java",
+                        "DecomposeCommand.java",
+                        "ConfigCleanupCommand.java",
+                        "DrainCommand.java");
 
-    /** A call that renders text to the operator. */
+    /** A call that renders text to the operator: its argument list is what the guard reads. */
     private static final Pattern RENDER_CALL = Pattern.compile(
                         "(?:(?:out|err|writer|terminal\\.writer\\(\\)|session\\.out\\(\\))\\.(?:print|println|printf|readLine|printAbove)"
-                                            + "|prompt\\.(?:raw|askRaw|askInline))\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+                                            + "|prompt\\.(?:raw|askRaw|askInline))\\s*\\(");
 
-    /** A prompt passed to a line reader. */
-    private static final Pattern PROMPT_CALL = Pattern.compile(
-                        "readLine\\s*\\(\\s*\"((?:[^\"\\\\]|\\\\.)*)\"");
+    /** A literal; the argument list is scanned for it. */
+    private static final Pattern TEXT_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"");
+
+    /** A call that resolves a catalogue key; its arguments are never text the operator reads. */
+    private static final Pattern CATALOGUE_CALL = Pattern.compile("(?:MessageCatalogue|ErrorTexts)\\.[a-zA-Z]+\\s*\\(");
 
     /** Literals that carry no words and therefore need no translation. */
     private static final Set<String> ALLOWED = Set.of(
@@ -95,9 +106,7 @@ class LiteralTextGuardTest {
         for (var source : guardedSources()) {
             var lines = Files.readAllLines(source, StandardCharsets.UTF_8);
             for (int index = 0; index < lines.size(); index++) {
-                var line = lines.get(index);
-                collect(line, RENDER_CALL, source, index, violations);
-                collect(line, PROMPT_CALL, source, index, violations);
+                collect(lines.get(index), source, index, violations);
             }
         }
         assertTrue(violations.isEmpty(),
@@ -118,16 +127,64 @@ class LiteralTextGuardTest {
         assertFalse(isUserFacing("\\b \\b"));
         assertFalse(isUserFacing("config"));
         assertFalse(isUserFacing("--consent"));
+        assertFalse(isUserFacing("operator.config.needs_choice"), "a catalogue key is no text");
     }
 
-    private static void collect(String line, Pattern pattern, Path source, int index, List<String> violations) {
-        var matcher = pattern.matcher(line);
+    @Test
+    @DisplayName("the guard fails on a literal in a ternary and inside String.format")
+    void guardSeesTernariesAndFormats() {
+        var violations = new ArrayList<String>();
+        collect("        out.println(stopped ? \"Nothing is due.\" : other);", Path.of("Sample.java"), 0,
+                            violations);
+        collect("        out.println(String.format(\"%d workers are running\", count));", Path.of("Sample.java"), 0,
+                            violations);
+        assertTrue(violations.size() == 2, violations.toString());
+    }
+
+    private static void collect(String line, Path source, int index, List<String> violations) {
+        var matcher = RENDER_CALL.matcher(line);
         while (matcher.find()) {
-            var literal = matcher.group(1);
-            if (isUserFacing(literal)) {
-                violations.add(source.getFileName() + ":" + (index + 1) + "  \"" + literal + "\"");
+            var arguments = withoutCatalogueCalls(line.substring(matcher.end()));
+            var literal = TEXT_LITERAL.matcher(arguments);
+            while (literal.find()) {
+                var text = literal.group(1);
+                if (isUserFacing(text)) {
+                    violations.add(source.getFileName() + ":" + (index + 1) + "  \"" + text + "\"");
+                }
             }
         }
+    }
+
+    /**
+     * @param arguments the argument list of a rendering call
+     * @return the list with every catalogue call and its arguments removed, so that a key is never
+     *         read as text
+     */
+    private static String withoutCatalogueCalls(String arguments) {
+        var remaining = arguments;
+        var matcher = CATALOGUE_CALL.matcher(remaining);
+        while (matcher.find()) {
+            var end = matchingParen(remaining, matcher.end());
+            remaining = remaining.substring(0, matcher.start()) + remaining.substring(end);
+            matcher = CATALOGUE_CALL.matcher(remaining);
+        }
+        return remaining;
+    }
+
+    private static int matchingParen(String text, int from) {
+        int depth = 1;
+        for (int i = from; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c == '(') {
+                depth++;
+            } else if (c == ')') {
+                depth--;
+                if (depth == 0) {
+                    return i + 1;
+                }
+            }
+        }
+        return text.length();
     }
 
     /**
@@ -136,6 +193,14 @@ class LiteralTextGuardTest {
      */
     static boolean isUserFacing(String literal) {
         if (ALLOWED.contains(literal)) {
+            return false;
+        }
+        if (literal.startsWith("{")) {
+            // A JSON fragment the client writes for a machine consumer, not text for a screen.
+            return false;
+        }
+        if (literal.matches("[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+")) {
+            // A catalogue key, not a text.
             return false;
         }
         // Drop the escapes (a control character, a unicode escape, an octal escape) and the format

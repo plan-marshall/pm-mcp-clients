@@ -435,8 +435,7 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
-                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
-                                                out.toString()),
+                            () -> assertTrue(out.toString().contains("Unable to load settings."), out.toString()),
                             () -> assertTrue(writes.isEmpty(), writes.toString()));
     }
 
@@ -478,8 +477,8 @@ class ConfigCommandTest {
         int code = execute("config", "show");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
-                                                out.toString())
+                            () -> assertTrue(err.toString().contains("\u2717"), err.toString()),
+                            () -> assertFalse((out.toString() + err).contains("HTTP 500"), out + " " + err)
         );
     }
 
@@ -672,7 +671,8 @@ class ConfigCommandTest {
 
         int code = execute("config", "consents");
         assertEquals(1, code, out.toString());
-        assertTrue(out.toString().contains("Unable to load settings"), out.toString());
+        assertTrue(err.toString().contains("\u2717"), err.toString());
+        assertFalse((out.toString() + err).contains("HTTP"), out + " " + err);
     }
 
     @Test
@@ -948,8 +948,8 @@ class ConfigCommandTest {
         var text = out.toString();
         assertAll(
                             () -> assertEquals(1, code, text + err),
-                            () -> assertTrue(text.contains("\u2717"), text + err),
-                            () -> assertFalse((text + err).contains("HTTP 403"), text + err));
+                            () -> assertTrue(err.toString().contains("\u2717"), text + err),
+                            () -> assertFalse((text + err.toString()).contains("HTTP 403"), text + err));
     }
 
     @Test
@@ -1004,6 +1004,19 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(2, code, out.toString()),
                             () -> assertTrue(err.toString().contains("is the machine's only"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --remind never is refused with the remind-specific text")
+    void cleanupRemindNeverIsRefusedWithItsOwnText() throws Exception {
+        fixture.start((request, response) -> response.json(200, SETTINGS));
+
+        int code = execute("config", "cleanup", "--remind", "never", "--yes");
+
+        assertAll(
+                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("At least 1 days."), err.toString()),
+                            () -> assertFalse(err.toString().contains("or never"), err.toString()));
     }
 
     /** A settings server that records the machine-settings write, or {@code null} when none came. */
