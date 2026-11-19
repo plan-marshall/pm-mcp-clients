@@ -181,6 +181,15 @@ export default defineConfig({
         'src/test/**',
         'src/lib/test/**',
       ],
+      // The floor the whole module is held to (`CLAUDE.md`, Coverage). A run below it fails the
+      // profile `coverage` and the Sonar job that builds with `-Psonar`, so a change that drops the
+      // module cannot pass unnoticed.
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },
     },
   },
 });

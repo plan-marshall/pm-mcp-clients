@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.ToIntFunction;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -94,6 +96,9 @@ public final class CleanupCommand implements Callable<Integer> {
     private static final String KIND_EPICS = "epics";
     private static final String KIND_LOGS = "logs";
     private static final String KIND_REPORTS = "reports";
+    private static final String KIND_UNENROLLED = "unenrolled";
+    /** The word an unenrolled project's item line carries, which is not the durations line's. */
+    private static final String KIND_PROJECT_ITEM = "project";
     private static final String KIND_PROJECTS = "projects";
 
     private final OperatorContext context;
@@ -755,6 +760,46 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     /**
+     * The printed word and the duration of one cleanup kind: what the mapping over
+     * {@link CleanupKind} carries, so a kind gained on the wire is one entry and never a second list.
+     *
+     * @param label the word the durations line prints for the kind
+     * @param days  the duration the kind is swept after
+     */
+    record KindDisplay(String label, ToIntFunction<CleanupDurations> days) {
+    }
+
+    /**
+     * The durations mapping: every {@link CleanupKind} to the label it prints and the duration it
+     * reads. The wire values ({@code plan}, {@code epic}, {@code logs}, {@code read_reports},
+     * {@code unenrolled_project}) differ from the printed labels, so the mapping is explicit; it is
+     * total over {@link CleanupKind#values()}, which a test pins.
+     */
+    private static final Map<CleanupKind, KindDisplay> KIND_DISPLAYS = buildKindDisplays();
+
+    private static Map<CleanupKind, KindDisplay> buildKindDisplays() {
+        var displays = new EnumMap<CleanupKind, KindDisplay>(CleanupKind.class);
+        for (var kind : CleanupKind.values()) {
+            displays.put(kind, switch (kind) {
+                case PLAN -> new KindDisplay(KIND_PLANS, CleanupDurations::plansAfterDays);
+                case EPIC -> new KindDisplay(KIND_EPICS, CleanupDurations::epicsAfterDays);
+                case LOGS -> new KindDisplay(KIND_LOGS, CleanupDurations::logsAfterDays);
+                case READ_REPORTS -> new KindDisplay(KIND_REPORTS, CleanupDurations::reportsAfterDays);
+                case UNENROLLED_PROJECT ->
+                    new KindDisplay(KIND_UNENROLLED, CleanupDurations::unenrolledAfterDays);
+            });
+        }
+        return Map.copyOf(displays);
+    }
+
+    /**
+     * @return the mapping from every cleanup kind to its label and its duration
+     */
+    static Map<CleanupKind, KindDisplay> kindDisplays() {
+        return KIND_DISPLAYS;
+    }
+
+    /**
      * Renders the durations in force: the one figure of every kind with the reminder where the
      * kinds agree ({@code system.cleanup.durations.summary}), and each kind with its own value where
      * they differ or one is never offered.
@@ -764,17 +809,17 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the rendered durations
      */
     static String durationsText(String locale, CleanupDurations durations) {
-        var days = List.of(durations.plansAfterDays(), durations.epicsAfterDays(), durations.logsAfterDays(),
-                            durations.reportsAfterDays(), durations.unenrolledAfterDays());
+        var days = Arrays.stream(CleanupKind.values())
+                            .map(kind -> KIND_DISPLAYS.get(kind).days().applyAsInt(durations)).toList();
         if (days.stream().distinct().count() == 1 && days.getFirst() > 0) {
             return MessageCatalogue.format(locale, "system.cleanup.durations.summary",
                                 Map.of("days", days.getFirst(), "remind", durations.remindAfterDays(), "own", 0));
         }
-        var kinds = List.of(KIND_PLANS, KIND_EPICS, KIND_LOGS, KIND_REPORTS, "unenrolled");
         var parts = new ArrayList<String>();
-        for (int i = 0; i < kinds.size(); i++) {
-            var value = days.get(i);
-            parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.kind", Map.of("kind", kinds.get(i)))
+        for (var kind : CleanupKind.values()) {
+            var display = KIND_DISPLAYS.get(kind);
+            var value = display.days().applyAsInt(durations);
+            parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.kind", Map.of("kind", display.label()))
                                 + " " + MessageCatalogue.format(locale, "system.cleanup.durations.value",
                                 Map.of("never", value < 0 ? "true" : "false", "days", Math.max(value, 0))));
         }
@@ -971,13 +1016,17 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private static boolean isUnenrolled(String projectId) {
-        return "unenrolled".equalsIgnoreCase(projectId);
+        return KIND_UNENROLLED.equalsIgnoreCase(projectId);
     }
 
     /**
      * The word an item is named by in front of its id ({@code 26-cleanup.adoc#commands}):
      * {@code plan:}, {@code epic:}, {@code logs:}, {@code reports:}, {@code project:}. Read reports
      * and an unenrolled project carry a longer kind on the wire than the word the operator types.
+     * <p>
+     * This is deliberately not {@code KIND_DISPLAYS}: that maps a kind to the word of the durations
+     * line, which names an unenrolled project in full ({@code unenrolled}), while an item's line names
+     * it {@code project}.
      *
      * @param kind the item's kind as the runtime sends it
      * @return the word that names the kind
@@ -986,7 +1035,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var known = CleanupKind.fromValue(kind);
         return switch (known) {
             case READ_REPORTS -> KIND_REPORTS;
-            case UNENROLLED_PROJECT -> "project";
+            case UNENROLLED_PROJECT -> KIND_PROJECT_ITEM;
             case PLAN, EPIC, LOGS -> known.value();
             case null -> kind;
         };

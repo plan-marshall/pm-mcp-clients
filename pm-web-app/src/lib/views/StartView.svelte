@@ -20,6 +20,7 @@
     openProjectOnboarding,
     runtimeStore,
   } from '../stores/runtime';
+  import { refreshesEntry } from '../stores/refreshEvents';
   import SourceList from '../components/SourceList.svelte';
   import ConfinedFilePicker from '../components/ConfinedFilePicker.svelte';
   import GrantModal from '../components/GrantModal.svelte';
@@ -132,23 +133,6 @@
   } | null = null;
   let decompositionCommitted = false;
   let decompositionError = '';
-
-  /**
-   * The events of the entry's stream (`EventName` of pm-api, stream `entry`) that change what the
-   * entry resource holds: its sources, their progress and checks, and its state; `reset` asks for
-   * a fresh read. The chat's turns and proposals are the chat's own read (`refreshChat`), and a
-   * streamed piece of a turn changes nothing the entry holds.
-   */
-  const ENTRY_REFRESH_EVENTS = new Set([
-    'reset',
-    'source.added',
-    'source.removed',
-    'source.flagged',
-    'progress.changed',
-    'check.result',
-    'entry.moved',
-    'state.entered',
-  ]);
 
   let lastState = '';
   let unsubscribeEntry: (() => void) | null = null;
@@ -336,7 +320,7 @@
     if (destroyed) return;
     unsubscribeEntry?.();
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
-      if (ENTRY_REFRESH_EVENTS.has(event)) {
+      if (refreshesEntry(event)) {
         void refresh();
       } else if (
         event === 'chat.turn.started' ||

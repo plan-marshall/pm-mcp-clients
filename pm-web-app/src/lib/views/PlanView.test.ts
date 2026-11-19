@@ -12,6 +12,7 @@ import {
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { formatTime } from '../display/format';
 import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
+import { PLAN_PROCESS_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
 import { tick } from 'svelte';
@@ -1232,7 +1233,7 @@ describe('PlanView component', () => {
     });
   });
 
-  it.each(['activity.changed', 'phase.changed', 'task.off_track', 'project.work_ended'])(
+  it.each(PLAN_PROCESS_REFRESH_EVENTS)(
     'reads the process again on the runtime event %s',
     async (name) => {
       let onEvent: ((event: string, data?: unknown) => void) | undefined;

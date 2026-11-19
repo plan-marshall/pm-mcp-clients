@@ -38,6 +38,7 @@ import {
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
+import { refreshesProjectView } from './refreshEvents';
 import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
 export type { AppRoute, RouteParams, StartPath };
@@ -1289,7 +1290,6 @@ const LIFECYCLE_EVENTS = new Set([
   'runtime.drain_withdrawn',
   'runtime.stopping',
 ]);
-const PROJECT_EVENTS = new Set(['project.changed', 'project.released', 'project.enrolled']);
 
 export function handleRuntimeEvent(event: string, data: unknown): void {
   if (event === 'stream.closed') {
@@ -1304,7 +1304,7 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     handleDecisionEvent(event, data);
   } else if (LIFECYCLE_EVENTS.has(event)) {
     handleLifecycleEvent(event, data);
-  } else if (PROJECT_EVENTS.has(event)) {
+  } else if (refreshesProjectView(event)) {
     runtimeStore.update((s) => ({ ...s, projectEventNotice: `${event}_${Date.now()}` }));
   } else if (event === 'onboarding.step_completed') {
     void loadOnboardingState();

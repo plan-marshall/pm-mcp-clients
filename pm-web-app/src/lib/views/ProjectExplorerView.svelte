@@ -8,6 +8,7 @@
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
+  import { refreshesProjectView } from '../stores/refreshEvents';
   import {
     apiClient,
     type ProjectExplorer,
@@ -111,11 +112,7 @@
     window.addEventListener('popstate', onPopstate);
 
     const unsubscribeEvents = apiClient.subscribeEvents((event) => {
-      if (
-        event === 'project.changed' ||
-        event === 'project.released' ||
-        event === 'project.enrolled'
-      ) {
+      if (refreshesProjectView(event)) {
         void loadExplorer();
       }
     });

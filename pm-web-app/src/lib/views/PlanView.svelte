@@ -31,6 +31,7 @@
     selectObjectTab,
     selectPlanChangeFile,
   } from '../stores/runtime';
+  import { refreshesPlanProcess } from '../stores/refreshEvents';
   import {
     dateOnRead,
     formatSplit,
@@ -202,12 +203,7 @@
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       // The runtime stream's events that change a plan's process (`EventName`).
-      if (
-        event === 'activity.changed' ||
-        event === 'phase.changed' ||
-        event === 'task.off_track' ||
-        event === 'project.work_ended'
-      ) {
+      if (refreshesPlanProcess(event)) {
         void loadPlanProcess(false);
       }
       if (event === 'plan.change_captured') {

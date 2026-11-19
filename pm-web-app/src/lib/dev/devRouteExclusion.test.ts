@@ -155,4 +155,42 @@ export const dictionary = {
     ).toBe(true);
     expect(isGeneratedNode('/repo/pm-web-app/src/lib/components/Button.svelte')).toBe(false);
   });
+
+  it('keeps a dictionary line it cannot read, and drops nothing on its account', () => {
+    const source = MANIFEST.replace(
+      '\t\t"/dev/components": [1, 3]',
+      '\t\tnot a dictionary line,\n\t\t"broken: [1]\n\t\t"/dev/not-a-list": oops',
+    );
+
+    const stripped = stripDevRoutes(source);
+
+    expect(stripped).toContain('\t\tnot a dictionary line,');
+    expect(stripped).toContain('\t\t"broken: [1]');
+    expect(stripped).toContain('\t\t"/dev/not-a-list": oops');
+    expect(stripped).toContain("import('./nodes/3')");
+  });
+
+  it('claims the empty component for the build and leaves every other id alone', () => {
+    const plugin = devRouteExclusion() as unknown as {
+      resolveId: (source: string) => string | null;
+      load: (id: string) => string | null;
+    };
+
+    expect(plugin.resolveId(EMPTY_DEV_PAGE_ID)).toBe(EMPTY_DEV_PAGE_ID);
+    expect(plugin.resolveId('/repo/pm-web-app/src/routes/+layout.svelte')).toBeNull();
+    // The whole module, not a phrase of it: anything else would reach the production bundle.
+    expect(plugin.load(EMPTY_DEV_PAGE_ID)).toBe(
+      '<!-- the development page is not part of a production build -->',
+    );
+    expect(plugin.load('/repo/pm-web-app/src/routes/+layout.svelte')).toBeNull();
+  });
+
+  it('leaves a generated node that names no development page alone', () => {
+    const plugin = devRouteExclusion() as {
+      transform: (code: string, id: string) => { code: string } | null;
+    };
+    const nodePath = '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/2.js';
+
+    expect(plugin.transform('export const x = 1;', nodePath)).toBeNull();
+  });
 });

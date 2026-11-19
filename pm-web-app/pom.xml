@@ -21,10 +21,12 @@
         <skip.typecheck>false</skip.typecheck>
         <sonar.sources>src</sonar.sources>
         <sonar.tests>src</sonar.tests>
-        <sonar.test.inclusions>**/*.test.ts,**/*.test.js</sonar.test.inclusions>
-        <sonar.coverage.exclusions>**/*</sonar.coverage.exclusions>
+        <sonar.test.inclusions>**/*.test.ts,**/*.test.js,**/setupTests.ts,**/src/test/**,**/src/lib/test/**</sonar.test.inclusions>
         <sonar.cpd.exclusions>**/*</sonar.cpd.exclusions>
-        <!-- Written by the profile coverage (npm run test:coverage, vite.config.ts test.coverage) -->
+        <!-- Written by the profiles coverage and sonar (npm run test:coverage, vite.config.ts test.coverage).
+             Sonar's JavaScript analyzer indexes .ts and .js only: the .svelte records the LCOV report also
+             carries have no indexed file to match, so the component templates' coverage stays the local
+             figure of the coverage run and is not part of the Sonar number. -->
         <sonar.javascript.lcov.reportPaths>${project.basedir}/target/coverage/lcov.info</sonar.javascript.lcov.reportPaths>
     </properties>
 
@@ -187,6 +189,29 @@
              report lands in target/coverage, where sonar.javascript.lcov.reportPaths reads it. -->
         <profile>
             <id>coverage</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.github.eirslett</groupId>
+                        <artifactId>frontend-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>npm-test</id>
+                                <configuration>
+                                    <arguments>run test:coverage</arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- What the CI Sonar job builds with (reusable-maven-build.yml runs `verify -Psonar`, never
+             `-Pcoverage`): the same npm-test override as the coverage profile, so the job finds
+             target/coverage/lcov.info where sonar.javascript.lcov.reportPaths points. The CI files
+             carry no change for it. -->
+        <profile>
+            <id>sonar</id>
             <build>
                 <plugins>
                     <plugin>
