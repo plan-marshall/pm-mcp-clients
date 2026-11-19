@@ -16,27 +16,38 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /** The answers of a direct starting verb. */
+@EnableGeneratorController
 @DisplayName("start answers")
 class StartAnswersTest {
 
     @Test
     @DisplayName("an empty answer set has no source, and the builder keeps the answers")
     void buildsAnswers() {
+        var description = Generators.nonBlankStrings().next();
+        var project = Generators.letterStrings(3, 10).next();
+        var recipe = Generators.letterStrings(3, 10).next();
+        var paramKey = Generators.letterStrings(3, 8).next();
+        var paramValue = Generators.letterStrings(3, 8).next();
+        var doc = Generators.letterStrings(3, 8).next() + ".md";
+
         var answers = new StartAnswers();
         assertTrue(answers.noSources());
-        answers.withDescription("a change").withProject("pm-mcp-clients").withRecipe("code-review")
-                            .parameter("depth", "quick");
-        answers.documents.add("doc.md");
+        answers.withDescription(description).withProject(project).withRecipe(recipe)
+                            .parameter(paramKey, paramValue);
+        answers.documents.add(doc);
         assertAll(
                             () -> assertFalse(answers.noSources()),
-                            () -> assertEquals("a change", answers.description),
-                            () -> assertEquals("pm-mcp-clients", answers.project),
-                            () -> assertEquals("code-review", answers.recipeKey),
-                            () -> assertEquals("quick", answers.parameters.get("depth")),
+                            () -> assertEquals(description, answers.description),
+                            () -> assertEquals(project, answers.project),
+                            () -> assertEquals(recipe, answers.recipeKey),
+                            () -> assertEquals(paramValue, answers.parameters.get(paramKey)),
                             () -> assertEquals("-", StartAnswers.STDIN));
     }
 

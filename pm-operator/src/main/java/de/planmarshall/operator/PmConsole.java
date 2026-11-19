@@ -128,6 +128,10 @@ public final class PmConsole {
         return context.clientEnvironment().locale();
     }
 
+    static StringsCompleter completer() {
+        return new StringsCompleter(OperatorVerbs.completer());
+    }
+
     /**
      * Runs the console entry flow and main REPL loop.
      *
@@ -148,7 +152,7 @@ public final class PmConsole {
 
         // The console commands and the verbs of the design's command tree (01-commands.adoc), and
         // nothing else: the completer is the registered registry, never a second copy of it.
-        var completer = new StringsCompleter(OperatorVerbs.completer());
+        var completer = completer();
 
         var reader = LineReaderBuilder.builder()
                             .terminal(terminal)

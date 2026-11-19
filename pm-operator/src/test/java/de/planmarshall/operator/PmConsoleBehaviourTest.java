@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -778,11 +780,24 @@ class PmConsoleBehaviourTest {
                 // While the first refresh holds the lock and its read is open, the second must not
                 // reach the runtime: a second status request in this window is the interleaving.
                 var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-                while (t2.getState() != Thread.State.TIMED_WAITING && statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                while (statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                    var blocker = LockSupport.getBlocker(t2);
+                    if (t2.getState() == Thread.State.TIMED_WAITING && blocker != null && !(blocker instanceof Thread)) {
+                        break;
+                    }
                     Thread.onSpinWait();
                 }
-                assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                var blocker = LockSupport.getBlocker(t2);
+                assertNotNull(blocker, "the second refresh must have a lock blocker");
+                assertFalse(blocker instanceof Thread, "blocker must be the lock synchronizer, not thread.join: " + blocker);
                 assertEquals(Thread.State.TIMED_WAITING, t2.getState(), "the second refresh must be waiting on the lock");
+
+                // Check the negative over a window rather than at a single instant
+                long windowEnd = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(50);
+                while (System.nanoTime() < windowEnd) {
+                    assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                    Thread.onSpinWait();
+                }
 
                 releaseFirst.countDown();
                 t1.join(30_000);

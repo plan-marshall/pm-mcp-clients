@@ -617,8 +617,7 @@ class DrainCommandTest {
     @Test
     @DisplayName("an absent machine configuration takes the default drain timeout")
     void boundOfMachineWithoutConfig() {
-        assertEquals(Duration.ofSeconds(DrainCommand.DEFAULT_DRAIN_TIMEOUT_SECONDS)
-                            .plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN), boundOfMachine());
+        assertEquals(Duration.ofSeconds(615), boundOfMachine());
     }
 
     @Test
@@ -627,8 +626,7 @@ class DrainCommandTest {
         var seconds = Generators.integers(1, 300).next();
         writeMachineConfig("{\"drain_timeout_seconds\":" + seconds + "}");
 
-        assertEquals(Duration.ofSeconds(seconds).plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN),
-                            boundOfMachine());
+        assertEquals(Duration.ofSeconds(seconds + 15), boundOfMachine());
     }
 
     @Test
@@ -636,7 +634,7 @@ class DrainCommandTest {
     void boundOfMachineZero() throws Exception {
         writeMachineConfig("{\"drain_timeout_seconds\":0}");
 
-        assertEquals(DrainCommand.GRACE_PERIOD.plus(DrainCommand.MARGIN), boundOfMachine());
+        assertEquals(Duration.ofSeconds(15), boundOfMachine());
     }
 
     @Test
@@ -645,10 +643,28 @@ class DrainCommandTest {
         writeMachineConfig("{\"drain_timeout_seconds\":-1}");
 
         assertAll(
-                            () -> assertEquals(Duration.ofSeconds(DrainCommand.DEFAULT_DRAIN_TIMEOUT_SECONDS)
-                                                                    .plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN),
-                                                boundOfMachine()),
+                            () -> assertEquals(Duration.ofSeconds(615), boundOfMachine()),
                             () -> assertTrue(err.toString().contains("drain_timeout_seconds"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a string-valued drain timeout takes the default and is named in a warning")
+    void boundOfMachineStringValued() throws Exception {
+        writeMachineConfig("{\"drain_timeout_seconds\":\"120\"}");
+
+        assertAll(
+                            () -> assertEquals(Duration.ofSeconds(615), boundOfMachine()),
+                            () -> assertTrue(err.toString().contains("machine-config.json"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a non-object machine config takes the default and is named in a warning")
+    void boundOfMachineNonObject() throws Exception {
+        writeMachineConfig("[\"not an object\"]");
+
+        assertAll(
+                            () -> assertEquals(Duration.ofSeconds(615), boundOfMachine()),
+                            () -> assertTrue(err.toString().contains("machine-config.json"), err.toString()));
     }
 
     @Test

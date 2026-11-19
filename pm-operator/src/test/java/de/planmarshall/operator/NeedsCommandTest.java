@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Proves {@code pm-operator needs} on the {@code running-work} scenario (PLAN-36 D1).
  */
+@EnableGeneratorController
 @DisplayName("NeedsCommand on running-work")
 class NeedsCommandTest {
 
@@ -221,8 +224,9 @@ class NeedsCommandTest {
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
                             null
         );
+        var decisionId = "Q-" + Generators.integers(1, 99).next();
         var page = "{\"page\":1,\"total_pages\":2,\"has_newer\":false,\"has_older\":true,\"total\":3,"
-                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/Q-1\",\"blocks\":\"plan\"}]}";
+                            + "\"items\":[{\"kind\":\"decision\",\"link\":\"/api/v1/decisions/" + decisionId + "\",\"blocks\":\"plan\"}]}";
         NeedsCommand.RuntimeSender sender = req -> new HttpResponse(200, "application/json",
                             page.getBytes(StandardCharsets.UTF_8));
 
@@ -249,15 +253,17 @@ class NeedsCommandTest {
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
                             null
         );
-        var json = ("{\"page\":5,\"total_pages\":1,\"has_newer\":true,\"has_older\":false,\"total\":7,"
-                            + "\"items\":[]}").getBytes(StandardCharsets.UTF_8);
+        var pageNum = Generators.integers(2, 9).next();
+        var totalItems = Generators.integers(10, 50).next();
+        var json = ("{\"page\":" + pageNum + ",\"total_pages\":1,\"has_newer\":true,\"has_older\":false,\"total\":" + totalItems
+                            + ",\"items\":[]}").getBytes(StandardCharsets.UTF_8);
         var requested = new AtomicReference<String>();
         NeedsCommand.RuntimeSender sender = req -> {
             requested.set(req.target());
             return new HttpResponse(200, "application/json", json);
         };
         var command = new NeedsCommand(context);
-        command.page = 5;
+        command.page = pageNum;
 
         var english = new StringWriter();
         var german = new StringWriter();
@@ -265,14 +271,14 @@ class NeedsCommandTest {
         assertEquals(0, command.executeNeeds(sender, new PrintWriter(german), "de"));
 
         assertAll(
-                            () -> assertEquals("Page 5 is past the end: 7 items wait on 1 page; needs shows the first.",
+                            () -> assertEquals("Page " + pageNum + " is past the end: " + totalItems + " items wait on 1 page; needs shows the first.",
                                                 english.toString().strip()),
-                            () -> assertEquals("Seite 5 liegt hinter dem Ende: 7 Einträge warten auf 1 Seite; needs zeigt die erste.",
+                            () -> assertEquals("Seite " + pageNum + " liegt hinter dem Ende: " + totalItems + " Einträge warten auf 1 Seite; needs zeigt die erste.",
                                                 german.toString().strip()),
                             () -> assertFalse(english.toString().contains(
                                                                     MessageCatalogue.format("en", "operator.needs.empty", Map.of())),
                                                 english.toString()),
-                            () -> assertTrue(requested.get().endsWith("?page=5"), requested.get())
+                            () -> assertTrue(requested.get().endsWith("?page=" + pageNum), requested.get())
         );
     }
 

@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,6 +30,7 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("ActionMenus")
 class ActionMenusTest {
 
@@ -36,11 +39,17 @@ class ActionMenusTest {
         for (var action : offered) {
             list.add(ActionAvailability.enabled(action));
         }
-        return new WorkActions("subject", kind, state, "task", holdKind, "epic-1", list);
+        var subject = Generators.letterStrings(5, 10).next();
+        var task = Generators.letterStrings(4, 8).next();
+        var epic = Generators.letterStrings(4, 8).next();
+        return new WorkActions(subject, kind, state, task, holdKind, epic, list);
     }
 
     private static HoldRecord hold(String... acts) {
-        return new HoldRecord("H-1", "subject", "plan", "condition", "the plan reads cui-http", 3,
+        var id = "H-" + Generators.integers(1, 999).next();
+        var subject = Generators.letterStrings(5, 10).next();
+        var condition = Generators.letterStrings(5, 15).next();
+        return new HoldRecord(id, subject, "plan", condition, "the plan reads cui-http", 3,
                             Instant.parse("2026-10-16T10:14:00Z"), null, null, null, null, null,
                             List.of(acts), null);
     }
@@ -62,6 +71,10 @@ class ActionMenusTest {
         assertEquals("h", menu.entries().get(2).trigger());
         assertEquals("o", menu.entries().get(3).trigger());
         assertEquals(ActionsMenu.Subject.PLAN, menu.subject());
+
+        var menuDe = ActionMenus.plan("de", actions("plan", "running", null, "pause", "cancel", "chat",
+                            "settings"), null, null, "row");
+        assertTrue(menuDe.entries().get(3).label().startsWith("Plan-Einstellungen"), menuDe.entries().toString());
     }
 
     @Test
@@ -91,11 +104,12 @@ class ActionMenusTest {
     @Test
     @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Plan settings")
     void waitingPlan() {
+        var decisionId = "Q-" + Generators.integers(100, 999).next();
         var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
-                            "settings"), null, "Q-009", "row");
+                            "settings"), null, decisionId, "row");
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertEquals(5, labels.size(), labels.toString());
-        assertEquals("Decide Q-009\u2026", labels.get(0));
+        assertEquals("Decide " + decisionId + "\u2026", labels.get(0));
         assertEquals("!", menu.entries().get(0).trigger());
         assertEquals("decide", menu.entries().get(0).action());
         assertTrue(menu.entries().get(0).enabled());
@@ -110,8 +124,9 @@ class ActionMenusTest {
     @Test
     @DisplayName("the runtime's other spelling of the waiting state offers the decision first too")
     void waitingForYouPlan() {
+        var decisionId = "Q-" + Generators.integers(100, 999).next();
         var menu = ActionMenus.plan("en", actions("plan", "waiting_for_you", null, "pause", "cancel",
-                            "chat", "settings"), null, "Q-009", null);
+                            "chat", "settings"), null, decisionId, null);
         assertEquals("decide", menu.entries().get(0).action(), menu.entries().toString());
         assertEquals("!", menu.entries().get(0).trigger());
     }
@@ -119,8 +134,9 @@ class ActionMenusTest {
     @Test
     @DisplayName("a paused plan keeps its own order even while a decision stays open")
     void pausedPlanKeepsItsOrder() {
+        var decisionId = "Q-" + Generators.integers(100, 999).next();
         var menu = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
-                            "settings"), null, "Q-009", null);
+                            "settings"), null, decisionId, null);
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertEquals(4, labels.size(), labels.toString());
         assertTrue(labels.get(0).startsWith("Start"), labels.toString());
@@ -141,12 +157,14 @@ class ActionMenusTest {
     @Test
     @DisplayName("a disabled action stays in the menu with the runtime's reason")
     void disabled() {
+        var reason = Generators.letterStrings(10, 30).next();
         var offered = new ArrayList<ActionAvailability>();
-        offered.add(ActionAvailability.disabled("chat", "no configuration of replan qualifies yet"));
-        var menu = ActionMenus.plan("en", new WorkActions("subject", "plan", "running", null, null, null,
+        offered.add(ActionAvailability.disabled("chat", reason));
+        var subject = Generators.letterStrings(5, 10).next();
+        var menu = ActionMenus.plan("en", new WorkActions(subject, "plan", "running", null, null, null,
                             offered), null, null, null);
         assertFalse(menu.entries().getFirst().enabled());
-        assertEquals("no configuration of replan qualifies yet", menu.entries().getFirst().reason());
+        assertEquals(reason, menu.entries().getFirst().reason());
     }
 
     @Test
