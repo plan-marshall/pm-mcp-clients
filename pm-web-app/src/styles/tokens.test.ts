@@ -565,6 +565,10 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(themes.root['--control-border']).toBe('var(--color-border-strong)');
     });
 
+    it('declares the --state-slot-width token in :root', () => {
+      expect(themes.root['--state-slot-width']).toBe('8.5rem');
+    });
+
     it('sets --control-height to 44px on phone (below 768px)', () => {
       const phoneBlock = blockOf(withoutComments(css), '@media (max-width: 767px)');
       expect(phoneBlock).toContain('--control-height: 44px');
