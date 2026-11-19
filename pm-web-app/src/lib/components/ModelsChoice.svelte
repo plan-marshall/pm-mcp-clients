@@ -104,9 +104,13 @@
     );
     if (delta.added.length > 0 || delta.removed.length > 0) {
       syncProposal(delta.added, delta.removed);
+    } else if (models !== prevModels) {
+      // A refresh that changes only a non-identity fact leaves every edit in place and takes a
+      // stale notice with it.
+      prevModels = models;
+      droppedEdits = [];
     }
   }
-
   /**
    * @param added the identities the refreshed proposal adds
    * @param removed the identities it no longer carries
@@ -277,12 +281,10 @@
   }
 
   /**
-   * Whether the harness lists no model of its own: the published `source` of its rows says so
-   * (`probe` where the harness listed it, `operator` where it was typed in), so a group without a
-   * probed row is the one the operator fills in.
-   *
-   * @param rows the rows of the group
-   * @returns whether the group carries no probed row
+   * @param row a model row that may carry a token estimate
+   * @param locale the number format of the interface language
+   * @param _translate the catalogue translator, unused (the figure is a number)
+   * @returns the token figure, or an empty string where the row carries none
    */
   function tokensLabel(row: ModelRow, locale: Locale, _translate?: unknown): string {
     if (row.tokens === undefined) return '';

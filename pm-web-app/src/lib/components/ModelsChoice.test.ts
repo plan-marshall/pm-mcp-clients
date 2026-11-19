@@ -158,6 +158,17 @@ describe('ModelsChoice', () => {
     expect(screen.getByRole('button', { name: 'Remove shared-model from OpenCode' })).toBeVisible();
   });
 
+  it('keeps one row when the state reports the same identity twice', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [model({ model_id: 'opus-5.5' }), model({ model_id: 'OPUS-5.5' })],
+      },
+    });
+
+    expect(screen.getAllByTestId(/^model-toggle-claude-/)).toHaveLength(1);
+    expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 1 model');
+  });
+
   it('reads no allowed flag: every listed row is preselected where the proposal marks none', () => {
     render(ModelsChoice, {
       props: {

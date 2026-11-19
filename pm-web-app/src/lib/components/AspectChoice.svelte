@@ -89,14 +89,13 @@
       const previous = prevStores;
       prevStores = stores;
       const selected = stores.find((s) => s.kind === selectedStore);
-      // An unavailable OS store stays a legal choice: it is the way into `store.unavailable`.
-      const selectable = selected !== undefined && (selected.available || selected.kind === 'os');
-      if (selectedStore !== '' && !selectable) {
-        const gone = previous
+      if (selectedStore !== '' && !(selected !== undefined && selectable(selected))) {
+        droppedStores = previous
           .filter((s) => delta.removed.includes(s.kind))
           .map((s) => s.name);
-        droppedStores = gone;
         selectedStore = pickDefaultStore(stores);
+      } else if (droppedStores.length > 0) {
+        droppedStores = [];
       }
     }
   }
@@ -122,8 +121,7 @@
         (p) => delta.removed.includes(p.provider) && p.available && !selectedProviders.includes(p.provider),
       );
       droppedProviders = untickedGone.map((p) => p.name);
-      const present = new Set(providers.filter((p) => p.available).map((p) => p.provider));
-      const kept = selectedProviders.filter((id) => present.has(id));
+      const present = new Set(providers.filter((p) => p.available).map((p) => p.provider));      const kept = selectedProviders.filter((id) => present.has(id));
       const added = providers
         .filter((p) => delta.added.includes(p.provider) && p.available)
         .map((p) => p.provider)

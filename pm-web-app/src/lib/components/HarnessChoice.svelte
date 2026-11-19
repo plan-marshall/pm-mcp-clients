@@ -54,9 +54,12 @@
   let initial = initialSelection(harnesses);
   let chosen: string[] = [...initial.chosen];
   let defaultId = initial.defaultId;
-  // The edits a refreshed proposal dropped because the harness they belonged to is gone or is no
-  // longer a choice.
+  // Whether the operator picked the default themselves; until they do, the state's own mark wins.
+  let defaultTouched = false;
+  // The edits a refreshed proposal dropped because the harness they belonged to is gone or no
+  // longer a choice, and the choices the proposal itself withdrew.
   let droppedEdits: string[] = [];
+  let withdrawn: string[] = [];
   // A path the runtime serves but the browser cannot load falls back to the monogram, so a broken
   // icon never replaces the row's only mark.
   let failedIconPaths: Record<string, string> = {};
@@ -91,18 +94,22 @@
       const previous = prevHarnesses;
       prevHarnesses = harnesses;
       const offered = harnesses.filter(eligible).map((h) => h.harness_id);
-      const lostChoice = previous.filter(
-        (h) => chosen.includes(h.harness_id) && !offered.includes(h.harness_id),
-      );
       const untickedGone = previous.filter(
         (h) => delta.removed.includes(h.harness_id) && eligible(h) && !chosen.includes(h.harness_id),
       );
-      droppedEdits = [...new Set([...lostChoice, ...untickedGone].map((h) => h.name))];
-      const previouslyOffered = previous.filter(eligible).map((h) => h.harness_id);
+      // One notice for a change the operator made, one for a choice the refreshed proposal withdrew.
+      droppedEdits = untickedGone.map((h) => h.name);
+      withdrawn = previous
+        .filter((h) => chosen.includes(h.harness_id) && !offered.includes(h.harness_id))
+        .map((h) => h.name);
       const kept = chosen.filter((id) => offered.includes(id));
+      const previouslyOffered = previous.filter(eligible).map((h) => h.harness_id);
       const added = offered.filter((id) => !previouslyOffered.includes(id) && !kept.includes(id));
       chosen = [...kept, ...added];
+      const recordedId = harnesses.find((h) => h.default && offered.includes(h.harness_id))
+        ?.harness_id;
       if (!chosen.includes(defaultId)) defaultId = chosen[0] ?? '';
+      if (!defaultTouched && recordedId && chosen.includes(recordedId)) defaultId = recordedId;
     }
   }
 
@@ -127,6 +134,7 @@
   function makeDefault(id: string): void {
     if (chosen.includes(id)) {
       defaultId = id;
+      defaultTouched = true;
     }
   }
 
@@ -261,6 +269,11 @@
   {#if droppedEdits.length > 0}
     <p class="choice-screen__note" role="status" data-testid="harness-dropped">
       {$t('onboard.choice.edit_dropped', { rows: droppedEdits.join(', ') })}
+    </p>
+  {/if}
+  {#if withdrawn.length > 0}
+    <p class="choice-screen__note" role="status" data-testid="harness-withdrawn">
+      {$t('onboard.choice.row_withdrawn', { rows: withdrawn.join(', ') })}
     </p>
   {/if}
 

@@ -169,6 +169,45 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
   });
 
+  it('adopts a default the state moves while the operator has not chosen one', async () => {
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: {
+        harnesses: [
+          harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+          harness({ harness_id: 'opencode', name: 'OpenCode' }),
+        ],
+      },
+    });
+    expect(getByTestId('harness-check')).toHaveTextContent('Claude Code the default');
+
+    await rerender({
+      harnesses: [
+        harness({ harness_id: 'claude', name: 'Claude Code' }),
+        harness({ harness_id: 'opencode', name: 'OpenCode', default: true }),
+      ],
+    });
+
+    expect(getByTestId('harness-check')).toHaveTextContent('OpenCode the default');
+  });
+
+  it('does not call a proposal-side removal of a ticked harness an operator edit', async () => {
+    const { rerender, getByTestId, queryByTestId } = render(HarnessChoice, {
+      props: {
+        harnesses: [
+          harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+          harness({ harness_id: 'opencode', name: 'OpenCode' }),
+        ],
+      },
+    });
+    expect(getByTestId('harness-toggle-claude')).toBeChecked();
+
+    await rerender({ harnesses: [harness({ harness_id: 'opencode', name: 'OpenCode' })] });
+
+    expect(queryByTestId('harness-toggle-claude')).toBeNull();
+    expect(queryByTestId('harness-dropped')).toBeNull();
+    expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
+  });
+
   it('drops a tick a refreshed scan makes meaningless and says so', async () => {
     const base = [
       harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
@@ -188,7 +227,7 @@ describe('HarnessChoice monograms', () => {
     });
 
     expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
-    expect(getByTestId('harness-dropped')).toHaveTextContent('Claude Code');
+    expect(getByTestId('harness-withdrawn')).toHaveTextContent('Claude Code');
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
     expect(queryByTestId('harness-toggle-opencode')).toBeChecked();
   });
