@@ -177,22 +177,34 @@ final class EpicDecompositionDialogue {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
             } else {
-                var cutKey = accepted(CUT_KEYS, answer);
-                if (cutKey != null) {
-                    current = switch (cutKey.act()) {
-                        case ADD -> add(current);
-                        case REWRITE -> rewrite(current);
-                    };
-                } else {
-                    var target = planAt(current, answer);
-                    if (target != null) {
-                        current = openPlan(current, target);
-                    } else {
-                        notOffered(answer, offered(current));
-                    }
-                }
+                current = answerCut(current, answer);
             }
         }
+    }
+
+    /**
+     * Runs the act an answer to the cut prompt names, or opens the plan it names, or says that the
+     * answer is not offered.
+     *
+     * @param current the cut shown
+     * @param answer  the answer that is neither <em>Enter</em> nor the leave key
+     * @return the cut the dialogue goes on with
+     * @throws IOException on transport failure
+     */
+    private EpicDecomposition answerCut(EpicDecomposition current, String answer) throws IOException {
+        var cutKey = accepted(CUT_KEYS, answer);
+        if (cutKey != null) {
+            return switch (cutKey.act()) {
+                case ADD -> add(current);
+                case REWRITE -> rewrite(current);
+            };
+        }
+        var target = planAt(current, answer);
+        if (target == null) {
+            notOffered(answer, offered(current));
+            return current;
+        }
+        return openPlan(current, target);
     }
 
     /**

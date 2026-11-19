@@ -1016,7 +1016,7 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private static boolean isUnenrolled(String projectId) {
-        return "unenrolled".equalsIgnoreCase(projectId);
+        return KIND_UNENROLLED.equalsIgnoreCase(projectId);
     }
 
     /**

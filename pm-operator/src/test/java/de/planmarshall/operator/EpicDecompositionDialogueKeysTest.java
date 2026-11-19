@@ -274,7 +274,7 @@ class EpicDecompositionDialogueKeysTest {
 
     /** @return how often the dialogue read the cut resource */
     private long readsOf(String target) {
-        return requests.stream().filter(request -> ("GET " + target).equals(request)).count();
+        return requests.stream().filter(("GET " + target)::equals).count();
     }
 
     private TerminalTestDriver dialogue(String locale, String script) throws IOException {
