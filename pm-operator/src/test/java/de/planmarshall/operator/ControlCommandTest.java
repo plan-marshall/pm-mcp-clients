@@ -80,7 +80,7 @@ class ControlCommandTest {
         return "H-" + String.format("%04d", Generators.integers(1, 9_999).next());
     }
 
-    private static String settingsJson(String plan, int revision, PlanSettingsValue... values) throws IOException {
+    private static String settingsJson(String plan, int revision, PlanSettingsValue... values) {
         return new PlanSettingsRecord(plan, revision, List.of(values)).toJson();
     }
 
