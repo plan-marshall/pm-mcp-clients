@@ -22,8 +22,9 @@
     "test:urls": "bash scripts/connection-urls.test.sh",
     "test:dev-host": "bash scripts/verify-dev-host.sh",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "lint": "eslint .",
+    "lint": "eslint . && node scripts/vocabulary-lint.mjs",
     "lint:fix": "eslint . --fix",
+    "lint:vocabulary": "node scripts/vocabulary-lint.mjs",
     "format": "prettier --write \"src/**/*.{ts,js,svelte,css,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,svelte,css,json}\"",
     "quality": "npm run lint && npm run test:ci"
