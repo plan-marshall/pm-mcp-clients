@@ -18,6 +18,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.function.ToIntFunction;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -755,6 +757,42 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     /**
+     * The printed word and the duration of one cleanup kind: what the mapping over
+     * {@link CleanupKind} carries, so a kind gained on the wire is one entry and never a second list.
+     *
+     * @param label the word the durations line prints for the kind
+     * @param days  the duration the kind is swept after
+     */
+    record KindDisplay(String label, ToIntFunction<CleanupDurations> days) {
+    }
+
+    /**
+     * The durations mapping: every {@link CleanupKind} to the label it prints and the duration it
+     * reads. The wire values ({@code plan}, {@code epic}, {@code logs}, {@code read_reports},
+     * {@code unenrolled_project}) differ from the printed labels, so the mapping is explicit; it is
+     * total over {@link CleanupKind#values()}, which a test pins.
+     */
+    private static final Map<CleanupKind, KindDisplay> KIND_DISPLAYS = buildKindDisplays();
+
+    private static Map<CleanupKind, KindDisplay> buildKindDisplays() {
+        var displays = new EnumMap<CleanupKind, KindDisplay>(CleanupKind.class);
+        displays.put(CleanupKind.PLAN, new KindDisplay(KIND_PLANS, CleanupDurations::plansAfterDays));
+        displays.put(CleanupKind.EPIC, new KindDisplay(KIND_EPICS, CleanupDurations::epicsAfterDays));
+        displays.put(CleanupKind.LOGS, new KindDisplay(KIND_LOGS, CleanupDurations::logsAfterDays));
+        displays.put(CleanupKind.READ_REPORTS, new KindDisplay(KIND_REPORTS, CleanupDurations::reportsAfterDays));
+        displays.put(CleanupKind.UNENROLLED_PROJECT,
+                            new KindDisplay("unenrolled", CleanupDurations::unenrolledAfterDays));
+        return Map.copyOf(displays);
+    }
+
+    /**
+     * @return the mapping from every cleanup kind to its label and its duration
+     */
+    static Map<CleanupKind, KindDisplay> kindDisplays() {
+        return KIND_DISPLAYS;
+    }
+
+    /**
      * Renders the durations in force: the one figure of every kind with the reminder where the
      * kinds agree ({@code system.cleanup.durations.summary}), and each kind with its own value where
      * they differ or one is never offered.
@@ -764,17 +802,17 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the rendered durations
      */
     static String durationsText(String locale, CleanupDurations durations) {
-        var days = List.of(durations.plansAfterDays(), durations.epicsAfterDays(), durations.logsAfterDays(),
-                            durations.reportsAfterDays(), durations.unenrolledAfterDays());
+        var days = Arrays.stream(CleanupKind.values())
+                            .map(kind -> KIND_DISPLAYS.get(kind).days().applyAsInt(durations)).toList();
         if (days.stream().distinct().count() == 1 && days.getFirst() > 0) {
             return MessageCatalogue.format(locale, "system.cleanup.durations.summary",
                                 Map.of("days", days.getFirst(), "remind", durations.remindAfterDays(), "own", 0));
         }
-        var kinds = List.of(KIND_PLANS, KIND_EPICS, KIND_LOGS, KIND_REPORTS, "unenrolled");
         var parts = new ArrayList<String>();
-        for (int i = 0; i < kinds.size(); i++) {
-            var value = days.get(i);
-            parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.kind", Map.of("kind", kinds.get(i)))
+        for (var kind : CleanupKind.values()) {
+            var display = KIND_DISPLAYS.get(kind);
+            var value = display.days().applyAsInt(durations);
+            parts.add(MessageCatalogue.format(locale, "system.cleanup.durations.kind", Map.of("kind", display.label()))
                                 + " " + MessageCatalogue.format(locale, "system.cleanup.durations.value",
                                 Map.of("never", value < 0 ? "true" : "false", "days", Math.max(value, 0))));
         }
