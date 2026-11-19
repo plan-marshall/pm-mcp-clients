@@ -162,6 +162,7 @@ Not in this plan, named so they are not lost (each stays a Watch or Open Defect 
 - Overlaps with:
   - `PLAN-79` (running when this was staged): `pm-operator/src/test/java/` (directory claim). The test sweep rewrites the same test classes; start after it, or in a different half, and say so in the progress record.
   - `PLAN-165` (running when this was staged): `CleanupCommand.java` and `CleanupCommandTest.java`; deliverable 5 and the guard touch the same file: start after it lands or rebase.
+    **The operator's word of 2026-11-19: start now, do not wait for PLAN-165.** The lane merges `origin/main` into its branch before it edits `CleanupCommand.java` and `CleanupCommandTest.java`, keeps both sides, and says in the progress record which of PLAN-165's changes it rebased over; `PLAN-79` has landed (#502 `ac538733`) and the test-directory claim is gone.
   - `PLAN-42`, `PLAN-44`, `PLAN-48`, `PLAN-138`, `PLAN-139`, `PLAN-140` (staged): the same command classes; this plan lands before any of them is emitted, and its renderer and exit handling are their base.
   - `doc/design/terminal-client/19-actions.adoc` (deliverable 6, added 2026-11-19) is also declared by the staged `PLAN-42` and `PLAN-138`, and `doc/design/shared/work-actions.adoc` by the staged `PLAN-156` (the web modals and pickers): a one-line correction each; whichever lands second rebases and keeps both sides.
   - `PLAN-167` shipped on 2026-11-19 (#473, #480, #490, #497, #500): its overlap with four design documents of this plan is gone; re-read the design documents at HEAD.
