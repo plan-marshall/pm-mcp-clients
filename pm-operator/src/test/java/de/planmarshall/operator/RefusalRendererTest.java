@@ -20,6 +20,7 @@ import java.io.StringWriter;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.resource.ApiErrorCode;
 
 import org.junit.jupiter.api.DisplayName;
@@ -138,6 +139,81 @@ class RefusalRendererTest {
         var output = sw.toString();
         assertTrue(output.contains("✗ Diesen Eintrag gibt es nicht"));
         assertTrue(output.contains("Kein Plan, kein Epic, keine Entscheidung"));
+    }
+
+    @Test
+    @DisplayName("a local refusal is rendered as what it is, not as an unknown runtime code")
+    void localRefusalIsNoUnknownCode() {
+        var ex = new OperatorRefusedException(Generators.letterStrings(5, 12).next() + " unreachable");
+        var lines = RefusalRenderer.linesOf("en", ex);
+        assertEquals(3, lines.size());
+        assertFalse(lines.get(0).contains("The runtime refused"), lines.get(0));
+        assertFalse(lines.get(1).contains("code this client does not know"), lines.get(1));
+        assertFalse(lines.get(2).contains("Update the client"), lines.get(2));
+    }
+
+    @Test
+    @DisplayName("render(exception) passes the arguments the body names into the fix line")
+    void renderPassesTheArgumentsOfTheBody() {
+        var project = Generators.letterStrings(4, 10).next();
+        var json = "{\"error\":\"enrolment_tampered\",\"message\":\"tampered\",\"project_id\":\"" + project + "\"}";
+        var ex = new OperatorRefusedException("plan", new HttpResponse(409, "application/json",
+                            json.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        var sw = new StringWriter();
+        RefusalRenderer.render(new PrintWriter(sw), "en", ex);
+        var output = sw.toString();
+        assertTrue(output.contains(project), "the fix line must name the project: " + output);
+        assertFalse(output.contains("{"), output);
+    }
+
+    @Test
+    @DisplayName("an HTML page and a stack trace are never the message, and no body exceeds the cap")
+    void bodiesAreNotTheMessage() {
+        var html = new OperatorRefusedException("plan", new HttpResponse(502, "text/html",
+                            "<html><body><h1>502 Bad Gateway</h1></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        var trace = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
+                            ("java.lang.IllegalStateException: boom\n\tat a.b.C.d(C.java:1)")
+                                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        var longBody = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
+                            ("x".repeat(400)).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+
+        var htmlLines = RefusalRenderer.linesOf("en", html);
+        var traceLines = RefusalRenderer.linesOf("en", trace);
+        var longLines = RefusalRenderer.linesOf("en", longBody);
+
+        for (var line : htmlLines) {
+            assertFalse(line.contains("<") || line.contains("html"), line);
+        }
+        for (var line : traceLines) {
+            assertFalse(line.contains("IllegalStateException") || line.contains(" at "), line);
+        }
+        for (var line : longLines) {
+            assertFalse(line.contains("x".repeat(300)), "the body is not printed in full");
+        }
+        assertTrue(longBody.serverMessage().length() <= OperatorRefusedException.MAX_MESSAGE_LENGTH + 1,
+                            "capped: " + longBody.serverMessage().length());
+    }
+
+    @Test
+    @DisplayName("a 404 that names no code on a route the runtime does not know is no missing entry")
+    void codeLess404IsNoMissingEntry() {
+        var ex = new OperatorRefusedException("runtime upgrade --notes",
+                            new HttpResponse(404, "text/plain", new byte[0]));
+        var lines = RefusalRenderer.linesOf("en", ex);
+        assertFalse(lines.get(0).contains("This entry does not exist"), lines.get(0));
+        assertFalse(lines.get(1).contains("No plan, epic, decision, report or entry"), lines.get(1));
+        assertTrue(lines.get(0).contains("does not know the request"), lines.get(0));
+    }
+
+    @Test
+    @DisplayName("the internal_fault texts name no audit id the operator is told to look up")
+    void internalFaultNamesNoAuditId() {
+        for (var locale : List.of("en", "de")) {
+            var lines = RefusalRenderer.renderLines(locale, ApiErrorCode.INTERNAL_FAULT);
+            for (var line : lines) {
+                assertFalse(line.toLowerCase(java.util.Locale.ROOT).contains("audit"), line);
+            }
+        }
     }
 
     private static void assertNoLeaks(List<String> lines) {

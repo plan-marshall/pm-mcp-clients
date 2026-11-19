@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -68,15 +69,48 @@ class OperatorRefusedExceptionTest {
     }
 
     @Test
-    @DisplayName("parseRefusal handles 404 with empty body")
+    @DisplayName("parseRefusal reads a 404 with no body and no code as a route the runtime does not know")
     void parseRefusal404EmptyBody() {
         var resp = new HttpResponse(404, "application/json", new byte[0]);
         var ex = new OperatorRefusedException("plan", resp);
         assertEquals("plan", ex.verb());
         assertEquals(404, ex.status());
-        assertEquals(ApiErrorCode.SCOPE_NOT_FOUND, ex.code());
-        assertEquals(ApiErrorCode.SCOPE_NOT_FOUND.wire(), ex.rawCode());
+        assertNull(ex.code());
+        assertNull(ex.rawCode());
         assertEquals(1, ex.exitCode());
+        assertTrue(ex.getMessage().contains("does not know the request"), ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("a 404 that names no code in a JSON object is a missing entry")
+    void parseRefusal404JsonObjectWithoutCode() {
+        var json = "{\"message\":\"The plan does not exist\"}";
+        var resp = new HttpResponse(404, "application/json", json.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("plan", resp);
+        assertEquals(ApiErrorCode.SCOPE_NOT_FOUND, ex.code());
+        assertEquals("The plan does not exist", ex.serverMessage());
+    }
+
+    @Test
+    @DisplayName("the arguments of the body are carried with the exception")
+    void argumentsAreTheScalarsOfTheBody() {
+        var json = "{\"error\":\"enrolment_tampered\",\"project_id\":\"project-a\",\"command\":\"accept\"}";
+        var resp = new HttpResponse(409, "application/json", json.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("plan", resp);
+        assertEquals("project-a", ex.arguments().get("project_id"));
+        assertEquals("accept", ex.arguments().get("command"));
+        assertFalse(ex.arguments().containsKey("error"));
+    }
+
+    @Test
+    @DisplayName("a numeric argument of the body is carried too")
+    void numericArgumentIsCarried() {
+        var json = "{\"error\":\"dependency_unanswered\",\"part\":3}";
+        var resp = new HttpResponse(409, "application/json", json.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("answer", resp);
+        assertEquals(ApiErrorCode.DEPENDENCY_UNANSWERED, ex.code());
+        assertTrue(ex.arguments().containsKey("part"), "arguments: " + ex.arguments());
+        assertEquals(3, Integer.parseInt(ex.arguments().get("part").toString()));
     }
 
     @Test
