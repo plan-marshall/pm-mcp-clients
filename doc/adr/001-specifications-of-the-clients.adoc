@@ -27,10 +27,10 @@ repository keeps the requirements, which point into the code ("The spec should b
 module", `doc-review-2026-11-17-001`, decision O1-A).
 
 The clients of the operator are specified in parts of three families that the daemon also implements, so the move is
-a section-level cut, not a file-level one (`doc/specification-move-cut.md`, agreed with the operator before a
-document moved). This repository already holds a design of its two clients in `doc/design/`, which states how the
-views, the dialogues and the texts look, and which says of itself that "a design is the specification its client's
-implementation follows".
+a section-level cut, not a file-level one (`doc/specification-move-cut.md` as it stood in commit `3f912c18`, agreed
+with the operator before a document moved). This repository already holds a design of its two clients in `doc/design/`,
+which states how the views, the dialogues and the texts look, and which says of itself that "a design is the
+specification its client's implementation follows".
 
 == Decision
 
@@ -42,9 +42,11 @@ The specifications the modules of this repository implement live here, beside th
   `pm-operator`, `pm-mock-runtime`, `pm-web-app`, `pm-web-e2e`); `doc/ImplementationWatch.adoc` and
   `doc/implementation-watch/` hold their watch items, with their identifiers unchanged. A family whose parts are
   split keeps one index per repository, each listing and describing only the parts it holds; the other index is one
-  link away. `harness-integration` has all of its parts here, so its index here carries the family's `Overview`,
-  `Traceability` and `Status`; for `cli-and-security` and `runtime-model` they stay with the documentation's index
-  until the daemon's parts move into `plan-marshall-mcp`.
+  link away. `harness-integration` has all of its parts here except the `Bundle Content per Harness` section, which stays
+  with the model-facing content in `plan-marshall-documentation` until it moves into `plan-marshall-mcp`; its index here
+  carries the family's `Overview`, `Traceability` and `Status` for the parts it holds. For `cli-and-security` and
+  `runtime-model` those three sections stay with the family index of `plan-marshall-documentation` until the daemon's
+  parts move into `plan-marshall-mcp`, and the index here lists only the parts this repository holds.
 * **An implemented section is condensed and pointed, never deleted.** A section keeps its heading and its anchor. When
   the code implements it, it is reduced to the one statement of what it requires and the link to the developer
   documentation of the module that implements it; the evidence of what implements and verifies a requirement is

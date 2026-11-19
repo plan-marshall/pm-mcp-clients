@@ -224,6 +224,19 @@ Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of 
 
 Documentation: link:specification/runtime-model/03-relay.adoc#relay-rules[Relay § Relay Rules]
 
+== link:../../plan-marshall-documentation/doc/requirements/05-services.adoc[Services]
+
+[#PM-SVC-3]
+=== PM-SVC-3: Selective Upstream MCP Proxy & Provenance Tagging
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SVC-3[PM-SVC-3]
+
+Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`] (the relay forwards the daemon's MCP surface unchanged)
+
+Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
+
+Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
+
 == link:../../plan-marshall-documentation/doc/requirements/06-execution.adoc[Execution]
 
 [#PM-EXEC-1]
@@ -236,28 +249,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
 Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-enrol-harness[Operator Acts § Harness Enrolment]
-
-[#PM-IMPL-4]
-=== PM-IMPL-4: Bounded Long-Poll & Progress-Reset Waiting Primitives
-
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-4[PM-IMPL-4]
-
-Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the bounded long-poll of the socket client)
-
-Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc#_request_and_response_flow[Relay § Request and Response Flow]
-
-[#PM-IMPL-7]
-=== PM-IMPL-7: Data Store Invariants, Footprint Reconciliation & Lock Ordering
-
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-7[PM-IMPL-7]
-
-Implementation: none in this repository (the stores of `pm-mcp-core` carry it)
-
-Verified by: none in this repository
-
-Documentation: none in this repository
 
 == link:../../plan-marshall-documentation/doc/requirements/07-credentials.adoc[Credentials]
 
@@ -592,6 +583,30 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/ClientEn
 
 Documentation: link:specification/harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration Table]
 
+== link:../../plan-marshall-documentation/doc/requirements/14-implementation.adoc[Implementation]
+
+[#PM-IMPL-4]
+=== PM-IMPL-4: Bounded Long-Poll & Progress-Reset Waiting Primitives
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-4[PM-IMPL-4]
+
+Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the bounded long-poll of the socket client)
+
+Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
+
+Documentation: link:specification/runtime-model/03-relay.adoc#_request_and_response_flow[Relay § Request and Response Flow]
+
+[#PM-IMPL-7]
+=== PM-IMPL-7: Data Store Invariants, Footprint Reconciliation & Lock Ordering
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-7[PM-IMPL-7]
+
+Implementation: none in this repository (the stores of `pm-mcp-core` carry it)
+
+Verified by: none in this repository
+
+Documentation: none in this repository
+
 == link:../../plan-marshall-documentation/doc/requirements/15-extensions-and-recipes.adoc[Extensions and Recipes]
 
 [#PM-EXT-6]
@@ -605,20 +620,7 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]
 
-== link:../../plan-marshall-documentation/doc/requirements/05-services.adoc[Services]
-
-[#PM-SVC-3]
-=== PM-SVC-3: Selective Upstream MCP Proxy & Provenance Tagging
-
-link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SVC-3[PM-SVC-3]
-
-Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`] (the relay forwards the daemon's MCP surface unchanged)
-
-Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
-
-== link:../../plan-marshall-documentation/doc/requirements/14-implementation.adoc[Implementation]
+== link:../../plan-marshall-documentation/doc/requirements/16-model-work.adoc[Model Work]
 
 [#PM-WORK-1]
 === PM-WORK-1: Roles as Configuration
