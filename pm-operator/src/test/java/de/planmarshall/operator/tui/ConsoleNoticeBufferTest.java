@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,7 @@ import de.planmarshall.operator.ConsoleNoticeBuffer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("ConsoleNoticeBuffer")
 class ConsoleNoticeBufferTest {
 
@@ -114,13 +117,14 @@ class ConsoleNoticeBufferTest {
         var buffer = new ConsoleNoticeBuffer();
         buffer.activate();
         buffer.hold(ConsoleNoticeBuffer.Category.NEED);
-        assertTrue(buffer.holdLine("paired: iPad"));
-        assertTrue(buffer.holdLine("Code ABCD, valid until 12:00"));
+        var line1 = "paired: " + Generators.letterStrings(4, 10).next();
+        var line2 = Generators.letterStrings(10, 25).next();
+        assertTrue(buffer.holdLine(line1));
+        assertTrue(buffer.holdLine(line2));
         var drained = buffer.drain("en");
         assertAll(
                             () -> assertEquals("While the overview was open: 1 item waits.", drained.summary()),
-                            () -> assertEquals(List.of("paired: iPad", "Code ABCD, valid until 12:00"),
-                                                drained.lines()),
+                            () -> assertEquals(List.of(line1, line2), drained.lines()),
                             () -> assertFalse(buffer.hasHeldNotices())
         );
     }
@@ -128,20 +132,21 @@ class ConsoleNoticeBufferTest {
     @Test
     @DisplayName("a line offered while the view is closed is printed by the caller")
     void closedBufferRejectsLine() {
-        assertFalse(new ConsoleNoticeBuffer().holdLine("line"));
+        assertFalse(new ConsoleNoticeBuffer().holdLine(Generators.letterStrings(4, 10).next()));
     }
 
     @Test
     @DisplayName("the meanwhile text names the place the operator was in")
     void textNamesThePlace() {
+        var place = Generators.letterStrings(5, 10).next();
         assertAll(
                             () -> assertEquals("While the overview was open: 1 decision arrived.",
                                                 MessageCatalogue.format("en", "operator.overview.meanwhile",
                                                                     Map.of("where", "the overview",
                                                                                         "events", "1 decision arrived"))),
-                            () -> assertEquals("While fix-relay was open: 1 decision arrived.",
+                            () -> assertEquals("While " + place + " was open: 1 decision arrived.",
                                                 MessageCatalogue.format("en", "operator.overview.meanwhile",
-                                                                    Map.of("where", "fix-relay",
+                                                                    Map.of("where", place,
                                                                                         "events", "1 decision arrived")))
         );
     }
@@ -152,15 +157,16 @@ class ConsoleNoticeBufferTest {
         var buffer = new ConsoleNoticeBuffer();
         buffer.activate();
         buffer.hold(ConsoleNoticeBuffer.Category.DECISION);
+        var place = Generators.letterStrings(5, 10).next();
         assertAll(
-                            () -> assertEquals("While fix-relay was open: 1 decision arrived.",
-                                                buffer.drain("en", "fix-relay").summary()),
+                            () -> assertEquals("While " + place + " was open: 1 decision arrived.",
+                                                buffer.drain("en", place).summary()),
                             () -> assertEquals("", buffer.drain("en").summary()),
                             () -> assertEquals("While the overview was open: nothing arrived.",
                                                 ConsoleNoticeBuffer.leavingLine("en",
                                                                     ConsoleNoticeBuffer.overviewPlace("en"))),
-                            () -> assertEquals("While fix-relay was open: nothing arrived.",
-                                                ConsoleNoticeBuffer.leavingLine("en", "fix-relay")),
+                            () -> assertEquals("While " + place + " was open: nothing arrived.",
+                                                ConsoleNoticeBuffer.leavingLine("en", place)),
                             () -> assertEquals("W\u00e4hrend die \u00dcbersicht offen war: nichts kam.",
                                                 ConsoleNoticeBuffer.leavingLine("de",
                                                                     ConsoleNoticeBuffer.overviewPlace("de")))

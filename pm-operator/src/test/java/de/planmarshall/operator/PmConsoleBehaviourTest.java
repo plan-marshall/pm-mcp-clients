@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -778,11 +780,24 @@ class PmConsoleBehaviourTest {
                 // While the first refresh holds the lock and its read is open, the second must not
                 // reach the runtime: a second status request in this window is the interleaving.
                 var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-                while (t2.getState() != Thread.State.TIMED_WAITING && statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                while (statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                    var blocker = LockSupport.getBlocker(t2);
+                    if (t2.getState() == Thread.State.TIMED_WAITING && blocker != null && !(blocker instanceof Thread)) {
+                        break;
+                    }
                     Thread.onSpinWait();
                 }
-                assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                var blocker = LockSupport.getBlocker(t2);
+                assertNotNull(blocker, "the second refresh must have a lock blocker");
+                assertFalse(blocker instanceof Thread, "blocker must be the lock synchronizer, not thread.join: " + blocker);
                 assertEquals(Thread.State.TIMED_WAITING, t2.getState(), "the second refresh must be waiting on the lock");
+
+                // Check the negative over a window rather than at a single instant
+                long windowEnd = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(50);
+                while (System.nanoTime() < windowEnd) {
+                    assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                    Thread.onSpinWait();
+                }
 
                 releaseFirst.countDown();
                 t1.join(30_000);
@@ -837,6 +852,55 @@ class PmConsoleBehaviourTest {
         new EntryFlow(introContext, aspects).run(new PrintWriter(intro), createReader("q\n"));
         assertTrue(intro.toString().contains("8 steps."),
                             "the intro line must say the run's step count");
+    }
+
+    @Test
+    @DisplayName("the injected aspect list reaches the onboarding dialogue through PmConsole and EntryFlow")
+    void injectedAspectListReachesTheDialogueThroughConsoleAndEntryFlow() throws Exception {
+        var aspects = new ArrayList<>(List.of(OnboardingAspect.values()));
+        aspects.add(OnboardingAspect.LANGUAGE);
+        assertEquals(8, aspects.size());
+
+        var onboardingStateJson = """
+                            {"state":"harness.consent","completed_steps":1,
+                             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
+                               "facts":{"summary":"Look for harnesses on this machine?"},
+                               "links":[{"id":"q","method":"POST","preselected":true}]}}
+                            """;
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false,\"onboard\":{\"step\":1}}");
+            } else if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, onboardingStateJson);
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. Dialogue through PmConsole.continueOnboarding (handleEmptyEnter)
+        var renderedConsole = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream("q\n".getBytes(StandardCharsets.UTF_8)), renderedConsole)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), renderedConsole), null);
+            var console = new PmConsole(context, new EntryFlow(context, aspects));
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(renderedConsole), reader, terminal);
+            assertTrue(renderedConsole.toString(StandardCharsets.UTF_8).contains("[2/8]"),
+                                "PmConsole.continueOnboarding must run dialogue with injected aspect count (8), got: " + renderedConsole);
+        }
+
+        // 2. Dialogue through EntryFlow.runOnboardingDialogue (choosing 'h' at entry prompt)
+        var renderedFlow = new StringWriter();
+        var flowContext = new OperatorContext(fixture.environment(), tempDir, true);
+        var flow = new EntryFlow(flowContext, aspects);
+        flow.run(new PrintWriter(renderedFlow), createReader("h\nq\n"));
+        assertTrue(renderedFlow.toString().contains("[2/8] Harnesses"),
+                            "EntryFlow.runOnboardingDialogue must run dialogue with injected aspect count (8), got: " + renderedFlow);
     }
 
     private LineReader createReader(String input) throws Exception {

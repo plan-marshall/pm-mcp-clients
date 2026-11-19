@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -34,32 +36,38 @@ import de.planmarshall.operator.tui.VirtualScreenTerminal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("ProjectSelector")
 class ProjectSelectorTest {
 
     @Test
     @DisplayName("orders favourites first, then recent, then the rest without duplicates")
     void ordersFavouritesFirst() {
-        var favourite = project("favourite");
-        var recent = project("recent");
-        var other = project("other");
+        var favId = Generators.letterStrings(4, 10).next() + "-fav";
+        var recId = Generators.letterStrings(4, 10).next() + "-rec";
+        var othId = Generators.letterStrings(4, 10).next() + "-oth";
+        var favourite = project(favId);
+        var recent = project(recId);
+        var other = project(othId);
         var explorer = new ProjectExplorer(List.of(favourite), List.of(recent, favourite),
                             List.of(other, recent, favourite), List.of());
 
         var ordered = ProjectSelector.order(explorer);
 
-        assertEquals(List.of("favourite", "recent", "other"),
+        assertEquals(List.of(favId, recId, othId),
                             ordered.stream().map(EnrolledProject::projectId).toList());
     }
 
     @Test
     @DisplayName("accepts a number, an exact id, or leave")
     void parsesChoices() {
-        var projects = List.of(project("first"), project("second"));
+        var firstId = Generators.letterStrings(4, 10).next() + "-1";
+        var secondId = Generators.letterStrings(4, 10).next() + "-2";
+        var projects = List.of(project(firstId), project(secondId));
 
-        assertEquals("first", ProjectSelector.parseChoice("1", projects).projectId());
-        assertEquals("second", ProjectSelector.parseChoice(" 2 ", projects).projectId());
-        assertEquals("second", ProjectSelector.parseChoice("second", projects).projectId());
+        assertEquals(firstId, ProjectSelector.parseChoice("1", projects).projectId());
+        assertEquals(secondId, ProjectSelector.parseChoice(" 2 ", projects).projectId());
+        assertEquals(secondId, ProjectSelector.parseChoice(secondId, projects).projectId());
         assertNull(ProjectSelector.parseChoice("q", projects));
         assertNull(ProjectSelector.parseChoice("", projects));
         assertNull(ProjectSelector.parseChoice("3", projects));

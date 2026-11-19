@@ -12,6 +12,9 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,20 +28,20 @@ import org.junit.jupiter.api.condition.OS;
  * the runtime refuses a body without it, so an old-shape {@code {"message":…}} body draws no reply —
  * and renders the transcript it read while the role's reply was being written.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator plan chat turn against the mock runtime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class PlanChatIT {
 
     /** The role's second reply, which the sent message draws. */
     private static final String REPLY = "Here is what I would change.";
-    /** The message this case sends. */
-    private static final String MESSAGE = "Can the task list be checked?";
 
     @Test
     @DisplayName("a message is sent as a B1 turn and the role's reply is rendered")
     void planChatTurn() throws Exception {
+        var message = Generators.nonBlankStrings().next();
         try (var harness = DialogueHarness.start(StandardScenarios.CONTROL_CHAT);
-             var session = harness.open("plan", "chat", "fix-relay", "--message", MESSAGE)) {
+             var session = harness.open("plan", "chat", "fix-relay", "--message", message)) {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
             assertEquals(0, session.exitCode(), session.rawOutput());
             assertTrue(session.screenText().contains(REPLY), session.screenText());

@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -40,6 +42,7 @@ import org.junit.jupiter.params.provider.ValueSource;
  * locale, the onboarding detection of the several status shapes, the badge extraction, and the web
  * port fallback.
  */
+@EnableGeneratorController
 @DisplayName("EntryFlow statics")
 class EntryFlowStaticsTest {
 
@@ -142,11 +145,12 @@ class EntryFlowStaticsTest {
     @Test
     @DisplayName("the completed step and the web port read the numbers and fall back")
     void numbers() {
+        var customPort = Generators.integers(1024, 65535).next();
         assertEquals(3, EntryFlow.getCompletedOnboardStep(Map.of("onboard", Map.of("step", 3))));
         assertEquals(2, EntryFlow.getCompletedOnboardStep(
                             Map.of("onboard", Map.of("completed_steps", 2))));
         assertEquals(0, EntryFlow.getCompletedOnboardStep(Map.of()));
-        assertEquals(9000, EntryFlow.getWebPort(Map.of("web", Map.of("port", 9000))));
+        assertEquals(customPort, EntryFlow.getWebPort(Map.of("web", Map.of("port", customPort))));
         assertEquals(EntryFlow.DEFAULT_WEB_PORT, EntryFlow.getWebPort(Map.of()));
     }
 
@@ -172,13 +176,15 @@ class EntryFlowStaticsTest {
     @Test
     @DisplayName("a port beyond 65535 is no port, and the wire's whole numbers are read")
     void portRangeAndWireNumbers() {
+        var wirePort = Generators.integers(1024, 65535).next();
+        var completedStep = Generators.integers(1, 7).next();
         assertAll(
                             () -> assertEquals(EntryFlow.DEFAULT_WEB_PORT, EntryFlow.getWebPort(Map.of("web", Map.of("port", 70_000)))),
                             () -> assertEquals(EntryFlow.DEFAULT_WEB_PORT,
                                                 EntryFlow.getWebPort(Map.of("web", Map.of("port", new JsonNumber("0"))))),
-                            () -> assertEquals(9123, EntryFlow.getWebPort(Map.of("web", Map.of("port", new JsonNumber("9123"))))),
-                            () -> assertEquals(5, EntryFlow.getCompletedOnboardStep(
-                                                Map.of("onboard", Map.of("completed_steps", new JsonNumber("5"))))),
+                            () -> assertEquals(wirePort, EntryFlow.getWebPort(Map.of("web", Map.of("port", new JsonNumber(Integer.toString(wirePort)))))),
+                            () -> assertEquals(completedStep, EntryFlow.getCompletedOnboardStep(
+                                                Map.of("onboard", Map.of("completed_steps", new JsonNumber(Integer.toString(completedStep)))))),
                             () -> assertEquals(List.of("2 questions"), EntryFlow.extractWaitingBadges(
                                                 Map.of("needs_operator", Map.of("question", new JsonNumber("2"))))));
     }

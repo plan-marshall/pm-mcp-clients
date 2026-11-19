@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Clock;
@@ -45,6 +46,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+@EnableGeneratorController
 @DisplayName("OverviewFullScreenAppTest")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class OverviewFullScreenAppTest {
@@ -176,6 +178,18 @@ class OverviewFullScreenAppTest {
                 response.json(200, DETAIL_CLIENTS_JSON);
             } else if ("/api/v1/projects/plan-marshall".equals(path)) {
                 response.json(200, "{\"project_id\":\"plan-marshall\",\"display_name\":\"plan-marshall\",\"plans\":[],\"epics\":[],\"alongside_landings\":[]}");
+            } else if ("/api/v1/plans/pln-overview-resource/process".equals(path)) {
+                response.json(200, """
+                                    {
+                                      "plan_id": "pln-overview-resource",
+                                      "title": "Overview resource of the runtime",
+                                      "project": {"project_id": "pm-mcp-clients", "display_name": "pm-mcp-clients"},
+                                      "epic": {"epic_id": "epc-client-work", "title": "client work"},
+                                      "current_phase": "execute",
+                                      "phase_state": "running",
+                                      "nodes": []
+                                    }
+                                    """);
             } else if (path.startsWith("/api/v1/projects/pm-mcp-clients/ended")) {
                 response.json(200, ENDED_CLIENTS_JSON);
             } else if ("/api/v1/reports".equals(path)) {
@@ -692,5 +706,43 @@ class OverviewFullScreenAppTest {
         assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         assertTrue(handler.handle(TuiKeyAction.BACK));
         assertEquals(TuiLevel.Kind.OVERVIEW, app.stack().level().kind());
+    }
+
+    @Test
+    @DisplayName("jumpToPlanEpic restores popped level model via refreshPoppedLevel")
+    void jumpsRestorePoppedLevelModel() throws Exception {
+        var virtual = VirtualScreenTerminal.create(120, 30);
+        var app = createApp(virtual, OverviewFullScreenApp.InitialSelection.DEFAULT);
+        var runtime = createContext(virtual).runtime(false);
+        app.loadInitialData(runtime);
+        var handler = app.keyHandler();
+
+        // 1. Open project pm-mcp-clients in epic view (PROJECT_BY_EPIC)
+        assertTrue(app.openProject(runtime, "pm-mcp-clients", true, null));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+
+        // 2. Open plan pln-overview-resource
+        assertTrue(app.openPlan(runtime, "pln-overview-resource", null));
+        assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
+
+        // 3. Jump to plan project (key 'p') pushes PROJECT_BY_PLAN
+        assertTrue(handler.handle(TuiKeyAction.PROJECT));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+
+        // 4. Back to PLAN
+        assertTrue(handler.handle(TuiKeyAction.BACK));
+        assertEquals(TuiLevel.Kind.PLAN, app.stack().level().kind());
+
+        // 5. Jump to epic (key 'e') pops back to PROJECT_BY_EPIC and calls refreshPoppedLevel()
+        assertTrue(handler.handle(TuiKeyAction.EPIC));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_EPIC, app.stack().level().kind());
+        assertEquals("pm-mcp-clients", app.stack().level().id());
+        assertFalse(app.stack().rows().isEmpty(), "restored PROJECT_BY_EPIC must carry project rows");
+
+        // 6. Switching view from PROJECT_BY_EPIC must switch to PROJECT_BY_PLAN
+        assertTrue(handler.handle(TuiKeyAction.SWITCH_VIEW));
+        assertEquals(TuiLevel.Kind.PROJECT_BY_PLAN, app.stack().level().kind());
+        assertEquals("pm-mcp-clients", app.stack().level().id());
+        assertFalse(app.stack().rows().isEmpty(), "restored PROJECT_BY_PLAN must carry project rows");
     }
 }
