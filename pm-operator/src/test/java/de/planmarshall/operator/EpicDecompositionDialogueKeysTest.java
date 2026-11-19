@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
@@ -147,7 +148,7 @@ class EpicDecompositionDialogueKeysTest {
     static Stream<Arguments> cutKeys() {
         var cases = new ArrayList<Arguments>();
         for (var key : EpicDecompositionDialogue.CUT_KEYS) {
-            cases.add(Arguments.of(key.key(), key.act().name().toLowerCase(java.util.Locale.ROOT),
+            cases.add(Arguments.of(key.key(), key.act().name().toLowerCase(Locale.ROOT),
                                 key.key() + "\nsplit the work\n"));
         }
         return cases.stream();
