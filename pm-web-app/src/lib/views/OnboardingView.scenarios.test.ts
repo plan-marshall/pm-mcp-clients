@@ -1691,6 +1691,7 @@ describe('store.choose protection lines per option (D9)', () => {
           {
             kind: 'os',
             name: 'GNOME Keyring',
+            backend: 'secret_service',
             available: true,
             recommended: true,
           },
@@ -1915,6 +1916,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
             harness_id: 'claude',
             name: 'Claude Code',
             token_usage: 'complete',
+            token_detail: 'input, cache read, output',
           },
           {
             harness_id: 'opencode',
@@ -1938,6 +1940,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(list).toHaveTextContent('Claude Code');
     expect(list).toHaveTextContent('usage complete');
     expect(list).not.toHaveTextContent('complete:');
+    expect(list).not.toHaveTextContent('input, cache read');
     expect(list).toHaveTextContent('OpenCode');
     expect(list).toHaveTextContent('usage partial (not reported: cache read, cache write)');
     expect(list).toHaveTextContent('Codex');
