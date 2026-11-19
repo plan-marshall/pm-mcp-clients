@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { parse } from 'svelte/compiler';
 
 /**
- * Vocabulary completeness guard (PLAN-151, components.adoc § #vocabulary).
+ * Vocabulary completeness guard (PLAN-151, PLAN-170, components.adoc § #vocabulary).
  *
  * Asserts that every component of the design vocabulary (not on the pending list)
  * has its component source, its unit test, and a fixture on /dev/components.
@@ -13,23 +14,90 @@ const DOCS_PATH = path.resolve(__dirname, '../../../doc/design/web-app/component
 const COMPONENTS_DIR = path.resolve(__dirname, 'components');
 const TEMPLATES_DIR = path.resolve(__dirname, 'templates');
 const DEV_PAGE_PATH = path.resolve(__dirname, '../routes/dev/components/+page.svelte');
+const DEV_DIR = path.resolve(__dirname, 'dev');
 
 /**
  * Components built by other packages, pending their landing.
+ * MascotFigure and TriagePage have landed and are active components.
  */
 export const PENDING_LIST = new Set([
-  'MascotFigure',
   'Chat',
   'ChatTurn',
   'ProposalCard',
   'ChatStatusCard',
   'ChatMarkdown',
   'VoiceInput',
-  'TriagePage',
 ]);
 
 /**
+ * Validates that PENDING_LIST names only components that do NOT exist yet.
+ * Returns an array of error messages for any pending component found on disk.
+ */
+export function validatePendingList(
+  pendingList: Set<string>,
+  componentsDir: string = COMPONENTS_DIR,
+  templatesDir: string = TEMPLATES_DIR,
+): string[] {
+  const errors: string[] = [];
+  for (const name of pendingList) {
+    const inComponents = path.join(componentsDir, `${name}.svelte`);
+    const inTemplates = path.join(templatesDir, `${name}.svelte`);
+    if (fs.existsSync(inComponents) || fs.existsSync(inTemplates)) {
+      errors.push(
+        `Pending component ${name} already exists on disk — remove it from PENDING_LIST`,
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * Checks whether a component is rendered as an actual tag in a markup position.
+ * Uses the Svelte compiler AST to verify the component is used as a tag,
+ * avoiding false positives from attribute strings or comments.
+ */
+export function hasComponentFixture(name: string, templateSource: string): boolean {
+  try {
+    const ast = parse(templateSource, { modern: true });
+    let found = false;
+
+    function walk(node: unknown): void {
+      if (found || !node || typeof node !== 'object') return;
+      const n = node as Record<string, unknown>;
+      if (
+        (n.type === 'Component' || n.type === 'RegularElement') &&
+        n.name === name
+      ) {
+        found = true;
+        return;
+      }
+      for (const key of Object.keys(n)) {
+        if (key === 'parent' || key === 'css') continue;
+        const child = n[key];
+        if (Array.isArray(child)) {
+          for (const item of child) walk(item);
+        } else if (child && typeof child === 'object') {
+          walk(child);
+        }
+      }
+    }
+
+    if (ast.fragment) {
+      walk(ast.fragment);
+    }
+    return found;
+  } catch {
+    // Fallback regex ensuring tag is outside attribute values
+    // eslint-disable-next-line security/detect-non-literal-regexp
+    const tagRegex = new RegExp(`<${name}\\b(?![^<]*>)`);
+    return tagRegex.test(templateSource);
+  }
+}
+
+/**
  * Extracts component names from the AsciiDoc vocabulary table.
+ * Splits on blank lines separating AsciiDoc table rows to prevent splitting
+ * on capital letters within cells.
  *
  * @param {string} adocContent
  * @returns {Array<{ group: string, name: string }>}
@@ -43,19 +111,24 @@ export function extractVocabularyComponents(adocContent: string): Array<{ group:
   const section = adocContent.slice(vocabIndex);
   const tableStart = section.indexOf('|===');
   const tableEnd = section.indexOf('|===', tableStart + 4);
-  const tableText = section.slice(tableStart, tableEnd);
+  const tableText = section.slice(tableStart + 4, tableEnd).trim();
 
   const results: Array<{ group: string; name: string }> = [];
-  const rows = tableText.split(/\n\|(?=[A-Z])/);
+  // AsciiDoc table rows are separated by blank lines
+  const rows = tableText.split(/\n\s*\n/);
 
   for (const row of rows) {
-    const lines = row.trim().split('\n');
-    if (lines.length < 2) continue;
-    const group = lines[0].replace(/^\|/, '').trim();
-    if (group === 'Group' || !group) continue;
+    const trimmedRow = row.trim();
+    if (!trimmedRow || trimmedRow.startsWith('|Group')) continue;
 
-    const componentsCell = lines.slice(1).join(' ');
-    const matches = componentsCell.matchAll(/`([A-Z][A-Za-z0-9]+)`/g);
+    // First cell holds group name: |Group
+    const cellMatch = trimmedRow.match(/^\|([^\n|]+)/);
+    if (!cellMatch) continue;
+    const group = cellMatch[1].trim();
+    if (!group) continue;
+
+    // Extract component names enclosed in backticks
+    const matches = trimmedRow.matchAll(/`([A-Z][A-Za-z0-9]+)`/g);
     for (const match of matches) {
       const name = match[1];
       results.push({ group, name });
@@ -66,21 +139,45 @@ export function extractVocabularyComponents(adocContent: string): Array<{ group:
 }
 
 describe('vocabulary completeness', () => {
+  it('fails completeness when a pending component already exists on disk', () => {
+    const fixturePending = new Set(['Button']);
+    const errors = validatePendingList(fixturePending);
+    expect(errors.length).toBeGreaterThan(0);
+    expect(errors.some((e) => e.includes('Button'))).toBe(true);
+  });
+
+  it('a fixture that mentions <Name only inside an attribute value does not satisfy the fixture check', () => {
+    const fakeMarkup = '<div data-info="<Button"></div>';
+    const hasTag = hasComponentFixture('Button', fakeMarkup);
+    expect(hasTag).toBe(false);
+  });
+
+  it('PENDING_LIST names only components that do not exist yet on disk', () => {
+    const errors = validatePendingList(PENDING_LIST);
+    expect(errors).toEqual([]);
+  });
+
   it('every component in the vocabulary table has source, test, and dev fixture', () => {
     expect(fs.existsSync(DOCS_PATH)).toBe(true);
     expect(fs.existsSync(DEV_PAGE_PATH)).toBe(true);
 
     const docContent = fs.readFileSync(DOCS_PATH, 'utf-8');
-    const devPageSource = fs.readFileSync(DEV_PAGE_PATH, 'utf-8');
-    const templateOnly = devPageSource
-      .replace(/<script[\s\S]*?<\/script>/g, '')
-      .replace(/<!--[\s\S]*?-->/g, '');
+    const devSources: string[] = [fs.readFileSync(DEV_PAGE_PATH, 'utf-8')];
+    if (fs.existsSync(DEV_DIR)) {
+      for (const file of fs.readdirSync(DEV_DIR)) {
+        if (file.endsWith('.svelte')) {
+          devSources.push(fs.readFileSync(path.join(DEV_DIR, file), 'utf-8'));
+        }
+      }
+    }
 
     const vocabulary = extractVocabularyComponents(docContent);
-    expect(vocabulary.length).toBeGreaterThan(30);
+    // components.adoc § #vocabulary defines exactly 60 components across 8 groups
+    expect(vocabulary).toHaveLength(60);
 
+    // 6 components pending landing (Chat, ChatTurn, ProposalCard, ChatStatusCard, ChatMarkdown, VoiceInput)
     const activeComponents = vocabulary.filter((c) => !PENDING_LIST.has(c.name));
-    expect(activeComponents.length).toBeGreaterThan(25);
+    expect(activeComponents).toHaveLength(60 - PENDING_LIST.size);
 
     for (const { group, name } of activeComponents) {
       const componentInComponents = path.join(COMPONENTS_DIR, `${name}.svelte`);
@@ -105,11 +202,10 @@ describe('vocabulary completeness', () => {
         `Expected test for ${name} (${name}.test.ts) to exist beside component`,
       ).toBe(true);
 
-      // eslint-disable-next-line security/detect-non-literal-regexp
-      const componentTagRegex = new RegExp(`<${name}\\b`);
+      const hasFixture = devSources.some((source) => hasComponentFixture(name, source));
       expect(
-        componentTagRegex.test(templateOnly),
-        `Expected component ${name} to have a rendered fixture (<${name} ...) in template of routes/dev/components/+page.svelte`,
+        hasFixture,
+        `Expected component ${name} to have a rendered fixture (<${name} ...) in routes/dev/components or dev fixtures`,
       ).toBe(true);
     }
   });
