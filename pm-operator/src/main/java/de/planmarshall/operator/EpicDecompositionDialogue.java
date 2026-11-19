@@ -62,21 +62,21 @@ final class EpicDecompositionDialogue {
      * The act the cut prompt runs for a key that is not a plan number, <em>Enter</em> or the leave
      * key.
      */
-    enum CutAct { ADD, REWRITE }
+    enum CutAct {ADD, REWRITE}
 
     /** One key of the cut prompt and the act it runs. */
     record CutKey(String key, CutAct act) implements KeyAct {
     }
 
     /** The act the plan prompt runs for a key that is not <em>Enter</em> or the leave key. */
-    enum PlanAct { KEEP, EDIT, BACK }
+    enum PlanAct {KEEP, EDIT, BACK}
 
     /** One key of the plan prompt and the act it runs. */
     record PlanKey(String key, PlanAct act) implements KeyAct {
     }
 
     /** The decision the read-back prompt takes for a key that is not <em>Enter</em> or the leave key. */
-    enum ReadBackAct { INSTRUCT_AGAIN, DISCARD }
+    enum ReadBackAct {INSTRUCT_AGAIN, DISCARD}
 
     /** One key of the read-back prompt and the decision it takes. */
     record ReadBackKey(String key, ReadBackAct act) implements KeyAct {
