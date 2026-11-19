@@ -2,10 +2,10 @@
   "id": "PLAN-30",
   "slug": "cli-texts-and-errors",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "30-cli-texts-and-errors",
+  "pr": "438",
+  "landing": "landings/PLAN-30.md",
   "seq": 30
 }
