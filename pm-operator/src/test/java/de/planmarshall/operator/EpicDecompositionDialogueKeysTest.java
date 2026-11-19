@@ -21,6 +21,8 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.transcript.TerminalTestDriver;
@@ -30,16 +32,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * One accepted set per prompt: the line a prompt prints as offered is built from the same
- * collection of keys its branches accept, so a key added to one and not the other turns this class
- * red.
+ * collection of (key, act) records its branches read, so a key added to one and not the other turns
+ * this class red.
  * <p>
- * The offered line is read from the dialogue's own builder, and each key of each set is fed to the
- * rendered dialogue: a branch that stops accepting a key the set still names shows up as a
- * not-offered answer, which no assertion on the builder alone could see. The refused key shows the
- * line the operator reads back.
+ * The offered line is read from the dialogue's own builder, and each key of each set is driven
+ * through the rendered dialogue: the transcript must not answer "not offered", and the act the key
+ * is paired with must reach the runtime — the instruct request with its action, the reload, or no
+ * request at all. A key paired with the wrong act therefore fails, which a check for acceptance
+ * alone could not see. The refused key shows the line the operator reads back.
  */
 @DisplayName("EpicDecompositionDialogue: the offered keys")
 class EpicDecompositionDialogueKeysTest {
@@ -64,15 +70,21 @@ class EpicDecompositionDialogueKeysTest {
     Path tempDir;
 
     private RuntimeFixture fixture;
+    /** Every request the dialogue sent, as {@code METHOD target}. */
+    private final List<String> requests = new CopyOnWriteArrayList<>();
+    /** The body of every instruct request, in the order it was sent. */
+    private final List<String> instructs = new CopyOnWriteArrayList<>();
 
     @BeforeEach
     void setUp() throws IOException {
         fixture = RuntimeFixture.create();
         PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> {
-            if (BASE.equals(request.target()) && "GET".equals(request.method())) {
+            requests.add(request.method() + " " + request.target());
+            if ((BASE + "/instruct").equals(request.target()) && "POST".equals(request.method())) {
+                instructs.add(request.bodyText());
                 response.json(200, THREE_PLANS);
-            } else if ((BASE + "/instruct").equals(request.target()) && "POST".equals(request.method())) {
+            } else if (BASE.equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, THREE_PLANS);
             } else if ((BASE + "/check").equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, THREE_PLANS);
@@ -131,28 +143,81 @@ class EpicDecompositionDialogueKeysTest {
         );
     }
 
-    @Test
-    @DisplayName("every key the cut prompt offers is accepted by its branches")
-    void theCutPromptAcceptsEveryKeyItOffers() throws Exception {
-        for (var key : keysOf(EpicDecompositionDialogue.CUT_KEYS)) {
-            assertFalse(render(EN, key + "\n").contains("is not offered here"), key);
+    /** @return each cut key with the instruct action it must send */
+    static Stream<Arguments> cutKeys() {
+        var cases = new ArrayList<Arguments>();
+        for (var key : EpicDecompositionDialogue.CUT_KEYS) {
+            cases.add(Arguments.of(key.key(), key.act().name().toLowerCase(java.util.Locale.ROOT),
+                                key.key() + "\nsplit the work\n"));
         }
+        return cases.stream();
     }
 
-    @Test
-    @DisplayName("every key the plan prompt offers is accepted by its branches")
-    void thePlanPromptAcceptsEveryKeyItOffers() throws Exception {
-        for (var key : keysOf(EpicDecompositionDialogue.PLAN_KEYS)) {
-            assertFalse(render(EN, "1\n" + key + "\n").contains("is not offered here"), key);
-        }
+    @ParameterizedTest(name = "the cut prompt runs {1} for {0}")
+    @MethodSource("cutKeys")
+    @DisplayName("every key the cut prompt offers reaches the runtime with its own act")
+    void theCutPromptRunsTheActOfEveryKeyItOffers(String key, String action, String script) throws Exception {
+        var rendered = render(EN, script);
+
+        assertAll(
+                            () -> assertFalse(rendered.contains("is not offered here"), key),
+                            () -> assertEquals(1, instructs.size(), instructs.toString()),
+                            () -> assertTrue(instructs.getFirst().contains("\"" + action + "\""),
+                                                instructs.getFirst())
+        );
     }
 
-    @Test
-    @DisplayName("every key the read-back prompt offers is accepted by its branches")
-    void theReadBackPromptAcceptsEveryKeyItOffers() throws Exception {
-        for (var key : keysOf(EpicDecompositionDialogue.READ_BACK_KEYS)) {
-            assertFalse(render(EN, "1\ne\nsmaller\n" + key + "\n").contains("is not offered here"), key);
+    /** @return each plan key with the number of edit requests its act must send, and its script */
+    static Stream<Arguments> planKeys() {
+        var cases = new ArrayList<Arguments>();
+        for (var key : EpicDecompositionDialogue.PLAN_KEYS) {
+            var edits = key.act() == EpicDecompositionDialogue.PlanAct.EDIT;
+            cases.add(Arguments.of(key.key(), edits ? 1 : 0,
+                                "1\n" + key.key() + "\n" + (edits ? "smaller\n" : "")));
         }
+        return cases.stream();
+    }
+
+    @ParameterizedTest(name = "the plan prompt runs {0} and sends {1} edit")
+    @MethodSource("planKeys")
+    @DisplayName("every key the plan prompt offers reaches the runtime with its own act")
+    void thePlanPromptRunsTheActOfEveryKeyItOffers(String key, int edits, String script) throws Exception {
+        var rendered = render(EN, script);
+
+        assertAll(
+                            () -> assertFalse(rendered.contains("is not offered here"), key),
+                            () -> assertEquals(edits, instructs.size(), instructs.toString()),
+                            () -> assertEquals(edits == 1, !instructs.isEmpty() && instructs.stream()
+                                                .allMatch(body -> body.contains("\"edit\"")
+                                                                    && body.contains("a-plan")),
+                                                instructs.toString())
+        );
+    }
+
+    /** @return each read-back key with its edit count, its read count, and its script */
+    static Stream<Arguments> readBackKeys() {
+        var cases = new ArrayList<Arguments>();
+        for (var key : EpicDecompositionDialogue.READ_BACK_KEYS) {
+            var instructAgain =
+                                key.act() == EpicDecompositionDialogue.ReadBackAct.INSTRUCT_AGAIN;
+            cases.add(Arguments.of(key.key(), instructAgain ? 2 : 1, instructAgain ? 1 : 2,
+                                "1\ne\nsmaller\n" + key.key() + "\n" + (instructAgain ? "second\n" : "")));
+        }
+        return cases.stream();
+    }
+
+    @ParameterizedTest(name = "the read-back prompt runs {0}")
+    @MethodSource("readBackKeys")
+    @DisplayName("every key the read-back prompt offers reaches the runtime with its own decision")
+    void theReadBackPromptTakesTheDecisionOfEveryKeyItOffers(String key, int edits, int reads,
+                        String script) throws Exception {
+        var rendered = render(EN, script);
+
+        assertAll(
+                            () -> assertFalse(rendered.contains("is not offered here"), key),
+                            () -> assertEquals(edits, instructs.size(), instructs.toString()),
+                            () -> assertEquals(reads, readsOf(BASE), requests.toString())
+        );
     }
 
     @Test
@@ -204,6 +269,11 @@ class EpicDecompositionDialogueKeysTest {
             }
             return driver.render();
         }
+    }
+
+    /** @return how often the dialogue read the cut resource */
+    private long readsOf(String target) {
+        return requests.stream().filter(request -> ("GET " + target).equals(request)).count();
     }
 
     private TerminalTestDriver dialogue(String locale, String script) throws IOException {

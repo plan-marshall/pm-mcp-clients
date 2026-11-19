@@ -295,13 +295,14 @@ class CleanupCommandTest {
     @Test
     @DisplayName("the durations are named in the interface language, kind by kind")
     void durationsAreNamedInGerman() {
-        var differing = new CleanupDurations(31, 30, 30, -1, 30, 3);
+        int plans = Generators.integers(31, 365).next();
+        var differing = new CleanupDurations(plans, 30, 30, -1, 30, 3);
 
         var text = CleanupCommand.durationsText("de", differing);
 
-        assertEquals("Archivierte Pl\u00e4ne 31 Tage, Archivierte Epics 30 Tage, Logs beendeter Arbeit 30 Tage, "
-                            + "Gelesene Berichte nie, Nicht mehr registrierte Projekte 30 Tage, "
-                            + "Frag mich wieder nach 3 Tagen", text);
+        assertEquals("Archivierte Pl\u00e4ne " + plans + " Tage, Archivierte Epics 30 Tage, "
+                            + "Logs beendeter Arbeit 30 Tage, Gelesene Berichte nie, "
+                            + "Nicht mehr registrierte Projekte 30 Tage, Frag mich wieder nach 3 Tagen", text);
     }
 
     @Test

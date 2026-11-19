@@ -13,10 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayDeque;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.system.CleanupKind;
@@ -28,7 +32,12 @@ import org.junit.jupiter.api.Test;
  * The durations {@code cleanup} prints are one mapping from {@link CleanupKind} to the word shown and
  * the duration it reads, and that mapping is total: a constant the mapping leaves out turns this
  * class red instead of printing a missing column.
+ * <p>
+ * The expected figures are a second, independent statement of which duration each kind reads —
+ * written here as a switch over the enum, not taken from the production accessors, so an accessor
+ * swapped between two kinds fails.
  */
+@EnableGeneratorController
 @DisplayName("cleanup durations: one mapping over CleanupKind")
 class CleanupDurationsKindsTest {
 
@@ -36,16 +45,17 @@ class CleanupDurationsKindsTest {
     @DisplayName("every constant of CleanupKind carries a label and its own duration")
     void everyKindHasALabelAndADuration() {
         var displays = CleanupCommand.kindDisplays();
-        // One distinct figure per kind, so a mapping that reads another kind's duration shows up as
-        // a column carrying the wrong number rather than passing on a shared default.
-        var figures = new CleanupDurations(11, 12, 13, 14, 15, 3);
+        // One distinct figure per kind, so a mapping that reads another kind's duration shows up as a
+        // column carrying the wrong number rather than passing on a shared default.
+        var base = Generators.integers(31, 60).next();
+        var durations = new CleanupDurations(base, base + 1, base + 2, base + 3, base + 4, 3);
 
         assertAll(
                             () -> assertEquals(EnumSet.allOf(CleanupKind.class), displays.keySet()),
                             () -> assertTrue(displays.values().stream().allMatch(display -> !display.label().isBlank())),
                             () -> assertEquals(EnumSet.allOf(CleanupKind.class).size(),
                                                 new LinkedHashSet<>(displays.values().stream()
-                                                                    .map(display -> display.days().applyAsInt(figures))
+                                                                    .map(display -> display.days().applyAsInt(durations))
                                                                     .toList()).size(),
                                                 "each kind reads a duration of its own")
         );
@@ -63,20 +73,29 @@ class CleanupDurationsKindsTest {
     @Test
     @DisplayName("the rendered durations name one column per constant, each with its own figure")
     void theRenderedDurationsCarryOneColumnPerKind() {
-        var differing = new CleanupDurations(31, 32, 33, 34, 35, 3);
-        // Keyed by the constant rather than by position, so a reordering cannot re-pair a label and
-        // a figure without the assertion naming it.
-        var figures = Map.of(CleanupKind.PLAN, 31, CleanupKind.EPIC, 32, CleanupKind.LOGS, 33,
-                            CleanupKind.READ_REPORTS, 34, CleanupKind.UNENROLLED_PROJECT, 35);
+        // Generated figures, distinct per kind and above the campaign's shortest duration.
+        var figures = new LinkedHashSet<Integer>();
+        while (figures.size() < CleanupKind.values().length) {
+            figures.add(Generators.integers(31, 90).next());
+        }
+        var drawn = new ArrayDeque<>(figures);
+        var durationsByKind = new EnumMap<CleanupKind, Integer>(CleanupKind.class);
+        for (var kind : CleanupKind.values()) {
+            durationsByKind.put(kind, drawn.removeFirst());
+        }
+        var durations = new CleanupDurations(durationsByKind.get(CleanupKind.PLAN),
+                            durationsByKind.get(CleanupKind.EPIC), durationsByKind.get(CleanupKind.LOGS),
+                            durationsByKind.get(CleanupKind.READ_REPORTS),
+                            durationsByKind.get(CleanupKind.UNENROLLED_PROJECT), 3);
 
-        var text = CleanupCommand.durationsText("en", differing);
+        var text = CleanupCommand.durationsText("en", durations);
 
         var expected = new LinkedHashSet<String>();
         var displays = CleanupCommand.kindDisplays();
         for (var kind : CleanupKind.values()) {
             var label = displays.get(kind).label();
             expected.add(MessageCatalogue.format("en", "system.cleanup.durations.kind", Map.of("kind", label))
-                                + " " + figures.get(kind) + " days");
+                                + " " + durationsByKind.get(kind) + " days");
         }
         assertAll(
                             () -> assertEquals(expected.size(), CleanupKind.values().length),

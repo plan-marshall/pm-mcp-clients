@@ -779,12 +779,16 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private static Map<CleanupKind, KindDisplay> buildKindDisplays() {
         var displays = new EnumMap<CleanupKind, KindDisplay>(CleanupKind.class);
-        displays.put(CleanupKind.PLAN, new KindDisplay(KIND_PLANS, CleanupDurations::plansAfterDays));
-        displays.put(CleanupKind.EPIC, new KindDisplay(KIND_EPICS, CleanupDurations::epicsAfterDays));
-        displays.put(CleanupKind.LOGS, new KindDisplay(KIND_LOGS, CleanupDurations::logsAfterDays));
-        displays.put(CleanupKind.READ_REPORTS, new KindDisplay(KIND_REPORTS, CleanupDurations::reportsAfterDays));
-        displays.put(CleanupKind.UNENROLLED_PROJECT,
-                            new KindDisplay(KIND_UNENROLLED, CleanupDurations::unenrolledAfterDays));
+        for (var kind : CleanupKind.values()) {
+            displays.put(kind, switch (kind) {
+                case PLAN -> new KindDisplay(KIND_PLANS, CleanupDurations::plansAfterDays);
+                case EPIC -> new KindDisplay(KIND_EPICS, CleanupDurations::epicsAfterDays);
+                case LOGS -> new KindDisplay(KIND_LOGS, CleanupDurations::logsAfterDays);
+                case READ_REPORTS -> new KindDisplay(KIND_REPORTS, CleanupDurations::reportsAfterDays);
+                case UNENROLLED_PROJECT ->
+                    new KindDisplay(KIND_UNENROLLED, CleanupDurations::unenrolledAfterDays);
+            });
+        }
         return Map.copyOf(displays);
     }
 
