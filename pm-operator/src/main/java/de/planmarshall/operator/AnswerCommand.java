@@ -913,11 +913,8 @@ public final class AnswerCommand implements Callable<Integer> {
                         @Nullable Map<Integer, PartAnswer> answers) {
         for (var name : List.of("part", "n")) {
             var named = refusal.arguments().get(name);
-            if (named instanceof Number number) {
-                return number.intValue();
-            }
-            if (named instanceof String text && text.matches("\\d+")) {
-                return Integer.parseInt(text);
+            if (named != null && named.matches("\\d+")) {
+                return Integer.parseInt(named);
             }
         }
         if (parts == null || answers == null) {

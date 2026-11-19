@@ -65,6 +65,8 @@ public final class EpicCommand implements Callable<Integer> {
     private static final String STAGED = "staged";
     private static final String STATE_UNKNOWN = "state.unknown";
     private static final String EPICS_API = "/api/v1/epics/";
+    private static final String KEY_PROJECT = "project";
+    private static final String GLYPH_CHECK = "\u2713 ";
 
     private final OperatorContext context;
 
@@ -165,7 +167,7 @@ public final class EpicCommand implements Callable<Integer> {
         }
         out.println(head);
         out.printf("  %-44s %s%n", MessageCatalogue.format(locale, "operator.plan.tree.context",
-                                                Map.of("project", OutputSafety.stripControlSequences(epic.projectId()))),
+                                                Map.of(KEY_PROJECT, OutputSafety.stripControlSequences(epic.projectId()))),
                             "status --project " + OutputSafety.stripControlSequences(epic.projectId()));
         printWorkstreams(out, locale, epic);
         printSources(out, locale, epic);
@@ -259,9 +261,11 @@ public final class EpicCommand implements Callable<Integer> {
     private void printTokens(PrintWriter out, String locale, EpicResource epic) {
         out.println("  " + MessageCatalogue.format(locale, "operator.epic.tokens", Map.of()));
         for (var plan : epic.tokens().plans()) {
-            out.printf("    %-34s %-28s " + MessageCatalogue.format(locale, "overview.kind.plan", Map.of()) + " %s%n",
+            var planWord = MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
+            out.printf("    %-34s %-28s %s %s%n",
                                 OutputSafety.stripControlSequences(plan.planId()),
                                 EpicViewFormatting.tokenFigure(locale, plan.figure()),
+                                planWord,
                                 OutputSafety.stripControlSequences(plan.planId()));
         }
         out.printf("    %-34s %s%n", MessageCatalogue.format(locale, "overview.epic.tokens_own", Map.of()),
@@ -296,8 +300,8 @@ public final class EpicCommand implements Callable<Integer> {
         out.printf("%s · %s · %s · %s%n", cleanEpicId, epicKind, state, counts);
 
         out.printf("  %-48s %s%n",
-                            MessageCatalogue.format(locale, "operator.plan.tree.context", Map.of("project", project)),
-                            MessageCatalogue.format(locale, "operator.plan.tree.hint_project", Map.of("project", project)));
+                            MessageCatalogue.format(locale, "operator.plan.tree.context", Map.of(KEY_PROJECT, project)),
+                            MessageCatalogue.format(locale, "operator.plan.tree.hint_project", Map.of(KEY_PROJECT, project)));
 
         var noneText = MessageCatalogue.format(locale, "epic.plans.none", Map.of());
         var runningWord = Display.word(locale, "plan", "running");

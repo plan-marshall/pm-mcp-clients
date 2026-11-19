@@ -1286,7 +1286,7 @@ public final class ConfigCommand implements Callable<Integer> {
             var settings = owner.readSettingsQuiet();
             if (settings == null) {
                 throw new OperatorRefusedException(
-                                    MessageCatalogue.format(locale, "operator.settings.list_failed", Map.of()));
+                                    MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of()));
             }
             var consents = settings.consents();
             if (consents.isEmpty()) {

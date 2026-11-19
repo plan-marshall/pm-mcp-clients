@@ -491,7 +491,7 @@ class EpicCommandTest {
             assertAll(
                                 () -> assertEquals(0, code, err.toString()),
                                 () -> assertTrue(out.toString().contains(
-                                                "Left the epic; its scope stays as it is. Nothing was sent."), out.toString()),
+                                                    "Left the epic; its scope stays as it is. Nothing was sent."), out.toString()),
                                 () -> assertTrue(posted(server).isEmpty(), server.requests().toString())
             );
         }

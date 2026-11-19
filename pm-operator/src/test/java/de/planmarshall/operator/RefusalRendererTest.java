@@ -17,7 +17,9 @@ import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import de.planmarshall.api.http.HttpResponse;
@@ -158,7 +160,7 @@ class RefusalRendererTest {
         var project = Generators.letterStrings(4, 10).next();
         var json = "{\"error\":\"enrolment_tampered\",\"message\":\"tampered\",\"project_id\":\"" + project + "\"}";
         var ex = new OperatorRefusedException("plan", new HttpResponse(409, "application/json",
-                            json.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            json.getBytes(StandardCharsets.UTF_8)));
         var sw = new StringWriter();
         RefusalRenderer.render(new PrintWriter(sw), "en", ex);
         var output = sw.toString();
@@ -170,12 +172,12 @@ class RefusalRendererTest {
     @DisplayName("an HTML page and a stack trace are never the message, and no body exceeds the cap")
     void bodiesAreNotTheMessage() {
         var html = new OperatorRefusedException("plan", new HttpResponse(502, "text/html",
-                            "<html><body><h1>502 Bad Gateway</h1></body></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            "<html><body><h1>502 Bad Gateway</h1></body></html>".getBytes(StandardCharsets.UTF_8)));
         var trace = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
-                            ("java.lang.IllegalStateException: boom\n\tat a.b.C.d(C.java:1)")
-                                                .getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            "java.lang.IllegalStateException: boom\n\tat a.b.C.d(C.java:1)"
+                                                .getBytes(StandardCharsets.UTF_8)));
         var longBody = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
-                            ("x".repeat(400)).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                            "x".repeat(400).getBytes(StandardCharsets.UTF_8)));
 
         var htmlLines = RefusalRenderer.linesOf("en", html);
         var traceLines = RefusalRenderer.linesOf("en", trace);
@@ -211,7 +213,7 @@ class RefusalRendererTest {
         for (var locale : List.of("en", "de")) {
             var lines = RefusalRenderer.renderLines(locale, ApiErrorCode.INTERNAL_FAULT);
             for (var line : lines) {
-                assertFalse(line.toLowerCase(java.util.Locale.ROOT).contains("audit"), line);
+                assertFalse(line.toLowerCase(Locale.ROOT).contains("audit"), line);
             }
         }
     }

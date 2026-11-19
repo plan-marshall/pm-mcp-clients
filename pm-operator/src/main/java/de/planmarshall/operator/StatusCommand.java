@@ -371,9 +371,9 @@ final class StatusCommand implements Callable<Integer> {
         var timeInPhase = Display.duration(locale, plan.phaseEnteredAt(), context.clock());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
-        out.printf("%s%s" + MessageCatalogue.format(locale, "overview.kind.plan", Map.of())
-                            + "  %-30s   %s \u00b7 %s%s%n",
-                            baseIndent, marker, title, phase, state, timePart);
+        var planWord = MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
+        out.printf("%s%s%s  %-30s   %s \u00b7 %s%s%n",
+                            baseIndent, marker, planWord, title, phase, state, timePart);
 
         // Details line
         var details = new ArrayList<String>();
@@ -431,8 +431,8 @@ final class StatusCommand implements Callable<Integer> {
                                 "running", epic.runningPlansCount(),
                                 "staged", epic.stagedPlansCount()
             ));
-            out.printf("     %s" + MessageCatalogue.format(locale, "overview.kind.epic", Map.of())
-                                + "  %-30s   %s%n", epicMarker, epicTitle, plansCount);
+            var epicWord = MessageCatalogue.format(locale, "overview.kind.epic", Map.of());
+            out.printf("     %s%s  %-30s   %s%n", epicMarker, epicWord, epicTitle, plansCount);
 
             var childPlans = epic.plans();
             for (int i = 0; i < childPlans.size(); i++) {
@@ -557,7 +557,7 @@ final class StatusCommand implements Callable<Integer> {
         out.println(json
                             ? "{\"running\":false}"
                             : MessageCatalogue.get(context.clientEnvironment().locale(),
-                                                "operator.runtime.status_not_running"));
+                            "operator.runtime.status_not_running"));
         out.flush();
         return 0;
     }

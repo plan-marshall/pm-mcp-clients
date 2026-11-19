@@ -96,6 +96,19 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KIND = "plan";
     private static final String PLANS_API = "/api/v1/plans/";
 
+    private static final String KEY_DURATION = "duration";
+    private static final String KEY_TOKENS = "tokens";
+    private static final String KEY_VALUE = "value";
+    private static final String KEY_PROJECT = "project";
+    private static final String KEY_REASON = "reason";
+    private static final String KEY_TOTAL = "total";
+    private static final String KEY_INPUT = "input";
+    private static final String KEY_OUTPUT = "output";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_STATE_ROW = "state";
+    private static final String GLYPH_CHECK = "\u2713 ";
+    private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
+
     private final OperatorContext context;
 
     @Spec
@@ -212,7 +225,7 @@ public final class PlanCommand implements Callable<Integer> {
                 ActionSupport.printWorkList(out, "Running Plans:", "phase", list);
             } else {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                "operator.plan.none_running", Map.of()));
+                                    "operator.plan.none_running", Map.of()));
             }
             out.flush();
             return 0;
@@ -385,8 +398,8 @@ public final class PlanCommand implements Callable<Integer> {
                             "harness", OutputSafety.stripControlSequences(act.harness()),
                             "model", OutputSafety.stripControlSequences(act.model()),
                             "attempt", act.attempt(),
-                            "duration", duration,
-                            "tokens", tokensStr)));
+                            KEY_DURATION, duration,
+                            KEY_TOKENS, tokensStr)));
 
         for (var entry : act.entries()) {
             var ts = OutputSafety.stripControlSequences(entry.timestamp());
@@ -394,7 +407,7 @@ public final class PlanCommand implements Callable<Integer> {
             switch (kind) {
                 case MODEL_TEXT -> {
                     var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf("  %s  %-9s  %s%n", ts,
+                    out.printf(FMT_ACTIVITY_ROW, ts,
                                         MessageCatalogue.format(locale, "plan.activity.kind.text", Map.of()),
                                         content != null ? content : "");
                 }
@@ -402,31 +415,31 @@ public final class PlanCommand implements Callable<Integer> {
                     var toolName = OutputSafety.stripControlSequences(entry.toolName());
                     var toolTarget = OutputSafety.stripControlSequences(entry.toolTarget());
                     var toolStr = (toolName != null ? toolName : "") + (toolTarget != null ? " " + toolTarget : "");
-                    var failStr = entry.toolFailed()
-                                        ? "        " + MessageCatalogue.format(locale, "plan.activity.kind.tool_failed",
-                                                            Map.of("size", entry.size() != null
-                                                                                ? OutputSafety.stripControlSequences(entry.size())
-                                                                                : ""))
-                                        : "";
+                    var failStr = "";
+                    if (entry.toolFailed()) {
+                        var size = entry.size() != null ? OutputSafety.stripControlSequences(entry.size()) : "";
+                        failStr = "        " + MessageCatalogue.format(locale, "plan.activity.kind.tool_failed",
+                                            Map.of("size", size));
+                    }
                     out.printf("  %s  %-9s  %-30s%s%n", ts,
                                         MessageCatalogue.format(locale, "plan.activity.kind.tool_call", Map.of()),
                                         toolStr, failStr);
                 }
                 case FILES_CHANGED -> {
                     var files = entry.files().stream().map(OutputSafety::stripControlSequences).toList();
-                    out.printf("  %s  %-9s  %s%n", ts,
+                    out.printf(FMT_ACTIVITY_ROW, ts,
                                         MessageCatalogue.format(locale, "plan.activity.kind.file_changed", Map.of()),
                                         String.join(", ", files));
                 }
                 case QUESTIONS_ASKED -> {
                     var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf("  %s  %-9s  %s%n", ts,
+                    out.printf(FMT_ACTIVITY_ROW, ts,
                                         MessageCatalogue.format(locale, "plan.activity.kind.question", Map.of()),
                                         content != null ? content : "");
                 }
                 case LINK -> {
                     var target = OutputSafety.stripControlSequences(entry.toolTarget());
-                    out.printf("  %s  %-9s  %s%n", ts,
+                    out.printf(FMT_ACTIVITY_ROW, ts,
                                         MessageCatalogue.format(locale, "plan.activity.kind.link", Map.of()),
                                         target != null ? target : "");
                 }
@@ -434,7 +447,7 @@ public final class PlanCommand implements Callable<Integer> {
                     // The harness answered a turn with another model: name both, information only.
                     var served = OutputSafety.stripControlSequences(entry.servedModel());
                     var launched = OutputSafety.stripControlSequences(entry.launchModel());
-                    out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()),
+                    out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
                                         MessageCatalogue.format(context.clientEnvironment().locale(),
                                                             "plan.activity.model_differs",
                                                             Map.of("served", served != null ? served : "",
@@ -442,7 +455,7 @@ public final class PlanCommand implements Callable<Integer> {
                 }
                 default -> {
                     var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf("  %s  %-9s  %s%n", ts, OutputSafety.stripControlSequences(entry.kind()), content != null ? content : "");
+                    out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()), content != null ? content : "");
                 }
             }
         }
@@ -453,10 +466,10 @@ public final class PlanCommand implements Callable<Integer> {
             var action = OutputSafety.stripControlSequences(ot.action());
             out.println("  " + (ot.value() != null && ot.threshold() != null
                                 ? MessageCatalogue.format(locale, "operator.plan.activity.off_track_banner", Map.of(
-                                                    "signal", sig, "value", ot.value(), "threshold", ot.threshold(),
-                                                    "action", action))
+                                "signal", sig, KEY_VALUE, ot.value(), "threshold", ot.threshold(),
+                                "action", action))
                                 : MessageCatalogue.format(locale, "operator.plan.activity.off_track_plain", Map.of(
-                                                    "signal", sig, "action", action))));
+                                "signal", sig, "action", action))));
         }
         out.flush();
     }
@@ -488,17 +501,17 @@ public final class PlanCommand implements Callable<Integer> {
             if (epicStr != null && !epicStr.isEmpty()) {
                 out.printf("  %s \u00b7 %s %-20s %s%n",
                                     MessageCatalogue.format(locale, "operator.plan.tree.context",
-                                                        Map.of("project", projectStr)),
+                                                        Map.of(KEY_PROJECT, projectStr)),
                                     MessageCatalogue.format(locale, "overview.kind.epic", Map.of()),
                                     epicStr,
                                     MessageCatalogue.format(locale, "operator.plan.tree.hint_project_epic",
-                                                        Map.of("project", projectStr, "epic", epicStr)));
+                                                        Map.of(KEY_PROJECT, projectStr, "epic", epicStr)));
             } else {
                 out.printf("  %s%s%n",
                                     MessageCatalogue.format(locale, "operator.plan.tree.context",
-                                                        Map.of("project", String.format("%-35s", projectStr))),
+                                                        Map.of(KEY_PROJECT, String.format("%-35s", projectStr))),
                                     MessageCatalogue.format(locale, "operator.plan.tree.hint_project",
-                                                        Map.of("project", projectStr)));
+                                                        Map.of(KEY_PROJECT, projectStr)));
             }
         }
 
@@ -532,7 +545,7 @@ public final class PlanCommand implements Callable<Integer> {
             out.println(indent + glyph + " " + MessageCatalogue.format(
                                 context.clientEnvironment().locale(), "operator.plan.tree.not_in_plan", Map.of(
                                                     "title", OutputSafety.stripControlSequences(node.title()),
-                                                    "reason", reason.isBlank() ? "" : " (" + reason + ")")));
+                                                    KEY_REASON, reason.isBlank() ? "" : " (" + reason + ")")));
             return;
         }
 
@@ -625,9 +638,9 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var prefix = tokens.floor() ? "\u2265 " : "";
         return prefix + MessageCatalogue.format(locale, "operator.plan.tokens.split", Map.of(
-                            "total", TokenFormat.formatTokens(tokens.total(), false, locale),
-                            "input", TokenFormat.formatTokens(tokens.input(), false, locale),
-                            "output", TokenFormat.formatTokens(tokens.output(), false, locale)));
+                            KEY_TOTAL, TokenFormat.formatTokens(tokens.total(), false, locale),
+                            KEY_INPUT, TokenFormat.formatTokens(tokens.input(), false, locale),
+                            KEY_OUTPUT, TokenFormat.formatTokens(tokens.output(), false, locale)));
     }
 
     static String formatTokens(ProcessTokens tokens) {
@@ -1087,11 +1100,12 @@ public final class PlanCommand implements Callable<Integer> {
                 var project = ConsoleNotice.stripControlSequences(from.project());
                 var path = from.epic() != null && !from.epic().isBlank()
                                     ? MessageCatalogue.format(locale, "report.completion.from_epic", Map.of(
-                                                        "project", project,
-                                                        "epic", ConsoleNotice.stripControlSequences(from.epic())))
-                                    : MessageCatalogue.format(locale, "report.completion.from", Map.of("project", project));
-                out.printf("  %-50s " + MessageCatalogue.format(locale, "report.completion.plan_ref", Map.of(
-                                    "plan", ConsoleNotice.stripControlSequences(report.planId()))) + "%n", path);
+                                    KEY_PROJECT, project,
+                                    "epic", ConsoleNotice.stripControlSequences(from.epic())))
+                                    : MessageCatalogue.format(locale, "report.completion.from", Map.of(KEY_PROJECT, project));
+                var planRef = MessageCatalogue.format(locale, "report.completion.plan_ref", Map.of(
+                                    "plan", ConsoleNotice.stripControlSequences(report.planId())));
+                out.printf("  %-50s %s%n", path, planRef);
             }
 
             var outcomeDesc = report.terminalReason() != null ? report.terminalReason() : report.outcome();
@@ -1131,7 +1145,7 @@ public final class PlanCommand implements Callable<Integer> {
             var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
             var paused = report.pausedSeconds() > 0 ? Display.duration(locale, report.pausedSeconds()) : "none";
             return MessageCatalogue.format(locale, "report.completion.ran_value", Map.of(
-                                "duration", duration,
+                                KEY_DURATION, duration,
                                 "start", timeFmt.format(started),
                                 "end", timeFmt.format(endedAt),
                                 "paused", paused));
@@ -1147,7 +1161,7 @@ public final class PlanCommand implements Callable<Integer> {
                 out.printf("  %-14s %s%n", text(locale, "report.completion.deliverables"),
                                     MessageCatalogue.format(locale, "report.completion.deliverables_done", Map.of(
                                                         "done", doneCount,
-                                                        "total", deliverables.size())));
+                                                        KEY_TOTAL, deliverables.size())));
                 for (var deliv : deliverables) {
                     var stateStr = Display.word(locale, "task", deliv.state());
                     out.printf("                   %-5s %s%n", stateStr, ConsoleNotice.stripControlSequences(deliv.name()));
@@ -1260,7 +1274,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return;
             }
             var value = MessageCatalogue.format(locale, "report.completion.change_map_state",
-                                Map.of("state", changeMap.state().toLowerCase(Locale.ROOT)));
+                                Map.of(KEY_STATE_ROW, changeMap.state().toLowerCase(Locale.ROOT)));
             if (changeMap.cause() != null && !changeMap.cause().isBlank()) {
                 value += " · " + MessageCatalogue.format(locale, "report.completion.change_map_cause",
                                     Map.of("cause", ConsoleNotice.stripControlSequences(changeMap.cause())));
@@ -1275,8 +1289,8 @@ public final class PlanCommand implements Callable<Integer> {
             var totalSplit = TokenFormat.formatSplit(usage.total(), usage.input(), usage.output(), usage.floor(), locale);
             if (showTokens) {
                 out.printf(FMT_INDENT, MessageCatalogue.format(locale, "report.completion.tokens_value", Map.of(
-                                    "tokens", totalSplit,
-                                    "duration", ran != null ? ran : "")));
+                                    KEY_TOKENS, totalSplit,
+                                    KEY_DURATION, ran != null ? ran : "")));
                 printTokensDetail(out, usage, planId, showComponents, locale);
             } else {
                 out.printf(FMT_14S, text(locale, "report.completion.tokens"), totalSplit + " · " + (ran != null ? ran : ""));
@@ -1285,11 +1299,11 @@ public final class PlanCommand implements Callable<Integer> {
                                     "workers", usage.workersCount(),
                                     "models", usage.modelsCount(),
                                     "coverage", MessageCatalogue.format(locale, "report.completion.tasks_measured", Map.of(
-                                                        "count", unmeasured,
-                                                        "total", usage.tasksTotal()))));
+                                                        KEY_COUNT, unmeasured,
+                                                        KEY_TOTAL, usage.tasksTotal()))));
                 out.printf(FMT_INDENT, covText);
-                out.printf("                 " + MessageCatalogue.format(locale, "operator.reports.tokens_hint",
-                                    Map.of("plan", planId)) + "%n");
+                var hint = MessageCatalogue.format(locale, "operator.reports.tokens_hint", Map.of("plan", planId));
+                out.printf("                 %s%n", hint);
             }
         }
 
@@ -1314,12 +1328,12 @@ public final class PlanCommand implements Callable<Integer> {
                                     : "";
                 out.printf("  %-12s %s%s%n", text(locale, "report.completion.coverage"),
                                     MessageCatalogue.format(locale, "report.completion.tasks_measured", Map.of(
-                                                        "count", unmeasured, "total", usage.tasksTotal())),
+                                                        KEY_COUNT, unmeasured, KEY_TOTAL, usage.tasksTotal())),
                                     reason);
             } else {
                 out.printf("  %-12s %s%n", text(locale, "report.completion.coverage"),
                                     MessageCatalogue.format(locale, "report.tokens.all_measured",
-                                                        Map.of("total", usage.tasksTotal())));
+                                                        Map.of(KEY_TOTAL, usage.tasksTotal())));
             }
 
             printBreakdown(out, "  " + text(locale, "report.completion.by_phase"), usage.byPhase(), 10, false, showComponents, locale);
@@ -1366,7 +1380,7 @@ public final class PlanCommand implements Callable<Integer> {
                 var wasteTotal = TokenFormat.formatTokens(usage.totalWasteTokens(), false, locale);
                 out.printf("  %-12s %s%s%n", text(locale, "report.completion.waste"),
                                     MessageCatalogue.format(locale, "report.completion.tokens_count",
-                                                        Map.of("tokens", wasteTotal)),
+                                                        Map.of(KEY_TOKENS, wasteTotal)),
                                     MessageCatalogue.format(locale, "report.completion.waste_share",
                                                         Map.of("percent", usage.wasteSharePercent())));
                 for (var w : usage.wasteRecords()) {
@@ -1375,7 +1389,7 @@ public final class PlanCommand implements Callable<Integer> {
                     var extra = w.causeSummary() != null
                                         ? ConsoleNotice.stripControlSequences(w.causeSummary())
                                         : MessageCatalogue.format(locale, "report.completion.tasks_count",
-                                                            Map.of("count", w.tasksCount()));
+                                        Map.of(KEY_COUNT, w.tasksCount()));
                     out.printf("               %-18s %-6s %s%n", label, amount, extra);
                 }
             }
@@ -1397,10 +1411,10 @@ public final class PlanCommand implements Callable<Integer> {
             }
             var component = "report.tokens.component";
             return MessageCatalogue.format(locale, "report.completion.component_row", Map.of(
-                                "input", componentText(locale, component, "input", c.input()),
+                                KEY_INPUT, componentText(locale, component, KEY_INPUT, c.input()),
                                 "cache_read", componentText(locale, component, "cache_read", c.cacheRead()),
                                 "cache_write", componentText(locale, component, "cache_write", c.cacheWrite()),
-                                "output", componentText(locale, component, "output", c.output()),
+                                KEY_OUTPUT, componentText(locale, component, KEY_OUTPUT, c.output()),
                                 "reasoning", componentText(locale, component, "reasoning", c.reasoning())));
         }
 
@@ -1445,7 +1459,7 @@ public final class PlanCommand implements Callable<Integer> {
             var payload = new LinkedHashMap<String, Object>();
             payload.put("act", act);
             if (reason != null && !reason.isBlank()) {
-                payload.put("reason", reason);
+                payload.put(KEY_REASON, reason);
             }
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
                                 + "/holds/" + OperatorUrlUtil.encodePathSegment(holdId) + "/resolve";
@@ -1566,9 +1580,9 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                     return refused(out, aspect, value);
                 }
-                out.println(MessageCatalogue.format("common.conflict.changed", Map.of("value", current)));
+                out.println(MessageCatalogue.format("common.conflict.changed", Map.of(KEY_VALUE, current)));
                 if (noInput) {
-                    out.println(MessageCatalogue.format("common.conflict.no_input", Map.of("value", current)));
+                    out.println(MessageCatalogue.format("common.conflict.no_input", Map.of(KEY_VALUE, current)));
                     out.flush();
                     return 3;
                 }
@@ -1582,7 +1596,7 @@ public final class PlanCommand implements Callable<Integer> {
             var payload = new LinkedHashMap<String, Object>();
             payload.put("aspect", aspect);
             if (value != null) {
-                payload.put("value", value);
+                payload.put(KEY_VALUE, value);
             } else {
                 payload.put("remove", true);
             }
@@ -1607,7 +1621,7 @@ public final class PlanCommand implements Callable<Integer> {
                 }
             }
             out.println(MessageCatalogue.format("control.settings.refused",
-                                Map.of("value", value != null ? value : aspect, "reason", reason)));
+                                Map.of(KEY_VALUE, value != null ? value : aspect, KEY_REASON, reason)));
             out.flush();
             return 1;
         }

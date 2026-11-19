@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,7 +20,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -138,7 +138,7 @@ class LiteralTextGuardTest {
                             violations);
         collect("        out.println(String.format(\"%d workers are running\", count));", Path.of("Sample.java"), 0,
                             violations);
-        assertTrue(violations.size() == 2, violations.toString());
+        assertEquals(2, violations.size(), violations.toString());
     }
 
     private static void collect(String line, Path source, int index, List<String> violations) {

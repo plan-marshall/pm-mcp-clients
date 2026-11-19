@@ -195,11 +195,12 @@ public final class RuntimeCommand implements Callable<Integer> {
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
-                out.println(stopNow
+                var statusLine = stopNow
                                     ? MessageCatalogue.get(context.clientEnvironment().locale(),
-                                                        "operator.runtime.status_stopping")
+                                    "operator.runtime.status_stopping")
                                     : MessageCatalogue.get(context.clientEnvironment().locale(),
-                                                        "operator.runtime.status_draining"));
+                                    "operator.runtime.status_draining");
+                out.println(statusLine);
             } catch (RuntimeUnavailableException e) {
                 var refusal = RuntimeActDialogue.notStopped(context);
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),

@@ -79,7 +79,7 @@ class RefusalStreamTest {
 
     @Test
     @DisplayName("plan <unknown id> prints its refusal on stderr and nothing on stdout")
-    void planRefusalIsOnStderr() throws IOException {
+    void planRefusalIsOnStderr() throws Exception {
         refuseEverything();
         assertEquals(1, execute("plan", "nope"));
         assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString());
@@ -88,7 +88,7 @@ class RefusalStreamTest {
 
     @Test
     @DisplayName("epic <unknown id> prints its refusal on stderr and nothing on stdout")
-    void epicRefusalIsOnStderr() throws IOException {
+    void epicRefusalIsOnStderr() throws Exception {
         refuseEverything();
         assertEquals(1, execute("epic", "nope"));
         assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString());
@@ -97,7 +97,7 @@ class RefusalStreamTest {
 
     @Test
     @DisplayName("config cleanup prints its refusal on stderr and nothing on stdout")
-    void configCleanupRefusalIsOnStderr() throws IOException {
+    void configCleanupRefusalIsOnStderr() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> response.send(500, null, ""));
 
@@ -108,7 +108,7 @@ class RefusalStreamTest {
 
     @Test
     @DisplayName("a verb that already printed its refusal on stderr keeps doing so (the positive control)")
-    void refusalThatAlreadyWentToStderrStays() throws IOException {
+    void refusalThatAlreadyWentToStderrStays() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> response.send(500, null,
                             "{\"error\":\"internal_error\",\"message\":\"the runtime failed\"}"));

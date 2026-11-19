@@ -42,6 +42,9 @@ public class OperatorRefusedException extends IOException {
     static final String PREFIX_KEY = "operator.refusal.prefix";
 
     private static final Set<String> NON_ARGUMENTS = Set.of("error", "message", "code", "reason");
+    private static final String KEY_MESSAGE = "message";
+    private static final String KEY_ERROR = "error";
+    private static final String KEY_CODE = "code";
 
     /** What kind of refusal the exception carries. */
     enum Kind {
@@ -65,7 +68,7 @@ public class OperatorRefusedException extends IOException {
     private final @Nullable String serverMessage;
     private final int exitCode;
     private final Kind kind;
-    private final Map<String, ?> arguments;
+    private final transient Map<String, String> arguments;
 
     /**
      * @param verb     the verb
@@ -159,10 +162,10 @@ public class OperatorRefusedException extends IOException {
     }
 
     private record ParsedRefusal(@Nullable ApiErrorCode code, @Nullable String rawCode,
-                        @Nullable String serverMessage, Map<String, ?> arguments, Kind kind) {
+    @Nullable String serverMessage, Map<String, String> arguments, Kind kind) {
     }
 
-    private record ExtractedFields(@Nullable String code, @Nullable String message, Map<String, ?> arguments) {
+    private record ExtractedFields(@Nullable String code, @Nullable String message, Map<String, String> arguments) {
     }
 
     /** How a body that is no JSON object reads, which decides whether it may be the message. */
@@ -233,7 +236,8 @@ public class OperatorRefusedException extends IOException {
         }
         for (var line : text.split("\n")) {
             var stripped = line.strip();
-            if (stripped.matches("(?:[A-Za-z_$][\\w$]*\\.)*[A-Za-z_$][\\w$]*(?:Exception|Error)(?::.*)?")) {
+            if (stripped.endsWith("Exception") || stripped.contains("Exception:")
+                                || stripped.endsWith("Error") || stripped.contains("Error:")) {
                 return true;
             }
         }
@@ -241,7 +245,7 @@ public class OperatorRefusedException extends IOException {
     }
 
     private static String cap(String body) {
-        var stripped = TerminalSanitizer.sanitizeLine(body).strip();
+        var stripped = body == null ? "" : TerminalSanitizer.sanitizeLine(body).strip();
         if (stripped.length() <= MAX_MESSAGE_LENGTH) {
             return stripped;
         }
@@ -268,22 +272,22 @@ public class OperatorRefusedException extends IOException {
     }
 
     private static ExtractedFields extractFromMap(Map<?, ?> map) {
-        var errorObj = map.get("error");
+        var errorObj = map.get(KEY_ERROR);
         String parsedCode = null;
-        if (errorObj instanceof Map<?, ?> errMap && errMap.get("code") instanceof String nestedCode) {
+        if (errorObj instanceof Map<?, ?> errMap && errMap.get(KEY_CODE) instanceof String nestedCode) {
             parsedCode = nestedCode;
         } else if (errorObj instanceof String errStr) {
             parsedCode = errStr;
         }
-        if (parsedCode == null && map.get("code") instanceof String flatCode) {
+        if (parsedCode == null && map.get(KEY_CODE) instanceof String flatCode) {
             parsedCode = flatCode;
         }
         // A message the body names is what the operator reads; a code never is.
         String parsedMessage = null;
-        if (errorObj instanceof Map<?, ?> errMap && errMap.get("message") instanceof String nestedMessage) {
+        if (errorObj instanceof Map<?, ?> errMap && errMap.get(KEY_MESSAGE) instanceof String nestedMessage) {
             parsedMessage = nestedMessage;
         }
-        if (parsedMessage == null && map.get("message") instanceof String flatMessage) {
+        if (parsedMessage == null && map.get(KEY_MESSAGE) instanceof String flatMessage) {
             parsedMessage = flatMessage;
         }
         if (parsedMessage == null && errorObj instanceof String errStr) {
@@ -300,17 +304,17 @@ public class OperatorRefusedException extends IOException {
      * @param map the body
      * @return the arguments, never {@code null}
      */
-    private static Map<String, ?> argumentsOf(Map<?, ?> map) {
-        var arguments = new LinkedHashMap<String, Object>();
+    private static Map<String, String> argumentsOf(Map<?, ?> map) {
+        var arguments = new LinkedHashMap<String, String>();
         for (var entry : map.entrySet()) {
             if (!(entry.getKey() instanceof String key) || NON_ARGUMENTS.contains(key)) {
                 continue;
             }
             var value = entry.getValue();
-            if (value instanceof JsonNumber number) {
-                arguments.put(key, number.text());
+            if (value instanceof JsonNumber(String text)) {
+                arguments.put(key, text);
             } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-                arguments.put(key, value);
+                arguments.put(key, String.valueOf(value));
             }
         }
         return Map.copyOf(arguments);
@@ -368,7 +372,7 @@ public class OperatorRefusedException extends IOException {
     /**
      * @return the arguments the texts of the refusal name, never {@code null}
      */
-    public Map<String, ?> arguments() {
-        return arguments;
+    public Map<String, String> arguments() {
+        return arguments != null ? arguments : Map.of();
     }
 }
