@@ -862,11 +862,11 @@ class PmConsoleBehaviourTest {
         assertEquals(8, aspects.size());
 
         var onboardingStateJson = """
-            {"state":"harness.consent","completed_steps":1,
-             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
-               "facts":{"summary":"Look for harnesses on this machine?"},
-               "links":[{"id":"q","method":"POST","preselected":true}]}}
-            """;
+                            {"state":"harness.consent","completed_steps":1,
+                             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
+                               "facts":{"summary":"Look for harnesses on this machine?"},
+                               "links":[{"id":"q","method":"POST","preselected":true}]}}
+                            """;
 
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
@@ -891,7 +891,7 @@ class PmConsoleBehaviourTest {
             console.refreshSetupBadge("en", terminal);
             console.handleEmptyEnter(new PrintWriter(renderedConsole), reader, terminal);
             assertTrue(renderedConsole.toString(StandardCharsets.UTF_8).contains("[2/8]"),
-                       "PmConsole.continueOnboarding must run dialogue with injected aspect count (8), got: " + renderedConsole);
+                                "PmConsole.continueOnboarding must run dialogue with injected aspect count (8), got: " + renderedConsole);
         }
 
         // 2. Dialogue through EntryFlow.runOnboardingDialogue (choosing 'h' at entry prompt)
@@ -900,7 +900,7 @@ class PmConsoleBehaviourTest {
         var flow = new EntryFlow(flowContext, aspects);
         flow.run(new PrintWriter(renderedFlow), createReader("h\nq\n"));
         assertTrue(renderedFlow.toString().contains("[2/8] Harnesses"),
-                   "EntryFlow.runOnboardingDialogue must run dialogue with injected aspect count (8), got: " + renderedFlow);
+                            "EntryFlow.runOnboardingDialogue must run dialogue with injected aspect count (8), got: " + renderedFlow);
     }
 
     private LineReader createReader(String input) throws Exception {
