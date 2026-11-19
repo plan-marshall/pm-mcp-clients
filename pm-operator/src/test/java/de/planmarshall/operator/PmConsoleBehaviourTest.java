@@ -854,6 +854,55 @@ class PmConsoleBehaviourTest {
                             "the intro line must say the run's step count");
     }
 
+    @Test
+    @DisplayName("the injected aspect list reaches the onboarding dialogue through PmConsole and EntryFlow")
+    void injectedAspectListReachesTheDialogueThroughConsoleAndEntryFlow() throws Exception {
+        var aspects = new ArrayList<>(List.of(OnboardingAspect.values()));
+        aspects.add(OnboardingAspect.LANGUAGE);
+        assertEquals(8, aspects.size());
+
+        var onboardingStateJson = """
+            {"state":"harness.consent","completed_steps":1,
+             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
+               "facts":{"summary":"Look for harnesses on this machine?"},
+               "links":[{"id":"q","method":"POST","preselected":true}]}}
+            """;
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false,\"onboard\":{\"step\":1}}");
+            } else if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, onboardingStateJson);
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. Dialogue through PmConsole.continueOnboarding (handleEmptyEnter)
+        var renderedConsole = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream("q\n".getBytes(StandardCharsets.UTF_8)), renderedConsole)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), renderedConsole), null);
+            var console = new PmConsole(context, new EntryFlow(context, aspects));
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(renderedConsole), reader, terminal);
+            assertTrue(renderedConsole.toString(StandardCharsets.UTF_8).contains("[2/8]"),
+                       "PmConsole.continueOnboarding must run dialogue with injected aspect count (8), got: " + renderedConsole);
+        }
+
+        // 2. Dialogue through EntryFlow.runOnboardingDialogue (choosing 'h' at entry prompt)
+        var renderedFlow = new StringWriter();
+        var flowContext = new OperatorContext(fixture.environment(), tempDir, true);
+        var flow = new EntryFlow(flowContext, aspects);
+        flow.run(new PrintWriter(renderedFlow), createReader("h\nq\n"));
+        assertTrue(renderedFlow.toString().contains("[2/8]"),
+                   "EntryFlow.runOnboardingDialogue must run dialogue with injected aspect count (8), got: " + renderedFlow);
+    }
+
     private LineReader createReader(String input) throws Exception {
         var in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         return LineReaderBuilder.builder().terminal(new DumbTerminal(in, new ByteArrayOutputStream())).build();
