@@ -98,7 +98,7 @@ Not in this plan, named so they are not lost (each stays in `epic.md` as an Open
 - HYPOTHESIS: the German partial-usage line is ungrammatical and the English one ambiguous — read at `reports.en.properties:96` and `reports.de.properties:96`; the leaf's wording is not re-read (verify-at-outline)
 - HYPOTHESIS: `onboarding.adoc:190` and `:458` describe the screens before PLAN-66 D8 to D10 and `onboarding-texts.adoc:57` lists keys that do not exist — confirm/refute against the packs at HEAD (verify-at-outline)
 - HYPOTHESIS: the engine accepts the `models` payload of `ModelsScreen.svelte:39` (full UI rows, or `{}` for an unmodified screen) — confirm/refute at the engine's `catalogue.select` row; may remain "not shown by reading"
-- Verify-first clause: before each deliverable, re-read the named lines at the then-current HEAD; PLAN-165 shares declared files with PLAN-66's surface and may be running, see Dependencies. A refuted claim re-scopes the deliverable and is reported.
+- Verify-first clause: before each deliverable, re-read the named lines at the then-current HEAD; PLAN-165 has landed and touched none of this plan's files, see Dependencies. A refuted claim re-scopes the deliverable and is reported.
 
 ## Expected Surface
 
@@ -130,7 +130,7 @@ Not in this plan, named so they are not lost (each stays in `epic.md` as an Open
 
 - Depends on: `PLAN-66` (shipped: #467 `735318df`, #478 `98ca84d0`, #485 `321985ac`); the engine's state catalogue at `../pm-mcp-core` (read-only).
 - Overlaps with (read by `corpus cross-check` at staging, 2026-11-19; shipped, parked and superseded plans are not in the disjointness population):
-  - `PLAN-165` (running when this was staged): 13 of this plan's 23 files — `AspectChoice`, `HarnessChoice`, `ModelsChoice` (each with its test), `OnboardingView.svelte`, `OnboardingView.test.ts`, `OnboardingView.scenarios.test.ts`, `ModelsScreen.svelte`, `StoreScreen.svelte`, `TokensScreen.svelte`, `screens.ts`. Start after PLAN-165 has landed; re-read the files at HEAD then (its derived lists and refresh events change the same screens), and say so in the progress record.
+  - `PLAN-165` (shipped 2026-11-19, #503 `a8ac159d`): the 13 files the corpus read as shared at staging are **not** touched by that pull request (re-read: none of this plan's 23 files changed between `ac538733` and `a8ac159d`), so the overlap is gone and no rebase is owed. Its exported refresh sets (`pm-web-app/src/lib/stores/refreshEvents.ts`) exist now; `OnboardingView` is not one of their consumers.
   - `PLAN-154` (staged): `reports.en.properties` and `reports.de.properties` (deliverable 5's usage line); whichever lands second rebases and keeps both sides.
   - `PLAN-72`, `PLAN-73`, `PLAN-74` (parked): the same web files and `doc/design/web-app/onboarding*.adoc`; re-grounded when one is restarted, not part of the gate.
 - Adjacent to: the second PLAN-66 residue plan (the mock cut-back, not staged); PLAN-168 (the terminal's refusal path, a different module).
