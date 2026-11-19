@@ -12,6 +12,9 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.condition.OS;
  * The cancel dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an unknown
  * input re-asks, and the main path sends the cancel with its reason.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator cancel dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class CancelDialogueIT {
@@ -49,11 +53,12 @@ class CancelDialogueIT {
     @Test
     @DisplayName("9 at the consent re-asks with the offered keys and sends nothing")
     void unknownInputReAsks() throws Exception {
+        var reason = Generators.letterStrings(5, 12).next();
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "because\n9\nq\n");
+            DialogueHarness.type(session, reason + "\n9\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("9 is not offered here: y, n, q"),
@@ -66,11 +71,12 @@ class CancelDialogueIT {
     @Test
     @DisplayName("Enter at the consent has no default: it asks for a key and sends nothing")
     void enterAtConsentReAsks() throws Exception {
+        var reason = Generators.letterStrings(5, 12).next();
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "because\n\nq\n");
+            DialogueHarness.type(session, reason + "\n\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Type y or n."), session.screenText());
@@ -83,11 +89,12 @@ class CancelDialogueIT {
     @Test
     @DisplayName("the main path: the reason and the confirmation send the cancel")
     void mainPathCancels() throws Exception {
+        var reason = Generators.letterStrings(5, 12).next();
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "because\ny\n");
+            DialogueHarness.type(session, reason + "\ny\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("fix-relay cancelled and archived"),

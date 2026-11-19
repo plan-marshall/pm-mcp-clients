@@ -194,10 +194,12 @@ final class TranscriptDialogues {
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
             driver.project(environment(runtime, language), runtime.base().getParent(), clock);
+            driver.typeLine("q");
             driver.typeLine("config");
             driver.typeLine("q");
             driver.typeLine("web devices");
             driver.typeLine("config consents");
+            driver.typeLine("q");
             driver.typeLine("exit");
             driver.endOfInput();
 

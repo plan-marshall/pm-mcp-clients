@@ -12,6 +12,8 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.List;
 
 import de.planmarshall.mock.StandardScenarios;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.condition.OS;
  * input re-asks, and the guided path steps through every state to {@code onboard.completed}; the
  * console stays open after each, and {@code exit} leaves it with {@code 0}.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator onboarding dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class OnboardingDialogueIT {
@@ -89,18 +92,19 @@ class OnboardingDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
+        var unknown = Generators.letterStrings(3, 8).next();
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
              var session = harness.open()) {
             enterHere(session);
 
-            DialogueHarness.type(session, "zzz\nq\n");
+            DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitText("Nothing was sent.", DialogueHarness.TIMEOUT), session.rawOutput());
             DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             // The re-ask is the dialogue's answer to the input it did not offer, drawn once. A
             // title redraw can repeat the frame title; only a re-ask says the input was rejected.
-            assertEquals(1, DialogueHarness.times(session.rawOutput(), "zzz is not offered here"),
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), unknown + " is not offered here"),
                                 session.rawOutput());
             harness.assertNoAct();
         }

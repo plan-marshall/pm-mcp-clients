@@ -14,9 +14,26 @@ plan-marshall läuft. Diese Maschine ist noch nicht eingerichtet.
     6  Provider     die Git-Hosts, CI- und Analysedienste, die diese Maschine nutzt
     7  Pläne        wie Pläne laufen, solange ein Projekt nichts anderes sagt
 
-Wo möchtest du sie einrichten?   w) in der Web-App [Enter]   h) hier, im Termina l   ?   › config
-config wird hier nicht angeboten: w, h, v, ?
 Wo möchtest du sie einrichten?   w) in der Web-App [Enter]   h) hier, im Termina l   ?   › q
+pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › config
+Wie diese Maschine eingerichtet ist
+  Revision der Einstellungen 4
+Bereiche
+   1) Sprache                 English, models English
+   2) Harnesses               Claude Code 2.4.1 (default), OpenCode 1.9.0
+   3) Modelle                 4 models on 2 harnesses
+   4) Rollen                  31 roles
+   5) Zugangsdaten            macOS Keychain
+   6) Provider                GitHub (gh); SonarCloud not available
+   7) Pläne                   Pull Request · Test first · key points
+Tokens
+   8) github                  GitHub · fine-grained · ⚠ läuft in 9 Tagen ab
+   9) sonar                   SonarCloud · user token · kein Ablauf bekannt
+  10) Gemerkte Zustimmungen   2
+  11) Dokumente               Jedes Mal fragen
+  12) Gekoppelte Geräte       3 Geräte · Netzwerk-Listener an
+  13) Aufräumen               30 Tage, Erinnerung 3 Tage
+Öffne: 1-13   q) verlasse   ?   › q
 pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › web devices
 Gekoppelte Geräte · Die Browser, die auf dieser Maschine handeln können
     1) Firefox on mbp-oliver   gekoppelt 12. Mai von loopback   zuletzt benutzt <ago>
@@ -32,5 +49,5 @@ Die Zustimmungen, die du dir gemerkt hast
          <timestamp> · Firefox
 
 Eine zurückgenommene Zustimmung wird beim nächsten Lauf ihrer Aktion wieder erfragt.
-Nimm zurück: 1-2   q) verlasse   ?   › exit
-pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] ›
+Nimm zurück: 1-2   q) verlasse   ?   › q
+pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › exit

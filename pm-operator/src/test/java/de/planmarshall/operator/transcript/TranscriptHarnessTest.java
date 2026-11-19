@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.Test;
  * The pieces of the transcript harness on their own: the normalizer that keeps the diff readable,
  * the unified diff that shows a drift, and the scripted terminal that JLine reads from.
  */
+@EnableGeneratorController
 @DisplayName("transcript harness")
 class TranscriptHarnessTest {
 
@@ -45,8 +48,9 @@ class TranscriptHarnessTest {
         @Test
         @DisplayName("strips ANSI and OSC escapes")
         void stripsEscapes() {
-            var buffer = "\u001B[1mbold\u001B[0m \u001B]0;title\u0007plain";
-            assertEquals("bold plain", normalizer.normalize(buffer));
+            var word = Generators.letterStrings(3, 8).next();
+            var buffer = "\u001B[1m" + word + "\u001B[0m \u001B]0;title\u0007plain";
+            assertEquals(word + " plain", normalizer.normalize(buffer));
         }
 
         @Test
@@ -95,7 +99,9 @@ class TranscriptHarnessTest {
         @Test
         @DisplayName("is empty for equal lines")
         void equal() {
-            assertEquals("", UnifiedDiff.between("expected", List.of("a", "b"), "rendered", List.of("a", "b")));
+            var s1 = Generators.letterStrings(2, 6).next();
+            var s2 = Generators.letterStrings(2, 6).next();
+            assertEquals("", UnifiedDiff.between("expected", List.of(s1, s2), "rendered", List.of(s1, s2)));
         }
 
         @Test
@@ -148,10 +154,11 @@ class TranscriptHarnessTest {
         void feedsLine() throws Exception {
             try (var driver = TerminalTestDriver.create()) {
                 LineReader reader = LineReaderBuilder.builder().terminal(driver.terminal()).build();
-                driver.typeLine("status");
+                var line = Generators.letterStrings(3, 10).next();
+                driver.typeLine(line);
 
-                assertEquals("status", reader.readLine("pm › "));
-                assertTrue(driver.render().contains("pm › status"), driver.render());
+                assertEquals(line, reader.readLine("pm › "));
+                assertTrue(driver.render().contains("pm › " + line), driver.render());
             }
         }
 

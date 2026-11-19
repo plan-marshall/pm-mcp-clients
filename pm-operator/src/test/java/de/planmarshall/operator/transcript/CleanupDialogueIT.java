@@ -12,6 +12,8 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 
 import de.planmarshall.mock.StandardScenarios;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.condition.OS;
  * The cleanup dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} deletes nothing, an
  * unknown input re-asks, and the main path sends the delete.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator cleanup dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class CleanupDialogueIT {
@@ -50,11 +53,12 @@ class CleanupDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and deletes nothing")
     void unknownInputReAsks() throws Exception {
+        var unknown = Generators.letterStrings(3, 8).next();
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("cleanup.preview");
              var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "zzz\nq\n");
+            DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(DialogueHarness.times(session.rawOutput(), PROMPT) >= 2, session.screenText());

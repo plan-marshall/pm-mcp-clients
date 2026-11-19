@@ -14,9 +14,26 @@ plan-marshall is running. This machine is not set up yet.
     6  Providers    the git hosts, CI and analysis services this machine uses
     7  Plans        how plans run unless a project says otherwise
 
-Where do you want to set it up?   w) in the web app [Enter]   h) here, in the te rminal   ?   › config
-config is not offered here: w, h, q, ?
 Where do you want to set it up?   w) in the web app [Enter]   h) here, in the te rminal   ?   › q
+pm [setup 0/7 · setup cui-parent 2/10] › config
+How this machine is set up
+  Settings revision 4
+Aspects
+   1) Language              English, models English
+   2) Harnesses             Claude Code 2.4.1 (default), OpenCode 1.9.0
+   3) Models                4 models on 2 harnesses
+   4) Roles                 31 roles
+   5) Credentials           macOS Keychain
+   6) Providers             GitHub (gh); SonarCloud not available
+   7) Plans                 Pull Request · Test first · key points
+Tokens
+   8) github                GitHub · fine-grained · ⚠ expires in <duration>
+   9) sonar                 SonarCloud · user token · no expiry known
+  10) Remembered consents   2
+  11) Documents             Ask each time
+  12) Paired devices        3 devices · network listener on
+  13) Cleanup               <duration>, reminder <duration>
+Open: 1-13   q) leave   ?   › q
 pm [setup 0/7 · setup cui-parent 2/10] › web devices
 Paired devices · The browsers that can act on this machine
     1) Firefox on mbp-oliver   paired 12 May from loopback   last used <ago>
@@ -32,5 +49,5 @@ The consents you said not to ask again
          <timestamp> · Firefox
 
 A withdrawn consent is asked again the next time its action runs.
-Withdraw: 1-2   q) leave   ?   › exit
-pm [setup 0/7 · setup cui-parent 2/10] ›
+Withdraw: 1-2   q) leave   ?   › q
+pm [setup 0/7 · setup cui-parent 2/10] › exit

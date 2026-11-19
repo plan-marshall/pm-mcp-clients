@@ -12,6 +12,9 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.condition.OS;
  * nothing, an unknown input re-asks, and the identity state shows the project's id, name and pilot
  * choice before the setup act is sent.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator project setup dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ProjectSetupDialogueIT {
@@ -52,6 +56,7 @@ class ProjectSetupDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
+        var unknown = Generators.letterStrings(3, 8).next();
         try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START)
                                  .goTo("projects.being-added");
              var session = harness.open("project", "setup", "cui-parent")) {
@@ -59,7 +64,7 @@ class ProjectSetupDialogueIT {
             assertTrue(session.awaitText("Record this choice", DialogueHarness.TIMEOUT),
                                 session.rawOutput());
 
-            DialogueHarness.type(session, "zzz\nq\n");
+            DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(DialogueHarness.times(session.rawOutput(), PROMPT) >= 2, session.screenText());
