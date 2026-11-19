@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("OverviewStateStore")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class OverviewStateStoreTest {
@@ -53,8 +56,10 @@ class OverviewStateStoreTest {
     @DisplayName("round-trips every field")
     void roundTrip() throws Exception {
         var store = store();
-        var state = new OverviewSavedState("pm-mcp-clients", "epic", "plan-7", "7d", "role",
-                            "pm-mcp-core");
+        var project = Generators.letterStrings(3, 10).next();
+        var plan = "plan-" + Generators.integers(1, 100).next();
+        var systemProject = Generators.letterStrings(3, 10).next();
+        var state = new OverviewSavedState(project, "epic", plan, "7d", "role", systemProject);
         store.write(state);
         var read = store.read();
         assertAll(
@@ -67,8 +72,9 @@ class OverviewStateStoreTest {
     @DisplayName("absent fields stay absent")
     void roundTripsPartialState() throws Exception {
         var store = store();
-        store.write(new OverviewSavedState("p1", null, null, null, null, null));
-        assertEquals(new OverviewSavedState("p1", null, null, null, null, null),
+        var partialProject = Generators.letterStrings(3, 10).next();
+        store.write(new OverviewSavedState(partialProject, null, null, null, null, null));
+        assertEquals(new OverviewSavedState(partialProject, null, null, null, null, null),
                             store.read().orElseThrow());
     }
 

@@ -13,6 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.condition.OS;
  * nothing, an unknown input re-asks, {@code k} keeps the runtime running, and {@code 1} — or Enter,
  * the preselection — stops it when what runs is done.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator runtime stop dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class RuntimeStopDialogueIT {
@@ -53,11 +57,12 @@ class RuntimeStopDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
+        var unknown = Generators.integers(3, 9).next();
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "9\nq\n");
+            DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertEquals(2, DialogueHarness.times(session.rawOutput(), PROMPT), session.screenText());

@@ -50,7 +50,7 @@ Guard:: Relay and runtime fixtures: a cancellation whose `requestId` the relay h
 never forwarded; the runtime ignores a cancellation of a request it has answered; a cancellation of a pending
 `pm_wait` ends only that call without consuming or leasing a task; no cancellation ends a job; matched control: a
 cancellation of a pending `pm_build` wait ends that wait and leaves the build running.
-Source:: harness-as-worker evaluation (link:../../../plan-marshall-documentation/doc/specification/evaluation.adoc[Evaluation Reference]).
+Source:: harness-as-worker evaluation (doc/specification/evaluation.adoc).
 
 [#PM-WATCH-RUN-11]
 === PM-WATCH-RUN-11: Identity arguments never appear in a tool schema
@@ -65,4 +65,4 @@ the identity set (`generation_id`, `role`, `worker`, `job_token`) in any `inputS
 argument reaches the runtime without it; the runtime's own tool schemas declare none, and identity, role, and
 generation are taken only from the relay's headers; matched control: a call whose header identity differs from an
 invented argument is bound to the header identity.
-Source:: harness-as-worker evaluation (link:../../../plan-marshall-documentation/doc/specification/evaluation.adoc[Evaluation Reference]).
+Source:: harness-as-worker evaluation (doc/specification/evaluation.adoc).

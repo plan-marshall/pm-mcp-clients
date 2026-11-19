@@ -12,6 +12,9 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.condition.OS;
  * The pause dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an unknown
  * input re-asks, and Enter takes the preselection and pauses the plan.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator pause dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class PauseDialogueIT {
@@ -48,11 +52,12 @@ class PauseDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
+        var unknown = Generators.integers(4, 9).next();
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("plan", "pause", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "9\nq\n");
+            DialogueHarness.type(session, unknown + "\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertEquals(2, DialogueHarness.times(session.rawOutput(), PROMPT), session.screenText());

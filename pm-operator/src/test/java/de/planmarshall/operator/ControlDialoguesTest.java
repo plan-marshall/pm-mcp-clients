@@ -966,6 +966,20 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("leaving on leave key after an unrecognised answer sends no next request")
+    void workActionNextInvalidAnswerThenLeaveSendsNothing() throws Exception {
+        var server = serveNext();
+        virtual.type("x\nn\n");
+        var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(blocked), null));
+        var text = out.toString();
+        assertTrue(text.contains("Type r to raise the scope or n to leave it."), text);
+        assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)),
+                            server.requests().toString());
+    }
+
+    @Test
     @DisplayName("automatic off keeps what runs and starts nothing")
     void workActionAutoOff() throws Exception {
         serve((request, response) -> {

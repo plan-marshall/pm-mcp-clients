@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Clock;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
  * The ages of {@code projects} and {@code status}, rendered through the one display rule at the
  * context's clock instead of the wall clock.
  */
+@EnableGeneratorController
 @DisplayName("Ages of projects and status")
 class GermanAgeDisplayTest {
 
@@ -66,23 +69,24 @@ class GermanAgeDisplayTest {
     @Test
     @DisplayName("the alongside landings speak through their catalogue words in both languages")
     void alongsideLandingsAreLocalized() {
+        var count = Generators.integers(2, 9).next();
         var failedUnit = new AlongsideLanding("remediation.ci-failure", "failed", null, "unit", "landing_failed");
-        var removal = new AlongsideLanding(null, "running", 2, "removal", null);
+        var removal = new AlongsideLanding(null, "running", count, "removal", null);
 
         var en = new StringWriter();
         StatusCommand.renderAlongsideLandings(new PrintWriter(en, true), List.of(failedUnit, removal), "en");
         assertTrue(en.toString().contains("! landing failed"), en.toString());
         assertTrue(en.toString().contains("CI failure \u00b7 failed"), en.toString());
-        assertTrue(en.toString().contains("removing 2 moved documents from git \u00b7 running"), en.toString());
+        assertTrue(en.toString().contains("removing " + count + " moved documents from git \u00b7 running"), en.toString());
 
         var de = new StringWriter();
         StatusCommand.renderAlongsideLandings(new PrintWriter(de, true), List.of(failedUnit, removal), "de");
         assertTrue(de.toString().contains("! Landen fehlgeschlagen"), de.toString());
         assertTrue(de.toString().contains("CI-Fehler \u00b7 fehlgeschlagen"), de.toString());
-        assertTrue(de.toString().contains("entferne 2 verschobene Dokumente aus git \u00b7 l\u00e4uft"), de.toString());
+        assertTrue(de.toString().contains("entferne " + count + " verschobene Dokumente aus git \u00b7 l\u00e4uft"), de.toString());
         assertTrue(de.toString().contains("     ! Landen fehlgeschlagen lande CI-Fehler \u00b7 fehlgeschlagen"),
                             "the marker and its text are separated by one space: " + de);
-        assertTrue(de.toString().contains(" ".repeat(29) + "entferne 2 verschobene Dokumente aus git \u00b7 l\u00e4uft"),
+        assertTrue(de.toString().contains(" ".repeat(29) + "entferne " + count + " verschobene Dokumente aus git \u00b7 l\u00e4uft"),
                             "the removal row starts under the marker text: " + de);
         assertFalse(de.toString().contains("remediation."), de.toString());
     }

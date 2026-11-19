@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+@EnableGeneratorController
 @DisplayName("ClientEnvironment")
 class ClientEnvironmentTest {
 
@@ -130,21 +133,23 @@ class ClientEnvironmentTest {
         void filtersSensitiveVariables(String name) {
             assertTrue(ClientEnvironment.isExcludedFromBuildEnvironment(name));
 
-            var captured = ClientEnvironment.capture(Map.of(name, "secret_value", "SAFE_VAR", "safe_value"));
+            var safeValue = Generators.letterStrings(5, 12).next();
+            var captured = ClientEnvironment.capture(Map.of(name, "secret_value", "SAFE_VAR", safeValue));
             assertAll(
                                 () -> assertFalse(captured.buildEnvironment().containsKey(name)),
-                                () -> assertEquals("safe_value", captured.buildEnvironment().get("SAFE_VAR"))
+                                () -> assertEquals(safeValue, captured.buildEnvironment().get("SAFE_VAR"))
             );
         }
 
         @Test
         @DisplayName("preserves valid build variables like JAVA_HOME and DOCKER_HOST")
         void preservesSafeVariables() {
+            var customVal = Generators.letterStrings(5, 12).next();
             var env = Map.of(
                                 "JAVA_HOME", "/opt/java/jdk-25",
                                 "GRADLE_USER_HOME", "/home/user/.gradle",
                                 "DOCKER_HOST", "unix:///var/run/docker.sock",
-                                "CUSTOM_FLAG", "enabled"
+                                "CUSTOM_FLAG", customVal
             );
             var captured = ClientEnvironment.capture(env);
 

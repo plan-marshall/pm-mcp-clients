@@ -42,7 +42,8 @@ Three families are split across two repositories at a heading, and each holds a 
 of this repository alone: `cli-and-security`, `runtime-model` and `harness-integration`. For `cli-and-security` and
 `runtime-model`, a family's `Overview`, `Traceability`, `Status` and the daemon's `Modules` rows stay with the family
 index of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`; `harness-integration`
-has all of its parts here, so its family index here carries its `Overview`, `Traceability` and `Status`.
+keeps only its `Bundle Content per Harness` section with the model-facing content there, so its index here carries the
+family's `Overview`, `Traceability` and `Status`.
 
 [cols="3,1,3,3,2"]
 |===

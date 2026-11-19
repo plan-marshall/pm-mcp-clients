@@ -12,9 +12,13 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+@EnableGeneratorController
 @DisplayName("dialogue answers")
 class AnswersTest {
 
@@ -28,6 +32,7 @@ class AnswersTest {
         assertTrue(Answers.isYes("ja"));
         assertFalse(Answers.isYes("n"));
         assertFalse(Answers.isYes(""));
+        assertFalse(Answers.isYes(Generators.letterStrings(5, 10).next()));
     }
 
     @Test
@@ -38,5 +43,6 @@ class AnswersTest {
         assertTrue(Answers.isNo("nein"));
         assertFalse(Answers.isNo("y"));
         assertFalse(Answers.isNo(""));
+        assertFalse(Answers.isNo(Generators.letterStrings(5, 10).next()));
     }
 }

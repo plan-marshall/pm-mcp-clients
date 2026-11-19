@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.condition.OS;
  * with the command that resolves it, the command shows the file and accepts it after a typed
  * confirmation, and the project is served again.
  */
+@EnableGeneratorController
 @DisplayName("pm-operator accept-edit enrolment on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class AcceptEditDialogueIT {
@@ -74,7 +77,8 @@ class AcceptEditDialogueIT {
     @Test
     @DisplayName("an unknown input is no confirmation: nothing is sent and the project stays refused")
     void unknownInputSendsNothing() throws Exception {
-        assertNotConfirmed("zzz\n");
+        var unknown = "x" + Generators.letterStrings(3, 8).next();
+        assertNotConfirmed(unknown + "\n");
     }
 
     /**

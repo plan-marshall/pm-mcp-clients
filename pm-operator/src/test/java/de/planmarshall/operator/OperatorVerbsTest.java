@@ -13,9 +13,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import org.jline.reader.Candidate;
+import org.jline.reader.impl.DefaultParser;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -31,6 +34,16 @@ class OperatorVerbsTest {
         assertTrue(completer.containsAll(OperatorVerbs.registered()), completer.toString());
         assertTrue(completer.containsAll(List.of("exit", "quit", "help", "tui")), completer.toString());
         assertEquals(Set.copyOf(completer).size(), completer.size(), "a word appears twice: " + completer);
+    }
+
+    @Test
+    @DisplayName("the console builds its completer from OperatorVerbs.completer()")
+    void consoleCompleterMatchesOperatorVerbs() {
+        var completer = PmConsole.completer();
+        var candidates = new ArrayList<Candidate>();
+        completer.complete(null, new DefaultParser().parse("", 0), candidates);
+        var words = candidates.stream().map(Candidate::value).toList();
+        assertEquals(Set.copyOf(OperatorVerbs.completer()), Set.copyOf(words));
     }
 
     @Test
