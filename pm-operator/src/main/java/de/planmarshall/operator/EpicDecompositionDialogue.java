@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -56,6 +57,24 @@ final class EpicDecompositionDialogue {
     private static final String KEY_COUNT = "count";
     private static final String KEY_CHECKS = "checks";
     private static final String KEY_PLAN = "plan";
+
+    /**
+     * The keys the cut prompt accepts besides a plan number, <em>Enter</em> and the leave key — the
+     * one collection its branches read and its offered line is built from.
+     */
+    static final List<String> CUT_KEYS = List.of("+", "r");
+
+    /**
+     * The keys a plan prompt accepts besides <em>Enter</em> and the leave key — the one collection
+     * its branches read and its offered line is built from.
+     */
+    static final List<String> PLAN_KEYS = List.of("k", "e", "b");
+
+    /**
+     * The keys the read-back prompt accepts besides <em>Enter</em> and the leave key — the one
+     * collection its branches read and its offered line is built from.
+     */
+    static final List<String> READ_BACK_KEYS = List.of("i", "x");
 
     private final StartApi api;
     private final StartPrompt prompt;
@@ -120,10 +139,8 @@ final class EpicDecompositionDialogue {
             } else if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 prompt.raw(text(KEY_LEFT, Map.of("epic", clean(epicId))));
                 return 0;
-            } else if ("r".equalsIgnoreCase(answer)) {
-                current = rewrite(current);
-            } else if ("+".equals(answer)) {
-                current = add(current);
+            } else if (accepts(CUT_KEYS, answer)) {
+                current = "+".equals(answer) ? add(current) : rewrite(current);
             } else {
                 var target = planAt(current, answer);
                 if (target != null) {
@@ -135,8 +152,24 @@ final class EpicDecompositionDialogue {
         }
     }
 
-    private String offered(EpicDecomposition cut) {
-        return plansOffered(cut.stagedPlanCount()) + "+, r, " + leaveKey() + ", ?";
+    /**
+     * @param cut the cut shown
+     * @return the keys the cut prompt offers, derived from the collection its branches accept
+     */
+    String offered(EpicDecomposition cut) {
+        return plansOffered(cut.stagedPlanCount()) + offeredLine(CUT_KEYS);
+    }
+
+    /**
+     * @param keys the collection a prompt's branches accept
+     * @return the line the prompt prints as offered
+     */
+    String offeredLine(List<String> keys) {
+        return String.join(", ", keys) + ", " + leaveKey() + ", ?";
+    }
+
+    private static boolean accepts(List<String> keys, String answer) {
+        return keys.stream().anyMatch(key -> key.equalsIgnoreCase(answer));
     }
 
     private static String plansOffered(int count) {
@@ -208,11 +241,11 @@ final class EpicDecompositionDialogue {
             if ("e".equalsIgnoreCase(answer)) {
                 return edit(cut, placed.plan());
             }
-            if (answer.isEmpty() || "k".equalsIgnoreCase(answer) || "b".equalsIgnoreCase(answer)
+            if (answer.isEmpty() || accepts(PLAN_KEYS, answer)
                                 || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return cut;
             }
-            notOffered(answer, "k, e, b, " + leaveKey() + ", ?");
+            notOffered(answer, offeredLine(PLAN_KEYS));
         }
     }
 
@@ -262,11 +295,11 @@ final class EpicDecompositionDialogue {
         while (true) {
             var answer = prompt.askRaw(text(KEY_READ_BACK_ACCEPT, Map.of()), STATE_ID,
                                 text("decomposition.accept", Map.of()), epicId);
-            if (answer.isEmpty() || "i".equalsIgnoreCase(answer) || "x".equalsIgnoreCase(answer)
+            if (answer.isEmpty() || accepts(READ_BACK_KEYS, answer)
                                 || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return answer;
             }
-            notOffered(answer, "i, x, " + leaveKey() + ", ?");
+            notOffered(answer, offeredLine(READ_BACK_KEYS));
         }
     }
 
