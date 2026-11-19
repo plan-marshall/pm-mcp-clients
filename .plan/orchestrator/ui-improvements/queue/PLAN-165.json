@@ -2,10 +2,10 @@
   "id": "PLAN-165",
   "slug": "derive-lists-from-one-definition",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "165-derive-lists-from-one-definition",
+  "pr": "503",
+  "landing": "landings/PLAN-165.md",
   "seq": 165
 }
