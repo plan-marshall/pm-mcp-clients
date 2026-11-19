@@ -25,6 +25,7 @@ export const RULES = {
   textarea: { type: 'element', component: 'TextArea' },
   select: { type: 'element', component: 'SelectField' },
   'outline: none': { type: 'css', component: 'tokens.css (--focus-ring)' },
+  unparseable: { type: 'syntax', component: 'valid syntax' },
 };
 
 export const RULE_NAMES = Object.keys(RULES);
@@ -141,8 +142,18 @@ export function lintSvelteSource(source, relPath = 'anonymous.svelte') {
   let ast;
   try {
     ast = parse(source, { modern: true });
-  } catch (_err) {
-    return [];
+  } catch (err) {
+    const line = err.start?.line ?? (err.position ? getLineNumber(source, err.position) : 1);
+    const message = err.message || 'Syntax error';
+    return [
+      {
+        file: normalized,
+        line,
+        rule: 'unparseable',
+        component: message,
+        message,
+      },
+    ];
   }
 
   function walkTemplate(node) {
@@ -202,18 +213,16 @@ export function lintCssSource(source, relPath = 'anonymous.css') {
   try {
     const cssAst = parseCss(source);
     walkCssAst(cssAst, normalized, source, findings);
-  } catch (_err) {
-    // Regex fallback if parseCss fails
-    const regex = /\boutline\s*:\s*(none|0)\b/gi;
-    let match;
-    while ((match = regex.exec(source)) !== null) {
-      findings.push({
-        file: normalized,
-        line: getLineNumber(source, match.index),
-        rule: 'outline: none',
-        component: RULES['outline: none'].component,
-      });
-    }
+  } catch (err) {
+    const line = err.start?.line ?? (err.position ? getLineNumber(source, err.position) : 1);
+    const message = err.message || 'CSS syntax error';
+    findings.push({
+      file: normalized,
+      line,
+      rule: 'unparseable',
+      component: message,
+      message,
+    });
   }
 
   return findings;
@@ -406,7 +415,11 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   }
 
   for (const f of findings) {
-    console.warn(`warning: ${f.file}:${f.line} ${f.rule} — use ${f.component}`);
+    if (f.rule === 'unparseable') {
+      console.warn(`warning: ${f.file}:${f.line} ${f.rule} — ${f.component}`);
+    } else {
+      console.warn(`warning: ${f.file}:${f.line} ${f.rule} — use ${f.component}`);
+    }
   }
 
   if (findings.length > 0) {
