@@ -41,8 +41,8 @@ The specifications the modules of this repository implement live here, beside th
   Modules table of `module-structure.adoc` gives a module of this repository (`pm-api`, `pm-exec`, `pm-relay`,
   `pm-operator`, `pm-mock-runtime`, `pm-web-app`, `pm-web-e2e`); `doc/ImplementationWatch.adoc` and
   `doc/implementation-watch/` hold their watch items, with their identifiers unchanged. A family whose parts are
-  split keeps one index per repository, each listing and describing only the parts it holds; the other index is one
-  link away. `harness-integration` has all of its parts here except the `Bundle Content per Harness` section, which stays
+  split keeps one index per repository, each describing the parts it holds and pointing, in one row per part, at the
+  other repository's index for the rest; the other index is one link away. `harness-integration` has all of its parts here except the `Bundle Content per Harness` section, which stays
   with the model-facing content in `plan-marshall-documentation` until it moves into `plan-marshall-mcp`; its index here
   carries the family's `Overview`, `Traceability` and `Status` for the parts it holds. For `cli-and-security` and
   `runtime-model` those three sections stay with the family index of `plan-marshall-documentation` until the daemon's
