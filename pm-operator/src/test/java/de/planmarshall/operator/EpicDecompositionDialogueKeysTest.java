@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Stream;
@@ -144,12 +144,37 @@ class EpicDecompositionDialogueKeysTest {
         );
     }
 
+    /**
+     * The action each cut key must send, written here from the transcript contract rather than read
+     * from the key/act pairing: a swapped pairing in production then fails its own case.
+     */
+    private static final Map<String, String> CUT_ACTIONS = Map.of("+", "add", "r", "rewrite");
+
+    /** The number of edit requests each plan key must send — {@code e} edits, {@code k}/{@code b} do not. */
+    private static final Map<String, Integer> PLAN_EDITS = Map.of("k", 0, "e", 1, "b", 0);
+
+    /** Per read-back key: the edit requests and the reads of the cut it must cause. */
+    private static final Map<String, int[]> READ_BACK_EFFECTS =
+                        Map.of("i", new int[]{2, 1}, "x", new int[]{1, 2});
+
+    @Test
+    @DisplayName("every key of every prompt has its own expected act here")
+    void everyKeyHasItsOwnExpectedAct() {
+        assertAll(
+                            () -> assertEquals(CUT_ACTIONS.keySet(),
+                                                new LinkedHashSet<>(keysOf(EpicDecompositionDialogue.CUT_KEYS))),
+                            () -> assertEquals(PLAN_EDITS.keySet(),
+                                                new LinkedHashSet<>(keysOf(EpicDecompositionDialogue.PLAN_KEYS))),
+                            () -> assertEquals(READ_BACK_EFFECTS.keySet(),
+                                                new LinkedHashSet<>(keysOf(EpicDecompositionDialogue.READ_BACK_KEYS)))
+        );
+    }
+
     /** @return each cut key with the instruct action it must send */
     static Stream<Arguments> cutKeys() {
         var cases = new ArrayList<Arguments>();
-        for (var key : EpicDecompositionDialogue.CUT_KEYS) {
-            cases.add(Arguments.of(key.key(), key.act().name().toLowerCase(Locale.ROOT),
-                                key.key() + "\nsplit the work\n"));
+        for (var key : keysOf(EpicDecompositionDialogue.CUT_KEYS)) {
+            cases.add(Arguments.of(key, CUT_ACTIONS.get(key), key + "\nsplit the work\n"));
         }
         return cases.stream();
     }
@@ -168,13 +193,12 @@ class EpicDecompositionDialogueKeysTest {
         );
     }
 
-    /** @return each plan key with the number of edit requests its act must send, and its script */
+    /** @return each plan key with the number of edit requests it must send, and its script */
     static Stream<Arguments> planKeys() {
         var cases = new ArrayList<Arguments>();
-        for (var key : EpicDecompositionDialogue.PLAN_KEYS) {
-            var edits = key.act() == EpicDecompositionDialogue.PlanAct.EDIT;
-            cases.add(Arguments.of(key.key(), edits ? 1 : 0,
-                                "1\n" + key.key() + "\n" + (edits ? "smaller\n" : "")));
+        for (var key : keysOf(EpicDecompositionDialogue.PLAN_KEYS)) {
+            var edits = PLAN_EDITS.get(key);
+            cases.add(Arguments.of(key, edits, "1\n" + key + "\n" + (edits == 1 ? "smaller\n" : "")));
         }
         return cases.stream();
     }
@@ -198,11 +222,10 @@ class EpicDecompositionDialogueKeysTest {
     /** @return each read-back key with its edit count, its read count, and its script */
     static Stream<Arguments> readBackKeys() {
         var cases = new ArrayList<Arguments>();
-        for (var key : EpicDecompositionDialogue.READ_BACK_KEYS) {
-            var instructAgain =
-                                key.act() == EpicDecompositionDialogue.ReadBackAct.INSTRUCT_AGAIN;
-            cases.add(Arguments.of(key.key(), instructAgain ? 2 : 1, instructAgain ? 1 : 2,
-                                "1\ne\nsmaller\n" + key.key() + "\n" + (instructAgain ? "second\n" : "")));
+        for (var key : keysOf(EpicDecompositionDialogue.READ_BACK_KEYS)) {
+            var effect = READ_BACK_EFFECTS.get(key);
+            cases.add(Arguments.of(key, effect[0], effect[1],
+                                "1\ne\nsmaller\n" + key + "\n" + (effect[0] == 2 ? "second\n" : "")));
         }
         return cases.stream();
     }
