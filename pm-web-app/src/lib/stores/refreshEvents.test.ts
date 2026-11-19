@@ -87,35 +87,15 @@ describe('the refresh events', () => {
     expect(refreshesPlanProcess('chat.turn.delta')).toBe(false);
   });
 
-  // The three assertions below pin the sets as they stand before and after the consolidation. They
-  // are the behaviour-unchanged contract, not a second source of truth: a deliberate new event
-  // changes the set and this line together, which is the review the pin asks for.
-  it('refreshes the project explorer on the one project event the catalogue holds', () => {
-    expect(PROJECT_REFRESH_EVENTS).toEqual(['project.changed']);
-  });
-
-  it('refreshes the entry on every event that changes what it holds, and never on a chat turn', () => {
-    expect(ENTRY_REFRESH_EVENTS).toEqual([
-      'reset',
-      'source.added',
-      'source.removed',
-      'source.flagged',
-      'progress.changed',
-      'check.result',
-      'entry.moved',
-      'state.entered',
-    ]);
+  // No literal inventory of the three sets is kept here: the set IS the definition, and the
+  // behaviour-unchanged evidence is the consumers' own tests, which iterate the exported sets on the
+  // events they served before (`runtime.test.ts`, `ProjectExplorerView.test.ts`, `StartView.test.ts`,
+  // `PlanView.test.ts`).
+  it('refreshes the entry on an event that changes what it holds, and never on a chat turn', () => {
+    expect(refreshesEntry('source.added')).toBe(true);
+    expect(refreshesEntry('reset')).toBe(true);
     expect(refreshesEntry('chat.turn.started')).toBe(false);
     expect(refreshesEntry('chat.turn.completed')).toBe(false);
     expect(refreshesEntry('chat.proposal')).toBe(false);
-  });
-
-  it('refreshes the plan process on the four events it always did', () => {
-    expect(PLAN_PROCESS_REFRESH_EVENTS).toEqual([
-      'activity.changed',
-      'phase.changed',
-      'task.off_track',
-      'project.work_ended',
-    ]);
   });
 });

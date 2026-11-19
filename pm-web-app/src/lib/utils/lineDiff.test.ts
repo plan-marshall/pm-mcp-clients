@@ -63,24 +63,29 @@ describe('lineDiff', () => {
       return Array.from({ length: count }, (_, index) => `line ${index}`);
     }
 
-    it('compares two huge texts position by position, still pairing a replaced line', () => {
+    it('compares two huge texts position by position, which an ordinary diff would not', () => {
       const before = lines(2001);
-      const after = [...before];
-      after[0] = 'changed';
+      // A line inserted in the middle: compared position by position, every later line changes,
+      // while the ordinary longest-common-subsequence path would report a single added line.
+      const after = [...before.slice(0, 1000), 'inserted', ...before.slice(1000)];
 
-      const diff = diffLines(before.join('\n'), after.join('\n'));
+      const positional = diffLines(before.join('\n'), after.join('\n'));
+      const small = lines(10);
+      const smallWithInsert = [...small.slice(0, 5), 'inserted', ...small.slice(5)];
+      const ordinary = diffLines(small.join('\n'), smallWithInsert.join('\n'));
 
-      expect(diff.added).toBe(1);
-      expect(diff.removed).toBe(1);
-      expect(diff.rows[0]).toMatchObject({
+      expect(ordinary.added).toBe(1);
+      expect(ordinary.removed).toBe(0);
+      expect(positional.rows[1000]).toMatchObject({
         kind: 'change',
-        left: 'line 0',
-        right: 'changed',
-        leftNo: 1,
-        rightNo: 1,
+        left: 'line 1000',
+        right: 'inserted',
+        leftNo: 1001,
+        rightNo: 1001,
       });
-      expect(diff.rows).toHaveLength(2001);
-      expect(diff.rows[2000]).toMatchObject({ kind: 'same', left: 'line 2000' });
+      expect(positional.rows.at(-1)).toMatchObject({ kind: 'add', right: 'line 2000', rightNo: 2002 });
+      expect(positional.added).toBe(1002);
+      expect(positional.removed).toBe(1001);
     });
 
     it('names the lines a huge text adds past the end of the other', () => {

@@ -178,7 +178,10 @@ export const dictionary = {
 
     expect(plugin.resolveId(EMPTY_DEV_PAGE_ID)).toBe(EMPTY_DEV_PAGE_ID);
     expect(plugin.resolveId('/repo/pm-web-app/src/routes/+layout.svelte')).toBeNull();
-    expect(plugin.load(EMPTY_DEV_PAGE_ID)).toContain('not part of a production build');
+    // The whole module, not a phrase of it: anything else would reach the production bundle.
+    expect(plugin.load(EMPTY_DEV_PAGE_ID)).toBe(
+      '<!-- the development page is not part of a production build -->',
+    );
     expect(plugin.load('/repo/pm-web-app/src/routes/+layout.svelte')).toBeNull();
   });
 
