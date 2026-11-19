@@ -15,10 +15,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.EnumSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.system.CleanupKind;
-import de.planmarshall.api.message.MessageCatalogue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,8 +41,8 @@ class CleanupDurationsKindsTest {
                             () -> assertEquals(EnumSet.allOf(CleanupKind.class), displays.keySet()),
                             () -> assertTrue(displays.values().stream().allMatch(display -> !display.label().isBlank())),
                             () -> assertTrue(displays.values().stream()
-                                                .allMatch(display -> display.days().applyAsInt(
-                                                                    CleanupDurations.defaults()) >= 0),
+                                                                    .allMatch(display -> display.days().applyAsInt(
+                                                                                        CleanupDurations.defaults()) >= 0),
                                                 displays.toString())
         );
     }
@@ -68,7 +69,7 @@ class CleanupDurationsKindsTest {
         var index = 0;
         for (var kind : CleanupKind.values()) {
             var label = displays.get(kind).label();
-            expected.add(MessageCatalogue.format("en", "system.cleanup.durations.kind", java.util.Map.of("kind", label))
+            expected.add(MessageCatalogue.format("en", "system.cleanup.durations.kind", Map.of("kind", label))
                                 + " " + figures[index] + " days");
             index++;
         }

@@ -220,7 +220,7 @@ class EpicDecompositionDialogueKeysTest {
             if (part.matches("\\d+-\\d+")) {
                 var bounds = part.split("-");
                 for (var number = Integer.parseInt(bounds[0]);
-                                    number <= Integer.parseInt(bounds[1]); number++) {
+                     number <= Integer.parseInt(bounds[1]); number++) {
                     keys.add(Integer.toString(number));
                 }
             } else {
