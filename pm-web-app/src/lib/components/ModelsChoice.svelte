@@ -4,33 +4,39 @@
    *
    * Tokens, never money: every figure is a token count or a floor estimate, and no price or
    * cost of a model is ever shown.
+   *
+   * A model row is the entry `catalogue.select` publishes — the state catalogue's row
+   * (`19-onboarding-aspects-models-providers.adoc:50-56`) and `ModelCatalogueEntry` (pm-api) name
+   * a harness, a model id and the row's source (`probe` or `operator`), and nothing else. The
+   * recommendation is the row's own word ("the recommendation preselected"), so a row may carry
+   * `recommended`; no row and no `pm-api` type names an `allowed`, `reason`, `rationale` or
+   * `harness_name` field, and this screen reads none of them.
    */
   export interface ModelRow {
     harness_id: string;
     model_id: string;
-    harness_name?: string;
     source?: string;
     recommended?: boolean;
-    allowed?: boolean;
-    reason?: string;
-    rationale?: string;
     tokens?: number;
     tokens_floor?: boolean;
   }
 
+  /**
+   * One enrolled harness as `HarnessScanResult` (pm-api) and the `harness.choose` row publish it
+   * (state catalogue `14-machine-onboarding.adoc:301-307`): its id and its name. The screen reads
+   * no `cannot_list`, `models_listed` or `display_name` field, because no row and no `pm-api` type
+   * publishes one.
+   */
   export interface ModelHarnessInfo {
     harness_id?: string;
     name?: string;
-    display_name?: string;
-    cannot_list?: boolean;
-    models_listed?: boolean;
-    reason?: string;
   }
 </script>
 
 <script lang="ts">
   import { t, currentLocale, humanizeKey, type Locale } from '../i18n';
   import { formatTokens } from '../display/format';
+  import { proposalDelta } from './choiceProposal';
   import Button from './Button.svelte';
   import Marker from './Marker.svelte';
   import TextField from './TextField.svelte';
@@ -40,90 +46,207 @@
   export let harnessNames: Record<string, string> = {};
   export let defaultHarness: string | undefined = undefined;
   export let recommendation: string | undefined = undefined;
-  export let noAdviceReason: string | undefined = undefined;
   export let busy = false;
 
   export let onRecord: (allowed: ModelRow[], modified: boolean) => void = () => {};
 
+  /**
+   * The identity of a model row: its harness and its model id. The ids are compared as one row
+   * where the engine compares them case-insensitively (PLAN-169 D3), and the two parts are encoded
+   * rather than joined, so an id that itself carries the separator can never collide with another
+   * harness's row.
+   *
+   * @param row a model row
+   * @returns the row's identity
+   */
   function key(row: Pick<ModelRow, 'harness_id' | 'model_id'>): string {
-    return `${row.harness_id}::${row.model_id}`;
+    return JSON.stringify([row.harness_id, row.model_id.trim().toLowerCase()]);
   }
 
+  /**
+   * @param rows the proposed rows
+   * @returns the identities the proposal preselects: the recommended rows where the proposal marks
+   *   any, otherwise every listed row (the catalogue row's "recommendation preselected", read
+   *   without a per-row flag that no source publishes)
+   */
   function initiallySelected(rows: readonly ModelRow[]): string[] {
-    if (rows.some((r) => r.allowed !== undefined)) {
-      return rows.filter((r) => r.allowed !== false).map(key);
-    }
-    if (rows.some((r) => typeof r.recommended === 'boolean')) {
-      return rows
-        .filter((r) => r.recommended === true || (r.source === 'operator' && r.recommended !== false))
-        .map(key);
-    }
-    return rows.map(key);
+    return rows.filter((row) => preselected(row, rows)).map(key);
   }
 
-  function proposalSignature(
-    rows: readonly ModelRow[],
-    harnessInfos: readonly ModelHarnessInfo[],
-    rec?: string,
-  ): string {
-    return JSON.stringify([
-      rec ?? '',
-      rows.map((r) => [
-        r.harness_id,
-        r.model_id,
-        r.source ?? '',
-        r.recommended ?? null,
-        r.allowed ?? null,
-      ]),
-      harnessInfos.map((h) => [h.harness_id ?? '', h.cannot_list ?? null, h.models_listed ?? null]),
-    ]);
+  /**
+   * @param row one row of the proposal
+   * @param rows the whole proposal
+   * @returns whether the row is preselected
+   */
+  function preselected(row: ModelRow, rows: readonly ModelRow[]): boolean {
+    if (rows.some((r) => typeof r.recommended === 'boolean')) {
+      return row.recommended === true || (row.source === 'operator' && row.recommended !== false);
+    }
+    return true;
   }
 
   let extraModels: ModelRow[] = [];
   let removedKeys: string[] = [];
   let modified = false;
   let draftByHarness: Record<string, string> = {};
-  let prevProposalSignature = proposalSignature(models, harnesses, recommendation);
+  let prevModels: readonly ModelRow[] = models;
   let selected: string[] = initiallySelected(models);
+  let droppedEdits: string[] = [];
+  let addNotice: { harnessId: string; key: string } | null = null;
 
+  // A refresh keeps every edit the operator made (added ids, unticked rows, drafts) and resyncs
+  // only what the changed proposal carries: a new row follows the proposal, a removed row takes
+  // its edit with it and the screen says so.
   $: {
-    const nextSignature = proposalSignature(models, harnesses, recommendation);
-    if (nextSignature !== prevProposalSignature) {
-      prevProposalSignature = nextSignature;
-      extraModels = [];
-      removedKeys = [];
-      modified = false;
-      draftByHarness = {};
-      selected = initiallySelected(models);
+    const delta = proposalDelta(
+      prevModels.map((row) => key(row)),
+      models.map((row) => key(row)),
+    );
+    if (delta.added.length > 0 || delta.removed.length > 0) {
+      syncProposal(delta.added, delta.removed);
+    } else if (models !== prevModels) {
+      // A refresh that changes only a non-identity fact leaves every edit in place and takes a
+      // stale notice with it.
+      prevModels = models;
+      droppedEdits = [];
     }
   }
+  /**
+   * @param added the identities the refreshed proposal adds
+   * @param removed the identities it no longer carries
+   */
+  function syncProposal(added: readonly string[], removed: readonly string[]): void {
+    const previous = prevModels;
+    prevModels = models;
+    const nextKeys = models.map((row) => key(row));
+    const dropped = previous
+      .filter((row) => removed.includes(key(row)))
+      .filter((row) => !selected.includes(key(row)) || removedKeys.includes(key(row)))
+      .map((row) => row.model_id);
+    removedKeys = removedKeys.filter((id) => nextKeys.includes(id));
+    const stillOffered = new Set([...nextKeys, ...extraModels.map((row) => key(row))]);
+    selected = selected.filter((id) => stillOffered.has(id));
+    for (const row of models) {
+      const id = key(row);
+      if (added.includes(id) && preselected(row, models) && !selected.includes(id)) {
+        selected = [...selected, id];
+      }
+    }
+    const named = new Set([
+      ...models.map((row) => row.harness_id),
+      ...harnesses.flatMap((info) => (info.harness_id ? [info.harness_id] : [])),
+      ...Object.keys(harnessNames),
+      ...(defaultHarness ? [defaultHarness] : []),
+    ]);
+    const draftsGone = Object.keys(draftByHarness).filter((harnessId) => !named.has(harnessId));
+    droppedEdits = [...dropped, ...draftsGone];
+  }
 
-  $: allModels = [...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels];
+  $: allModels = dedupe([...models.filter((m) => !removedKeys.includes(key(m))), ...extraModels]);
 
-  $: groups = buildGroups(allModels, harnesses, models);
+  $: groups = buildGroups(allModels, harnesses, models, harnessNames, defaultHarness);
 
   $: allowed = allModels.filter((row) => selected.includes(key(row)));
 
+  // The harnesses the state names. A refresh that stops naming one takes the operator's draft and
+  // added rows for it with it — the screen cannot record a model on a harness it does not show.
+  $: {
+    const named = new Set([
+      ...models.map((row) => row.harness_id),
+      ...harnesses.flatMap((info) => (info.harness_id ? [info.harness_id] : [])),
+      ...Object.keys(harnessNames),
+      ...(defaultHarness ? [defaultHarness] : []),
+    ]);
+    const staleDrafts = Object.keys(draftByHarness).filter((harnessId) => !named.has(harnessId));
+    const staleModels = extraModels.filter((row) => !named.has(row.harness_id));
+    if (staleDrafts.length > 0 || staleModels.length > 0) {
+      if (staleDrafts.length > 0) {
+        const next = { ...draftByHarness };
+        for (const harnessId of staleDrafts) delete next[harnessId];
+        draftByHarness = next;
+      }
+      if (staleModels.length > 0) {
+        extraModels = extraModels.filter((row) => named.has(row.harness_id));
+        for (const row of staleModels) {
+          selected = selected.filter((id) => id !== key(row));
+        }
+      }
+      droppedEdits = [
+        ...new Set([...droppedEdits, ...staleDrafts, ...staleModels.map((row) => row.model_id)]),
+      ];
+    }
+  }
+
+  /**
+   * @param rows the rows in the order they are shown
+   * @returns the rows with one per identity, the first winning: the ids are compared as one row
+   *   (PLAN-169 D3), so a state that reports the same id twice cannot break the list
+   */
+  function dedupe(rows: readonly ModelRow[]): ModelRow[] {
+    const seen = new Set<string>();
+    return rows.filter((row) => {
+      const id = key(row);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  /** One group of the screen: the harness, its label, its rows and why it carries no list. */
+  interface ModelGroup {
+    harnessId: string;
+    label: string;
+    rows: ModelRow[];
+    listsNothing: boolean;
+  }
+
+  /**
+   * Builds one group per harness the state names — its own `harnesses[]`, the names the view
+   * reports, the default harness, the initial rows and the rows — so a harness whose models the
+   * operator must type gets its group and its field even when the state lists no row for it.
+   *
+   * The label is resolved here, not in the template, so a renamed harness refreshes it: a template
+   * call hides the props it reads from the compiler.
+   *
+   * @param rows the rows the screen shows
+   * @param harnessInfos the state's enrolled harnesses
+   * @param proposal the state's own rows, the source of "this harness lists nothing"
+   * @param names the harness names the view knows
+   * @param defaultId the harness the state marks as the default
+   * @returns the groups, in the order the state names them
+   */
   function buildGroups(
     rows: readonly ModelRow[],
     harnessInfos: readonly ModelHarnessInfo[],
-    initialRows: readonly ModelRow[],
-  ): Array<[string, ModelRow[]]> {
+    proposal: readonly ModelRow[],
+    names: Record<string, string>,
+    defaultId: string | undefined,
+  ): ModelGroup[] {
     const grouped: Record<string, ModelRow[]> = Object.create(null);
-    // Show one group for every enrolled harness, even when it reports zero listed models.
+    const nameIt = (harnessId: string | undefined): void => {
+      if (harnessId) grouped[harnessId] ??= [];
+    };
     for (const info of harnessInfos) {
-      if (info.harness_id) {
-        grouped[info.harness_id] ??= [];
-      }
+      nameIt(info.harness_id);
     }
-    // Keep initial harnesses even if all their models are later removed.
-    for (const row of initialRows) {
-      grouped[row.harness_id] ??= [];
+    for (const row of proposal) {
+      nameIt(row.harness_id);
     }
     for (const row of rows) {
       (grouped[row.harness_id] ??= []).push(row);
     }
-    return Object.entries(grouped);
+    for (const harnessId of Object.keys(names)) {
+      nameIt(harnessId);
+    }
+    nameIt(defaultId);
+    return Object.entries(grouped).map(([harnessId, groupRows]) => ({
+      harnessId,
+      label: resolveHarnessName(harnessId),
+      rows: groupRows,
+      listsNothing: !proposal.some(
+        (row) => row.harness_id === harnessId && (row.source ?? 'probe') === 'probe',
+      ),
+    }));
   }
 
   function toggle(row: ModelRow): void {
@@ -134,23 +257,30 @@
 
   function setDraft(harnessId: string, value: string): void {
     draftByHarness = { ...draftByHarness, [harnessId]: value };
+    if (addNotice?.harnessId === harnessId) addNotice = null;
   }
 
   function addOperatorModel(harnessId: string): void {
     const modelId = (Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim();
-    if (!modelId) return;
+    if (!modelId) {
+      addNotice = { harnessId, key: 'onboard.catalogue.select.add_empty' };
+      return;
+    }
     const id = key({ harness_id: harnessId, model_id: modelId });
-    // Inspect incoming `models` and `extraModels` directly rather than deferred `$: allModels`
-    // so re-adding a removed initial model does not create a duplicate row.
-    if (models.some((m) => key(m) === id)) {
+    if (removedKeys.includes(id)) {
       removedKeys = removedKeys.filter((k) => k !== id);
-    } else if (!extraModels.some((m) => key(m) === id)) {
+    } else if (models.some((m) => key(m) === id) || extraModels.some((m) => key(m) === id)) {
+      // The row is already offered; a second row of the same id would record it twice.
+      addNotice = { harnessId, key: 'onboard.catalogue.select.add_duplicate' };
+      return;
+    } else {
       extraModels = [...extraModels, { harness_id: harnessId, model_id: modelId, source: 'operator' }];
     }
     if (!selected.includes(id)) {
       selected = [...selected, id];
     }
     draftByHarness = { ...draftByHarness, [harnessId]: '' };
+    addNotice = null;
     modified = true;
   }
 
@@ -167,27 +297,19 @@
 
   function resolveHarnessName(harnessId: string): string {
     const fromProp = harnesses.find((h) => h.harness_id === harnessId);
-    const propLabel = fromProp?.display_name ?? fromProp?.name;
-    if (propLabel) return propLabel;
+    if (fromProp?.name) return fromProp.name;
     if (Object.hasOwn(harnessNames, harnessId) && harnessNames[harnessId]) {
       return harnessNames[harnessId];
     }
-    const fromModel = allModels.find((m) => m.harness_id === harnessId)?.harness_name;
-    if (fromModel) return fromModel;
     return humanizeKey(harnessId);
   }
 
-  function cannotList(harnessId: string, rows: readonly ModelRow[]): boolean {
-    const info = harnesses.find((h) => h.harness_id === harnessId);
-    if (info?.cannot_list !== undefined) return info.cannot_list;
-    if (info?.models_listed !== undefined) return !info.models_listed;
-    const initialForHarness = models.filter((m) => m.harness_id === harnessId);
-    if (initialForHarness.length > 0) {
-      return !initialForHarness.some((r) => r.source === 'probe');
-    }
-    return !rows.some((r) => r.source === 'probe');
-  }
-
+  /**
+   * @param row a model row that may carry a token estimate
+   * @param locale the number format of the interface language
+   * @param _translate the catalogue translator, unused (the figure is a number)
+   * @returns the token figure, or an empty string where the row carries none
+   */
   function tokensLabel(row: ModelRow, locale: Locale, _translate?: unknown): string {
     if (row.tokens === undefined) return '';
     return formatTokens(row.tokens, Boolean(row.tokens_floor), locale);
@@ -200,20 +322,28 @@
       <h3 class="recommendation__title">{$t('onboard.catalogue.select.recommendation')}</h3>
       <p class="recommendation__text">{recommendation}</p>
     </div>
-  {:else if noAdviceReason}
-    <p class="choice-screen__note" data-testid="model-no-advice">
-      {$t('onboard.catalogue.models.no_advice', { reason: noAdviceReason })}
+  {/if}
+
+  {#if droppedEdits.length > 0}
+    <p class="choice-screen__note" role="status" data-testid="models-dropped">
+      {$t('onboard.choice.edit_dropped', { rows: droppedEdits.join(', ') })}
     </p>
   {/if}
 
-  {#each groups as [harnessId, rows] (harnessId)}
-    <div class="model-group" data-harness={harnessId}>
+  {#each groups as { harnessId, label, rows, listsNothing } (harnessId)}
+    {@const draft = Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : ''}
+    <div
+      class="model-group"
+      role="group"
+      aria-labelledby={`model-group-${harnessId}`}
+      data-harness={harnessId}
+    >
       <div class="model-group__header">
-        <h3 class="choice-screen__label">{resolveHarnessName(harnessId)}</h3>
+        <h3 class="choice-screen__label" id={`model-group-${harnessId}`}>{label}</h3>
         {#if defaultHarness === harnessId}
-          <Marker kind="default" label={resolveHarnessName(harnessId)} />
+          <Marker kind="default" label={label} />
         {/if}
-        {#if cannotList(harnessId, rows)}
+        {#if listsNothing}
           <span class="choice-screen__row-meta" data-testid={`models-cannot-list-${harnessId}`}>
             {$t('onboard.catalogue.models.cannot_list')}
           </span>
@@ -225,20 +355,19 @@
           {#each rows as row (key(row))}
             {@const rowKey = key(row)}
             {@const isChecked = selected.includes(rowKey)}
-            {@const rowReason = row.reason ?? row.rationale}
             <li class="choice-screen__row">
               <input
                 type="checkbox"
                 checked={isChecked}
-                aria-label={row.model_id}
+                aria-label={$t('onboard.catalogue.select.model_for', {
+                  model: row.model_id,
+                  harness: label,
+                })}
                 onchange={() => toggle(row)}
                 data-testid={`model-toggle-${harnessId}-${row.model_id}`}
               />
               <div class="choice-screen__row-main">
                 <span class="choice-screen__row-title mono">{row.model_id}</span>
-                {#if rowReason}
-                  <span class="choice-screen__row-meta">{rowReason}</span>
-                {/if}
                 {#if row.tokens !== undefined}
                   <span class="choice-screen__row-meta">
                     {tokensLabel(row, $currentLocale, $t)}
@@ -255,7 +384,7 @@
                     size="sm"
                     aria-label={$t('onboard.catalogue.select.remove_model_for', {
                       model: row.model_id,
-                      harness: resolveHarnessName(row.harness_id),
+                      harness: label,
                     })}
                     on:click={() => removeOperatorModel(row)}
                     data-testid={`model-remove-${harnessId}-${row.model_id}`}
@@ -274,20 +403,20 @@
         </p>
       {/if}
 
-      {#if cannotList(harnessId, rows)}
+      {#if listsNothing}
         <div class="model-group__add">
           <div class="model-group__add-field">
             <TextField
               mono
               label={$t('onboard.catalogue.select.model_id_prompt', {
-                harness: resolveHarnessName(harnessId),
+                harness: label,
               })}
               placeholder={$t('onboard.catalogue.select.model_id_placeholder')}
-              value={Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : ''}
+              value={draft}
               testid={`models-input-${harnessId}`}
               oninput={(e) => setDraft(harnessId, e.currentTarget.value)}
               onkeydown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.isComposing) {
                   e.preventDefault();
                   addOperatorModel(harnessId);
                 }
@@ -297,13 +426,22 @@
           <Button
             variant="secondary"
             size="md"
-            disabled={!(Object.hasOwn(draftByHarness, harnessId) ? draftByHarness[harnessId] : '').trim()}
+            disabled={!draft.trim()}
             on:click={() => addOperatorModel(harnessId)}
             data-testid={`models-add-${harnessId}`}
           >
             {$t('onboard.catalogue.select.add_model')}
           </Button>
         </div>
+        {#if addNotice?.harnessId === harnessId}
+          <p
+            class="choice-screen__note"
+            role="status"
+            data-testid={`models-add-notice-${harnessId}`}
+          >
+            {$t(addNotice.key)}
+          </p>
+        {/if}
       {/if}
     </div>
   {/each}

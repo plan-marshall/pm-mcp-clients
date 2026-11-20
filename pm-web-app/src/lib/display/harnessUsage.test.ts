@@ -10,34 +10,18 @@ describe('harnessUsageText', () => {
     messagesStore.set(loadMessages('en'));
   });
 
-  it('prints usage complete without detail on HarnessChoice even when token_detail is present', () => {
+  it('prints one complete wording, with no figures the state does not publish', () => {
     const translate = get(t);
-    expect(
-      harnessUsageText(translate, { token_usage: 'complete', token_detail: 'input, output' }),
-    ).toBe('usage complete');
+    expect(harnessUsageText(translate, { token_usage: 'complete' })).toBe('usage complete');
   });
 
-  it('prints complete: {figures} on TokensScreen when preferDetailOnComplete is enabled', () => {
-    const translate = get(t);
-    expect(
-      harnessUsageText(
-        translate,
-        { token_usage: 'complete', token_detail: 'input, cache read, output' },
-        { preferDetailOnComplete: true },
-      ),
-    ).toBe('complete: input, cache read, output');
-    expect(
-      harnessUsageText(translate, { token_usage: 'complete', token_detail: '   ' }, { preferDetailOnComplete: true }),
-    ).toBe('usage complete');
-  });
-
-  it('translates missing_figures via report.tokens.component in English and German', () => {
+  it('prints the partial line with the missing figures named in English and German', () => {
     expect(
       harnessUsageText(get(t), {
         token_usage: 'partial',
         missing_figures: ['cache_read', 'cache_write'],
       }),
-    ).toBe('usage partial: no cache read, cache write');
+    ).toBe('usage partial (not reported: cache read, cache write)');
 
     try {
       currentLocale.set('de');
@@ -47,7 +31,7 @@ describe('harnessUsageText', () => {
           token_usage: 'partial',
           missing_figures: ['cache_read', 'cache_write'],
         }),
-      ).toBe('Tokenverbrauch teilweise: ohne aus dem Cache gelesen, in den Cache geschrieben');
+      ).toBe('Tokenverbrauch teilweise (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)');
     } finally {
       currentLocale.set('en');
       messagesStore.set(loadMessages('en'));
@@ -66,17 +50,11 @@ describe('harnessUsageText', () => {
           },
         },
       }),
-    ).toBe('usage partial: no input, reasoning');
+    ).toBe('usage partial (not reported: input, reasoning)');
   });
 
-  it('preserves pre-formatted token_detail and avoids dangling colons when figures are absent', () => {
+  it('avoids dangling parentheses when figures are absent', () => {
     const translate = get(t);
-    expect(
-      harnessUsageText(translate, {
-        token_usage: 'partial',
-        token_detail: 'cache read',
-      }),
-    ).toBe('usage partial: no cache read');
     expect(harnessUsageText(translate, { token_usage: 'partial' })).toBe('usage partial');
     expect(harnessUsageText(translate, { token_usage: 'not_reported' })).toBe('usage not reported');
     expect(harnessUsageText(translate, {})).toBe('usage not reported');

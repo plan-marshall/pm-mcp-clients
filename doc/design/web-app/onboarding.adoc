@@ -187,7 +187,7 @@ Right after the scan, before the choice, when at least one found harness's profi
 
 * Every found harness is listed with its icon or monogram, its version and path, and whether it is supported, in the order of its harness id (`claude`, `codex`, `opencode`); every supported one that can run workers is preselected, and the first of them in that order is the default. Harnesses that cannot run workers are greyed with the reason and cannot be chosen; harnesses not found are listed so the operator sees what was looked for.
 * *Default* is a choice among the ticked rows; unticking the default makes the first ticked row the default, and the line under the list says so (`OpenCode is now the default.`). With no row ticked the primary button is disabled and reads `Choose at least one`.
-* [[harness-tokens]]*What a harness reports of its tokens* stands below each found harness (`onboard.harness.choose.usage_*`): `usage complete`, `usage partial` (with missing figures when named, `usage partial: no <figures>`), or `usage not reported`, for this harness and version, from its profile and, for a verified profile, from its verification's stage `usage` (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Harness Profiles, Tokens, Not Money]). A figure the profile declares not applicable to the harness (no cache write) does not make it partial. It is information, never a condition of the choice: a harness that reports less is enrolled like any other, and the figures of its tasks say what was not measured. Each harness row shows this usage summary inline, and the token-reporting screen (`harness.tokens-*`) shows the full detail line when supplied. No price or cost of a harness is shown.
+* [[harness-tokens]]*What a harness reports of its tokens* stands below each found harness (`onboard.harness.choose.usage_*`): `usage complete`, `usage partial` (with the missing figures when named, `usage partial (not reported: <figures>)`), or `usage not reported`, for this harness and version, from its profile and, for a verified profile, from its verification's stage `usage` (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Harness Profiles, Tokens, Not Money]). A figure the profile declares not applicable to the harness (no cache write) does not make it partial. It is information, never a condition of the choice: a harness that reports less is enrolled like any other, and the figures of its tasks say what was not measured. Each harness row shows this usage summary inline, and the token-reporting screen (`harness.tokens-*`, a state the mock runtime draws and the engine's catalogue does not declare) prints the same line — one wording for one fact, never a second one built from a `token_detail` field no source publishes. No price or cost of a harness is shown.
 * The primary button names the count and the default, and leads to the login probe's consent (<<harness-probe>>). *Look again* runs `harness.scan` again under the consent already given.
 * *Advanced* opens in place and holds *Add a harness that is not listed* (<<harness-add>>).
 
@@ -455,15 +455,13 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
   [ Back ]                                            [ Allow 3 models ]
 ----
 
-* One group per enrolled harness, the default marked. The recommendation is preselected and marked `recommended` (`Marker`) with its reason inline; the operator's change of a preselected box removes the mark from it.
-* A harness that cannot list its models (`cannot list its models`) shows a `TextField` (`Model id for <harness>`) paired with *Add a model id*; any model id the steward recommended for it is filled in, marked `recommended`, and can be removed.
-* *Without a recommendation* (no consent to the advice, the advice left, or failed): the box is replaced by one line, `Model advice did not run: <reason>. You can still choose below.`, or by nothing when the advice was not asked for; every listed model is preselected, and a harness that cannot list its models starts empty.
+* One group per enrolled harness, the default marked. The steward's recommendation is shown in its own box; the operator's change of a preselected box removes the mark from it. The `recommended` mark appears where the state marks a row — no state row and no `pm-api` type publishes a per-row recommendation — and the screen prints no per-row reason, because none is published either.
+* A harness the state names without a listed model (`cannot list its models`) shows a `TextField` (`Model id for <harness>`) paired with *Add a model id*; a model id the steward recommended for it is filled in, marked `recommended`, and can be removed. Whether a group lists nothing is read from the published `source` of its rows: a group without a `probe` row is the one the operator fills in.
+* *Without a recommendation* the box is not drawn — no state row publishes why the advice did not run; every model the state lists is preselected, and a harness without a probed row starts empty.
 
 [source,text]
 ----
   Choose the models plans may use
-
-  Model advice did not run: you continued without the advice. You can still choose below.
 
   CC Claude Code   default
     [x] opus-5.5

@@ -28,8 +28,14 @@ describe('AspectChoice', () => {
 
       expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
       expect(screen.getByText('recommended')).toBeVisible();
-      expect(screen.getByRole('radio', { name: 'Vault' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'Keep the tokens in the keychain' })).toBeVisible();
+      for (const store of STORES) {
+        const row = screen.getByRole('radio', { name: store.name }).closest('li') as HTMLElement;
+        expect(row).toHaveTextContent('Protects a secret against: anything the store itself guarantees');
+        expect(row).toHaveTextContent(
+          'Does not protect against: anything the store itself does not guarantee',
+        );
+      }
     });
 
     it('preselects the first store where none is recommended', () => {
@@ -59,12 +65,40 @@ describe('AspectChoice', () => {
         ],
       });
 
-      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeDisabled();
       expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
       expect(screen.getByRole('button', { name: 'Keep the tokens in the file store' })).toBeEnabled();
     });
 
-    it('disables the confirm button when no store is available', () => {
+    it('disables an unavailable store of a kind with no unavailability exit', () => {
+      render(AspectChoice, { kind: 'store', stores: STORES });
+
+      expect(screen.getByRole('radio', { name: 'Vault' })).toBeDisabled();
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeEnabled();
+    });
+
+    it('keeps an unavailable OS store selectable and recordable as the way into store.unavailable', async () => {
+      const onRecord = vi.fn();
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'GNOME Keyring', available: false },
+        ],
+        onRecord,
+      });
+
+      const os = screen.getByRole('radio', { name: 'GNOME Keyring' });
+      expect(os).not.toBeDisabled();
+      await fireEvent.change(os);
+      expect(os).toBeChecked();
+
+      const button = screen.getByTestId('store-record');
+      expect(button).toBeEnabled();
+      await fireEvent.click(button);
+      expect(onRecord).toHaveBeenCalledWith('os');
+    });
+
+    it('disables the confirm button while no store is selected', () => {
       render(AspectChoice, {
         kind: 'store',
         stores: [
@@ -80,7 +114,58 @@ describe('AspectChoice', () => {
       expect(recordBtn).toHaveTextContent('No store available');
     });
 
-    it('resyncs the selected store when stores prop changes', async () => {
+    it('shows the generic protection line and no platform claim for a store without its own text', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [{ kind: 'os', name: 'GNOME Keyring', available: true, recommended: true }],
+      });
+
+      const row = screen.getByRole('radio', { name: 'GNOME Keyring' }).closest('li') as HTMLElement;
+      expect(row).toHaveTextContent('Protects a secret against: anything the store itself guarantees');
+      expect(row).toHaveTextContent(
+        'Does not protect against: anything the store itself does not guarantee',
+      );
+      expect(row).not.toHaveTextContent('macOS');
+      expect(row).not.toHaveTextContent('Secret Service');
+      expect(row).not.toHaveTextContent('mode 0600');
+    });
+
+    it('shows a store\u2019s own protection text where the state carries one', () => {
+      render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          {
+            kind: 'os',
+            name: 'the keychain',
+            available: true,
+            protects_against: 'a program you allow in the dialog',
+            does_not_protect_against: 'a program you allow in the dialog',
+          },
+        ],
+      });
+
+      const row = screen
+        .getByRole('radio', { name: 'the keychain' })
+        .closest('li') as HTMLElement;
+      expect(row).toHaveTextContent('Protects a secret against: a program you allow in the dialog');
+      expect(row).toHaveTextContent('Does not protect against: a program you allow in the dialog');
+    });
+
+    it('associates both protection statements with each store radio via aria-describedby', () => {
+      render(AspectChoice, { kind: 'store', stores: STORES });
+
+      for (const store of STORES) {
+        const radio = screen.getByRole('radio', { name: store.name });
+        const describedBy = radio.getAttribute('aria-describedby') ?? '';
+        const ids = describedBy.split(/\s+/).filter(Boolean);
+        expect(ids).toHaveLength(2);
+        const texts = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '');
+        expect(texts[0]).toMatch(/^Protects a secret against:/);
+        expect(texts[1]).toMatch(/^Does not protect against:/);
+      }
+    });
+
+    it('keeps the store the operator chose when the proposal changes', async () => {
       const { rerender } = render(AspectChoice, {
         kind: 'store',
         stores: STORES,
@@ -96,9 +181,9 @@ describe('AspectChoice', () => {
         ],
       });
 
-      expect(screen.getByRole('radio', { name: 'Secret Service' })).toBeChecked();
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
       expect(screen.getByTestId('store-record')).toHaveTextContent(
-        'Keep the tokens in Secret Service',
+        'Keep the tokens in the file store',
       );
     });
 
@@ -121,51 +206,71 @@ describe('AspectChoice', () => {
       );
     });
 
-    it('renders the generic other protection copy for non-os, non-file stores', () => {
-      const en = loadMessages('en');
-      const { container } = render(AspectChoice, {
+    it('says so when the chosen store is no longer offered', async () => {
+      const { rerender, queryByTestId } = render(AspectChoice, {
         kind: 'store',
-        stores: [{ kind: 'vault', name: 'Vault', available: true }],
+        stores: STORES.map((s) => ({ ...s })),
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+      expect(queryByTestId('store-dropped')).toBeNull();
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: true, recommended: true },
+          { kind: 'vault', name: 'Vault', available: false },
+        ],
       });
 
-      const vaultOption = screen.getByRole('radio', { name: 'Vault' }).closest('label, li');
-      expect(vaultOption ?? container).toHaveTextContent(en['onboard.store.choose.other.protects']);
-      expect(vaultOption ?? container).toHaveTextContent(
-        en['onboard.store.choose.other.does_not_protect'],
-      );
-      expect(container).not.toHaveTextContent(en['onboard.store.choose.file.protects']);
+      expect(screen.getByTestId('store-dropped')).toHaveTextContent('the file store');
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
     });
 
-    it('selects Secret Service copy for a Linux os store regardless of its display name', () => {
-      const en = loadMessages('en');
-      const { container } = render(AspectChoice, {
+    it('proposes a store that becomes selectable when no store was chosen', async () => {
+      const { rerender } = render(AspectChoice, {
         kind: 'store',
-        stores: [{ kind: 'os', name: 'GNOME Keyring', available: true, platform: 'linux' }],
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false },
+          { kind: 'file', name: 'the file store', available: false },
+        ],
+      });
+      expect(screen.getByTestId('store-record')).toBeDisabled();
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false },
+          { kind: 'file', name: 'the file store', available: true },
+        ],
       });
 
-      const row = screen.getByRole('radio', { name: 'GNOME Keyring' }).closest('li');
-      expect(row ?? container).toHaveTextContent(en['onboard.store.choose.os.secret_service.protects']);
-      expect(row ?? container).toHaveTextContent(
-        en['onboard.store.choose.os.secret_service.does_not_protect'],
-      );
-      expect(container).not.toHaveTextContent(en['onboard.store.choose.os.keychain.protects']);
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toBeEnabled();
     });
 
-    it('associates both protection statements with each store radio via aria-describedby', () => {
-      render(AspectChoice, { kind: 'store', stores: STORES });
+    it('names the chosen store when its availability drops the choice', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'the keychain', available: true },
+        ],
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
 
-      for (const store of STORES) {
-        const radio = screen.getByRole('radio', { name: store.name });
-        const describedBy = radio.getAttribute('aria-describedby') ?? '';
-        const ids = describedBy.split(/\s+/).filter(Boolean);
-        expect(ids).toHaveLength(2);
-        const texts = ids.map((id) => document.getElementById(id)?.textContent?.trim() ?? '');
-        expect(texts[0]).toMatch(/^Protects a secret against:/);
-        expect(texts[1]).toMatch(/^Does not protect against:/);
-      }
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: false },
+          { kind: 'os', name: 'the keychain', available: true },
+        ],
+      });
+
+      expect(screen.getByTestId('store-dropped')).toHaveTextContent('the file store');
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
     });
 
-    it('resyncs the selected store when a refresh changes only store availability', async () => {
+    it('moves the choice to the proposal when the chosen store is no longer available', async () => {
       const { rerender } = render(AspectChoice, {
         kind: 'store',
         stores: STORES.map((s) => ({ ...s })),
@@ -213,7 +318,28 @@ describe('AspectChoice', () => {
       expect(onRecord).toHaveBeenLastCalledWith(['github', 'sonar']);
     });
 
-    it('resyncs selected providers when the providers prop changes', async () => {
+    it('proposes a provider that becomes available', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: [
+          { provider: 'github', name: 'GitHub', available: true },
+          { provider: 'gitlab', name: 'GitLab', available: false },
+        ],
+      });
+
+      await rerender({
+        kind: 'providers',
+        providers: [
+          { provider: 'github', name: 'GitHub', available: true },
+          { provider: 'gitlab', name: 'GitLab', available: true },
+        ],
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 2 providers' })).toBeVisible();
+    });
+
+    it('keeps the operator\u2019s ticks when the proposal changes', async () => {
       const { rerender } = render(AspectChoice, {
         kind: 'providers',
         providers: PROVIDERS,
@@ -225,12 +351,14 @@ describe('AspectChoice', () => {
       await rerender({
         kind: 'providers',
         providers: [
-          { provider: 'gitlab', name: 'GitLab', available: true, variant: 'glab', token_stored: true },
+          ...PROVIDERS,
+          { provider: 'forgejo', name: 'Forgejo', available: true },
         ],
       });
 
-      expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
-      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
+      expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Forgejo' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 2 providers' })).toBeVisible();
     });
 
     it('keeps pending provider selections when rerendered with identical rows in a new array', async () => {
@@ -248,6 +376,23 @@ describe('AspectChoice', () => {
       });
 
       expect(screen.getByRole('checkbox', { name: 'SonarCloud' })).not.toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
+    });
+
+    it('says so when a provider the operator unticked is no longer offered', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: PROVIDERS,
+      });
+
+      await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
+
+      await rerender({
+        kind: 'providers',
+        providers: [PROVIDERS[0], PROVIDERS[1]],
+      });
+
+      expect(screen.getByTestId('providers-dropped')).toHaveTextContent('SonarCloud');
       expect(screen.getByRole('button', { name: 'Use 1 provider' })).toBeVisible();
     });
   });
