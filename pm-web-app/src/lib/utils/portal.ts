@@ -11,9 +11,7 @@ export function portal(node: HTMLElement, target: HTMLElement = document.body) {
   }
   return {
     destroy() {
-      if (node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
+      node.remove();
     },
   };
 }
