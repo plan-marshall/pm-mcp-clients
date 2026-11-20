@@ -87,11 +87,12 @@ class OperatorRefusedExceptionTest {
     @Test
     @DisplayName("a 404 that names no code in a JSON object is a missing entry")
     void parseRefusal404JsonObjectWithoutCode() {
-        var json = "{\"message\":\"The plan does not exist\"}";
+        var detail = Generators.letterStrings(4, 12).next();
+        var json = "{\"message\":\"" + detail + "\"}";
         var resp = new HttpResponse(404, "application/json", json.getBytes(StandardCharsets.UTF_8));
         var ex = new OperatorRefusedException("plan", resp);
         assertEquals(ApiErrorCode.SCOPE_NOT_FOUND, ex.code());
-        assertEquals("The plan does not exist", ex.serverMessage());
+        assertEquals(detail, ex.serverMessage());
     }
 
     @Test

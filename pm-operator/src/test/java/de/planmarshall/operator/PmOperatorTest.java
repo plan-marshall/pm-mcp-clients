@@ -1135,9 +1135,10 @@ class PmOperatorTest {
         @Test
         @DisplayName("runtime start prints a line and exits 0 when the status carries no pid")
         void startWithoutAPidPrintsALineAndExitsZero() throws Exception {
+            var version = Generators.letterStrings(1, 8).next();
             runtime((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
-                    response.json(200, "{\"version\":\"0.1\",\"listener\":\"unix\",\"socket_path\":\"/s\"}");
+                    response.json(200, "{\"version\":\"" + version + "\"}");
                 } else {
                     response.send(500, null, "");
                 }

@@ -24,8 +24,10 @@ import de.planmarshall.api.decomposition.InstructAction;
 import de.planmarshall.api.decomposition.StagedPlanRecord;
 import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -250,7 +252,13 @@ final class DecompositionSupport {
         }
         var response = context.runtime(true).send(HttpRequest.get(PATH_EPICS + OperatorUrlUtil.encodePathSegment(epicId)));
         if (response.status() == 404) {
-            return null;
+            // Only a refusal that says the entry is missing makes it a missing epic; a page or a
+            // route the runtime does not know is the refusal it is.
+            var refusal = new OperatorRefusedException("epic " + epicId, response);
+            if (refusal.code() == ApiErrorCode.SCOPE_NOT_FOUND) {
+                return null;
+            }
+            throw refusal;
         }
         if (response.status() != 200) {
             throw new OperatorRefusedException("epic " + epicId, response);
@@ -283,24 +291,33 @@ final class DecompositionSupport {
     static @Nullable EpicDecomposition load(OperatorContext context, String projectId, String epicId)
                         throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(basePath(projectId, epicId)));
-        if (response.status() == 404) {
-            return null;
-        }
-        if (response.status() != 200) {
-            throw new OperatorRefusedException("epic decompose", response);
-        }
-        return EpicDecomposition.fromJson(response.bodyText());
+        return decompositionOrNull("epic decompose", response);
     }
 
     static @Nullable EpicDecomposition check(OperatorContext context, String projectId, String epicId)
                         throws IOException {
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", basePath(projectId, epicId) + "/check", "{}"));
+        return decompositionOrNull("epic review", response);
+    }
+
+    /**
+     * @param verb     the verb the refusal names
+     * @param response the runtime's answer
+     * @return the decomposition, or {@code null} when the runtime says the entry is missing
+     * @throws IOException when the answer is a refusal other than the missing entry
+     */
+    private static @Nullable EpicDecomposition decompositionOrNull(String verb, HttpResponse response)
+                        throws IOException {
         if (response.status() == 404) {
-            return null;
+            var refusal = new OperatorRefusedException(verb, response);
+            if (refusal.code() == ApiErrorCode.SCOPE_NOT_FOUND) {
+                return null;
+            }
+            throw refusal;
         }
         if (response.status() != 200) {
-            throw new OperatorRefusedException("epic review", response);
+            throw new OperatorRefusedException(verb, response);
         }
         return EpicDecomposition.fromJson(response.bodyText());
     }
