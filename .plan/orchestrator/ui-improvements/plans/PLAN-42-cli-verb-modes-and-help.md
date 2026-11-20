@@ -39,6 +39,23 @@ Source of this plan (read before scoping):
    - Done when:
      - The document passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
 
+4. **The plural and zero forms of `system.confirm.what` are asserted again, and a refused initial state read of `config <aspect>` is covered (the residue of PLAN-171; the operator's D0: done first)**
+   - What: PLAN-171 (#510, `76315c63`) drew every count of `RuntimeActDialogueTest` from 2..9 (`RuntimeActDialogueTest.java:113-118`) and dropped the parent's assertion `"Running now: 3 plans · 1 epic · 4 tasks · 2 jobs · 5 workers"`, so the singular (`one {# epic}`) and zero (`=0 {}`) branches of the ICU message `system.confirm.what` (`system.en.properties:68`, rendered by `SystemView.java:653`) are asserted by no test (`landings/PLAN-171.md` L3-1). A fixed-case test restores them: one case with every count 1 and one with a zero count, in `en` and `de`, expected text literal (it is the contract); the drawn test stays as it is. PLAN-171 also replaced `OnboardCommandTest.ConfigAspect.reportsARefusedStep` (every request answered 409, so the initial state read was refused) by a test that answers the state read and refuses only the step POST (`ConfigCommandTest.java:629-641`): a test is added for `config <aspect>` when the initial state read itself is refused (L3-2).
+   - Persona: plan-marshall:persona-module-tester
+   - Skills: pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - The fixed-case test is run once with the `one` branch of `system.confirm.what` changed to `other` in the pack and fails; the failing run is recorded (evidence order: `mutation-after`).
+     - The refused-state-read test fails when the verb prints nothing for a refused state read, run once with that behaviour mutated (evidence order: `mutation-after`).
+     - `./mvnw -pl pm-operator verify` passes and the number of tests is higher than before by the added tests (evidence order: `none`).
+5. **The documentation corrections of PLAN-167's landing: three false statements in three repositories (the operator's decision of 2026-11-20: folded in here; done first)**
+   - What: `landings/PLAN-167.md` L3-1 to L3-3, each re-read at `origin/main` on 2026-11-20 and found still in place. (a) **This repository:** `doc/Traceability.adoc` lines 140, 208, 271 and 440 name code that does not exist, against the document's own rule "a line is never invented": PM-WF-19 `pm-operator` (`decision-log export`) and PM-SKILL-4 `pm-operator` (the harness bundle installer and its shim skill) become "none in this repository"; PM-CRED-2 loses `and credentials migrate`; PM-TECH-4 loses `and Seatbelt` (Landlock stays: `Confinement.java` has it; the code has no `credentials migrate`, no decision-log verb, no `shim`, no Seatbelt). (b) **`../pm-mcp-core`:** `doc/specification/harness-profiles.adoc:13` links `../../../plan-marshall-documentation/doc/specification/harness-integration.adoc`, the family index that `plan-marshall-documentation` #192 deleted; it is retargeted to `https://github.com/plan-marshall/pm-mcp-clients/blob/main/doc/specification/harness-integration.adoc` (anchors kept), and the same file is searched for other links to deleted parts. (c) **`../plan-marshall-documentation`:** `doc/use-cases/01-onboarding.adoc:298` links `../specification/harness-integration/02-bundle-manifest.adoc`, which is trimmed to the `#bundle-content` block; the link is retargeted to the clients URL of the moved part. Link lines and the four parentheticals only; no other line changes.
+   - Persona: plan-marshall:persona-documenter
+   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
+   - Done when:
+     - `doc/Traceability.adoc` names no code that a search of `pm-operator` and `pm-exec` main does not find: the lane re-runs the four searches (`decision-log`, `credentials migrate`, `shim`, `Seatbelt`) and records the result (evidence order: `none`).
+     - A search of `../pm-mcp-core` for links to the deleted `harness-integration.adoc` finds none, and every retargeted URL resolves against `main` of this repository (evidence order: `none`).
+     - `git diff` of each of the three pull requests shows only the lines named above, file by file (evidence order: `none`); the documentation repository's `trace.py` reports `BROKEN LINKS 0` on the merged head (evidence order: `none`).
+
 ## Standing Constraints
 
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
@@ -100,6 +117,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/epicview/EpicViewLevel.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/README.md` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/RuntimeActDialogueTest.java` — present at `76315c63` (deliverable 4, 2026-11-20)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ConfigCommandTest.java` — present at `76315c63` (deliverable 4)
+- OBSERVED: `doc/Traceability.adoc` — present at `origin/main` 2026-11-20 (deliverable 5)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OperatorVerbsTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmConsoleTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/EpicCommandTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
@@ -110,7 +130,7 @@ Source of this plan (read before scoping):
 
 - Depends on: `PLAN-30` (`cli-texts-and-errors`), `PLAN-36` (`cli-needs-verb`)
 - Overlaps with: `cli-texts-and-errors` and `cli-needs-verb` touch `PmOperator.java`: runs after them
-- Adjacent to: none
+- Adjacent to: `landings/PLAN-171.md` and `landings/PLAN-167.md` (the sources of deliverables 4 and 5, folded in on the operator's word of 2026-11-20; PLAN-168 runs on `PlanCommandTest.java` and `ConfigCommandTest.java`: rebase over it)
 
 ## Re-grounding 2026-11-07 (cleanup)
 
@@ -165,6 +185,8 @@ the sibling repository `plan-marshall-documentation`). It creates and edits NO f
 its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
 sole sanctioned write mechanism are stated in
 `persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
+
+**Amendment 2026-11-20 (deliverable 5 only):** this plan also edits, on their own branches and in their own pull requests, `../pm-mcp-core` (`doc/specification/harness-profiles.adoc`, one link line) and `../plan-marshall-documentation` (`doc/use-cases/01-onboarding.adoc`, one link line), each under that repository's own gates; it edits nothing else there. Where a sibling repository has no plan-marshall CI provider configured, the lane asks the operator how to open and merge the pull request, as PLAN-167 did (its option "use `gh` directly there" is the usual answer).
 
 ## PLAN-127 Landing Residue (Amendment 2026-11-13)
 
