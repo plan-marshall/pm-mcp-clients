@@ -226,6 +226,50 @@ describe('AspectChoice', () => {
       expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
     });
 
+    it('proposes a store that becomes selectable when no store was chosen', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false },
+          { kind: 'file', name: 'the file store', available: false },
+        ],
+      });
+      expect(screen.getByTestId('store-record')).toBeDisabled();
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'os', name: 'the keychain', available: false },
+          { kind: 'file', name: 'the file store', available: true },
+        ],
+      });
+
+      expect(screen.getByRole('radio', { name: 'the file store' })).toBeChecked();
+      expect(screen.getByTestId('store-record')).toBeEnabled();
+    });
+
+    it('names the chosen store when its availability drops the choice', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: true },
+          { kind: 'os', name: 'the keychain', available: true },
+        ],
+      });
+      await fireEvent.change(screen.getByRole('radio', { name: 'the file store' }));
+
+      await rerender({
+        kind: 'store',
+        stores: [
+          { kind: 'file', name: 'the file store', available: false },
+          { kind: 'os', name: 'the keychain', available: true },
+        ],
+      });
+
+      expect(screen.getByTestId('store-dropped')).toHaveTextContent('the file store');
+      expect(screen.getByRole('radio', { name: 'the keychain' })).toBeChecked();
+    });
+
     it('moves the choice to the proposal when the chosen store is no longer available', async () => {
       const { rerender } = render(AspectChoice, {
         kind: 'store',
@@ -272,6 +316,27 @@ describe('AspectChoice', () => {
       await fireEvent.change(screen.getByRole('checkbox', { name: 'SonarCloud' }));
       await fireEvent.click(screen.getByRole('button', { name: 'Use 2 providers' }));
       expect(onRecord).toHaveBeenLastCalledWith(['github', 'sonar']);
+    });
+
+    it('proposes a provider that becomes available', async () => {
+      const { rerender } = render(AspectChoice, {
+        kind: 'providers',
+        providers: [
+          { provider: 'github', name: 'GitHub', available: true },
+          { provider: 'gitlab', name: 'GitLab', available: false },
+        ],
+      });
+
+      await rerender({
+        kind: 'providers',
+        providers: [
+          { provider: 'github', name: 'GitHub', available: true },
+          { provider: 'gitlab', name: 'GitLab', available: true },
+        ],
+      });
+
+      expect(screen.getByRole('checkbox', { name: 'GitLab' })).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Use 2 providers' })).toBeVisible();
     });
 
     it('keeps the operator\u2019s ticks when the proposal changes', async () => {

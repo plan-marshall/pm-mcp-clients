@@ -139,11 +139,6 @@
       ...(defaultHarness ? [defaultHarness] : []),
     ]);
     const draftsGone = Object.keys(draftByHarness).filter((harnessId) => !named.has(harnessId));
-    if (draftsGone.length > 0) {
-      const next = { ...draftByHarness };
-      for (const harnessId of draftsGone) delete next[harnessId];
-      draftByHarness = next;
-    }
     droppedEdits = [...dropped, ...draftsGone];
   }
 
@@ -152,6 +147,35 @@
   $: groups = buildGroups(allModels, harnesses, models, harnessNames, defaultHarness);
 
   $: allowed = allModels.filter((row) => selected.includes(key(row)));
+
+  // The harnesses the state names. A refresh that stops naming one takes the operator's draft and
+  // added rows for it with it — the screen cannot record a model on a harness it does not show.
+  $: {
+    const named = new Set([
+      ...models.map((row) => row.harness_id),
+      ...harnesses.flatMap((info) => (info.harness_id ? [info.harness_id] : [])),
+      ...Object.keys(harnessNames),
+      ...(defaultHarness ? [defaultHarness] : []),
+    ]);
+    const staleDrafts = Object.keys(draftByHarness).filter((harnessId) => !named.has(harnessId));
+    const staleModels = extraModels.filter((row) => !named.has(row.harness_id));
+    if (staleDrafts.length > 0 || staleModels.length > 0) {
+      if (staleDrafts.length > 0) {
+        const next = { ...draftByHarness };
+        for (const harnessId of staleDrafts) delete next[harnessId];
+        draftByHarness = next;
+      }
+      if (staleModels.length > 0) {
+        extraModels = extraModels.filter((row) => named.has(row.harness_id));
+        for (const row of staleModels) {
+          selected = selected.filter((id) => id !== key(row));
+        }
+      }
+      droppedEdits = [
+        ...new Set([...droppedEdits, ...staleDrafts, ...staleModels.map((row) => row.model_id)]),
+      ];
+    }
+  }
 
   /**
    * @param rows the rows in the order they are shown
@@ -220,7 +244,7 @@
       label: resolveHarnessName(harnessId),
       rows: groupRows,
       listsNothing: !proposal.some(
-        (row) => row.harness_id === harnessId && row.source === 'probe',
+        (row) => row.harness_id === harnessId && (row.source ?? 'probe') === 'probe',
       ),
     }));
   }

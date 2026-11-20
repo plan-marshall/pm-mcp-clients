@@ -223,6 +223,45 @@ describe('ModelsChoice', () => {
     expect(container).not.toHaveTextContent('Best for planning');
   });
 
+  it('reads a row without a source as a probed row', () => {
+    render(ModelsChoice, {
+      props: {
+        models: [model({ harness_id: 'claude', model_id: 'opus-5.5', source: undefined })],
+        harnesses: [{ harness_id: 'claude', name: 'Claude Code' }],
+      },
+    });
+
+    expect(screen.queryByTestId('models-cannot-list-claude')).toBeNull();
+    expect(screen.queryByTestId('models-input-claude')).toBeNull();
+    expect(screen.getByTestId('model-toggle-claude-opus-5.5')).toBeChecked();
+  });
+
+  it('drops a draft and an added model whose harness disappears, and says so', async () => {
+    const harnesses = [
+      { harness_id: 'claude', name: 'Claude Code' },
+      { harness_id: 'opencode', name: 'OpenCode' },
+    ];
+    const { rerender, getByTestId, queryByTestId } = render(ModelsChoice, {
+      props: {
+        models: [],
+        harnesses: harnesses.map((h) => ({ ...h })),
+      },
+    });
+
+    await fireEvent.input(getByTestId('models-input-opencode'), { target: { value: 'qwen-32b' } });
+    await fireEvent.click(getByTestId('models-add-opencode'));
+    expect(getByTestId('model-toggle-opencode-qwen-32b')).toBeChecked();
+    await fireEvent.input(getByTestId('models-input-opencode'), { target: { value: 'draft-id' } });
+
+    await rerender({ models: [], harnesses: [harnesses[0]] });
+
+    expect(queryByTestId('model-toggle-opencode-qwen-32b')).toBeNull();
+    expect(queryByTestId('models-input-opencode')).toBeNull();
+    expect(getByTestId('models-dropped')).toHaveTextContent('qwen-32b');
+    expect(getByTestId('models-dropped')).toHaveTextContent('opencode');
+    expect(getByTestId('models-record')).toBeDisabled();
+  });
+
   it('keeps added models, unticked rows and drafts across a refresh that changes the proposal', async () => {
     const harnesses = [
       { harness_id: 'claude', name: 'Claude Code' },

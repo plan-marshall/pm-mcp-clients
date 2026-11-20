@@ -208,6 +208,29 @@ describe('HarnessChoice monograms', () => {
     expect(getByTestId('harness-check')).toHaveTextContent('Check 1 harness, OpenCode the default');
   });
 
+  it('reports an unticked harness that becomes ineligible', async () => {
+    const { rerender, getByTestId } = render(HarnessChoice, {
+      props: {
+        harnesses: [
+          harness({ harness_id: 'claude', name: 'Claude Code', default: true }),
+          harness({ harness_id: 'opencode', name: 'OpenCode' }),
+        ],
+      },
+    });
+
+    await fireEvent.change(getByTestId('harness-toggle-claude'));
+    expect(getByTestId('harness-toggle-claude')).not.toBeChecked();
+
+    await rerender({
+      harnesses: [
+        harness({ harness_id: 'claude', name: 'Claude Code', worker_eligible: false }),
+        harness({ harness_id: 'opencode', name: 'OpenCode', default: true }),
+      ],
+    });
+
+    expect(getByTestId('harness-dropped')).toHaveTextContent('Claude Code');
+  });
+
   it('drops a tick a refreshed scan makes meaningless and says so', async () => {
     const base = [
       harness({ harness_id: 'claude', name: 'Claude Code', default: true }),

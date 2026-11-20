@@ -89,9 +89,14 @@
       const previous = prevStores;
       prevStores = stores;
       const selected = stores.find((s) => s.kind === selectedStore);
-      if (selectedStore !== '' && !(selected !== undefined && selectable(selected))) {
+      const selectableNow = selected !== undefined && selectable(selected);
+      if (selectedStore === '') {
+        // Nothing was chosen yet: the store that became a legal choice is proposed.
+        selectedStore = pickDefaultStore(stores);
+        droppedStores = [];
+      } else if (!selectableNow) {
         droppedStores = previous
-          .filter((s) => delta.removed.includes(s.kind))
+          .filter((s) => s.kind === selectedStore)
           .map((s) => s.name);
         selectedStore = pickDefaultStore(stores);
       } else if (droppedStores.length > 0) {
@@ -121,9 +126,13 @@
         (p) => delta.removed.includes(p.provider) && p.available && !selectedProviders.includes(p.provider),
       );
       droppedProviders = untickedGone.map((p) => p.name);
-      const present = new Set(providers.filter((p) => p.available).map((p) => p.provider));      const kept = selectedProviders.filter((id) => present.has(id));
+      const present = new Set(providers.filter((p) => p.available).map((p) => p.provider));
+      const previouslyAvailable = new Set(
+        previous.filter((p) => p.available).map((p) => p.provider),
+      );
+      const kept = selectedProviders.filter((id) => present.has(id));
       const added = providers
-        .filter((p) => delta.added.includes(p.provider) && p.available)
+        .filter((p) => p.available && !previouslyAvailable.has(p.provider))
         .map((p) => p.provider)
         .filter((id) => !kept.includes(id));
       selectedProviders = [...kept, ...added];

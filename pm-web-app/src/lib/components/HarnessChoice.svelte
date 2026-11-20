@@ -95,7 +95,7 @@
       prevHarnesses = harnesses;
       const offered = harnesses.filter(eligible).map((h) => h.harness_id);
       const untickedGone = previous.filter(
-        (h) => delta.removed.includes(h.harness_id) && eligible(h) && !chosen.includes(h.harness_id),
+        (h) => eligible(h) && !offered.includes(h.harness_id) && !chosen.includes(h.harness_id),
       );
       // One notice for a change the operator made, one for a choice the refreshed proposal withdrew.
       droppedEdits = untickedGone.map((h) => h.name);
