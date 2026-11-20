@@ -60,6 +60,15 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
    - Browser check (Playwright MCP) on `running-work`, `projects-and-start` and `fully-onboarded` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); `theme-readability.spec.js` passes for the modals' owners (evidence order: `none`).
+6. **The dialog and interaction components: tests that can fail, the portal's consequences, and the stale design lines (the residue of PLAN-172, folded in on the operator's word of 2026-11-20; done first)**
+   - What: PLAN-172 (#518, `8e088121`, `landings/PLAN-172.md`) shipped the interaction set's residue with these findings, and this plan builds six modals on the `Dialog` it changed. (a) **Tests that cannot fail:** the `on:click` tests of `Button`, `IconButton` and `ActionBar` (`ButtonOnClickFixture`, `IconButtonOnClickFixture`) pass on the code before PLAN-172 because Svelte 5.57.2's handler wrapper already skips a forwarded `on:click` after `stopPropagation` (`node_modules/svelte/src/internal/client/dom/elements/events.js:60-70`): they are named what they are (regression guards) and the two raw-`addEventListener` tests (`Button.test.ts:103`, `IconButton.test.ts:99`) are the ones that pin `stopImmediatePropagation`; the focus tests of `RowMenu.test.ts` pass without `returnFocusElement` and without the `RowMenu` fallback: a case that fails without them is added. (b) **Every `Dialog` and `ConfirmDialog` now renders under `document.body`** (`utils/portal.ts`, applied in `Dialog.svelte:145`): a `Dialog` inside a `data-theme` subtree takes the document theme (the dev page draws dialogs inside each theme section): the lane decides at outline whether the portal target is the nearest themed ancestor or the document and states it; the dev page shows a dialog in a themed section; a nested dialog (a `Dialog` opened from another, both registering a window capture `keydown`) has a Tab test (the analysis reasoned that Tab may stick on the inner dialog's first element); the `queueMicrotask(() => node.focus())` refocus (`Dialog.svelte:59-63`) does not take focus from a child that autofocuses on mount; the Escape yield (`Dialog.svelte:93-106`) is keyed to a handler that will close the menu, not to the presence of any `[role="menu"]`, and the `closest('[role="menu"]')` branch has a test with a real focus inside a menu; `portal.ts` has a test of its own (its focus-restore branch is uncovered). (c) **Untested API:** `ActMenuItem.confirmTitle` and `confirmConsequences` (`ActMenu.svelte:10-11,245-250`) have no consumer, no test and no design text: removed, or tested and documented; the values of the confirmation's own texts (`web.confirm.destructive.title`, `.consequence`, en and de) are asserted. (d) **Stale design lines:** `components.adoc:276` (the `Toggle` props lack `disabledReason`), `:301-304` (`Dialog` lacks `returnFocusElement`, the portal and the Escape order), `:310` (`ConfirmDialog` props), `:201` (the `RowMenu` item fields), `components-tags.adoc:102` ("a slot of fixed width (8.5rem)": it is `--state-slot-width`, the operator's confirmed token of 2026-11-20, name and value `8.5rem`), and the README `#control-tokens` (`--state-slot-width` is a status token and sits in the control-token block: the README lists it there or the token moves to a block of its own; the lane says which). (e) **`-Pcoverage` at the head:** PLAN-172 did not report it and its last run is 80.14 % branch against the floor 80 % (`Dialog.svelte` 82.75 → 80.48, `Toggle.svelte` 100 → 96.55, `ActMenu.svelte` 90.65 → 89.38, `RowMenu.svelte` 75.67 → 73.17, `portal.ts` 85.71): the run is made and the new branches are covered.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-documents:ref-asciidoc
+   - Done when:
+     - The new focus case fails once without `returnFocusElement` and the Escape case with a real focus in a menu fails once with the yield reverted, both recorded (evidence order: `mutation-after`).
+     - Tests fail at `main` of the plan's start and pass: a dialog in a themed section has the theme the lane decided; a nested dialog's Tab walks the inner dialog; an autofocused child keeps its focus (evidence order: `test-first`).
+     - `git grep -n "confirmTitle" -- pm-web-app/src` names no line, or a test and a design line name it; the design lines of (d) are read against the code by the lane (evidence order: `none`).
+     - The `-Pcoverage` run at the head is recorded with the branch percentage per file of the dialog components (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -118,6 +127,17 @@ Not in this plan: the first-open-item logic and the register behaviour of `Findi
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/work-actions.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/components/Dialog.svelte` — present at `8e088121` (deliverable 6, 2026-11-20)
+- OBSERVED: `pm-web-app/src/lib/components/Dialog.test.ts` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/components/ConfirmDialog.svelte` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/components/ActMenu.svelte` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/components/RowMenu.test.ts` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/components/Button.test.ts` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/components/IconButton.test.ts` — present at `8e088121` (deliverable 6)
+- OBSERVED: `pm-web-app/src/lib/utils/portal.ts` — present at `8e088121` (deliverable 6)
+- OBSERVED: `doc/design/web-app/components.adoc` — present at `8e088121` (deliverable 6)
+- OBSERVED: `doc/design/web-app/components-tags.adoc` — present at `8e088121` (deliverable 6)
+- OBSERVED: `doc/design/web-app/README.adoc` — present at `8e088121` (deliverable 6)
 
 ## Dependencies and Sequencing
 
