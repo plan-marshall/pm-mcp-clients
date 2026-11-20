@@ -9,7 +9,7 @@
   export let tone: 'neutral' | 'running' | 'attention' | 'danger' | 'success' = 'neutral';
   /** The state word, from the view's catalogue key. */
   export let label: string;
-  /** Whether the state takes a slot of fixed width (8.5rem), as it does in a list. */
+  /** Whether the state takes a slot of fixed width (var(--state-slot-width)), as it does in a list. */
   export let fixed = false;
 </script>
 
@@ -40,13 +40,13 @@
   }
 
   /*
-   * In a list the state takes a slot of fixed width (8.5rem): the dot keeps a column of its own and
+   * In a list the state takes a slot of fixed width (var(--state-slot-width)): the dot keeps a column of its own and
    * the word a second one, so a long word wraps without moving the dot and the dots stand one under
    * the other down the rows.
    */
   .status-label--fixed {
     display: inline-grid;
-    inline-size: 8.5rem;
+    inline-size: var(--state-slot-width);
     grid-template-columns: auto minmax(0, 1fr);
     align-items: start;
     max-inline-size: 100%;

@@ -40,6 +40,7 @@
     if (disabled) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
     }
   }
 </script>

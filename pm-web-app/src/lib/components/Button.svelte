@@ -50,6 +50,7 @@
     if (disabled || loading) {
       event.preventDefault();
       event.stopPropagation();
+      event.stopImmediatePropagation();
       return;
     }
   }
@@ -73,8 +74,7 @@
 >
   {#if loading}
     <span class="btn__spinner" aria-hidden="true"></span>
-  {/if}
-  {#if icon}
+  {:else if icon}
     <Icon name={icon} size={iconSize} />
   {/if}
   <span class="btn__content"><slot /></span>

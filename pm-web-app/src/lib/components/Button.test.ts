@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import Button, { BUTTON_VARIANTS, BUTTON_SIZES } from './Button.svelte';
 import IconButton from './IconButton.svelte';
+import ButtonOnClickFixture from '../../test/fixtures/ButtonOnClickFixture.svelte';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
 /**
@@ -79,6 +80,29 @@ describe('Button', () => {
     expect(clicked).not.toHaveBeenCalled();
   });
 
+  it('an act with disabledReason ignores clicks forwarded through on:click', async () => {
+    const onClick = vi.fn();
+    render(ButtonOnClickFixture, {
+      props: { disabled: true, disabledReason: 'The plan has ended', label: 'Action', onClick },
+    });
+    const button = screen.getByRole('button');
+
+    await fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  it('a click on a disabled-with-reason button stops immediate propagation on the button element', async () => {
+    const directListener = vi.fn();
+    render(Button, {
+      props: { disabled: true, disabledReason: 'The plan has ended' },
+    });
+    const button = screen.getByRole('button');
+    button.addEventListener('click', directListener);
+
+    await fireEvent.click(button);
+    expect(directListener).not.toHaveBeenCalled();
+  });
+
   it('an act with no disabledReason keeps native disabled', () => {
     render(Button, { props: { disabled: true } });
     const button = screen.getByRole('button');
@@ -103,6 +127,16 @@ describe('Button', () => {
 
     await fireEvent.click(button);
     expect(clicked).not.toHaveBeenCalled();
+  });
+
+  it('an icon button with loading shows the spinner and no icon', () => {
+    const { container } = render(Button, {
+      props: { loading: true, icon: 'act.copy' },
+    });
+    const button = buttonIn(container);
+
+    expect(button.querySelector('.btn__spinner')).not.toBeNull();
+    expect(button.querySelector('.ui-icon')).toBeNull();
   });
 
   it('submit button inside form does not submit when disabled with reason or loading', async () => {

@@ -4,6 +4,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import Dialog from './Dialog.svelte';
 import DialogFixture from '../../test/fixtures/DialogFixture.svelte';
+import DialogWithMenuFixture from '../../test/fixtures/DialogWithMenuFixture.svelte';
 
 /**
  * `Dialog` (VD-P-05, VD-S-03): radius 12 px, `--shadow-overlay`, the title in `--text-xl`, and the
@@ -199,5 +200,44 @@ describe('Dialog', () => {
     expect(style).toContain('box-shadow: var(--shadow-overlay)');
     expect(style).toContain('font-size: var(--text-xl)');
     expect(style).toContain('justify-content: flex-end');
+  });
+
+  it('renders consequences of a danger dialog in the danger colour token', () => {
+    const content = fs.readFileSync(path.resolve(__dirname, './Dialog.svelte'), 'utf-8');
+    const style = content.match(/<style[^>]*>([\s\S]*?)<\/style>/)?.[1] ?? '';
+    expect(style).toMatch(
+      /\.dialog--danger[^{]*\.dialog__consequences[^{]*\{[^}]*color:\s*var\(--color-danger\)/,
+    );
+  });
+
+  it('an Escape pressed inside an open menu that lives in a dialog closes the menu and leaves the dialog open; a second Escape closes the dialog', async () => {
+    const onClose = vi.fn();
+    render(DialogWithMenuFixture, {
+      props: {
+        title: 'Dialog with menu',
+        menuLabel: 'Actions',
+        items: [
+          { id: 'first', label: 'First' },
+          { id: 'second', label: 'Second' },
+        ],
+        open: true,
+        onClose,
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Actions' });
+    await fireEvent.click(trigger);
+
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });

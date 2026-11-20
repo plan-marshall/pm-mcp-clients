@@ -73,6 +73,21 @@ describe('ActionBar', () => {
     expect(next.getAttribute('title')).toBe('Every slot is busy');
   });
 
+  it('a click on a disabled-with-reason primary act through on:click calls nothing', async () => {
+    const onAct = vi.fn();
+    render(ActionBar, {
+      props: {
+        acts: [{ id: 'next', label: 'Next', disabled: true, disabledReason: 'Every slot is busy' }],
+        onAct,
+      },
+    });
+
+    const next = screen.getByRole('button', { name: 'Next' });
+    await fireEvent.click(next);
+
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
   it('carries the advisory of an act, primary included', () => {
     render(ActionBar, {
       props: {

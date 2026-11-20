@@ -57,7 +57,7 @@ describe('StatusLabel', () => {
     }
   });
 
-  it('draws a fixed state slot of 8.5rem for a list, keeping dot and word in separate columns', () => {
+  it('draws a fixed state slot of var(--state-slot-width) for a list, keeping dot and word in separate columns', () => {
     const { container } = render(StatusLabel, {
       props: { tone: 'running', label: 'running', fixed: true },
     });
@@ -67,7 +67,7 @@ describe('StatusLabel', () => {
 
     const fixedRule = ruleOf(STYLE, '.status-label--fixed');
     expect(fixedRule).toContain('display: inline-grid');
-    expect(fixedRule).toContain('inline-size: 8.5rem');
+    expect(fixedRule).toContain('inline-size: var(--state-slot-width)');
     expect(fixedRule).toContain('grid-template-columns: auto minmax(0, 1fr)');
     expect(fixedRule).toContain('align-items: start');
 

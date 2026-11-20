@@ -674,4 +674,93 @@ describe('RowMenu component', () => {
     expect(describedBy).toBeTruthy();
     expect(document.getElementById(describedBy as string)).toHaveTextContent('Not allowed');
   });
+
+  it('the open confirmation is not a descendant of the row menu, and a click inside it does not reach the row click handler', async () => {
+    const rowClicked = vi.fn();
+    const onDelete = vi.fn();
+
+    const row = document.createElement('div');
+    row.className = 'table-row';
+    row.addEventListener('click', rowClicked);
+    document.body.appendChild(row);
+
+    const { unmount } = render(RowMenu, {
+      target: row,
+      props: {
+        label: 'Row actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick: onDelete }],
+      },
+    });
+
+    const trigger = within(row).getByRole('button', { name: 'Row actions' });
+    await fireEvent.click(trigger);
+
+    const deleteItem = await screen.findByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(deleteItem);
+
+    const dialog = await screen.findByRole('dialog');
+    const rowMenu = row.querySelector('.row-menu');
+    expect(rowMenu).not.toBeNull();
+    expect(rowMenu?.contains(dialog)).toBe(false);
+
+    rowClicked.mockClear();
+    await fireEvent.click(dialog);
+    expect(rowClicked).not.toHaveBeenCalled();
+
+    unmount();
+    document.body.removeChild(row);
+  });
+
+  it('after cancel the focus is on the control the design names', async () => {
+    const onDelete = vi.fn();
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick: onDelete }],
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    trigger.focus();
+    await fireEvent.click(trigger);
+
+    const deleteItem = await screen.findByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(deleteItem);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    await fireEvent.click(cancelBtn);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  it('after confirm the focus is on the control the design names', async () => {
+    const onDelete = vi.fn();
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick: onDelete }],
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    trigger.focus();
+    await fireEvent.click(trigger);
+
+    const deleteItem = await screen.findByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(deleteItem);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    const confirmBtn = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirmBtn);
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+    expect(onDelete).toHaveBeenCalledOnce();
+  });
 });

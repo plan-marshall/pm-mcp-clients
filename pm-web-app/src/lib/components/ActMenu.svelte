@@ -7,6 +7,8 @@
     disabledReason?: string;
     advisory?: string;
     title?: string;
+    confirmTitle?: string;
+    confirmConsequences?: string[];
     onclick?: (event: MouseEvent) => void | Promise<void>;
   }
 </script>
@@ -240,12 +242,16 @@
   <ConfirmDialog
     open={true}
     {busy}
-    title={confirmingItem.label}
-    consequences={confirmingItem.disabledReason
-      ? [confirmingItem.disabledReason]
-      : [confirmingItem.label]}
+    title={confirmingItem.confirmTitle ??
+      $t('web.confirm.destructive.title', { label: confirmingItem.label })}
+    consequences={confirmingItem.confirmConsequences && confirmingItem.confirmConsequences.length > 0
+      ? confirmingItem.confirmConsequences
+      : confirmingItem.disabledReason
+        ? [confirmingItem.disabledReason]
+        : [$t('web.confirm.destructive.consequence')]}
     actionLabel={confirmingItem.label}
     cancelLabel={$t('common.action.cancel')}
+    returnFocusElement={triggerElement}
     onConfirm={confirmDestructiveAction}
     onClose={cancelDestructiveAction}
   />
