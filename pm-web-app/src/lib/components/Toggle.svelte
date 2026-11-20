@@ -50,6 +50,7 @@
 
 <button
   type="button"
+  {...$$restProps}
   class="toggle"
   class:toggle--no-pressed-icon={!pressedIcon}
   class:toggle--disabled={disabled}
@@ -62,7 +63,6 @@
   use:advisory
   on:click={handleClick}
   on:click
-  {...$$restProps}
 >
   <span class="toggle__icon" data-testid="toggle-icon" data-icon={effectiveIcon}>
     <Icon name={effectiveIcon} size={16} />

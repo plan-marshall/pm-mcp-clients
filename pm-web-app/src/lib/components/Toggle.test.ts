@@ -180,6 +180,26 @@ describe('Toggle component', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it('preserves caller-supplied aria-describedby alongside disabledReason', () => {
+    render(Toggle, {
+      props: {
+        label: 'Reveal secret',
+        icon: 'act.view',
+        disabled: true,
+        disabledReason: 'You do not have permission',
+        'aria-describedby': 'custom-help',
+      },
+    });
+
+    const button = screen.getByRole('button', { name: 'Reveal secret' });
+    const describedBy = button.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('custom-help');
+    const ids = describedBy.split(' ');
+    expect(ids).toHaveLength(2);
+    const reasonId = ids.find((id) => id !== 'custom-help')!;
+    expect(document.getElementById(reasonId)?.textContent).toBe('You do not have permission');
+  });
+
   it('conforms to design tokens: pressed ground brand-subtle, focus ring, 24px and phone 44px', () => {
     const style = styleOf(path.resolve(__dirname, './Toggle.svelte'));
     const pressedRules = rulesOf(style, ".toggle[aria-pressed='true']").join(';');
