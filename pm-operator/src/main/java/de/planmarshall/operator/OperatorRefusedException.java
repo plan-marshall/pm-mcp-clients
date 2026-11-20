@@ -54,17 +54,20 @@ public class OperatorRefusedException extends IOException {
         /** A refusal of the API, with a code this client knows or a message beside an unknown one. */
         RUNTIME(null, List.of()),
         /** A condition found on this machine, or in the runtime's own answer, carrying no code. */
-        LOCAL("operator.refusal.local", List.of(".cause", ".fix")),
+        LOCAL("local", List.of(".cause", ".fix")),
         /** A 404 that names no code on a route the runtime does not know. */
-        ROUTE_MISSING("operator.refusal.route_missing", List.of(".title", ".cause", ".fix")),
+        ROUTE_MISSING("route_missing", List.of(".title", ".cause", ".fix")),
         /** A body that is no refusal this client can read: a page or a trace of another service. */
-        UNREADABLE("operator.refusal.unreadable", List.of(".title", ".cause", ".fix"));
+        UNREADABLE("unreadable", List.of(".title", ".cause", ".fix"));
 
-        private final @Nullable String area;
+        /** The catalogue area every kind's texts live in. */
+        static final String AREA_PREFIX = "operator.refusal.";
+
+        private final @Nullable String name;
         private final List<String> parts;
 
-        Kind(@Nullable String area, List<String> parts) {
-            this.area = area;
+        Kind(@Nullable String name, List<String> parts) {
+            this.name = name;
             this.parts = parts;
         }
 
@@ -74,7 +77,7 @@ public class OperatorRefusedException extends IOException {
          */
         @Nullable
         String area() {
-            return area;
+            return name != null ? AREA_PREFIX + name : null;
         }
 
         /**
@@ -82,6 +85,7 @@ public class OperatorRefusedException extends IOException {
          *         catalogue test enumerates
          */
         List<String> catalogueKeys() {
+            var area = area();
             if (area == null) {
                 return List.of();
             }

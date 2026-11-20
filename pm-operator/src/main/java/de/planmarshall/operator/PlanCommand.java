@@ -344,20 +344,20 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var fileResponse = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).file(changesFile)));
         if (fileResponse.status() == 404) {
-            return noSuchFile(out, locale);
+            return noSuchFile(locale);
         }
         if (fileResponse.status() != 200) {
             throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
         }
         if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
             // The list moved between the two reads: the file it answered is no longer one of its rows.
-            return noSuchFile(out, locale);
+            return noSuchFile(locale);
         }
         printRows(out, level.openFileRows(locale));
         return 0;
     }
 
-    private int noSuchFile(PrintWriter out, String locale) {
+    private int noSuchFile(String locale) {
         var err = spec.commandLine().getErr();
         err.println(MessageCatalogue.format(locale, "plan.changes.file_not_found",
                             Map.of("path", OutputSafety.stripControlSequences(changesFile))));
