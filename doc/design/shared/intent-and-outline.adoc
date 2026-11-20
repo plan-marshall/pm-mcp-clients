@@ -253,7 +253,7 @@ Each bucket holds the tasks whose spent tokens fall between two multiples of the
 * *A multiple of the prediction, not a token count*: the bounds are those the runtime serves, multiples of each task's own prediction (link:../../specification/runtime-model/06-event-catalogue.adoc#oversize-distribution[The `over_size` Distribution]), because that prediction is the reference of the signal; the absolute token count is not comparable across tasks.
 * *The flagged share*: the sum of the flagged tasks over all tasks, shown as a count and a percentage. The client never recomputes a bucket or a share from raw tokens; it shows the runtime's distribution.
 * *The proposed multiple*: shown beside the one in force, with the direction (`3x → 2x` lowers the multiple and flags more). The chart marks the buckets the proposal changes, and the line says what the change would have done.
-* *An empty bucket* is left out; the distribution never invents a zero bar to look complete. A task outside the last bucket is shown in an open-ended `Nx and more` bucket.
+* *An empty bucket* is left out; the distribution never invents a zero bar to look complete. The last bucket covers every task above its lower bound and may be labelled open-ended (`Nx and more`); its upper bound stays finite on the wire (link:../../specification/runtime-model/06-event-catalogue.adoc#oversize-distribution[Runtime Model, The `over_size` Distribution]).
 
 [#clients]
 == In the Clients

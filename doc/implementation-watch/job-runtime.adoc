@@ -41,8 +41,9 @@ descendants outlive it (step 3a).
 Guard:: Linux test of `pm-exec` per applied ABI: a confined job sends signal `0` and `SIGTERM` to the runtime fixture's
 PID; from ABI 6 both fail with `EPERM`, below ABI 6 they succeed and the test asserts exactly that. Positive control:
 the runtime's `SIGTERM` reaches the job, and the launcher's sweep ends a descendant that called `setsid`. On macOS
-the same signal to the runtime fixture fails. A `ptrace(PTRACE_ATTACH)` of the runtime fixture and a read of its
-`/proc/<pid>/mem` fail on every ABI.
+the same signal to the runtime fixture fails. A `ptrace(PTRACE_ATTACH)` of a live runtime fixture (one that ignores
+`SIGTERM`, or a second fixture the signal checks never touch) and a read of its `/proc/<pid>/mem` fail with `EPERM` on
+every ABI; a failure for another reason (`ESRCH` of a target that is gone) fails the test.
 Source:: doc/articles/openshell-rogue-agents-openshell.adoc (plan-marshall-documentation).
 
 [#PM-WATCH-JOB-43]
@@ -58,7 +59,7 @@ with `EPERM` instead of `ENOSYS` makes the C library fail rather than fall back.
 fails a runtime that would fall back on `ENOSYS`.
 Guard:: Linux test of `pm-exec`: a confined job's `unshare(CLONE_NEWUSER)`, `clone` with `CLONE_NEWNET`, `mount`,
 `bpf`, and `socket(AF_PACKET, …)` fail with `EPERM`, `clone3` and `io_uring_setup` with `ENOSYS`, and a call through
-the x32 ABI ends the process; positive control: a worker starts in its namespaces, `pthread_create` and `fork` work,
+the x32 ABI and one through the 32-bit entry point (`i386` compat, on hosts that offer it) each end the process; positive control: a worker starts in its namespaces, `pthread_create` and `fork` work,
 and a Maven build, a Gradle build, and an `npm ci` pass under the filter. The launch report and the job record carry
 `seccomp: applied`.
 Source:: doc/articles/openshell-rogue-agents-openshell.adoc (plan-marshall-documentation); OpenShell installs its
