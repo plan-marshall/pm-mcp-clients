@@ -47,6 +47,11 @@ public class OperatorRefusedException extends IOException {
     private static final String KEY_ERROR = "error";
     private static final String KEY_CODE = "code";
 
+    /** The catalogue part suffixes of a refusal's three lines. */
+    static final String PART_TITLE = ".title";
+    static final String PART_CAUSE = ".cause";
+    static final String PART_FIX = ".fix";
+
     private static final Set<String> NON_ARGUMENTS = Set.of(KEY_ERROR, KEY_MESSAGE, KEY_CODE, "reason");
 
     /** What kind of refusal the exception carries. */
@@ -54,11 +59,11 @@ public class OperatorRefusedException extends IOException {
         /** A refusal of the API, with a code this client knows or a message beside an unknown one. */
         RUNTIME(null, List.of()),
         /** A condition found on this machine, or in the runtime's own answer, carrying no code. */
-        LOCAL("local", List.of(".cause", ".fix")),
+        LOCAL("local", List.of(PART_CAUSE, PART_FIX)),
         /** A 404 that names no code on a route the runtime does not know. */
-        ROUTE_MISSING("route_missing", List.of(".title", ".cause", ".fix")),
+        ROUTE_MISSING("route_missing", List.of(PART_TITLE, PART_CAUSE, PART_FIX)),
         /** A body that is no refusal this client can read: a page or a trace of another service. */
-        UNREADABLE("unreadable", List.of(".title", ".cause", ".fix"));
+        UNREADABLE("unreadable", List.of(PART_TITLE, PART_CAUSE, PART_FIX));
 
         /** The catalogue area every kind's texts live in. */
         static final String AREA_PREFIX = "operator.refusal.";

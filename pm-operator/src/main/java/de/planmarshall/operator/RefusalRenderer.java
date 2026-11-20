@@ -109,13 +109,13 @@ public final class RefusalRenderer {
         if (kind == OperatorRefusedException.Kind.LOCAL) {
             var text = exception.serverMessage() != null ? exception.serverMessage() : "";
             return List.of(GLYPH_REFUSED + text,
-                                areaText(locale, kind, ".cause"),
-                                GLYPH_FIX + areaText(locale, kind, ".fix"));
+                                areaText(locale, kind, OperatorRefusedException.PART_CAUSE),
+                                GLYPH_FIX + areaText(locale, kind, OperatorRefusedException.PART_FIX));
         }
         return List.of(
-                            GLYPH_REFUSED + areaText(locale, kind, ".title"),
-                            areaText(locale, kind, ".cause"),
-                            GLYPH_FIX + areaText(locale, kind, ".fix"));
+                            GLYPH_REFUSED + areaText(locale, kind, OperatorRefusedException.PART_TITLE),
+                            areaText(locale, kind, OperatorRefusedException.PART_CAUSE),
+                            GLYPH_FIX + areaText(locale, kind, OperatorRefusedException.PART_FIX));
     }
 
     /**
