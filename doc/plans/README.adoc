@@ -423,4 +423,10 @@ The status of a package is `open`, `in progress`, `blocked`, `done` or `dropped`
 |nothing
 |Milestone 2
 
+|link:ui-rule-catalogue.adoc[`ui-rule-catalogue`]
+|The objective UI rules of the web app as one closed catalogue: ids, tiers, a fixture per rule, waivers that need a reason, a report that names the rules it did not run
+|`open`
+|nothing
+|client work
+
 |===
