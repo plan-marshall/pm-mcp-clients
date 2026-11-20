@@ -11,7 +11,9 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.Serial;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -50,13 +52,45 @@ public class OperatorRefusedException extends IOException {
     /** What kind of refusal the exception carries. */
     enum Kind {
         /** A refusal of the API, with a code this client knows or a message beside an unknown one. */
-        RUNTIME,
+        RUNTIME(null, List.of()),
         /** A condition found on this machine, or in the runtime's own answer, carrying no code. */
-        LOCAL,
+        LOCAL("operator.refusal.local", List.of(".cause", ".fix")),
         /** A 404 that names no code on a route the runtime does not know. */
-        ROUTE_MISSING,
+        ROUTE_MISSING("operator.refusal.route_missing", List.of(".title", ".cause", ".fix")),
         /** A body that is no refusal this client can read: a page or a trace of another service. */
-        UNREADABLE
+        UNREADABLE("operator.refusal.unreadable", List.of(".title", ".cause", ".fix"));
+
+        private final @Nullable String area;
+        private final List<String> parts;
+
+        Kind(@Nullable String area, List<String> parts) {
+            this.area = area;
+            this.parts = parts;
+        }
+
+        /**
+         * @return the catalogue area the kind's texts live in, or {@code null} for a code-bearing
+         *         refusal, whose area is the code's own
+         */
+        @Nullable
+        String area() {
+            return area;
+        }
+
+        /**
+         * @return the keys of this kind's texts: the one definition the renderer reads and the
+         *         catalogue test enumerates
+         */
+        List<String> catalogueKeys() {
+            if (area == null) {
+                return List.of();
+            }
+            var keys = new ArrayList<String>();
+            for (var part : parts) {
+                keys.add(area + part);
+            }
+            return List.copyOf(keys);
+        }
     }
 
     @Serial

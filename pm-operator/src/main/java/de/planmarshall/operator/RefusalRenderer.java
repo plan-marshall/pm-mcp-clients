@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,26 +35,20 @@ public final class RefusalRenderer {
     private static final String GLYPH_FIX = "→ ";
     private static final String PREFIX = OperatorRefusedException.PREFIX_KEY;
 
-    /** The catalogue keys this renderer needs in every supported locale. */
-    private static final List<String> REQUIRED_KEYS = List.of(
-                        PREFIX,
-                        "operator.refusal.local.cause",
-                        "operator.refusal.local.fix",
-                        "operator.refusal.route_missing.title",
-                        "operator.refusal.route_missing.cause",
-                        "operator.refusal.route_missing.fix",
-                        "operator.refusal.unreadable.title",
-                        "operator.refusal.unreadable.cause",
-                        "operator.refusal.unreadable.fix");
-
     private RefusalRenderer() {
     }
 
     /**
-     * @return the catalogue keys the renderer needs in every supported locale
+     * @return the catalogue keys the renderer needs in every supported locale: the prefix and the
+     *         texts of every kind that carries no code, read from the kind's own definition
      */
     public static List<String> requiredKeys() {
-        return REQUIRED_KEYS;
+        var keys = new ArrayList<String>();
+        keys.add(PREFIX);
+        for (var kind : OperatorRefusedException.Kind.values()) {
+            keys.addAll(kind.catalogueKeys());
+        }
+        return List.copyOf(keys);
     }
 
     /**
@@ -194,12 +189,7 @@ public final class RefusalRenderer {
     }
 
     private static String areaText(@Nullable String locale, OperatorRefusedException.Kind kind, String part) {
-        var area = switch (kind) {
-            case LOCAL -> "operator.refusal.local";
-            case ROUTE_MISSING -> "operator.refusal.route_missing";
-            case UNREADABLE -> "operator.refusal.unreadable";
-            case RUNTIME -> null;
-        };
+        var area = kind.area();
         return area != null ? MessageCatalogue.format(locale, area + part, Map.of()) : "";
     }
 }

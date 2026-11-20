@@ -1071,7 +1071,9 @@ class PlanCommandTest {
 
             assertAll(
                                 () -> assertEquals(1, code, err.toString()),
-                                () -> assertTrue(out.toString().contains("No such file in the plan's changes: a/C.java"),
+                                () -> assertTrue(err.toString().contains("No such file in the plan's changes: a/C.java"),
+                                                    err.toString()),
+                                () -> assertFalse(out.toString().contains("No such file in the plan's changes"),
                                                     out.toString()));
         }
 
@@ -1096,9 +1098,9 @@ class PlanCommandTest {
 
             assertAll(
                                 () -> assertEquals(1, code, err.toString()),
-                                () -> assertTrue(out.toString().contains(
+                                () -> assertTrue(err.toString().contains(
                                                                         "Keine solche Datei in den \u00c4nderungen des Plans: a/C.java"),
-                                                    out.toString()));
+                                                    err.toString()));
         }
 
         @Test

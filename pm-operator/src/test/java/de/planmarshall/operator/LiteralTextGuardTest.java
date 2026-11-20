@@ -114,6 +114,8 @@ class LiteralTextGuardTest {
         assertFalse(isUserFacing("config"));
         assertFalse(isUserFacing("--consent"));
         assertFalse(isUserFacing("operator.config.needs_choice"), "a catalogue key is no text");
+        assertTrue(isUserFacing("{status} No paired devices."), "a brace alone does not make a literal a JSON fragment");
+        assertFalse(isUserFacing("{\"running\":false}"), "a JSON fragment is no text");
     }
 
     @Test
@@ -214,7 +216,7 @@ class LiteralTextGuardTest {
         if (ALLOWED.contains(literal)) {
             return false;
         }
-        if (literal.startsWith("{")) {
+        if (literal.startsWith("{}") || literal.startsWith("{\"") || literal.startsWith("{\\")) {
             // A JSON fragment the client writes for a machine consumer, not text for a screen.
             return false;
         }

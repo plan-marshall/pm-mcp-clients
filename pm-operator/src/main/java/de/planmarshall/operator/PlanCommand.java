@@ -358,9 +358,10 @@ public final class PlanCommand implements Callable<Integer> {
     }
 
     private int noSuchFile(PrintWriter out, String locale) {
-        out.println(MessageCatalogue.format(locale, "plan.changes.file_not_found",
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(locale, "plan.changes.file_not_found",
                             Map.of("path", OutputSafety.stripControlSequences(changesFile))));
-        out.flush();
+        err.flush();
         return 1;
     }
 
