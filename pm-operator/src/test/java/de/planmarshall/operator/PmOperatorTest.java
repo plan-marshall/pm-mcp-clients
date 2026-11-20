@@ -63,7 +63,6 @@ import picocli.CommandLine.Command;
 @DisplayName("pm-operator command line")
 @EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@EnableGeneratorController
 class PmOperatorTest {
 
     static final String STATUS = "{\"version\":\"0.1\",\"pid\":42,\"listener\":\"unix\",\"socket_path\":\"/s\","
