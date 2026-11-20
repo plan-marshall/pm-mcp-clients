@@ -1032,7 +1032,6 @@ class PlanCommandTest {
                 var unavailableText = out.toString();
                 out.getBuffer().setLength(0);
                 var unknown = executeOn(runtime, "plan", "not-a-plan", "--changes");
-                var unknownText = out.toString();
 
                 assertAll(
                                     () -> assertEquals(0, unavailable, err.toString()),

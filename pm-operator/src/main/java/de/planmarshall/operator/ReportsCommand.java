@@ -45,6 +45,7 @@ public final class ReportsCommand implements Callable<Integer> {
 
     private static final String REPORTS_API = "/api/v1/reports/";
     private static final String GLYPH_CHECK = "\u2713 ";
+    private static final String KEY_COUNT = "count";
 
     private final OperatorContext context;
 
@@ -87,7 +88,7 @@ public final class ReportsCommand implements Callable<Integer> {
         }
 
         out.println(MessageCatalogue.format(locale, "operator.reports.title",
-                            Map.of("count", page.unreadCount())));
+                            Map.of(KEY_COUNT, page.unreadCount())));
 
         var projectGroups = groupReportsByProject(page.items());
         for (var entry : projectGroups.entrySet()) {
@@ -232,7 +233,8 @@ public final class ReportsCommand implements Callable<Integer> {
                 ids.add(item.id());
             }
             if (ids.isEmpty()) {
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done", Map.of("count", 0)));
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "report.read.done", Map.of(KEY_COUNT, 0)));
                 out.flush();
                 return 0;
             }

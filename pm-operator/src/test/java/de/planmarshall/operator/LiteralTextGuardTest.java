@@ -121,15 +121,18 @@ class LiteralTextGuardTest {
     void guardSeesEveryShapeOfLiteral() {
         var violations = new ArrayList<String>();
         var source = Path.of("Sample.java");
-        collect("class A {\n"
-                            + "    void a() {\n"
-                            + "        out.println(stopped ? \"Nothing is due.\" : other);\n"
-                            + "        out.println(String.format(\"%d workers are running\", count));\n"
-                            + "        out.println(stopped\n"
-                            + "                            ? other\n"
-                            + "                            : \"Nothing is due either.\");\n"
-                            + "    }\n"
-                            + "}\n", source, violations);
+        var sample = """
+                            class A {
+                                void a() {
+                                    out.println(stopped ? "Nothing is due." : other);
+                                    out.println(String.format("%d workers are running", count));
+                                    out.println(stopped
+                                                        ? other
+                                                        : "Nothing is due either.");
+                                }
+                            }
+                            """;
+        collect(sample, source, violations);
         assertEquals(3, violations.size(), violations.toString());
     }
 
@@ -137,12 +140,15 @@ class LiteralTextGuardTest {
     @DisplayName("a catalogue call's parameter value is scanned, its key is not")
     void parameterValuesAreScanned() {
         var violations = new ArrayList<String>();
-        collect("class A {\n"
-                            + "    void a() {\n"
-                            + "        out.println(MessageCatalogue.format(locale, \"operator.console.code_failed\",\n"
-                            + "                            Map.of(\"reason\", \"The runtime is offline.\")));\n"
-                            + "    }\n"
-                            + "}\n", Path.of("Sample.java"), violations);
+        var sample = """
+                            class A {
+                                void a() {
+                                    out.println(MessageCatalogue.format(locale, "operator.console.code_failed",
+                                                        Map.of("reason", "The runtime is offline.")));
+                                }
+                            }
+                            """;
+        collect(sample, Path.of("Sample.java"), violations);
         assertEquals(1, violations.size(), violations.toString());
         assertTrue(violations.get(0).contains("The runtime is offline."), violations.toString());
     }
