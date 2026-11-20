@@ -48,6 +48,14 @@ Source of this plan (read before scoping):
      - An e2e test: a plan is started from a project's row without selecting the project first (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and a scenario with a project that is not ready: the row with and without the action; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
      - The row of the package `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` if `PLAN-83` and `PLAN-51` D5 have landed (evidence order: `none`)
+5. **The onboarding choice screens: the model field in the real view and the models payload pinned exactly (the residue of PLAN-169, folded in on the operator's word of 2026-11-20; done first)**
+   - What: PLAN-169 (#512, `7ccacfc3`, `landings/PLAN-169.md`) left two majors in the machine-onboarding screens this plan shares `OnboardingView.svelte` with. (a) **A harness that cannot list its models and has no rows still gets no text field in the real view** when the state carries no `harnesses[]` (PLAN-66's L3-2, still open): `ModelsChoice.svelte` `buildGroups` names harnesses from `harnesses[]`, the proposal rows, `harnessNames` and the default harness, and `harnessNames()` (`OnboardingView.svelte:202-214`, re-read at `7ccacfc3`) is built from `currentState.harnesses ?? $runtimeStore.onboarding?.harnesses`, so for a state without `harnesses[]` the map is empty and no group exists; `ModelsChoice.test.ts:22-27` passes `harnessNames: { opencode: 'OpenCode' }` directly, an input the view cannot supply. The lane reads the engine's `catalogue.select` row (`../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc`, read-only) and names the harness from a published fact, or, if no published fact names a harness with zero rows, reports it in the landing message as a contract gap and offers the field for the harnesses the machine's scan lists (the lane says which and why; it asks the operator if the engine row settles neither). (b) **The `models` payload of `ModelsScreen.recordedModels`** (`{harness_id, model_id, source}` rows, `source ?? 'probe'`) is pinned only by `expect.objectContaining` (`OnboardingView.scenarios.test.ts:1499-1507`): the body is asserted exactly for a changed selection and for an unmodified one (`{}`). (c) The three `AspectChoice` resync tests that no recorded run shows failing get a revert-failing run, `onboard.link.yes_remember` (removed by PLAN-169 although `linkLabel` builds `onboard.link.${id}` dynamically) is checked against the link ids the engine offers, and a `-Pcoverage` run is made at the head (PLAN-169's last coverage run is not at its merge head; the branch margin is 0.14 pt).
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - A scenario test through `OnboardingView` fails at `main` of the plan's start and passes: a `catalogue.select` state with no `harnesses[]` and a cannot-list harness shows a text field named for that harness (or the contract gap is reported and the test pins the decision made; evidence order: `test-first`).
+     - The `models` body is asserted exactly with `toEqual` for a changed and an unmodified selection; the test fails when the full row is sent or `source ?? 'probe'` is dropped, run once and recorded (evidence order: `mutation-after`).
+     - Each of the three `AspectChoice` resync tests fails once with the resync reverted, recorded (evidence order: `mutation-after`); the coverage run at the head is recorded with the branch percentage (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -88,6 +96,12 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/lib/views/OnboardingView.svelte` — present at `7ccacfc3` (deliverable 5, 2026-11-20)
+- OBSERVED: `pm-web-app/src/lib/views/OnboardingView.scenarios.test.ts` — present at `7ccacfc3` (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/views/onboarding/ModelsScreen.svelte` — present at `7ccacfc3` (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/components/ModelsChoice.svelte` — present at `7ccacfc3` (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/components/ModelsChoice.test.ts` — present at `7ccacfc3` (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/components/AspectChoice.test.ts` — present at `7ccacfc3` (deliverable 5)
 - OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/actions/byState.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/actions/byState.test.ts` — present at HEAD 1cc0e10e
