@@ -117,22 +117,23 @@ Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal
 
   (•) macOS Keychain                                         ★ recommended
       available
-      Protects a secret against: other programs reading a token without macOS asking first
-      Does not protect against: a program you allow in the macOS dialog
+      Protects a secret against: anything the store itself guarantees
+      Does not protect against: anything the store itself does not guarantee
 
   ( ) Files in ~/.plan-marshall-mcp/credentials/
       available
-      Protects a secret against: other users of the machine (mode 0600)
-      Does not protect against: other programs running as your user
+      Protects a secret against: anything the store itself guarantees
+      Does not protect against: anything the store itself does not guarantee
 
   The choice holds until you change it; a change moves the tokens and
   never leaves a copy behind.
 
-  [ Back ]                                     [ Use the macOS Keychain ]
+                                                    [ Keep the tokens in macOS Keychain ]
 ----
 
-* Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. On Linux the first option is the Secret Service, naming what it protects against (while locked, and from sandboxes that deny D-Bus access to Secret Service) and what it does not protect against (unconfined programs running as the user while unlocked).
-* The primary button names the store it will use.
+* Each offered option carries two lines naming what protects a secret in it (`onboard.store.choose.protects_against`) and what does not (`onboard.store.choose.does_not_protect_against`), plus the `recommended` marker (`Marker`) on the recommended option. The text is the store's own where the state states one; otherwise the generic line (`onboard.store.choose.unknown.protects`, `.does_not_protect`) says that only the store itself knows. The screen derives no protection from a platform: no state row and no `pm-api` type publishes a store's backend, platform or operating system, so the Keychain, Secret Service and file options carry the same generic line where the state states nothing.
+* The primary button names the store it will use, and records the link of that store's kind (`os`, `file`, or `os_unavailable`); a kind the state offers no link for records nothing.
+* An OS store that is not available now stays selectable: choosing it records `os_unavailable` and opens <<store-unavailable>>.
 
 [#store-consent]
 === Consent (`store.consent`)
