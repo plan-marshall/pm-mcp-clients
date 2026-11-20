@@ -32,7 +32,7 @@ _See Requirements:_
 Implemented in (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]):
 
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 01: the compiled harness-detection table (detection signals and precedence, version probes)
-* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mcp-server[`pm-mcp-server`]: part 02: the harness bundles embedded in the runtime binary `pm-mcpd`, and their packaging in the release profile
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mcp-server[`pm-mcp-server`]: part 02: the harness bundles embedded in the runtime binary `pm-mcpd`, and their packaging in the release profile; the content each bundle carries (the permission rules and the shim skill) is specified in link:../../../plan-marshall-documentation/doc/specification/harness-integration/02-bundle-manifest.adoc#bundle-content[Bundle Content per Harness] of `plan-marshall-documentation`
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`]: parts 01 and 02: the operator checks against the harness-detection table, and the `harness` verbs with the drift checks of `pm-operator harness status`
 
 == Parts

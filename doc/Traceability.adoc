@@ -7,8 +7,10 @@
 What each requirement of the link:../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document] that
 the modules of this repository implement is implemented by, verified by and documented in. A work package adds the
 lines of the requirements it implements here, in its own pull request: `Implementation:` links the production code,
-`Verified by:` the automated tests, and `Documentation:` the specification part of this repository that states it. A
-requirement that is not implemented in this repository says so; a line is never invented.
+`Verified by:` the automated tests, and `Documentation:` the documentation of the implemented system: the developer
+documentation of the module beside its code (`<module>/doc/developer/`) and the concept or user documentation of
+`plan-marshall-documentation`, never a specification part. A requirement that has no such documentation yet has no
+`Documentation:` line. A requirement that is not implemented in this repository says so; a line is never invented.
 
 The granularity is the module for `Implementation:` and the module's test tree for `Verified by:`, unless a single
 class or test is named: the clients are specified by their module, and the class-level entry is added by the work
@@ -16,7 +18,7 @@ package that touches it. The links into this repository are relative; a link int
 relative sibling path that resolves with the repositories checked out beside each other.
 
 A requirement implemented in another repository is traced there. The lines of the requirements whose specification
-section stayed in `plan-marshall-mcp` are recorded in its traceability.
+section is in `plan-marshall-documentation` are recorded in its requirement modules.
 
 == link:../../plan-marshall-documentation/doc/requirements/01-architecture.adoc[Architecture]
 
@@ -29,8 +31,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start]
-
 [#PM-ARCH-2]
 === PM-ARCH-2: Local-by-Design & Zero External Cloud Dependency
 
@@ -39,8 +39,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-2[PM-ARCH-2
 Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the local HTTP/1.1 and Server-Sent-Events client over the Unix socket)
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start]
 
 [#PM-ARCH-3]
 === PM-ARCH-3: STDIO Harness Transport, Local Relay & Frontier Protocol Compliance
@@ -51,8 +49,6 @@ Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
 
-Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
-
 [#PM-ARCH-4]
 === PM-ARCH-4: Stateless Requests & Explicit Scope Addressing
 
@@ -61,8 +57,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-4[PM-ARCH-4
 Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`], link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`]
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`], link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc#_contract[Relay § Contract]
 
 [#PM-ARCH-7]
 === PM-ARCH-7: Runtime & Relay Lifecycle, Crash Recovery & Job Drain
@@ -73,8 +67,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]
-
 [#PM-ARCH-8]
 === PM-ARCH-8: Server-Driven Continuation & Connection Independence
 
@@ -84,8 +76,6 @@ Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
 
-Documentation: link:specification/runtime-model/03-relay.adoc#_generations_at_the_relay[Relay § Generations at the Relay]
-
 [#PM-ARCH-11]
 === PM-ARCH-11: The Operator's Two Clients & Their Contract
 
@@ -94,8 +84,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-
 Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`], link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`], link:../pm-web-app/[`pm-web-app`]
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal]
 
 == link:../../plan-marshall-documentation/doc/requirements/02-workflow.adoc[Workflow]
 
@@ -108,8 +96,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WF-13]
 === PM-WF-13: Finalize Step Ordering Bands, Verdict Currency & Pre-Merge Barrier
 
@@ -118,8 +104,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-13[PM-WF-13]
 Implementation: none in this repository (the engine of `pm-mcp-core` and the daemon carry it)
 
 Verified by: none in this repository
-
-Documentation: none in this repository
 
 [#PM-WF-18]
 === PM-WF-18: Question Recommendation Score & Decision Quorum
@@ -130,8 +114,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WF-19]
 === PM-WF-19: Uniform Decision Log & Corpus Export
 
@@ -140,8 +122,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-19[PM-WF-19]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (`decision-log export`)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
 
 [#PM-WF-20]
 === PM-WF-20: Waiting for the Operator
@@ -152,8 +132,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WF-21]
 === PM-WF-21: Reports to the Operator
 
@@ -162,8 +140,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-21[PM-WF-21]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`], link:../pm-web-app/[`pm-web-app`]
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
-
-Documentation: link:specification/runtime-model/06-event-catalogue.adoc#_reports_activity[Event Catalogue § Reports & Activity]
 
 [#PM-WF-23]
 === PM-WF-23: Operator Acts on Plans and Epics
@@ -174,8 +150,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WF-24]
 === PM-WF-24: Chatting with the Planning Role
 
@@ -185,8 +159,6 @@ Implementation: link:../pm-web-app/[`pm-web-app`], link:../pm-api/src/main/java/
 
 Verified by: link:../pm-web-app/src/lib/components/ChatPanel.test.ts[`ChatPanel.test.ts`], link:../pm-web-e2e/[`pm-web-e2e`]
 
-Documentation: link:specification/cli-and-security/03-web-app.adoc[Web App]
-
 [#PM-WF-26]
 === PM-WF-26: Machine Onboarding & the Machine Scope
 
@@ -195,8 +167,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-26[PM-WF-26]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the onboarding dialogue and its aspects), link:../pm-web-app/[`pm-web-app`]
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#auto[Automatic Onboarding]
 
 == link:../../plan-marshall-documentation/doc/requirements/03-skills.adoc[Skills]
 
@@ -209,8 +179,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:../../plan-marshall-documentation/doc/specification/harness-integration/02-bundle-manifest.adoc#bundle-content[Bundle Manifest § the shim skill the installer places]
-
 == link:../../plan-marshall-documentation/doc/requirements/04-tools.adoc[Tools]
 
 [#PM-TOOL-5]
@@ -221,8 +189,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TOOL-5[PM-TOOL-5
 Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`] (the identity arguments it strips from the tool schemas it forwards)
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc#relay-rules[Relay § Relay Rules]
 
 == link:../../plan-marshall-documentation/doc/requirements/05-services.adoc[Services]
 
@@ -235,8 +201,6 @@ Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
 
-Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
-
 == link:../../plan-marshall-documentation/doc/requirements/06-execution.adoc[Execution]
 
 [#PM-EXEC-1]
@@ -248,7 +212,19 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-enrol-harness[Operator Acts § Harness Enrolment]
+[#PM-EXEC-4]
+=== PM-EXEC-4: Direct Host Subprocess Management & Process-Group Isolation
+
+link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-EXEC-4[PM-EXEC-4]
+
+Implementation: link:../pm-exec/src/main/java/de/planmarshall/exec/Launcher.java[Launcher],
+link:../pm-exec/src/main/java/de/planmarshall/exec/LinuxConfinement.java[LinuxConfinement],
+link:../pm-exec/src/main/java/de/planmarshall/exec/Landlock.java[Landlock],
+link:../pm-exec/src/main/java/de/planmarshall/exec/ReadSet.java[ReadSet] (the launcher: its own process group, `PR_SET_NO_NEW_PRIVS`, the Linux Landlock read and write sets, the launch report, and `--probe`)
+
+Verified by: link:../pm-exec/src/test/java/de/planmarshall/exec/LauncherTest.java[LauncherTest],
+link:../pm-exec/src/test/java/de/planmarshall/exec/LandlockTest.java[LandlockTest],
+link:../pm-exec/src/test/java/de/planmarshall/exec/PmExecIT.java[PmExecIT]
 
 == link:../../plan-marshall-documentation/doc/requirements/07-credentials.adoc[Credentials]
 
@@ -261,8 +237,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts & Runtime Secret Redaction]
-
 [#PM-CRED-2]
 === PM-CRED-2: Operator-Chosen Credential Store & Native Access
 
@@ -271,8 +245,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CRED-2[PM-CRED-2
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the store choice in the onboarding and `credentials migrate`)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts & Runtime Secret Redaction]
 
 [#PM-CRED-3]
 === PM-CRED-3: Permission-Guarded File Credential Store
@@ -283,8 +255,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#bundle-manifest-scopes[Bundle Manifest § Machine Root Deny Rules]
-
 [#PM-CRED-4]
 === PM-CRED-4: Operator-Only Secret Entry & Zero Model Exposure
 
@@ -294,8 +264,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts & Runtime Secret Redaction]
-
 [#PM-CRED-5]
 === PM-CRED-5: Outbound Domain Scoping & Output Secret Redaction
 
@@ -304,8 +272,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CRED-5[PM-CRED-5
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (no secret reaches a log, an argument or a representation)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts & Runtime Secret Redaction]
 
 == link:../../plan-marshall-documentation/doc/requirements/08-security.adoc[Security]
 
@@ -318,8 +284,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`], lin
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`], link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-SEC-2]
 === PM-SEC-2: Workspace Confinement & Path Traversal Prevention
 
@@ -328,8 +292,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-2[PM-SEC-2]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the containment of the target a client names, the harness install targets, and the cross-project grant check)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-grant-access[Cross-Project Access], link:specification/harness-integration/02-bundle-manifest.adoc#bundle-manifest-scopes[Bundle Manifest § Machine Root Deny Rules]
 
 [#PM-SEC-3]
 === PM-SEC-3: Operator Channel Isolation (Operator CLI & Paired Web Devices)
@@ -340,8 +302,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-SEC-4]
 === PM-SEC-4: Local Transport Isolation, Operator-Gated Network Exposure & Stream Hygiene
 
@@ -350,8 +310,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-4[PM-SEC-4]
 Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the Unix-socket client and the stream hygiene of the relays)
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc#_harness_protocol_forms[Relay § Harness Protocol Forms]
 
 [#PM-SEC-5]
 === PM-SEC-5: Subprocess Environment Sanitization & Linux Filesystem Confinement
@@ -362,8 +320,6 @@ Implementation: link:../pm-exec/src/main/java/de/planmarshall/exec/[`pm-exec`]
 
 Verified by: link:../pm-exec/src/test/java/de/planmarshall/exec/[the tests of `pm-exec`]
 
-Documentation: none in this repository (the specification section stays in `plan-marshall-documentation` as the daemon's)
-
 [#PM-SEC-6]
 === PM-SEC-6: Security Audit Trail & Tamper-Evident Logging
 
@@ -372,8 +328,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-6[PM-SEC-6]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (every act it sends is audited with its channel)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
 
 [#PM-SEC-7]
 === PM-SEC-7: Optional Web Access, Device Pairing & Browser Channel Hardening
@@ -384,8 +338,6 @@ Implementation: link:../pm-web-app/src/lib/[`pm-web-app`] (the device secret and
 
 Verified by: link:../pm-web-app/src/lib/[`pm-web-app`'s tests], link:../pm-web-e2e/[`pm-web-e2e`]
 
-Documentation: link:specification/cli-and-security/03-web-app.adoc[Web App]
-
 [#PM-SEC-8]
 === PM-SEC-8: Consent Before Acting
 
@@ -394,8 +346,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-8[PM-SEC-8]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the confirmation of every act that cannot be undone)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
 
 == link:../../plan-marshall-documentation/doc/requirements/09-technology.adoc[Technology]
 
@@ -408,8 +358,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] and 
 
 Verified by: the build of every module (`./mvnw verify`)
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#cli-implementation[CLI Implementation]
-
 [#PM-TECH-2]
 === PM-TECH-2: Outbound HTTPS Client, LSP Client & McpAssured Testing Libraries
 
@@ -418,8 +366,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TECH-2[PM-TECH-2
 Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`]
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#cli-implementation[CLI Implementation]
 
 [#PM-TECH-3]
 === PM-TECH-3: GraalVM Native Executable & Startup/Memory Bounds
@@ -430,8 +376,6 @@ Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`
 
 Verified by: the `native` profile of the build and the `*IT` tests of the three modules
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout]
-
 [#PM-TECH-4]
 === PM-TECH-4: Operating System Platform Integration (macOS & Linux)
 
@@ -440,8 +384,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TECH-4[PM-TECH-4
 Implementation: link:../pm-exec/src/main/java/de/planmarshall/exec/[`pm-exec`] (Landlock and Seatbelt), link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the terminal and its state directory)
 
 Verified by: link:../pm-exec/src/test/java/de/planmarshall/exec/[the tests of `pm-exec`], link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#cli-implementation[CLI Implementation]
 
 == link:../../plan-marshall-documentation/doc/requirements/10-distribution.adoc[Distribution]
 
@@ -454,8 +396,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Ownership & Digest Verification]
-
 [#PM-DIST-2]
 === PM-DIST-2: Embedded Bundle Extraction & Interactive Harness Installer
 
@@ -464,8 +404,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-2[PM-DIST-2
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the `harness` verbs and the path-traversal guards)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#harness-installer[Harness Bundle Installer]
 
 [#PM-DIST-3]
 === PM-DIST-3: Worker MCP Connection per Launch
@@ -476,8 +414,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`], lin
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`], link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
 
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc[Bundle Manifest]
-
 [#PM-DIST-4]
 === PM-DIST-4: Bundle Upgrade Detection & Atomic Reconciliation
 
@@ -487,8 +423,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#bundle-drift-notice[Bundle Drift Notice]
-
 [#PM-DIST-5]
 === PM-DIST-5: Multi-Harness Concurrent Coexistence on One Machine
 
@@ -497,8 +431,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-DIST-5[PM-DIST-5
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the surgical merge of the shared configuration)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/harness-integration/02-bundle-manifest.adoc#_ownership_digest_verification_on_installupdateremove[Ownership & Digest Verification]
 
 == link:../../plan-marshall-documentation/doc/requirements/11-migration.adoc[Migration]
 
@@ -511,8 +443,6 @@ Implementation: none in this repository at class level (the lifecycle is the dae
 
 Verified by: none in this repository
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout]
-
 [#PM-MIG-2]
 === PM-MIG-2: Separate State Trees & Legacy Coexistence
 
@@ -522,8 +452,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout]
-
 [#PM-MIG-5]
 === PM-MIG-5: Quantitative Triggers & Project Release
 
@@ -532,8 +460,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-MIG-5[PM-MIG-5]
 Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (`project release`)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
 
 == link:../../plan-marshall-documentation/doc/requirements/12-testing.adoc[Testing]
 
@@ -546,8 +472,6 @@ Implementation: link:../pm-exec/src/test/java/de/planmarshall/exec/[the adversar
 
 Verified by: link:../pm-exec/src/test/java/de/planmarshall/exec/[the tests of `pm-exec`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-TEST-7]
 === PM-TEST-7: Mock Runtime for Client Development & Tests
 
@@ -556,8 +480,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TEST-7[PM-TEST-7
 Implementation: link:../pm-mock-runtime/src/main/java/de/planmarshall/mock/[`pm-mock-runtime`]
 
 Verified by: link:../pm-mock-runtime/src/test/java/de/planmarshall/mock/[the tests of `pm-mock-runtime`]
-
-Documentation: link:specification/runtime-model/05-mock-runtime.adoc[Mock Runtime]
 
 == link:../../plan-marshall-documentation/doc/requirements/13-harness-profiles.adoc[Harness Profiles]
 
@@ -570,8 +492,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
 
-Documentation: link:specification/harness-integration/01-harness-detection.adoc[Harness Environment Detection]
-
 [#PM-CLIENT-3]
 === PM-CLIENT-3: Harness Environment Detection
 
@@ -580,8 +500,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CLIENT-3[PM-CLIE
 Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the harness-detection table), link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the operator checks)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/ClientEnvironmentTest.java[`ClientEnvironmentTest`], link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
-
-Documentation: link:specification/harness-integration/01-harness-detection.adoc#harness-integration-table[Harness Integration Table]
 
 == link:../../plan-marshall-documentation/doc/requirements/14-implementation.adoc[Implementation]
 
@@ -594,8 +512,6 @@ Implementation: link:../pm-api/src/main/java/de/planmarshall/api/[`pm-api`] (the
 
 Verified by: link:../pm-api/src/test/java/de/planmarshall/api/[the tests of `pm-api`]
 
-Documentation: link:specification/runtime-model/03-relay.adoc#_request_and_response_flow[Relay § Request and Response Flow]
-
 [#PM-IMPL-7]
 === PM-IMPL-7: Data Store Invariants, Footprint Reconciliation & Lock Ordering
 
@@ -604,8 +520,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-IMPL-7[PM-IMPL-7
 Implementation: none in this repository (the stores of `pm-mcp-core` carry it)
 
 Verified by: none in this repository
-
-Documentation: none in this repository
 
 == link:../../plan-marshall-documentation/doc/requirements/15-extensions-and-recipes.adoc[Extensions and Recipes]
 
@@ -618,8 +532,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]
-
 == link:../../plan-marshall-documentation/doc/requirements/16-model-work.adoc[Model Work]
 
 [#PM-WORK-1]
@@ -631,8 +543,6 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WORK-2]
 === PM-WORK-2: Task Protocol
 
@@ -641,8 +551,6 @@ link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WORK-2[PM-WORK-2
 Implementation: link:../pm-relay/src/main/java/de/planmarshall/relay/[`pm-relay`]
 
 Verified by: link:../pm-relay/src/test/java/de/planmarshall/relay/[the tests of `pm-relay`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
 
 [#PM-WORK-3]
 === PM-WORK-3: Supervision & Recycling
@@ -653,8 +561,6 @@ Implementation: none in this repository (the daemon supervises the workers)
 
 Verified by: none in this repository
 
-Documentation: link:specification/runtime-model/03-relay.adoc#_generations_at_the_relay[Relay § Generations at the Relay]
-
 [#PM-WORK-6]
 === PM-WORK-6: Role Qualification
 
@@ -664,15 +570,11 @@ Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
-Documentation: link:specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation & Operator Acts]
-
 [#PM-WORK-7]
 === PM-WORK-7: Worker Activity & Off-Track Signals
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WORK-7[PM-WORK-7]
 
-Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the activity it reads and shows), link:../pm-web-app/[`pm-web-app`]
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the activity it reads and shows), link:../pm-web-app/[`pm-web-app`], link:../pm-api/src/main/java/de/planmarshall/api/intent/[`pm-api`] (the types of the `over_size` distribution: `OverSizeDistributionsResource`, `OverSizeDistributionResource`, `TokenBucket`)
 
-Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`]
-
-Documentation: link:specification/runtime-model/03-relay.adoc[Relay]
+Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`], link:../pm-api/src/test/java/de/planmarshall/api/intent/IntentContractTest.java[`IntentContractTest`], link:../pm-web-app/src/lib/components/OverSizeChart.test.ts[`OverSizeChart.test.ts`]

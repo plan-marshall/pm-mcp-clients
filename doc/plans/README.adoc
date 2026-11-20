@@ -5,7 +5,7 @@
 
 One file per work package and this index. How the work is planned, what a package file holds, when a package is ready, and what happens to a package when it is done are stated only in link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]. The links assume the repositories checked out beside each other (`../plan-marshall-documentation`, `../pm-mcp-clients`, `../pm-mcp-core`, `../plan-marshall-mcp`); they do not resolve in the web view of a single repository.
 
-The modules of this repository are listed only in the link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]; each package file names where it lands.
+The modules of this repository are listed only in the link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]; each package file names where it lands. The plan-marshall orchestrator bootstraps and re-plans the implementation epic of this repository from the link:orchestrator-brief.adoc[Orchestrator Brief].
 
 [#packages]
 == Packages
