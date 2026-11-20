@@ -1028,9 +1028,10 @@ public final class PlanCommand implements Callable<Integer> {
                 } catch (IOException _) {
                     // Ignore unparseable 409 body
                 }
-                out.println(MessageCatalogue.format("operator.reports.not_ended",
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format("operator.reports.not_ended",
                                     Map.of("plan", planId, KEY_STATE, state)));
-                out.flush();
+                err.flush();
                 return 1;
             }
             if (response.status() == 404) {
@@ -1556,7 +1557,10 @@ public final class PlanCommand implements Callable<Integer> {
             if (response.status() == 200) {
                 return PlanSettingsRecord.fromJson(response.bodyText());
             }
-            return null;
+            if (response.status() == 404) {
+                return null;
+            }
+            throw new OperatorRefusedException("plan settings " + planId, response);
         }
 
         private int apply(PrintWriter out, PlanSettingsRecord settings, String aspect, @Nullable String value)

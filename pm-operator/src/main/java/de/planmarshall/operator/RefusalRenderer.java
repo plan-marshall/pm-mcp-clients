@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.PrintWriter;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
@@ -135,7 +136,19 @@ public final class RefusalRenderer {
      * Builds the fix line (line 3), prefixed with {@code → }.
      */
     public static String fixLine(@Nullable String locale, @Nullable ApiErrorCode code, Map<String, ?> arguments) {
-        return GLYPH_FIX + ErrorTexts.fix(locale, code, arguments);
+        return GLYPH_FIX + ErrorTexts.fix(locale, code, sanitized(arguments));
+    }
+
+    /**
+     * @param arguments the arguments the fix line substitutes
+     * @return the arguments with every text's control sequences removed, so a body value can never
+     *         inject a terminal sequence into the fix line
+     */
+    private static Map<String, ?> sanitized(Map<String, ?> arguments) {
+        var clean = new LinkedHashMap<String, Object>();
+        arguments.forEach((key, value) -> clean.put(key,
+                            value instanceof String text ? TerminalSanitizer.sanitizeLine(text) : value));
+        return clean;
     }
 
     /**

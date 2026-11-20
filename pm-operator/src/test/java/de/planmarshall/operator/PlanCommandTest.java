@@ -756,7 +756,8 @@ class PlanCommandTest {
         int codeRunning = execute("plan", "report", "p-running");
         assertAll(
                             () -> assertEquals(1, codeRunning),
-                            () -> assertTrue(out.toString().contains("p-running is running; its completion report follows when it ends"))
+                            () -> assertTrue(err.toString().contains("p-running is running; its completion report follows when it ends"),
+                                                err.toString())
         );
     }
 
@@ -903,7 +904,8 @@ class PlanCommandTest {
 
         int code = execute("plan", "report", "running-plan");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("running-plan is running"));
+        assertTrue(err.toString().contains("running-plan is running"), err.toString());
+        assertFalse(out.toString().contains("running-plan is running"), out.toString());
     }
 
     @Test

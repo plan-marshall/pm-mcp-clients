@@ -208,6 +208,18 @@ class RefusalRendererTest {
     }
 
     @Test
+    @DisplayName("a control sequence in a body argument never reaches the fix line")
+    void bodyArgumentsAreSanitized() {
+        var json = "{\"error\":\"enrolment_tampered\",\"project_id\":\"p\\u001b[2Jx\"}";
+        var ex = new OperatorRefusedException("plan", new HttpResponse(409, "application/json",
+                            json.getBytes(StandardCharsets.UTF_8)));
+
+        for (var line : RefusalRenderer.linesOf("en", ex)) {
+            assertFalse(line.contains("\u001b"), line);
+        }
+    }
+
+    @Test
     @DisplayName("the internal_fault texts name no audit id the operator is told to look up")
     void internalFaultNamesNoAuditId() {
         for (var locale : List.of("en", "de")) {
