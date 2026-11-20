@@ -85,13 +85,13 @@ class OperatorRefusedExceptionTest {
     }
 
     @Test
-    @DisplayName("a 404 that names no code in a JSON object is a missing entry")
+    @DisplayName("a 404 that names no code keeps the absent code and the message it carries")
     void parseRefusal404JsonObjectWithoutCode() {
         var detail = Generators.letterStrings(4, 12).next();
         var json = "{\"message\":\"" + detail + "\"}";
         var resp = new HttpResponse(404, "application/json", json.getBytes(StandardCharsets.UTF_8));
         var ex = new OperatorRefusedException("plan", resp);
-        assertEquals(ApiErrorCode.SCOPE_NOT_FOUND, ex.code());
+        assertNull(ex.code(), "a code-less 404 must not be synthesized into scope_not_found");
         assertEquals(detail, ex.serverMessage());
     }
 

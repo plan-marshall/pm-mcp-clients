@@ -208,9 +208,6 @@ public class OperatorRefusedException extends IOException {
                 parsedMessage = cap(body);
             }
         }
-        if (parsedCode == null && response.status() == 404) {
-            parsedCode = ApiErrorCode.SCOPE_NOT_FOUND.wire();
-        }
         var resolvedCode = parsedCode != null ? ApiErrorCode.fromWireOrNull(parsedCode) : null;
         var sanitizedMessage = parsedMessage != null ? TerminalSanitizer.sanitizeLine(parsedMessage).strip() : null;
         return new ParsedRefusal(resolvedCode, parsedCode, sanitizedMessage, extracted.arguments(), Kind.RUNTIME);
