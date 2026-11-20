@@ -432,7 +432,8 @@ public final class EntryFlow {
                     var arrivalLine = MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "report.arrival.line",
                                         Map.of("count", page.unreadCount(), "time", since));
-                    var hint = MessageCatalogue.get("operator.reports.arrival_hint");
+                    var hint = MessageCatalogue.get(context.clientEnvironment().locale(),
+                                        "operator.reports.arrival_hint");
                     out.println("\u25aa " + arrivalLine + " \u00b7 " + hint);
                 }
             }

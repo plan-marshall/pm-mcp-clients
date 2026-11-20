@@ -226,9 +226,9 @@ public final class CredentialsCommand implements Callable<Integer> {
                         Terminal terminal) throws IOException {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
-            out.println(MessageCatalogue.format(locale, FAILED,
+            err.println(MessageCatalogue.format(locale, FAILED,
                                 Map.of(KEY, key, STATUS, response.status())));
-            out.flush();
+            err.flush();
             return PmOperator.EXIT_FAILURE;
         }
         var dropped = 0;
@@ -486,9 +486,10 @@ public final class CredentialsCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                FAILED, Map.of(KEY, key, STATUS, response.status())));
-            out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.credentials.remove_failed", Map.of(KEY, key, STATUS, response.status())));
+            err.flush();
             return PmOperator.EXIT_FAILURE;
         }
     }

@@ -874,7 +874,7 @@ class ControlDialoguesTest {
                             EpicResource.fromJson(blocked), null));
         var text = out.toString();
         assertTrue(text.contains("How many plans run is not known"), text);
-        assertTrue(text.contains("Left epic.raise-scope. Nothing was sent."), text);
+        assertTrue(text.contains("Left the epic; its scope stays as it is. Nothing was sent."), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
                             server.requests().toString());
     }

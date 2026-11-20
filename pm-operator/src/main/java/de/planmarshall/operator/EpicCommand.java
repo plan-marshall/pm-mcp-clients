@@ -65,6 +65,8 @@ public final class EpicCommand implements Callable<Integer> {
     private static final String STAGED = "staged";
     private static final String STATE_UNKNOWN = "state.unknown";
     private static final String EPICS_API = "/api/v1/epics/";
+    private static final String KEY_PROJECT = "project";
+    private static final String GLYPH_CHECK = "\u2713 ";
 
     private final OperatorContext context;
 
@@ -118,7 +120,7 @@ public final class EpicCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(out, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
+                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
                 return 1;
             }
             throw new OperatorRefusedException("epic " + epicId, response);
@@ -131,7 +133,8 @@ public final class EpicCommand implements Callable<Integer> {
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 ActionSupport.printWorkList(out, "Epics:", "state", list);
             } else {
-                out.println("No epics running.");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.epic.none_running", Map.of()));
             }
             out.flush();
             return 0;
@@ -164,8 +167,9 @@ public final class EpicCommand implements Callable<Integer> {
         }
         out.println(head);
         out.printf("  %-44s %s%n", MessageCatalogue.format(locale, "operator.plan.tree.context",
-                                                Map.of("project", OutputSafety.stripControlSequences(epic.projectId()))),
-                            "status --project " + OutputSafety.stripControlSequences(epic.projectId()));
+                                                Map.of(KEY_PROJECT, OutputSafety.stripControlSequences(epic.projectId()))),
+                            MessageCatalogue.format(locale, "operator.plan.tree.hint_project",
+                                                Map.of(KEY_PROJECT, OutputSafety.stripControlSequences(epic.projectId()))));
         printWorkstreams(out, locale, epic);
         printSources(out, locale, epic);
         printLandings(out, locale, epic);
@@ -225,14 +229,16 @@ public final class EpicCommand implements Callable<Integer> {
     }
 
     private void printRegisters(PrintWriter out, String locale, EpicResource epic) {
-        out.printf("  %-14s %s   epic findings %s%n",
+        out.printf("  %-14s %s%n",
                             MessageCatalogue.format(locale, "operator.epic.findings", Map.of()),
-                            EpicViewFormatting.registerCounts(locale, epic.findings(), "findings"),
-                            OutputSafety.stripControlSequences(epic.epicId()));
-        out.printf("  %-14s %s   epic watches %s%n",
+                            MessageCatalogue.format(locale, "operator.epic.findings_line", Map.of(
+                                                "counts", EpicViewFormatting.registerCounts(locale, epic.findings(), "findings"),
+                                                "epic", OutputSafety.stripControlSequences(epic.epicId()))));
+        out.printf("  %-14s %s%n",
                             MessageCatalogue.format(locale, "operator.epic.watches", Map.of()),
-                            EpicViewFormatting.registerCounts(locale, epic.watches(), "watches"),
-                            OutputSafety.stripControlSequences(epic.epicId()));
+                            MessageCatalogue.format(locale, "operator.epic.watches_line", Map.of(
+                                                "counts", EpicViewFormatting.registerCounts(locale, epic.watches(), "watches"),
+                                                "epic", OutputSafety.stripControlSequences(epic.epicId()))));
     }
 
     private void printEvents(PrintWriter out, String locale, EpicResource epic) {
@@ -256,9 +262,11 @@ public final class EpicCommand implements Callable<Integer> {
     private void printTokens(PrintWriter out, String locale, EpicResource epic) {
         out.println("  " + MessageCatalogue.format(locale, "operator.epic.tokens", Map.of()));
         for (var plan : epic.tokens().plans()) {
-            out.printf("    %-34s %-28s plan %s%n",
+            var planWord = MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
+            out.printf("    %-34s %-28s %s %s%n",
                                 OutputSafety.stripControlSequences(plan.planId()),
                                 EpicViewFormatting.tokenFigure(locale, plan.figure()),
+                                planWord,
                                 OutputSafety.stripControlSequences(plan.planId()));
         }
         out.printf("    %-34s %s%n", MessageCatalogue.format(locale, "overview.epic.tokens_own", Map.of()),
@@ -292,9 +300,9 @@ public final class EpicCommand implements Callable<Integer> {
         var epicKind = MessageCatalogue.format(locale, "overview.kind.epic", Map.of());
         out.printf("%s · %s · %s · %s%n", cleanEpicId, epicKind, state, counts);
 
-        out.printf("  %-48s status --project %s%n",
-                            MessageCatalogue.format(locale, "operator.plan.tree.context", Map.of("project", project)),
-                            project);
+        out.printf("  %-48s %s%n",
+                            MessageCatalogue.format(locale, "operator.plan.tree.context", Map.of(KEY_PROJECT, project)),
+                            MessageCatalogue.format(locale, "operator.plan.tree.hint_project", Map.of(KEY_PROJECT, project)));
 
         var noneText = MessageCatalogue.format(locale, "epic.plans.none", Map.of());
         var runningWord = Display.word(locale, "plan", "running");
@@ -594,9 +602,15 @@ public final class EpicCommand implements Callable<Integer> {
                                 HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
                 if (commonFiles != null) {
-                    out.printf("✓ Common files allowed for %s: %d%n", epicId, commonFiles);
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.epic.auto_common_files", Map.of(
+                                                            "epic", OutputSafety.stripControlSequences(epicId),
+                                                            "count", commonFiles)));
                 } else {
-                    out.printf("✓ Automatic for %s: %s%n", epicId, mode);
+                    out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.epic.auto_mode", Map.of(
+                                                            "epic", OutputSafety.stripControlSequences(epicId),
+                                                            "mode", OutputSafety.stripControlSequences(mode))));
                 }
                 out.flush();
                 return 0;
@@ -626,7 +640,9 @@ public final class EpicCommand implements Callable<Integer> {
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(epicId) + "/archive";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ %s archived%n", epicId);
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.epic.archived",
+                                    Map.of("epic", OutputSafety.stripControlSequences(epicId))));
                 out.flush();
                 return 0;
             }
@@ -753,7 +769,8 @@ public final class EpicCommand implements Callable<Integer> {
             var effectiveReason = options.reason;
             if (effectiveReason == null || effectiveReason.isBlank()) {
                 if (options.noInput) {
-                    out.println("Cancellation reason required (--reason)");
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.epic.cancel_reason_required", Map.of()));
                     out.flush();
                     return 3;
                 }
@@ -766,7 +783,10 @@ public final class EpicCommand implements Callable<Integer> {
             var path = EPICS_API + OperatorUrlUtil.encodePathSegment(options.id != null ? options.id : "") + "/cancel";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
-                out.printf("✓ %s cancelled%n", options.id);
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.epic.cancelled",
+                                    Map.of("epic", OutputSafety.stripControlSequences(
+                                                        options.id != null ? options.id : ""))));
                 out.flush();
                 return 0;
             }

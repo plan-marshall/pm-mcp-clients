@@ -342,16 +342,19 @@ public final class WebCommand implements Callable<Integer> {
             }
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
+            var failures = interactive && context.isInteractiveTerminal()
+                                ? out
+                                : spec.commandLine().getErr();
 
             int code = 0;
             if (isRename()) {
-                code = handleRename(runtime, out);
+                code = handleRename(runtime, out, failures);
             } else if (isRevoke()) {
-                code = handleRevoke(runtime, out);
+                code = handleRevoke(runtime, out, failures);
             } else if (isListenerOff()) {
-                code = handleListenerOff(runtime, out);
+                code = handleListenerOff(runtime, out, failures);
             } else {
-                code = handleList(runtime, out);
+                code = handleList(runtime, out, failures);
             }
             out.flush();
             return code;
@@ -377,7 +380,7 @@ public final class WebCommand implements Callable<Integer> {
             return LISTENER_OFF.equalsIgnoreCase(action) || LISTENER_OFF_ALT.equalsIgnoreCase(action);
         }
 
-        private int handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleRename(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (deviceId == null || newLabel == null) {
                 throw new CommandLine.ParameterException(
@@ -391,12 +394,12 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.renamed", Map.of(LABEL, cleanLabel)));
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
+            failures.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
                                 Map.of(STATUS, response.status())));
             return PmOperator.EXIT_FAILURE;
         }
 
-        private int handleRevoke(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleRevoke(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (!others && !all && deviceId == null) {
                 throw new CommandLine.ParameterException(
@@ -419,7 +422,7 @@ public final class WebCommand implements Callable<Integer> {
                 printRevocation(out, locale, response.body());
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
+            failures.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
                                 Map.of(STATUS, response.status())));
             return PmOperator.EXIT_FAILURE;
         }
@@ -448,7 +451,7 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private int handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleListenerOff(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             // devices.listener-off closes the network listener alone (paired-devices.adoc#listener-off)
             var response = runtime.send(new HttpRequest("DELETE", "/api/v1/web/listeners/lan", Map.of(), null));
@@ -456,16 +459,16 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
+            failures.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
                                 Map.of(STATUS, response.status())));
             return PmOperator.EXIT_FAILURE;
         }
 
-        private int handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleList(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() != 200) {
-                out.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
+                failures.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
                                     Map.of(STATUS, response.status())));
                 return PmOperator.EXIT_FAILURE;
             }
@@ -522,10 +525,10 @@ public final class WebCommand implements Callable<Integer> {
             }
             if ("o".equalsIgnoreCase(choice)) {
                 this.others = true;
-                return handleRevoke(runtime, out);
+                return handleRevoke(runtime, out, out);
             }
             if ("n".equalsIgnoreCase(choice)) {
-                return handleListenerOff(runtime, out);
+                return handleListenerOff(runtime, out, out);
             }
             return processDeviceIndexChoice(runtime, out, reader, list, choice);
         }
@@ -558,13 +561,13 @@ public final class WebCommand implements Callable<Integer> {
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
                     this.deviceId = devInfo.id();
                     this.newLabel = newLbl.trim();
-                    return handleRename(runtime, out);
+                    return handleRename(runtime, out, out);
                 }
                 return 0;
             }
             if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
                 this.deviceId = devInfo.id();
-                return handleRevoke(runtime, out);
+                return handleRevoke(runtime, out, out);
             }
             return 0;
         }

@@ -872,7 +872,8 @@ class EntryFlowTest {
             assertAll(
                                 () -> assertTrue(text.contains("✓ Web access on http://127.0.0.1:7420"), text),
                                 () -> assertTrue(text.contains(
-                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 500)"), text),
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code"), text),
+                                () -> assertFalse(text.contains("HTTP "), text),
                                 () -> assertFalse(text.contains("Browser opened"), text),
                                 () -> assertNull(openedUri.get(), "no browser is opened without a code"),
                                 () -> assertNull(result.activeCode()),
@@ -894,7 +895,8 @@ class EntryFlowTest {
             var text = writer.toString();
             assertAll(
                                 () -> assertTrue(text.contains(
-                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 201)"), text),
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code"), text),
+                                () -> assertFalse(text.contains("HTTP "), text),
                                 () -> assertFalse(text.contains("Ways in, from your own computer"), text),
                                 () -> assertNull(result.activeCode())
             );
@@ -912,7 +914,8 @@ class EntryFlowTest {
             var text = writer.toString();
             assertAll(
                                 () -> assertTrue(text.contains(
-                                                    "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 503)"), text),
+                                                    "✗ Failed to issue a new pairing code: the runtime issued no code"), text),
+                                () -> assertFalse(text.contains("HTTP "), text),
                                 () -> assertFalse(text.contains("The web app opens at the setup of this machine."), text),
                                 () -> assertEquals(List.of("setup 0/7"), result.initialBadges()),
                                 () -> assertNull(result.activeCode())

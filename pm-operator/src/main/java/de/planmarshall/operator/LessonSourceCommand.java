@@ -84,33 +84,34 @@ public final class LessonSourceCommand implements Callable<Integer> {
      * @param out   the client's output
      * @param check the premise check result
      */
-    static void printCheck(PrintWriter out, LessonPremiseCheckResult check) {
+    static void printCheck(PrintWriter out, String locale, LessonPremiseCheckResult check) {
         var lesson = safe(check.lessonId());
         switch (check.status()) {
             case LessonPremiseCheckResult.STATUS_HOLDS ->
-                out.println(MessageCatalogue.format("lesson_source.check.holds", Map.of(PARAM_LESSON, lesson)));
-            case LessonPremiseCheckResult.STATUS_UNAVAILABLE -> out.println(MessageCatalogue.format(
+                out.println(MessageCatalogue.format(locale, "lesson_source.check.holds", Map.of(PARAM_LESSON, lesson)));
+            case LessonPremiseCheckResult.STATUS_UNAVAILABLE -> out.println(MessageCatalogue.format(locale,
                                 "lesson_source.check.unavailable",
                                 Map.of(PARAM_LESSON, lesson, "cause", safe(check.cause()))));
             default -> {
-                out.println(MessageCatalogue.format("lesson_source.check.broken", Map.of(PARAM_LESSON, lesson)));
-                printEvidence(out, check);
+                out.println(MessageCatalogue.format(locale, "lesson_source.check.broken", Map.of(PARAM_LESSON, lesson)));
+                printEvidence(out, locale, check);
             }
         }
         out.flush();
     }
 
-    private static void printEvidence(PrintWriter out, LessonPremiseCheckResult check) {
-        out.println("  " + MessageCatalogue.format("lesson_source.broken.title",
+    private static void printEvidence(PrintWriter out, String locale, LessonPremiseCheckResult check) {
+        out.println("  " + MessageCatalogue.format(locale, "lesson_source.broken.title",
                             Map.of(PARAM_LESSON, safe(check.lessonId()), "count", check.evidence().size())));
         for (var evidence : check.evidence()) {
-            out.println("    " + MessageCatalogue.format("lesson_source.evidence.line", evidenceParams(evidence)));
+            out.println("    " + MessageCatalogue.format(locale, "lesson_source.evidence.line",
+                                evidenceParams(locale, evidence)));
         }
     }
 
-    private static Map<String, Object> evidenceParams(LessonPremiseEvidence evidence) {
+    private static Map<String, Object> evidenceParams(String locale, LessonPremiseEvidence evidence) {
         var params = new LinkedHashMap<String, Object>();
-        params.put("kind", MessageCatalogue.get("lesson_source.evidence." + evidence.kind().wireValue()));
+        params.put("kind", MessageCatalogue.get(locale, "lesson_source.evidence." + evidence.kind().wireValue()));
         params.put("name", safe(evidence.name()));
         params.put("path", evidence.expectedPath() == null ? NONE : safe(evidence.expectedPath()));
         params.put("commit", evidence.lastVerifiedCommit() == null ? NONE : safe(evidence.lastVerifiedCommit()));
@@ -156,14 +157,15 @@ public final class LessonSourceCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
+            var locale = context.clientEnvironment().locale();
             if (lesson == null || lesson.isBlank()) {
-                out.println(MessageCatalogue.get("lesson_source.action.lesson_required"));
+                out.println(MessageCatalogue.get(locale, "lesson_source.action.lesson_required"));
                 out.flush();
                 return 1;
             }
             var projectId = projectOption != null && !projectOption.isBlank() ? projectOption : "default";
             var check = checkPremise(context, projectId, lesson);
-            printCheck(out, check);
+            printCheck(out, locale, check);
             return check.holds() ? 0 : 1;
         }
     }

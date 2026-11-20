@@ -235,7 +235,7 @@ class EntryFlowStaticsTest {
 
             var refusal = assertThrows(IOException.class, () -> flow.issuePairingCode(runtime, 7420));
 
-            assertEquals("the runtime issued no code (HTTP 500)", refusal.getMessage());
+            assertEquals("the runtime issued no code", refusal.getMessage());
         }
     }
 }

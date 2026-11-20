@@ -322,7 +322,7 @@ class PmConsoleTest {
                             () -> assertTrue(output.contains("✓ Paired: " + unknown), output),
                             () -> assertFalse(output.contains("Paired: local"), output),
                             () -> assertTrue(output.contains(
-                                                "✗ Failed to issue a fresh pairing code: the runtime issued no code (HTTP 500)"), output)
+                                                "✗ Failed to issue a fresh pairing code: the runtime issued no code"), output)
         );
     }
 
@@ -354,7 +354,7 @@ class PmConsoleTest {
         var output = outStream.toString(StandardCharsets.UTF_8);
         assertAll(
                             () -> assertTrue(output.contains(
-                                                "✗ Failed to issue a new pairing code: the runtime issued no code (HTTP 500)"), output),
+                                                "✗ Failed to issue a new pairing code: the runtime issued no code"), output),
                             () -> assertFalse(output.contains("New code"), output)
         );
     }

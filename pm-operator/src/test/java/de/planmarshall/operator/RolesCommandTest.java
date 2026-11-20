@@ -467,7 +467,7 @@ class RolesCommandTest {
         assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
 
         assertAll(
-                            () -> assertTrue(err.toString().contains("Failed to qualify implementer: HTTP 500"), err.toString()),
+                            () -> assertTrue(err.toString().contains("Failed to qualify implementer."), err.toString()),
                             () -> assertEquals(0, posts.get())
         );
     }

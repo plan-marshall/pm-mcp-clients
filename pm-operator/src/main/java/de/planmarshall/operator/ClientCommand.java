@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 
 import picocli.CommandLine.Command;
@@ -70,29 +71,30 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
+            var locale = context.clientEnvironment().locale();
             int code = 0;
             try {
                 var response = context.runtime(false).send(HttpRequest.get("/api/v1/client/bundles"));
                 if (response.status() == 200) {
                     var parsed = JsonTree.parse(response.body());
                     if (parsed instanceof List<?> list && !list.isEmpty()) {
-                        printBundles(out, list);
+                        printBundles(out, locale, list);
                     } else {
-                        out.println("No client bundles installed.");
+                        out.println(MessageCatalogue.format(locale, "operator.client.none", Map.of()));
                     }
                 } else {
-                    out.printf("Failed to query client bundles: HTTP %d%n", response.status());
+                    out.println(MessageCatalogue.format(locale, "operator.client.failed", Map.of()));
                     code = PmOperator.EXIT_FAILURE;
                 }
             } catch (RuntimeUnavailableException _) {
-                out.println("runtime   not running");
+                out.println(MessageCatalogue.format(locale, "operator.runtime.status_not_running", Map.of()));
             }
             out.flush();
             return code;
         }
 
-        private void printBundles(PrintWriter out, List<?> list) {
-            out.println("Client Bundles:");
+        private void printBundles(PrintWriter out, String locale, List<?> list) {
+            out.println(MessageCatalogue.format(locale, "operator.client.title", Map.of()));
             for (var item : list) {
                 if (item instanceof Map<?, ?> bundle) {
                     var version = bundle.get("version");
@@ -121,7 +123,8 @@ public final class ClientCommand implements Callable<Integer> {
             return 0;
         }
         var err = spec.commandLine().getErr();
-        err.printf("Client %s failed: HTTP %d%n", action, response.status());
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.client.action_failed", Map.of("action", action)));
         err.flush();
         return 1;
     }

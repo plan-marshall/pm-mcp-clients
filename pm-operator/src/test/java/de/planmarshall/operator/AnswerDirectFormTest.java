@@ -137,7 +137,7 @@ class AnswerDirectFormTest {
                 if ("POST".equals(request.method())) {
                     acts.add(request.target());
                 }
-                response.send(404, null, "");
+                response.send(404, null, "{\"error\":\"scope_not_found\"}");
             });
 
             var code = run("en", "", "answer", "Q-31", argument);
@@ -318,6 +318,71 @@ class AnswerDirectFormTest {
             } else if (target.startsWith(decision + "/") && "POST".equals(request.method())) {
                 acts.add(target + " " + request.bodyText());
                 response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("a dependency_unanswered refusal names the part its body names, not part 1")
+    void dependencyRefusalNamesThePart() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409,
+                            "{\"error\":\"dependency_unanswered\",\"part\":3}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("Answer part 3 first."), err.toString());
+    }
+
+    @Test
+    @DisplayName("a dependency_unanswered refusal without a part falls back to the unnamed text")
+    void dependencyRefusalWithoutAPartIsUnnamed() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409, "{\"error\":\"dependency_unanswered\"}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("Answer the parts in order; one of them is still unanswered."),
+                            err.toString());
+    }
+
+    @Test
+    @DisplayName("a part beyond the integer range falls back to the unnamed text, never a NumberFormatException")
+    void dependencyRefusalWithAnUnrepresentablePartFallsBack() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409,
+                            "{\"error\":\"dependency_unanswered\",\"part\":2147483648}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("Answer the parts in order; one of them is still unanswered."),
+                            err.toString());
+        assertFalse(err.toString().contains("NumberFormatException"), err.toString());
+    }
+
+    @Test
+    @DisplayName("an invalid_answer refusal with no message ends in no colon and no empty reason")
+    void invalidAnswerWithoutAReasonEndsInNoColon() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409, "{\"error\":\"invalid_answer\"}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("This answer does not fit the part."), err.toString());
+        assertFalse(err.toString().contains("part: "), err.toString());
+    }
+
+    private void serveRefusal(String id, String envelope, int status, String body) throws IOException {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            var decision = "/api/v1/decisions/" + id;
+            if (decision.equals(target) && "GET".equals(request.method())) {
+                response.json(200, envelope);
+            } else if (target.startsWith(decision + "/") && "POST".equals(request.method())) {
+                acts.add(target + " " + request.bodyText());
+                response.json(status, body);
             } else {
                 response.send(404, null, "");
             }
