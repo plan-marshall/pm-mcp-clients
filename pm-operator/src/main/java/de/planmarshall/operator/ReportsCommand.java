@@ -46,6 +46,7 @@ public final class ReportsCommand implements Callable<Integer> {
     private static final String REPORTS_API = "/api/v1/reports/";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String KEY_COUNT = "count";
+    private static final String KEY_READ_DONE = "report.read.done";
 
     private final OperatorContext context;
 
@@ -234,7 +235,7 @@ public final class ReportsCommand implements Callable<Integer> {
             }
             if (ids.isEmpty()) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "report.read.done", Map.of(KEY_COUNT, 0)));
+                                    KEY_READ_DONE, Map.of(KEY_COUNT, 0)));
                 out.flush();
                 return 0;
             }
@@ -243,7 +244,7 @@ public final class ReportsCommand implements Callable<Integer> {
                                                     ReadReportsRequest.of(ids).toJson()));
             if (response.status() == 200 || response.status() == 204) {
                 var parsed = ReadReportsResponse.fromJson(response.bodyText());
-                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done",
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
                                     Map.of(KEY_COUNT, parsed.markedCount())));
                 // The command reads only the first page it lists: say so instead of letting the
                 // operator read "marked read" as "nothing unread is left" (decision 10).
@@ -270,7 +271,7 @@ public final class ReportsCommand implements Callable<Integer> {
                     out.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", id)));
                 }
             }
-            out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done",
+            out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
                                 Map.of(KEY_COUNT, marked)));
             out.flush();
             return 0;
