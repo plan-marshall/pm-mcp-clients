@@ -16,7 +16,7 @@ Read first:
 - Every position below was re-read at `origin/main` `5f7074b7` (2026-11-19) by the orchestrator for the defects named "re-read"; the others are the analysis leaf's reading and are re-checked at outline. **L3-6 (a disabled act still fires) is `PLAN-172`'s, not this plan's.**
 
 1. **The control tokens follow the theme** (L3-1)
-   - What: `--control-bg` and `--control-border` are declared in `:root` only (`tokens.css:61-62`, re-read) while the theme blocks (`[data-theme='light']` at `:199`, `[data-theme='dark']` at `:239`, the system-dark media block) re-declare `--focus-ring` (`:126,195,236,276`) and not the control tokens, so a subtree with its own theme keeps the root palette: white fields, dark-theme text unreadable. The control tokens are re-declared where the palette they derive from is, or are derived in a way that follows the subtree (the lane decides at outline); `tokens.test.ts` pins both themes.
+   - What: `--control-bg` and `--control-border` are declared in `:root` only (`tokens.css:61-62`, re-read) while the theme blocks (`[data-theme='light']` at `:200`, `[data-theme='dark']` at `:240`, the system-dark media block) re-declare `--focus-ring` (`:127,196,237,277`, lines as of `8e088121`: PLAN-172 added `--state-slot-width` at `:63`) and not the control tokens, so a subtree with its own theme keeps the root palette: white fields, dark-theme text unreadable. The control tokens are re-declared where the palette they derive from is, or are derived in a way that follows the subtree (the lane decides at outline); `tokens.test.ts` pins both themes.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:css, pm-dev-frontend:jest-testing
    - Done when:
@@ -82,7 +82,7 @@ Not in this plan, named so they are not lost (each stays in `epic.md` as an Open
 
 ## Claim Labels
 
-- OBSERVED: `--control-bg` and `--control-border` are declared once, at `:root`, and the theme blocks re-declare `--focus-ring` only — read at `pm-web-app/src/styles/tokens.css:61-62,126,195,236,276` at `5f7074b7`
+- OBSERVED: `--control-bg` and `--control-border` are declared once, at `:root`, and the theme blocks re-declare `--focus-ring` only — read at `pm-web-app/src/styles/tokens.css:61-62` and, as of `8e088121` (PLAN-172 added `--state-slot-width` at `:63`), `:127,196,237,277` (they were `:126,195,236,276` at `5f7074b7`)
 - OBSERVED: `NumberField.svelte` clamps `num` to `min` and `max` and sets `value = num` in the input handler — read at `:115-120`; the `isNever` effect is at `:89`
 - OBSERVED: `SecretField.svelte` `handlePaste` calls `e.preventDefault()` and sets `value = pasted.trim()` — read at `:94-98`
 - OBSERVED: `RadioGroup.svelte` has `onclick={() => selectOption(opt)}` on the label — read at `:92-96`
@@ -121,7 +121,7 @@ Not in this plan, named so they are not lost (each stays in `epic.md` as an Open
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-150` (shipped, #452) and **`PLAN-172` (this plan is emitted after it has landed)**: `SecretField` needs `Toggle`'s `disabledReason`, and every field that uses `Button` inherits the activation fix.
+- Depends on: `PLAN-150` (shipped, #452) and `PLAN-172` (**shipped**, #518 `8e088121`, `landings/PLAN-172.md`). What it left this plan: `Toggle` has `disabledReason` (`string | null | undefined`; it takes effect with `disabled` and a non-empty reason: `aria-disabled="true"` (focusable, not native `disabled`), `title` the reason, `aria-describedby` the reason id merged with the caller's, a `sr-only` sibling span, a click does nothing; an empty reason keeps native `disabled`; a caller can no longer override `class`, `aria-pressed`, `aria-label`, `title`, `disabled`, `aria-describedby` through rest props); `SecretField.svelte:149-155` passes only `{disabled}` today. **The activation fix PLAN-172 delivered is a no-op for Svelte consumers** (Svelte 5.57.2 already skips a forwarded `on:click` after `stopPropagation`: `landings/PLAN-172.md` L3-1), so the fields inherit nothing from it. **Every `Dialog` and `ConfirmDialog` now renders under `document.body`** (`utils/portal.ts`): a field inside a dialog that sits in a `data-theme` subtree takes the document theme, and the dialog's `queueMicrotask` refocus of its panel overrides an input that autofocuses on mount; the browser check of this plan's fields inside a `Dialog` on the dev page is made with that in mind. **The branch-coverage margin is 0.14 pt again after PLAN-172** (80.14 % against 80 %): every new branch is covered.
 - Overlaps with (read by `corpus cross-check` at staging, 2026-11-19; shipped, parked and superseded plans are not in the disjointness population): `PLAN-172` (`tokens.css`, `tokens.test.ts`, `common.en.properties`; this plan is emitted after it has landed, so no clash), and, staged, `PLAN-135` (`common.en.properties`, the dev page), `PLAN-136` (the dev page, `tokens.css`), `PLAN-144` (`common.en.properties`): whichever lands second rebases and keeps both sides. No running plan shares a file with it.
 - Adjacent to: the views packages that wait for this plan (`PLAN-88`, `PLAN-153`, `PLAN-155`, `PLAN-156`, `PLAN-157`).
 

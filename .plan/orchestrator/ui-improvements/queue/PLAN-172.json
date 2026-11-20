@@ -2,10 +2,10 @@
   "id": "PLAN-172",
   "slug": "web-interaction-set-residue",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "172-web-interaction-set-residue",
+  "pr": "518",
+  "landing": "landings/PLAN-172.md",
   "seq": 172
 }
