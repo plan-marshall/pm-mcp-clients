@@ -37,7 +37,7 @@ specification its client's implementation follows".
 The specifications the modules of this repository implement live here, beside the code:
 
 * **The specification and its watch live where the code does.** `doc/Specification.adoc` and `doc/specification/`
-  hold the parts of `cli-and-security`, `runtime-model` and `harness-integration` that the
+  hold the parts of `cli-and-security`, `runtime-model`, `harness-integration` and `job-runtime` that the
   Modules table of `module-structure.adoc` gives a module of this repository (`pm-api`, `pm-exec`, `pm-relay`,
   `pm-operator`, `pm-mock-runtime`, `pm-web-app`, `pm-web-e2e`); `doc/ImplementationWatch.adoc` and
   `doc/implementation-watch/` hold their watch items, with their identifiers unchanged. A family whose parts are
@@ -50,9 +50,11 @@ The specifications the modules of this repository implement live here, beside th
   that stay behind.
 * **An implemented section is condensed and pointed, never deleted.** A section keeps its heading and its anchor. When
   the code implements it, it is reduced to the one statement of what it requires and the link to the developer
-  documentation of the module that implements it; the evidence of what implements and verifies a requirement is
-  `doc/Traceability.adoc`, one entry per requirement, and never a paragraph of the specification (ADR 027 of
-  `pm-mcp-core`, which applies here unchanged). A section no class and no test covers stays as it is, so a condensed
+  documentation of the module that implements it, which lives beside the module's code in `<module>/doc/developer/`,
+  as in `pm-mcp-core`; the evidence of what implements and verifies a requirement is `doc/Traceability.adoc`, one
+  entry per requirement, and never a paragraph of the specification (ADR 027 of `pm-mcp-core`, which applies here
+  unchanged). Its `Documentation:` lines link that developer documentation, or the concept and user documentation of
+  `plan-marshall-documentation`, and never a specification part. A section no class and no test covers stays as it is, so a condensed
   section never claims more than the code does.
 * **The documentation repository keeps the requirements.** The requirements, the use cases, the roadmap,
   `later-improvements`, the open questions and the articles stay in `plan-marshall-documentation`, together with the
@@ -67,6 +69,12 @@ shows and does it: the views, the dialogues, the interactions, the texts and the
 say the same thing, the specification holds the statement and the design links to it; the design never restates a
 contract, and the specification never restates a view. `doc/design/README.adoc` states this in one paragraph and
 links this decision (operator's decision of 2026-11-17, `doc-review-2026-11-17-001`).
+
+The cut is made by the implementing repository at section level: every section of a specification and every watch
+item lives in the repository whose code implements it. A section two repositories implement is split at a heading,
+never inside a paragraph; a section both implement in one statement, with no heading between the two halves, stays
+where it is and is named as shared in the table below and in the home table of `plan-marshall-mcp`
+(`doc/specification-move-plan.md`).
 
 The sections the move touched, and the document that holds each of them now:
 
@@ -101,9 +109,33 @@ The sections the move touched, and the document that holds each of them now:
 |The watch items of `implementation-watch/cli-and-security.adoc` (except `PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `-26` and `-27`, which watch the web access section that stays) and of `implementation-watch/harness-integration.adoc`
 |`implementation-watch/` here
 
-|The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-16`, `PM-WATCH-RUN-10`,
-`PM-WATCH-RUN-11` here; the rest with the runtime's specification in `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
+|The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-10`, `PM-WATCH-RUN-11` and
+`PM-WATCH-RUN-18` here; the rest, `PM-WATCH-RUN-16` among them, with the runtime's specification in `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
 |`implementation-watch/runtime-model.adoc` here and there
+
+|`runtime-model/03-relay` Harness Protocol Forms: the relay's half (the two forms the relay serves, the protocol data it sends)
+|`specification/runtime-model/03-relay.adoc` here
+
+|`runtime-model/03-relay` Harness Protocol Forms: the runtime's half (its answers to `server/discover` and `initialize`, the response filter, the silent listen stream), with `PM-WATCH-RUN-16`
+|`specification/runtime-model/01-processes-and-transport.adoc#runtime-protocol-forms` of `plan-marshall-documentation`, until the daemon's parts move into `plan-marshall-mcp`
+
+|`runtime-model/01-processes-and-transport#client-text-hidden-characters` (the hidden-character rule of the encoder of `pm-api`), with `PM-WATCH-RUN-18`
+|`specification/runtime-model/06-event-catalogue.adoc` here
+
+|`cli-and-security/02-operator-channel#operator-channel-isolation`: shared, the acts and checks of the two clients and the daemon's operator endpoints that execute, validate and audit every act
+|`specification/cli-and-security/02-operator-channel.adoc` here, named in the `Modules` rows of both family indexes
+
+|`job-runtime/01-pipeline-and-subprocesses#runtime-loss` and `job-runtime/02-confinement-and-environment` `#abi-floor`, `#landlock-scopes`, `#seccomp-filter`, `#job-without-network` and `#macos-confinement` of `pm-mcp-core` (what the launcher `pm-exec` implements alone), with `PM-WATCH-JOB-41` to `PM-WATCH-JOB-44`
+|`specification/job-runtime/` and `implementation-watch/job-runtime.adoc` here
+
+|The sections of `job-runtime` the launcher shares with `pm-runtime`, which composes, starts and records while the launcher applies: the process group and the launch report, the termination protocol (step 3a), the Linux filesystem confinement with its sets and socket list, the worker read set, the egress proxy's network namespace, the probe jobs and the confinement self-check, with their watch items
+|`specification/job-runtime/` of `pm-mcp-core`, shared
+
+|`hypermedia-format/01-representation-and-link-forms` Operator Representation, Operator Links and Texts of the Runtime: shared, the records of `pm-api` and the runtime that builds the representation and validates every act
+|`specification/hypermedia-format/` of `pm-mcp-core`, shared
+
+|`harness-profiles/01-profile-schema`: the values of the shipped profiles (`claude`, `opencode`, the resumability table, the event mappings), resources of `pm-api`, stated in the same blocks as the fields the profile validator of `pm-core` checks
+|`specification/harness-profiles/` of `pm-mcp-core`, shared
 
 |What each requirement a moved section implements is implemented by, verified by and documented in
 |`Traceability.adoc` here

@@ -1,0 +1,39 @@
+= Job Runtime Specification
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:nofooter:
+
+link:../Specification.adoc[Specification] » Job Runtime
+
+== Overview
+
+This document is the index of the sections of the Job Runtime Specification that the launcher `pm-exec` implements
+alone: the mechanisms it applies on Linux beside the Landlock sets (the ABI floor, the Landlock scopes, the system
+call filter, a job without network), the macOS sandbox profile, and its parent watch when the runtime is lost. The
+family is split across two repositories, at a heading: the runtime's sections stay in `pm-mcp-core`
+(link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/job-runtime.adoc[the family index]),
+among them the sections both implement, the runtime composing and recording and the launcher applying: the process
+group and the launch report, the termination protocol, the Linux filesystem confinement with its read and write sets
+and its socket list, the worker read set, the egress proxy, the probe jobs and the confinement self-check. The
+family's `Overview`, `Traceability`, `Status` and the runtime's `Modules` rows stay with that index; this document
+lists the parts of this repository alone. The requirements stay in `plan-marshall-documentation`
+(link:../../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]); what implements and verifies
+each of them is recorded in link:../Traceability.adoc[Traceability].
+
+== Modules
+
+The module of this repository that implements a part of this family, with the row of the Module Structure
+Specification it carries (link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module
+Structure Specification], `Specified in`):
+
+* link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-exec[`pm-exec`]: parts 01
+  and 02, the launcher's own sections
+
+== Parts
+
+* link:job-runtime/01-pipeline-and-subprocesses.adoc[Execution Pipeline, Subprocesses & Outcomes] — the runtime loss:
+  the launcher of a worker or a probe ends the command's tree when its runtime died
+* link:job-runtime/02-confinement-and-environment.adoc[Confinement, Job Environment & Build Verbs] — the Linux
+  mechanisms of the launcher (the ABI floor, the Landlock scopes, the system call filter, a job without network) and
+  the macOS confinement (Seatbelt)

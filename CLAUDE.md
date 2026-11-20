@@ -12,8 +12,9 @@ daemon: `pm-api`, the job launcher `pm-exec`, the relay `pm-relay` (binary `pm-m
 The only listing of the repositories, the modules, their responsibilities and allowed dependencies is the Module
 Structure Specification of the product (`doc/specification/module-structure.adoc` in
 `plan-marshall/plan-marshall-documentation`); name modules from there and never repeat the listing here. The
-requirements, the use cases, the roadmap, the concept, developer and user documentation and the specifications of
-`pm-mcp-parent` live there, not in this repository. The specifications of the client modules, their implementation
+requirements, the use cases, the roadmap, the concept and user documentation and the specifications of `pm-mcp-parent`
+live there, not in this repository; the developer documentation of each client module lives here, beside its code, in
+`<module>/doc/developer/` (ADR `doc/adr/001-specifications-of-the-clients.adoc`). The specifications of the client modules, their implementation
 watch and the traceability of the requirements they implement live **here**, beside the code
 (`doc/Specification.adoc` and `doc/specification/`, `doc/ImplementationWatch.adoc` and `doc/implementation-watch/`,
 `doc/Traceability.adoc`; ADR `doc/adr/001-specifications-of-the-clients.adoc`), and so does the design of the two
@@ -21,7 +22,8 @@ clients and of what they share in `doc/design/` (index `doc/design/README.adoc`)
 the specification requires and links it instead of restating it. The specifications of the engine with their
 implementation watch live beside its code in `plan-marshall/pm-mcp-core` (`doc/Specification.adoc`,
 `doc/specification/`; the store schemas, the identifiers, the timeouts, the harness profiles and model work among
-them), and those of the daemon in `plan-marshall/plan-marshall-mcp`. The use cases stay in the documentation, one set
+them), and those of the daemon in `plan-marshall/plan-marshall-documentation` until they move into
+`plan-marshall/plan-marshall-mcp`. The use cases stay in the documentation, one set
 for both clients. Every concrete
 implementation follows the project skill `traced-implementation`, which lives there with `doc-review`; the skills of
 the same names here only point to them.

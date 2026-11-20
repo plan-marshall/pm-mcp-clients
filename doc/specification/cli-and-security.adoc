@@ -39,6 +39,14 @@ Structure Specification], `Specified in`):
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-web-e2e[`pm-web-e2e`]:
   part 03, the browser end-to-end tests of the web app, with its accessibility and readability checks
 
+The operator channel of part 02 is shared: `pm-operator` and the web app take the acts and run the checks of the
+terminal client, and the daemon module
+link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-mcp-server[`pm-mcp-server`]
+of `plan-marshall-mcp` serves the operator endpoints, executes, validates and audits each act with its channel, and
+offers no act to a model. The section stays here, where the act list of both clients is stated
+(link:../../../plan-marshall-documentation/doc/specification/cli-and-security.adoc#_modules[the daemon's `Modules`
+rows]).
+
 == Parts
 
 * link:cli-and-security/01-cli-and-installer.adoc[CLI Binaries, Harness Installer & Entry] — the `pm-mcp` and

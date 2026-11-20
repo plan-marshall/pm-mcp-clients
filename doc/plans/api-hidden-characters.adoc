@@ -11,10 +11,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 == Tasks
 
 . The encoder of `pm-api` removes, from every string value of a response and of an event's `data` on `/api/v1`, the code points of the classes the Unicode stage of the ingestion validator removes, in one pass; line feed and tab stay.
-  Anchor: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client].
+  Anchor: link:../specification/runtime-model/06-event-catalogue.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client].
   Proof: a contract test over every resource type and every event of the catalogue that carries a string: a value holding a right-to-left override, a zero-width space, a tag character, `ESC`, and a lone surrogate arrives without them, and line feed and tab survive (PM-WATCH-RUN-18).
 . The mock runtime serves its scenarios through the same encoder, so that a scenario text holding a hidden character reaches both clients without it.
-  Anchor: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client].
+  Anchor: link:../specification/runtime-model/06-event-catalogue.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client].
   Proof: a mock scenario with a chat reply whose code block holds a right-to-left override and a zero-width space; the web app's end-to-end test copies the block and reads back the text without them, and the terminal client's test prints it without them.
 
 == Trace
@@ -26,6 +26,6 @@ specifications of the engine and their watch documents stay in `pm-mcp-core`. Th
 (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-1[PM-SEC-1]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client]
-* Watch: link:../../../plan-marshall-documentation/doc/implementation-watch/runtime-model.adoc#PM-WATCH-RUN-18[PM-WATCH-RUN-18]
+* Specification: link:../specification/runtime-model/06-event-catalogue.adoc#client-text-hidden-characters[Runtime Model § No Hidden Character Reaches a Client]
+* Watch: link:../implementation-watch/runtime-model.adoc#PM-WATCH-RUN-18[PM-WATCH-RUN-18]
 * Reason: link:../../../plan-marshall-documentation/doc/articles/web-scam-defenses.adoc[Google's web scam defenses analysis]

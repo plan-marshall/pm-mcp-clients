@@ -14,7 +14,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
   Anchor: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#pathname-sockets[Job Runtime § Linux Filesystem Confinement, Unix sockets].
   Proof: `PmExecIT` per applied ABI: a confined worker and a confined `build` job fail to connect to a fixture server's socket in `/tmp` that another domain created, from ABI 9 on, and connect below it (asserted as such); a socket on the list connects; a socket the job binds itself in `/tmp` connects on every ABI; a worker's relay reaches the runtime socket through the list (PM-WATCH-JOB-36).
 . The macOS sandbox profile admits a job's Unix socket connections only to its socket list and to sockets the job created.
-  Anchor: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#macos-confinement[Job Runtime § macOS Confinement].
+  Anchor: link:../specification/job-runtime/02-confinement-and-environment.adoc#macos-confinement[Job Runtime § macOS Confinement].
   Proof: the cases of task 1 in `PmExecIT` on macOS, for a worker and a `build` job.
 
 == Trace
@@ -27,5 +27,5 @@ built from them before code (link:../../../plan-marshall-documentation/doc/devel
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-5[PM-SEC-5]
 * Specification: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#pathname-sockets[Job Runtime § Unix sockets];
-  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#macos-confinement[§ macOS Confinement]
+  link:../specification/job-runtime/02-confinement-and-environment.adoc#macos-confinement[§ macOS Confinement]
 * Watch: link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-36[PM-WATCH-JOB-36]
