@@ -349,6 +349,20 @@ class AnswerDirectFormTest {
     }
 
     @Test
+    @DisplayName("a part beyond the integer range falls back to the unnamed text, never a NumberFormatException")
+    void dependencyRefusalWithAnUnrepresentablePartFallsBack() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409,
+                            "{\"error\":\"dependency_unanswered\",\"part\":2147483648}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("Answer the parts in order; one of them is still unanswered."),
+                            err.toString());
+        assertFalse(err.toString().contains("NumberFormatException"), err.toString());
+    }
+
+    @Test
     @DisplayName("an invalid_answer refusal with no message ends in no colon and no empty reason")
     void invalidAnswerWithoutAReasonEndsInNoColon() throws Exception {
         serveRefusal("Q-31", decision("Q-31"), 409, "{\"error\":\"invalid_answer\"}");

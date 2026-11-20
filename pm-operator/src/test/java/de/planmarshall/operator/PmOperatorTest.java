@@ -1133,6 +1133,22 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("runtime start prints a line and exits 0 when the status carries no pid")
+        void startWithoutAPidPrintsALineAndExitsZero() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, "{\"version\":\"0.1\",\"listener\":\"unix\",\"socket_path\":\"/s\"}");
+                } else {
+                    response.send(500, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "start"));
+            assertTrue(out.toString().contains("runtime   running"), out.toString());
+            assertFalse(out.toString().contains("null"), out.toString());
+        }
+
+        @Test
         @DisplayName("upgrade --check performs version check")
         void upgradeCheck() throws Exception {
             runtime((request, response) -> {

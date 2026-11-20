@@ -440,8 +440,9 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(0, exit, err.toString()),
-                            () -> assertTrue(out.toString().contains("Answer part 1 first.")
-                                                || out.toString().contains("Answer the parts in order"), out.toString()),
+                            () -> assertTrue(out.toString().contains(
+                                                                    "Answer the parts in order; one of them is still unanswered."),
+                                                out.toString()),
                             () -> assertEquals(2, posts.get(), "the answer is sent again after the part is asked again"));
     }
 

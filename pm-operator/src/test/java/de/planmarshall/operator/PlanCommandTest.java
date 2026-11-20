@@ -1046,8 +1046,8 @@ class PlanCommandTest {
                                     () -> assertTrue(err.toString().contains(
                                                                             "\u2192 Check the id or pick the entry from the list again."),
                                                         err.toString()),
-                                    () -> assertFalse(unknownText.contains("Plan not-a-plan not found."),
-                                                        "the English literal is gone: " + unknownText));
+                                    () -> assertFalse(err.toString().contains("Plan not-a-plan not found."),
+                                                        "the English literal is gone: " + err));
             }
         }
 

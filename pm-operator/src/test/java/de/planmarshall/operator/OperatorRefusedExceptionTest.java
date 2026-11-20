@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.nio.charset.StandardCharsets;
 
 import de.planmarshall.api.http.HttpResponse;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 @DisplayName("OperatorRefusedException")
+@EnableGeneratorController
 class OperatorRefusedExceptionTest {
 
     @Test
@@ -94,23 +97,52 @@ class OperatorRefusedExceptionTest {
     @Test
     @DisplayName("the arguments of the body are carried with the exception")
     void argumentsAreTheScalarsOfTheBody() {
-        var json = "{\"error\":\"enrolment_tampered\",\"project_id\":\"project-a\",\"command\":\"accept\"}";
+        var project = Generators.letterStrings(4, 10).next();
+        var command = Generators.letterStrings(4, 10).next();
+        var json = "{\"error\":\"enrolment_tampered\",\"project_id\":\"" + project + "\","
+                            + "\"command\":\"" + command + "\"}";
         var resp = new HttpResponse(409, "application/json", json.getBytes(StandardCharsets.UTF_8));
         var ex = new OperatorRefusedException("plan", resp);
-        assertEquals("project-a", ex.arguments().get("project_id"));
-        assertEquals("accept", ex.arguments().get("command"));
+        assertEquals(project, ex.arguments().get("project_id"));
+        assertEquals(command, ex.arguments().get("command"));
         assertFalse(ex.arguments().containsKey("error"));
+    }
+
+    @Test
+    @DisplayName("a 404 whose body is no JSON object is a route the runtime does not know")
+    void unparsableBodyOn404IsRouteMissing() {
+        var body = "{" + Generators.letterStrings(4, 10).next();
+        var resp = new HttpResponse(404, "application/json", body.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("plan", resp);
+
+        assertAll(
+                            () -> assertNull(ex.code()),
+                            () -> assertTrue(ex.getMessage().contains("does not know the request"), ex.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a JSON refusal whose message names an Error or a tag is still its own message")
+    void jsonMessageWithAnErrorWordIsKept() {
+        var detail = Generators.letterStrings(4, 10).next();
+        var json = "{\"error\":\"internal_fault\",\"message\":\"Error: " + detail + "</value>\"}";
+        var resp = new HttpResponse(500, "application/json", json.getBytes(StandardCharsets.UTF_8));
+        var ex = new OperatorRefusedException("plan", resp);
+
+        assertAll(
+                            () -> assertEquals(ApiErrorCode.INTERNAL_FAULT, ex.code()),
+                            () -> assertEquals("Error: " + detail + "</value>", ex.serverMessage()));
     }
 
     @Test
     @DisplayName("a numeric argument of the body is carried too")
     void numericArgumentIsCarried() {
-        var json = "{\"error\":\"dependency_unanswered\",\"part\":3}";
+        var part = Generators.integers(2, 9).next();
+        var json = "{\"error\":\"dependency_unanswered\",\"part\":" + part + "}";
         var resp = new HttpResponse(409, "application/json", json.getBytes(StandardCharsets.UTF_8));
         var ex = new OperatorRefusedException("answer", resp);
         assertEquals(ApiErrorCode.DEPENDENCY_UNANSWERED, ex.code());
         assertTrue(ex.arguments().containsKey("part"), "arguments: " + ex.arguments());
-        assertEquals("3", ex.arguments().get("part"));
+        assertEquals(String.valueOf(part), ex.arguments().get("part"));
     }
 
     @Test
