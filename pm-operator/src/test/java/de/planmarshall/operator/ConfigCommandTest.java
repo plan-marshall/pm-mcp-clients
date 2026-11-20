@@ -625,6 +625,30 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("a config aspect reports a step the runtime refuses")
+    void configAspectReportsARefusedStep() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var steps = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                steps.add(request.bodyText() == null ? "" : request.bodyText());
+                response.send(409, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language", "--interface", "de");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertFalse(steps.isEmpty(), "the refused request must be a step POST: " + steps),
+                            () -> assertTrue(err.toString().contains("The runtime refused"), err.toString()));
+    }
+
+    @Test
     @DisplayName("a config aspect carries its consent and answers a consent state with yes")
     void configHarnessesRunsTheAspect() throws Exception {
         var steps = new ArrayList<String>();

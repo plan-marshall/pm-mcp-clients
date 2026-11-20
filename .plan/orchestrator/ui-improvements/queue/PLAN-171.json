@@ -2,10 +2,10 @@
   "id": "PLAN-171",
   "slug": "operator-tests-generated-input-residue",
   "workstream": "WS-04",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "171-operator-tests-generated-input-residue",
+  "pr": "510",
+  "landing": "landings/PLAN-171.md",
   "seq": 171
 }

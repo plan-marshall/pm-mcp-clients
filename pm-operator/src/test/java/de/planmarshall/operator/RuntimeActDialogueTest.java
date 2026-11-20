@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -63,6 +64,9 @@ class RuntimeActDialogueTest {
     /** The short snapshot bound the test that waits it out passes instead of the production 5 s. */
     private static final Duration SNAPSHOT_BOUND = Duration.ofMillis(300);
 
+    /** The one deploy slot the snapshot serves, and the one slot the expected line counts. */
+    private static final int DEPLOY_SLOTS = 1;
+
     private RuntimeFixture fixture;
     private StringWriter out;
 
@@ -106,18 +110,27 @@ class RuntimeActDialogueTest {
     @Test
     @DisplayName("the stop names what runs and Enter takes the drain")
     void stopTakesTheDrain() throws Exception {
-        serve(200, snapshotJson(3, 1, 4, 1, 0, 5));
+        int plans = Generators.integers(2, 9).next();
+        int epics = Generators.integers(2, 9).next();
+        int tasks = Generators.integers(2, 9).next();
+        int build = Generators.integers(2, 9).next();
+        int test = Generators.integers(2, 9).next();
+        int workers = Generators.integers(2, 9).next();
+        serve(200, snapshotJson(plans, epics, tasks, build, test, workers));
 
         var answer = ask("\n", Act.STOP, null, false);
 
+        // The counts are drawn, so the line is derived from them: the deploy slot of the snapshot
+        // is the one slot the signature does not carry.
+        var jobs = build + test + DEPLOY_SLOTS;
+        var running = plans + " plans \u00b7 " + epics + " epics \u00b7 " + tasks + " tasks \u00b7 "
+                            + jobs + " jobs \u00b7 " + workers + " workers";
         var screen = out.toString();
         assertAll(
                             () -> assertEquals(When.WHEN_DONE, answer.when()),
                             () -> assertEquals(0, answer.exitCode()),
                             () -> assertTrue(screen.contains("Stop the runtime?"), screen),
-                            () -> assertTrue(screen.contains(
-                                                                    "Running now: 3 plans \u00b7 1 epic \u00b7 4 tasks \u00b7 2 jobs \u00b7 5 workers"),
-                                                screen),
+                            () -> assertTrue(screen.contains("Running now: " + running), screen),
                             () -> assertTrue(screen.contains("Every client sees that it stops."), screen),
                             () -> assertTrue(screen.contains("When"), screen),
                             () -> assertTrue(screen.contains("1) Stop when done"), screen),
@@ -410,9 +423,9 @@ class RuntimeActDialogueTest {
             roster.add(new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, null));
         }
         var jobs = Map.<String, Object>of(
-                            "build", Map.of("slots_used", build, "slots_total", 2, "queued", 0),
-                            "test", Map.of("slots_used", test, "slots_total", 1, "queued", 0),
-                            "deploy", Map.of("slots_used", 1, "slots_total", 1, "queued", 0),
+                            "build", Map.of("slots_used", build, "slots_total", build + 1, "queued", 0),
+                            "test", Map.of("slots_used", test, "slots_total", test + 1, "queued", 0),
+                            "deploy", Map.of("slots_used", DEPLOY_SLOTS, "slots_total", DEPLOY_SLOTS + 1, "queued", 0),
                             "locks_held", 0);
         var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, "today 03:00", "tomorrow 03:00");
         var snapshot = new SystemSnapshot(runtime, work, roster, jobs, List.of(), cleanup,

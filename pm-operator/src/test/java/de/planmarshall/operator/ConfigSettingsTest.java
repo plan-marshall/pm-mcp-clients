@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -22,9 +23,19 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.onboarding.ConsentKind;
+import de.planmarshall.api.onboarding.ConsentRecord;
+import de.planmarshall.api.onboarding.ConsentStatus;
+import de.planmarshall.api.onboarding.DocumentsMode;
+import de.planmarshall.api.onboarding.MachineSettingsAspectSummary;
+import de.planmarshall.api.onboarding.MachineSettingsRecord;
+import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.onboarding.PlanDefaults;
+import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.StandardScenarios;
 
@@ -38,8 +49,8 @@ import org.junit.jupiter.api.io.TempDir;
  * The machine settings of the terminal (UC-ONB-10): the settings screen, the withdrawal of a
  * remembered consent, and the documents mode with the concurrent-change conflict.
  */
-@EnableGeneratorController
 @DisplayName("config settings, consents, and documents")
+@EnableGeneratorController
 class ConfigSettingsTest {
 
     private static final String SETTINGS = """
@@ -293,5 +304,26 @@ class ConfigSettingsTest {
         var code = run(context(""), "config");
         assertEquals(PmOperator.EXIT_FAILURE, code);
         assertTrue(err.toString().contains("The runtime refused"), err.toString());
+    }
+
+    @Test
+    @DisplayName("round-trips the machine settings contract through its own record")
+    void contractRoundTrip() throws Exception {
+        var revision = Generators.integers(2, 90).next();
+        var summary = Generators.letterStrings(6, 12).next();
+        var settings = new MachineSettingsRecord(revision,
+                            List.of(new MachineSettingsAspectSummary(OnboardingAspect.PLANS, summary,
+                                                "landing.pull-request")),
+                            "en", "same", DocumentsMode.ASK, CleanupDurations.defaults(), PlanDefaults.shipped(),
+                            List.of(new ConsentRecord(ConsentKind.SCAN_HARNESSES, ConsentStatus.REMEMBERED, true,
+                                                null, "terminal", null, null)),
+                            List.of());
+
+        var parsed = MachineSettingsRecord.fromJson(settings.toJson());
+
+        assertAll(
+                            () -> assertEquals(revision, parsed.revision()),
+                            () -> assertFalse(parsed.aspects().isEmpty()),
+                            () -> assertEquals(summary, parsed.aspects().getFirst().summary()));
     }
 }

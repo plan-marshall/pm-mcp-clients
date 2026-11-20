@@ -61,6 +61,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine.Command;
 
 @DisplayName("pm-operator command line")
+@EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @EnableGeneratorController
 class PmOperatorTest {
@@ -395,17 +396,18 @@ class PmOperatorTest {
         @Test
         @DisplayName("enable sends PUT /api/v1/web with lan and port and prints the listener")
         void enable() throws Exception {
+            var port = Generators.integers(20_000, 29_999).next();
             var server = runtime((request, response) -> response.json(200,
-                                "{\"enabled\":true,\"lan\":true,\"port\":8443,\"open\":true}"));
+                                "{\"enabled\":true,\"lan\":true,\"port\":" + port + ",\"open\":true}"));
 
-            assertEquals(0, run("web", "enable", "--lan", "--port", "8443"));
+            assertEquals(0, run("web", "enable", "--lan", "--port", String.valueOf(port)));
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("PUT", request.method());
             assertEquals("/api/v1/web", request.target());
-            assertEquals("{\"enabled\":true,\"lan\":true,\"port\":8443}", request.bodyText());
+            assertEquals("{\"enabled\":true,\"lan\":true,\"port\":" + port + "}", request.bodyText());
             assertEquals("en", request.header("accept-language"));
-            assertEquals("web       enabled (lan), port 8443, open", out.toString().strip());
+            assertEquals("web       enabled (lan), port " + port + ", open", out.toString().strip());
         }
 
         @Test
