@@ -2,10 +2,10 @@
   "id": "PLAN-168",
   "slug": "cli-refusal-and-exit-residue",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "168-cli-refusal-and-exit-residue",
+  "pr": "511",
+  "landing": "landings/PLAN-168.md",
   "seq": 168
 }

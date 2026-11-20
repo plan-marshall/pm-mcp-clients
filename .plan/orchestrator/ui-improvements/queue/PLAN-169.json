@@ -2,10 +2,10 @@
   "id": "PLAN-169",
   "slug": "web-onboarding-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "169-web-onboarding-residue",
+  "pr": "512",
+  "landing": "landings/PLAN-169.md",
   "seq": 169
 }

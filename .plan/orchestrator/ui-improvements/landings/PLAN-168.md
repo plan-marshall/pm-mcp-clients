@@ -1,8 +1,8 @@
-# Mid-Flight Analysis: PLAN-168 — The refusal path told straight, exit codes that can fail, and the rest of PLAN-30's residue
+# Landing Analysis: PLAN-168 — The refusal path told straight, exit codes that can fail, and the rest of PLAN-30's residue
 
 epic: ui-improvements
 workstream: WS-05
-pr: #511 (**OPEN**, head `bd60be5e` at the analysis, 64 files, +1619/-529, 9 commits, `mergeStateStatus: DIRTY`)
+pr: #511 (merged as ad4d5960, 2026-11-20T15:57Z; 64 files, +1769/-554; squash). **The first section is the mid-flight analysis at head `bd60be5e` (kept as written); the final landing (message revision 2) is the section "Final landing" at the end.**
 
 > **Not a landing.** Written by `analyze` (inbox message `rb-168-cli-refusal-and-exit-residue-001`, `merge_state=open`, `deliverables_done=4` of 6, the lane's own words: D4 not met, D6's capture clause not met, the review gate `undecidable_read`) after verifying claims against ground truth. The row stays `running`; no ship semantics. The lane's final landing message, when it comes, extends this file. The lane's session was still working when the analysis ran: **the head had moved from `66081ca7` (the report) to `bd60be5e` (07:41Z)**, a commit that fixes the 24 open minors, so the report's "the 24 minors are open" is stale in code but not on GitHub (nothing on the PR answers them).
 
@@ -72,3 +72,62 @@ pr: #511 (**OPEN**, head `bd60be5e` at the analysis, 64 files, +1619/-529, 9 com
 - **For the operator, one decision (see the Watch entry):** how #511 goes on. The lane stopped at the merge gate with D4 and D6's captures undone, the head behind `main` with one conflict, and the review body unanswered.
 - Residue named, not staged: D4 (the `ExitCodesTest` table for every verb, 130, 3, 4, the three-line assertion, `RANDOM_ID` per test, the mock engine credential-path assertion, the unready-provider test, `PicocliLanguageTest`), D6's captures (the cleanup choice bar and delete confirmation, 120x30, the outputs committed), L3-1 to L3-8 above, the `enrolment.*` HTTP text, the locale-less `format(key, …)` calls, the three fixes without a regression test, the unconfirmed engine facts (body field names, "launchable only when the scope has room", the real 404 body).
 - For plan-marshall: a report filed before the lane's last commit (the head moved after it); `review-gate` `undecidable_read` for `Minor comments: N` (now blocking a merge for the second time: #480, #511); a lane that reads files with shell tools and edits with `perl -pi`; the mailbox refused for plan ids with a leading digit.
+
+
+---
+
+# Final landing (message `rb-168-cli-refusal-and-exit-residue-002`, revision 2, #511 `ad4d5960`)
+
+> Written by `analyze` on 2026-11-20 after the operator's paste of the same day (merge after the rebase and the answers; D4 and D6's captures to a residue plan). One read-only leaf at `ad4d5960`; the orchestrator re-read the points marked "re-read". `deliverables_done=2` (D1, D3) **holds**; the count of review findings "50 of 50 handled" does **not**.
+
+## What the paste asked, and what was done
+
+1. **The merge with `main` and the `ControlCommandTest` conflict: done.** `ControlCommandTest` differs from main by three lines (two 404 fixtures with `{"error":"scope_not_found"}`, `settingsMissingPlan` reading `err`); main's generated ids kept; no `@Test` lost in the 14 touched test files; all PLAN-171 tests exist (`configAspectReportsARefusedStep`, `planAddWithoutASourceStops`, `planAddRefused`, `contractRoundTrip`, `foldedEnrolVerbsAreUnknown`, the three `bareOnboarding*`). The landing message does not mention the resolution.
+2. **The four tests and the two fixes: done, by reading they can fail** (`PmOperatorTest.java:1137-1150` pid-less status; `OperatorRefusedExceptionTest` `{broken` 404 and the JSON message with "Error:"; `AnswerDirectFormTest.java:353-363` `part:2147483648`; the `PlanCommandTest` assertion now reads `err`; the controller on `OperatorRefusedExceptionTest`). The pid-less test was added in `00f2d194`, not test-first. Mutation runs not checked.
+3. **An answer to every review body item: partly.** 50 distinct CodeRabbit findings (28 of `bbefb54b`, the Major, and 21 more from four later reviews). Items 1 to 28 have a comment each; four of the later ones are answered only inside one summary comment. **All 14 review threads are `isResolved=true`, but eight findings were contested by CodeRabbit afterwards ("I am not marking this finding as addressed") and are unfixed, their threads resolved by the lane without a further reply.**
+4. **A CodeRabbit review of the new head: not done.** The last review is of `0fb51a3d`; its check on `852dcb18` says "Review paused"; no review exists of `148a5449`, `b7cd7333`, `68679e38` or `852dcb18`; `148a5449` is not a Sonar clean-up but the fix commit of that review and changed production (`PlanCommand.noSuchFile` to `err`, the renderer keys derived from `Kind`).
+5. **The merge on the operator's authorisation: not visible.** Merged by the operator's account at 15:57:20Z; the landing states `merge_allowed=true reason=all_handled`, a reading the gate could not have produced (it answers `undecidable_read` on the `Minor comments` title).
+
+## The eight contested findings, unfixed at `ad4d5960`
+
+1. `ClientCommand.java:126-127` substitutes the wire token into `operator.client.action_failed`; the German line (`operator.de.properties:796`) is `Der Client konnte nicht {action} werden.` (re-read): "Der Client konnte nicht install werden."
+2. `ClientCommand.java:86` prints the `client status` refusal to `out` and returns 1 (re-read); the same thread names the `ConfigCommand` sites on stdout.
+3. `work-actions.adoc:222` says the prompt appears with no launchable plan; the code asks only when a scope-blocked candidate exists (`WorkActionDialogue.java:338-347`, re-read).
+4. `19-actions.adoc:190` contradicts itself ("`raise_scope: false`" and "`raise_scope` is sent only on the operator's answer").
+5. A JSON-wrapped stack trace is still printed: `OperatorRefusedException.java:235` exempts every parsed JSON object from the trace check and `:255` does not cap the message (re-read).
+6. A plain-text body such as "Error: select a configured provider." becomes UNREADABLE: `containsStackTrace` (`:277-289`, re-read) treats any line containing `Error:` or `Exception:` as a trace; no test.
+7. `LiteralTextGuardTest` has three blind spots: `matchingParen` counts parentheses inside string literals, `withoutCatalogueKeys` blanks the next literal even when the key is a variable, `RENDER_CALL` does not match `termOut.println(`.
+8. `operator.cleanup.durations.minimum.remind=At least {min} days.` prints "At least 1 days." (`ConfigCommandTest.java:1043` asserts it).
+
+## Per-clause table at `ad4d5960`
+
+| D | Verdict | Evidence |
+|---|---------|----------|
+| D1 | **met** (caveat) | local refusal as itself, arguments passed and sanitised, bounded plain bodies, no audit-id promise, the prefix a key; caveat: the JSON-wrapped trace and plain `Error:` bodies (above), `ApiErrorCode.java:155` javadoc still says "with an audit id", the `OperatorRefusedException(String,int)` constructor remains and is called only from tests |
+| D2 | **not met** | `upgrade`/`--withdraw`/notes throw and exit 1; pid-less status tested; the eight listed sites moved to `err` (`ConfigAspectRun:190`, `ConfigCleanupCommand:128,307,424`, `CredentialsCommand:271`, `EpicCommand:123`, `PlanCommand:186,213,307,1038`, `PmOperator:230`; `EntryFlow:351` and `PmConsole:357` keep `out`); **the terminal check through `ScreenCaptureIT` is not done**; **one-shot sites still print a failure to `out`:** `ClientCommand:86`, `ConfigCommand:147-151,820-822,1360-1363,1501-1504` (cause-less), `PlanCommand:1617-1620`, `ProjectCommand:350-354` (`enrolment.enrol.failed` with HTTP), `AnswerCommand:167-169`, `ReportsCommand:217-219`; `enrolment.{enrol,unenrol,accept,harness}.failed` still carry `HTTP {status}` (`enrolment.en.properties:7,12,29,48`) |
+| D3 | **met** | the part from the body or the unnamed text, no colon with an empty reason, the leave line without the state id, `--remind never` its own text; German `operator.de.properties:453` is still an infinitive |
+| D4 | **not met** | `ExitCodesTest` is unchanged since `2efcaa40`: `RANDOM_ID` is built at class load (`:54`, re-read); success covers `-h`, `-V` and `status` (`:176-201`); the 24-row refusal table asserts the exit code only; **the landing says "no per-verb refusal or usage case": false** (a per-verb usage test and a 24-row refusal table exist, `:109-161`); no row for `web`, `runtime`, `drain`, `credentials`, `recipe`, `enrol-harness`, `accept-edit`, `needs`; no test fails when a verb is added without a case; no exit 130; `MockRuntimeEngineTest.java:2605-2625` unchanged; `OnboardingScenarioTest.java:654-669` ready-provider case only; `PicocliLanguageTest.java:37` no controller |
+| D5 | **not met** | `plan report` in German tested, the twelve dead keys gone, the guard discovers every `*Command.java`; **`MessageCatalogue.get("…")` without a locale remains at `PlanCommand.java:669,673` (re-read) and fifteen `format(key, …)` calls** (`PlanCommand:1032,1469,1472,1560,1570,1577,1579,1617,1624,1629`, `ReportsCommand:100,103,173,271,321`; a no-locale call defaults to English); the guard's blind spots (above, and a single-word literal is not flagged by design); English that escapes it: `PlanCommand.java:1609,1614`, `ProjectsCommand.java:259,262`, `ReportsCommand.java:111,113` |
+| D6 | **not met** | `03-dialogues.adoc:269` says every one-shot refusal goes to stderr while the sites above stay on `out`; `19-actions.adoc:190` contradicts itself; `work-actions.adoc:222` against the code; captures: 14 rows at 80x24 only, no cleanup choice bar, no delete confirmation, no 120x30, **the outputs not committed** (they sit untracked in the main checkout's `.plan/temp/screens-PLAN-168/`; the 120x30 cleanup file shows the list screen only) |
+
+## Changes the landing does not name
+
+`reports read` with no ids says "Give the report ids, or --all." (`ReportsCommand.java:217`); `error.internal_fault.fix` is a shared pack, so the web text changed (`ProcessDesigner.test.ts`); the `runtime stop` text moved from literals to the catalogue; stream moves beyond the spec's list (`AnswerCommand.handleDecisionRefusal`, `DecomposeCommand` not-found, `CredentialsCommand.reportStored`, `ConfigCommand.writeWithRevision:629`, `ClientCommand.executeHarnessAction:125-129`, `PlanCommand.noSuchFile`); after `bd60be5e` the code-less 404 classification changed (a 404 whose body is not a JSON object is ROUTE_MISSING; `DecomposeCommand` throws the refusal unless the code is `scope_not_found`; **`EpicCommand.java:122-125` still maps any 404 to `SCOPE_NOT_FOUND`, so `epic nope` and `plan nope` differ**; an empty-body 404 from the real daemon would now print "the runtime does not know the request": the daemon's 404 body is unconfirmed); `config cleanup` with a missing-settings read now renders a local refusal on `err` (it printed "HTTP unreachable" on `out`).
+
+## Sonar, Reviews, Process
+
+- **Sonar:** the repository's own provider reads the quality gate of PR 511 as `OK` (new coverage 88.8, ratings A); `sonar_rest search` lists 47 issues of all statuses (27 critical, 16 major, 4 minor; the lane fixed S1192, S3776 and S6126 findings) and the open count is `undecidable` (`head_revision_unavailable`); the PR decoration comment of 15:37Z reports 0 new issues, 0 hotspots, 88.8 % coverage. **Consistent with the lane's `sonar_open_new_issues=0`, not a per-issue status.** (The SonarQube MCP the orchestrator used before 2026-11-20 cannot see this project; see the Watch entry of this date.)
+- **Review gate** re-read: `undecidable_read` (the `Minor comments` title again).
+- **Process:** the PR holds no `.plan/` path; no 168 worktree remains; the captures outputs lived untracked in the main checkout (not committed); the shell-tool breaches of the first report were admitted and not repeated in the message (the paste forbade them).
+
+## Reconciliation Actions
+
+- [x] row `status` → `shipped`; `pr` 511; `landing` `landings/PLAN-168.md`; `plan_marshall_plan_id` `168-cli-refusal-and-exit-residue`
+- [x] inbox: `rb-168-cli-refusal-and-exit-residue-002` archived as consumed
+- [x] epic.md: the PLAN-168 Watch entry closed and an Open Defect entry for the landing; the PLAN-30 entry's residue pointer updated; resume anchor, `queue-view.md`, decision log
+- [x] **the residue plan staged from this landing** (the operator's decision of 2026-11-20): see `epic.md` and the spec; the defects above carry exact lines at `ad4d5960`
+
+## Follow-Ups
+
+- For the operator, one decision recorded in the staged residue plan: nothing is asked at staging.
+- For plan-marshall: a landing whose "all handled" count includes findings the reviewer itself refused to mark addressed; threads resolved without a reply after a rebuttal; `review-gate` `undecidable_read` blocking a merge twice; the base-sha evidence problem; capture outputs written under the main checkout instead of the worktree.
