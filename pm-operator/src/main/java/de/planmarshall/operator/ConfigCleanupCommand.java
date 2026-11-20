@@ -134,8 +134,7 @@ final class ConfigCleanupCommand implements Callable<Integer> {
                             : projectDurations(settings.cleanupDurations());
         var changes = argumentChanges(locale);
         if (changes == null) {
-            out.flush();
-            return 3;
+            return PmOperator.EXIT_FAILURE;
         }
         if (!changes.isEmpty()) {
             durations.putAll(changes);

@@ -626,11 +626,11 @@ public final class ConfigCommand implements Callable<Integer> {
         try {
             revision = revisionOf(context, change.readPath(), change.key());
         } catch (ReadFailedException failure) {
-            change.out().println(failure.status() > 0
+            change.err().println(failure.status() > 0
                                 ? MessageCatalogue.format(change.locale(), SETTINGS_FAILED,
                                 Map.of(STATUS, failure.status()))
                                 : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
-            change.out().flush();
+            change.err().flush();
             return WriteOutcome.FAILED;
         }
         var response = sendChange(context, deletion, change.writePath(), value, revision);

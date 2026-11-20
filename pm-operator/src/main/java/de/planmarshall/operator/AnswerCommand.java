@@ -362,7 +362,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("later " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -376,7 +376,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("withdraw " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -445,7 +445,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("answer " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -857,7 +857,8 @@ public final class AnswerCommand implements Callable<Integer> {
             return OptionalInt.empty();
         }
         if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
-            return OptionalInt.of(handleDecisionRefusal(session.out(), envelope, refused, session.locale()));
+            return OptionalInt.of(handleDecisionRefusal(session.out(), session.out(), envelope, refused,
+                                session.locale()));
         }
         throw refused;
     }
@@ -913,8 +914,13 @@ public final class AnswerCommand implements Callable<Integer> {
                         @Nullable Map<Integer, PartAnswer> answers) {
         for (var name : List.of("part", "n")) {
             var named = refusal.arguments().get(name);
-            if (named != null && named.matches("\\d+")) {
+            if (named == null || !named.matches("\\d+")) {
+                continue;
+            }
+            try {
                 return Integer.parseInt(named);
+            } catch (NumberFormatException _) {
+                // A part this client cannot represent names nothing it can point at.
             }
         }
         if (parts == null || answers == null) {
@@ -1807,12 +1813,12 @@ public final class AnswerCommand implements Callable<Integer> {
                             || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
     }
 
-    private int handleDecisionRefusal(PrintWriter out, DecisionEnvelope envelope,
+    private int handleDecisionRefusal(PrintWriter out, PrintWriter refusalWriter, DecisionEnvelope envelope,
                         OperatorRefusedException refusal, String locale) {
         printDecisionDetail(out, envelope, locale);
         var key = refusalKey(refusal, null, null);
-        out.println(MessageCatalogue.format(locale, key, refusalTextArguments(refusal, null, null)));
-        out.flush();
+        refusalWriter.println(MessageCatalogue.format(locale, key, refusalTextArguments(refusal, null, null)));
+        refusalWriter.flush();
         return 1;
     }
 

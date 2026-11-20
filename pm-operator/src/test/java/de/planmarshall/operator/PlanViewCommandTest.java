@@ -494,7 +494,8 @@ class PlanViewCommandTest {
         out.getBuffer().setLength(0);
         int code3 = execute("plan", "non-existent");
         assertEquals(1, code3);
-        assertTrue(err.toString().contains("This entry does not exist"), err.toString());
+        assertTrue(err.toString().contains("\u2717"), err.toString());
+        assertFalse(out.toString().contains("\u2717"), out.toString());
 
         out.getBuffer().setLength(0);
         int code4 = execute("plan");

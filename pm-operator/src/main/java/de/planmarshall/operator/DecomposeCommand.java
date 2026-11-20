@@ -75,7 +75,8 @@ public final class DecomposeCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(context, project, epicId);
         var cut = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
         if (projectId == null || cut == null) {
-            return DecompositionSupport.notFound(out, context.clientEnvironment().locale(), epicId);
+            return DecompositionSupport.notFound(spec.commandLine().getErr(),
+                                context.clientEnvironment().locale(), epicId);
         }
         if (instruction != null && !instruction.isBlank()) {
             var requested = new DecompositionInstructRequest(null, instruction, InstructAction.REWRITE);
@@ -121,7 +122,7 @@ final class ReviewCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(context, project, epicId);
         var cut = projectId != null ? DecompositionSupport.check(context, projectId, epicId) : null;
         if (projectId == null || cut == null) {
-            return DecompositionSupport.notFound(out, locale, epicId);
+            return DecompositionSupport.notFound(spec.commandLine().getErr(), locale, epicId);
         }
         DecompositionSupport.printTree(out, locale, cut);
         if (!agree) {
@@ -200,7 +201,7 @@ final class InstructCommand implements Callable<Integer> {
         var projectId = DecompositionSupport.project(context, project, epicId);
         var before = projectId != null ? DecompositionSupport.load(context, projectId, epicId) : null;
         if (projectId == null || before == null) {
-            return DecompositionSupport.notFound(out, locale, epicId);
+            return DecompositionSupport.notFound(spec.commandLine().getErr(), locale, epicId);
         }
         var requested = new DecompositionInstructRequest(plan, instruction, resolvedAction);
         var after = DecompositionSupport.instruct(context, projectId, epicId, requested);

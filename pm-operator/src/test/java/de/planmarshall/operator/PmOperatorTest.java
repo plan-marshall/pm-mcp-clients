@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -60,6 +62,7 @@ import picocli.CommandLine.Command;
 
 @DisplayName("pm-operator command line")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PmOperatorTest {
 
     static final String STATUS = "{\"version\":\"0.1\",\"pid\":42,\"listener\":\"unix\",\"socket_path\":\"/s\","
@@ -1187,11 +1190,12 @@ class PmOperatorTest {
         @Test
         @DisplayName("upgrade --check reports a refusal and exits 1, printing no HTTP status")
         void upgradeCheckFailedIsARefusal() throws Exception {
+            var detail = Generators.letterStrings(6, 20).next();
             runtime((request, response) -> response.send(500, null,
-                                "{\"error\":\"internal_error\",\"message\":\"the check failed\"}"));
+                                "{\"error\":\"internal_error\",\"message\":\"" + detail + "\"}"));
 
             assertEquals(1, run("runtime", "upgrade", "--check"));
-            assertTrue(err.toString().contains("the check failed"), err.toString());
+            assertTrue(err.toString().contains(detail), err.toString());
             assertFalse(err.toString().contains("HTTP"), err.toString());
         }
 

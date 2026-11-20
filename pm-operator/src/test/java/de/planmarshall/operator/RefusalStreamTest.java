@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -35,6 +37,7 @@ import org.junit.jupiter.api.io.TempDir;
  */
 @DisplayName("a refusal of a one-shot verb goes to stderr")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class RefusalStreamTest {
 
     @TempDir
@@ -73,26 +76,31 @@ class RefusalStreamTest {
 
     private void refuseEverything() throws IOException {
         PmOperatorTest.writeLiveRecord(fixture);
+        var detail = Generators.letterStrings(6, 20).next();
         fixture.start((request, response) -> response.send(404, null,
-                            "{\"error\":\"scope_not_found\",\"message\":\"nothing carries this id\"}"));
+                            "{\"error\":\"scope_not_found\",\"message\":\"" + detail + "\"}"));
     }
 
     @Test
     @DisplayName("plan <unknown id> prints its refusal on stderr and nothing on stdout")
     void planRefusalIsOnStderr() throws Exception {
         refuseEverything();
-        assertEquals(1, execute("plan", "nope"));
-        assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString());
-        assertFalse(out.toString().contains("This entry does not exist"), out.toString());
+        var id = Generators.letterStrings(4, 10).next();
+        assertEquals(1, execute("plan", id));
+        assertTrue(err.toString().contains("\u2717"), err.toString());
+        assertTrue(err.toString().contains("No plan, epic, decision, report or entry carries this id."), err.toString());
+        assertFalse(out.toString().contains("\u2717"), out.toString());
     }
 
     @Test
     @DisplayName("epic <unknown id> prints its refusal on stderr and nothing on stdout")
     void epicRefusalIsOnStderr() throws Exception {
         refuseEverything();
-        assertEquals(1, execute("epic", "nope"));
-        assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString());
-        assertFalse(out.toString().contains("This entry does not exist"), out.toString());
+        var id = Generators.letterStrings(4, 10).next();
+        assertEquals(1, execute("epic", id));
+        assertTrue(err.toString().contains("\u2717"), err.toString());
+        assertTrue(err.toString().contains("No plan, epic, decision, report or entry carries this id."), err.toString());
+        assertFalse(out.toString().contains("\u2717"), out.toString());
     }
 
     @Test

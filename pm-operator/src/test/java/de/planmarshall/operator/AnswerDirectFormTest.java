@@ -333,8 +333,19 @@ class AnswerDirectFormTest {
         var code = run("en", "", "answer", "Q-31", "1");
 
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Answer part 3 first.")
-                            || out.toString().contains("Answer the parts in order"), out.toString());
+        assertTrue(err.toString().contains("Answer part 3 first."), err.toString());
+    }
+
+    @Test
+    @DisplayName("a dependency_unanswered refusal without a part falls back to the unnamed text")
+    void dependencyRefusalWithoutAPartIsUnnamed() throws Exception {
+        serveRefusal("Q-31", decision("Q-31"), 409, "{\"error\":\"dependency_unanswered\"}");
+
+        var code = run("en", "", "answer", "Q-31", "1");
+
+        assertEquals(PmOperator.EXIT_FAILURE, code);
+        assertTrue(err.toString().contains("Answer the parts in order; one of them is still unanswered."),
+                            err.toString());
     }
 
     @Test
@@ -345,8 +356,8 @@ class AnswerDirectFormTest {
         var code = run("en", "", "answer", "Q-31", "1");
 
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("This answer does not fit the part."), out.toString());
-        assertFalse(out.toString().contains("part: "), out.toString());
+        assertTrue(err.toString().contains("This answer does not fit the part."), err.toString());
+        assertFalse(err.toString().contains("part: "), err.toString());
     }
 
     private void serveRefusal(String id, String envelope, int status, String body) throws IOException {

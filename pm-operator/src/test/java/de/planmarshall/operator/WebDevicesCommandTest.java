@@ -339,8 +339,10 @@ class WebDevicesCommandTest {
         // a revocation asks first; Enter confirms it
         var context = createContext("\n");
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         int code;
         if (argument != null && !argument.isBlank()) {
@@ -813,8 +815,10 @@ class WebDevicesCommandTest {
         // a revocation asks first; Enter confirms it
         var context = createContext("\n");
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         var code = switch (action) {
             case "rename" -> cmd.execute(action, deviceId, newLabel);
@@ -825,7 +829,8 @@ class WebDevicesCommandTest {
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(output.contains(expectedOutput), output),
+                            () -> assertTrue(failures.toString().contains(expectedOutput), failures.toString()),
+                            () -> assertFalse(output.contains(expectedOutput), output),
                             () -> assertFalse(output.contains("\u2713"), output)
         );
     }

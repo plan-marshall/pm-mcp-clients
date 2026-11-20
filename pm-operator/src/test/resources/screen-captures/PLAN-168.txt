@@ -11,8 +11,8 @@ PLAN-168-plan-nope-80x24-de | running-work | - | plan nope | - | 80x24 | de_DE.U
 PLAN-168-epic-nope-80x24-en | running-work | - | epic nope | - | 80x24 | en_US.UTF-8 | - | - | - | 1
 PLAN-168-epic-nope-80x24-de | running-work | - | epic nope | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
 
-PLAN-168-config-cleanup-remind-80x24-en | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | en_US.UTF-8 | - | - | - | 3
-PLAN-168-config-cleanup-remind-80x24-de | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | de_DE.UTF-8 | - | - | - | 3
+PLAN-168-config-cleanup-remind-80x24-en | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-168-config-cleanup-remind-80x24-de | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
 
 PLAN-168-console-plan-nope-80x24-en | running-work | - |  | plan nope\nexit\n | 80x24 | en_US.UTF-8 | -
 PLAN-168-console-plan-nope-80x24-de | running-work | - |  | plan nope\nexit\n | 80x24 | de_DE.UTF-8 | -

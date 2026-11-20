@@ -28,8 +28,6 @@ import org.junit.jupiter.api.Test;
 @DisplayName("the operator catalogue carries no retired key")
 class OperatorCatalogueHygieneTest {
 
-    private static final List<String> LOCALES = List.of("en", "de");
-
     /** The keys of {@code operator.cleanup.*} that printed invented figures and were never read. */
     private static final List<String> RETIRED_CLEANUP_KEYS = List.of(
                         "operator.cleanup.footer",
@@ -49,7 +47,7 @@ class OperatorCatalogueHygieneTest {
     @Test
     @DisplayName("no key of the operator area carries an HTTP status a screen would print")
     void noOperatorKeyNamesAnHttpStatus() {
-        for (var locale : LOCALES) {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             var messages = MessageCatalogue.getMessages(locale, "operator");
             assertFalse(messages.isEmpty(), "The operator area must carry texts in " + locale);
             for (var entry : messages.entrySet()) {
@@ -63,7 +61,7 @@ class OperatorCatalogueHygieneTest {
     @Test
     @DisplayName("the dead cleanup keys are gone from both packs")
     void retiredCleanupKeysAreGone() {
-        for (var locale : LOCALES) {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             Map<String, String> messages = MessageCatalogue.getMessages(locale, "operator");
             for (var key : RETIRED_CLEANUP_KEYS) {
                 assertFalse(messages.containsKey(key), "the retired key " + key + " is still in " + locale);
@@ -74,12 +72,8 @@ class OperatorCatalogueHygieneTest {
     @Test
     @DisplayName("the refusal renderer's texts exist in both languages")
     void refusalTextsExist() {
-        for (var locale : LOCALES) {
-            for (var key : List.of("operator.refusal.prefix", "operator.refusal.local.cause",
-                                "operator.refusal.local.fix", "operator.refusal.route_missing.title",
-                                "operator.refusal.route_missing.cause", "operator.refusal.route_missing.fix",
-                                "operator.refusal.unreadable.title", "operator.refusal.unreadable.cause",
-                                "operator.refusal.unreadable.fix")) {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            for (var key : RefusalRenderer.requiredKeys()) {
                 assertTrue(MessageCatalogue.hasKey(locale, key), "Missing " + key + " in " + locale);
             }
         }

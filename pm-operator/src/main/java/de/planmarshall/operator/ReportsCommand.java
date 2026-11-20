@@ -44,6 +44,7 @@ import picocli.CommandLine.Spec;
 public final class ReportsCommand implements Callable<Integer> {
 
     private static final String REPORTS_API = "/api/v1/reports/";
+    private static final String GLYPH_CHECK = "\u2713 ";
 
     private final OperatorContext context;
 
@@ -85,7 +86,8 @@ public final class ReportsCommand implements Callable<Integer> {
             return;
         }
 
-        out.printf("Reports · %d unread%n", page.unreadCount());
+        out.println(MessageCatalogue.format(locale, "operator.reports.title",
+                            Map.of("count", page.unreadCount())));
 
         var projectGroups = groupReportsByProject(page.items());
         for (var entry : projectGroups.entrySet()) {
@@ -210,7 +212,7 @@ public final class ReportsCommand implements Callable<Integer> {
                 return readAll(out);
             }
             if (reportIds.isEmpty()) {
-                out.println("Specify report IDs or --all.");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.reports.ids_required", Map.of()));
                 out.flush();
                 return 1;
             }
@@ -230,7 +232,7 @@ public final class ReportsCommand implements Callable<Integer> {
                 ids.add(item.id());
             }
             if (ids.isEmpty()) {
-                out.println("0 reports marked read.");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done", Map.of("count", 0)));
                 out.flush();
                 return 0;
             }
@@ -239,7 +241,8 @@ public final class ReportsCommand implements Callable<Integer> {
                                                     ReadReportsRequest.of(ids).toJson()));
             if (response.status() == 200 || response.status() == 204) {
                 var parsed = ReadReportsResponse.fromJson(response.bodyText());
-                out.printf("✓ %d reports marked read.%n", parsed.markedCount());
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done",
+                                    Map.of("count", parsed.markedCount())));
                 // The command reads only the first page it lists: say so instead of letting the
                 // operator read "marked read" as "nothing unread is left" (decision 10).
                 if (page.hasOlder() && page.olderCount() > 0) {
@@ -265,7 +268,8 @@ public final class ReportsCommand implements Callable<Integer> {
                     out.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", id)));
                 }
             }
-            out.printf("✓ %d reports marked read.%n", marked);
+            out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), "report.read.done",
+                                Map.of("count", marked)));
             out.flush();
             return 0;
         }

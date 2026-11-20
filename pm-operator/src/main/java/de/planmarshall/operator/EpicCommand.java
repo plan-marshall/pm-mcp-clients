@@ -168,7 +168,8 @@ public final class EpicCommand implements Callable<Integer> {
         out.println(head);
         out.printf("  %-44s %s%n", MessageCatalogue.format(locale, "operator.plan.tree.context",
                                                 Map.of(KEY_PROJECT, OutputSafety.stripControlSequences(epic.projectId()))),
-                            "status --project " + OutputSafety.stripControlSequences(epic.projectId()));
+                            MessageCatalogue.format(locale, "operator.plan.tree.hint_project",
+                                                Map.of(KEY_PROJECT, OutputSafety.stripControlSequences(epic.projectId()))));
         printWorkstreams(out, locale, epic);
         printSources(out, locale, epic);
         printLandings(out, locale, epic);

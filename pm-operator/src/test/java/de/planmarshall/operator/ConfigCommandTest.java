@@ -435,7 +435,8 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
-                            () -> assertTrue(out.toString().contains("Unable to load settings."), out.toString()),
+                            () -> assertTrue(err.toString().contains("Unable to load settings."), err.toString()),
+                            () -> assertFalse(out.toString().contains("Unable to load settings."), out.toString()),
                             () -> assertTrue(writes.isEmpty(), writes.toString()));
     }
 
@@ -755,7 +756,7 @@ class ConfigCommandTest {
         int code = execute("config", "cleanup", "--plans", "3", "--yes");
 
         assertAll(
-                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertEquals(1, code, out.toString()),
                             () -> assertTrue(err.toString().contains("At least 7 days, or never."), err.toString()),
                             () -> assertEquals(0, writes.get(), "no duration is written"));
     }
@@ -1014,7 +1015,7 @@ class ConfigCommandTest {
         int code = execute("config", "cleanup", "--remind", "never", "--yes");
 
         assertAll(
-                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertEquals(1, code, out.toString()),
                             () -> assertTrue(err.toString().contains("At least 1 days."), err.toString()),
                             () -> assertFalse(err.toString().contains("or never"), err.toString()));
     }

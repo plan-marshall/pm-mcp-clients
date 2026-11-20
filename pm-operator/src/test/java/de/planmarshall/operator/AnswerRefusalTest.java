@@ -345,8 +345,8 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, exit, err.toString()),
-                            () -> assertTrue(out.toString().contains(text), out.toString()),
-                            () -> assertFalse(out.toString().contains("\u2717"), out.toString()));
+                            () -> assertTrue(err.toString().contains(text), err.toString()),
+                            () -> assertFalse(out.toString().contains(text), out.toString()));
     }
 
     @Test
@@ -366,7 +366,7 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, exit, err.toString()),
-                            () -> assertTrue(out.toString().contains("Something changed in the meantime"), out.toString()));
+                            () -> assertTrue(err.toString().contains("Something changed in the meantime"), err.toString()));
     }
 
     @Test
@@ -469,7 +469,7 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, exit, err.toString()),
-                            () -> assertTrue(out.toString().contains(text), out.toString()));
+                            () -> assertTrue(err.toString().contains(text), err.toString()));
     }
 
     private void assertGerman(String expected, String... args) {

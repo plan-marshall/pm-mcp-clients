@@ -30,10 +30,10 @@ import org.junit.jupiter.api.Test;
  * The bilingual text guard (the plan's "no text is written in the client's code"): a test that
  * fails for a literal user-facing string.
  *
- * <p>It scans the production sources of the console, the entry, the settings, the devices, the
- * credentials and every command that prints a screen for a string literal that is printed or used
- * as a prompt, in the direct form, in a ternary, and inside a {@code String.format}. A literal is
- * allowed only when it is not a sentence: an empty string, a single symbol or punctuation mark, a
+ * <p>It scans every command of the operator package — discovered from the sources, not listed — and
+ * the console, dialogue and TUI helpers for a string literal that is printed or used as a prompt, in
+ * the direct form, in a ternary, inside a {@code String.format}, and across a line break. A literal
+ * is allowed only when it is not a sentence: an empty string, a single symbol or punctuation mark, a
  * format specifier, an ANSI/OSC sequence, a command name or option, a URL fragment, a JSON field
  * name, a catalogue key, or a value the runtime defines (a state id, a mode, a key). Everything the
  * operator reads comes from {@code messages/*.properties}.
@@ -41,15 +41,17 @@ import org.junit.jupiter.api.Test;
 @DisplayName("bilingual text integrity")
 class LiteralTextGuardTest {
 
-    /** The files that render what the operator reads. */
-    private static final List<String> GUARDED = List.of(
+    /**
+     * The helpers that render what the operator reads and are no command of their own: the console,
+     * the entry flow, the dialogues and the full-screen layout. Every {@code *Command.java} of the
+     * package is guarded by discovery, listed nowhere.
+     */
+    private static final List<String> HELPER_SOURCES = List.of(
                         "PmConsole.java",
                         "ConsolePrompt.java",
                         "ConsoleNotice.java",
                         "EntryFlow.java",
-                        "ConfigCommand.java",
-                        "WebCommand.java",
-                        "CredentialsCommand.java",
+                        "ConfigAspectRun.java",
                         "SecretReader.java",
                         "TerminalTitle.java",
                         "StartDialogue.java",
@@ -63,35 +65,22 @@ class LiteralTextGuardTest {
                         "WorkChatDialogue.java",
                         "PlanSettingsDialogue.java",
                         "OperatorActions.java",
-                        "ProjectCommand.java",
-                        "FindCommand.java",
-                        "AnswerCommand.java",
-                        "CleanupCommand.java",
-                        "RuntimeCommand.java",
-                        "AspectRunSource.java",
                         "ChoicePrompt.java",
                         "OverviewFullScreenApp.java",
                         "ProjectWorkLevel.java",
                         "PlanCompletionLevel.java",
                         "PlanViewFormatting.java",
-                        "TuiLayout.java",
-                        "PlanCommand.java",
-                        "EpicCommand.java",
-                        "StatusCommand.java",
-                        "RolesCommand.java",
-                        "DecomposeCommand.java",
-                        "ConfigCleanupCommand.java",
-                        "DrainCommand.java");
+                        "TuiLayout.java");
 
-    /** A call that renders text to the operator: its argument list is what the guard reads. */
+    /** A call that renders text to the operator: its whole argument list is what the guard reads. */
     private static final Pattern RENDER_CALL = Pattern.compile(
-                        "(?:(?:out|err|writer|terminal\\.writer\\(\\)|session\\.out\\(\\))\\.(?:print|println|printf|readLine|printAbove)"
+                        "(?:(?:out|err|writer|failures|terminal\\.writer\\(\\)|session\\.out\\(\\))\\.(?:print|println|printf|readLine|printAbove)"
                                             + "|prompt\\.(?:raw|askRaw|askInline))\\s*\\(");
 
     /** A literal; the argument list is scanned for it. */
     private static final Pattern TEXT_LITERAL = Pattern.compile("\"((?:[^\"\\\\]|\\\\.)*)\"");
 
-    /** A call that resolves a catalogue key; its arguments are never text the operator reads. */
+    /** A call that resolves a catalogue key; only its key argument is no text the operator reads. */
     private static final Pattern CATALOGUE_CALL = Pattern.compile("(?:MessageCatalogue|ErrorTexts)\\.[a-zA-Z]+\\s*\\(");
 
     /** Literals that carry no words and therefore need no translation. */
@@ -104,10 +93,7 @@ class LiteralTextGuardTest {
     void noLiteralUserFacingText() throws Exception {
         var violations = new ArrayList<String>();
         for (var source : guardedSources()) {
-            var lines = Files.readAllLines(source, StandardCharsets.UTF_8);
-            for (int index = 0; index < lines.size(); index++) {
-                collect(lines.get(index), source, index, violations);
-            }
+            collect(Files.readString(source, StandardCharsets.UTF_8), source, violations);
         }
         assertTrue(violations.isEmpty(),
                             "user-facing strings must come from messages/*.properties, not from code:\n"
@@ -131,44 +117,71 @@ class LiteralTextGuardTest {
     }
 
     @Test
-    @DisplayName("the guard fails on a literal in a ternary and inside String.format")
-    void guardSeesTernariesAndFormats() {
+    @DisplayName("the guard fails on a ternary, inside String.format, and across a line break")
+    void guardSeesEveryShapeOfLiteral() {
         var violations = new ArrayList<String>();
-        collect("        out.println(stopped ? \"Nothing is due.\" : other);", Path.of("Sample.java"), 0,
-                            violations);
-        collect("        out.println(String.format(\"%d workers are running\", count));", Path.of("Sample.java"), 0,
-                            violations);
-        assertEquals(2, violations.size(), violations.toString());
+        var source = Path.of("Sample.java");
+        collect("class A {\n"
+                            + "    void a() {\n"
+                            + "        out.println(stopped ? \"Nothing is due.\" : other);\n"
+                            + "        out.println(String.format(\"%d workers are running\", count));\n"
+                            + "        out.println(stopped\n"
+                            + "                            ? other\n"
+                            + "                            : \"Nothing is due either.\");\n"
+                            + "    }\n"
+                            + "}\n", source, violations);
+        assertEquals(3, violations.size(), violations.toString());
     }
 
-    private static void collect(String line, Path source, int index, List<String> violations) {
-        var matcher = RENDER_CALL.matcher(line);
+    @Test
+    @DisplayName("a catalogue call's parameter value is scanned, its key is not")
+    void parameterValuesAreScanned() {
+        var violations = new ArrayList<String>();
+        collect("class A {\n"
+                            + "    void a() {\n"
+                            + "        out.println(MessageCatalogue.format(locale, \"operator.console.code_failed\",\n"
+                            + "                            Map.of(\"reason\", \"The runtime is offline.\")));\n"
+                            + "    }\n"
+                            + "}\n", Path.of("Sample.java"), violations);
+        assertEquals(1, violations.size(), violations.toString());
+        assertTrue(violations.get(0).contains("The runtime is offline."), violations.toString());
+    }
+
+    private static void collect(String text, Path source, List<String> violations) {
+        var matcher = RENDER_CALL.matcher(text);
         while (matcher.find()) {
-            var arguments = withoutCatalogueCalls(line.substring(matcher.end()));
+            var start = matcher.end();
+            var end = matchingParen(text, start);
+            var arguments = withoutCatalogueKeys(text.substring(start, end));
             var literal = TEXT_LITERAL.matcher(arguments);
             while (literal.find()) {
-                var text = literal.group(1);
-                if (isUserFacing(text)) {
-                    violations.add(source.getFileName() + ":" + (index + 1) + "  \"" + text + "\"");
+                var value = literal.group(1);
+                if (isUserFacing(value)) {
+                    var line = 1 + (int) text.substring(0, start).chars().filter(c -> c == '\n').count()
+                                        + (int) arguments.substring(0, literal.start()).chars()
+                                        .filter(c -> c == '\n').count();
+                    violations.add(source.getFileName() + ":" + line + "  \"" + value + "\"");
                 }
             }
+            matcher.region(end, text.length());
         }
     }
 
     /**
      * @param arguments the argument list of a rendering call
-     * @return the list with every catalogue call and its arguments removed, so that a key is never
-     *         read as text
+     * @return the list with the key literal of every catalogue call blanked out, so a key is never
+     *         read as text while the values the call passes are still scanned
      */
-    private static String withoutCatalogueCalls(String arguments) {
-        var remaining = arguments;
-        var matcher = CATALOGUE_CALL.matcher(remaining);
+    private static String withoutCatalogueKeys(String arguments) {
+        var cleaned = new StringBuilder(arguments);
+        var matcher = CATALOGUE_CALL.matcher(cleaned);
         while (matcher.find()) {
-            var end = matchingParen(remaining, matcher.end());
-            remaining = remaining.substring(0, matcher.start()) + remaining.substring(end);
-            matcher = CATALOGUE_CALL.matcher(remaining);
+            var literal = TEXT_LITERAL.matcher(cleaned);
+            if (literal.find(matcher.end())) {
+                cleaned.replace(literal.start(1), literal.end(1), " ".repeat(literal.group(1).length()));
+            }
         }
-        return remaining;
+        return cleaned.toString();
     }
 
     private static int matchingParen(String text, int from) {
@@ -180,7 +193,7 @@ class LiteralTextGuardTest {
             } else if (c == ')') {
                 depth--;
                 if (depth == 0) {
-                    return i + 1;
+                    return i;
                 }
             }
         }
@@ -197,6 +210,9 @@ class LiteralTextGuardTest {
         }
         if (literal.startsWith("{")) {
             // A JSON fragment the client writes for a machine consumer, not text for a screen.
+            return false;
+        }
+        if (isKeyHintList(literal)) {
             return false;
         }
         if (literal.matches("[a-z][a-z0-9_]*(?:\\.[a-z0-9_]+)+")) {
@@ -229,6 +245,26 @@ class LiteralTextGuardTest {
                             || text.indexOf(':') >= 0 || text.indexOf(';') >= 0;
     }
 
+    /**
+     * @param literal the literal of a rendering call
+     * @return {@code true} when the literal is a list of one-letter keys a prompt offers, such as
+     *         {@code "y, n"} or {@code ", n, "}
+     */
+    private static boolean isKeyHintList(String literal) {
+        var words = literal.split("[,\\s]+");
+        var seen = 0;
+        for (var word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (word.length() != 1) {
+                return false;
+            }
+            seen++;
+        }
+        return seen > 0;
+    }
+
     private static int escapeLength(String literal, int backslash) {
         if (backslash + 1 >= literal.length()) {
             return 0;
@@ -253,20 +289,38 @@ class LiteralTextGuardTest {
         return i - percent - 1;
     }
 
+    /**
+     * @return every command of the package, discovered from the sources, and every helper that
+     *         renders to the terminal
+     * @throws IOException if the sources cannot be read
+     */
     private static List<Path> guardedSources() throws IOException {
         var directory = Path.of("src", "main", "java", "de", "planmarshall", "operator");
         if (!Files.isDirectory(directory)) {
             directory = Path.of("pm-operator", "src", "main", "java", "de", "planmarshall", "operator");
         }
         assertTrue(Files.isDirectory(directory), "the operator sources must be found from " + Path.of("").toAbsolutePath());
-        try (Stream<Path> files = Files.walk(directory)) {
-            var found = files.filter(Files::isRegularFile)
-                                .filter(path -> GUARDED.contains(path.getFileName().toString()))
+        List<Path> commands;
+        try (Stream<Path> files = Files.list(directory)) {
+            commands = files.filter(Files::isRegularFile)
+                                .filter(path -> path.getFileName().toString().endsWith("Command.java"))
                                 .toList();
-            var names = found.stream().map(path -> path.getFileName().toString()).toList();
-            var missing = GUARDED.stream().filter(name -> !names.contains(name)).toList();
-            assertTrue(missing.isEmpty(), "guarded sources not found: " + missing);
-            return found;
         }
+        assertFalse(commands.isEmpty(), "no command source found in " + directory);
+        List<Path> tree;
+        try (Stream<Path> files = Files.walk(directory)) {
+            tree = files.filter(Files::isRegularFile).toList();
+        }
+        var helpers = new ArrayList<Path>();
+        for (var name : HELPER_SOURCES) {
+            var helper = tree.stream()
+                                .filter(path -> path.getFileName().toString().equals(name))
+                                .findFirst()
+                                .orElseThrow(() -> new AssertionError("guarded source not found: " + name));
+            helpers.add(helper);
+        }
+        var all = new ArrayList<>(commands);
+        all.addAll(helpers);
+        return all;
     }
 }

@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -55,8 +56,6 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
 
     private static final int LABEL_WIDTH = 12;
     private static final int VALUE_WIDTH = 66;
-    private static final String SEPARATOR = "-".repeat(LABEL_WIDTH + 2 * VALUE_WIDTH);
-    private static final String ROW_FORMAT = "%-" + LABEL_WIDTH + "s%-" + VALUE_WIDTH + "s%s%n";
 
     private final OperatorContext context;
 
@@ -202,24 +201,33 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
                         @Nullable HarnessEnrolmentResource recorded, HarnessDiscovery.Harness harness) {
         out.println(MessageCatalogue.format(locale, "enrolment.harness.title",
                             Map.of(HarnessEnrolmentResource.FIELD_CLIENT, client)));
-        out.printf(Locale.ROOT, ROW_FORMAT,
+        var labels = List.of(
+                            MessageCatalogue.get(locale, "enrolment.harness.metric"),
+                            MessageCatalogue.get(locale, "enrolment.harness.path"),
+                            MessageCatalogue.get(locale, "enrolment.harness.version"),
+                            MessageCatalogue.get(locale, "enrolment.harness.sha256"));
+        // One width from the localized labels, so a language with a longer word keeps the columns
+        // apart; Java's format width is only a minimum, never a separator.
+        var labelWidth = Math.max(LABEL_WIDTH, labels.stream().mapToInt(String::length).max().orElse(LABEL_WIDTH) + 2);
+        var rowFormat = "%-" + labelWidth + "s%-" + VALUE_WIDTH + "s%s%n";
+        out.printf(Locale.ROOT, rowFormat,
                             MessageCatalogue.get(locale, "enrolment.harness.metric"),
                             MessageCatalogue.get(locale, "enrolment.harness.recorded"),
                             MessageCatalogue.get(locale, "enrolment.harness.detected"));
-        out.println(SEPARATOR);
+        out.println("-".repeat(labelWidth + 2 * VALUE_WIDTH));
 
         var notRecorded = MessageCatalogue.get(locale, "enrolment.harness.not_recorded");
         var recordedPath = recorded != null ? recorded.executablePath() : notRecorded;
         var recordedVersion = recorded != null ? recorded.version() : notRecorded;
         var recordedDigest = recorded != null ? recorded.sha256Digest() : notRecorded;
 
-        out.printf(Locale.ROOT, ROW_FORMAT,
+        out.printf(Locale.ROOT, rowFormat,
                             MessageCatalogue.get(locale, "enrolment.harness.path"),
                             fit(recordedPath), fit(harness.executable().toString()));
-        out.printf(Locale.ROOT, ROW_FORMAT,
+        out.printf(Locale.ROOT, rowFormat,
                             MessageCatalogue.get(locale, "enrolment.harness.version"),
                             fit(recordedVersion), fit(harness.version()));
-        out.printf(Locale.ROOT, ROW_FORMAT,
+        out.printf(Locale.ROOT, rowFormat,
                             MessageCatalogue.get(locale, "enrolment.harness.sha256"),
                             fit(recordedDigest), fit(harness.sha256Digest()));
         out.flush();

@@ -51,7 +51,6 @@ import de.planmarshall.api.report.TokenBreakdownItem;
 import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
-import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
@@ -184,7 +183,7 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
                 if (response.status() == 404) {
-                    RefusalRenderer.render(err, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
+                    RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
                     return 1;
                 }
                 throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
@@ -211,7 +210,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(err, context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
+                RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
                 return 1;
             }
             throw new OperatorRefusedException("plan " + planId, response);
@@ -305,7 +304,7 @@ public final class PlanCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var response = runtime.send(HttpRequest.get(PlanChangesRoutes.plan(planId).list()));
         if (response.status() == 404) {
-            RefusalRenderer.render(spec.commandLine().getErr(), locale, ApiErrorCode.SCOPE_NOT_FOUND);
+            RefusalRenderer.render(spec.commandLine().getErr(), locale, new OperatorRefusedException("plan changes", response));
             return 1;
         }
         if (response.status() != 200) {
@@ -1035,7 +1034,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 1;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
+                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), new OperatorRefusedException("plan", response));
                 return 1;
             }
             if (response.status() == 200) {
@@ -1245,10 +1244,10 @@ public final class PlanCommand implements Callable<Integer> {
         }
 
         private static String ownCallKind(String kind, String locale) {
-            if (!"design".equals(kind) && !"shortcut".equals(kind) && !"dependency".equals(kind)) {
-                return ConsoleNotice.stripControlSequences(kind);
-            }
-            return MessageCatalogue.format(locale, "report.completion.own_call_kind", Map.of("kind", kind));
+            // The selector's `other` branch preserves a kind the catalogue does not know, so the
+            // alternative set lives in the packs only.
+            return MessageCatalogue.format(locale, "report.completion.own_call_kind",
+                                Map.of("kind", ConsoleNotice.stripControlSequences(kind)));
         }
 
         private static boolean hasOwnCallDetails(OwnCallRecord ownCall) {
@@ -1295,12 +1294,11 @@ public final class PlanCommand implements Callable<Integer> {
                 printTokensDetail(out, usage, planId, showComponents, locale);
             } else {
                 out.printf(FMT_14S, text(locale, "report.completion.tokens"), totalSplit + " · " + (ran != null ? ran : ""));
-                int unmeasured = usage.tasksTotal() - usage.tasksMeasured();
                 var covText = MessageCatalogue.format(locale, "report.completion.tokens_scope", Map.of(
                                     "workers", usage.workersCount(),
                                     "models", usage.modelsCount(),
                                     "coverage", MessageCatalogue.format(locale, "report.completion.tasks_measured", Map.of(
-                                                        KEY_COUNT, unmeasured,
+                                                        KEY_COUNT, usage.tasksMeasured(),
                                                         KEY_TOTAL, usage.tasksTotal()))));
                 out.printf(FMT_INDENT, covText);
                 var hint = MessageCatalogue.format(locale, "operator.reports.tokens_hint", Map.of("plan", planId));
@@ -1329,7 +1327,8 @@ public final class PlanCommand implements Callable<Integer> {
                                     : "";
                 out.printf("  %-12s %s%s%n", text(locale, "report.completion.coverage"),
                                     MessageCatalogue.format(locale, "report.completion.tasks_measured", Map.of(
-                                                        KEY_COUNT, unmeasured, KEY_TOTAL, usage.tasksTotal())),
+                                                        KEY_COUNT, usage.tasksMeasured(),
+                                                        KEY_TOTAL, usage.tasksTotal())),
                                     reason);
             } else {
                 out.printf("  %-12s %s%n", text(locale, "report.completion.coverage"),
@@ -1400,28 +1399,25 @@ public final class PlanCommand implements Callable<Integer> {
             if (wasteClass == null) {
                 return "";
             }
-            if ("no_product".equals(wasteClass) || "retries".equals(wasteClass) || "remediation".equals(wasteClass)) {
-                return MessageCatalogue.format(locale, "report.tokens.waste." + wasteClass, Map.of());
-            }
-            return ConsoleNotice.stripControlSequences(wasteClass);
+            var key = "report.tokens.waste." + wasteClass;
+            // The class set lives in the packs: a class without a text is shown as the runtime wrote
+            // it, and a new translated class needs no change here.
+            return MessageCatalogue.hasKey(locale, key)
+                                ? MessageCatalogue.format(locale, key, Map.of())
+                                : ConsoleNotice.stripControlSequences(wasteClass);
         }
 
         private static String formatComponents(@Nullable TokenComponentRecord c, String locale) {
             if (c == null) {
                 return "";
             }
-            var component = "report.tokens.component";
+            // The labels live in the localized template; only the figures are passed.
             return MessageCatalogue.format(locale, "report.completion.component_row", Map.of(
-                                KEY_INPUT, componentText(locale, component, KEY_INPUT, c.input()),
-                                "cache_read", componentText(locale, component, "cache_read", c.cacheRead()),
-                                "cache_write", componentText(locale, component, "cache_write", c.cacheWrite()),
-                                KEY_OUTPUT, componentText(locale, component, KEY_OUTPUT, c.output()),
-                                "reasoning", componentText(locale, component, "reasoning", c.reasoning())));
-        }
-
-        private static String componentText(String locale, String key, String component, long amount) {
-            return MessageCatalogue.format(locale, key, Map.of("component", component)) + " "
-                                + TokenFormat.formatTokens(amount, false, locale);
+                                KEY_INPUT, TokenFormat.formatTokens(c.input(), false, locale),
+                                "cache_read", TokenFormat.formatTokens(c.cacheRead(), false, locale),
+                                "cache_write", TokenFormat.formatTokens(c.cacheWrite(), false, locale),
+                                KEY_OUTPUT, TokenFormat.formatTokens(c.output(), false, locale),
+                                "reasoning", TokenFormat.formatTokens(c.reasoning(), false, locale)));
         }
 
         private static String text(String locale, String key) {
@@ -1522,10 +1518,6 @@ public final class PlanCommand implements Callable<Integer> {
             }
             var out = spec.commandLine().getOut();
             var settings = loadSettings();
-            if (settings == null) {
-                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
-                return 1;
-            }
 
             if (set == null && remove == null) {
                 printSettings(out, settings);
@@ -1551,14 +1543,11 @@ public final class PlanCommand implements Callable<Integer> {
             return apply(out, settings, aspect, value);
         }
 
-        private @Nullable PlanSettingsRecord loadSettings() throws IOException {
+        private PlanSettingsRecord loadSettings() throws IOException {
             var response = context.runtime(true).send(
                                 HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
             if (response.status() == 200) {
                 return PlanSettingsRecord.fromJson(response.bodyText());
-            }
-            if (response.status() == 404) {
-                return null;
             }
             throw new OperatorRefusedException("plan settings " + planId, response);
         }

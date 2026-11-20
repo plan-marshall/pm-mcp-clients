@@ -323,8 +323,9 @@ class CredentialsCommandTest {
         fixture.start((request, response) -> response.send(500, null, ""));
         var code = run(context(""), "credentials", "remove", "github");
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Failed to remove github."), out.toString());
-        assertFalse(out.toString().contains("HTTP"), out.toString());
+        assertTrue(err.toString().contains("Failed to remove github."), err.toString());
+        assertFalse(out.toString().contains("Failed to remove github."), out.toString());
+        assertFalse(err.toString().contains("HTTP"), err.toString());
     }
 
     @Test
@@ -357,8 +358,9 @@ class CredentialsCommandTest {
         });
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Failed to store github."), out.toString());
-        assertFalse(out.toString().contains("HTTP"), out.toString());
+        assertTrue(err.toString().contains("Failed to store github."), err.toString());
+        assertFalse(out.toString().contains("Failed to store github."), out.toString());
+        assertFalse(err.toString().contains("HTTP"), err.toString());
     }
 
     @Test

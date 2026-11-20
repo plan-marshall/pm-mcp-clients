@@ -166,7 +166,8 @@ public class OperatorRefusedException extends IOException {
     @Nullable String serverMessage, Map<String, String> arguments, Kind kind) {
     }
 
-    private record ExtractedFields(@Nullable String code, @Nullable String message, Map<String, String> arguments) {
+    private record ExtractedFields(@Nullable String code, @Nullable String message, Map<String, String> arguments,
+    boolean parsedObject) {
     }
 
     /** How a body that is no JSON object reads, which decides whether it may be the message. */
@@ -188,10 +189,12 @@ public class OperatorRefusedException extends IOException {
         var parsedMessage = extracted.message();
         var shape = shapeOf(body);
 
-        if (shape == BodyShape.MARKUP || shape == BodyShape.TRACE) {
+        if (!extracted.parsedObject() && (shape == BodyShape.MARKUP || shape == BodyShape.TRACE)) {
+            // The heuristics only guard a body this client could not parse: a JSON refusal whose
+            // message happens to contain a tag or the word "Error:" is still a refusal.
             return new ParsedRefusal(null, null, null, Map.of(), Kind.UNREADABLE);
         }
-        if (parsedCode == null && response.status() == 404 && !looksLikeJsonObject(body)) {
+        if (parsedCode == null && response.status() == 404 && !extracted.parsedObject()) {
             // A route the runtime does not own answers with no name at all; it is never "this entry
             // does not exist".
             return new ParsedRefusal(null, null, null, Map.of(), Kind.ROUTE_MISSING);
@@ -201,7 +204,7 @@ public class OperatorRefusedException extends IOException {
             // capped, and a JSON object that names no message carries only its code.
             if (shape == BodyShape.BLANK) {
                 parsedMessage = "";
-            } else if (body != null && !looksLikeJsonObject(body)) {
+            } else if (body != null && !extracted.parsedObject() && !body.trim().startsWith("{")) {
                 parsedMessage = cap(body);
             }
         }
@@ -253,13 +256,9 @@ public class OperatorRefusedException extends IOException {
         return stripped.substring(0, MAX_MESSAGE_LENGTH).strip() + "\u2026";
     }
 
-    private static boolean looksLikeJsonObject(@Nullable String body) {
-        return body != null && body.trim().startsWith("{");
-    }
-
     private static ExtractedFields extractFromJson(@Nullable String body) {
         if (body == null || body.isBlank() || !body.trim().startsWith("{")) {
-            return new ExtractedFields(null, null, Map.of());
+            return new ExtractedFields(null, null, Map.of(), false);
         }
         try {
             var parsed = JsonTree.parse(body);
@@ -269,7 +268,7 @@ public class OperatorRefusedException extends IOException {
         } catch (IOException _) {
             // Not valid JSON
         }
-        return new ExtractedFields(null, null, Map.of());
+        return new ExtractedFields(null, null, Map.of(), false);
     }
 
     private static ExtractedFields extractFromMap(Map<?, ?> map) {
@@ -295,7 +294,7 @@ public class OperatorRefusedException extends IOException {
             // The legacy form's string is its own text, which may be readable.
             parsedMessage = errStr;
         }
-        return new ExtractedFields(parsedCode, parsedMessage, argumentsOf(map));
+        return new ExtractedFields(parsedCode, parsedMessage, argumentsOf(map), true);
     }
 
     /**

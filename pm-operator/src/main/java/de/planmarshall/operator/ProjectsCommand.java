@@ -175,9 +175,7 @@ public final class ProjectsCommand implements Callable<Integer> {
     private static void renderExplorer(PrintWriter out, ProjectExplorer explorer, @Nullable String filter, String locale,
                         Clock clock) {
         if (explorer.allProjects().isEmpty() && explorer.beingAdded().isEmpty() && explorer.favourites().isEmpty()) {
-            out.println(MessageCatalogue.hasKey("project.explorer.empty")
-                                ? MessageCatalogue.format(locale, "project.explorer.empty", Map.of())
-                                : "No project is enrolled yet. Use 'pm-operator project add' to enrol one.");
+            out.println(MessageCatalogue.format(locale, "project.explorer.empty", Map.of()));
             return;
         }
 
@@ -203,9 +201,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                                                 || p.displayName().toLowerCase(Locale.ROOT).contains(query))
                             .toList();
         if (matches.isEmpty()) {
-            out.printf("No projects matching '%s'.%n", OutputSafety.stripControlSequences(filter));
+            out.println(MessageCatalogue.format(locale, "project.explorer.no_matches",
+                                Map.of("filter", OutputSafety.stripControlSequences(filter))));
         } else {
-            out.printf("Matches for '%s'%n", OutputSafety.stripControlSequences(filter));
+            out.println(MessageCatalogue.format(locale, "project.explorer.matches", Map.of(
+                                "filter", OutputSafety.stripControlSequences(filter), "count", matches.size())));
             for (var p : matches) {
                 printProjectRow(out, p, locale, clock);
             }
@@ -216,13 +216,13 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (beingAdded.isEmpty()) {
             return;
         }
-        out.println(MessageCatalogue.hasKey("project.adding.title")
-                            ? MessageCatalogue.format(locale, "project.adding.title", Map.of())
-                            : "Being added");
+        out.println(MessageCatalogue.format(locale, "project.adding.title", Map.of()));
         for (var b : beingAdded) {
             var safePath = OutputSafety.stripControlSequences(b.checkoutPath());
             var safeStep = OutputSafety.stripControlSequences(b.currentStep());
-            out.printf("    %-30s %s (%d of %d)%n", safePath, safeStep, b.stepNumber(), b.totalSteps());
+            out.println("    " + MessageCatalogue.format(locale, "project.adding.row", Map.of(
+                                "path", safePath, "step", safeStep,
+                                "done", b.stepNumber(), "total", b.totalSteps())));
         }
     }
 
