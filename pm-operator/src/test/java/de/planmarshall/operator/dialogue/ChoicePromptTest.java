@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -44,7 +43,6 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @DisplayName("ChoicePrompt strict choice dialogue rules")
-@EnableGeneratorController
 class ChoicePromptTest {
 
     private static final String STATE = "control.pause";

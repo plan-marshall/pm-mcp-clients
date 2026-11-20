@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -65,6 +67,7 @@ import picocli.CommandLine;
  * of {@code runtime start} (gate 8), and a status without a runtime that writes nothing.
  */
 @DisplayName("pm-operator as a process")
+@EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class PmOperatorProcessIT {
 
@@ -444,7 +447,9 @@ class PmOperatorProcessIT {
     @DisplayName("project release refuses execution without an interactive terminal (PM-SEC-3)")
     void projectReleaseRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "project", "release", "my-service", "--reason", "archived", "--yes")) {
+        var project = "project-" + Generators.integers(100, 999).next();
+        var reason = "reason-" + Generators.integers(100, 999).next();
+        try (var process = operator(environment(), "project", "release", project, "--reason", reason, "--yes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
@@ -485,6 +490,8 @@ class PmOperatorProcessIT {
     @DisplayName("epic decompose refuses execution without an interactive terminal (PM-SEC-3)")
     void epicDecomposeRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        var planId = "relay-auth-v" + Generators.integers(2, 99).next();
+        var instruction = "instruction-" + Generators.integers(100, 999).next();
         try (var process = operator(environment(), "epic", "decompose", "relay-hardening")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
@@ -499,8 +506,8 @@ class PmOperatorProcessIT {
                                 "stderr: " + stderr);
         }
 
-        try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",
-                                 "--instruction", "change it")) {
+        try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", planId,
+                                 "--instruction", instruction)) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),

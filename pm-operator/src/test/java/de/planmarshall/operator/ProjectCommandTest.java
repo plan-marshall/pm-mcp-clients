@@ -1094,6 +1094,30 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project unenrol reports a missing project")
+    void projectUnenrolReportsAMissingProject() throws Exception {
+        var project = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
+        fixture.start((request, response) -> response.json(404, "{\"error\":\"project_not_found\"}"));
+
+        int code = execute("project", "unenrol", project, "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains(project + " not found."), err.toString()));
+    }
+
+    @Test
+    @DisplayName("enrol and unenrol are no verbs: they are reported with the usage exit code")
+    void foldedEnrolVerbsAreUnknown() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        assertAll(
+                            () -> assertEquals(2, execute("enrol", ".")),
+                            () -> assertEquals(2, execute("unenrol", "old-app", "--yes")),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent"));
+    }
+
+    @Test
     @DisplayName("output safety strips control sequences")
     void outputSafetySanitizesUntrustedInput() throws Exception {
         fixture.start((request, response) -> response.json(409,

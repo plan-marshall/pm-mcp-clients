@@ -2,10 +2,10 @@
   "id": "PLAN-170",
   "slug": "vocabulary-lint-hardening",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "170-vocabulary-lint-hardening",
+  "pr": "507",
+  "landing": "landings/PLAN-170.md",
   "seq": 170
 }

@@ -536,6 +536,28 @@ class PlanCommandTest {
     }
 
     @Test
+    @DisplayName("plan add without a source stops at the sources with exit 3")
+    void planAddWithoutASourceStops() throws Exception {
+        var outcome = StartTestSupport.run(StandardScenarios.START_SOURCES, null,
+                            "plan", "add", "--project", "pm-mcp-clients", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code()),
+                            () -> assertTrue(outcome.rendered().contains("start.sources"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add reports a refused start with the action that fixes it and exit 1")
+    void planAddRefused() throws Exception {
+        var outcome = StartTestSupport.run(StandardScenarios.START_REFUSED, null,
+                            "plan", "add", "--project", "pm-mcp-clients", "--entry", "ent-3f9a2c41", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(1, outcome.code()),
+                            () -> assertTrue(outcome.rendered().contains("is not ready"), outcome.rendered()));
+    }
+
+    @Test
     @DisplayName("plan pause pauses running plan")
     void planPause() throws Exception {
         fixture.start((request, response) -> {

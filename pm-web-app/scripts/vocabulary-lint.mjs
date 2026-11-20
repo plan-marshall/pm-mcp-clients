@@ -25,6 +25,7 @@ export const RULES = {
   textarea: { type: 'element', component: 'TextArea' },
   select: { type: 'element', component: 'SelectField' },
   'outline: none': { type: 'css', component: 'tokens.css (--focus-ring)' },
+  unparseable: { type: 'syntax', component: 'valid syntax' },
 };
 
 export const RULE_NAMES = Object.keys(RULES);
@@ -141,8 +142,18 @@ export function lintSvelteSource(source, relPath = 'anonymous.svelte') {
   let ast;
   try {
     ast = parse(source, { modern: true });
-  } catch (_err) {
-    return [];
+  } catch (err) {
+    const line = err.start?.line ?? (err.position ? getLineNumber(source, err.position) : 1);
+    const message = err.message || 'Syntax error';
+    return [
+      {
+        file: normalized,
+        line,
+        rule: 'unparseable',
+        component: message,
+        message,
+      },
+    ];
   }
 
   function walkTemplate(node) {
@@ -202,18 +213,16 @@ export function lintCssSource(source, relPath = 'anonymous.css') {
   try {
     const cssAst = parseCss(source);
     walkCssAst(cssAst, normalized, source, findings);
-  } catch (_err) {
-    // Regex fallback if parseCss fails
-    const regex = /\boutline\s*:\s*(none|0)\b/gi;
-    let match;
-    while ((match = regex.exec(source)) !== null) {
-      findings.push({
-        file: normalized,
-        line: getLineNumber(source, match.index),
-        rule: 'outline: none',
-        component: RULES['outline: none'].component,
-      });
-    }
+  } catch (err) {
+    const line = err.start?.line ?? (err.position ? getLineNumber(source, err.position) : 1);
+    const message = err.message || 'CSS syntax error';
+    findings.push({
+      file: normalized,
+      line,
+      rule: 'unparseable',
+      component: message,
+      message,
+    });
   }
 
   return findings;
@@ -250,8 +259,6 @@ export function collectFiles(dir, filter) {
  */
 export function scanProject(appDir) {
   const srcDir = path.join(appDir, 'src');
-  const libDir = path.join(srcDir, 'lib');
-  const routesDir = path.join(srcDir, 'routes');
 
   const svelteFilter = (filePath) => {
     if (!filePath.endsWith('.svelte')) return false;
@@ -318,21 +325,25 @@ export function generateBaseline(findings) {
  * Formats findings as a Markdown table.
  *
  * @param {Array<object>} findings
+ * @param {string[]} [ruleNames]
  * @returns {string}
  */
-export function formatTable(findings) {
+export function formatTable(findings, ruleNames = null) {
+  const distinctRules = new Set(RULE_NAMES);
+  for (const f of findings) {
+    if (f.rule) {
+      distinctRules.add(f.rule);
+    }
+  }
+  const activeRuleNames = ruleNames ?? Array.from(distinctRules);
+
   const countsByFile = {};
   for (const f of findings) {
     if (!countsByFile[f.file]) {
-      countsByFile[f.file] = {
-        total: 0,
-        button: 0,
-        a: 0,
-        input: 0,
-        textarea: 0,
-        select: 0,
-        'outline: none': 0,
-      };
+      countsByFile[f.file] = { total: 0 };
+      for (const r of activeRuleNames) {
+        countsByFile[f.file][r] = 0;
+      }
     }
     countsByFile[f.file][f.rule] = (countsByFile[f.file][f.rule] || 0) + 1;
     countsByFile[f.file].total += 1;
@@ -345,38 +356,31 @@ export function formatTable(findings) {
     return a.localeCompare(b);
   });
 
-  const totals = {
-    total: 0,
-    button: 0,
-    a: 0,
-    input: 0,
-    textarea: 0,
-    select: 0,
-    'outline: none': 0,
-  };
+  const totals = { total: 0 };
+  for (const r of activeRuleNames) {
+    totals[r] = 0;
+  }
 
   for (const f of sortedFiles) {
-    for (const rule of RULE_NAMES) {
+    for (const rule of activeRuleNames) {
       totals[rule] += countsByFile[f][rule] || 0;
     }
     totals.total += countsByFile[f].total;
   }
 
   const lines = [
-    '| File | button | a | input | textarea | select | outline: none | Total |',
-    '| :--- | :---: | :-: | :---: | :------: | :----: | :-----------: | :---: |',
+    `| File | ${activeRuleNames.join(' | ')} | Total |`,
+    `| :--- | ${activeRuleNames.map(() => ':-:').join(' | ')} | :---: |`,
   ];
 
   for (const file of sortedFiles) {
     const c = countsByFile[file];
-    lines.push(
-      `| ${file} | ${c.button} | ${c.a} | ${c.input} | ${c.textarea} | ${c.select} | ${c['outline: none']} | ${c.total} |`,
-    );
+    const cells = activeRuleNames.map((r) => c[r] || 0);
+    lines.push(`| ${file} | ${cells.join(' | ')} | ${c.total} |`);
   }
 
-  lines.push(
-    `| **Total** | **${totals.button}** | **${totals.a}** | **${totals.input}** | **${totals.textarea}** | **${totals.select}** | **${totals['outline: none']}** | **${totals.total}** |`,
-  );
+  const totalCells = activeRuleNames.map((r) => `**${totals[r]}**`);
+  lines.push(`| **Total** | ${totalCells.join(' | ')} | **${totals.total}** |`);
 
   return lines.join('\n');
 }
@@ -398,15 +402,80 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   const findings = scanProject(appDir);
 
   if (isWriteBaseline) {
-    const baseline = generateBaseline(findings);
-    const baselinePath = path.join(appDir, 'scripts', 'vocabulary-baseline.json');
-    fs.writeFileSync(baselinePath, JSON.stringify(baseline, null, 2) + '\n', 'utf-8');
-    console.info(`Updated baseline with ${findings.length} findings across ${Object.keys(baseline).length} files.`);
+    const scriptsDir = path.join(appDir, 'scripts');
+    if (!fs.existsSync(scriptsDir)) {
+      console.error(`Error: scripts directory does not exist: ${scriptsDir}`);
+      return 1;
+    }
+
+    const baselinePath = path.join(scriptsDir, 'vocabulary-baseline.json');
+    if (!fs.existsSync(baselinePath)) {
+      console.error(`Error: baseline file does not exist: ${baselinePath}`);
+      return 1;
+    }
+
+    let existingBaseline;
+    try {
+      const baselineRaw = fs.readFileSync(baselinePath, 'utf-8');
+      existingBaseline = JSON.parse(baselineRaw);
+    } catch (err) {
+      console.error(`Error reading baseline at ${baselinePath}: ${err.message}`);
+      return 1;
+    }
+
+    const newBaseline = generateBaseline(findings);
+
+    // Verify baseline can only shrink: refuse new files or increased counts
+    for (const file of Object.keys(newBaseline)) {
+      if (!existingBaseline[file]) {
+        const fileTotal = Object.values(newBaseline[file]).reduce((a, b) => a + b, 0);
+        console.error(
+          `Cannot add new file ${file} to baseline (found ${fileTotal} finding(s), baseline had 0)`,
+        );
+        return 1;
+      }
+      for (const rule of Object.keys(newBaseline[file])) {
+        const newCount = newBaseline[file][rule];
+        const oldCount = existingBaseline[file][rule] ?? 0;
+        if (newCount > oldCount) {
+          console.error(
+            `Cannot increase baseline for ${file} rule ${rule}: new count is ${newCount}, baseline is ${oldCount}`,
+          );
+          return 1;
+        }
+      }
+    }
+
+    // Lower counts and remove files that reached zero
+    const updatedBaseline = {};
+    for (const file of Object.keys(existingBaseline).sort()) {
+      const fileCounts = {};
+      let fileTotal = 0;
+      for (const rule of Object.keys(existingBaseline[file]).sort()) {
+        const currentCount = newBaseline[file]?.[rule] ?? 0;
+        if (currentCount > 0) {
+          fileCounts[rule] = currentCount;
+          fileTotal += currentCount;
+        }
+      }
+      if (fileTotal > 0) {
+        updatedBaseline[file] = fileCounts;
+      }
+    }
+
+    fs.writeFileSync(baselinePath, JSON.stringify(updatedBaseline, null, 2) + '\n', 'utf-8');
+    console.info(
+      `Updated baseline with ${findings.length} findings across ${Object.keys(updatedBaseline).length} files.`,
+    );
     return 0;
   }
 
   for (const f of findings) {
-    console.warn(`warning: ${f.file}:${f.line} ${f.rule} — use ${f.component}`);
+    if (f.rule === 'unparseable') {
+      console.warn(`warning: ${f.file}:${f.line} ${f.rule} — ${f.component}`);
+    } else {
+      console.warn(`warning: ${f.file}:${f.line} ${f.rule} — use ${f.component}`);
+    }
   }
 
   if (findings.length > 0) {
@@ -422,10 +491,21 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
   return 0;
 }
 
-const currentFile = fileURLToPath(import.meta.url);
-if (process.argv[1] && path.resolve(process.argv[1]) === currentFile) {
-  const exitCode = runCli();
-  if (exitCode !== 0) {
-    process.exit(exitCode);
+if (process.argv[1]) {
+  let isMain = false;
+  try {
+    const realArgv1 = fs.realpathSync(process.argv[1]);
+    const realCurrentFile = fs.realpathSync(fileURLToPath(import.meta.url));
+    isMain = realArgv1 === realCurrentFile;
+  } catch (err) {
+    console.error(`Failed to resolve entry script path: ${err.message}`);
+    process.exit(1);
+  }
+
+  if (isMain) {
+    const exitCode = runCli();
+    if (exitCode !== 0) {
+      process.exit(exitCode);
+    }
   }
 }
