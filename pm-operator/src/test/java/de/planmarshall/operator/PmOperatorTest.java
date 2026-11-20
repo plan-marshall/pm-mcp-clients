@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,6 +61,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine.Command;
 
 @DisplayName("pm-operator command line")
+@EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class PmOperatorTest {
 
@@ -392,17 +395,18 @@ class PmOperatorTest {
         @Test
         @DisplayName("enable sends PUT /api/v1/web with lan and port and prints the listener")
         void enable() throws Exception {
+            var port = Generators.integers(20_000, 29_999).next();
             var server = runtime((request, response) -> response.json(200,
-                                "{\"enabled\":true,\"lan\":true,\"port\":8443,\"open\":true}"));
+                                "{\"enabled\":true,\"lan\":true,\"port\":" + port + ",\"open\":true}"));
 
-            assertEquals(0, run("web", "enable", "--lan", "--port", "8443"));
+            assertEquals(0, run("web", "enable", "--lan", "--port", String.valueOf(port)));
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("PUT", request.method());
             assertEquals("/api/v1/web", request.target());
-            assertEquals("{\"enabled\":true,\"lan\":true,\"port\":8443}", request.bodyText());
+            assertEquals("{\"enabled\":true,\"lan\":true,\"port\":" + port + "}", request.bodyText());
             assertEquals("en", request.header("accept-language"));
-            assertEquals("web       enabled (lan), port 8443, open", out.toString().strip());
+            assertEquals("web       enabled (lan), port " + port + ", open", out.toString().strip());
         }
 
         @Test
@@ -1129,6 +1133,23 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("runtime start prints a line and exits 0 when the status carries no pid")
+        void startWithoutAPidPrintsALineAndExitsZero() throws Exception {
+            var version = Generators.letterStrings(1, 8).next();
+            runtime((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, "{\"version\":\"" + version + "\"}");
+                } else {
+                    response.send(500, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "start"));
+            assertTrue(out.toString().contains("runtime   running"), out.toString());
+            assertFalse(out.toString().contains("null"), out.toString());
+        }
+
+        @Test
         @DisplayName("upgrade --check performs version check")
         void upgradeCheck() throws Exception {
             runtime((request, response) -> {
@@ -1159,12 +1180,14 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("upgrade --notes reports when not found")
+        @DisplayName("upgrade --notes reports a refused read as the runtime's refusal and exits 1")
         void upgradeNotesNotFound() throws Exception {
             runtime((request, response) -> response.send(404, null, ""));
 
-            assertEquals(0, run("runtime", "upgrade", "--notes"));
-            assertTrue(out.toString().contains("No release notes found."));
+            assertEquals(1, run("runtime", "upgrade", "--notes"));
+            assertTrue(err.toString().contains("\u2717"), err.toString());
+            assertTrue(err.toString().contains("does not know the request"), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
         }
 
         @Test
@@ -1183,12 +1206,25 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("upgrade --withdraw reports failure")
+        @DisplayName("upgrade --check reports a refusal and exits 1, printing no HTTP status")
+        void upgradeCheckFailedIsARefusal() throws Exception {
+            var detail = Generators.letterStrings(6, 20).next();
+            runtime((request, response) -> response.send(500, null,
+                                "{\"error\":\"internal_error\",\"message\":\"" + detail + "\"}"));
+
+            assertEquals(1, run("runtime", "upgrade", "--check"));
+            assertTrue(err.toString().contains(detail), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
+        }
+
+        @Test
+        @DisplayName("upgrade --withdraw reports failure as the runtime's refusal and exits 1")
         void upgradeWithdrawFailed() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
-            assertEquals(0, run("runtime", "upgrade", "--withdraw"));
-            assertTrue(out.toString().contains("Failed to withdraw upgrade: HTTP 500"));
+            assertEquals(1, run("runtime", "upgrade", "--withdraw"));
+            assertTrue(err.toString().contains("\u2717"), err.toString());
+            assertFalse(err.toString().contains("HTTP"), err.toString());
         }
     }
 }

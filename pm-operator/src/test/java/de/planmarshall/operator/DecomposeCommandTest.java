@@ -199,7 +199,7 @@ class DecomposeCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Epic ep-001 not found."), out.toString()),
+                            () -> assertTrue(err.toString().contains("Epic ep-001 not found."), err.toString()),
                             () -> assertTrue(targets.stream().noneMatch(target -> target.contains("/decomposition")),
                                                 targets.toString())
         );

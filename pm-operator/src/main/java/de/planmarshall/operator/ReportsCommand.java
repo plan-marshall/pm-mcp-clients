@@ -44,6 +44,9 @@ import picocli.CommandLine.Spec;
 public final class ReportsCommand implements Callable<Integer> {
 
     private static final String REPORTS_API = "/api/v1/reports/";
+    private static final String GLYPH_CHECK = "\u2713 ";
+    private static final String KEY_COUNT = "count";
+    private static final String KEY_READ_DONE = "report.read.done";
 
     private final OperatorContext context;
 
@@ -71,21 +74,22 @@ public final class ReportsCommand implements Callable<Integer> {
 
         var response = context.runtime(true).send(HttpRequest.get(path));
         if (response.status() == 200) {
-            printReports(out, response.bodyText());
+            printReports(out, context.clientEnvironment().locale(), response.bodyText());
             return 0;
         }
         throw new OperatorRefusedException("reports", response);
     }
 
-    private static void printReports(PrintWriter out, String bodyText) throws IOException {
+    private static void printReports(PrintWriter out, String locale, String bodyText) throws IOException {
         var page = ReportsPage.fromJson(bodyText);
         if (page.items().isEmpty()) {
-            out.println(MessageCatalogue.get("report.list.empty"));
+            out.println(MessageCatalogue.get(locale, "report.list.empty"));
             out.flush();
             return;
         }
 
-        out.printf("Reports · %d unread%n", page.unreadCount());
+        out.println(MessageCatalogue.format(locale, "operator.reports.title",
+                            Map.of(KEY_COUNT, page.unreadCount())));
 
         var projectGroups = groupReportsByProject(page.items());
         for (var entry : projectGroups.entrySet()) {
@@ -96,7 +100,7 @@ public final class ReportsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format("operator.reports.read_hint", Map.of("id", firstId)));
 
         if (page.hasOlder() && page.olderCount() > 0) {
-            out.println(MessageCatalogue.format("operator.reports.older", Map.of("count", page.olderCount())));
+            out.println(MessageCatalogue.format("operator.reports.older", Map.of(KEY_COUNT, page.olderCount())));
         }
         out.flush();
     }
@@ -210,7 +214,7 @@ public final class ReportsCommand implements Callable<Integer> {
                 return readAll(out);
             }
             if (reportIds.isEmpty()) {
-                out.println("Specify report IDs or --all.");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.reports.ids_required", Map.of()));
                 out.flush();
                 return 1;
             }
@@ -230,7 +234,8 @@ public final class ReportsCommand implements Callable<Integer> {
                 ids.add(item.id());
             }
             if (ids.isEmpty()) {
-                out.println("0 reports marked read.");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    KEY_READ_DONE, Map.of(KEY_COUNT, 0)));
                 out.flush();
                 return 0;
             }
@@ -239,13 +244,14 @@ public final class ReportsCommand implements Callable<Integer> {
                                                     ReadReportsRequest.of(ids).toJson()));
             if (response.status() == 200 || response.status() == 204) {
                 var parsed = ReadReportsResponse.fromJson(response.bodyText());
-                out.printf("✓ %d reports marked read.%n", parsed.markedCount());
+                out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
+                                    Map.of(KEY_COUNT, parsed.markedCount())));
                 // The command reads only the first page it lists: say so instead of letting the
                 // operator read "marked read" as "nothing unread is left" (decision 10).
                 if (page.hasOlder() && page.olderCount() > 0) {
                     out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.reports.read_all.older",
-                                        Map.of("count", page.olderCount())));
+                                        Map.of(KEY_COUNT, page.olderCount())));
                 }
                 out.flush();
                 return 0;
@@ -265,7 +271,8 @@ public final class ReportsCommand implements Callable<Integer> {
                     out.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", id)));
                 }
             }
-            out.printf("✓ %d reports marked read.%n", marked);
+            out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
+                                Map.of(KEY_COUNT, marked)));
             out.flush();
             return 0;
         }

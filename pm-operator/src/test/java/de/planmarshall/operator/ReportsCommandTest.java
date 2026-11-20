@@ -167,7 +167,8 @@ class ReportsCommandTest {
                                                 requests.get(1).bodyText()),
                             () -> assertFalse(requests.get(1).bodyText().contains("\"all\""),
                                                 requests.get(1).bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ " + markedCount + " reports marked read.")),
+                            () -> assertTrue(out.toString().contains("✓ " + markedCount + " report"),
+                                                out.toString()),
                             () -> assertFalse(out.toString().contains("older unread reports remain"),
                                                 "a list with no second page prints no older-page hint: " + out)
         );
@@ -274,7 +275,7 @@ class ReportsCommandTest {
     void reportsReadNoIds() {
         int code = execute("reports", "read");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Specify report IDs or --all."));
+        assertTrue(out.toString().contains("Give the report ids, or --all."));
     }
 
     @Test
@@ -293,7 +294,7 @@ class ReportsCommandTest {
         int code = execute("reports", "read", "rep-001", "rep-404");
         assertEquals(0, code);
         assertTrue(out.toString().contains("rep-404 is no report of this machine; reports lists the unread ones."));
-        assertTrue(out.toString().contains("✓ 1 reports marked read."));
+        assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString());
     }
 
     @Test

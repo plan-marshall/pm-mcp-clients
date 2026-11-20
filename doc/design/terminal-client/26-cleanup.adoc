@@ -267,8 +267,8 @@ The texts of the job, the kept list, the durations, and the residue are those of
 |lösche…
 
 |`operator.cleanup.choose.remind`
-|ask me again
-|frag mich später wieder
+|ask me again in {days, plural, one {# day} other {# days}}
+|in {days, plural, one {# Tag} other {# Tagen}} wieder fragen
 
 |`operator.cleanup.choose.ignore`
 |ignore

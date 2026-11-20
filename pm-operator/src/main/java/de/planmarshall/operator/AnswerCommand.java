@@ -362,7 +362,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("later " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -376,7 +376,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("withdraw " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -445,7 +445,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var refusal = new OperatorRefusedException("answer " + questionId, response);
         if (isDecisionRefusal(refusal.code())) {
-            return handleDecisionRefusal(out, envelope, refusal, locale);
+            return handleDecisionRefusal(out, spec.commandLine().getErr(), envelope, refusal, locale);
         }
         throw refusal;
     }
@@ -816,7 +816,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 progress = new Progress(reopenIndex, progress.note());
                 answers.keySet().removeIf(key -> key >= reopenIndex);
             } catch (OperatorRefusedException refused) {
-                var exit = handleInteractiveRefusal(session, envelope, refused);
+                var exit = handleInteractiveRefusal(session, envelope, parts, answers, refused);
                 if (exit.isPresent()) {
                     return exit.getAsInt();
                 }
@@ -847,21 +847,99 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private OptionalInt handleInteractiveRefusal(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers,
                         OperatorRefusedException refused) throws OperatorRefusedException {
         if (refused.code() == ApiErrorCode.INVALID_ANSWER || refused.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
-            var wire = refused.code().wire();
-            var refusalReason = refused.serverMessage() != null ? refused.serverMessage() : "";
-            session.out().println(MessageCatalogue.format(session.locale(), "decision.refused." + wire, Map.of(
-                                REASON_KEY, refusalReason,
-                                "n", 1
-            )));
+            var key = refusalKey(refused, parts, answers);
+            session.out().println(MessageCatalogue.format(session.locale(), key,
+                                refusalTextArguments(refused, parts, answers)));
             session.out().flush();
             return OptionalInt.empty();
         }
         if (refused.code() == ApiErrorCode.CONFLICT || refused.code() == ApiErrorCode.ALREADY_ANSWERED) {
-            return OptionalInt.of(handleDecisionRefusal(session.out(), envelope, refused, session.locale()));
+            return OptionalInt.of(handleDecisionRefusal(session.out(), session.out(), envelope, refused,
+                                session.locale()));
         }
         throw refused;
+    }
+
+    /**
+     * @param refusal the refusal of an answer
+     * @param parts   the parts of the decision, or {@code null} where the run sends one answer at once
+     * @param answers the answers given so far, or {@code null}
+     * @return the catalogue key that says what happened, with the part the refusal names
+     */
+    private static String refusalKey(OperatorRefusedException refusal, @Nullable List<DecisionPart> parts,
+                        @Nullable Map<Integer, PartAnswer> answers) {
+        var code = refusal.code();
+        if (code == ApiErrorCode.DEPENDENCY_UNANSWERED) {
+            return partOf(refusal, parts, answers) != null
+                                ? "decision.refused.dependency_unanswered"
+                                : "decision.refused.dependency_unanswered_unnamed";
+        }
+        if (code == ApiErrorCode.INVALID_ANSWER) {
+            return reasonOf(refusal) != null
+                                ? "decision.refused.invalid_answer"
+                                : "decision.refused.invalid_answer_no_reason";
+        }
+        if (code == ApiErrorCode.ALREADY_ANSWERED) {
+            return "decision.refused.already_answered";
+        }
+        return "decision.refused.conflict";
+    }
+
+    private static Map<String, Object> refusalTextArguments(OperatorRefusedException refusal,
+                        @Nullable List<DecisionPart> parts, @Nullable Map<Integer, PartAnswer> answers) {
+        var part = partOf(refusal, parts, answers);
+        var reason = reasonOf(refusal);
+        if (refusal.code() == ApiErrorCode.DEPENDENCY_UNANSWERED) {
+            return part != null ? Map.of("n", part) : Map.of();
+        }
+        if (reason == null) {
+            return Map.of();
+        }
+        return part != null
+                            ? Map.of(REASON_KEY, reason, "n", part)
+                            : Map.of(REASON_KEY, reason);
+    }
+
+    /**
+     * @param refusal the refusal
+     * @param parts   the parts of the decision, or {@code null}
+     * @param answers the answers given so far, or {@code null}
+     * @return the part the refusal names or the first part still unanswered, or {@code null} when
+     *         neither the body nor the dialogue can name it
+     */
+    private static @Nullable Integer partOf(OperatorRefusedException refusal, @Nullable List<DecisionPart> parts,
+                        @Nullable Map<Integer, PartAnswer> answers) {
+        for (var name : List.of("part", "n")) {
+            var named = refusal.arguments().get(name);
+            if (named == null || !named.matches("\\d+")) {
+                continue;
+            }
+            try {
+                return Integer.parseInt(named);
+            } catch (NumberFormatException _) {
+                // A part this client cannot represent names nothing it can point at.
+            }
+        }
+        if (parts == null || answers == null) {
+            return null;
+        }
+        for (int i = 0; i < parts.size(); i++) {
+            if (!answers.containsKey(i)) {
+                return i + 1;
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable String reasonOf(OperatorRefusedException refusal) {
+        var reason = refusal.serverMessage();
+        if (reason == null || reason.isBlank() || reason.equals(refusal.rawCode())) {
+            return null;
+        }
+        return reason;
     }
 
     private record WalkOutcome(OptionalInt exitCode, Progress progress) {
@@ -1735,17 +1813,12 @@ public final class AnswerCommand implements Callable<Integer> {
                             || code == ApiErrorCode.DEPENDENCY_UNANSWERED;
     }
 
-    private int handleDecisionRefusal(PrintWriter out, DecisionEnvelope envelope,
+    private int handleDecisionRefusal(PrintWriter out, PrintWriter refusalWriter, DecisionEnvelope envelope,
                         OperatorRefusedException refusal, String locale) {
         printDecisionDetail(out, envelope, locale);
-        var wire = refusal.code() != null ? refusal.code().wire() : "conflict";
-        var key = "decision.refused." + wire;
-        var refusalReason = refusal.serverMessage() != null ? refusal.serverMessage() : "";
-        out.println(MessageCatalogue.format(locale, key, Map.of(
-                            REASON_KEY, refusalReason,
-                            "n", 1
-        )));
-        out.flush();
+        var key = refusalKey(refusal, null, null);
+        refusalWriter.println(MessageCatalogue.format(locale, key, refusalTextArguments(refusal, null, null)));
+        refusalWriter.flush();
         return 1;
     }
 

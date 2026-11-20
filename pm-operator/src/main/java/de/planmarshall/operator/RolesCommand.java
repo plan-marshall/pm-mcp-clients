@@ -70,6 +70,7 @@ public final class RolesCommand implements Callable<Integer> {
     private static final String KEY_NONE = "common.none";
     private static final Map<String, String> MEASUREMENT_LABELS = measurementLabels();
     private static final int LABEL_WIDTH = 16;
+    private static final String PARAM_ROW = "  %-" + (LABEL_WIDTH + 8) + "s %s%n";
     private static final int[] LIST_WIDTHS = {18, 8, 10, 6, 16, 22, 14, 20, 6};
 
     private final OperatorContext context;
@@ -269,9 +270,11 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (!detail.configurationParameters().isEmpty()) {
                 out.println(text(locale, "operator.roles.show.parameters"));
-                detail.configurationParameters().forEach((key, value) -> out.printf(Locale.ROOT,
-                                    "  %-" + (LABEL_WIDTH + 8) + "s %s%n",
-                                    OutputSafety.stripControlSequences(key), displayValue(locale, value)));
+                for (var entry : detail.configurationParameters().entrySet()) {
+                    out.printf(Locale.ROOT, PARAM_ROW,
+                                        OutputSafety.stripControlSequences(entry.getKey()),
+                                        displayValue(locale, entry.getValue()));
+                }
             }
             out.flush();
         }

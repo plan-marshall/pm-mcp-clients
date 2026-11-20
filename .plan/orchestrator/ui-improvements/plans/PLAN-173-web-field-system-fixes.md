@@ -127,10 +127,10 @@ Not in this plan, named so they are not lost (each stays in `epic.md` as an Open
 
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (the operator's word of 2026-11-20: plan-marshall plans, not runbook lanes; the spec below is read at `phase-1-init`, where "the lane" means the executing run).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-173-web-field-system-fixes.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-173-web-field-system-fixes.md"
 ```
 
 ## Write-Boundary

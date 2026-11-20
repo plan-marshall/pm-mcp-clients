@@ -8,7 +8,22 @@
   let { view }: ScreenProps = $props();
 
   let stores = $derived(view.arrayField<StoreRow>('stores'));
-  let platform = $derived(view.field('platform') ?? view.field('os') ?? view.field('backend'));
+
+  /**
+   * Records the link of the kind the operator chose: `os` for an available OS store, `file` for the
+   * file store, and `os_unavailable` for an OS store that is not available now — the catalogue's
+   * way into `store.unavailable` (`19-onboarding-aspects-models-providers.adoc:185-191`). A kind
+   * the state offers no link for records nothing; the screen never falls back to another link.
+   *
+   * @param choice the kind the operator chose
+   */
+  function record(choice: unknown): void {
+    const kind = String(choice);
+    const store = stores.find((s) => s.kind === kind);
+    const linkId = kind === 'os' && store && !store.available ? 'os_unavailable' : kind;
+    const target = view.linkBy(linkId);
+    if (target) view.onLink(target.id);
+  }
 </script>
 
 <div class="state-card">
@@ -21,12 +36,8 @@
     <AspectChoice
       kind="store"
       {stores}
-      {platform}
       busy={view.busy}
-      onRecord={(choice) => {
-        const target = view.linkBy(String(choice), 'os', 'file') ?? view.links[0];
-        if (target) view.onLink(target.id);
-      }}
+      onRecord={record}
     />
   {:else if view.links.length === 0}
     <p class="state-card__next">{$t('onboard.state.no_links')}</p>

@@ -28,7 +28,7 @@
       <li class="completed-row">
         <span class="completed-row__name">{harness.name ?? harness.harness_id ?? ''}</span>
         <span class="completed-row__value">
-          {harnessUsageText($t, harness, { preferDetailOnComplete: true })}
+          {harnessUsageText($t, harness)}
         </span>
       </li>
     {/each}

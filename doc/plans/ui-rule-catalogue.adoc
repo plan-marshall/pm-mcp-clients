@@ -1,0 +1,38 @@
+= The web app's objective UI rules as a closed catalogue
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `ui-rule-catalogue`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap], client work (visual design of the web app)
+Where:: `pm-web-app` (styles and components), `pm-web-e2e` (the guards of `theme-readability.spec.js` and `mobile.spec.js`)
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+The guards of the web app's visual verification are separate checks (VD-V-02, VD-V-06, VD-V-08 of link:../claude_review/visual-design/verification.adoc[Visual Design: Verification]). This package gathers the objective ones into one closed catalogue and runs it once against the app. Taste rules (a typeface, a palette, a label above a heading) are not part of it: the typeface is a decision of the design (link:../design/web-app/README.adoc[Web App Design], the interface typeface Inter).
+
+== Tasks
+
+. The design states the catalogue in its verification matrix: one id per rule, a tier per rule (`fail`: blocks; `default`: reported and counted; `advisory`: reported, never counted), the evidence and the fix a finding carries, and the rule that an id is never reused. The rules are the objective ones only: text and state contrast against the pixels a browser painted, horizontal overflow at 320, 390, 768, 1280 and 1920 px, running text below 12 px, functional text below 11 px, a focus ring that a real Tab walk shows and measures, text covered by another element, content hidden at rest (opacity 0 or removed until a script runs), a script error on load, a broken image, a transition of `all` or of a layout property (`width`, `height`, `top`, `left`).
+  Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
+  Proof: the matrix names every rule of the catalogue with its tier; a document check fails when an id appears twice or is reused.
+. One module of `pm-web-e2e` holds the catalogue as data (id, tier) and every guard reports through it; the existing guards of VD-V-02, VD-V-06 and VD-V-08 become rules of it, not a second list.
+  Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
+  Proof: a test fails when the tier table of the code and the matrix of the design disagree, in either direction.
+. A fixture per rule: a small page that must produce exactly the rule's expected count of findings, and a clean page that produces none.
+  Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
+  Proof: the fixture test of each rule asserts the exact count, so a rule that stops firing or fires on the clean page fails the build.
+. A waiver is a record of the audit allowlist: the rule id, the selector or value it covers, and a reason; a waiver without a reason, one that covers a whole rule or a wildcard, and one that no finding uses any more fail the run.
+  Anchor: link:../design/web-app/theme-readability.adoc#audit-allowlist[Theme Readability, The Audit Allowlist].
+  Proof: three unit tests, one per refused form, and one that reports an unused waiver.
+. A run that could not execute a rule says so: the report names the rules it ran and the rules it did not run and why (no browser, a route that did not load), and is never read as a pass.
+  Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
+  Proof: a test with a route that fails to load reports its rules as not run and exits with a failure.
+. The catalogue runs once against every declared view of `pm-web-app` in both themes, and its findings are fixed or waived with a reason; the five uses of `transition: all` (`Button`, `CheckGroup`, `RadioGroup`, `SystemView`, `CleanupView`) are the first findings the run is expected to show.
+  Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
+  Proof: the run is green; the waivers it needed are listed in the pull request.
+
+== Trace
+
+* Design: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/anti-slop-skills.adoc[The Anti-Slop Skill That Beat Impeccable] with its analyses of Hallmark and Impeccable

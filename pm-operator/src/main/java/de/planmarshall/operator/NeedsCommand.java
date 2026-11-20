@@ -113,8 +113,9 @@ public final class NeedsCommand implements Callable<Integer> {
     private static void printShowMore(PrintWriter out, NeedsOperatorPage page, String locale) {
         if (page.hasOlder()) {
             // The step is actionable: the next page is one option away, never a silent cut.
-            out.println(MessageCatalogue.format(locale, "overview.needs.more", Map.of())
-                                + "  needs --page " + (page.page() + 1));
+            out.println(MessageCatalogue.format(locale, "overview.needs.more", Map.of()) + " "
+                                + MessageCatalogue.format(locale, "operator.needs.more_hint",
+                                Map.of("page", page.page() + 1)));
         }
     }
 

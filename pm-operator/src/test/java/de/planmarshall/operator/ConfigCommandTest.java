@@ -435,8 +435,8 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
-                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
-                                                out.toString()),
+                            () -> assertTrue(err.toString().contains("Unable to load settings."), err.toString()),
+                            () -> assertFalse(out.toString().contains("Unable to load settings."), out.toString()),
                             () -> assertTrue(writes.isEmpty(), writes.toString()));
     }
 
@@ -478,8 +478,8 @@ class ConfigCommandTest {
         int code = execute("config", "show");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
-                                                out.toString())
+                            () -> assertTrue(err.toString().contains("\u2717"), err.toString()),
+                            () -> assertFalse((out.toString() + err).contains("HTTP 500"), out + " " + err)
         );
     }
 
@@ -625,6 +625,30 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("a config aspect reports a step the runtime refuses")
+    void configAspectReportsARefusedStep() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var steps = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, ONBOARD_COMPLETED);
+            } else if ("/api/v1/onboarding/step".equals(request.target())) {
+                steps.add(request.bodyText() == null ? "" : request.bodyText());
+                response.send(409, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "language", "--interface", "de");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertFalse(steps.isEmpty(), "the refused request must be a step POST: " + steps),
+                            () -> assertTrue(err.toString().contains("The runtime refused"), err.toString()));
+    }
+
+    @Test
     @DisplayName("a config aspect carries its consent and answers a consent state with yes")
     void configHarnessesRunsTheAspect() throws Exception {
         var steps = new ArrayList<String>();
@@ -672,7 +696,8 @@ class ConfigCommandTest {
 
         int code = execute("config", "consents");
         assertEquals(1, code, out.toString());
-        assertTrue(out.toString().contains("Unable to load settings"), out.toString());
+        assertTrue(err.toString().contains("\u2717"), err.toString());
+        assertFalse((out.toString() + err).contains("HTTP"), out + " " + err);
     }
 
     @Test
@@ -755,7 +780,7 @@ class ConfigCommandTest {
         int code = execute("config", "cleanup", "--plans", "3", "--yes");
 
         assertAll(
-                            () -> assertEquals(3, code, out.toString()),
+                            () -> assertEquals(1, code, out.toString()),
                             () -> assertTrue(err.toString().contains("At least 7 days, or never."), err.toString()),
                             () -> assertEquals(0, writes.get(), "no duration is written"));
     }
@@ -948,8 +973,8 @@ class ConfigCommandTest {
         var text = out.toString();
         assertAll(
                             () -> assertEquals(1, code, text + err),
-                            () -> assertTrue(text.contains("\u2717"), text + err),
-                            () -> assertFalse((text + err).contains("HTTP 403"), text + err));
+                            () -> assertTrue(err.toString().contains("\u2717"), text + err),
+                            () -> assertFalse((text + err.toString()).contains("HTTP 403"), text + err));
     }
 
     @Test
@@ -1004,6 +1029,19 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(2, code, out.toString()),
                             () -> assertTrue(err.toString().contains("is the machine's only"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("config cleanup --remind never is refused with the remind-specific text")
+    void cleanupRemindNeverIsRefusedWithItsOwnText() throws Exception {
+        fixture.start((request, response) -> response.json(200, SETTINGS));
+
+        int code = execute("config", "cleanup", "--remind", "never", "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("At least 1 days."), err.toString()),
+                            () -> assertFalse(err.toString().contains("or never"), err.toString()));
     }
 
     /** A settings server that records the machine-settings write, or {@code null} when none came. */

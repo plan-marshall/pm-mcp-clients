@@ -64,6 +64,15 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
    - Browser check (Playwright MCP) on `reports-and-system` at 1440×900 and 390×844, `de` and `en`, both themes; baseline and after screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it); the contrast audit `theme-readability.spec.js` passes for both views (evidence order: `none`).
+5. **The lint's tests and the event sets' tests assert what they claim (the residue of PLAN-170 and PLAN-165; the operator's decision of 2026-11-20: folded in here; done first)**
+ - What: this plan reads the vocabulary lint's baseline and tests (`scripts/vocabulary-baseline.json`, `vocabularyLint.test.ts`) and its Done-whens say "`npm run lint:vocabulary` reports 0 findings"; the lint's tests must be able to fail for what they name. (a) The tests of PLAN-170 (#507, `landings/PLAN-170.md`): the test for an unparseable `.svelte` source asserts the parser's message and the line it reports (it asserts `line >= 1`, which the fallback line 1 always satisfies); the `--write-baseline` refusal test asserts that the message names the file and both counts, and a test covers the new-file refusal; the missing `scripts/` test asserts the error line; the "a lint rule added to the rule list appears as a column" test adds a rule to `RULES` and not to the findings; an unchanged baseline is left byte-identical by `--write-baseline` (it sorts rules alphabetically and rewrites eight files today). (b) The fixture check's `catch` of `vocabulary.test.ts` falls back to the regex `<Name\b(?![^<]*>)`, which is inverted for normal tags, swallows the parse error and accepts `<!-- <Button < -->` plus an unclosed `<div>` (CodeRabbit's inline-2 of #507, declined wrongly): a fixture that does not parse fails the test with the parser's message. (c) The printed-format change of PLAN-170 (an always-present `unparseable` column, an unparseable line without "use", the parser message in `component`) is written in the script's header comment where its output format is stated. (d) The tests of PLAN-165 (#503, `landings/PLAN-165.md` L3-1): the four consumer tests iterate the exported refresh sets (`it.each(<the set>)`), so a member removed from a set fails nothing; `refreshEvents.test.ts` pins the content of each of the three exported sets as a literal inventory (the one-time diff of PLAN-165 shows the sets equal the literals of `ac538733` minus `project.released` and `project.enrolled`).
+ - Persona: plan-marshall:persona-module-tester
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-frontend:lint-config
+ - Done when:
+   - A test fails at `9dbaea80` and passes: a fixture that does not parse fails the fixture check with the parser's message (evidence order: `test-first`).
+   - Each strengthened assertion of (a) and the content pins of (d) fail when the production line or the set member they cover is changed, run once each and recorded (evidence order: `mutation-after`).
+   - `--write-baseline` on an unchanged baseline leaves the file byte-identical: the test fails at `9dbaea80` for the eight files that are reordered today (evidence order: `test-first`).
+   - The header comment of the lint script states the printed format, read by the lane (evidence order: `none`).
 
 ## Standing Constraints
 
@@ -104,6 +113,9 @@ Not in this plan: the column engine, `?open=` addresses and the heading outline 
 
 - OBSERVED: `pm-web-app/src/lib/views/SystemView.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/SystemView.test.ts` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/scripts/vocabulary-lint.mjs` — present at `a3919eb1` (deliverable 5, 2026-11-20)
+- OBSERVED: `pm-web-app/src/lib/vocabulary.test.ts` — present at `a3919eb1` (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/stores/refreshEvents.test.ts` — present at `a8ac159d` (deliverable 5)
 - OBSERVED: `pm-web-app/src/lib/views/CleanupView.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/CleanupView.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/system.spec.js` — present at HEAD 1cc0e10e

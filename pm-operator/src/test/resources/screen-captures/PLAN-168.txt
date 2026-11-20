@@ -1,0 +1,27 @@
+# Screen captures for PLAN-168: the refusal path and the dialogue lines
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
+#
+# `plan nope`, `epic nope`, `answer Q-999 1` and `config cleanup --remind never --yes` are the
+# refusals; the console lines show that the interactive console keeps its one stream and shows the
+# same three lines. `epic next` shows the launch without asking when a plan is launchable.
+
+PLAN-168-plan-nope-80x24-en | running-work | - | plan nope | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-168-plan-nope-80x24-de | running-work | - | plan nope | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-168-epic-nope-80x24-en | running-work | - | epic nope | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-168-epic-nope-80x24-de | running-work | - | epic nope | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-168-config-cleanup-remind-80x24-en | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-168-config-cleanup-remind-80x24-de | fully-onboarded | - | config cleanup --remind never --yes | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-168-console-plan-nope-80x24-en | running-work | - |  | plan nope\nexit\n | 80x24 | en_US.UTF-8 | -
+PLAN-168-console-plan-nope-80x24-de | running-work | - |  | plan nope\nexit\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-168-console-epic-nope-80x24-en | running-work | - |  | epic nope\nexit\n | 80x24 | en_US.UTF-8 | -
+PLAN-168-console-epic-nope-80x24-de | running-work | - |  | epic nope\nexit\n | 80x24 | de_DE.UTF-8 | -
+
+PLAN-168-answer-nope-80x24-en | running-work | - | answer Q-999 1 | - | 80x24 | en_US.UTF-8 | - | - | - | 1
+PLAN-168-answer-nope-80x24-de | running-work | - | answer Q-999 1 | - | 80x24 | de_DE.UTF-8 | - | - | - | 1
+
+PLAN-168-epic-next-80x24-en | running-work | - | epic next relay-hardening | - | 80x24 | en_US.UTF-8 | - | - | - | 0
+PLAN-168-epic-next-80x24-de | running-work | - | epic next relay-hardening | - | 80x24 | de_DE.UTF-8 | - | - | - | 0

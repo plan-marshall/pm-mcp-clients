@@ -339,7 +339,7 @@ final class WorkActionDialogue {
             var candidate = launchable != null ? launchable : nextScopeBlocked(epic);
             if (candidate != null) {
                 if (!askRaise(epic, running, candidate)) {
-                    prompt.line("operator.dialogue.left", Map.of(KEY_STATE, "epic.raise-scope"));
+                    prompt.line("operator.dialogue.left_raise_scope", Map.of());
                     return 0;
                 }
                 client.perform(kind, id, "next", Map.of("raise_scope", true));
