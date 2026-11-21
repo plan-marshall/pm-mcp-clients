@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import SecretField from './SecretField.svelte';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 import {
@@ -164,6 +165,32 @@ describe('SecretField', () => {
       } finally {
         process.off('unhandledRejection', unhandled);
       }
+    });
+
+    it('keeps what the operator typed while the store was pending when the store is then rejected', async () => {
+      let rejectStore: (reason: Error) => void = () => {};
+      const storing = new Promise<void>((_resolve, reject) => {
+        rejectStore = reject;
+      });
+      const onstore = vi.fn(() => storing);
+      const { container } = render(SecretField, {
+        props: { label: 'New Secret', onstore, storeLabel: 'Save Secret' },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+
+      await fireEvent.input(input, { target: { value: 'tok-old' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Save Secret' }));
+      expect(onstore).toHaveBeenCalledExactlyOnceWith('tok-old');
+      expect(input.value).toBe('');
+
+      await fireEvent.input(input, { target: { value: 'tok-new' } });
+      rejectStore(new Error('store refused'));
+      // The field awaited the store first, so its rejection branch has run once this settles.
+      await storing.catch(() => undefined);
+      await tick();
+
+      expect(input.value).toBe('tok-new');
+      expect(input.type).toBe('password');
     });
   });
 

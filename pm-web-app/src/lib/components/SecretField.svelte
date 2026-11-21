@@ -114,8 +114,9 @@
 
   /**
    * Hands the secret to `onstore` and forgets it: the field is cleared and masked at once. A
-   * rejected store puts the secret back, still masked, so the operator's input is not lost; the
-   * caller reports the failure through `error`, so the rejection is not rethrown.
+   * rejected store puts the secret back, still masked, so the operator's input is not lost — but
+   * only into a field still empty: what was typed while the store was pending is newer and stays.
+   * The caller reports the failure through `error`, so the rejection is not rethrown.
    */
   async function handleStore(): Promise<void> {
     if (!value || disabled) return;
@@ -125,7 +126,9 @@
     try {
       await onstore?.(secretToStore);
     } catch {
-      value = secretToStore;
+      if (!value) {
+        value = secretToStore;
+      }
     }
   }
 </script>
