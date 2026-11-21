@@ -46,8 +46,15 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/reason/i);
   });
 
-  it('moves focus in document order from text field to textarea to buttons', () => {
+  it('moves focus in document order from text field to textarea to buttons', async () => {
     render(DemoFormFixture);
+    // Both fields are filled, so Save is enabled too and every control can take the focus.
+    await fireEvent.input(screen.getByTestId('demo-form-text'), {
+      target: { value: 'Release notes' },
+    });
+    await fireEvent.input(screen.getByTestId('demo-form-textarea'), {
+      target: { value: 'Ship it' },
+    });
 
     const order = [
       screen.getByTestId('demo-form-text'),
@@ -56,8 +63,12 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
       screen.getByRole('button', { name: /save/i }),
     ];
 
-    // Tab follows the document where no control carries a positive tabindex.
-    expect(order.map((control) => control.tabIndex > 0)).toEqual([false, false, false, false]);
+    // Tab reaches a control only when it is enabled and its tabindex is 0 (not -1, not positive);
+    // the document order then is the Tab order.
+    for (const control of order) {
+      expect(control).toBeEnabled();
+      expect(control.tabIndex).toBe(0);
+    }
     for (const [index, control] of order.slice(0, -1).entries()) {
       expect(
         control.compareDocumentPosition(order[index + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,

@@ -183,7 +183,14 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     return { ...errors };
   }
 
-  /** @returns whether a value differs from the one the form started with or last submitted */
+  /**
+   * Values are compared by identity (`Object.is`), so a field value is replaced, never mutated: a
+   * caller that changes an array or an object field in place and reports the same reference through
+   * `onFieldInput` is not seen as a change. Every field this repository passes through a form is a
+   * scalar.
+   *
+   * @returns whether a value differs from the one the form started with or last submitted
+   */
   function isDirty(): boolean {
     return Object.keys(fields).some((key) => !Object.is(values[key], baseline[key]));
   }
