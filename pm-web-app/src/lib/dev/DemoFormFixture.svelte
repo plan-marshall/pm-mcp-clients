@@ -6,7 +6,7 @@
   import { t } from '../i18n';
   import {
     createForm,
-    handleFormKeyDown,
+    createFormKeyboard,
     handleTextAreaKeyDown,
     handleInlineEditKeyDown,
   } from '../forms';
@@ -75,6 +75,9 @@
     cancelled = true;
     submitted = false;
   }
+
+  /** The form's Enter submit, which skips the Enter that confirms an IME composition. */
+  const keyboard = createFormKeyboard(handleSubmit);
 </script>
 
 <UnsavedChangesGuard {dirty}>
@@ -87,9 +90,11 @@
       handleSubmit();
     }}
     onkeydown={(e) => {
-      handleFormKeyDown(e, handleSubmit);
+      keyboard.keydown(e);
       handleInlineEditKeyDown(e, handleCancel);
     }}
+    onkeyup={keyboard.keyup}
+    oncompositionend={keyboard.compositionend}
   >
     <TextField
       value={$form.values.title}

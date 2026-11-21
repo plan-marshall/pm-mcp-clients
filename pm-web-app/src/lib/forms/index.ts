@@ -10,21 +10,56 @@
 import { get, writable } from 'svelte/store';
 import { t } from '../i18n';
 
+/** The keyboard listeners of one one-line form, attached to the form element itself. */
+export interface FormKeyboard {
+  /** The form's `keydown` listener: Enter submits. */
+  keydown: (e: KeyboardEvent) => void;
+  /** The form's `keyup` listener: ends the window of a composition's confirming Enter. */
+  keyup: () => void;
+  /** The form's `compositionend` listener: opens the window of a composition's confirming Enter. */
+  compositionend: () => void;
+}
+
 /**
- * Keyboard handler for one-line forms: Enter submits.
+ * Keyboard listeners for a one-line form: Enter submits.
  *
- * The Enter that confirms an IME composition (`isComposing`) only ends the composition, and an
- * Enter on a checkbox or radio is not a submit: neither submits the form.
+ * The Enter that confirms an IME composition only ends the composition, and an Enter on a checkbox
+ * or radio is not a submit: neither submits the form. Browsers order the confirming Enter
+ * differently: Chromium and Firefox fire its `keydown` with `isComposing` set and `compositionend`
+ * after it, Safari fires `compositionend` first and the `keydown` with `isComposing` cleared. So a
+ * `compositionend` marks the composition as just ended: the next Enter `keydown` is the confirming
+ * one and does not submit, and the next `keyup` or other key ends the mark, so in the Chromium order
+ * (whose confirming `keydown` came before `compositionend`) the next genuine Enter submits.
+ *
+ * @param onSubmit called for an Enter that submits
+ * @returns the listeners to attach to the form's `keydown`, `keyup` and `compositionend`
  */
-export function handleFormKeyDown(e: KeyboardEvent, onSubmit: () => void): void {
-  if (e.key !== 'Enter' || e.isComposing) return;
-  const target = e.target as HTMLElement | null;
-  if (target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON') return;
-  if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')) {
-    return;
-  }
-  e.preventDefault();
-  onSubmit();
+export function createFormKeyboard(onSubmit: () => void): FormKeyboard {
+  /** Whether a composition has just ended and the Enter that may have confirmed it is still due. */
+  let compositionJustEnded = false;
+  return {
+    keydown(e: KeyboardEvent): void {
+      const confirmsComposition = compositionJustEnded;
+      compositionJustEnded = false;
+      if (e.key !== 'Enter' || e.isComposing || confirmsComposition) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON') return;
+      if (
+        target instanceof HTMLInputElement &&
+        (target.type === 'checkbox' || target.type === 'radio')
+      ) {
+        return;
+      }
+      e.preventDefault();
+      onSubmit();
+    },
+    keyup(): void {
+      compositionJustEnded = false;
+    },
+    compositionend(): void {
+      compositionJustEnded = true;
+    },
+  };
 }
 
 /**

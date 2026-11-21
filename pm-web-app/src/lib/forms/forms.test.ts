@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  handleFormKeyDown,
+  createFormKeyboard,
   handleTextAreaKeyDown,
   handleInlineEditKeyDown,
   createForm,
@@ -23,7 +23,7 @@ describe('lib/forms: The shape of a form', () => {
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
       input.dispatchEvent(event);
 
-      handleFormKeyDown(event, onSubmit);
+      createFormKeyboard(onSubmit).keydown(event);
       expect(onSubmit).toHaveBeenCalledOnce();
       expect(event.defaultPrevented).toBe(true);
     });
@@ -73,7 +73,7 @@ describe('lib/forms: The shape of a form', () => {
         cancelable: true,
       });
       input.dispatchEvent(composing);
-      handleFormKeyDown(composing, onSubmit);
+      createFormKeyboard(onSubmit).keydown(composing);
 
       const textarea = document.createElement('textarea');
       const composingCtrl = new KeyboardEvent('keydown', {
@@ -100,7 +100,7 @@ describe('lib/forms: The shape of a form', () => {
         const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
         choice.dispatchEvent(event);
 
-        handleFormKeyDown(event, onSubmit);
+        createFormKeyboard(onSubmit).keydown(event);
 
         expect(onSubmit).not.toHaveBeenCalled();
         expect(event.defaultPrevented).toBe(false);
@@ -113,7 +113,7 @@ describe('lib/forms: The shape of a form', () => {
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
       element.dispatchEvent(event);
 
-      handleFormKeyDown(event, onSubmit);
+      createFormKeyboard(onSubmit).keydown(event);
 
       expect(onSubmit).not.toHaveBeenCalled();
     });
@@ -123,9 +123,95 @@ describe('lib/forms: The shape of a form', () => {
       const event = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
       document.createElement('input').dispatchEvent(event);
 
-      handleFormKeyDown(event, onSubmit);
+      createFormKeyboard(onSubmit).keydown(event);
 
       expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    describe('the Enter that confirms an IME composition, in the order each browser fires it', () => {
+      /** A one-line form whose keyboard listeners sit on the form element, as a view attaches them. */
+      function oneLineForm() {
+        const onSubmit = vi.fn();
+        const keyboard = createFormKeyboard(onSubmit);
+        const form = document.createElement('form');
+        const input = document.createElement('input');
+        form.append(input);
+        form.addEventListener('keydown', keyboard.keydown);
+        form.addEventListener('keyup', keyboard.keyup);
+        form.addEventListener('compositionend', keyboard.compositionend);
+        return { onSubmit, input };
+      }
+
+      function key(type: 'keydown' | 'keyup', name: string, isComposing = false): KeyboardEvent {
+        return new KeyboardEvent(type, { key: name, isComposing, bubbles: true, cancelable: true });
+      }
+
+      function composition(type: 'compositionstart' | 'compositionend'): CompositionEvent {
+        return new CompositionEvent(type, { bubbles: true });
+      }
+
+      it('does not submit in the Safari order: compositionend, then the Enter keydown not composing', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        const confirming = key('keydown', 'Enter');
+
+        input.dispatchEvent(confirming);
+        input.dispatchEvent(key('keyup', 'Enter'));
+
+        expect(onSubmit).not.toHaveBeenCalled();
+        expect(confirming.defaultPrevented).toBe(false);
+      });
+
+      it('submits the next genuine Enter after a Safari confirming Enter', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keydown', 'Enter'));
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(genuine.defaultPrevented).toBe(true);
+      });
+
+      it('does not submit in the Chromium order and submits the next genuine Enter', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(key('keydown', 'Enter', true));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keyup', 'Enter'));
+        expect(onSubmit).not.toHaveBeenCalled();
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(genuine.defaultPrevented).toBe(true);
+      });
+
+      it('submits an Enter after a composition a key other than Enter confirmed', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keydown', ' '));
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+      });
+
+      it('submits a plain Enter without any composition', () => {
+        const { onSubmit, input } = oneLineForm();
+        const plain = key('keydown', 'Enter');
+
+        input.dispatchEvent(plain);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(plain.defaultPrevented).toBe(true);
+      });
     });
 
     it('Escape cancels an inline edit', () => {
