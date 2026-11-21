@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { uniqueId } from '../utils/uniqueId';
+
   /**
    * Checkbox control for an independent yes or no (components-fields.adoc, Choice Controls).
    *
@@ -37,7 +39,7 @@
     onchange,
   }: Props = $props();
 
-  const generatedId = `chk-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('chk');
   const effectiveId = $derived(id ?? generatedId);
 
   function handleClick(e: MouseEvent): void {

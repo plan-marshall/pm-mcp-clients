@@ -1,11 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
-  handleFormKeyDown,
+  createFormKeyboard,
   handleTextAreaKeyDown,
   handleInlineEditKeyDown,
   createForm,
   createUnsavedChangesGuard,
+  type FormState,
 } from './index';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+afterEach(() => {
+  currentLocale.set('en');
+  messagesStore.set(loadMessages('en'));
+});
 
 describe('lib/forms: The shape of a form', () => {
   describe('keyboard navigation and submits', () => {
@@ -15,7 +23,7 @@ describe('lib/forms: The shape of a form', () => {
       const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
       input.dispatchEvent(event);
 
-      handleFormKeyDown(event, onSubmit);
+      createFormKeyboard(onSubmit).keydown(event);
       expect(onSubmit).toHaveBeenCalledOnce();
       expect(event.defaultPrevented).toBe(true);
     });
@@ -55,6 +63,157 @@ describe('lib/forms: The shape of a form', () => {
       expect(cmdEnterEvent.defaultPrevented).toBe(true);
     });
 
+    it('does not submit on the Enter that confirms an IME composition, in a one-line form or a text area', () => {
+      const onSubmit = vi.fn();
+      const input = document.createElement('input');
+      const composing = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      input.dispatchEvent(composing);
+      createFormKeyboard(onSubmit).keydown(composing);
+
+      const textarea = document.createElement('textarea');
+      const composingCtrl = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      textarea.dispatchEvent(composingCtrl);
+      handleTextAreaKeyDown(composingCtrl, onSubmit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(composing.defaultPrevented).toBe(false);
+      expect(composingCtrl.defaultPrevented).toBe(false);
+    });
+
+    it.each(['checkbox', 'radio'])(
+      'does not submit on an Enter whose target is a %s input',
+      (type) => {
+        const onSubmit = vi.fn();
+        const choice = document.createElement('input');
+        choice.type = type;
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        choice.dispatchEvent(event);
+
+        createFormKeyboard(onSubmit).keydown(event);
+
+        expect(onSubmit).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+      },
+    );
+
+    it.each(['TEXTAREA', 'BUTTON'])('does not submit on an Enter whose target is a %s', (tag) => {
+      const onSubmit = vi.fn();
+      const element = document.createElement(tag);
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+
+      createFormKeyboard(onSubmit).keydown(event);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('ignores a key other than Enter in a one-line form', () => {
+      const onSubmit = vi.fn();
+      const event = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+      document.createElement('input').dispatchEvent(event);
+
+      createFormKeyboard(onSubmit).keydown(event);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    describe('the Enter that confirms an IME composition, in the order each browser fires it', () => {
+      /** A one-line form whose keyboard listeners sit on the form element, as a view attaches them. */
+      function oneLineForm() {
+        const onSubmit = vi.fn();
+        const keyboard = createFormKeyboard(onSubmit);
+        const form = document.createElement('form');
+        const input = document.createElement('input');
+        form.append(input);
+        form.addEventListener('keydown', keyboard.keydown);
+        form.addEventListener('keyup', keyboard.keyup);
+        form.addEventListener('compositionend', keyboard.compositionend);
+        return { onSubmit, input };
+      }
+
+      function key(type: 'keydown' | 'keyup', name: string, isComposing = false): KeyboardEvent {
+        return new KeyboardEvent(type, { key: name, isComposing, bubbles: true, cancelable: true });
+      }
+
+      function composition(type: 'compositionstart' | 'compositionend'): CompositionEvent {
+        return new CompositionEvent(type, { bubbles: true });
+      }
+
+      it('does not submit in the Safari order: compositionend, then the Enter keydown not composing', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        const confirming = key('keydown', 'Enter');
+
+        input.dispatchEvent(confirming);
+        input.dispatchEvent(key('keyup', 'Enter'));
+
+        expect(onSubmit).not.toHaveBeenCalled();
+        expect(confirming.defaultPrevented).toBe(false);
+      });
+
+      it('submits the next genuine Enter after a Safari confirming Enter', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keydown', 'Enter'));
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(genuine.defaultPrevented).toBe(true);
+      });
+
+      it('does not submit in the Chromium order and submits the next genuine Enter', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(key('keydown', 'Enter', true));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keyup', 'Enter'));
+        expect(onSubmit).not.toHaveBeenCalled();
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(genuine.defaultPrevented).toBe(true);
+      });
+
+      it('submits an Enter after a composition a key other than Enter confirmed', () => {
+        const { onSubmit, input } = oneLineForm();
+        input.dispatchEvent(composition('compositionstart'));
+        input.dispatchEvent(composition('compositionend'));
+        input.dispatchEvent(key('keydown', ' '));
+        const genuine = key('keydown', 'Enter');
+
+        input.dispatchEvent(genuine);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+      });
+
+      it('submits a plain Enter without any composition', () => {
+        const { onSubmit, input } = oneLineForm();
+        const plain = key('keydown', 'Enter');
+
+        input.dispatchEvent(plain);
+
+        expect(onSubmit).toHaveBeenCalledOnce();
+        expect(plain.defaultPrevented).toBe(true);
+      });
+    });
+
     it('Escape cancels an inline edit', () => {
       const onCancel = vi.fn();
       const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
@@ -88,7 +247,7 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.getErrors().code).toBeNull();
     });
 
-    it('moves focus to the first invalid field on submit', () => {
+    it('moves focus to the first invalid field on submit', async () => {
       const form = createForm({
         fields: {
           first: {
@@ -111,7 +270,7 @@ describe('lib/forms: The shape of a form', () => {
       secondInput.setAttribute('name', 'second');
       document.body.appendChild(secondInput);
 
-      const submitted = form.submit();
+      const submitted = await form.submit();
       expect(submitted).toBe(false);
       expect(focusSpy).toHaveBeenCalledOnce();
 
@@ -148,34 +307,399 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.getFormStatus().message).toBeNull();
       expect(form.getFieldDescribedByText('reason')).toBeUndefined();
     });
+
+    it.each([
+      ['en', 'Fill in this field.'],
+      ['de', 'Fülle dieses Feld aus.'],
+    ] as const)(
+      'names the catalogue reason of a required field that sets none, in %s',
+      (locale, reason) => {
+        currentLocale.set(locale);
+        messagesStore.set(loadMessages(locale));
+        const form = createForm({ fields: { title: { initial: '', required: true } } });
+
+        form.onFieldBlur('title');
+
+        expect(form.getErrors().title).toBe(reason);
+        expect(form.getDisabledReason()).toBe(reason);
+        expect(form.getFormStatus().message).toBe(reason);
+        expect(form.getFieldDescribedByText('title')).toBe(reason);
+      },
+    );
+
+    it('reads a shown catalogue reason in the language the operator switches to, and keeps a field reason as set', () => {
+      const form = createForm({
+        fields: {
+          title: { initial: '', required: true },
+          reason: { initial: '', required: true, requiredReason: 'Give a reason.' },
+        },
+      });
+      const seen: FormState<{ title: string; reason: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+      form.onFieldBlur('title');
+      form.onFieldBlur('reason');
+      expect(seen.at(-1)?.errors.title).toBe('Fill in this field.');
+
+      currentLocale.set('de');
+      messagesStore.set(loadMessages('de'));
+      unsubscribe();
+
+      expect(seen.at(-1)?.errors).toEqual({ title: 'Fülle dieses Feld aus.', reason: 'Give a reason.' });
+      expect(form.getErrors()).toEqual({ title: 'Fülle dieses Feld aus.', reason: 'Give a reason.' });
+    });
+
+    it('hands its values and errors to a subscriber on input, blur, submit and save', async () => {
+      const form = createForm({
+        fields: {
+          code: {
+            initial: '',
+            validate: (val: string) => (val.length < 5 ? 'Code must be at least 5 chars.' : null),
+          },
+        },
+      });
+      const seen: FormState<{ code: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+
+      form.onFieldInput('code', 'abc');
+      form.onFieldBlur('code');
+      form.onFieldInput('code', 'abcdef');
+      const submitted = await form.submit();
+      unsubscribe();
+
+      expect(submitted).toBe(true);
+      // The submit hands the checked values on, and the finished save hands them on once more.
+      expect(seen.map((state) => state.values.code)).toEqual([
+        '',
+        'abc',
+        'abc',
+        'abcdef',
+        'abcdef',
+        'abcdef',
+      ]);
+      expect(seen.map((state) => state.errors.code)).toEqual([
+        undefined,
+        undefined,
+        'Code must be at least 5 chars.',
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    it('hands the errors of a refused submit to a subscriber', async () => {
+      const form = createForm({ fields: { title: { initial: '', required: true } } });
+      const seen: FormState<{ title: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+
+      const submitted = await form.submit();
+      unsubscribe();
+
+      expect(submitted).toBe(false);
+      expect(seen.at(-1)?.errors.title).toBe('Fill in this field.');
+    });
+
+    it('is dirty once a value changes, and a successful submit makes the values its baseline', async () => {
+      const onSubmit = vi.fn();
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      expect(form.isDirty()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+
+      await expect(form.submit()).resolves.toBe(true);
+      expect(onSubmit).toHaveBeenCalledWith({ title: 'Release notes' });
+      expect(form.isDirty()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes, second draft');
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('stays clean when onSubmit keeps its argument and changes it after the save', async () => {
+      const kept: Array<{ title: string }> = [];
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: (submitted) => {
+          kept.push(submitted);
+        },
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).resolves.toBe(true);
+      kept[0].title = 'Changed by the caller';
+
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('makes the values clean without an onSubmit of the caller', async () => {
+      const form = createForm({ fields: { title: { initial: '' } } });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('stays dirty while an async save is pending and is clean once it has resolved', async () => {
+      let resolveSave: () => void = () => {};
+      const onSubmit = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve;
+          }),
+      );
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      form.onFieldInput('title', 'Release notes');
+
+      const saving = form.submit();
+      expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ title: 'Release notes' });
+      expect(form.isDirty()).toBe(true);
+
+      resolveSave();
+      await expect(saving).resolves.toBe(true);
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('keeps the submitted values as the baseline when the operator types on during the save', async () => {
+      let resolveSave: () => void = () => {};
+      const onSubmit = () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        });
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      form.onFieldInput('title', 'Release notes');
+
+      const saving = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      resolveSave();
+      await saving;
+
+      expect(form.isDirty()).toBe(true);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(false);
+    });
+
+    /**
+     * @returns a form whose saves stay pending until the test resolves (`saves`) or rejects
+     *          (`failures`) each by its position
+     */
+    function formWithPendingSaves() {
+      const saves: Array<() => void> = [];
+      const failures: Array<(error: Error) => void> = [];
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () =>
+          new Promise<void>((resolve, reject) => {
+            saves.push(resolve);
+            failures.push(reject);
+          }),
+      });
+      return { form, saves, failures };
+    }
+
+    it('keeps the values of an older successful save as the baseline when the newer save rejects', async () => {
+      const { form, saves, failures } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+      const failure = new Error('save failed');
+
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+      failures[1](failure);
+      await expect(newer).rejects.toBe(failure);
+
+      // The second draft was never saved; the first one was.
+      expect(form.isDirty()).toBe(true);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', '');
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('keeps the newer values as the baseline when an older save resolves after the newer one', async () => {
+      const { form, saves } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+
+      saves[1]();
+      await expect(newer).resolves.toBe(true);
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('moves the baseline to the newer values when the saves resolve in order', async () => {
+      const { form, saves } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+      // The newer save is still pending: the form holds values not yet saved.
+      expect(form.isDirty()).toBe(true);
+      saves[1]();
+      await expect(newer).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('stays dirty after a rejected save and hands the rejection to the caller', async () => {
+      const failure = new Error('save failed');
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => Promise.reject(failure),
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toBe(failure);
+
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('stays dirty after an onSubmit that throws and hands the error to the caller', async () => {
+      const failure = new Error('save refused');
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => {
+          throw failure;
+        },
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toBe(failure);
+
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('lets the unsaved-changes guard still ask after a rejected save', async () => {
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => Promise.reject(new Error('save failed')),
+      });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: form.isDirty, ask });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toThrow('save failed');
+
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
+    });
   });
 
   describe('unsaved-changes guard', () => {
-    it('prompts before leaving when changed, and stays silent when unchanged', () => {
+    it('asks through the supplied ask when changed, and stays silent when unchanged', async () => {
       let dirty = false;
-      const guard = createUnsavedChangesGuard({
-        isDirty: () => dirty,
-      });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       // Silent when unchanged
-      expect(guard.canLeave()).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
+      expect(ask).not.toHaveBeenCalled();
 
       const beforeUnloadUnchanged = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(beforeUnloadUnchanged);
+      guard.handleBeforeUnload(beforeUnloadUnchanged as BeforeUnloadEvent);
       expect(beforeUnloadUnchanged.defaultPrevented).toBe(false);
 
-      // Asks when changed
+      // Asks when changed, and the answer decides
       dirty = true;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      expect(guard.canLeave()).toBe(false);
-      expect(confirmSpy).toHaveBeenCalled();
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
 
-      confirmSpy.mockReturnValue(true);
-      expect(guard.canLeave()).toBe(true);
+      ask.mockResolvedValue(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
 
       const beforeUnloadChanged = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(beforeUnloadChanged);
+      guard.handleBeforeUnload(beforeUnloadChanged as BeforeUnloadEvent);
       expect(beforeUnloadChanged.defaultPrevented).toBe(true);
+
+      // The browser's own confirm is never the question.
+      expect(confirmSpy).not.toHaveBeenCalled();
+    });
+
+    it('lets exactly the next check pass after a confirmed leave, then asks again', async () => {
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => true, ask });
+
+      guard.allowLeave();
+      expect(guard.shouldAsk()).toBe(false);
+      expect(guard.shouldAsk()).toBe(true);
+
+      guard.allowLeave();
+      await expect(guard.canLeave()).resolves.toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
+    });
+
+    it('prevents a beforeunload of a dirty form after a confirmed leave, and keeps the leave for the route check', async () => {
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => true, ask });
+
+      guard.allowLeave();
+      const unload = new Event('beforeunload', { cancelable: true });
+      guard.handleBeforeUnload(unload as BeforeUnloadEvent);
+
+      expect(unload.defaultPrevented).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
+      expect(ask).not.toHaveBeenCalled();
+    });
+
+    it('asks again once a confirmed leave is withdrawn unconsumed', () => {
+      const guard = createUnsavedChangesGuard({
+        isDirty: () => true,
+        ask: () => Promise.resolve(true),
+      });
+
+      guard.allowLeave();
+      guard.endLeave();
+
+      expect(guard.shouldAsk()).toBe(true);
+    });
+
+    it('follows the form: silent on a clean form, asking for each later edit', () => {
+      const form = createForm({ fields: { title: { initial: '' } } });
+      const guard = createUnsavedChangesGuard({
+        isDirty: form.isDirty,
+        ask: () => Promise.resolve(true),
+      });
+      expect(guard.shouldAsk()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes');
+
+      expect(guard.shouldAsk()).toBe(true);
+    });
+
+    it('asks for an edit typed while the save was pending, once the save has resolved', async () => {
+      let resolveSave: () => void = () => {};
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve;
+          }),
+      });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: form.isDirty, ask });
+      form.onFieldInput('title', 'Release notes');
+
+      const saving = form.submit();
+      form.onFieldInput('title', 'Release notes, revised');
+      resolveSave();
+      await expect(saving).resolves.toBe(true);
+
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
     });
   });
 });

@@ -2,7 +2,13 @@ import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import TextArea from './TextArea.svelte';
-import { styleOf } from '../../test/templateStyle';
+import { ruleOf, styleOf } from '../../test/templateStyle';
+import {
+  REMOVED_OUTLINE,
+  TRANSPARENT_OUTLINE,
+  sourceOf,
+  uniqueIdShape,
+} from '../../test/fieldContract';
 
 describe('TextArea', () => {
   it('renders textarea with label and links aria-describedby to hint', () => {
@@ -58,8 +64,29 @@ describe('TextArea', () => {
     expect(textarea).toHaveClass('text-area__input--mono');
   });
 
-  it('does not use outline: none without focus ring', () => {
-    const style = styleOf(path.resolve(__dirname, './TextArea.svelte'));
-    expect(style).not.toMatch(/outline:\s*none(?!\s*;\s*box-shadow:\s*var\(--focus-ring\))/);
+  describe('focus in forced-colors mode and generated ids', () => {
+    const file = path.resolve(__dirname, './TextArea.svelte');
+
+    it('keeps a transparent focus outline beside the focus ring', () => {
+      const style = styleOf(file);
+      expect(style).not.toMatch(REMOVED_OUTLINE);
+      const focus = ruleOf(style, '.text-area__input:focus');
+      expect(focus).toMatch(TRANSPARENT_OUTLINE);
+      expect(focus).toContain('box-shadow: var(--focus-ring)');
+    });
+
+    it('gives two instances without an id distinct ids of the uniqueId shape', () => {
+      const idOf = (label: string) =>
+        render(TextArea, { props: { label } }).container.querySelector('textarea')?.id;
+      const first = idOf('First');
+      const second = idOf('Second');
+      expect(first).toMatch(uniqueIdShape('ta'));
+      expect(second).toMatch(uniqueIdShape('ta'));
+      expect(first).not.toBe(second);
+    });
+
+    it('allocates its id without Math.random', () => {
+      expect(sourceOf(file)).not.toContain('Math.random');
+    });
   });
 });

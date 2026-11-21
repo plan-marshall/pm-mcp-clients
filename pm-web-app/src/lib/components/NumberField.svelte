@@ -1,12 +1,17 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Field from './Field.svelte';
+  import { uniqueId } from '../utils/uniqueId';
   import { t } from '../i18n';
 
   /**
    * Numeric input owning Field and `<input type="number">` (components-fields.adoc, Special Fields).
    *
-   * Draws unit beside control, enforces min/max/step bounds, and offers an explicit
-   * never choice where a design offers one (value becomes null, never -1).
+   * Draws unit beside control, takes what is typed as it is and clamps to the min/max bounds on
+   * commit (blur, Enter, step), and offers an explicit never choice where a design offers one
+   * (value becomes null, never -1). Emptying the field leaves it editable; only the never checkbox
+   * and a null the parent assigns (initially or later) turn never on, and a number the parent
+   * assigns turns it off again.
    */
   interface Props {
     /** The numeric value or null when never/empty (bindable). */
@@ -77,23 +82,50 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `nf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('nf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
-  let isNever = $state(false);
+  // Typing never changes the never choice; its checkbox does, and so does a value the parent assigns:
+  // null from outside (and an initial null) turns a never field to never, a number turns it off.
+  let isNever = $state(untrack(() => allowNever && (value === null || value === undefined)));
   let lastNumericValue = $state<number | null>(null);
+  // The value this field wrote last, so a value differing from it is known to come from outside.
+  let ownValue: number | null | undefined = untrack(() => value);
+  // Set by a commit on Enter, so the change event the browser sends after it does not commit twice.
+  let committedOnEnter = false;
 
   $effect(() => {
-    if (allowNever && (value === null || value === undefined)) {
-      isNever = true;
-    } else if (value !== null && value !== undefined) {
-      isNever = false;
-      lastNumericValue = value;
+    const current = value;
+    const empty = current === null || current === undefined;
+    if (!empty) {
+      lastNumericValue = current;
+    }
+    if (current !== ownValue) {
+      ownValue = current;
+      isNever = allowNever && empty;
     }
   });
+
+  // A field without a never choice is never in never state, whatever value it holds: turning
+  // allowNever off leaves the value alone but must not keep the input disabled.
+  $effect(() => {
+    if (!allowNever) {
+      isNever = false;
+    }
+  });
+
+  /**
+   * Writes a value this field produced itself, so the effect does not take it for one from outside.
+   *
+   * @param next the value to hold
+   */
+  function setOwn(next: number | null): void {
+    ownValue = next;
+    value = next;
+  }
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
@@ -108,49 +140,70 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
+  /**
+   * A number input's value is either empty or a valid floating-point number (the browser sanitizes
+   * anything else to empty), so the text parses to null or to a number.
+   *
+   * @param text the input's value
+   * @returns null for an empty field, otherwise the number typed
+   */
+  function parse(text: string): number | null {
+    const raw = text.trim();
+    return raw === '' ? null : Number(raw);
+  }
+
+  /**
+   * Takes what is typed as it is: no clamping and no rewriting of the text, so a value on its way
+   * into the range (1 on the way to 15 with a minimum of 10) is not overwritten.
+   */
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
-    const raw = e.currentTarget.value.trim();
-    if (raw === '') {
-      value = null;
-    } else {
-      let num = Number(raw);
-      if (!Number.isNaN(num)) {
-        if (min !== undefined && num < min) num = min;
-        if (max !== undefined && num > max) num = max;
-        value = num;
-        lastNumericValue = num;
-        e.currentTarget.value = String(num);
-      }
-    }
+    committedOnEnter = false;
+    setOwn(parse(e.currentTarget.value));
     oninput?.(e);
   }
 
-  function handleChange(e: Event & { currentTarget: HTMLInputElement }): void {
-    const raw = e.currentTarget.value.trim();
-    if (raw === '') {
-      value = null;
-      onchange?.(null);
-    } else {
-      let num = Number(raw);
-      if (!Number.isNaN(num)) {
-        if (min !== undefined && num < min) num = min;
-        if (max !== undefined && num > max) num = max;
-        value = num;
-        lastNumericValue = num;
-        e.currentTarget.value = String(num);
-        onchange?.(num);
-      }
+  /**
+   * Commits the field: clamps to min and max, writes the clamped text back and reports it.
+   *
+   * @param input the number input
+   */
+  function commit(input: HTMLInputElement): void {
+    let num = parse(input.value);
+    if (num !== null) {
+      if (min !== undefined && num < min) num = min;
+      if (max !== undefined && num > max) num = max;
+      lastNumericValue = num;
+      input.value = String(num);
     }
+    setOwn(num);
+    onchange?.(num);
+  }
+
+  function handleChange(e: Event & { currentTarget: HTMLInputElement }): void {
+    if (committedOnEnter) {
+      committedOnEnter = false;
+      return;
+    }
+    commit(e.currentTarget);
+  }
+
+  function handleKeyDown(e: KeyboardEvent & { currentTarget: HTMLInputElement }): void {
+    // The Enter that confirms an IME composition belongs to the composition, not to the field.
+    if (e.key === 'Enter' && !e.isComposing) {
+      commit(e.currentTarget);
+      committedOnEnter = true;
+    }
+    onkeydown?.(e);
   }
 
   function handleNeverToggle(e: Event & { currentTarget: HTMLInputElement }): void {
     isNever = e.currentTarget.checked;
     if (isNever) {
-      value = null;
+      setOwn(null);
       onchange?.(null);
     } else {
       const restored = lastNumericValue ?? min ?? 0;
-      value = restored;
+      setOwn(restored);
       onchange?.(restored);
     }
   }
@@ -189,7 +242,7 @@
       onchange={handleChange}
       {onblur}
       {onfocus}
-      {onkeydown}
+      onkeydown={handleKeyDown}
     />
 
     {#if unit}
@@ -235,7 +288,7 @@
   }
 
   .number-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }
@@ -272,5 +325,11 @@
   .number-field__never--disabled {
     color: var(--color-text-muted);
     cursor: not-allowed;
+  }
+
+  @media (max-width: 767px) {
+    .number-field__never {
+      min-height: var(--control-height);
+    }
   }
 </style>

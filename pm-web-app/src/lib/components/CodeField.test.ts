@@ -2,7 +2,14 @@ import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import CodeField from './CodeField.svelte';
-import { styleOf } from '../../test/templateStyle';
+import CodeFieldBindFixture from '../../test/fixtures/CodeFieldBindFixture.svelte';
+import { ruleOf, styleOf } from '../../test/templateStyle';
+import {
+  REMOVED_OUTLINE,
+  TRANSPARENT_OUTLINE,
+  sourceOf,
+  uniqueIdShape,
+} from '../../test/fieldContract';
 
 describe('CodeField', () => {
   it('renders monospace and large input with autocomplete="one-time-code"', () => {
@@ -16,6 +23,21 @@ describe('CodeField', () => {
     expect(input).toHaveAttribute('spellcheck', 'false');
     expect(input).toHaveAttribute('autocapitalize', 'characters');
     expect(input).toHaveClass('code-field__input');
+  });
+
+  it('describes the input by its hint and by the reason it is disabled', () => {
+    const { container } = render(CodeField, {
+      props: {
+        label: 'Pairing code',
+        id: 'code-input',
+        hint: 'Shown by the terminal.',
+        disabled: true,
+        disabledReason: 'Pairing is running.',
+      },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    expect(input).toHaveAttribute('aria-describedby', 'code-input-hint code-input-reason');
   });
 
   it.each([
@@ -39,9 +61,162 @@ describe('CodeField', () => {
     expect(oncomplete).toHaveBeenCalledWith('KXQB-MRTN');
   });
 
-  it('uses --control-height and does not use outline: none without focus ring', () => {
-    const style = styleOf(path.resolve(__dirname, './CodeField.svelte'));
-    expect(style).toContain('var(--control-height)');
-    expect(style).not.toMatch(/outline:\s*none(?!\s*;\s*box-shadow:\s*var\(--focus-ring\))/);
+  it('reports the same complete code once, whether typed with or without the dash', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQBMRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTN');
+  });
+
+  it('reports again after the code was shortened and completed again', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRT' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenNthCalledWith(2, 'KXQB-MRTN');
+  });
+
+  it('reports a different complete code that replaces a reported one', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTA' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenLastCalledWith('KXQB-MRTA');
+  });
+
+  it('reports the same code again when it is pasted after the parent cleared the field', async () => {
+    const oncomplete = vi.fn();
+    const { container, rerender } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await rerender({ value: '' });
+    expect(input.value).toBe('');
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenNthCalledWith(2, 'KXQB-MRTN');
+  });
+
+  it.each([
+    ['clears the field', ''],
+    ['writes a shorter code', 'KXQB'],
+    ['writes a longer code', 'KXQB-MRTNX'],
+  ] as const)(
+    'reports the bound complete as false when the parent %s',
+    async (_label, replacement) => {
+      const { container, getByTestId } = render(CodeFieldBindFixture, {
+        props: { label: 'Code', replaceLabel: 'Replace', replacement },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+      expect(getByTestId('bound-complete')).toHaveTextContent('true');
+
+      await fireEvent.click(getByTestId('parent-replace'));
+
+      expect(input.value).toBe(replacement);
+      expect(getByTestId('bound-complete')).toHaveTextContent('false');
+    },
+  );
+
+  it.each([
+    ['writes a complete code into the empty field', '', 'kxqb-mrtn'],
+    ['completes a shorter code', 'KXQB', 'KXQBMRTN'],
+    ['replaces a complete code with another', 'KXQB-MRTN', 'KXQB-MRTA'],
+  ] as const)(
+    'reports the bound complete as true when the parent %s',
+    async (_label, typed, replacement) => {
+      const { container, getByTestId } = render(CodeFieldBindFixture, {
+        props: { label: 'Code', replaceLabel: 'Replace', replacement },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: typed } });
+
+      await fireEvent.click(getByTestId('parent-replace'));
+
+      expect(input.value).toBe(replacement);
+      expect(getByTestId('bound-complete')).toHaveTextContent('true');
+    },
+  );
+
+  it('reports to oncomplete only the codes the operator completes, not one the parent writes', async () => {
+    const oncomplete = vi.fn();
+    const { container, getByTestId } = render(CodeFieldBindFixture, {
+      props: { label: 'Code', replaceLabel: 'Replace', replacement: 'KXQBMRTN', oncomplete },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.click(getByTestId('parent-replace'));
+    // Adding the dash to the code the parent wrote completes no new code.
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    expect(oncomplete).not.toHaveBeenCalled();
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTA' } });
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTA');
+  });
+
+  it('reports again a code shortened and completed within one task, before the field re-renders', () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    for (const typed of ['KXQB-MRTN', 'KXQB-MRT', 'KXQB-MRTN']) {
+      input.value = typed;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a complete code once when the parent echoes it back', async () => {
+    const oncomplete = vi.fn();
+    const { container, rerender } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQBMRTN' } });
+    await rerender({ value: 'KXQB-MRTN' });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTN');
+  });
+
+  describe('focus in forced-colors mode and generated ids', () => {
+    const file = path.resolve(__dirname, './CodeField.svelte');
+
+    it('uses --control-height and keeps a transparent focus outline beside the focus ring', () => {
+      const style = styleOf(file);
+      expect(style).toContain('var(--control-height)');
+      expect(style).not.toMatch(REMOVED_OUTLINE);
+      const focus = ruleOf(style, '.code-field__input:focus');
+      expect(focus).toMatch(TRANSPARENT_OUTLINE);
+      expect(focus).toContain('box-shadow: var(--focus-ring)');
+    });
+
+    it('gives two instances without an id distinct ids of the uniqueId shape', () => {
+      const idOf = (label: string) =>
+        render(CodeField, { props: { label } }).container.querySelector('input')?.id;
+      const first = idOf('First');
+      const second = idOf('Second');
+      expect(first).toMatch(uniqueIdShape('cf'));
+      expect(second).toMatch(uniqueIdShape('cf'));
+      expect(first).not.toBe(second);
+    });
+
+    it('allocates its id without Math.random', () => {
+      expect(sourceOf(file)).not.toContain('Math.random');
+    });
   });
 });

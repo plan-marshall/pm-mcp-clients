@@ -1,5 +1,6 @@
 <script lang="ts">
   import Field from './Field.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   export interface SelectOption {
     value: string;
@@ -68,7 +69,7 @@
     onfocus,
   }: Props = $props();
 
-  const generatedId = `sel-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('sel');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
@@ -151,7 +152,7 @@
   }
 
   .select-field__select:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }

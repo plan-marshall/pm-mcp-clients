@@ -2,7 +2,13 @@ import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
 import TextField from './TextField.svelte';
-import { styleOf } from '../../test/templateStyle';
+import { ruleOf, styleOf } from '../../test/templateStyle';
+import {
+  REMOVED_OUTLINE,
+  TRANSPARENT_OUTLINE,
+  sourceOf,
+  uniqueIdShape,
+} from '../../test/fieldContract';
 
 describe('TextField', () => {
   it('renders input with label and links aria-describedby to hint', () => {
@@ -59,9 +65,30 @@ describe('TextField', () => {
     expect(input).toHaveClass('text-field__input--mono');
   });
 
-  it('uses --control-height and does not use outline: none without focus ring', () => {
-    const style = styleOf(path.resolve(__dirname, './TextField.svelte'));
-    expect(style).toContain('var(--control-height)');
-    expect(style).not.toMatch(/outline:\s*none(?!\s*;\s*box-shadow:\s*var\(--focus-ring\))/);
+  describe('focus in forced-colors mode and generated ids', () => {
+    const file = path.resolve(__dirname, './TextField.svelte');
+
+    it('uses --control-height and keeps a transparent focus outline beside the focus ring', () => {
+      const style = styleOf(file);
+      expect(style).toContain('var(--control-height)');
+      expect(style).not.toMatch(REMOVED_OUTLINE);
+      const focus = ruleOf(style, '.text-field__input:focus');
+      expect(focus).toMatch(TRANSPARENT_OUTLINE);
+      expect(focus).toContain('box-shadow: var(--focus-ring)');
+    });
+
+    it('gives two instances without an id distinct ids of the uniqueId shape', () => {
+      const idOf = (label: string) =>
+        render(TextField, { props: { label } }).container.querySelector('input')?.id;
+      const first = idOf('First');
+      const second = idOf('Second');
+      expect(first).toMatch(uniqueIdShape('tf'));
+      expect(second).toMatch(uniqueIdShape('tf'));
+      expect(first).not.toBe(second);
+    });
+
+    it('allocates its id without Math.random', () => {
+      expect(sourceOf(file)).not.toContain('Math.random');
+    });
   });
 });

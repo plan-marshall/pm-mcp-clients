@@ -1,5 +1,6 @@
 <script lang="ts">
   import Field from './Field.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   /**
    * Pairing code input owning Field and `<input>` (components-fields.adoc, Special Fields).
@@ -30,9 +31,12 @@
     name?: string;
     /** Test id. */
     testid?: string;
-    /** Whether the entered code is complete (8 characters). */
+    /**
+     * Whether the field holds a complete code (8 characters), derived from the value whoever wrote
+     * it (bindable, read-only: a value passed in is overwritten).
+     */
     complete?: boolean;
-    /** Handler called when code reaches 8 characters with normalized code. */
+    /** Called with the normalized code when the operator's input completes a new code. */
     oncomplete?: (code: string) => void;
     /** Event handlers. */
     oninput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
@@ -67,7 +71,7 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `cf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('cf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
@@ -86,20 +90,39 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
-  function checkCode(raw: string): void {
+  /** The complete code the field holds, as `KXQB-MRTN`; null while the code is incomplete. */
+  let held: string | null = null;
+
+  /**
+   * @param raw the text of the field, in any case, with or without dash or spaces
+   * @returns the code as `KXQB-MRTN` when the text holds exactly 8 letters and digits, else null
+   */
+  function codeOf(raw: string): string | null {
     const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (cleaned.length === 8) {
-      complete = true;
-      const formatted = `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
-      oncomplete?.(formatted);
-    } else {
-      complete = false;
-    }
+    return cleaned.length === 8 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : null;
   }
 
+  /** @param code the complete code the field holds now, or null; `complete` follows it */
+  function hold(code: string | null): void {
+    held = code;
+    complete = code !== null;
+  }
+
+  // `complete` is derived from the value in both directions, whoever wrote it: a parent that
+  // assigns a complete code makes the field complete, one that clears or shortens it does not.
+  $effect(() => hold(codeOf(value)));
+
+  /**
+   * Reports to `oncomplete` a code the operator completes: once when it becomes complete, and again
+   * only for a different code, so typing the dash into a complete code (KXQBMRTN, then KXQB-MRTN)
+   * reports nothing new. A code the parent writes is known to the parent and is not reported.
+   */
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
     value = e.currentTarget.value;
-    checkCode(value);
+    const code = codeOf(value);
+    const completed = code !== null && code !== held;
+    hold(code);
+    if (completed) oncomplete?.(code);
     oninput?.(e);
   }
 </script>
@@ -164,7 +187,7 @@
   }
 
   .code-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }

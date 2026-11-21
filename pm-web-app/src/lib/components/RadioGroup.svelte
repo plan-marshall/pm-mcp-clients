@@ -1,5 +1,6 @@
 <script lang="ts">
   import Marker, { type MarkerKind } from './Marker.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   export interface RadioOption {
     value: string;
@@ -46,64 +47,91 @@
     onchange,
   }: Props = $props();
 
+  /** The group's own id; each option's input, description and reason ids are built from it. */
+  const groupId = uniqueId('radio');
+  /** The group's root, where the arrow keys find the radio to focus (no selector built from a value). */
+  let root: HTMLFieldSetElement;
+
+  /**
+   * @param index the option's position
+   * @returns the id of the option's input
+   */
+  function optionId(index: number): string {
+    return `${groupId}-${index}`;
+  }
+
+  /**
+   * @param opt the option
+   * @param index the option's position
+   * @param isDisabled whether the option is disabled
+   * @returns the ids of the option's description and disabled reason, or undefined when it has none
+   */
+  function describedByOf(
+    opt: RadioOption,
+    index: number,
+    isDisabled: boolean | undefined,
+  ): string | undefined {
+    const ids: string[] = [];
+    if (opt.description) ids.push(`${optionId(index)}-description`);
+    if (isDisabled && opt.disabledReason) ids.push(`${optionId(index)}-reason`);
+    return ids.length > 0 ? ids.join(' ') : undefined;
+  }
+
+  /** Selects an option; a disabled input sends no change, so only an enabled option arrives here. */
   function selectOption(opt: RadioOption): void {
-    if (disabled || opt.disabled) return;
     value = opt.value;
     onchange?.(opt.value);
   }
 
-  function handleKeyDown(e: KeyboardEvent, _currentIndex: number): void {
+  function handleKeyDown(e: KeyboardEvent): void {
     const enabled = options.filter((o) => !disabled && !o.disabled);
     if (enabled.length === 0) return;
 
-    let targetValue: string | null = null;
+    let target: RadioOption | null = null;
     const currIdx = enabled.findIndex((o) => o.value === value);
 
     if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
       e.preventDefault();
       const nextIdx = currIdx === -1 ? 0 : (currIdx + 1) % enabled.length;
-      targetValue = enabled[nextIdx].value;
+      target = enabled[nextIdx];
     } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
       e.preventDefault();
       const prevIdx = currIdx === -1 ? enabled.length - 1 : (currIdx - 1 + enabled.length) % enabled.length;
-      targetValue = enabled[prevIdx].value;
+      target = enabled[prevIdx];
     }
 
-    if (targetValue !== null) {
-      value = targetValue;
-      onchange?.(targetValue);
-      const radioEl = document.querySelector<HTMLInputElement>(
-        `input[type="radio"][name="${name}"][value="${targetValue}"]`,
-      );
-      radioEl?.focus();
+    if (target !== null) {
+      selectOption(target);
+      const radios = root.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+      radios[options.indexOf(target)].focus();
     }
   }
 </script>
 
-<fieldset class="radio-group radio-group--{variant}" data-testid={testid}>
+<fieldset class="radio-group radio-group--{variant}" data-testid={testid} bind:this={root}>
   <legend class="radio-group__legend">{legend}</legend>
 
   <div class="radio-group__options">
     {#each options as opt, i (opt.value)}
       {@const isSelected = value === opt.value}
       {@const isDisabled = disabled || opt.disabled}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
       <label
         class="radio-option radio-{variant}"
         class:radio-option--selected={isSelected}
         class:radio-option--disabled={isDisabled}
-        onclick={() => selectOption(opt)}
       >
         <div class="radio-option__header">
           <input
+            id={optionId(i)}
             type="radio"
             {name}
             value={opt.value}
             checked={isSelected}
             disabled={isDisabled}
             class="radio-option__input"
-            onkeydown={(e) => handleKeyDown(e, i)}
+            aria-describedby={describedByOf(opt, i, isDisabled)}
+            onchange={() => selectOption(opt)}
+            onkeydown={handleKeyDown}
           />
           <span class="radio-option__label">{opt.label}</span>
           {#if opt.marker}
@@ -112,11 +140,11 @@
         </div>
 
         {#if opt.description}
-          <span class="radio-option__description">{opt.description}</span>
+          <span id="{optionId(i)}-description" class="radio-option__description">{opt.description}</span>
         {/if}
 
         {#if isDisabled && opt.disabledReason}
-          <span class="radio-option__disabled-reason">{opt.disabledReason}</span>
+          <span id="{optionId(i)}-reason" class="radio-option__disabled-reason">{opt.disabledReason}</span>
         {/if}
       </label>
     {/each}

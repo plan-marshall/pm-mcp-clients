@@ -2,6 +2,7 @@
   import Field from './Field.svelte';
   import Toggle from './Toggle.svelte';
   import Button from './Button.svelte';
+  import { uniqueId } from '../utils/uniqueId';
   import { t } from '../i18n';
 
   /**
@@ -35,7 +36,10 @@
     testid?: string;
     /** Optional store button label. */
     storeLabel?: string;
-    /** Handler called when secret is stored, resetting value and removing from DOM. */
+    /**
+     * Handler called when secret is stored, resetting value and removing from DOM. Only a
+     * rejection puts the secret back; the field then swallows the rejection.
+     */
     onstore?: (secret: string) => void | Promise<void>;
     /** Event handlers. */
     oninput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
@@ -70,13 +74,15 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `sf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('sf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
   let revealed = $state(false);
+  // Counts the stores started, so a rejected store knows whether a newer one owns the field.
+  let storeGeneration = 0;
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
@@ -91,10 +97,25 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
-  function handlePaste(e: ClipboardEvent): void {
+  /**
+   * Inserts the trimmed paste at the selection, places the caret after it and sends the input
+   * event a typed character would, so `value` and the caller's `oninput` follow once. A paste
+   * without text (an image, no clipboard data) is left to the browser, which inserts no text
+   * into the field. A paste of whitespace only is cancelled and changes nothing, so the browser
+   * never inserts it untrimmed and the selected part of the secret is never replaced with nothing.
+   */
+  function handlePaste(e: ClipboardEvent & { currentTarget: HTMLInputElement }): void {
+    const raw = e.clipboardData?.getData('text') ?? '';
+    if (!raw) return;
     e.preventDefault();
-    const pasted = e.clipboardData?.getData('text') ?? '';
-    value = pasted.trim();
+    const pasted = raw.trim();
+    if (!pasted) return;
+    const input = e.currentTarget;
+    // A text or password input always has a selection, so both ends are numbers here.
+    const start = input.selectionStart as number;
+    const end = input.selectionEnd as number;
+    input.setRangeText(pasted, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
@@ -102,11 +123,29 @@
     oninput?.(e);
   }
 
+  /**
+   * Hands the secret to `onstore` and forgets it: the field is cleared and masked at once. A
+   * rejected store puts the secret back, still masked, so the operator's input is not lost — but
+   * only into a field still empty and only while no newer store has started: what was typed or
+   * stored while the store was pending is newer and stays. A reveal pressed while the store was
+   * pending is undone, so the restored secret is masked. The caller reports the failure through
+   * `error`, so the rejection is not rethrown.
+   */
   async function handleStore(): Promise<void> {
     if (!value || disabled) return;
     const secretToStore = value;
+    storeGeneration += 1;
+    const generation = storeGeneration;
     value = '';
-    await onstore?.(secretToStore);
+    revealed = false;
+    try {
+      await onstore?.(secretToStore);
+    } catch {
+      if (generation === storeGeneration && !value) {
+        value = secretToStore;
+        revealed = false;
+      }
+    }
   }
 </script>
 
@@ -193,7 +232,7 @@
   }
 
   .secret-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }
