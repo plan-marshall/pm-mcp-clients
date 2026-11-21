@@ -94,9 +94,10 @@ class AnswerDirectFormTest {
 
             assertAll(
                                 () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                                () -> assertTrue(out.toString().contains(
+                                () -> assertTrue(err.toString().contains(
                                                                         "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
-                                                    out.toString()),
+                                                    err.toString()),
+                                () -> assertFalse(out.toString().contains("Q-31 could not be read"), out.toString()),
                                 () -> assertFalse((out.toString() + err).contains(other), out + " " + err),
                                 () -> assertTrue(acts.isEmpty(), acts.toString()));
         }
@@ -109,8 +110,9 @@ class AnswerDirectFormTest {
             var code = run("de", "", "answer", "Q-31");
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(out.toString().contains("Q-31 ließ sich nicht lesen, daher ist unbekannt, ob sie Teile hat"),
-                                out.toString());
+            assertTrue(err.toString().contains("Q-31 ließ sich nicht lesen, daher ist unbekannt, ob sie Teile hat"),
+                                err.toString());
+            assertFalse(out.toString().contains("Q-31 ließ sich nicht lesen"), out.toString());
         }
 
         @ParameterizedTest(name = "answer Q-31 {0}")
@@ -122,9 +124,10 @@ class AnswerDirectFormTest {
             var code = run("en", "", "answer", "Q-31", argument);
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(out.toString().contains(
+            assertTrue(err.toString().contains(
                                                     "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
-                                out.toString());
+                                err.toString());
+            assertFalse(out.toString().contains("Q-31 could not be read"), out.toString());
             assertFalse(err.toString().contains("Missing id"), err.toString());
             assertTrue(acts.isEmpty(), acts.toString());
         }
@@ -155,9 +158,10 @@ class AnswerDirectFormTest {
             var code = run("en", "", "answer", "Q-31");
 
             assertEquals(PmOperator.EXIT_FAILURE, code);
-            assertTrue(out.toString().contains(
+            assertTrue(err.toString().contains(
                                                     "Q-31 could not be read, so it is not known whether it has parts; nothing was sent."),
-                                out.toString());
+                                err.toString());
+            assertFalse(out.toString().contains("Q-31 could not be read"), out.toString());
             assertFalse((out.toString() + err).contains("HTTP 500"), out + " " + err);
             assertFalse(err.toString().contains("Missing id"), err.toString());
         }

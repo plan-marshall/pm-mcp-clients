@@ -83,11 +83,12 @@ import picocli.CommandLine.Command;
  *
  * <p>A refusal row asserts exit 1, nothing on stdout and the three lines {@link RefusalRenderer}
  * renders on stderr (title, cause, fix), so a refusal that reaches {@link PmOperator}'s generic
- * one-line handler fails its row. Three refusals print a line of their own instead, and their rows
+ * one-line handler fails its row. Four refusals print a line of their own instead, and their rows
  * assert that catalogue line exactly, which the generic handler's {@code verb: message} form does not
  * match either: {@code drain} sends no request to the runtime and names the process it cannot
- * identify, and the read of {@code credentials status} and the digest read of {@code accept-edit}
- * keep the line that names their key or store, with the refusal's title as its cause.
+ * identify, the read of {@code credentials status} and the digest read of {@code accept-edit}
+ * keep the line that names their key or store, with the refusal's title as its cause, and the
+ * refused first read of {@code answer} names the decision it could not read and that nothing was sent.
  */
 @EnableGeneratorController
 @DisplayName("Exit codes of operator verbs")
@@ -285,7 +286,12 @@ class ExitCodesTest {
                             new Cases("answer")
                                                 .usage("answer", ID, UNKNOWN_OPTION_TOKEN)
                                                 .success(ExitCodesTest::serveReads, "answer", ID, "later")
-                                                .refusal(ExitCodesTest::serveDecisionRefuseActs, null, "answer", ID, "later"),
+                                                .refusal(ExitCodesTest::serveDecisionRefuseActs, null, "answer", ID, "later")
+                                                .refusal(ExitCodesTest::refuseEverything,
+                                                                    test -> List.of(MessageCatalogue.format(test.locale(),
+                                                                                        "operator.decision.parts_unreadable",
+                                                                                        Map.of("id", test.id))),
+                                                                    "answer", ID, "1"),
                             new Cases("reports")
                                                 .success(ExitCodesTest::serveReads, "reports")
                                                 .refusal("reports"),

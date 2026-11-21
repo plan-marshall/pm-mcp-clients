@@ -359,8 +359,9 @@ class QuestionsCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
-                                                out.toString()),
+                            () -> assertTrue(err.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("Q-007 could not be read"), out.toString()),
                             () -> assertFalse(out.toString().contains(title), out.toString()));
     }
 

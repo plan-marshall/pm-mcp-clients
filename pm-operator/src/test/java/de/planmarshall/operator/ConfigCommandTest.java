@@ -25,6 +25,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -50,6 +51,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import picocli.CommandLine.Command;
 
@@ -132,6 +135,37 @@ class ConfigCommandTest {
                             () -> assertTrue(out.toString().contains("web.port"), out.toString()),
                             () -> assertTrue(out.toString().contains("7420"), out.toString())
         );
+    }
+
+    @ParameterizedTest(name = "in {0}")
+    @ValueSource(strings = {"en", "de"})
+    @DisplayName("bare config whose input ends before a choice exits 1 and names that cause on stderr, never a bare verb line")
+    void bareConfigWithEndedInputNamesItsCause(String language) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de".equals(language) ? "de_DE.UTF-8" : "en_US.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "config");
+
+        var cause = MessageCatalogue.format(language, "operator.settings.input_ended", Map.of());
+        var errLines = err.toString().lines().toList();
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(errLines.stream().anyMatch(line -> line.contains(cause)), err.toString()),
+                            () -> assertFalse(errLines.stream().anyMatch(line -> "config:".equals(line.strip())),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains(cause), out.toString()));
     }
 
     @Test

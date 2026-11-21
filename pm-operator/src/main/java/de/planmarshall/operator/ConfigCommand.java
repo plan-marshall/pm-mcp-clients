@@ -145,7 +145,7 @@ public final class ConfigCommand implements Callable<Integer> {
         printSettings(out, locale, settings, items);
         if (context.isInteractiveTerminal() && !items.isEmpty()) {
             out.flush();
-            openItem(out, items);
+            openItem(out, locale, items);
         }
         out.flush();
         return 0;
@@ -552,11 +552,23 @@ public final class ConfigCommand implements Callable<Integer> {
     /**
      * Reads the number the prompt offers and runs the act it names. The prompt lists every number it
      * offers, so a number outside the list opens nothing.
+     *
+     * @throws OperatorRefusedException when the input ends before a number was typed: the verb then
+     *                                  fails with that cause on stderr instead of an empty line
      */
-    private void openItem(PrintWriter out, List<Item> items) throws IOException {
+    private void openItem(PrintWriter out, String locale, List<Item> items) throws IOException {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-            var line = reader.readLine("");
+            String line;
+            try {
+                line = reader.readLine("");
+            } catch (EndOfFileException _) {
+                // the reader's own exception carries no message, so the refusal names the cause itself
+                out.println();
+                out.flush();
+                throw new OperatorRefusedException(
+                                    MessageCatalogue.format(locale, "operator.settings.input_ended", Map.of()));
+            }
             if (line == null || "q".equalsIgnoreCase(line.trim()) || line.isBlank()) {
                 return;
             }
