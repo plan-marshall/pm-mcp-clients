@@ -7,7 +7,7 @@
  * Unsaved-changes guard asks before route change, close or reload while dirty.
  */
 
-import { get, writable, type Readable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { t } from '../i18n';
 
 /**
@@ -211,10 +211,8 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     return true;
   }
 
-  const subscribe: Readable<FormState<T>>['subscribe'] = state.subscribe;
-
   return {
-    subscribe,
+    subscribe: state.subscribe,
     onFieldInput,
     onFieldBlur,
     getErrors,
