@@ -81,6 +81,8 @@
   const reasonId = $derived(`${effectiveId}-reason`);
 
   let revealed = $state(false);
+  // Counts the stores started, so a rejected store knows whether a newer one owns the field.
+  let storeGeneration = 0;
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
@@ -124,19 +126,24 @@
   /**
    * Hands the secret to `onstore` and forgets it: the field is cleared and masked at once. A
    * rejected store puts the secret back, still masked, so the operator's input is not lost — but
-   * only into a field still empty: what was typed while the store was pending is newer and stays.
-   * The caller reports the failure through `error`, so the rejection is not rethrown.
+   * only into a field still empty and only while no newer store has started: what was typed or
+   * stored while the store was pending is newer and stays. A reveal pressed while the store was
+   * pending is undone, so the restored secret is masked. The caller reports the failure through
+   * `error`, so the rejection is not rethrown.
    */
   async function handleStore(): Promise<void> {
     if (!value || disabled) return;
     const secretToStore = value;
+    storeGeneration += 1;
+    const generation = storeGeneration;
     value = '';
     revealed = false;
     try {
       await onstore?.(secretToStore);
     } catch {
-      if (!value) {
+      if (generation === storeGeneration && !value) {
         value = secretToStore;
+        revealed = false;
       }
     }
   }

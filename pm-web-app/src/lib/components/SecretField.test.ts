@@ -229,6 +229,66 @@ describe('SecretField', () => {
       expect(input.value).toBe('tok-new');
       expect(input.type).toBe('password');
     });
+
+    it('does not restore an older rejected secret after a newer store succeeded', async () => {
+      let rejectFirst: (reason: Error) => void = () => {};
+      let resolveSecond: () => void = () => {};
+      const first = new Promise<void>((_resolve, reject) => {
+        rejectFirst = reject;
+      });
+      const second = new Promise<void>((resolve) => {
+        resolveSecond = resolve;
+      });
+      const onstore = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second);
+      const { container } = render(SecretField, {
+        props: { label: 'New Secret', onstore, storeLabel: 'Save Secret' },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      const storeBtn = screen.getByRole('button', { name: 'Save Secret' });
+
+      await fireEvent.input(input, { target: { value: 'tok-a' } });
+      await fireEvent.click(storeBtn);
+      await fireEvent.input(input, { target: { value: 'tok-b' } });
+      await fireEvent.click(storeBtn);
+      expect(onstore).toHaveBeenNthCalledWith(1, 'tok-a');
+      expect(onstore).toHaveBeenNthCalledWith(2, 'tok-b');
+
+      resolveSecond();
+      await second;
+      await tick();
+      rejectFirst(new Error('store refused'));
+      // The field awaited the first store, so its rejection branch has run once this settles.
+      await first.catch(() => undefined);
+      await tick();
+
+      expect(input.value).toBe('');
+    });
+
+    it('restores a rejected secret masked when the reveal toggle was pressed while the store was pending', async () => {
+      let rejectStore: (reason: Error) => void = () => {};
+      const storing = new Promise<void>((_resolve, reject) => {
+        rejectStore = reject;
+      });
+      const onstore = vi.fn(() => storing);
+      const { container } = render(SecretField, {
+        props: { label: 'New Secret', onstore, storeLabel: 'Save Secret' },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      const toggle = container.querySelector('.toggle') as HTMLButtonElement;
+
+      await fireEvent.input(input, { target: { value: 'tok-789' } });
+      await fireEvent.click(screen.getByRole('button', { name: 'Save Secret' }));
+      await fireEvent.click(toggle);
+      expect(input.type).toBe('text');
+
+      rejectStore(new Error('store refused'));
+      await storing.catch(() => undefined);
+      await tick();
+
+      expect(input.value).toBe('tok-789');
+      expect(input.type).toBe('password');
+      expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    });
   });
 
   describe('focus in forced-colors mode and generated ids', () => {
