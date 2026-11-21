@@ -213,16 +213,20 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("a failed provider check prints the failure and keeps the hold")
+    @DisplayName("a failed provider check prints the failure with its cause on stderr and keeps the hold")
     void rotateReportsAFailedCheck() throws Exception {
         verification(true);
 
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         var text = out.toString();
+        var refusal = err.toString();
 
-        assertEquals(1, code, text + " | " + err);
-        assertTrue(text.contains("The check failed: 401 Invalid token. The hold stays."), text);
-        assertTrue(text.contains("Token github stored"), text);
+        assertAll(
+                            () -> assertEquals(1, code, text + " | " + refusal),
+                            () -> assertTrue(refusal.contains("✗ The check failed: 401 Invalid token. The hold stays."),
+                                                refusal),
+                            () -> assertFalse(text.contains("The check failed"), text),
+                            () -> assertTrue(text.contains("Token github stored"), text));
     }
 
     @Test

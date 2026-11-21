@@ -319,10 +319,11 @@ public final class CredentialsCommand implements Callable<Integer> {
         if ("providers.failed".equals(outcome.lastStateId())
                             || Boolean.TRUE.equals(reported.get("failed"))
                             || reported.containsKey("cause")) {
-            out.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
+            // A failed check is the verb's refusal: it goes to stderr with its cause, stdout carries none.
+            err.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
                                 Map.of(REASON, TerminalSanitizer.sanitize(
                                                     Objects.toString(reported.get("cause"), "")))));
-            out.flush();
+            err.flush();
             return PmOperator.EXIT_FAILURE;
         }
         var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";

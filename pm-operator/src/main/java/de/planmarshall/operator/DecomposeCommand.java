@@ -132,9 +132,12 @@ final class ReviewCommand implements Callable<Integer> {
             return 0;
         }
         if (!cut.everyCheckPasses()) {
-            out.println("✗ " + MessageCatalogue.format(locale, "decomposition.checks_fail",
-                                Map.of("count", cut.findings().size())));
+            // The tree above names each failing check; the refusal of the agreement goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println("✗ " + MessageCatalogue.format(locale, "decomposition.checks_fail",
+                                Map.of("count", cut.findings().size())));
+            err.flush();
             return 1;
         }
         // a commit the runtime refuses is its refusal, with the reason it gives

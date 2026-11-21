@@ -378,7 +378,7 @@ class DecomposeCommandTest {
     }
 
     @Test
-    @DisplayName("epic review --agree refuses a cut whose checks fail")
+    @DisplayName("epic review --agree refuses a cut whose checks fail on stderr, the tree on stdout")
     void reviewRefusesFailingCut() throws Exception {
         fixture.start((request, response) -> {
             if (answersEpic(request, response)) {
@@ -392,8 +392,13 @@ class DecomposeCommandTest {
         });
 
         var code = execute("epic", "review", "ep-001", "--agree");
-        assertEquals(1, code);
-        assertTrue(out.toString().contains("1 check fails"));
+        var output = out.toString();
+        var refusal = err.toString();
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(refusal.contains("✗ 1 check fails"), refusal),
+                            () -> assertFalse(output.contains("✗ 1 check fails"), output),
+                            () -> assertTrue(output.contains("relay-auth-v2"), output));
     }
 
     @Test
