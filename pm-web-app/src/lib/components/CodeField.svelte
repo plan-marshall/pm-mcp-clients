@@ -91,11 +91,29 @@
   let lastReported: string | null = null;
 
   /**
+   * Strips everything but letters and digits and upper-cases the rest.
+   *
+   * @param raw the text of the field
+   * @returns the code without dash or spaces, in upper case
+   */
+  function clean(raw: string): string {
+    return raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  }
+
+  // An incomplete value ends the reported code whoever set it, so a parent that clears the field
+  // gets the same code reported again when it is entered anew.
+  $effect(() => {
+    if (clean(value).length !== 8) {
+      lastReported = null;
+    }
+  });
+
+  /**
    * Reports a code once when it becomes complete, and again only for a different complete code, so
    * typing the dash into a complete code (KXQBMRTN, then KXQB-MRTN) does not report it twice.
    */
   function checkCode(raw: string): void {
-    const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const cleaned = clean(raw);
     if (cleaned.length !== 8) {
       complete = false;
       lastReported = null;

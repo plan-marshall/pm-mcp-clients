@@ -81,6 +81,32 @@ describe('CodeField', () => {
     expect(oncomplete).toHaveBeenLastCalledWith('KXQB-MRTA');
   });
 
+  it('reports the same code again when it is pasted after the parent cleared the field', async () => {
+    const oncomplete = vi.fn();
+    const { container, rerender } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await rerender({ value: '' });
+    expect(input.value).toBe('');
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenNthCalledWith(2, 'KXQB-MRTN');
+  });
+
+  it('reports a complete code once when the parent echoes it back', async () => {
+    const oncomplete = vi.fn();
+    const { container, rerender } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQBMRTN' } });
+    await rerender({ value: 'KXQB-MRTN' });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTN');
+  });
+
   describe('focus in forced-colors mode and generated ids', () => {
     const file = path.resolve(__dirname, './CodeField.svelte');
 
