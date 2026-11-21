@@ -161,7 +161,7 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.getErrors().code).toBeNull();
     });
 
-    it('moves focus to the first invalid field on submit', () => {
+    it('moves focus to the first invalid field on submit', async () => {
       const form = createForm({
         fields: {
           first: {
@@ -184,7 +184,7 @@ describe('lib/forms: The shape of a form', () => {
       secondInput.setAttribute('name', 'second');
       document.body.appendChild(secondInput);
 
-      const submitted = form.submit();
+      const submitted = await form.submit();
       expect(submitted).toBe(false);
       expect(focusSpy).toHaveBeenCalledOnce();
 
@@ -241,7 +241,7 @@ describe('lib/forms: The shape of a form', () => {
       },
     );
 
-    it('hands its values and errors to a subscriber on input, blur and submit', () => {
+    it('hands its values and errors to a subscriber on input, blur, submit and save', async () => {
       const form = createForm({
         fields: {
           code: {
@@ -256,33 +256,42 @@ describe('lib/forms: The shape of a form', () => {
       form.onFieldInput('code', 'abc');
       form.onFieldBlur('code');
       form.onFieldInput('code', 'abcdef');
-      const submitted = form.submit();
+      const submitted = await form.submit();
       unsubscribe();
 
       expect(submitted).toBe(true);
-      expect(seen.map((state) => state.values.code)).toEqual(['', 'abc', 'abc', 'abcdef', 'abcdef']);
+      // The submit hands the checked values on, and the finished save hands them on once more.
+      expect(seen.map((state) => state.values.code)).toEqual([
+        '',
+        'abc',
+        'abc',
+        'abcdef',
+        'abcdef',
+        'abcdef',
+      ]);
       expect(seen.map((state) => state.errors.code)).toEqual([
         undefined,
         undefined,
         'Code must be at least 5 chars.',
         null,
         null,
+        null,
       ]);
     });
 
-    it('hands the errors of a refused submit to a subscriber', () => {
+    it('hands the errors of a refused submit to a subscriber', async () => {
       const form = createForm({ fields: { title: { initial: '', required: true } } });
       const seen: FormState<{ title: string }>[] = [];
       const unsubscribe = form.subscribe((state) => seen.push(state));
 
-      const submitted = form.submit();
+      const submitted = await form.submit();
       unsubscribe();
 
       expect(submitted).toBe(false);
       expect(seen.at(-1)?.errors.title).toBe('Fill in this field.');
     });
 
-    it('is dirty once a value changes, and a successful submit makes the values its baseline', () => {
+    it('is dirty once a value changes, and a successful submit makes the values its baseline', async () => {
       const onSubmit = vi.fn();
       const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
       expect(form.isDirty()).toBe(false);
@@ -290,12 +299,103 @@ describe('lib/forms: The shape of a form', () => {
       form.onFieldInput('title', 'Release notes');
       expect(form.isDirty()).toBe(true);
 
-      expect(form.submit()).toBe(true);
+      await expect(form.submit()).resolves.toBe(true);
       expect(onSubmit).toHaveBeenCalledWith({ title: 'Release notes' });
       expect(form.isDirty()).toBe(false);
 
       form.onFieldInput('title', 'Release notes, second draft');
       expect(form.isDirty()).toBe(true);
+    });
+
+    it('makes the values clean without an onSubmit of the caller', async () => {
+      const form = createForm({ fields: { title: { initial: '' } } });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('stays dirty while an async save is pending and is clean once it has resolved', async () => {
+      let resolveSave: () => void = () => {};
+      const onSubmit = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve;
+          }),
+      );
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      form.onFieldInput('title', 'Release notes');
+
+      const saving = form.submit();
+      expect(onSubmit).toHaveBeenCalledExactlyOnceWith({ title: 'Release notes' });
+      expect(form.isDirty()).toBe(true);
+
+      resolveSave();
+      await expect(saving).resolves.toBe(true);
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('keeps the submitted values as the baseline when the operator types on during the save', async () => {
+      let resolveSave: () => void = () => {};
+      const onSubmit = () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        });
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      form.onFieldInput('title', 'Release notes');
+
+      const saving = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      resolveSave();
+      await saving;
+
+      expect(form.isDirty()).toBe(true);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(false);
+    });
+
+    it('stays dirty after a rejected save and hands the rejection to the caller', async () => {
+      const failure = new Error('save failed');
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => Promise.reject(failure),
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toBe(failure);
+
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('stays dirty after an onSubmit that throws and hands the error to the caller', async () => {
+      const failure = new Error('save refused');
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => {
+          throw failure;
+        },
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toBe(failure);
+
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('lets the unsaved-changes guard still ask after a rejected save', async () => {
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () => Promise.reject(new Error('save failed')),
+      });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: form.isDirty, ask });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).rejects.toThrow('save failed');
+
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
     });
   });
 

@@ -48,13 +48,16 @@
     return 'neutral';
   });
 
-  function handleSubmit() {
-    if (isValid && form.submit()) {
+  /** Marks the form saved only once the form module reports the save as succeeded. */
+  function handleSubmit(): void {
+    if (!isValid) return;
+    void form.submit().then((saved) => {
+      if (!saved) return;
       savedReason = reason;
       guard?.clear();
       submitted = true;
       cancelled = false;
-    }
+    });
   }
 
   function handleCancel() {

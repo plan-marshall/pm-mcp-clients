@@ -95,8 +95,8 @@ function requiredReasonOf(field: Pick<FieldConfig, 'requiredReason'>): string {
  * Manages form state, blur checking, required-empty reason, and first invalid focus.
  *
  * The values and errors are held in a store the form exposes with `subscribe`, so a component that
- * reads it re-renders on input, blur and submit. A successful submit makes the submitted values the
- * new baseline `isDirty` compares against.
+ * reads it re-renders on input, blur, submit and a finished save. A submit whose save succeeded makes
+ * the submitted values the new baseline `isDirty` compares against.
  */
 export function createForm<T extends Record<string, unknown>>(config: FormConfig<T>) {
   const fields = config.fields;
@@ -183,7 +183,16 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     return undefined;
   }
 
-  function submit(): boolean {
+  /**
+   * Checks every field and, when all pass, hands the values to `onSubmit`. The values become the
+   * baseline `isDirty` compares against only once the save has succeeded: while an async save is
+   * pending and after a save that rejects or throws, the form stays dirty, so the unsaved-changes
+   * guard still asks.
+   *
+   * @returns a promise of `false` for a refused submit (the first invalid field takes the focus),
+   *          of `true` once the save has succeeded; it rejects with the error of a failed save
+   */
+  async function submit(): Promise<boolean> {
     let firstInvalid: string | null = null;
 
     for (const key of Object.keys(fields)) {
@@ -205,9 +214,11 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
       return false;
     }
 
-    baseline = { ...values };
+    const submitted = { ...values };
     publish();
-    void config.onSubmit?.(values);
+    await config.onSubmit?.(submitted);
+    baseline = submitted;
+    publish();
     return true;
   }
 
