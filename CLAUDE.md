@@ -91,8 +91,8 @@ them with a fixture project below `src/guard-controls`:
   module that logs, never one holder for the repository. `LogAsserts` covers every `LogRecord`.
 - `@NullMarked` (`org.jspecify.annotations`) sits on every package of a module that declares JSpecify.
 - Behaviour of the packaged binaries belongs in `*IT` tests (run with `-Pintegration-tests`, natively with
-  `-Pnative`). The CLI modules run against the stub daemon of the test scope of `pm-api`; the binaries against the
-  real `pm-mcpd` are covered by `pm-e2e` in `plan-marshall/plan-marshall-mcp`.
+  `-Pnative`). The CLI modules run against the mock runtime `pm-mock-runtime` with its scenarios; the binaries against
+  the real `pm-mcpd` are covered by `pm-e2e` in `plan-marshall/plan-marshall-mcp`.
 - `pm-exec`'s Linux-only kernel class `LinuxCalls` is excluded from the JaCoCo report and check on macOS only
   (profile `macos-coverage` in its POM); on Linux it counts in full.
 

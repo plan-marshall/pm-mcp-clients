@@ -34,8 +34,8 @@ here moved here with it, and an item whose section stayed behind stays with it. 
 
 |link:implementation-watch/runtime-model.adoc[Runtime Model]
 |`RUN`
-|3
-|link:specification/runtime-model.adoc[Runtime & Interaction Model Specification] (the relay rules and the encoder of `pm-api`)
+|5
+|link:specification/runtime-model.adoc[Runtime & Interaction Model Specification] (the relay rules and the encoder of `pm-api`) and link:specification/cli-and-security.adoc[CLI, Coordination & Security Specification] (the on-demand start)
 
 |link:implementation-watch/job-runtime.adoc[Job Runtime]
 |`JOB`
@@ -47,6 +47,6 @@ here moved here with it, and an item whose section stayed behind stays with it. 
 
 The watch items of the same area codes that watch a section which is not held here keep their place with it:
 `PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `PM-WATCH-CLI-26` and `PM-WATCH-CLI-27` (web access and pairing),
-`PM-WATCH-RUN-1`, `-4`, `-5`, `-7`, `-12`, `-14`, `-16`, `-17` (the runtime) and `PM-WATCH-RUN-3` (verification), and
+`PM-WATCH-RUN-4`, `-7`, `-12`, `-14`, `-16`, `-17` (the runtime; `-7` and `-14` watch the on-demand start as well) and `PM-WATCH-RUN-3` (verification), and
 every item of the area `JOB` but `PM-WATCH-JOB-41` to `PM-WATCH-JOB-44` (the runtime's sections of the job runtime, in
 `pm-mcp-core`). They are not repeated here, and their identifiers are not reused.

@@ -88,10 +88,13 @@ The sections the move touched, and the document that holds each of them now:
 |`cli-and-security/02-operator-channel` (credential acts, operator channel isolation)
 |`specification/cli-and-security/02-operator-channel.adoc` here
 
-|`cli-and-security/03-web-server#web-app` (the web app)
-|`specification/cli-and-security/03-web-app.adoc` here
+|`cli-and-security/03-web-server#web-app` (the web app), with `#web-diagrams`, `#web-chat-text`, `#web-voice` and the pairing page of `#web-pairing`
+|`specification/cli-and-security/03-web-app.adoc` here; the three anchors keep a pointer in `03-web-server.adoc` of `plan-marshall-documentation`
 
-|`cli-and-security/03-web-server` (the rest: the listeners, the device secret, the pairing, the threat notes)
+|`cli-and-security/03-web-server#web-pairing`: the terminal client's part (showing the code, `#fresh-code`, `#web-open`)
+|`specification/cli-and-security/01-cli-and-installer.adoc#web-pairing-terminal` here; the two anchors keep a pointer in `03-web-server.adoc` of `plan-marshall-documentation`
+
+|`cli-and-security/03-web-server` (the rest: the listeners, the device secret, the pairing at the runtime, the threat notes)
 |`specification/cli-and-security/03-web-server.adoc` of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
 
 |`runtime-model/03-relay`, `05-mock-runtime`, `06-event-catalogue`
@@ -99,6 +102,12 @@ The sections the move touched, and the document that holds each of them now:
 
 |`runtime-model/01-processes-and-transport`, `04-sessions-and-workers`
 |`specification/runtime-model/` of `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
+
+|`runtime-model/01-processes-and-transport#_start_modes`: the on-demand start with its detached spawn (the service-managed mode and the rule that the runtime never exits because it is idle stay there)
+|`specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access` here
+
+|`runtime-model/04-sessions-and-workers#_verification`: the relay rule tests, the tests of the commands that work without a runtime, and the technical verification of the clients' socket client, their detached start and the real relay on every eligible harness
+|`specification/runtime-model/03-relay.adoc#relay-verification` and `specification/cli-and-security/01-cli-and-installer.adoc#cli-verification` here
 
 |`harness-integration/01-harness-detection`, `02-bundle-manifest` (schema, installer, drift)
 |`specification/harness-integration/` here
@@ -109,8 +118,8 @@ The sections the move touched, and the document that holds each of them now:
 |The watch items of `implementation-watch/cli-and-security.adoc` (except `PM-WATCH-CLI-15` to `PM-WATCH-CLI-21`, `-26` and `-27`, which watch the web access section that stays) and of `implementation-watch/harness-integration.adoc`
 |`implementation-watch/` here
 
-|The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-10`, `PM-WATCH-RUN-11` and
-`PM-WATCH-RUN-18` here; the rest, `PM-WATCH-RUN-16` among them, with the runtime's specification in `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`
+|The watch items of `implementation-watch/runtime-model.adoc`: `PM-WATCH-RUN-1`, `PM-WATCH-RUN-5`, `PM-WATCH-RUN-10`,
+`PM-WATCH-RUN-11` and `PM-WATCH-RUN-18` here; the rest, `PM-WATCH-RUN-16` among them, with the runtime's specification in `plan-marshall-documentation` until the daemon's parts move into `plan-marshall-mcp`; of them `PM-WATCH-RUN-7` (one start wins) and `PM-WATCH-RUN-14` (the first start creates its base), shared, since they watch the runtime's singleton and start and the on-demand start of this repository alike
 |`implementation-watch/runtime-model.adoc` here and there
 
 |`runtime-model/03-relay` Harness Protocol Forms: the relay's half (the two forms the relay serves, the protocol data it sends)
@@ -136,6 +145,9 @@ The sections the move touched, and the document that holds each of them now:
 
 |`harness-profiles/01-profile-schema`: the values of the shipped profiles (`claude`, `opencode`, the resumability table, the event mappings), resources of `pm-api`, stated in the same blocks as the fields the profile validator of `pm-core` checks
 |`specification/harness-profiles/` of `pm-mcp-core`, shared
+
+|The sections of `plan-marshall-documentation` that the runtime and the clients implement in one statement: in `runtime-model/01-processes-and-transport`, `Singleton & Discovery` (the discovery check of a client) and `Local Trust: Runtime Token` (the client check); in `cli-and-security/03-web-server`, the issue and the redemption of `Pairing Protocol` and `Paired Devices` (the acts of both clients); in `mcp-tools`, `pm_state`, `pm_do` and `pm_wait` with `Worker Connections`, `pm_build`, and the protocol and STDIO testing of part 04
+|`specification/` of `plan-marshall-documentation`, shared
 
 |What each requirement a moved section implements is implemented by, verified by and documented in
 |`Traceability.adoc` here

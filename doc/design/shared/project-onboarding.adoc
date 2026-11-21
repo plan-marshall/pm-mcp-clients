@@ -64,7 +64,7 @@ A later run of the setup, from the project's _Setup_ (link:project-explorer.adoc
 
 A step that cannot pass (a credential refused, a tool missing, the modules not discoverable) shows its check line with the cause and the fix and waits in `setup.needs-repair`, whose _Try again_ (`project.repair.retry`) runs the step again (link:../web-app/onboarding.adoc#harness-probe[the check of a harness] is the pattern); the project is enrolled but not ready, and the explorer shows it so, with _Continue the setup_ as its first action. Closing the client changes nothing: the run waits where it stopped, in either client.
 
-* *A machine that is not fully onboarded*: a project's onboarding starts only once the machine's onboarding is complete. Until then _Add a project_ is disabled with the reason (the runtime refuses the start with `machine_not_onboarded`) (`this machine is not fully onboarded: providers`) and the way to go on (_Continue the onboarding_).
+* *A machine that is not fully onboarded*: a project's onboarding starts only once the machine's onboarding is complete. Until then _Add a project_ is disabled with the reason (the runtime refuses the project onboarding with `onboarding_incomplete`) (`this machine is not fully onboarded: providers`) and the way to go on (_Continue the onboarding_).
 
 [#setup-decisions]
 == When the Setup Asks

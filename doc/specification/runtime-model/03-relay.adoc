@@ -118,3 +118,10 @@ Each harness request receives exactly one response with its own `id`.
 === Cancellation
 
 A harness's `notifications/cancelled` for a pending call is forwarded to the runtime and cancels only that call. A cancelled `pm_wait` ends without consuming a task: a task is leased only with the offer that answers a wait, never before. A cancelled `pm_build` wait leaves the build running. A cancellation never cancels a job: jobs are cancelled only by the engine (a short-circuited composite wait, a fenced worker, a pause with the point _now_) and by the operator's acts that end a scope (`PM-WF-8`). A cancellation of a request already answered is ignored (<<relay-rules,Relay Rules>>, rule 4).
+
+[#relay-verification]
+== Verification
+
+* *Relay rule tests*: A notification for which the runtime's transport returns a body writes nothing to `stdout`; a killed runtime makes the relay answer every held request with `runtime_unavailable` within one second (a test bound of this check, not a runtime timeout); a `notifications/cancelled` for an answered request is dropped and changes nothing; a `tools/list` result shows no property of the identity set, and an identity argument a client sends is not forwarded; a relay killed under a held `pm_wait` and started again with the same environment binds the same generation; `pm-mcp serve` without `--job`, or without a job token in its environment, exits at once.
+* *Technical verification* (confirmed, link:../../../../plan-marshall-documentation/doc/specification/evaluation.adoc#results[Evaluation Reference]):
+** The real `pm-mcp serve --job` under every relay rule of <<relay-rules>> on every eligible harness, with confined writer workers (`PM-WORK-2`, `PM-WORK-3`).

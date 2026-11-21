@@ -43,7 +43,7 @@ Streams: *R* the runtime-wide stream, *P* a plan's, *E* an epic's, *W* a project
 |`cleanup.decided` |R |`job_id`, `decision` (`delete`, `remind`, `ignore`), `remind_at`
 |`cleanup.progress` |R |`job_id`, `done`, `failed`, `total`
 |`cleanup.done` |R |`job_id`, `deleted`, `failed`, `kept`
-|`device.paired`, `device.renamed`, `device.revoked` |R |`device_id`, `label`, `paired_from`; a pairing code never travels in an event (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[CLI, Coordination & Security Specification, A Fresh Code after a Redemption])
+|`device.paired`, `device.renamed`, `device.revoked` |R |`device_id`, `label`, `paired_from`; a pairing code never travels in an event (link:../cli-and-security/01-cli-and-installer.adoc#fresh-code[CLI, Coordination & Security Specification, A Fresh Code after a Redemption])
 |`listener.changed` |R |`listener` (`loopback`, `lan`), `state` (`open`, `closed`, `port_occupied`), `port`
 |`settings.changed` |R, M, W, P |`level` (`machine`, `project`, `plan`), the keys changed, the new `revision`, the channel
 |`favourites.changed` |R |the favourite projects by `project_id` in their order, the channel (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#project-explorer[The Projects of the Machine])

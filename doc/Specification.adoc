@@ -58,7 +58,7 @@ per Harness` section with the model-facing content there, so its index here carr
 |`IN PROGRESS`
 |the family's requirements are listed in its
 link:../../plan-marshall-documentation/doc/specification/cli-and-security.adoc#_traceability[Traceability]
-|the client parts of the CLI, Coordination & Security Specification: the two CLI binaries with their installation layout, command tree and entry, the harness bundle installer, the operator's credential acts and the operator channel, and the web app
+|the client parts of the CLI, Coordination & Security Specification: the two CLI binaries with their installation layout, command tree and entry, the on-demand start of the runtime, the terminal client's part of the pairing, the harness bundle installer, the operator's credential acts and the operator channel, and the web app
 |link:implementation-watch/cli-and-security.adoc[cli-and-security.adoc] (9 items)
 
 |link:specification/runtime-model.adoc[runtime-model.adoc]
@@ -66,7 +66,7 @@ link:../../plan-marshall-documentation/doc/specification/cli-and-security.adoc#_
 |the family's requirements are listed in its
 link:../../plan-marshall-documentation/doc/specification/runtime-model.adoc#_traceability[Traceability]
 |the relay `pm-mcp serve --job`, the mock runtime, the event catalogue of the event streams, the `over_size` distribution resource of `pm-api` and the hidden-character rule of its encoder
-|link:implementation-watch/runtime-model.adoc[runtime-model.adoc] (3 items)
+|link:implementation-watch/runtime-model.adoc[runtime-model.adoc] (5 items)
 
 |link:specification/harness-integration.adoc[harness-integration.adoc]
 |`IN PROGRESS`
@@ -99,5 +99,5 @@ The parts of the four families, as the files of `specification/`:
 |`job-runtime` |02 |link:specification/job-runtime/02-confinement-and-environment.adoc[Confinement, Job Environment & Build Verbs] (the launcher's Linux mechanisms and the macOS confinement; the rest is the runtime's)
 |===
 
-Ten part documents under four family indexes, and twenty watch items in the four watch documents of
-link:ImplementationWatch.adoc[the Implementation Watch] (9 + 3 + 4 + 4).
+Ten part documents under four family indexes, and twenty-two watch items in the four watch documents of
+link:ImplementationWatch.adoc[the Implementation Watch] (9 + 5 + 4 + 4).

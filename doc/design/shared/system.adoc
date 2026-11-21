@@ -272,7 +272,7 @@ While the runtime drains, every client shows one line at the top of every view, 
 
 * The version installed is a local read and needs no consent. Whether a newer one exists is a question to the organisation's registry, the only place a release is delivered, over the network: the consent kind `check_updates` (link:consents.adoc#kinds[Consents, The Kinds]), asked in `runtime.update-consent` on _Check now_, rememberable for the machine. The consent's fields say what is asked (the newest release for this machine's platform), of whom (the registry, by its address), and what it never sends (nothing about the machine beyond the request itself). The answer is `runtime.check-update`.
 * With the consent remembered, the runtime checks at most once a day and whenever the operator asks; the clients show a newer version when they open, and the view says when it last checked (`checked today 09:00`).
-* *Not now*: the view shows `newer version not checked`; nothing was asked, and an upgrade is offered only for a version the operator installs by hand.
+* *Not now*: the view shows `newer version not checked`; nothing was asked, no upgrade is offered, and _Check now_ asks again.
 * *An installation the runtime cannot upgrade* (not laid out in versioned directories with the two `PATH` links, or reached through `PM_MCP_HOME`): the newer version is shown, _Upgrade…_ is disabled with its reason (`This installation is not upgraded by the runtime: PM_MCP_HOME is set.`), and the steps by hand of the specification are one step away (link:../../specification/cli-and-security/01-cli-and-installer.adoc#installation-layout[Installation Layout]).
 * *The source cannot be reached*: `Could not check for a newer version: <reason>.` with _Check again_; the installed version stays shown, never `up to date`.
 * *A newer version*: its number, its date, and its release notes one step away; with several newer releases, the newest, and the notes of each in between.
@@ -327,7 +327,7 @@ A failed upgrade always leaves a running runtime on a release that worked, and s
 |===
 |Failed while |What the clients say
 
-|fetching, verifying, installing (no network, a digest that does not match, no space), before the links are switched
+|fetching, verifying, installing (no network, a release without a valid attestation, an archive that differs from the digest its attestation states, no space), before the links are switched
 |`The upgrade to 0.10.0 failed while verifying: <reason>. 0.9.1 keeps running; nothing was changed.` Running work was not touched.
 
 |starting 0.10.0 (no answer within the runtime start timeout)
