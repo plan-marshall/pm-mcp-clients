@@ -30,6 +30,14 @@ describe('SelectField', () => {
     expect(select.options).toHaveLength(3);
   });
 
+  it('applies aria-label when label is omitted', () => {
+    const { container } = render(SelectField, {
+      props: { ariaLabel: 'Choose model', options, value: 'opt1' },
+    });
+    const select = container.querySelector('select') as HTMLSelectElement;
+    expect(select.getAttribute('aria-label')).toBe('Choose model');
+  });
+
   it('links aria-describedby to hint or error', () => {
     const { container } = render(SelectField, {
       props: { label: 'Model', options, hint: 'Select a model.', id: 'model-select' },

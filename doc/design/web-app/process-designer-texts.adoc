@@ -54,9 +54,13 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Start from an installed unit
 |Starte mit einer installierten Einheit
 
-|`designer.input.open`
-|Open it
-|Öffne sie
+|`designer.input.open_paste`
+|Open pasted text
+|Öffne eingefügten Text
+
+|`designer.input.open_template`
+|Start from template
+|Starte mit der Vorlage
 
 |`designer.open.new_recipe`
 |A new recipe
@@ -333,10 +337,6 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.confirm.place`
 |{target, select, machine {Place on this machine} other {Place in {project}}}
 |{target, select, machine {Platziere auf dieser Maschine} other {Platziere in {project}}}
-
-|`designer.back`
-|Back to the designer
-|Zurück zum Designer
 
 |`designer.place.step`
 |{step, select, written {written to {path}} committed {committed {commit}} other {landed: in force from now on}}

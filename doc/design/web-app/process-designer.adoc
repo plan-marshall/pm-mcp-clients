@@ -89,17 +89,14 @@ The head names the unit and where it came from, the project it is checked agains
 
   Where does the unit come from?
 
-  ( ) Upload a file          a .pmwf file from this computer         [ Choose… ]
-  ( ) Paste text             [                                                ]
-  (•) Start from an installed unit
+  [ Installed ]  [ Upload ]  [ Paste ]  [ Template ]
+
+  Start from an installed unit:
         phase-6-finalize      the project's copy · in force       [ Open ]
                               the compiled default, revision 4    [ Start from a copy ]
         landing.pull-request  this machine's copy · in force      [ Open ]
         remediation.ci-failure  the compiled default · in force   [ Start from a copy ]
         epic                  compiled only: a building block, never replaced  [ Read ]
-  ( ) A new recipe           an empty recipe unit for this project or machine
-
-  [ Back ]                                                           [ Open it ]
 ----
 
 * *Upload*: a file chosen in the browser, read by the browser; it must be UTF-8 text no larger than the limit the runtime states for a unit (the line says it). Nothing is uploaded to the runtime until it is validated (<<validate>>).
@@ -232,7 +229,7 @@ _Place…_ asks where the unit is to be in force:
   In force: the project's copy, else this machine's, else the compiled default.
   Now in force in pm-mcp-clients: the project's copy (revision 4).
 
-  [ Back to the designer ]                                      [ Compare… ]
+  [ Cancel ]                                                    [ Compare… ]
 ----
 
 _Compare…_ validates the unit again against the target (`designer.validate-target`): for a project that project, for this machine every project in which it would be in force; with a finding it returns to the editor with the findings marked (<<validate>>), and only a valid unit reaches the confirmation. The confirmation shows the difference first, line by line (side by side at desktop width): against the unit at that level, or, where that level has none, against the one in force now, which the head names:
@@ -251,7 +248,7 @@ _Compare…_ validates the unit again against the target (`designer.validate-tar
   new plans have it once it has landed. Running plans adopt it at their next sync with
   the base only where their rule allows.
 
-  [ Back to the designer ]                              [ Place in pm-mcp-clients ]
+  [ Cancel ]                                            [ Place in pm-mcp-clients ]
 ----
 
 * *On this machine* (`PUT /api/v1/workflows/{unit}`): the confirmation lists the projects in which it comes into force and those that keep their own copy. The runtime validates it against every enrolled project it would reach and refuses it while any fails; the findings name each project (`designer.place.project_findings`). It is in force at once. A recipe is written beside its recipe in the machine's `recipes/` and offered in every project here, except those with a recipe of the same key, which the confirmation names; a key of a built-in or domain recipe is refused (`unit_not_designable`, `designer.place.recipe_key_taken`). While no project is enrolled, placing on this machine is refused (`no_project_to_compose`, `designer.place.no_project`).

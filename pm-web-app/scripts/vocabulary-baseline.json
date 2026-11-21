@@ -49,10 +49,9 @@
     "outline: none": 1
   },
   "src/lib/views/ProcessDesigner.svelte": {
-    "select": 1,
-    "button": 7,
-    "input": 13,
-    "textarea": 2,
+    "button": 3,
+    "input": 4,
+    "textarea": 1,
     "outline: none": 1
   },
   "src/lib/views/ProjectExplorerView.svelte": {
