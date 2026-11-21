@@ -918,6 +918,7 @@
 
   /** Closes the placement dialogue and returns to the editor. */
   function closePlace(): void {
+    if (isPlacing) return;
     placeStage = 'idle';
     landingError = '';
     landingSteps = [];
@@ -989,11 +990,12 @@
         options={projectOptions}
         onchange={handleProjectSelect}
         testid="project-select"
+        ariaLabel={$t('designer.open.question')}
       />
       <Button
         variant="primary"
         loading={isValidating}
-        on:click={validate}
+        onclick={validate}
         data-testid="validate-button"
       >
         {$t('designer.validate.action')}
@@ -1003,7 +1005,7 @@
           variant="secondary"
           disabled={!result?.valid || outdated || isPlacing || isCompiledOnly}
           loading={isPlacing}
-          on:click={openPlace}
+          onclick={openPlace}
           data-testid="place-button"
         >
           {$t('designer.place.action')}
@@ -1362,7 +1364,7 @@
             project: displayNameFor(result.composed.project.project_id),
           })}
         </h2>
-        <Button variant="ghost" on:click={() => (previewOpen = false)} data-testid="preview-close">
+        <Button variant="ghost" onclick={() => (previewOpen = false)} data-testid="preview-close">
           {$t('common.action.close')}
         </Button>
       </div>
@@ -1873,19 +1875,6 @@
     padding-bottom: var(--space-3);
     margin-bottom: var(--space-3);
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .frontmatter__row {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .frontmatter__label {
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    font-weight: 600;
   }
 
   .frontmatter__icon {

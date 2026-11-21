@@ -89,17 +89,14 @@ The head names the unit and where it came from, the project it is checked agains
 
   Where does the unit come from?
 
-  ( ) Upload a file          a .pmwf file from this computer         [ Choose… ]
-  ( ) Paste text             [                                                ]
-  (•) Start from an installed unit
+  [ Installed ]  [ Upload ]  [ Paste ]  [ Template ]
+
+  Start from an installed unit:
         phase-6-finalize      the project's copy · in force       [ Open ]
                               the compiled default, revision 4    [ Start from a copy ]
         landing.pull-request  this machine's copy · in force      [ Open ]
         remediation.ci-failure  the compiled default · in force   [ Start from a copy ]
         epic                  compiled only: a building block, never replaced  [ Read ]
-  ( ) A new recipe           an empty recipe unit for this project or machine
-
-  [ Back ]                                                           [ Open it ]
 ----
 
 * *Upload*: a file chosen in the browser, read by the browser; it must be UTF-8 text no larger than the limit the runtime states for a unit (the line says it). Nothing is uploaded to the runtime until it is validated (<<validate>>).

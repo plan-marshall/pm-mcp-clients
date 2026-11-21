@@ -40,6 +40,8 @@
     name?: string;
     /** Test id. */
     testid?: string;
+    /** Accessible label when a visible Field label is omitted. */
+    ariaLabel?: string;
     /** Event handler for value change. */
     onchange?: (value: string) => void;
     /** Event handler for input. */
@@ -63,6 +65,7 @@
     placeholder,
     name,
     testid,
+    ariaLabel,
     onchange,
     oninput,
     onblur,
@@ -114,6 +117,7 @@
     bind:value
     {disabled}
     data-testid={testid}
+    aria-label={label ? undefined : ariaLabel}
     aria-invalid={error ? 'true' : undefined}
     aria-describedby={describedBy}
     onchange={handleChange}
