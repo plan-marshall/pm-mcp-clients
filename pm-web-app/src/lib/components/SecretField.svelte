@@ -36,7 +36,10 @@
     testid?: string;
     /** Optional store button label. */
     storeLabel?: string;
-    /** Handler called when secret is stored, resetting value and removing from DOM. */
+    /**
+     * Handler called when secret is stored, resetting value and removing from DOM. Only a
+     * rejection puts the secret back; the field then swallows the rejection.
+     */
     onstore?: (secret: string) => void | Promise<void>;
     /** Event handlers. */
     oninput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
@@ -94,12 +97,15 @@
 
   /**
    * Inserts the trimmed paste at the selection, places the caret after it and sends the input
-   * event a typed character would, so `value` and the caller's `oninput` follow once.
+   * event a typed character would, so `value` and the caller's `oninput` follow once. A paste
+   * that trims to nothing (an image, only whitespace) is left to the browser, so the selected
+   * part of the secret is never replaced with nothing.
    */
   function handlePaste(e: ClipboardEvent & { currentTarget: HTMLInputElement }): void {
+    const pasted = (e.clipboardData?.getData('text') ?? '').trim();
+    if (!pasted) return;
     e.preventDefault();
     const input = e.currentTarget;
-    const pasted = (e.clipboardData?.getData('text') ?? '').trim();
     // A text or password input always has a selection, so both ends are numbers here.
     const start = input.selectionStart as number;
     const end = input.selectionEnd as number;

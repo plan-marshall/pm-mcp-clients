@@ -95,6 +95,40 @@ describe('SecretField', () => {
       expect(input.selectionStart).toBe(2);
       expect(oninput).toHaveBeenCalledOnce();
     });
+
+    it.each([
+      ['a clipboard without text (an image)', clipboard('')],
+      ['a clipboard of whitespace only', clipboard('  \t\n ')],
+      ['a paste event without clipboard data', undefined],
+    ])('leaves the selected secret and the paste to the browser for %s', async (_case, data) => {
+      const oninput = vi.fn();
+      const { container } = render(SecretField, { props: { label: 'Secret', oninput } });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'abcd' } });
+      oninput.mockClear();
+      input.setSelectionRange(1, 3);
+
+      const notCancelled = await fireEvent.paste(
+        input,
+        data === undefined ? {} : { clipboardData: data },
+      );
+
+      expect(notCancelled).toBe(true);
+      expect(input.value).toBe('abcd');
+      expect(input.selectionStart).toBe(1);
+      expect(input.selectionEnd).toBe(3);
+      expect(oninput).not.toHaveBeenCalled();
+    });
+
+    it('cancels the browser paste when it inserts text itself', async () => {
+      const { container } = render(SecretField, { props: { label: 'Secret' } });
+      const input = container.querySelector('input') as HTMLInputElement;
+
+      const notCancelled = await fireEvent.paste(input, { clipboardData: clipboard('tok') });
+
+      expect(notCancelled).toBe(false);
+      expect(input.value).toBe('tok');
+    });
   });
 
   describe('storing the secret', () => {
