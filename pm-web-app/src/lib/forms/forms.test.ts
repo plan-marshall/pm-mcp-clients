@@ -1,11 +1,19 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   handleFormKeyDown,
   handleTextAreaKeyDown,
   handleInlineEditKeyDown,
   createForm,
   createUnsavedChangesGuard,
+  type FormState,
 } from './index';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+afterEach(() => {
+  currentLocale.set('en');
+  messagesStore.set(loadMessages('en'));
+});
 
 describe('lib/forms: The shape of a form', () => {
   describe('keyboard navigation and submits', () => {
@@ -213,34 +221,138 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.getFormStatus().message).toBeNull();
       expect(form.getFieldDescribedByText('reason')).toBeUndefined();
     });
+
+    it.each([
+      ['en', 'Fill in this field.'],
+      ['de', 'Fülle dieses Feld aus.'],
+    ] as const)(
+      'names the catalogue reason of a required field that sets none, in %s',
+      (locale, reason) => {
+        currentLocale.set(locale);
+        messagesStore.set(loadMessages(locale));
+        const form = createForm({ fields: { title: { initial: '', required: true } } });
+
+        form.onFieldBlur('title');
+
+        expect(form.getErrors().title).toBe(reason);
+        expect(form.getDisabledReason()).toBe(reason);
+        expect(form.getFormStatus().message).toBe(reason);
+        expect(form.getFieldDescribedByText('title')).toBe(reason);
+      },
+    );
+
+    it('hands its values and errors to a subscriber on input, blur and submit', () => {
+      const form = createForm({
+        fields: {
+          code: {
+            initial: '',
+            validate: (val: string) => (val.length < 5 ? 'Code must be at least 5 chars.' : null),
+          },
+        },
+      });
+      const seen: FormState<{ code: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+
+      form.onFieldInput('code', 'abc');
+      form.onFieldBlur('code');
+      form.onFieldInput('code', 'abcdef');
+      const submitted = form.submit();
+      unsubscribe();
+
+      expect(submitted).toBe(true);
+      expect(seen.map((state) => state.values.code)).toEqual(['', 'abc', 'abc', 'abcdef', 'abcdef']);
+      expect(seen.map((state) => state.errors.code)).toEqual([
+        undefined,
+        undefined,
+        'Code must be at least 5 chars.',
+        null,
+        null,
+      ]);
+    });
+
+    it('hands the errors of a refused submit to a subscriber', () => {
+      const form = createForm({ fields: { title: { initial: '', required: true } } });
+      const seen: FormState<{ title: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+
+      const submitted = form.submit();
+      unsubscribe();
+
+      expect(submitted).toBe(false);
+      expect(seen.at(-1)?.errors.title).toBe('Fill in this field.');
+    });
+
+    it('is dirty once a value changes, and a successful submit makes the values its baseline', () => {
+      const onSubmit = vi.fn();
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit });
+      expect(form.isDirty()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+
+      expect(form.submit()).toBe(true);
+      expect(onSubmit).toHaveBeenCalledWith({ title: 'Release notes' });
+      expect(form.isDirty()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes, second draft');
+      expect(form.isDirty()).toBe(true);
+    });
   });
 
   describe('unsaved-changes guard', () => {
-    it('prompts before leaving when changed, and stays silent when unchanged', () => {
+    it('asks through the supplied ask when changed, and stays silent when unchanged', async () => {
       let dirty = false;
-      const guard = createUnsavedChangesGuard({
-        isDirty: () => dirty,
-      });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
       // Silent when unchanged
-      expect(guard.canLeave()).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
+      expect(ask).not.toHaveBeenCalled();
 
       const beforeUnloadUnchanged = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(beforeUnloadUnchanged);
+      guard.handleBeforeUnload(beforeUnloadUnchanged as BeforeUnloadEvent);
       expect(beforeUnloadUnchanged.defaultPrevented).toBe(false);
 
-      // Asks when changed
+      // Asks when changed, and the answer decides
       dirty = true;
-      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-      expect(guard.canLeave()).toBe(false);
-      expect(confirmSpy).toHaveBeenCalled();
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
 
-      confirmSpy.mockReturnValue(true);
-      expect(guard.canLeave()).toBe(true);
+      ask.mockResolvedValue(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
 
       const beforeUnloadChanged = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(beforeUnloadChanged);
+      guard.handleBeforeUnload(beforeUnloadChanged as BeforeUnloadEvent);
       expect(beforeUnloadChanged.defaultPrevented).toBe(true);
+
+      // A submit clears the guard: it no longer asks, on a route change or on a reload
+      ask.mockClear();
+      guard.clear();
+      await expect(guard.canLeave()).resolves.toBe(true);
+      expect(ask).not.toHaveBeenCalled();
+      const beforeUnloadCleared = new Event('beforeunload', { cancelable: true });
+      guard.handleBeforeUnload(beforeUnloadCleared as BeforeUnloadEvent);
+      expect(beforeUnloadCleared.defaultPrevented).toBe(false);
+      // The browser's own confirm is never the question.
+      expect(confirmSpy).not.toHaveBeenCalled();
+    });
+
+    it('asks again for changes made after the form was clean once more', async () => {
+      let dirty = true;
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+
+      guard.clear();
+      expect(guard.isDirty()).toBe(false);
+
+      dirty = false;
+      expect(guard.isDirty()).toBe(false);
+
+      dirty = true;
+      expect(guard.isDirty()).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
     });
   });
 });

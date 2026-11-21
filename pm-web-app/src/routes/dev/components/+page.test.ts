@@ -11,6 +11,9 @@ import { loadMessages } from '../../../test/catalogue-fixture';
 
 // Heavy render tests now inherit the testTimeout policy set in vite.config.ts (#432).
 
+// The demo form's unsaved-changes guard registers with SvelteKit's router, which a unit test has not.
+vi.mock('$app/navigation', () => ({ beforeNavigate: () => {}, goto: () => Promise.resolve() }));
+
 describe('/dev/components page fixture', () => {
   beforeEach(() => {
     // The intent, outline and builder-check fixtures read the runtime through the client. A read that
@@ -472,34 +475,100 @@ describe('/dev/components page fixture', () => {
   });
 
   describe('the field system fixtures (PLAN-150 / D5)', () => {
+    /** How each field type of the matrix is found in a card. */
+    const FIELD_TYPES = {
+      text: '.text-field__input',
+      textarea: '.text-area__input',
+      number: '.number-field__input',
+      secret: '.secret-field__input',
+      code: '.code-field__input',
+      select: '.select-field__select',
+      radio: '.radio-group',
+      check: '.check-field',
+      checkgroup: '.check-group',
+    } as const;
+
+    type FieldType = keyof typeof FIELD_TYPES;
+
+    /** The field types the page places in each state card, by the catalogue key of its title. */
+    const MATRIX: Record<string, FieldType[]> = {
+      'dev.field.rest': ['text', 'textarea', 'number', 'secret', 'code', 'select', 'check'],
+      'dev.field.filled': ['text', 'textarea', 'number', 'secret', 'code', 'radio', 'checkgroup'],
+      'dev.field.invalid': ['text', 'textarea', 'number', 'code'],
+      'dev.field.disabled': ['text', 'textarea', 'secret', 'select', 'radio', 'check'],
+    };
+
+    /**
+     * @param section the fields section of one theme block
+     * @param title the card's title as the catalogue words it
+     * @returns the card that carries the title
+     */
+    function cardTitled(section: HTMLElement, title: string): HTMLElement {
+      const cards = Array.from(section.querySelectorAll<HTMLElement>('.card')).filter(
+        (card) => card.querySelector('.card__title')?.textContent?.trim() === title,
+      );
+      expect(cards, `the card titled ${title}`).toHaveLength(1);
+      return cards[0];
+    }
+
+    /** @param card a state card @returns the field types it holds, in the matrix's order */
+    function typesIn(card: HTMLElement): FieldType[] {
+      return (Object.keys(FIELD_TYPES) as FieldType[]).filter(
+        (type) => card.querySelector(FIELD_TYPES[type]) !== null,
+      );
+    }
+
     it.each(['en', 'de'] as const)(
       'draws the field fixture matrix with all field types in %s',
       (locale) => {
+        const messages = loadMessages(locale);
         currentLocale.set(locale);
-        messagesStore.set(loadMessages(locale));
+        messagesStore.set(messages);
         render(DevComponentsPage);
 
         for (const theme of ['light', 'dark']) {
           const block = document.querySelector(`[data-theme="${theme}"]`);
           expect(block, `${theme} block`).not.toBeNull();
 
-          const fieldsSection = block?.querySelector('[data-testid="fields-fixture"]');
+          const fieldsSection = block?.querySelector<HTMLElement>('[data-testid="fields-fixture"]');
           expect(fieldsSection).not.toBeNull();
+          const section = fieldsSection as HTMLElement;
 
           // Rest, Filled, Invalid, Disabled, Demo form cards
-          expect(fieldsSection?.querySelectorAll('.card')).toHaveLength(5);
+          expect(section.querySelectorAll('.card')).toHaveLength(5);
 
-          // All field components are represented
-          expect(fieldsSection?.querySelectorAll('.field').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.text-field__input').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.text-area__input').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.number-field__input').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.secret-field__input').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.code-field__input').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.select-field__select').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.radio-group').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.check-field').length).toBeGreaterThan(0);
-          expect(fieldsSection?.querySelectorAll('.check-group').length).toBeGreaterThan(0);
+          // (a) Each state card holds the fields the page places in it.
+          for (const [titleKey, types] of Object.entries(MATRIX)) {
+            expect(typesIn(cardTitled(section, messages[titleKey])), `${theme} ${titleKey}`).toEqual(
+              types,
+            );
+          }
+
+          // (b) Every control of the Invalid card is marked invalid and shows the sample error.
+          const invalid = cardTitled(section, messages['dev.field.invalid']);
+          const invalidControls = Array.from(invalid.querySelectorAll('input, textarea, select'));
+          expect(invalidControls).toHaveLength(4);
+          for (const control of invalidControls) {
+            expect(control).toHaveAttribute('aria-invalid', 'true');
+            expect(control.closest('.field')).toHaveTextContent(messages['dev.field.sample_error']);
+          }
+
+          // (c) Every input, text area and select of the Disabled card is disabled.
+          const disabled = cardTitled(section, messages['dev.field.disabled']);
+          const disabledControls = Array.from(
+            disabled.querySelectorAll<HTMLInputElement>('input, textarea, select'),
+          );
+          expect(disabledControls.length).toBeGreaterThanOrEqual(MATRIX['dev.field.disabled'].length);
+          for (const control of disabledControls) {
+            expect(control).toBeDisabled();
+          }
+
+          // (d) No secret field of the section holds a value.
+          const secrets = Array.from(
+            section.querySelectorAll<HTMLInputElement>(FIELD_TYPES.secret),
+          );
+          expect(secrets.length).toBeGreaterThan(0);
+          expect(secrets.map((secret) => secret.value)).toEqual(secrets.map(() => ''));
         }
       },
     );

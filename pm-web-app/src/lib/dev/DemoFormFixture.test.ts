@@ -1,6 +1,16 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
 import DemoFormFixture from './DemoFormFixture.svelte';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+afterEach(() => {
+  currentLocale.set('en');
+  messagesStore.set(loadMessages('en'));
+});
+
+// The fixture's unsaved-changes guard registers with SvelteKit's router, which a unit test has not.
+vi.mock('$app/navigation', () => ({ beforeNavigate: () => {}, goto: () => Promise.resolve() }));
 
 describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
   it('renders form with initial invalid state and disabled submit button', () => {
@@ -11,29 +21,48 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/reason/i);
   });
 
-  it('moves focus in document order from text field to textarea to buttons', async () => {
+  it('moves focus in document order from text field to textarea to buttons', () => {
     render(DemoFormFixture);
 
-    const textInput = screen.getByTestId('demo-form-text') as HTMLInputElement;
-    const textArea = screen.getByTestId('demo-form-textarea') as HTMLTextAreaElement;
-    const cancelBtn = screen.getByRole('button', { name: /cancel/i });
-    const submitBtn = screen.getByRole('button', { name: /save/i });
+    const order = [
+      screen.getByTestId('demo-form-text'),
+      screen.getByTestId('demo-form-textarea'),
+      screen.getByRole('button', { name: /cancel/i }),
+      screen.getByRole('button', { name: /save/i }),
+    ];
 
-    textInput.focus();
-    expect(document.activeElement).toBe(textInput);
-
-    // Tab to textarea
-    textArea.focus();
-    expect(document.activeElement).toBe(textArea);
-
-    // Tab to cancel button
-    cancelBtn.focus();
-    expect(document.activeElement).toBe(cancelBtn);
-
-    // Tab to submit button
-    submitBtn.focus();
-    expect(document.activeElement).toBe(submitBtn);
+    // Tab follows the document where no control carries a positive tabindex.
+    expect(order.map((control) => control.tabIndex > 0)).toEqual([false, false, false, false]);
+    for (const [index, control] of order.slice(0, -1).entries()) {
+      expect(
+        control.compareDocumentPosition(order[index + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+        `control ${index + 1} follows control ${index}`,
+      ).toBeTruthy();
+    }
   });
+
+  it.each([
+    ['en', 'Fill in this field.'],
+    ['de', 'Fülle dieses Feld aus.'],
+  ] as const)(
+    'checks the title on blur with the catalogue reason and clears it as one types, in %s',
+    async (locale, reason) => {
+      currentLocale.set(locale);
+      messagesStore.set(loadMessages(locale));
+      render(DemoFormFixture);
+      const title = screen.getByTestId('demo-form-text') as HTMLInputElement;
+
+      await fireEvent.blur(title);
+
+      expect(title).toHaveAttribute('aria-invalid', 'true');
+      expect(title.closest('.field')).toHaveTextContent(reason);
+
+      await fireEvent.input(title, { target: { value: 'Release notes' } });
+
+      expect(title).not.toHaveAttribute('aria-invalid');
+      expect(title.closest('.field')).not.toHaveTextContent(reason);
+    },
+  );
 
   it('submits on Enter in TextField when valid', async () => {
     render(DemoFormFixture);

@@ -7,6 +7,9 @@
  * Unsaved-changes guard asks before route change, close or reload while dirty.
  */
 
+import { get, writable, type Readable } from 'svelte/store';
+import { t } from '../i18n';
+
 /**
  * Keyboard handler for one-line forms: Enter submits.
  *
@@ -65,8 +68,35 @@ export interface FormStatusResult {
   tone: 'neutral' | 'danger' | 'success';
 }
 
+/** What a form holds at one moment: the values as typed and the errors its checks produced. */
+export interface FormState<T extends Record<string, unknown>> {
+  values: T;
+  errors: Record<string, string | null>;
+}
+
+/**
+ * @param val a field value
+ * @returns whether a required field holding it counts as empty
+ */
+function isEmptyValue(val: unknown): boolean {
+  return val === null || val === undefined || (typeof val === 'string' && val.trim() === '');
+}
+
+/**
+ * @param field the field's configuration
+ * @returns the reason a required-empty field names: its own, or the catalogue's default, read in
+ *          the locale the screen shows when the reason is produced
+ */
+function requiredReasonOf(field: Pick<FieldConfig, 'requiredReason'>): string {
+  return field.requiredReason ?? get(t)('web.form.required');
+}
+
 /**
  * Manages form state, blur checking, required-empty reason, and first invalid focus.
+ *
+ * The values and errors are held in a store the form exposes with `subscribe`, so a component that
+ * reads it re-renders on input, blur and submit. A successful submit makes the submitted values the
+ * new baseline `isDirty` compares against.
  */
 export function createForm<T extends Record<string, unknown>>(config: FormConfig<T>) {
   const fields = config.fields;
@@ -77,11 +107,19 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     values[key as keyof T] = (fieldConfig as FieldConfig<T[keyof T]>).initial;
   }
 
+  let baseline: T = { ...values };
+  const state = writable<FormState<T>>({ values: { ...values }, errors: { ...errors } });
+
+  /** Hands the current values and errors to every subscriber. */
+  function publish(): void {
+    state.set({ values: { ...values }, errors: { ...errors } });
+  }
+
   function validateFieldValue(key: string, val: unknown): string | null {
     const f = fields[key as keyof T];
     if (!f) return null;
-    if (f.required && (val === null || val === undefined || (typeof val === 'string' && val.trim() === ''))) {
-      return f.requiredReason ?? 'Required.';
+    if (f.required && isEmptyValue(val)) {
+      return requiredReasonOf(f);
     }
     if (f.validate) {
       return (f.validate as (value: unknown) => string | null | undefined)(val) ?? null;
@@ -91,29 +129,29 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
   function onFieldInput(field: keyof T & string, val: unknown): void {
     values[field] = val as T[keyof T & string];
-    if (errors[field]) {
-      const err = validateFieldValue(field, val);
-      if (!err) {
-        errors[field] = null;
-      }
+    if (errors[field] && !validateFieldValue(field, val)) {
+      errors[field] = null;
     }
+    publish();
   }
 
   function onFieldBlur(field: keyof T & string): void {
     errors[field] = validateFieldValue(field, values[field]);
+    publish();
   }
 
   function getErrors(): Record<string, string | null | undefined> {
     return { ...errors };
   }
 
+  /** @returns whether a value differs from the one the form started with or last submitted */
+  function isDirty(): boolean {
+    return Object.keys(fields).some((key) => !Object.is(values[key], baseline[key]));
+  }
+
   function isSubmitDisabled(): boolean {
     for (const [key, f] of Object.entries(fields)) {
-      const val = values[key as keyof T];
-      if (f.required && (val === null || val === undefined || (typeof val === 'string' && val.trim() === ''))) {
-        return true;
-      }
-      if (errors[key]) {
+      if ((f.required && isEmptyValue(values[key as keyof T])) || errors[key]) {
         return true;
       }
     }
@@ -122,9 +160,8 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
   function getDisabledReason(): string | undefined {
     for (const [key, f] of Object.entries(fields)) {
-      const val = values[key as keyof T];
-      if (f.required && (val === null || val === undefined || (typeof val === 'string' && val.trim() === ''))) {
-        return f.requiredReason;
+      if (f.required && isEmptyValue(values[key as keyof T])) {
+        return requiredReasonOf(f);
       }
     }
     return undefined;
@@ -140,9 +177,8 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
   function getFieldDescribedByText(field: keyof T & string): string | undefined {
     const f = fields[field];
-    const val = values[field];
-    if (f?.required && (val === null || val === undefined || (typeof val === 'string' && val.trim() === ''))) {
-      return f.requiredReason;
+    if (f?.required && isEmptyValue(values[field])) {
+      return requiredReasonOf(f);
     }
     return undefined;
   }
@@ -165,18 +201,24 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
         );
         el?.focus();
       }
+      publish();
       return false;
     }
 
+    baseline = { ...values };
+    publish();
     void config.onSubmit?.(values);
     return true;
   }
 
+  const subscribe: Readable<FormState<T>>['subscribe'] = state.subscribe;
+
   return {
-    values,
+    subscribe,
     onFieldInput,
     onFieldBlur,
     getErrors,
+    isDirty,
     isSubmitDisabled,
     getDisabledReason,
     getFormStatus,
@@ -186,23 +228,43 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 }
 
 export interface UnsavedChangesGuardOptions {
+  /** Whether the form holds changes that are not saved. */
   isDirty: () => boolean;
-  message?: string;
+  /** Asks the operator whether to leave anyway; resolves `true` to leave, `false` to stay. */
+  ask: () => Promise<boolean>;
 }
 
 /**
  * Guards against losing unsaved changes on navigation, closing or reload.
+ *
+ * A route change asks through the caller's `ask` (the view's ConfirmDialog); a reload or a closed
+ * tab is asked through the browser's own `beforeunload` prompt. `clear()` — which a submit calls,
+ * and which a confirmed leave calls before it navigates — makes the guard stop asking for the
+ * changes held now; it asks again once the form has been clean and is changed anew.
  */
 export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
-  const { isDirty, message = 'You have unsaved changes. Leave anyway?' } = options;
+  const { ask } = options;
+  let cleared = false;
+
+  /** @returns whether the guard has changes to ask for */
+  function isDirty(): boolean {
+    if (!options.isDirty()) {
+      cleared = false;
+      return false;
+    }
+    return !cleared;
+  }
 
   return {
-    canLeave(): boolean {
+    isDirty,
+
+    clear(): void {
+      cleared = true;
+    },
+
+    async canLeave(): Promise<boolean> {
       if (!isDirty()) return true;
-      if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-        return window.confirm(message);
-      }
-      return false;
+      return ask();
     },
 
     handleBeforeUnload(e: BeforeUnloadEvent): void {

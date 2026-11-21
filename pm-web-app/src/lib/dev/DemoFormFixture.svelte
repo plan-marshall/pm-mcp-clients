@@ -5,17 +5,34 @@
   import Button from '../components/Button.svelte';
   import { t } from '../i18n';
   import {
+    createForm,
     handleFormKeyDown,
     handleTextAreaKeyDown,
     handleInlineEditKeyDown,
   } from '../forms';
+  import UnsavedChangesGuard from '../forms/UnsavedChangesGuard.svelte';
 
-  let text = $state('');
+  /** The title field is driven by the form module: its value, its blur check and its reason. */
+  const form = createForm({ fields: { title: { initial: '', required: true } } });
+
   let reason = $state('');
+  /** The reason as last submitted, the baseline its unsaved changes are measured against. */
+  let savedReason = $state('');
   let submitted = $state(false);
   let cancelled = $state(false);
+  /** Whether the title differs from its baseline, followed through the form's store. */
+  let titleDirty = $state(false);
+  let guard: UnsavedChangesGuard | undefined = $state();
 
-  const isValid = $derived(text.trim().length > 0 && reason.trim().length > 0);
+  $effect(() =>
+    form.subscribe(() => {
+      titleDirty = form.isDirty();
+    }),
+  );
+
+  const dirty = $derived(titleDirty || reason !== savedReason);
+
+  const isValid = $derived($form.values.title.trim().length > 0 && reason.trim().length > 0);
 
   const statusMessage = $derived.by(() => {
     if (submitted) return $t('dev.field.form_submitted');
@@ -32,7 +49,9 @@
   });
 
   function handleSubmit() {
-    if (isValid) {
+    if (isValid && form.submit()) {
+      savedReason = reason;
+      guard?.clear();
       submitted = true;
       cancelled = false;
     }
@@ -44,50 +63,55 @@
   }
 </script>
 
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<form
-  class="dev__stack"
-  data-testid="demo-form-fixture"
-  onsubmit={(e) => {
-    e.preventDefault();
-    handleSubmit();
-  }}
-  onkeydown={(e) => {
-    handleFormKeyDown(e, handleSubmit);
-    handleInlineEditKeyDown(e, handleCancel);
-  }}
->
-  <TextField
-    bind:value={text}
-    label={$t('dev.field.sample_label')}
-    placeholder={$t('dev.field.sample_placeholder')}
-    testid="demo-form-text"
-  />
-  <TextArea
-    bind:value={reason}
-    label={$t('dev.field.sample_label')}
-    placeholder={$t('dev.field.reason_placeholder')}
-    testid="demo-form-textarea"
-    onkeydown={(e) => {
-      handleTextAreaKeyDown(e, handleSubmit);
+<UnsavedChangesGuard {dirty} bind:this={guard}>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <form
+    class="dev__stack"
+    data-testid="demo-form-fixture"
+    onsubmit={(e) => {
+      e.preventDefault();
+      handleSubmit();
     }}
-  />
-  <FormStatus message={statusMessage} tone={statusTone} />
-  <div class="dev__row dev__row--end">
-    <Button type="button" variant="ghost" onclick={handleCancel} testid="demo-form-cancel">
-      {$t('common.action.cancel')}
-    </Button>
-    <Button
-      type="submit"
-      variant="primary"
-      disabled={!isValid}
-      disabledReason={!isValid ? $t('common.field.reason_required') : undefined}
-      testid="demo-form-submit"
-    >
-      {$t('common.action.save')}
-    </Button>
-  </div>
-</form>
+    onkeydown={(e) => {
+      handleFormKeyDown(e, handleSubmit);
+      handleInlineEditKeyDown(e, handleCancel);
+    }}
+  >
+    <TextField
+      value={$form.values.title}
+      error={$form.errors.title}
+      label={$t('dev.field.sample_label')}
+      placeholder={$t('dev.field.sample_placeholder')}
+      testid="demo-form-text"
+      oninput={(e) => form.onFieldInput('title', e.currentTarget.value)}
+      onblur={() => form.onFieldBlur('title')}
+    />
+    <TextArea
+      bind:value={reason}
+      label={$t('dev.field.sample_label')}
+      placeholder={$t('dev.field.reason_placeholder')}
+      testid="demo-form-textarea"
+      onkeydown={(e) => {
+        handleTextAreaKeyDown(e, handleSubmit);
+      }}
+    />
+    <FormStatus message={statusMessage} tone={statusTone} />
+    <div class="dev__row dev__row--end">
+      <Button type="button" variant="ghost" onclick={handleCancel} testid="demo-form-cancel">
+        {$t('common.action.cancel')}
+      </Button>
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={!isValid}
+        disabledReason={!isValid ? $t('common.field.reason_required') : undefined}
+        testid="demo-form-submit"
+      >
+        {$t('common.action.save')}
+      </Button>
+    </div>
+  </form>
+</UnsavedChangesGuard>
 
 <style>
   .dev__stack {
