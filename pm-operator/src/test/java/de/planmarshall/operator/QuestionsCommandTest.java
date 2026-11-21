@@ -323,7 +323,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-999");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Question Q-999 not found."));
+        assertTrue(err.toString().contains("Question Q-999 not found."));
+        assertFalse(out.toString().contains("Question Q-999 not found."));
     }
 
     @Test

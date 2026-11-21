@@ -70,6 +70,9 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String REASON = "reason";
     private static final String COUNT = "count";
 
+    /** The verb label a refusal of {@code credentials remove} names. */
+    private static final String VERB_REMOVE = "credentials remove";
+
     private final OperatorContext context;
 
     @Spec
@@ -515,7 +518,7 @@ public final class CredentialsCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var locale = context.clientEnvironment().locale();
             err.println(MessageCatalogue.format(locale, "operator.credentials.remove_failed",
-                                Map.of(KEY, key, REASON, new OperatorRefusedException("credentials remove", response)
+                                Map.of(KEY, key, REASON, new OperatorRefusedException(VERB_REMOVE, response)
                                                     .message(locale))));
             err.flush();
             return PmOperator.EXIT_FAILURE;

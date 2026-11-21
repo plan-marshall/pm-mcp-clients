@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -278,7 +279,8 @@ class ControlCommandTest {
 
         int code = execute("plan", "settings", plan, "--set", "landing=landing.main");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("landing.main is refused:"));
+        assertTrue(err.toString().contains("landing.main is refused:"));
+        assertFalse(out.toString().contains("landing.main is refused:"));
     }
 
     @Test

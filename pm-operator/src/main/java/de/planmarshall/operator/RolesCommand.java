@@ -67,6 +67,12 @@ public final class RolesCommand implements Callable<Integer> {
     private static final String PARAM_EFFORT = "effort";
     private static final String RECORD_PATH = "record_path";
     private static final String KEY_NONE = "common.none";
+
+    /** The verb label a refusal of {@code roles show} names. */
+    private static final String VERB_SHOW = "roles show";
+
+    /** The verb label a refusal of {@code roles qualify} names. */
+    private static final String VERB_QUALIFY = "roles qualify";
     private static final Map<String, String> MEASUREMENT_LABELS = measurementLabels();
     private static final int LABEL_WIDTH = 16;
     private static final String PARAM_ROW = "  %-" + (LABEL_WIDTH + 8) + "s %s%n";
@@ -227,12 +233,12 @@ public final class RolesCommand implements Callable<Integer> {
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
-                                                        FIELD_REASON, new OperatorRefusedException("roles show",
+                                                        FIELD_REASON, new OperatorRefusedException(VERB_SHOW,
                                                                             response).message(locale))));
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("roles show " + role, response);
+            throw new OperatorRefusedException(VERB_SHOW + " " + role, response);
         }
 
         private static void renderDetail(PrintWriter out, String locale, RoleDetailResource detail) {
@@ -329,7 +335,7 @@ public final class RolesCommand implements Callable<Integer> {
             if (detailResponse.status() != 200) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.qualify.failed",
                                     Map.of("role", safeRole, FIELD_REASON, new OperatorRefusedException(
-                                                        "roles qualify", detailResponse).message(locale))));
+                                                        VERB_QUALIFY, detailResponse).message(locale))));
                 err.flush();
                 return 1;
             }

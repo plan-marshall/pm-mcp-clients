@@ -70,6 +70,9 @@ public final class ProjectCommand implements Callable<Integer> {
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
 
+    /** The verb label a refusal of {@code project unenrol} names. */
+    private static final String VERB_UNENROL = "project unenrol";
+
     /** The catalogue key of the refusal a run that cannot close its entry reports. */
     private static final String KEY_CLOSE_FAILED = "project.add.close_failed";
 
@@ -739,12 +742,12 @@ public final class ProjectCommand implements Callable<Integer> {
                 } else {
                     err.println(MessageCatalogue.format(locale, "enrolment.unenrol.failed",
                                         Map.of("id", sanitizedId, "reason", new OperatorRefusedException(
-                                                            "project unenrol", response).message(locale))));
+                                                            VERB_UNENROL, response).message(locale))));
                 }
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("project unenrol " + sanitizedId, response);
+            throw new OperatorRefusedException(VERB_UNENROL + " " + sanitizedId, response);
         }
 
         /**
