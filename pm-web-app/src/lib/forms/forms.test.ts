@@ -355,18 +355,44 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.isDirty()).toBe(false);
     });
 
-    /** @returns a form whose saves stay pending until the test resolves each by its position */
+    /**
+     * @returns a form whose saves stay pending until the test resolves (`saves`) or rejects
+     *          (`failures`) each by its position
+     */
     function formWithPendingSaves() {
       const saves: Array<() => void> = [];
+      const failures: Array<(error: Error) => void> = [];
       const form = createForm({
         fields: { title: { initial: '' } },
         onSubmit: () =>
-          new Promise<void>((resolve) => {
+          new Promise<void>((resolve, reject) => {
             saves.push(resolve);
+            failures.push(reject);
           }),
       });
-      return { form, saves };
+      return { form, saves, failures };
     }
+
+    it('keeps the values of an older successful save as the baseline when the newer save rejects', async () => {
+      const { form, saves, failures } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+      const failure = new Error('save failed');
+
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+      failures[1](failure);
+      await expect(newer).rejects.toBe(failure);
+
+      // The second draft was never saved; the first one was.
+      expect(form.isDirty()).toBe(true);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', '');
+      expect(form.isDirty()).toBe(true);
+    });
 
     it('keeps the newer values as the baseline when an older save resolves after the newer one', async () => {
       const { form, saves } = formWithPendingSaves();
