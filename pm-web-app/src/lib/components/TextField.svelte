@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { HTMLInputAttributes } from 'svelte/elements';
   import Field from './Field.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   /**
    * Free text input owning Field and `<input>` (components-fields.adoc, One Field System).
@@ -95,7 +96,7 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `tf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('tf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
@@ -177,7 +178,7 @@
   }
 
   .text-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }

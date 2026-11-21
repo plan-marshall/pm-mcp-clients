@@ -2,7 +2,13 @@ import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import CodeField from './CodeField.svelte';
-import { styleOf } from '../../test/templateStyle';
+import { ruleOf, styleOf } from '../../test/templateStyle';
+import {
+  REMOVED_OUTLINE,
+  TRANSPARENT_OUTLINE,
+  sourceOf,
+  uniqueIdShape,
+} from '../../test/fieldContract';
 
 describe('CodeField', () => {
   it('renders monospace and large input with autocomplete="one-time-code"', () => {
@@ -75,9 +81,30 @@ describe('CodeField', () => {
     expect(oncomplete).toHaveBeenLastCalledWith('KXQB-MRTA');
   });
 
-  it('uses --control-height and does not use outline: none without focus ring', () => {
-    const style = styleOf(path.resolve(__dirname, './CodeField.svelte'));
-    expect(style).toContain('var(--control-height)');
-    expect(style).not.toMatch(/outline:\s*none(?!\s*;\s*box-shadow:\s*var\(--focus-ring\))/);
+  describe('focus in forced-colors mode and generated ids', () => {
+    const file = path.resolve(__dirname, './CodeField.svelte');
+
+    it('uses --control-height and keeps a transparent focus outline beside the focus ring', () => {
+      const style = styleOf(file);
+      expect(style).toContain('var(--control-height)');
+      expect(style).not.toMatch(REMOVED_OUTLINE);
+      const focus = ruleOf(style, '.code-field__input:focus');
+      expect(focus).toMatch(TRANSPARENT_OUTLINE);
+      expect(focus).toContain('box-shadow: var(--focus-ring)');
+    });
+
+    it('gives two instances without an id distinct ids of the uniqueId shape', () => {
+      const idOf = (label: string) =>
+        render(CodeField, { props: { label } }).container.querySelector('input')?.id;
+      const first = idOf('First');
+      const second = idOf('Second');
+      expect(first).toMatch(uniqueIdShape('cf'));
+      expect(second).toMatch(uniqueIdShape('cf'));
+      expect(first).not.toBe(second);
+    });
+
+    it('allocates its id without Math.random', () => {
+      expect(sourceOf(file)).not.toContain('Math.random');
+    });
   });
 });

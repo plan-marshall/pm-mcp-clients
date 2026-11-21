@@ -2,6 +2,7 @@
   import Field from './Field.svelte';
   import Toggle from './Toggle.svelte';
   import Button from './Button.svelte';
+  import { uniqueId } from '../utils/uniqueId';
   import { t } from '../i18n';
 
   /**
@@ -70,7 +71,7 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `sf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('sf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
@@ -212,7 +213,7 @@
   }
 
   .secret-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }

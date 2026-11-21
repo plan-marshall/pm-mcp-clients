@@ -1,5 +1,6 @@
 <script lang="ts">
   import Field from './Field.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   /**
    * Pairing code input owning Field and `<input>` (components-fields.adoc, Special Fields).
@@ -67,7 +68,7 @@
     onkeydown,
   }: Props = $props();
 
-  const generatedId = `cf-${Math.random().toString(36).slice(2, 9)}`;
+  const generatedId = uniqueId('cf');
   const effectiveId = $derived(id ?? generatedId);
   const hintId = $derived(`${effectiveId}-hint`);
   const errorId = $derived(`${effectiveId}-error`);
@@ -174,7 +175,7 @@
   }
 
   .code-field__input:focus {
-    outline: none;
+    outline: 2px solid transparent;
     box-shadow: var(--focus-ring);
     border-color: var(--color-brand);
   }
