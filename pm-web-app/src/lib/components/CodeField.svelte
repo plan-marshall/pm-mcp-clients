@@ -86,15 +86,25 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
+  /** The last complete code reported to `oncomplete`; null while the code is incomplete. */
+  let lastReported: string | null = null;
+
+  /**
+   * Reports a code once when it becomes complete, and again only for a different complete code, so
+   * typing the dash into a complete code (KXQBMRTN, then KXQB-MRTN) does not report it twice.
+   */
   function checkCode(raw: string): void {
     const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-    if (cleaned.length === 8) {
-      complete = true;
-      const formatted = `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
-      oncomplete?.(formatted);
-    } else {
+    if (cleaned.length !== 8) {
       complete = false;
+      lastReported = null;
+      return;
     }
+    complete = true;
+    const formatted = `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
+    if (formatted === lastReported) return;
+    lastReported = formatted;
+    oncomplete?.(formatted);
   }
 
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {

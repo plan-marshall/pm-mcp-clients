@@ -55,6 +55,71 @@ describe('lib/forms: The shape of a form', () => {
       expect(cmdEnterEvent.defaultPrevented).toBe(true);
     });
 
+    it('does not submit on the Enter that confirms an IME composition, in a one-line form or a text area', () => {
+      const onSubmit = vi.fn();
+      const input = document.createElement('input');
+      const composing = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      input.dispatchEvent(composing);
+      handleFormKeyDown(composing, onSubmit);
+
+      const textarea = document.createElement('textarea');
+      const composingCtrl = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        ctrlKey: true,
+        isComposing: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      textarea.dispatchEvent(composingCtrl);
+      handleTextAreaKeyDown(composingCtrl, onSubmit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(composing.defaultPrevented).toBe(false);
+      expect(composingCtrl.defaultPrevented).toBe(false);
+    });
+
+    it.each(['checkbox', 'radio'])(
+      'does not submit on an Enter whose target is a %s input',
+      (type) => {
+        const onSubmit = vi.fn();
+        const choice = document.createElement('input');
+        choice.type = type;
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        choice.dispatchEvent(event);
+
+        handleFormKeyDown(event, onSubmit);
+
+        expect(onSubmit).not.toHaveBeenCalled();
+        expect(event.defaultPrevented).toBe(false);
+      },
+    );
+
+    it.each(['TEXTAREA', 'BUTTON'])('does not submit on an Enter whose target is a %s', (tag) => {
+      const onSubmit = vi.fn();
+      const element = document.createElement(tag);
+      const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      element.dispatchEvent(event);
+
+      handleFormKeyDown(event, onSubmit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('ignores a key other than Enter in a one-line form', () => {
+      const onSubmit = vi.fn();
+      const event = new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true });
+      document.createElement('input').dispatchEvent(event);
+
+      handleFormKeyDown(event, onSubmit);
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
     it('Escape cancels an inline edit', () => {
       const onCancel = vi.fn();
       const escEvent = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });

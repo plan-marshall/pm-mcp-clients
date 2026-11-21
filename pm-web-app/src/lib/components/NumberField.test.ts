@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import NumberField from './NumberField.svelte';
-import { styleOf } from '../../test/templateStyle';
+import { rulesOf, styleOf } from '../../test/templateStyle';
 
 describe('NumberField', () => {
   it('renders numeric input with label and unit beside control', () => {
@@ -271,6 +271,17 @@ describe('NumberField', () => {
 
     expect(neverCheck.checked).toBe(true);
     expect(numInput).toBeDisabled();
+  });
+
+  it('gives the never label the --control-height minimum on a phone', () => {
+    const style = styleOf(path.resolve(__dirname, './NumberField.svelte'));
+    const phoneAt = style.indexOf('@media (max-width: 767px)');
+    expect(phoneAt).toBeGreaterThan(-1);
+
+    const phoneRules = rulesOf(style.slice(phoneAt), '.number-field__never');
+    expect(phoneRules.some((rule) => /min-height:\s*var\(--control-height\)/.test(rule))).toBe(
+      true,
+    );
   });
 
   it('uses --control-height and does not use outline: none without focus ring', () => {

@@ -9,20 +9,27 @@
 
 /**
  * Keyboard handler for one-line forms: Enter submits.
+ *
+ * The Enter that confirms an IME composition (`isComposing`) only ends the composition, and an
+ * Enter on a checkbox or radio is not a submit: neither submits the form.
  */
 export function handleFormKeyDown(e: KeyboardEvent, onSubmit: () => void): void {
-  if (e.key === 'Enter') {
-    const target = e.target as HTMLElement | null;
-    if (target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON') return;
-    e.preventDefault();
-    onSubmit();
+  if (e.key !== 'Enter' || e.isComposing) return;
+  const target = e.target as HTMLElement | null;
+  if (target?.tagName === 'TEXTAREA' || target?.tagName === 'BUTTON') return;
+  if (target instanceof HTMLInputElement && (target.type === 'checkbox' || target.type === 'radio')) {
+    return;
   }
+  e.preventDefault();
+  onSubmit();
 }
 
 /**
- * Keyboard handler for text areas: Ctrl+Enter (and Cmd+Enter on Mac) submits. Plain Enter adds a line.
+ * Keyboard handler for text areas: Ctrl+Enter (and Cmd+Enter on Mac) submits. Plain Enter adds a line,
+ * and the Enter that confirms an IME composition (`isComposing`) never submits.
  */
 export function handleTextAreaKeyDown(e: KeyboardEvent, onSubmit: () => void): void {
+  if (e.isComposing) return;
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     onSubmit();

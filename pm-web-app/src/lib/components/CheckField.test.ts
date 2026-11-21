@@ -31,6 +31,32 @@ describe('CheckField', () => {
     expect(onchange).toHaveBeenCalledWith(true);
   });
 
+  it('leaves the box unchanged and reports nothing on Enter', async () => {
+    const onchange = vi.fn();
+    const { container } = render(CheckField, {
+      props: { label: 'Agree to terms', checked: false, onchange },
+    });
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+
+    await fireEvent.keyDown(checkbox, { key: 'Enter' });
+
+    expect(checkbox.checked).toBe(false);
+    expect(onchange).not.toHaveBeenCalled();
+  });
+
+  it('toggles once and reports once on Space', async () => {
+    const onchange = vi.fn();
+    const { container } = render(CheckField, {
+      props: { label: 'Agree to terms', checked: false, onchange },
+    });
+    const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+
+    await fireEvent.keyDown(checkbox, { key: ' ' });
+
+    expect(checkbox.checked).toBe(true);
+    expect(onchange).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
   it('renders disabled check with reason', async () => {
     const onchange = vi.fn();
     const { container } = render(CheckField, {

@@ -296,4 +296,10 @@
     color: var(--color-text-muted);
     cursor: not-allowed;
   }
+
+  @media (max-width: 767px) {
+    .number-field__never {
+      min-height: var(--control-height);
+    }
+  }
 </style>

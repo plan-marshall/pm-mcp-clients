@@ -39,6 +39,42 @@ describe('CodeField', () => {
     expect(oncomplete).toHaveBeenCalledWith('KXQB-MRTN');
   });
 
+  it('reports the same complete code once, whether typed with or without the dash', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQBMRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTN');
+  });
+
+  it('reports again after the code was shortened and completed again', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRT' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenNthCalledWith(2, 'KXQB-MRTN');
+  });
+
+  it('reports a different complete code that replaces a reported one', async () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTA' } });
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+    expect(oncomplete).toHaveBeenLastCalledWith('KXQB-MRTA');
+  });
+
   it('uses --control-height and does not use outline: none without focus ring', () => {
     const style = styleOf(path.resolve(__dirname, './CodeField.svelte'));
     expect(style).toContain('var(--control-height)');
