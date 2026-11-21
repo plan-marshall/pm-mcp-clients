@@ -249,7 +249,9 @@ export interface UnsavedChangesGuardOptions {
  * A route change asks through the caller's `ask` (the view's ConfirmDialog); a reload or a closed
  * tab is asked through the browser's own `beforeunload` prompt. `clear()` — which a submit calls,
  * and which a confirmed leave calls before it navigates — makes the guard stop asking for the
- * changes held now; it asks again once the form has been clean and is changed anew.
+ * changes held now; it asks again once the form has been clean and is changed anew. Called on a
+ * form that is clean already (a submit that published its saved values before it resolved), it
+ * holds no changes to stop asking for, so the next edit is asked for at once.
  */
 export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
   const { ask } = options;
@@ -268,7 +270,8 @@ export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
     isDirty,
 
     clear(): void {
-      cleared = true;
+      // Only a dirty episode can be cleared; a clean form leaves the guard armed for the next edit.
+      cleared = options.isDirty();
     },
 
     async canLeave(): Promise<boolean> {

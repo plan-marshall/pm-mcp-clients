@@ -454,5 +454,31 @@ describe('lib/forms: The shape of a form', () => {
       await expect(guard.canLeave()).resolves.toBe(false);
       expect(ask).toHaveBeenCalledOnce();
     });
+
+    it('asks for an edit made after clear() was called on a form that was already clean', async () => {
+      let dirty = false;
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+
+      guard.clear();
+      dirty = true;
+
+      expect(guard.isDirty()).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
+    });
+
+    it('asks for an edit made after a saved submit whose then() cleared the guard', async () => {
+      const form = createForm({ fields: { title: { initial: '' } }, onSubmit: () => undefined });
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: form.isDirty, ask });
+      form.onFieldInput('title', 'Release notes');
+
+      await form.submit().then(() => guard.clear());
+      form.onFieldInput('title', 'Release notes, revised');
+
+      await expect(guard.canLeave()).resolves.toBe(false);
+      expect(ask).toHaveBeenCalledOnce();
+    });
   });
 });

@@ -148,6 +148,20 @@ describe('UnsavedChangesGuard', () => {
     expect(unload.defaultPrevented).toBe(true);
   });
 
+  it('asks for an edit made after clear() was called while the form was clean', async () => {
+    const { component, rerender } = render(UnsavedChangesGuard, { props: { dirty: false } });
+    component.clear();
+
+    await rerender({ dirty: true });
+
+    const nav = navigationTo('link', TARGET);
+    navigate(nav);
+    expect(nav.cancel).toHaveBeenCalledOnce();
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
+  });
+
   it('removes its beforeunload listener when it is destroyed', () => {
     const { unmount } = render(UnsavedChangesGuard, { props: { dirty: true } });
 

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import CodeField from './CodeField.svelte';
+import CodeFieldBindFixture from '../../test/fixtures/CodeFieldBindFixture.svelte';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 import {
   REMOVED_OUTLINE,
@@ -94,6 +95,27 @@ describe('CodeField', () => {
     expect(oncomplete).toHaveBeenCalledTimes(2);
     expect(oncomplete).toHaveBeenNthCalledWith(2, 'KXQB-MRTN');
   });
+
+  it.each([
+    ['clears the field', ''],
+    ['writes a shorter code', 'KXQB'],
+    ['writes a longer code', 'KXQB-MRTNX'],
+  ] as const)(
+    'reports the bound complete as false when the parent %s',
+    async (_label, replacement) => {
+      const { container, getByTestId } = render(CodeFieldBindFixture, {
+        props: { label: 'Code', replaceLabel: 'Replace', replacement },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+      expect(getByTestId('bound-complete')).toHaveTextContent('true');
+
+      await fireEvent.click(getByTestId('parent-replace'));
+
+      expect(input.value).toBe(replacement);
+      expect(getByTestId('bound-complete')).toHaveTextContent('false');
+    },
+  );
 
   it('reports a complete code once when the parent echoes it back', async () => {
     const oncomplete = vi.fn();

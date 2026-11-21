@@ -100,10 +100,11 @@
     return raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   }
 
-  // An incomplete value ends the reported code whoever set it, so a parent that clears the field
-  // gets the same code reported again when it is entered anew.
+  // An incomplete value ends the reported code whoever set it: the field is no longer complete, and
+  // a parent that clears the field gets the same code reported again when it is entered anew.
   $effect(() => {
     if (clean(value).length !== 8) {
+      complete = false;
       lastReported = null;
     }
   });
