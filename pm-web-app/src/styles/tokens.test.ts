@@ -558,11 +558,30 @@ describe('tokens.css: the design system v2 contract', () => {
   });
 
   describe('control tokens (components-fields.adoc, control-tokens)', () => {
-    it('declares the four control tokens in :root', () => {
+    it('declares --control-height and --control-radius in :root', () => {
       expect(themes.root['--control-height']).toBe('34px');
       expect(themes.root['--control-radius']).toBe('var(--radius-md)');
-      expect(themes.root['--control-bg']).toBe('var(--color-bg-surface)');
-      expect(themes.root['--control-border']).toBe('var(--color-border-strong)');
+    });
+
+    it('re-declares --control-bg and --control-border in each data-theme block, so a subtree computes them from its own palette', () => {
+      const expected = {
+        '--control-bg': 'var(--color-bg-surface)',
+        '--control-border': 'var(--color-border-strong)',
+      };
+      for (const [token, value] of Object.entries(expected)) {
+        expect(themes.root[token], `${token} in :root`).toBe(value);
+        expect(themes.light[token], `${token} in [data-theme='light']`).toBe(value);
+        expect(themes.dark[token], `${token} in [data-theme='dark']`).toBe(value);
+      }
+
+      const light = resolveAliases({ ...themes.root, ...themes.light });
+      const dark = resolveAliases({ ...themes.root, ...themes.dark });
+      expect(light['--control-bg']).toBe(themes.light['--color-bg-surface']);
+      expect(dark['--control-bg']).toBe(themes.dark['--color-bg-surface']);
+      expect(light['--control-border']).toBe(themes.light['--color-border-strong']);
+      expect(dark['--control-border']).toBe(themes.dark['--color-border-strong']);
+      expect(dark['--control-bg']).not.toBe(light['--control-bg']);
+      expect(dark['--control-border']).not.toBe(light['--control-border']);
     });
 
     it('declares the --state-slot-width token in :root', () => {

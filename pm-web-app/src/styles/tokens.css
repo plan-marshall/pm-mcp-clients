@@ -235,6 +235,10 @@
   --shadow-overlay: 0 24px 48px -12px rgb(0 0 0 / 0.25);
 
   --focus-ring: 0 0 0 2px var(--color-bg-surface), 0 0 0 4px var(--color-brand);
+
+  /* Re-declared so a light subtree computes the control colours from its own palette */
+  --control-bg: var(--color-bg-surface);
+  --control-border: var(--color-border-strong);
 }
 
 [data-theme='dark'] {
@@ -275,6 +279,10 @@
   --shadow-overlay: 0 24px 48px -12px rgb(0 0 0 / 0.7);
 
   --focus-ring: 0 0 0 2px var(--color-bg-surface), 0 0 0 4px var(--color-brand);
+
+  /* Re-declared so a dark subtree computes the control colours from its own palette */
+  --control-bg: var(--color-bg-surface);
+  --control-border: var(--color-border-strong);
 }
 
 @media (prefers-reduced-motion: reduce) {
