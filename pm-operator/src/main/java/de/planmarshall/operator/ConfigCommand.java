@@ -596,6 +596,31 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
+     * @param machine whether the machine level was named
+     * @param project the project level's id, or {@code null}
+     * @param plan    the plan level's id, or {@code null}
+     * @return whether the arguments name at most one level
+     */
+    private static boolean oneLevel(boolean machine, @Nullable String project, @Nullable String plan) {
+        int named = (machine ? 1 : 0) + (project != null ? 1 : 0) + (plan != null ? 1 : 0);
+        return named <= 1;
+    }
+
+    /**
+     * Prints a local refusal of a verb run as one shell command on stderr, where every refusal goes
+     * ({@code 03-dialogues.adoc#refusals}), so stdout carries none of it.
+     *
+     * @param err  the verb's error output
+     * @param line the refusal's text in the operator's locale
+     * @return the exit code of a refusal
+     */
+    static int refuse(PrintWriter err, String line) {
+        err.println(line);
+        err.flush();
+        return PmOperator.EXIT_FAILURE;
+    }
+
+    /**
      * The parts of one plain-key change that its two steps share.
      *
      * @param out       the verb's output
@@ -850,10 +875,8 @@ public final class ConfigCommand implements Callable<Integer> {
             }
             var selected = ConfigCommand.select(values, key);
             if (selected.isEmpty()) {
-                out.println(MessageCatalogue.format(locale, "operator.config.show.unknown",
-                                    Map.of("key", Objects.toString(key, ""))));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                return refuse(spec.commandLine().getErr(), MessageCatalogue.format(locale,
+                                    "operator.config.show.unknown", Map.of("key", Objects.toString(key, ""))));
             }
             ConfigCommand.printValues(out, locale, selected);
             out.flush();
@@ -897,27 +920,17 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
             if (isAspectOwned(key)) {
-                var aspect = getOwningAspect(key);
-                var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
-                                    Map.of("key", key, ASPECT, aspect)));
-                err.flush();
-                return 1;
+                return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
+                                    Map.of("key", key, ASPECT, getOwningAspect(key))));
             }
-            if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
-            }
-            if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (!oneLevel(machine, project, plan)) {
+                return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
             }
             var done = MessageCatalogue.format(locale, "operator.config.set_done",
                                 Map.of("key", key, VALUE, value));
-            var change = new Change(out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, err, locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.set_failed");
@@ -962,25 +975,16 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
             if (isAspectOwned(key)) {
-                var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
+                return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
                                     Map.of("key", key, ASPECT, getOwningAspect(key))));
-                err.flush();
-                return 1;
             }
-            if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
-            }
-            if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (!oneLevel(machine, project, plan)) {
+                return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
             }
             var done = MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key));
-            var change = new Change(out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, err, locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.unset_failed");
@@ -1139,10 +1143,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (defaults || set != null || reset != null || resetAll) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, "roles", false);
             }
@@ -1213,10 +1217,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (use != null || without != null || verify) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, PROVIDERS, false);
             }
@@ -1269,10 +1273,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (landing != null || method != null || asking != null || posture != null || yes) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, PLAN_DEFAULTS, false);
             }
@@ -1350,9 +1354,9 @@ public final class ConfigCommand implements Callable<Integer> {
                     return withdraw(out, locale, settings, consent);
                 }
             }
-            out.println(MessageCatalogue.format(locale, "operator.consents.none", Map.of()));
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            return refuse(spec.commandLine().getErr(),
+                                MessageCatalogue.format(locale, "operator.consents.none", Map.of()));
         }
 
         private int withdraw(PrintWriter out, String locale, MachineSettingsRecord settings, ConsentRecord consent)
@@ -1525,20 +1529,20 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
-     * @param out the verb's output
-     * @return the exit code of a verb that combined {@code --plan} with other options
+     * @param err the verb's error output
+     * @return the exit code of a verb that named a blank {@code --plan}
      */
-    private static int blankPlan(OperatorContext context, PrintWriter out) {
-        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+    private static int blankPlan(OperatorContext context, PrintWriter err) {
+        return refuse(err, MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.actions.plan_blank", Map.of()));
-        out.flush();
-        return 1;
     }
 
-    private static int exclusive(OperatorContext context, PrintWriter out) {
-        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+    /**
+     * @param err the verb's error output
+     * @return the exit code of a verb that combined {@code --plan} with other options
+     */
+    private static int exclusive(OperatorContext context, PrintWriter err) {
+        return refuse(err, MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.actions.plan_option_exclusive", Map.of()));
-        out.flush();
-        return 1;
     }
 }

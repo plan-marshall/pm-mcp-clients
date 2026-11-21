@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.resource.ErrorTexts;
@@ -144,7 +145,10 @@ class CredentialsCommandTest {
         };
     }
 
-    private static String state(String stateId, boolean failed) {
+    /** The cause a failed check reports, or {@code null} for a check that names none. */
+    private @Nullable String failureCause = "401 Invalid token";
+
+    private String state(String stateId, boolean failed) {
         return switch (stateId) {
             case "store.reconfigure" -> "{\"state\":{\"state_id\":\"store.reconfigure\","
                                 + "\"kind\":\"operator_wait\"},"
@@ -164,7 +168,8 @@ class CredentialsCommandTest {
             case "providers.verified" -> failed
                                 ? "{\"state\":{\"state_id\":\"providers.verified\",\"kind\":\"operator_wait\"},"
                                 + "\"facts\":{\"summary\":\"The provider check is done\",\"current\":\"os\","
-                                + "\"failed\":true,\"cause\":\"401 Invalid token\"},"
+                                + "\"failed\":true" + (failureCause != null ? ",\"cause\":\"" + failureCause + "\"" : "")
+                                + "},"
                                 + "\"links\":[{\"id\":\"done\",\"preselected\":true}]}"
                                 : "{\"state\":{\"state_id\":\"providers.verified\",\"kind\":\"operator_wait\"},"
                                 + "\"facts\":{\"summary\":\"The provider check is done\",\"current\":\"os\","
@@ -175,6 +180,23 @@ class CredentialsCommandTest {
                                 + "\"links\":[{\"id\":\"reconfigure:credentials\",\"rel\":\"alt\","
                                 + "\"preselected\":true}]}";
         };
+    }
+
+    @Test
+    @DisplayName("a failed check that names no cause refuses on stderr with the catalogue's cause, never an empty one")
+    void failedCheckWithoutCauseNamesTheCatalogueCause() throws Exception {
+        failureCause = null;
+        verification(true);
+
+        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains(
+                                                "The check failed: the check named no cause. The hold stays."), err.toString()),
+                            () -> assertFalse(err.toString().contains("The check failed: . "), err.toString()),
+                            () -> assertFalse(out.toString().contains("The check failed"), out.toString())
+        );
     }
 
     @Test
@@ -268,12 +290,15 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("rotate of an unknown key names the set verb and exits non-zero")
+    @DisplayName("rotate of an unknown key names the set verb on stderr, nothing of it on stdout, and exits non-zero")
     void rotateUnknown() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
         var code = run(context(""), "credentials", "rotate", "github", "--yes");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("No entry github exists"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "No entry github exists; credentials set enters a new token."), err.toString()),
+                            () -> assertFalse(out.toString().contains("No entry github exists"), out.toString()));
     }
 
     @Test
@@ -306,12 +331,15 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("status of a missing entry exits non-zero")
+    @DisplayName("status of a missing entry refuses on stderr, nothing of it on stdout, and exits non-zero")
     void statusMissing() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
         var code = run(context(""), "credentials", "status", "github");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("No entry github exists"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "No entry github exists; credentials set enters a new token."), err.toString()),
+                            () -> assertFalse(out.toString().contains("No entry github exists"), out.toString()));
     }
 
     @Test
@@ -336,12 +364,15 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("an empty secret stores nothing and exits non-zero")
+    @DisplayName("an empty secret stores nothing, refuses on stderr with the catalogue's cause, and exits non-zero")
     void emptySecret() throws Exception {
         present();
         var code = run(context("\n"), "credentials", "rotate", "github", "--yes");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Failed to read the secret"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "Failed to read the secret: no secret was typed"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Failed to read the secret"), out.toString()));
     }
 
     @Test

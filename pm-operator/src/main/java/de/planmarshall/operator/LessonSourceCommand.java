@@ -159,9 +159,8 @@ public final class LessonSourceCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
             if (lesson == null || lesson.isBlank()) {
-                out.println(MessageCatalogue.get(locale, "lesson_source.action.lesson_required"));
-                out.flush();
-                return 1;
+                return ConfigCommand.refuse(spec.commandLine().getErr(),
+                                    MessageCatalogue.get(locale, "lesson_source.action.lesson_required"));
             }
             var projectId = projectOption != null && !projectOption.isBlank() ? projectOption : "default";
             var check = checkPremise(context, projectId, lesson);

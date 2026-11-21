@@ -67,6 +67,8 @@ public final class CredentialsCommand implements Callable<Integer> {
     private static final String STORED = "operator.credentials.stored";
     private static final String FAILED = "operator.credentials.failed";
     private static final String READ_FAILED = "operator.credentials.read_failed";
+    private static final String SECRET_EMPTY = "operator.credentials.secret_empty";
+    private static final String NOT_PRESENT = "operator.credentials.not_present";
     private static final String REASON = "reason";
     private static final String COUNT = "count";
 
@@ -199,17 +201,13 @@ public final class CredentialsCommand implements Callable<Integer> {
                 // The interrupt at the secret prompt is the exit-code table's 130 as well.
                 throw new StartPrompt.InterruptException();
             } catch (IOException e) {
-                out.println(MessageCatalogue.format(locale, READ_FAILED,
+                return ConfigCommand.refuse(err, MessageCatalogue.format(locale, READ_FAILED,
                                     Map.of(REASON, TerminalSanitizer.sanitize(e.getMessage()))));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
             }
             try {
                 if (secret.length == 0) {
-                    out.println(MessageCatalogue.format(locale, READ_FAILED,
-                                        Map.of(REASON, "empty")));
-                    out.flush();
-                    return PmOperator.EXIT_FAILURE;
+                    return ConfigCommand.refuse(err, MessageCatalogue.format(locale, READ_FAILED,
+                                        Map.of(REASON, MessageCatalogue.format(locale, SECRET_EMPTY, Map.of()))));
                 }
                 if (!yes) {
                     var confirmation = confirm(terminal);
@@ -320,11 +318,13 @@ public final class CredentialsCommand implements Callable<Integer> {
                             || Boolean.TRUE.equals(reported.get("failed"))
                             || reported.containsKey("cause")) {
             // A failed check is the verb's refusal: it goes to stderr with its cause, stdout carries none.
-            err.println("\u2717 " + MessageCatalogue.format(locale, "operator.credentials.verify_failed",
-                                Map.of(REASON, TerminalSanitizer.sanitize(
-                                                    Objects.toString(reported.get("cause"), "")))));
-            err.flush();
-            return PmOperator.EXIT_FAILURE;
+            // A check that names no cause still gets one: the catalogue's, never an empty reason.
+            var cause = TerminalSanitizer.sanitize(Objects.toString(reported.get("cause"), "")).strip();
+            if (cause.isEmpty()) {
+                cause = MessageCatalogue.format(locale, "operator.credentials.verify_no_cause", Map.of());
+            }
+            return ConfigCommand.refuse(err, "\u2717 " + MessageCatalogue.format(locale,
+                                "operator.credentials.verify_failed", Map.of(REASON, cause)));
         }
         var plans = reported.get("plans") instanceof String text ? TerminalSanitizer.sanitizeLine(text) : "";
         var line = new StringBuilder("\u2713 ").append(MessageCatalogue.format(locale,
@@ -396,10 +396,8 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
             if (!isPresent(status)) {
-                out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of(KEY, key)));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                return ConfigCommand.refuse(spec.commandLine().getErr(),
+                                    MessageCatalogue.format(command.locale(), NOT_PRESENT, Map.of(KEY, key)));
             }
             command.printHeader(out, key, ROTATE, status);
             return command.store(out, spec.commandLine().getErr(), key, ROTATE, yes, status);
@@ -479,10 +477,8 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return PmOperator.EXIT_FAILURE;
             }
             if (!isPresent(status)) {
-                out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
-                                    Map.of(KEY, key)));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                return ConfigCommand.refuse(spec.commandLine().getErr(),
+                                    MessageCatalogue.format(command.locale(), NOT_PRESENT, Map.of(KEY, key)));
             }
             out.println(MessageCatalogue.format(command.locale(), "operator.credentials.entry",
                                 Map.of()) + "  " + providerHint(status, command.locale()));

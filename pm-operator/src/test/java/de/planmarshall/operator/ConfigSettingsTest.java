@@ -211,12 +211,14 @@ class ConfigSettingsTest {
     }
 
     @Test
-    @DisplayName("an unknown consent kind names that none is remembered")
+    @DisplayName("an unknown consent kind names on stderr that none is remembered, and nothing of it on stdout")
     void unknownConsent() throws Exception {
         settings(200);
         var code = run(context(""), "config", "consents", "--withdraw", "unknown_kind");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("No consent is remembered"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains("No consent is remembered."), err.toString()),
+                            () -> assertFalse(out.toString().contains("No consent is remembered"), out.toString()));
     }
 
     @Test

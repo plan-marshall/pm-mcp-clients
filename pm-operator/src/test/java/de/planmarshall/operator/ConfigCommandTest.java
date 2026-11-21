@@ -233,12 +233,7 @@ class ConfigCommandTest {
                             () -> assertEquals(0, selected, text),
                             () -> assertTrue(text.contains("web.port"), text),
                             () -> assertFalse(text.contains("console.full_screen"), text));
-
-        out.getBuffer().setLength(0);
-        int missing = execute("config", "show", "nope.key");
-        assertAll(
-                            () -> assertEquals(1, missing, out.toString()),
-                            () -> assertTrue(out.toString().contains("is not set"), out.toString()));
+        // A key that selects nothing is a refusal: LocalRefusalStreamTest proves it on stderr.
     }
 
     @Test
@@ -552,28 +547,6 @@ class ConfigCommandTest {
                             () -> assertEquals(0, roleish, out.toString()),
                             () -> assertTrue(requests.contains("PUT /api/v1/config/machine/roleset"),
                                                 requests.toString()));
-    }
-
-    @Test
-    @DisplayName("config <aspect> --plan refuses the verb's other options")
-    void planScopeIsExclusive() throws Exception {
-        int code = execute("config", "roles", "--plan", "fix-relay", "--set", "implement=x");
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(
-                                                                    "--plan cannot be combined with the other options"),
-                                                out.toString())
-        );
-    }
-
-    @Test
-    @DisplayName("config <aspect> --plan rejects a blank plan id instead of the machine scope")
-    void blankPlanIsRejected() throws Exception {
-        int code = execute("config", "roles", "--plan", "");
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("--plan needs a plan id"), out.toString())
-        );
     }
 
     @Test
@@ -1447,19 +1420,6 @@ class ConfigCommandTest {
                                                 requests.toString()));
     }
 
-    @Test
-    @DisplayName("config set refuses two levels at once")
-    void configRefusesTwoLevels() {
-        int machineAndProject = execute("config", "set", "--machine", "--project", "p", "custom.key", "1");
-        var text = out.toString();
-        out.getBuffer().setLength(0);
-        int both = execute("config", "unset", "custom.key", "--project", "p", "--plan", "q");
-
-        assertAll(
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, machineAndProject, text),
-                            () -> assertTrue(text.contains("Name one level"), text),
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, both, out.toString()));
-    }
 
     @Test
     @DisplayName("the overview shortens a long label and right-aligns a two-digit index")

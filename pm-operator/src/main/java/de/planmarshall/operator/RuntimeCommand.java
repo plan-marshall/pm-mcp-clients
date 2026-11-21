@@ -180,8 +180,8 @@ public final class RuntimeCommand implements Callable<Integer> {
                     return contradicted;
                 }
 
-                var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP,
-                                    whenOf(drain, whenDone, now), noInput, null);
+                var answer = RuntimeActDialogue.confirm(context, out, spec.commandLine().getErr(),
+                                    RuntimeActDialogue.Act.STOP, whenOf(drain, whenDone, now), noInput, null);
                 if (answer.when() == null) {
                     return answer.exitCode();
                 }
@@ -199,9 +199,7 @@ public final class RuntimeCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.get(context.clientEnvironment().locale(), statusKey));
             } catch (RuntimeUnavailableException e) {
                 var refusal = RuntimeActDialogue.notStopped(context);
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    refusal.key(), Map.of()));
-                out.flush();
+                RuntimeActDialogue.print(context, out, spec.commandLine().getErr(), refusal);
                 return refusal.exitCode();
             }
             out.flush();
@@ -287,8 +285,8 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (contradicted != 0) {
                 return contradicted;
             }
-            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART,
-                                whenOf(drain, whenDone, now), noInput, null);
+            var answer = RuntimeActDialogue.confirm(context, out, spec.commandLine().getErr(),
+                                RuntimeActDialogue.Act.RESTART, whenOf(drain, whenDone, now), noInput, null);
             if (answer.when() == null) {
                 return answer.exitCode();
             }
@@ -398,8 +396,8 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (contradicted != 0) {
                 return contradicted;
             }
-            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE,
-                                whenOf(drain, whenDone, now), noInput, version);
+            var answer = RuntimeActDialogue.confirm(context, out, spec.commandLine().getErr(),
+                                RuntimeActDialogue.Act.UPGRADE, whenOf(drain, whenDone, now), noInput, version);
             if (answer.when() == null) {
                 return answer.exitCode();
             }

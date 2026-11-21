@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -105,10 +106,13 @@ class LessonSourceCommandTest {
     }
 
     @Test
-    @DisplayName("lesson check requires the lesson id")
+    @DisplayName("lesson check without the lesson id refuses on stderr, nothing of it on stdout")
     void lessonCheckRequiresId() {
-        assertEquals(1, run("lesson", "check"));
-        assertTrue(out.toString().contains("Lesson id required."), out.toString());
+        var code = run("lesson", "check");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("Lesson id required."), err.toString()),
+                            () -> assertFalse(out.toString().contains("Lesson id required."), out.toString()));
     }
 
     @Test

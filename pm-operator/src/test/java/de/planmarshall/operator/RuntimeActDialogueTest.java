@@ -69,11 +69,13 @@ class RuntimeActDialogueTest {
 
     private RuntimeFixture fixture;
     private StringWriter out;
+    private StringWriter err;
 
     @BeforeEach
     void setUp() throws IOException {
         fixture = RuntimeFixture.create();
         out = new StringWriter();
+        err = new StringWriter();
     }
 
     @AfterEach
@@ -102,8 +104,8 @@ class RuntimeActDialogueTest {
     private Answer ask(String keys, Act act, String version, boolean noInput) throws IOException {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             virtual.type(keys);
-            return RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out), act, null,
-                                noInput, version);
+            return RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out), new PrintWriter(err),
+                                act, null, noInput, version);
         }
     }
 
@@ -164,7 +166,7 @@ class RuntimeActDialogueTest {
             var thread = new Thread(() -> {
                 try {
                     answer.set(RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out),
-                                        Act.STOP, null, false, null, SNAPSHOT_BOUND));
+                                        new PrintWriter(err), Act.STOP, null, false, null, SNAPSHOT_BOUND));
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
                 }
@@ -186,8 +188,10 @@ class RuntimeActDialogueTest {
             assertAll(
                                 () -> assertFalse(hung, "stop hung on a runtime that never answers"),
                                 () -> assertEquals(1, answer.get() != null ? answer.get().exitCode() : Integer.MIN_VALUE,
-                                                    out.toString()),
-                                () -> assertTrue(out.toString().contains("The runtime is not answering"),
+                                                    err.toString()),
+                                () -> assertTrue(err.toString().contains("The runtime is not answering"),
+                                                    err.toString()),
+                                () -> assertFalse(out.toString().contains("The runtime is not answering"),
                                                     out.toString())
             );
         }
@@ -294,7 +298,8 @@ class RuntimeActDialogueTest {
         assertAll(
                             () -> assertNull(answer.when()),
                             () -> assertEquals(1, answer.exitCode()),
-                            () -> assertTrue(out.toString().contains("The runtime is not answering."), out.toString())
+                            () -> assertTrue(err.toString().contains("The runtime is not answering."), err.toString()),
+                            () -> assertFalse(out.toString().contains("The runtime is not answering."), out.toString())
         );
     }
 
@@ -341,8 +346,8 @@ class RuntimeActDialogueTest {
         Answer answer;
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             virtual.type("l\n");
-            answer = RuntimeActDialogue.confirm(context(virtual, GERMAN), new PrintWriter(out), Act.STOP, null,
-                                false, null);
+            answer = RuntimeActDialogue.confirm(context(virtual, GERMAN), new PrintWriter(out), new PrintWriter(err),
+                                Act.STOP, null, false, null);
         }
 
         var screen = out.toString();
@@ -367,8 +372,8 @@ class RuntimeActDialogueTest {
     @DisplayName("an explicit when is taken without asking")
     void explicitWhenSkipsTheDialogue() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
-            var answer = RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out), Act.STOP,
-                                When.NOW, false, null);
+            var answer = RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out),
+                                new PrintWriter(err), Act.STOP, When.NOW, false, null);
             assertAll(
                                 () -> assertEquals(When.NOW, answer.when()),
                                 () -> assertEquals(0, answer.exitCode()),
