@@ -114,27 +114,27 @@ public final class ClientCommand implements Callable<Integer> {
      * @param spec       the command's spec, whose writers the outcome goes to
      * @param action     the wire name of the action
      * @param harnesses  the harnesses the action names, or {@code null} for all
-     * @param successMsg the line printed on success
+     * @param successKey the catalogue key of the action's own success line
      * @param failedKey  the catalogue key of the action's own failure line, which names the action and
      *                   takes the refusal's text as {@code reason}
      * @return the exit code
      * @throws IOException when the runtime cannot be reached
      */
     static int executeHarnessAction(OperatorContext context, CommandSpec spec, String action,
-                        @Nullable List<String> harnesses, String successMsg, String failedKey) throws IOException {
+                        @Nullable List<String> harnesses, String successKey, String failedKey) throws IOException {
         context.gate().verify();
         var body = new LinkedHashMap<String, Object>();
         body.put(HARNESSES, harnesses != null ? harnesses : List.of());
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", "/api/v1/client/" + action, JsonTree.write(body)));
+        var locale = context.clientEnvironment().locale();
         var out = spec.commandLine().getOut();
         if (response.status() == 200 || response.status() == 201 || response.status() == 204) {
-            out.println(successMsg);
+            out.println(MessageCatalogue.format(locale, successKey, Map.of()));
             out.flush();
             return 0;
         }
         var err = spec.commandLine().getErr();
-        var locale = context.clientEnvironment().locale();
         var refusal = new OperatorRefusedException("client", response);
         err.println(MessageCatalogue.format(locale, failedKey, Map.of("reason", refusal.message(locale))));
         err.flush();
@@ -159,7 +159,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "install", harnesses,
-                                "✓ Client bundle installation completed", "operator.client.install_failed");
+                                "operator.client.install_done", "operator.client.install_failed");
         }
     }
 
@@ -181,7 +181,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "update", harnesses,
-                                "✓ Client bundle update completed", "operator.client.update_failed");
+                                "operator.client.update_done", "operator.client.update_failed");
         }
     }
 
@@ -203,7 +203,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "remove", harnesses,
-                                "✓ Client bundle removal completed", "operator.client.remove_failed");
+                                "operator.client.remove_done", "operator.client.remove_failed");
         }
     }
 }

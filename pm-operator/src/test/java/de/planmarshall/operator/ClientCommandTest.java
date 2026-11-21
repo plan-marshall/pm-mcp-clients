@@ -14,11 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.Locale;
 
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.resource.ErrorTexts;
@@ -29,7 +32,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
+@EnableGeneratorController
 @DisplayName("ClientCommand and DrainCommand")
 class ClientCommandTest {
 
@@ -173,6 +179,35 @@ class ClientCommandTest {
         int code = execute("client", "remove", "codex");
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ Client bundle removal completed"));
+    }
+
+    @ParameterizedTest(name = "a German client {0} prints its success line in German")
+    @CsvSource(delimiter = '|', value = {
+                        "install|201|✓ Die Client-Bundles wurden installiert|✓ Client bundle installation completed",
+                        "update|200|✓ Die Client-Bundles wurden aktualisiert|✓ Client bundle update completed",
+                        "remove|204|✓ Die Client-Bundles wurden entfernt|✓ Client bundle removal completed"})
+    @DisplayName("the success line of client install, update and remove comes from the catalogue in the operator's language")
+    void germanClientSuccessLine(String verb, int status, String german, String english) throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if (("/api/v1/client/" + verb).equals(request.target()) && "POST".equals(request.method())) {
+                response.send(status, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true);
+        var harness = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "client", verb, harness);
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains(german), out.toString()),
+                            () -> assertFalse(out.toString().contains(english), out.toString()),
+                            () -> assertEquals("", err.toString()));
     }
 
     @Test

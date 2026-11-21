@@ -7,10 +7,10 @@ Aufräumen cln-0012 · fällig seit 2 Sep
 Übersicht   12 Pläne · 2 Epics · 40 Logs · 5 gelesene Berichte · 1 nicht mehr registriertes Projekt
           gibt 779 MB frei
 pm-mcp-clients
-    1) ▸ fix-relay          merged (#214)     ended 12 Sep    84 MB   6 logs
-    2) ▸ docs-typo          no change         ended 11 Sep     2 MB    1 log
+    1) ▸ fix-relay          merged (#214)     beendet 12 Sep  84 MB   6 Logs
+    2) ▸ docs-typo          no change         beendet 11 Sep   2 MB    1 Log
 pm-mcp-core
-    3) ▸ token-usage        merged (#88)      ended 9 Sep    120 MB  11 logs
+    3) ▸ token-usage        merged (#88)      beendet 9 Sep  120 MB  11 Logs
 Für immer behalten: 4 (cleanup --kept) · letzte Bereinigung today 03:00
 d) lösche…   r) in 3 Tagen wieder fragen   i) ignoriere   x) lass Einträge aus
 o) öffne   v) verlasse
