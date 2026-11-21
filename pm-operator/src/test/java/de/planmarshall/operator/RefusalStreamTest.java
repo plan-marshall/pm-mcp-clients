@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -229,5 +230,130 @@ class RefusalStreamTest {
         assertEquals(1, execute("roles", "list"));
         assertTrue(err.toString().contains("the runtime failed"), err.toString());
         assertFalse(out.toString().contains("the runtime failed"), out.toString());
+    }
+
+    /** The machine settings of a runtime that remembers one consent. */
+    private static final String SETTINGS_WITH_CONSENT = "{\"revision\":1,\"consents\":[{\"kind\":\"verify_providers\","
+                        + "\"status\":\"remembered\",\"remember\":true}]}";
+
+    private static final String INTERNAL_FAULT_BODY = "{\"error\":\"internal_fault\"}";
+
+    private void assertRefusedWithCause(int code, String cause) {
+        assertEquals(1, code, out + "\n" + err);
+        assertTrue(err.toString().contains(cause), "the refusal names its cause on stderr: " + err);
+        assertFalse(out.toString().contains(cause), "stdout carries none of it: " + out);
+        assertFalse(out.toString().contains("✗"), "stdout carries none of it: " + out);
+    }
+
+    @Test
+    @DisplayName("config consents --withdraw whose withdrawal the runtime refuses names the cause on stderr")
+    void refusedWithdrawalIsOnStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, SETTINGS_WITH_CONSENT);
+            } else {
+                response.send(500, null, INTERNAL_FAULT_BODY);
+            }
+        });
+
+        int code = execute("config", "consents", "--withdraw", "verify_providers", "--yes");
+
+        assertRefusedWithCause(code, ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT));
+    }
+
+    @Test
+    @DisplayName("config documents whose update the runtime refuses names the cause on stderr")
+    void refusedDocumentsUpdateIsOnStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("GET".equals(request.method())) {
+                response.json(200, SETTINGS_WITH_CONSENT);
+            } else {
+                response.send(500, null, INTERNAL_FAULT_BODY);
+            }
+        });
+
+        int code = execute("config", "documents", "--mode", "copy");
+
+        assertRefusedWithCause(code, ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT));
+    }
+
+    @Test
+    @DisplayName("bare config of a runtime without machine settings whose value read is refused names the cause on stderr")
+    void refusedValueReadOfBareConfigIsOnStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.send(500, null, INTERNAL_FAULT_BODY);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+
+        assertRefusedWithCause(code, ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT));
+    }
+
+    @Test
+    @DisplayName("bare config whose values the runtime serves unreadable refuses on stderr")
+    void unreadableValuesOfBareConfigAreOnStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var body = Generators.letterStrings(6, 20).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.send(200, "application/json", body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config");
+
+        assertRefusedWithCause(code, "The runtime did not report its configuration values.");
+    }
+
+    @Test
+    @DisplayName("config consents of a runtime that serves no machine settings renders that refusal on stderr")
+    void consentsWithoutMachineSettingsIsOnStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = execute("config", "consents");
+
+        assertRefusedWithCause(code, "✗ This runtime does not know the request");
+    }
+
+    @Test
+    @DisplayName("roles show refused with a 4xx code names the code's text as the cause, never the status")
+    void refusedRoleReadNamesTheCodeText() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.send(409, null, "{\"error\":\"conflict\"}"));
+        var role = Generators.letterStrings(4, 10).next();
+
+        int code = execute("roles", "show", role);
+
+        assertRefusedWithCause(code, "Failed to read role " + role + ": "
+                            + ErrorTexts.title("en", ApiErrorCode.CONFLICT));
+        assertFalse(err.toString().contains("409"), err.toString());
+    }
+
+    @Test
+    @DisplayName("epic decompose of an epic that names no project refuses in the operator's locale")
+    void epicWithoutProjectIsRefusedInTheLocale() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, "{}"));
+        var epic = Generators.letterStrings(4, 10).next();
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment), null,
+                            _ -> {
+                            });
+
+        int code = PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true),
+                            "epic", "decompose", epic);
+
+        assertRefusedWithCause(code, "Epic " + epic + ": das Epic der Runtime nennt kein Projekt");
     }
 }

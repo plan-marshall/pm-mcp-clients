@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -27,6 +28,9 @@ import java.util.Map;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
+import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -98,6 +102,33 @@ class ProjectSelectorTest {
             assertFalse(outcome.proceed(), String.join(" ", args));
             assertEquals(3, outcome.exitCode());
             assertTrue(err.toString().contains("interactive terminal"), err.toString());
+        }
+    }
+
+    @Test
+    @DisplayName("a refused projects read names its cause on stderr, never its status, and stops with exit 1")
+    void refusedProjectsReadNamesItsCause() throws Exception {
+        try (var fixture = RuntimeFixture.create()) {
+            PmOperatorTest.writeLiveRecord(fixture);
+            fixture.start((request, response) -> response.send(500, null, "{\"error\":\"internal_fault\"}"));
+            var context = new OperatorContext(fixture.environment(), fixture.base().getParent(), true,
+                                ClientEnvironment.capture(fixture.environment()), () -> {
+                                    throw new IllegalStateException("a refused read asks nothing");
+                                }, null);
+            var out = new StringWriter();
+            var err = new StringWriter();
+            var verb = Generators.fixedValues("plans", "needs", "reports").next();
+            var cause = ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT);
+
+            var outcome = ProjectSelector.rewrite(context, new PrintWriter(out), new PrintWriter(err),
+                                new String[]{verb, "--project", "?"});
+
+            assertAll(
+                                () -> assertFalse(outcome.proceed()),
+                                () -> assertEquals(1, outcome.exitCode()),
+                                () -> assertTrue(err.toString().contains(cause), err.toString()),
+                                () -> assertFalse(err.toString().contains("500"), err.toString()),
+                                () -> assertFalse(out.toString().contains(cause), out.toString()));
         }
     }
 
