@@ -1,12 +1,15 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import Field from './Field.svelte';
   import { t } from '../i18n';
 
   /**
    * Numeric input owning Field and `<input type="number">` (components-fields.adoc, Special Fields).
    *
-   * Draws unit beside control, enforces min/max/step bounds, and offers an explicit
-   * never choice where a design offers one (value becomes null, never -1).
+   * Draws unit beside control, takes what is typed as it is and clamps to the min/max bounds on
+   * commit (blur, Enter, step), and offers an explicit never choice where a design offers one
+   * (value becomes null, never -1). Emptying the field leaves it editable; only the never checkbox
+   * and an initial null of a never field turn never on.
    */
   interface Props {
     /** The numeric value or null when never/empty (bindable). */
@@ -83,14 +86,14 @@
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
-  let isNever = $state(false);
+  // The never choice changes through its checkbox only; an initial null starts a never field as never.
+  let isNever = $state(untrack(() => allowNever && (value === null || value === undefined)));
   let lastNumericValue = $state<number | null>(null);
+  // Set by a commit on Enter, so the change event the browser sends after it does not commit twice.
+  let committedOnEnter = false;
 
   $effect(() => {
-    if (allowNever && (value === null || value === undefined)) {
-      isNever = true;
-    } else if (value !== null && value !== undefined) {
-      isNever = false;
+    if (value !== null && value !== undefined) {
       lastNumericValue = value;
     }
   });
@@ -108,39 +111,59 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
+  /**
+   * A number input's value is either empty or a valid floating-point number (the browser sanitizes
+   * anything else to empty), so the text parses to null or to a number.
+   *
+   * @param text the input's value
+   * @returns null for an empty field, otherwise the number typed
+   */
+  function parse(text: string): number | null {
+    const raw = text.trim();
+    return raw === '' ? null : Number(raw);
+  }
+
+  /**
+   * Takes what is typed as it is: no clamping and no rewriting of the text, so a value on its way
+   * into the range (1 on the way to 15 with a minimum of 10) is not overwritten.
+   */
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
-    const raw = e.currentTarget.value.trim();
-    if (raw === '') {
-      value = null;
-    } else {
-      let num = Number(raw);
-      if (!Number.isNaN(num)) {
-        if (min !== undefined && num < min) num = min;
-        if (max !== undefined && num > max) num = max;
-        value = num;
-        lastNumericValue = num;
-        e.currentTarget.value = String(num);
-      }
-    }
+    committedOnEnter = false;
+    value = parse(e.currentTarget.value);
     oninput?.(e);
   }
 
-  function handleChange(e: Event & { currentTarget: HTMLInputElement }): void {
-    const raw = e.currentTarget.value.trim();
-    if (raw === '') {
-      value = null;
-      onchange?.(null);
-    } else {
-      let num = Number(raw);
-      if (!Number.isNaN(num)) {
-        if (min !== undefined && num < min) num = min;
-        if (max !== undefined && num > max) num = max;
-        value = num;
-        lastNumericValue = num;
-        e.currentTarget.value = String(num);
-        onchange?.(num);
-      }
+  /**
+   * Commits the field: clamps to min and max, writes the clamped text back and reports it.
+   *
+   * @param input the number input
+   */
+  function commit(input: HTMLInputElement): void {
+    let num = parse(input.value);
+    if (num !== null) {
+      if (min !== undefined && num < min) num = min;
+      if (max !== undefined && num > max) num = max;
+      lastNumericValue = num;
+      input.value = String(num);
     }
+    value = num;
+    onchange?.(num);
+  }
+
+  function handleChange(e: Event & { currentTarget: HTMLInputElement }): void {
+    if (committedOnEnter) {
+      committedOnEnter = false;
+      return;
+    }
+    commit(e.currentTarget);
+  }
+
+  function handleKeyDown(e: KeyboardEvent & { currentTarget: HTMLInputElement }): void {
+    if (e.key === 'Enter') {
+      commit(e.currentTarget);
+      committedOnEnter = true;
+    }
+    onkeydown?.(e);
   }
 
   function handleNeverToggle(e: Event & { currentTarget: HTMLInputElement }): void {
@@ -189,7 +212,7 @@
       onchange={handleChange}
       {onblur}
       {onfocus}
-      {onkeydown}
+      onkeydown={handleKeyDown}
     />
 
     {#if unit}
