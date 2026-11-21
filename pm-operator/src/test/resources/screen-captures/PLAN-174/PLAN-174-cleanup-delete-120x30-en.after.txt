@@ -1,0 +1,30 @@
+✓ Runtime running (pm-mcpd 0.9.1)
+✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)
+▪ 7 unread reports since 2026-10-13T08:00:00Z · reports shows them
+Type plans or tui to open the full-screen overview.
+pm [setup cui-parent 2/10] › cleanup
+Cleanup cln-0012 · due since 2 Sep
+Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project
+          frees 779 MB
+pm-mcp-clients
+    1) ▸ fix-relay          merged (#214)     ended 12 Sep    84 MB   6 logs
+    2) ▸ docs-typo          no change         ended 11 Sep     2 MB    1 log
+pm-mcp-core
+    3) ▸ token-usage        merged (#88)      ended 9 Sep    120 MB  11 logs
+Kept for good 4 (cleanup --kept) · last sweep today 03:00
+d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out
+o) open   q) leave
+  › d
+Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?
+This frees 779 MB. It cannot be undone.
+Branches, pull requests, the remote, the checkout, and an epic's ledger in the
+  repository stay.
+Delete?
+Delete? y) yes   n) no, back   ?   ›
+
+
+
+
+
+
+
