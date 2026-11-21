@@ -51,7 +51,6 @@ class OperatorRolesCatalogueTest {
                 "operator.roles.header.guard",
                 "operator.roles.guard.held",
                 "operator.roles.guard.none",
-                "operator.roles.failed",
                 "operator.roles.show.title",
                 "operator.roles.show.description",
                 "operator.roles.show.class",

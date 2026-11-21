@@ -61,7 +61,6 @@ public final class RolesCommand implements Callable<Integer> {
 
     private static final String PATH_ROLES = "/api/v1/roles";
     private static final String QUERY_PROJECT = "?project=";
-    private static final String FIELD_STATUS = "status";
     private static final String FIELD_REASON = "reason";
     private static final String PARAM_HARNESS = "harness";
     private static final String PARAM_MODEL = "model";
@@ -123,12 +122,7 @@ public final class RolesCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format(locale, "operator.roles.failed",
-                                    Map.of(FIELD_STATUS, response.status())));
-                err.flush();
-                return 1;
-            }
+            // A refused read throws its refusal, rendered with its cause on stderr.
             throw new OperatorRefusedException("roles list", response);
         }
 
@@ -233,7 +227,8 @@ public final class RolesCommand implements Callable<Integer> {
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
-                                                        FIELD_STATUS, response.status())));
+                                                        FIELD_REASON, new OperatorRefusedException("roles show",
+                                                                            response).message(locale))));
                 err.flush();
                 return 1;
             }
@@ -333,7 +328,8 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (detailResponse.status() != 200) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.qualify.failed",
-                                    Map.of("role", safeRole, FIELD_STATUS, detailResponse.status())));
+                                    Map.of("role", safeRole, FIELD_REASON, new OperatorRefusedException(
+                                                        "roles qualify", detailResponse).message(locale))));
                 err.flush();
                 return 1;
             }

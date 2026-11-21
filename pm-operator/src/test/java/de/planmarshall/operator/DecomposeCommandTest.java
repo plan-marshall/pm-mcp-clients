@@ -558,9 +558,10 @@ class DecomposeCommandTest {
 
         assertAll(
                             () -> assertEquals(1, noWords),
-                            () -> assertTrue(out.toString().contains("What should change?"), out.toString()),
+                            () -> assertTrue(err.toString().contains("What should change?"), err.toString()),
                             () -> assertEquals(1, noPlan),
-                            () -> assertTrue(out.toString().contains("--plan is required"), out.toString())
+                            () -> assertTrue(err.toString().contains("--plan is required"), err.toString()),
+                            () -> assertFalse(out.toString().contains("--plan is required"), out.toString())
         );
     }
 

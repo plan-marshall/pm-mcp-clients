@@ -226,9 +226,8 @@ public final class ProjectSelector {
         try {
             var response = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                err.println(MessageCatalogue.format(locale, "operator.projects.select.load_failed",
-                                    Map.of("status", response.status())));
-                err.flush();
+                // The refusal of the projects read, with its cause, in the operator's locale.
+                RefusalRenderer.render(err, locale, new OperatorRefusedException("projects", response));
                 return null;
             }
             return order(ProjectExplorer.fromJson(response.bodyText()));

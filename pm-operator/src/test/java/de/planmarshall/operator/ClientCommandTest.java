@@ -11,13 +11,17 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.HashMap;
 
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -53,6 +57,41 @@ class ClientCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    @Test
+    @DisplayName("a refused client status renders the refusal on stderr and exits 1")
+    void clientStatusRefusal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
+
+        int code = execute("client", "status");
+
+        var title = ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT);
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("✗ " + title), err.toString()),
+                            () -> assertFalse(out.toString().contains(title), out.toString()),
+                            () -> assertFalse(err.toString().contains("Failed to query"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a German client install failure prints one grammatical sentence with its cause")
+    void germanClientInstallFailure() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "client", "install");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("Die Client-Bundles konnten nicht installiert werden: "
+                                                + ErrorTexts.title("de", ApiErrorCode.INTERNAL_FAULT)), err.toString()),
+                            () -> assertFalse(err.toString().contains("install werden"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Client-Bundles"), out.toString()));
     }
 
     @Test

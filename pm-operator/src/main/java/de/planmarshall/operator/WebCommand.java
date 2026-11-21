@@ -33,6 +33,7 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.entry.ListenerKind;
 import de.planmarshall.api.entry.RuntimeEntryResource;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
@@ -394,9 +395,7 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.renamed", Map.of(LABEL, cleanLabel)));
                 return 0;
             }
-            failures.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
-                                Map.of(STATUS, response.status())));
-            return PmOperator.EXIT_FAILURE;
+            return refused(failures, locale, response);
         }
 
         private int handleRevoke(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
@@ -422,9 +421,7 @@ public final class WebCommand implements Callable<Integer> {
                 printRevocation(out, locale, response.body());
                 return 0;
             }
-            failures.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
-                                Map.of(STATUS, response.status())));
-            return PmOperator.EXIT_FAILURE;
+            return refused(failures, locale, response);
         }
 
         private void printRevocation(PrintWriter out, String locale, byte[] body) {
@@ -459,18 +456,28 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
                 return 0;
             }
-            failures.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
-                                Map.of(STATUS, response.status())));
-            return PmOperator.EXIT_FAILURE;
+            return refused(failures, locale, response);
+        }
+
+        /**
+         * Renders the refusal of a device act with its cause.
+         *
+         * @param failures the writer the verb's failures go to
+         * @param locale   the operator's locale
+         * @param response the refused answer
+         * @return the exit code of a refusal
+         */
+        private static int refused(PrintWriter failures, String locale, HttpResponse response) {
+            var refusal = new OperatorRefusedException("web devices", response);
+            RefusalRenderer.render(failures, locale, refusal);
+            return refusal.exitCode();
         }
 
         private int handleList(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() != 200) {
-                failures.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
-                                    Map.of(STATUS, response.status())));
-                return PmOperator.EXIT_FAILURE;
+                return refused(failures, locale, response);
             }
 
             renderDevices(response.body(), out, locale, networkListenerState(runtime), context.clock());
@@ -512,9 +519,11 @@ public final class WebCommand implements Callable<Integer> {
                 throw interrupt;
             }
             catch (IOException _) {
-                // The act did not run: say so and leave with the failure, never a silent 0.
-                out.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
+                // The act did not run: say so on stderr and leave with the failure, never a silent 0.
                 out.flush();
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
+                err.flush();
                 return PmOperator.EXIT_FAILURE;
             }
         }

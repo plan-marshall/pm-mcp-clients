@@ -72,25 +72,23 @@ public final class ClientCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
-            int code = 0;
             try {
                 var response = context.runtime(false).send(HttpRequest.get("/api/v1/client/bundles"));
-                if (response.status() == 200) {
-                    var parsed = JsonTree.parse(response.body());
-                    if (parsed instanceof List<?> list && !list.isEmpty()) {
-                        printBundles(out, locale, list);
-                    } else {
-                        out.println(MessageCatalogue.format(locale, "operator.client.none", Map.of()));
-                    }
+                if (response.status() != 200) {
+                    // The refusal is rendered with its cause on stderr by the one handler of every verb.
+                    throw new OperatorRefusedException("client", response);
+                }
+                var parsed = JsonTree.parse(response.body());
+                if (parsed instanceof List<?> list && !list.isEmpty()) {
+                    printBundles(out, locale, list);
                 } else {
-                    out.println(MessageCatalogue.format(locale, "operator.client.failed", Map.of()));
-                    code = PmOperator.EXIT_FAILURE;
+                    out.println(MessageCatalogue.format(locale, "operator.client.none", Map.of()));
                 }
             } catch (RuntimeUnavailableException _) {
                 out.println(MessageCatalogue.format(locale, "operator.runtime.status_not_running", Map.of()));
             }
             out.flush();
-            return code;
+            return 0;
         }
 
         private void printBundles(PrintWriter out, String locale, List<?> list) {
@@ -109,8 +107,21 @@ public final class ClientCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * Sends one harness action and prints its outcome.
+     *
+     * @param context    the process context
+     * @param spec       the command's spec, whose writers the outcome goes to
+     * @param action     the wire name of the action
+     * @param harnesses  the harnesses the action names, or {@code null} for all
+     * @param successMsg the line printed on success
+     * @param failedKey  the catalogue key of the action's own failure line, which names the action and
+     *                   takes the refusal's text as {@code reason}
+     * @return the exit code
+     * @throws IOException when the runtime cannot be reached
+     */
     static int executeHarnessAction(OperatorContext context, CommandSpec spec, String action,
-                        @Nullable List<String> harnesses, String successMsg) throws IOException {
+                        @Nullable List<String> harnesses, String successMsg, String failedKey) throws IOException {
         context.gate().verify();
         var body = new LinkedHashMap<String, Object>();
         body.put(HARNESSES, harnesses != null ? harnesses : List.of());
@@ -123,10 +134,11 @@ public final class ClientCommand implements Callable<Integer> {
             return 0;
         }
         var err = spec.commandLine().getErr();
-        err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "operator.client.action_failed", Map.of("action", action)));
+        var locale = context.clientEnvironment().locale();
+        var refusal = new OperatorRefusedException("client", response);
+        err.println(MessageCatalogue.format(locale, failedKey, Map.of("reason", refusal.message(locale))));
         err.flush();
-        return 1;
+        return refusal.exitCode();
     }
 
     @Command(name = "install", description = "Installs client bundles for the specified harnesses.")
@@ -147,7 +159,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "install", harnesses,
-                                "✓ Client bundle installation completed");
+                                "✓ Client bundle installation completed", "operator.client.install_failed");
         }
     }
 
@@ -169,7 +181,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "update", harnesses,
-                                "✓ Client bundle update completed");
+                                "✓ Client bundle update completed", "operator.client.update_failed");
         }
     }
 
@@ -191,7 +203,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             return executeHarnessAction(context, spec, "remove", harnesses,
-                                "✓ Client bundle removal completed");
+                                "✓ Client bundle removal completed", "operator.client.remove_failed");
         }
     }
 }

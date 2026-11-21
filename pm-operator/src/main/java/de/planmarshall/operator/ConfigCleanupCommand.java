@@ -123,12 +123,9 @@ final class ConfigCleanupCommand implements Callable<Integer> {
             err.flush();
             return 2;
         }
-        var settings = new ConfigCommand(context).readSettingsQuiet();
-        if (settings == null) {
-            RefusalRenderer.render(err, locale, new OperatorRefusedException(
-                                MessageCatalogue.format(locale, "operator.settings.list_failed", Map.of())));
-            return PmOperator.EXIT_FAILURE;
-        }
+        // A refused settings read throws the refusal of the runtime's answer, rendered with its cause
+        // on stderr by the one handler of every verb.
+        var settings = new ConfigCommand(context).readSettings();
         var durations = project == null
                             ? machineDurations(settings.cleanupDurations())
                             : projectDurations(settings.cleanupDurations());

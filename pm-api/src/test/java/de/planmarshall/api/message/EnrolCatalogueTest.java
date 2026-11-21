@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("EnrolCatalogueTest")
 class EnrolCatalogueTest {
@@ -93,8 +95,7 @@ class EnrolCatalogueTest {
                 "enrolment.harness.probe_failed",
                 "enrolment.harness.unsupported_client",
                 "enrolment.harness.version_unsupported",
-                "enrolment.harness.invalid",
-                "enrolment.harness.failed"
+                "enrolment.harness.invalid"
         };
 
         for (String key : requiredKeys) {
@@ -102,6 +103,31 @@ class EnrolCatalogueTest {
             assertNotNull(en.get(key), "Value for '" + key + "' must not be null");
             assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank");
         }
+    }
+
+    @ParameterizedTest(name = "{0} in {1}")
+    @CsvSource({
+            "enrolment.enrol.failed, en",
+            "enrolment.enrol.failed, de",
+            "enrolment.unenrol.failed, en",
+            "enrolment.unenrol.failed, de",
+            "enrolment.accept.failed, en",
+            "enrolment.accept.failed, de"
+    })
+    @DisplayName("names the refusal's cause, never an HTTP status, in every failure text")
+    void shouldNameTheCauseNotTheHttpStatus(String key, String locale) {
+        var text = MessageCatalogue.getMessages(locale, "enrolment").get(key);
+
+        assertNotNull(text, key + " must exist in " + locale);
+        assertFalse(text.contains("HTTP"), key + " in " + locale + " must not name an HTTP status: " + text);
+        assertTrue(text.contains("{reason}"), key + " in " + locale + " must carry the refusal's cause: " + text);
+    }
+
+    @Test
+    @DisplayName("holds no failure text of a harness enrolment, which no command prints")
+    void shouldHoldNoUnprintedHarnessFailure() {
+        assertFalse(MessageCatalogue.getMessages("en", "enrolment").containsKey("enrolment.harness.failed"));
+        assertFalse(MessageCatalogue.getMessages("de", "enrolment").containsKey("enrolment.harness.failed"));
     }
 
     @Test

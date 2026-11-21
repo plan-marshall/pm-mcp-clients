@@ -33,6 +33,7 @@ import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -260,14 +261,25 @@ class StartApiTest {
         assertTrue(api.projects().isEmpty());
     }
 
-    @ParameterizedTest(name = "a refusal with the body {0} names its status")
-    @ValueSource(strings = {"{}", "[]", "{\"message\":null}", "not json"})
-    @DisplayName("a refused act without a message names the status instead")
-    void refusalWithoutAMessageNamesTheStatus(String body) throws Exception {
+    @ParameterizedTest(name = "a refusal with the body {0} names the catalogue's refusal")
+    @ValueSource(strings = {"{}", "{\"message\":null}"})
+    @DisplayName("a refused act whose body names nothing says what the catalogue calls an unknown refusal")
+    void refusalWithoutAMessageNamesTheCatalogueText(String body) throws Exception {
         serve(failure(409, body));
         var refused = assertThrows(StartApi.StartActException.class,
                             () -> api.act("ent-1", "add_issue", Map.of()));
-        assertEquals("add_issue: HTTP 409", refused.getMessage());
+        assertEquals("add_issue: " + ErrorTexts.title("en", (ApiErrorCode) null), refused.getMessage());
+        assertFalse(refused.getMessage().contains("HTTP"), refused.getMessage());
+    }
+
+    @ParameterizedTest(name = "a refusal with the body {0} names the runtime's text")
+    @ValueSource(strings = {"[]", "not json"})
+    @DisplayName("a refused act whose body is a plain text shows it behind the catalogue's prefix")
+    void refusalWithAPlainBodyShowsItBehindThePrefix(String body) throws Exception {
+        serve(failure(409, body));
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act("ent-1", "add_issue", Map.of()));
+        assertEquals("add_issue: The runtime refused: " + body, refused.getMessage());
     }
 
     @Test

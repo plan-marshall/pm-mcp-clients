@@ -39,6 +39,8 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -435,8 +437,10 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
-                            () -> assertTrue(err.toString().contains("Unable to load settings."), err.toString()),
-                            () -> assertFalse(out.toString().contains("Unable to load settings."), out.toString()),
+                            () -> assertTrue(err.toString().contains("✗ The runtime refused: refused"),
+                                                err.toString()),
+                            () -> assertFalse(err.toString().contains("HTTP"), err.toString()),
+                            () -> assertFalse(out.toString().contains("The runtime refused"), out.toString()),
                             () -> assertTrue(writes.isEmpty(), writes.toString()));
     }
 
@@ -1361,8 +1365,9 @@ class ConfigCommandTest {
         int code = execute("config");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("did not report its configuration values"),
-                                                out.toString()));
+                            () -> assertTrue(err.toString().contains(
+                                                "✗ The runtime did not report its configuration values."), err.toString()),
+                            () -> assertFalse(out.toString().contains("did not report"), out.toString()));
     }
 
     @Test
@@ -1431,8 +1436,11 @@ class ConfigCommandTest {
         int code = execute("config", "documents", "--mode", "copy");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("documents mode is a machine setting"),
-                                                out.toString()));
+                            () -> assertTrue(err.toString().contains(
+                                                "Unable to load the documents mode, a machine setting: "
+                                                                    + ErrorTexts.title("en", (ApiErrorCode) null)),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("documents mode"), out.toString()));
     }
 
     @Test

@@ -86,6 +86,9 @@ public final class CredentialsCommand implements Callable<Integer> {
     /** Non-interactive run. */
     boolean noInput;
 
+    /** Whether the status read was refused: its line is already on stderr and the verb exits 1. */
+    private boolean statusFailed;
+
     CredentialsCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
@@ -104,8 +107,18 @@ public final class CredentialsCommand implements Callable<Integer> {
         return PATH + OperatorUrlUtil.encodePathSegment(key);
     }
 
+    /**
+     * Reads the entry's status. A refused read prints its line, with the refusal's text as the
+     * cause, on stderr and marks the read as failed, so the verb exits instead of reading the
+     * refusal as an absent entry.
+     *
+     * @param err the verb's error output
+     * @param key the credential key
+     * @return the status, or {@code null} when the entry is absent or the read failed
+     * @throws IOException on transport failure
+     */
     @Nullable
-    private Map<String, Object> readStatus(PrintWriter out, String key) throws IOException {
+    private Map<String, Object> readStatus(PrintWriter err, String key) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(path(key)));
         if (response.status() == 200) {
             return JsonTree.asObject(JsonTree.parse(response.body()));
@@ -113,9 +126,12 @@ public final class CredentialsCommand implements Callable<Integer> {
         if (response.status() == 404) {
             return null;
         }
-        out.println(MessageCatalogue.format(locale(), "operator.credentials.status_failed",
-                            Map.of(KEY, key, STATUS, response.status())));
-        out.flush();
+        var locale = locale();
+        err.println(MessageCatalogue.format(locale, "operator.credentials.status_failed",
+                            Map.of(KEY, key, REASON, new OperatorRefusedException("credentials", response)
+                                                .message(locale))));
+        err.flush();
+        statusFailed = true;
         return null;
     }
 
@@ -227,7 +243,8 @@ public final class CredentialsCommand implements Callable<Integer> {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
             err.println(MessageCatalogue.format(locale, FAILED,
-                                Map.of(KEY, key, STATUS, response.status())));
+                                Map.of(KEY, key, REASON, new OperatorRefusedException("credentials", response)
+                                                    .message(locale))));
             err.flush();
             return PmOperator.EXIT_FAILURE;
         }
@@ -370,7 +387,10 @@ public final class CredentialsCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
             command.noInput = noInput;
-            var status = command.readStatus(out, key);
+            var status = command.readStatus(spec.commandLine().getErr(), key);
+            if (command.statusFailed) {
+                return PmOperator.EXIT_FAILURE;
+            }
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
                                     Map.of(KEY, key)));
@@ -418,7 +438,10 @@ public final class CredentialsCommand implements Callable<Integer> {
             command.noInput = noInput;
             command.entryKind = kind;
             command.projectScope = project;
-            var status = command.readStatus(out, key);
+            var status = command.readStatus(spec.commandLine().getErr(), key);
+            if (command.statusFailed) {
+                return PmOperator.EXIT_FAILURE;
+            }
             command.printHeader(out, key, "set", status);
             if (kind != null && !kind.isBlank()) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.kind", Map.of())
@@ -447,7 +470,10 @@ public final class CredentialsCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
-            var status = command.readStatus(out, key);
+            var status = command.readStatus(spec.commandLine().getErr(), key);
+            if (command.statusFailed) {
+                return PmOperator.EXIT_FAILURE;
+            }
             if (!isPresent(status)) {
                 out.println(MessageCatalogue.format(command.locale(), "operator.credentials.not_present",
                                     Map.of(KEY, key)));
@@ -487,8 +513,10 @@ public final class CredentialsCommand implements Callable<Integer> {
                 return 0;
             }
             var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                "operator.credentials.remove_failed", Map.of(KEY, key, STATUS, response.status())));
+            var locale = context.clientEnvironment().locale();
+            err.println(MessageCatalogue.format(locale, "operator.credentials.remove_failed",
+                                Map.of(KEY, key, REASON, new OperatorRefusedException("credentials remove", response)
+                                                    .message(locale))));
             err.flush();
             return PmOperator.EXIT_FAILURE;
         }

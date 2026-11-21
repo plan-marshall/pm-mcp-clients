@@ -164,8 +164,11 @@ public final class AnswerCommand implements Callable<Integer> {
             return unreadable(out, locale);
         }
         if (qResponse.status() == 404) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
+            // An unknown decision is a failure of the one-shot verb: its line goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
+            err.flush();
             return 1;
         }
         var envelope = qResponse.status() == 200 ? identified(qResponse) : null;

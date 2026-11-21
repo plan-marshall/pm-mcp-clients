@@ -19,11 +19,13 @@ import de.planmarshall.api.message.MessageCatalogue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
- * The packs carry no text a screen prints that is already known to be wrong: no key of the operator
- * area names an HTTP status, and the dead cleanup keys that froze invented figures are gone from
- * both languages.
+ * The packs carry no text a screen prints that is already known to be wrong: no key of an area a
+ * command prints names an HTTP status, the dead cleanup keys that froze invented figures and the
+ * cause-less failure keys are gone from both languages, and every kept failure key names its cause.
  */
 @DisplayName("the operator catalogue carries no retired key")
 class OperatorCatalogueHygieneTest {
@@ -44,12 +46,45 @@ class OperatorCatalogueHygieneTest {
                         "operator.cleanup.residue.lessons",
                         "operator.config.settings_failed");
 
-    @Test
-    @DisplayName("no key of the operator area carries an HTTP status a screen would print")
-    void noOperatorKeyNamesAnHttpStatus() {
+    /**
+     * The cause-less failure keys a refused read used to print instead of its refusal: their
+     * printers render the refusal of the response now, and the two that had no printer are gone.
+     */
+    private static final List<String> RETIRED_FAILURE_KEYS = List.of(
+                        "operator.settings.list_failed",
+                        "operator.config.update_failed",
+                        "operator.client.failed",
+                        "operator.client.action_failed",
+                        "operator.roles.failed",
+                        "operator.devices.list_failed",
+                        "operator.devices.rename_failed",
+                        "operator.devices.revoke_failed",
+                        "operator.devices.listener_off_failed",
+                        "operator.devices.actions_failed",
+                        "operator.projects.select.load_failed",
+                        "operator.projects.detail.load_failed");
+
+    /** The kept failure keys: each names what the refusal does not, and carries its cause. */
+    private static final List<String> KEPT_FAILURE_KEYS = List.of(
+                        "operator.config.set_failed",
+                        "operator.config.unset_failed",
+                        "operator.config.documents_unavailable",
+                        "operator.roles.show.failed",
+                        "operator.roles.qualify.failed",
+                        "operator.credentials.failed",
+                        "operator.credentials.status_failed",
+                        "operator.credentials.remove_failed",
+                        "operator.client.install_failed",
+                        "operator.client.update_failed",
+                        "operator.client.remove_failed");
+
+    @ParameterizedTest(name = "the {0} area")
+    @ValueSource(strings = {"operator", "enrolment", "control", "reports"})
+    @DisplayName("no key of an area a command prints carries an HTTP status a screen would print")
+    void noPrintedKeyNamesAnHttpStatus(String area) {
         for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
-            var messages = MessageCatalogue.getMessages(locale, "operator");
-            assertFalse(messages.isEmpty(), "The operator area must carry texts in " + locale);
+            var messages = MessageCatalogue.getMessages(locale, area);
+            assertFalse(messages.isEmpty(), "The " + area + " area must carry texts in " + locale);
             for (var entry : messages.entrySet()) {
                 assertFalse(entry.getValue().contains("HTTP "),
                                     "the key " + entry.getKey() + " prints an HTTP status in " + locale
@@ -59,12 +94,28 @@ class OperatorCatalogueHygieneTest {
     }
 
     @Test
-    @DisplayName("the dead cleanup keys are gone from both packs")
-    void retiredCleanupKeysAreGone() {
+    @DisplayName("the dead cleanup keys and the retired failure keys are gone from both packs")
+    void retiredKeysAreGone() {
         for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             Map<String, String> messages = MessageCatalogue.getMessages(locale, "operator");
             for (var key : RETIRED_CLEANUP_KEYS) {
                 assertFalse(messages.containsKey(key), "the retired key " + key + " is still in " + locale);
+            }
+            for (var key : RETIRED_FAILURE_KEYS) {
+                assertFalse(messages.containsKey(key), "the retired key " + key + " is still in " + locale);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("every kept failure key carries the refusal's cause in both packs")
+    void keptFailureKeysCarryTheCause() {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            Map<String, String> messages = MessageCatalogue.getMessages(locale, "operator");
+            for (var key : KEPT_FAILURE_KEYS) {
+                var text = messages.get(key);
+                assertTrue(text != null && text.contains("{reason}"),
+                                    "the key " + key + " names no cause in " + locale + ": " + text);
             }
         }
     }

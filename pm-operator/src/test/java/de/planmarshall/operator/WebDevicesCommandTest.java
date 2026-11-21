@@ -46,6 +46,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import picocli.CommandLine;
 
@@ -669,16 +670,18 @@ class WebDevicesCommandTest {
         );
     }
 
+    /** The title line of the rendered refusal the fixture's {@code {"error":"refused"}} body reads as. */
+    private static final String REFUSED_LINE = "✗ The runtime refused: refused";
+
     /** The act, the method the runtime refuses, what the operator types, and the line the refusal names. */
     private static Stream<Arguments> refusedInteractiveActs() {
         return Stream.of(
                             // choose the one device, revoke it, and confirm the prompt
-                            Arguments.of("revoke", "DELETE", "1\nx\n\n", "Failed to revoke."),
+                            Arguments.of("revoke", "DELETE", "1\nx\n\n", REFUSED_LINE),
                             // choose device 1, rename with 'r', enter the new label
-                            Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n",
-                                                "Failed to rename device."),
+                            Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n", REFUSED_LINE),
                             // choose listener-off 'n'
-                            Arguments.of("listener-off", "DELETE", "n\n", "Failed to turn listener off."));
+                            Arguments.of("listener-off", "DELETE", "n\n", REFUSED_LINE));
     }
 
     @Test
@@ -703,15 +706,18 @@ class WebDevicesCommandTest {
 
         var context = createContext("n\n");
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         int code = cmd.execute("-i");
 
-        var output = writer.toString();
+        var failed = "Failed to act on the device: the action did not complete.";
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
+                            () -> assertTrue(failures.toString().contains(failed), failures.toString()),
+                            () -> assertFalse(writer.toString().contains(failed), writer.toString())
         );
     }
 
@@ -801,13 +807,10 @@ class WebDevicesCommandTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-                        "rename, Failed to rename device.",
-                        "revoke, Failed to revoke.",
-                        "listener-off, Failed to turn listener off."
-    })
-    @DisplayName("a refused act on a device names the refusal and leaves with 1")
-    void aRefusedActLeavesWithOne(String action, String expectedOutput) throws Exception {
+    @ValueSource(strings = {"rename", "revoke", "listener-off"})
+    @DisplayName("a refused act on a device renders the refusal on stderr and leaves with 1")
+    void aRefusedActLeavesWithOne(String action) throws Exception {
+        var expectedOutput = REFUSED_LINE;
         seedRefusedRoutes();
         var deviceId = Generators.letterStrings(4, 8).next();
         var newLabel = Generators.letterStrings(4, 8).next();

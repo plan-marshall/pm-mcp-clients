@@ -33,6 +33,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.ActivityEntryKind;
@@ -152,6 +153,24 @@ public final class PlanCommand implements Callable<Integer> {
         this.context = Objects.requireNonNull(context, "context");
     }
 
+    /**
+     * Renders the refusal of a read of one plan or epic on stderr. The body decides what the refusal
+     * says: a code the runtime names keeps its own texts, and a 404 that names none is a route this
+     * runtime does not know, never a fixed "not found". {@code plan <id>}, {@code plan --activity},
+     * {@code epic <id>} and {@code epic decompose} read the 404 the same way through this one helper.
+     *
+     * @param err      the verb's error output
+     * @param locale   the operator's locale
+     * @param verb     the verb that was attempted
+     * @param response the runtime's answer
+     * @return the exit code of a refusal
+     */
+    static int refuseRead(PrintWriter err, @Nullable String locale, String verb, HttpResponse response) {
+        var refusal = new OperatorRefusedException(verb, response);
+        RefusalRenderer.render(err, locale, refusal);
+        return refusal.exitCode();
+    }
+
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
@@ -183,8 +202,7 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
                 if (response.status() == 404) {
-                    RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
-                    return 1;
+                    return refuseRead(err, context.locale(), "plan", response);
                 }
                 throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
             }
@@ -210,8 +228,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
-                return 1;
+                return refuseRead(err, context.locale(), "plan", response);
             }
             throw new OperatorRefusedException("plan " + planId, response);
         }
@@ -1533,9 +1550,10 @@ public final class PlanCommand implements Callable<Integer> {
             } else {
                 var eq = set.indexOf('=');
                 if (eq < 0) {
-                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                    var err = spec.commandLine().getErr();
+                    err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.plan.settings.value_required", Map.of()));
-                    out.flush();
+                    err.flush();
                     return 1;
                 }
                 aspect = set.substring(0, eq).trim();
@@ -1614,9 +1632,12 @@ public final class PlanCommand implements Callable<Integer> {
                     reason = "it is not one of " + String.join(", ", entry.choices());
                 }
             }
-            out.println(MessageCatalogue.format("control.settings.refused",
-                                Map.of(KEY_VALUE, value != null ? value : aspect, KEY_REASON, reason)));
+            // A refused setting is a failure of the one-shot verb: its line goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format("control.settings.refused",
+                                Map.of(KEY_VALUE, value != null ? value : aspect, KEY_REASON, reason)));
+            err.flush();
             return 1;
         }
 

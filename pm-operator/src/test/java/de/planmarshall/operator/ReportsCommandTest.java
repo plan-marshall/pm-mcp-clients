@@ -282,11 +282,12 @@ class ReportsCommandTest {
     }
 
     @Test
-    @DisplayName("reports read without IDs or --all prints hint and returns 1")
+    @DisplayName("reports read without IDs or --all prints its local refusal on stderr and returns 1")
     void reportsReadNoIds() {
         int code = execute("reports", "read");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Give the report ids, or --all."));
+        assertTrue(err.toString().contains("✗ Give the report ids, or --all."), err.toString());
+        assertFalse(out.toString().contains("Give the report ids"), out.toString());
     }
 
     @Test
@@ -361,7 +362,9 @@ class ReportsCommandTest {
 
         int code = execute("reports", "open", missingId);
         assertEquals(1, code);
-        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
+        var line = missingId + " is no report of this machine; reports lists the unread ones.";
+        assertTrue(err.toString().contains(line), err.toString());
+        assertFalse(out.toString().contains(line), out.toString());
     }
 
     @Test

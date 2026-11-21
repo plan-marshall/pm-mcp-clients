@@ -28,7 +28,6 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.EpicProcess;
-import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.epicview.EpicViewFormatting;
@@ -120,8 +119,8 @@ public final class EpicCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
-                return 1;
+                // The body decides what the 404 is, exactly as for plan <id>.
+                return PlanCommand.refuseRead(spec.commandLine().getErr(), context.locale(), "epic", response);
             }
             throw new OperatorRefusedException("epic " + epicId, response);
         }

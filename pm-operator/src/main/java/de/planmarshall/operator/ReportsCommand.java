@@ -214,9 +214,9 @@ public final class ReportsCommand implements Callable<Integer> {
                 return readAll(out);
             }
             if (reportIds.isEmpty()) {
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.reports.ids_required", Map.of()));
-                out.flush();
-                return 1;
+                // A local refusal: no request was sent, and the one handler renders it on stderr.
+                throw new OperatorRefusedException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.reports.ids_required", Map.of()));
             }
             return readByIds(out);
         }
@@ -318,8 +318,9 @@ public final class ReportsCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                out.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", reportId)));
-                out.flush();
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", reportId)));
+                err.flush();
                 return 1;
             }
             throw new OperatorRefusedException("reports open " + reportId, response);

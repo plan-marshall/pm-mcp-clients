@@ -369,9 +369,18 @@ final class StartApi {
             return code;
         }
 
+        /**
+         * @param response the runtime's refusal
+         * @return the message the body names, or else the catalogue's text of the refusal (the title
+         *         of its code, or what a body without one is), never the bare HTTP status
+         */
         private static String messageOf(HttpResponse response) {
             var message = bodyMember(response, KEY_MESSAGE);
-            return message != null ? OutputSafety.stripControlSequences(message) : "HTTP " + response.status();
+            if (message != null) {
+                return OutputSafety.stripControlSequences(message);
+            }
+            // The act carries no locale here; the catalogue's default text names the refusal.
+            return new OperatorRefusedException(KEY_ERROR, response).message(null);
         }
 
         private static @Nullable ApiErrorCode codeOf(HttpResponse response) {
