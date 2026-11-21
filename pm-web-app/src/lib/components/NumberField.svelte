@@ -109,6 +109,14 @@
     }
   });
 
+  // A field without a never choice is never in never state, whatever value it holds: turning
+  // allowNever off leaves the value alone but must not keep the input disabled.
+  $effect(() => {
+    if (!allowNever) {
+      isNever = false;
+    }
+  });
+
   /**
    * Writes a value this field produced itself, so the effect does not take it for one from outside.
    *
@@ -180,7 +188,8 @@
   }
 
   function handleKeyDown(e: KeyboardEvent & { currentTarget: HTMLInputElement }): void {
-    if (e.key === 'Enter') {
+    // The Enter that confirms an IME composition belongs to the composition, not to the field.
+    if (e.key === 'Enter' && !e.isComposing) {
       commit(e.currentTarget);
       committedOnEnter = true;
     }

@@ -120,6 +120,27 @@ describe('NumberField', () => {
       expect(onchange).toHaveBeenCalledExactlyOnceWith(10);
     });
 
+    it('does not commit on the Enter that confirms an IME composition and forwards it to the caller', async () => {
+      const onchange = vi.fn();
+      const onkeydown = vi.fn();
+      const { container } = render(NumberField, {
+        props: { label: 'Count', min: 5, max: 10, value: 7, onchange, onkeydown },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+
+      await fireEvent.input(input, { target: { value: '3' } });
+      await fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+
+      expect(input.value).toBe('3');
+      expect(onchange).not.toHaveBeenCalled();
+      expect(onkeydown).toHaveBeenCalledOnce();
+
+      // The composition's Enter set no commit mark, so the change that follows commits
+      await fireEvent.change(input);
+      expect(input.value).toBe('5');
+      expect(onchange).toHaveBeenCalledExactlyOnceWith(5);
+    });
+
     it('does not commit on a key other than Enter and forwards it to the caller', async () => {
       const onchange = vi.fn();
       const onkeydown = vi.fn();
@@ -341,6 +362,25 @@ describe('NumberField', () => {
 
       expect(input).not.toBeDisabled();
       expect(neverCheck.checked).toBe(false);
+    });
+
+    it('leaves never and enables the input when the parent turns allowNever off without changing the value', async () => {
+      const onchange = vi.fn();
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Expiry', allowNever: true, value: null, onchange },
+      });
+      const input = container.querySelector('input[type="number"]') as HTMLInputElement;
+      expect(input).toBeDisabled();
+
+      await rerender({ allowNever: false });
+
+      expect(container.querySelector('.number-field__never')).toBeNull();
+      expect(input).not.toBeDisabled();
+
+      await fireEvent.input(input, { target: { value: '8' } });
+      await fireEvent.change(input);
+      expect(input.value).toBe('8');
+      expect(onchange).toHaveBeenCalledExactlyOnceWith(8);
     });
 
     it('shows a number the parent assigns to a field without a never choice and keeps it editable', async () => {
