@@ -279,6 +279,86 @@ describe('NumberField', () => {
     expect(numInput).toBeDisabled();
   });
 
+  describe('a value set from outside', () => {
+    const partsOf = (container: HTMLElement) => ({
+      input: container.querySelector('input[type="number"]') as HTMLInputElement,
+      neverCheck: container.querySelector(
+        '.number-field__never input[type="checkbox"]',
+      ) as HTMLInputElement,
+    });
+
+    it('turns never off and shows a number the parent assigns to a field that started never', async () => {
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Expiry', allowNever: true, value: null },
+      });
+      const { input, neverCheck } = partsOf(container);
+      expect(neverCheck.checked).toBe(true);
+
+      await rerender({ value: 42 });
+
+      expect(input.value).toBe('42');
+      expect(input).not.toBeDisabled();
+      expect(neverCheck.checked).toBe(false);
+    });
+
+    it('turns never on when the parent assigns null to a field holding a number', async () => {
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Expiry', allowNever: true, value: 30 },
+      });
+      const { input, neverCheck } = partsOf(container);
+      expect(neverCheck.checked).toBe(false);
+
+      await rerender({ value: null });
+
+      expect(input.value).toBe('');
+      expect(input).toBeDisabled();
+      expect(neverCheck.checked).toBe(true);
+    });
+
+    it('restores the number the parent assigned last when never is toggled on and off', async () => {
+      const onchange = vi.fn();
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Expiry', allowNever: true, value: null, onchange },
+      });
+      const { input, neverCheck } = partsOf(container);
+
+      await rerender({ value: 12 });
+      await fireEvent.click(neverCheck);
+      await fireEvent.click(neverCheck);
+
+      expect(onchange).toHaveBeenLastCalledWith(12);
+      expect(input.value).toBe('12');
+    });
+
+    it('does not turn never on for an emptied field the parent echoes back as null', async () => {
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Timeout', allowNever: true, value: 60 },
+      });
+      const { input, neverCheck } = partsOf(container);
+
+      await fireEvent.input(input, { target: { value: '' } });
+      await rerender({ value: null });
+
+      expect(input).not.toBeDisabled();
+      expect(neverCheck.checked).toBe(false);
+    });
+
+    it('shows a number the parent assigns to a field without a never choice and keeps it editable', async () => {
+      const { container, rerender } = render(NumberField, {
+        props: { label: 'Count', value: 5 },
+      });
+      const input = container.querySelector('input[type="number"]') as HTMLInputElement;
+
+      await rerender({ value: null });
+      expect(input.value).toBe('');
+      expect(input).not.toBeDisabled();
+
+      await rerender({ value: 9 });
+      expect(input.value).toBe('9');
+      expect(input).not.toBeDisabled();
+    });
+  });
+
   it('gives the never label the --control-height minimum on a phone', () => {
     const style = styleOf(path.resolve(__dirname, './NumberField.svelte'));
     const phoneAt = style.indexOf('@media (max-width: 767px)');

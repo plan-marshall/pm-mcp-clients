@@ -10,7 +10,8 @@
    * Draws unit beside control, takes what is typed as it is and clamps to the min/max bounds on
    * commit (blur, Enter, step), and offers an explicit never choice where a design offers one
    * (value becomes null, never -1). Emptying the field leaves it editable; only the never checkbox
-   * and an initial null of a never field turn never on.
+   * and a null the parent assigns (initially or later) turn never on, and a number the parent
+   * assigns turns it off again.
    */
   interface Props {
     /** The numeric value or null when never/empty (bindable). */
@@ -87,17 +88,36 @@
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
-  // The never choice changes through its checkbox only; an initial null starts a never field as never.
+  // Typing never changes the never choice; its checkbox does, and so does a value the parent assigns:
+  // null from outside (and an initial null) turns a never field to never, a number turns it off.
   let isNever = $state(untrack(() => allowNever && (value === null || value === undefined)));
   let lastNumericValue = $state<number | null>(null);
+  // The value this field wrote last, so a value differing from it is known to come from outside.
+  let ownValue: number | null | undefined = untrack(() => value);
   // Set by a commit on Enter, so the change event the browser sends after it does not commit twice.
   let committedOnEnter = false;
 
   $effect(() => {
-    if (value !== null && value !== undefined) {
-      lastNumericValue = value;
+    const current = value;
+    const empty = current === null || current === undefined;
+    if (!empty) {
+      lastNumericValue = current;
+    }
+    if (current !== ownValue) {
+      ownValue = current;
+      isNever = allowNever && empty;
     }
   });
+
+  /**
+   * Writes a value this field produced itself, so the effect does not take it for one from outside.
+   *
+   * @param next the value to hold
+   */
+  function setOwn(next: number | null): void {
+    ownValue = next;
+    value = next;
+  }
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
@@ -130,7 +150,7 @@
    */
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
     committedOnEnter = false;
-    value = parse(e.currentTarget.value);
+    setOwn(parse(e.currentTarget.value));
     oninput?.(e);
   }
 
@@ -147,7 +167,7 @@
       lastNumericValue = num;
       input.value = String(num);
     }
-    value = num;
+    setOwn(num);
     onchange?.(num);
   }
 
@@ -170,11 +190,11 @@
   function handleNeverToggle(e: Event & { currentTarget: HTMLInputElement }): void {
     isNever = e.currentTarget.checked;
     if (isNever) {
-      value = null;
+      setOwn(null);
       onchange?.(null);
     } else {
       const restored = lastNumericValue ?? min ?? 0;
-      value = restored;
+      setOwn(restored);
       onchange?.(restored);
     }
   }
