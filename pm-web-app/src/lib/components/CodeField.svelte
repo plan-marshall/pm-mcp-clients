@@ -31,9 +31,12 @@
     name?: string;
     /** Test id. */
     testid?: string;
-    /** Whether the entered code is complete (8 characters). */
+    /**
+     * Whether the field holds a complete code (8 characters), derived from the value whoever wrote
+     * it (bindable, read-only: a value passed in is overwritten).
+     */
     complete?: boolean;
-    /** Handler called when code reaches 8 characters with normalized code. */
+    /** Called with the normalized code when the operator's input completes a new code. */
     oncomplete?: (code: string) => void;
     /** Event handlers. */
     oninput?: (e: Event & { currentTarget: HTMLInputElement }) => void;
@@ -87,49 +90,39 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
-  /** The last complete code reported to `oncomplete`; null while the code is incomplete. */
-  let lastReported: string | null = null;
+  /** The complete code the field holds, as `KXQB-MRTN`; null while the code is incomplete. */
+  let held: string | null = null;
 
   /**
-   * Strips everything but letters and digits and upper-cases the rest.
-   *
-   * @param raw the text of the field
-   * @returns the code without dash or spaces, in upper case
+   * @param raw the text of the field, in any case, with or without dash or spaces
+   * @returns the code as `KXQB-MRTN` when the text holds exactly 8 letters and digits, else null
    */
-  function clean(raw: string): string {
-    return raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  function codeOf(raw: string): string | null {
+    const cleaned = raw.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    return cleaned.length === 8 ? `${cleaned.slice(0, 4)}-${cleaned.slice(4)}` : null;
   }
 
-  // An incomplete value ends the reported code whoever set it: the field is no longer complete, and
-  // a parent that clears the field gets the same code reported again when it is entered anew.
-  $effect(() => {
-    if (clean(value).length !== 8) {
-      complete = false;
-      lastReported = null;
-    }
-  });
+  /** @param code the complete code the field holds now, or null; `complete` follows it */
+  function hold(code: string | null): void {
+    held = code;
+    complete = code !== null;
+  }
+
+  // `complete` is derived from the value in both directions, whoever wrote it: a parent that
+  // assigns a complete code makes the field complete, one that clears or shortens it does not.
+  $effect(() => hold(codeOf(value)));
 
   /**
-   * Reports a code once when it becomes complete, and again only for a different complete code, so
-   * typing the dash into a complete code (KXQBMRTN, then KXQB-MRTN) does not report it twice.
+   * Reports to `oncomplete` a code the operator completes: once when it becomes complete, and again
+   * only for a different code, so typing the dash into a complete code (KXQBMRTN, then KXQB-MRTN)
+   * reports nothing new. A code the parent writes is known to the parent and is not reported.
    */
-  function checkCode(raw: string): void {
-    const cleaned = clean(raw);
-    if (cleaned.length !== 8) {
-      complete = false;
-      lastReported = null;
-      return;
-    }
-    complete = true;
-    const formatted = `${cleaned.slice(0, 4)}-${cleaned.slice(4)}`;
-    if (formatted === lastReported) return;
-    lastReported = formatted;
-    oncomplete?.(formatted);
-  }
-
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
     value = e.currentTarget.value;
-    checkCode(value);
+    const code = codeOf(value);
+    const completed = code !== null && code !== held;
+    hold(code);
+    if (completed) oncomplete?.(code);
     oninput?.(e);
   }
 </script>

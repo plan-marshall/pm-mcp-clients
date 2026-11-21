@@ -426,56 +426,68 @@ describe('lib/forms: The shape of a form', () => {
       guard.handleBeforeUnload(beforeUnloadChanged as BeforeUnloadEvent);
       expect(beforeUnloadChanged.defaultPrevented).toBe(true);
 
-      // A submit clears the guard: it no longer asks, on a route change or on a reload
-      ask.mockClear();
-      guard.clear();
-      await expect(guard.canLeave()).resolves.toBe(true);
-      expect(ask).not.toHaveBeenCalled();
-      const beforeUnloadCleared = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(beforeUnloadCleared as BeforeUnloadEvent);
-      expect(beforeUnloadCleared.defaultPrevented).toBe(false);
       // The browser's own confirm is never the question.
       expect(confirmSpy).not.toHaveBeenCalled();
     });
 
-    it('asks again for changes made after the form was clean once more', async () => {
-      let dirty = true;
+    it('lets exactly the next check pass after a confirmed leave, then asks again', async () => {
       const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
-      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+      const guard = createUnsavedChangesGuard({ isDirty: () => true, ask });
 
-      guard.clear();
-      expect(guard.isDirty()).toBe(false);
+      guard.allowLeave();
+      expect(guard.shouldAsk()).toBe(false);
+      expect(guard.shouldAsk()).toBe(true);
 
-      dirty = false;
-      expect(guard.isDirty()).toBe(false);
-
-      dirty = true;
-      expect(guard.isDirty()).toBe(true);
+      guard.allowLeave();
+      const leaving = new Event('beforeunload', { cancelable: true });
+      guard.handleBeforeUnload(leaving as BeforeUnloadEvent);
+      expect(leaving.defaultPrevented).toBe(false);
       await expect(guard.canLeave()).resolves.toBe(false);
       expect(ask).toHaveBeenCalledOnce();
     });
 
-    it('asks for an edit made after clear() was called on a form that was already clean', async () => {
-      let dirty = false;
-      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
-      const guard = createUnsavedChangesGuard({ isDirty: () => dirty, ask });
+    it('asks again once a confirmed leave is withdrawn unconsumed', () => {
+      const guard = createUnsavedChangesGuard({
+        isDirty: () => true,
+        ask: () => Promise.resolve(true),
+      });
 
-      guard.clear();
-      dirty = true;
+      guard.allowLeave();
+      guard.endLeave();
 
-      expect(guard.isDirty()).toBe(true);
-      await expect(guard.canLeave()).resolves.toBe(false);
-      expect(ask).toHaveBeenCalledOnce();
+      expect(guard.shouldAsk()).toBe(true);
     });
 
-    it('asks for an edit made after a saved submit whose then() cleared the guard', async () => {
-      const form = createForm({ fields: { title: { initial: '' } }, onSubmit: () => undefined });
+    it('follows the form: silent on a clean form, asking for each later edit', () => {
+      const form = createForm({ fields: { title: { initial: '' } } });
+      const guard = createUnsavedChangesGuard({
+        isDirty: form.isDirty,
+        ask: () => Promise.resolve(true),
+      });
+      expect(guard.shouldAsk()).toBe(false);
+
+      form.onFieldInput('title', 'Release notes');
+
+      expect(guard.shouldAsk()).toBe(true);
+    });
+
+    it('asks for an edit typed while the save was pending, once the save has resolved', async () => {
+      let resolveSave: () => void = () => {};
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve;
+          }),
+      });
       const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
       const guard = createUnsavedChangesGuard({ isDirty: form.isDirty, ask });
       form.onFieldInput('title', 'Release notes');
 
-      await form.submit().then(() => guard.clear());
+      const saving = form.submit();
       form.onFieldInput('title', 'Release notes, revised');
+      resolveSave();
+      await expect(saving).resolves.toBe(true);
 
       await expect(guard.canLeave()).resolves.toBe(false);
       expect(ask).toHaveBeenCalledOnce();

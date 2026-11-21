@@ -246,41 +246,50 @@ export interface UnsavedChangesGuardOptions {
 /**
  * Guards against losing unsaved changes on navigation, closing or reload.
  *
+ * Whether to ask is the form's own dirty state, read at each navigation: a form is dirty while a
+ * value differs from the one last saved, and a successful submit moves that baseline itself, so a
+ * submit never tells the guard anything and edits made while a save is pending are still asked for.
  * A route change asks through the caller's `ask` (the view's ConfirmDialog); a reload or a closed
- * tab is asked through the browser's own `beforeunload` prompt. `clear()` — which a submit calls,
- * and which a confirmed leave calls before it navigates — makes the guard stop asking for the
- * changes held now; it asks again once the form has been clean and is changed anew. Called on a
- * form that is clean already (a submit that published its saved values before it resolved), it
- * holds no changes to stop asking for, so the next edit is asked for at once.
+ * tab is asked through the browser's own `beforeunload` prompt.
+ *
+ * The one thing the guard holds is a confirmed leave: `allowLeave()` lets the very next check pass
+ * unasked — the navigation the confirmed leave repeats — and that check consumes it; `endLeave()`
+ * withdraws it once that navigation has settled, so a leave that did not happen never lets a later
+ * navigation through.
  */
 export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
   const { ask } = options;
-  let cleared = false;
+  let leaving = false;
 
-  /** @returns whether the guard has changes to ask for */
-  function isDirty(): boolean {
-    if (!options.isDirty()) {
-      cleared = false;
+  /** @returns whether this navigation is to be asked for; consumes a confirmed leave */
+  function shouldAsk(): boolean {
+    if (leaving) {
+      leaving = false;
       return false;
     }
-    return !cleared;
+    return options.isDirty();
   }
 
   return {
-    isDirty,
+    shouldAsk,
 
-    clear(): void {
-      // Only a dirty episode can be cleared; a clean form leaves the guard armed for the next edit.
-      cleared = options.isDirty();
+    /** Lets the next navigation pass unasked: the operator confirmed leaving. */
+    allowLeave(): void {
+      leaving = true;
+    },
+
+    /** Withdraws a confirmed leave the next navigation has not consumed. */
+    endLeave(): void {
+      leaving = false;
     },
 
     async canLeave(): Promise<boolean> {
-      if (!isDirty()) return true;
+      if (!shouldAsk()) return true;
       return ask();
     },
 
     handleBeforeUnload(e: BeforeUnloadEvent): void {
-      if (!isDirty()) return;
+      if (!shouldAsk()) return;
       e.preventDefault();
     },
   };

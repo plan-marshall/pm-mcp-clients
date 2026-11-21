@@ -17,6 +17,8 @@ type BeforeNavigate = Parameters<Parameters<typeof AppNavigation.beforeNavigate>
 const navigation = vi.hoisted(() => ({
   callbacks: [] as Array<(nav: BeforeNavigate) => void>,
   goto: vi.fn<(url: URL) => Promise<void>>(),
+  /** The navigations `goto` played through the guard, as SvelteKit's router does. */
+  played: [] as BeforeNavigate[],
 }));
 
 vi.mock('$app/navigation', () => ({
@@ -55,8 +57,15 @@ function navigate(nav: BeforeNavigate): void {
 describe('UnsavedChangesGuard', () => {
   beforeEach(() => {
     navigation.callbacks.length = 0;
+    navigation.played.length = 0;
     navigation.goto.mockReset();
-    navigation.goto.mockResolvedValue(undefined);
+    // Like SvelteKit's goto, the repeated navigation passes beforeNavigate before it resolves.
+    navigation.goto.mockImplementation((url) => {
+      const repeated = navigationTo('goto', url);
+      navigation.played.push(repeated);
+      navigate(repeated);
+      return Promise.resolve();
+    });
   });
 
   it('cancels a route change with unsaved changes and asks through the dialog', async () => {
@@ -81,10 +90,42 @@ describe('UnsavedChangesGuard', () => {
 
     await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
     expect(screen.queryByRole('dialog')).toBeNull();
-    // The repeated navigation passes the cleared guard.
-    const repeated = navigationTo('goto', TARGET);
-    navigate(repeated);
-    expect(repeated.cancel).not.toHaveBeenCalled();
+    // The repeated navigation passes the guard without a second question.
+    expect(navigation.played).toHaveLength(1);
+    expect(navigation.played[0].cancel).not.toHaveBeenCalled();
+    expect(navigation.goto).toHaveBeenCalledOnce();
+  });
+
+  it('asks again on the next route change when a confirmed leave did not navigate', async () => {
+    navigation.goto.mockResolvedValue(undefined);
+    render(UnsavedChangesGuard, { props: { dirty: true } });
+    navigate(navigationTo('link', TARGET));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+    await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
+    // The navigation settled without passing beforeNavigate (cancelled elsewhere, or the same page).
+    await navigation.goto.mock.results[0]?.value;
+
+    const next = navigationTo('link', TARGET);
+    navigate(next);
+
+    expect(next.cancel).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('lets the beforeunload of a confirmed leave through once, and asks for the next one', async () => {
+    navigation.goto.mockReturnValue(new Promise<void>(() => {}));
+    render(UnsavedChangesGuard, { props: { dirty: true } });
+    navigate(navigationTo('link', TARGET));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+    await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
+
+    const leaving = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(leaving);
+    const later = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(later);
+
+    expect(leaving.defaultPrevented).toBe(false);
+    expect(later.defaultPrevented).toBe(true);
   });
 
   it('keeps the page when the operator stays', async () => {
@@ -123,35 +164,23 @@ describe('UnsavedChangesGuard', () => {
     },
   );
 
-  it('prevents a beforeunload with unsaved changes, and not after clear()', () => {
-    const { component } = render(UnsavedChangesGuard, { props: { dirty: true } });
+  it('prevents a beforeunload with unsaved changes, and not once the form is saved', async () => {
+    const { rerender } = render(UnsavedChangesGuard, { props: { dirty: true } });
 
     const dirtyUnload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(dirtyUnload);
     expect(dirtyUnload.defaultPrevented).toBe(true);
 
-    component.clear();
-    const clearedUnload = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(clearedUnload);
-    expect(clearedUnload.defaultPrevented).toBe(false);
+    await rerender({ dirty: false });
+    const savedUnload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(savedUnload);
+    expect(savedUnload.defaultPrevented).toBe(false);
   });
 
-  it('asks again for changes made after the form was clean once more', async () => {
-    const { component, rerender } = render(UnsavedChangesGuard, { props: { dirty: true } });
-    component.clear();
+  it('asks again whenever the form is dirty again, without a word from the form', async () => {
+    const { rerender } = render(UnsavedChangesGuard, { props: { dirty: true } });
 
     await rerender({ dirty: false });
-    await rerender({ dirty: true });
-
-    const unload = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(unload);
-    expect(unload.defaultPrevented).toBe(true);
-  });
-
-  it('asks for an edit made after clear() was called while the form was clean', async () => {
-    const { component, rerender } = render(UnsavedChangesGuard, { props: { dirty: false } });
-    component.clear();
-
     await rerender({ dirty: true });
 
     const nav = navigationTo('link', TARGET);
@@ -160,6 +189,19 @@ describe('UnsavedChangesGuard', () => {
     const unload = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(unload);
     expect(unload.defaultPrevented).toBe(true);
+  });
+
+  it('lets a route change through on a clean form, and asks once the form is edited', async () => {
+    const { rerender } = render(UnsavedChangesGuard, { props: { dirty: false } });
+    const clean = navigationTo('link', TARGET);
+    navigate(clean);
+    expect(clean.cancel).not.toHaveBeenCalled();
+
+    await rerender({ dirty: true });
+
+    const edited = navigationTo('link', TARGET);
+    navigate(edited);
+    expect(edited.cancel).toHaveBeenCalledOnce();
   });
 
   it('removes its beforeunload listener when it is destroyed', () => {

@@ -25,6 +25,21 @@ describe('CodeField', () => {
     expect(input).toHaveClass('code-field__input');
   });
 
+  it('describes the input by its hint and by the reason it is disabled', () => {
+    const { container } = render(CodeField, {
+      props: {
+        label: 'Pairing code',
+        id: 'code-input',
+        hint: 'Shown by the terminal.',
+        disabled: true,
+        disabledReason: 'Pairing is running.',
+      },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    expect(input).toHaveAttribute('aria-describedby', 'code-input-hint code-input-reason');
+  });
+
   it.each([
     ['lowercase with dash', 'kxqb-mrtn'],
     ['lowercase without dash', 'kxqbmrtn'],
@@ -116,6 +131,55 @@ describe('CodeField', () => {
       expect(getByTestId('bound-complete')).toHaveTextContent('false');
     },
   );
+
+  it.each([
+    ['writes a complete code into the empty field', '', 'kxqb-mrtn'],
+    ['completes a shorter code', 'KXQB', 'KXQBMRTN'],
+    ['replaces a complete code with another', 'KXQB-MRTN', 'KXQB-MRTA'],
+  ] as const)(
+    'reports the bound complete as true when the parent %s',
+    async (_label, typed, replacement) => {
+      const { container, getByTestId } = render(CodeFieldBindFixture, {
+        props: { label: 'Code', replaceLabel: 'Replace', replacement },
+      });
+      const input = container.querySelector('input') as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: typed } });
+
+      await fireEvent.click(getByTestId('parent-replace'));
+
+      expect(input.value).toBe(replacement);
+      expect(getByTestId('bound-complete')).toHaveTextContent('true');
+    },
+  );
+
+  it('reports to oncomplete only the codes the operator completes, not one the parent writes', async () => {
+    const oncomplete = vi.fn();
+    const { container, getByTestId } = render(CodeFieldBindFixture, {
+      props: { label: 'Code', replaceLabel: 'Replace', replacement: 'KXQBMRTN', oncomplete },
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.click(getByTestId('parent-replace'));
+    // Adding the dash to the code the parent wrote completes no new code.
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    expect(oncomplete).not.toHaveBeenCalled();
+
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTA' } });
+    expect(oncomplete).toHaveBeenCalledExactlyOnceWith('KXQB-MRTA');
+  });
+
+  it('reports again a code shortened and completed within one task, before the field re-renders', () => {
+    const oncomplete = vi.fn();
+    const { container } = render(CodeField, { props: { label: 'Code', oncomplete } });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    for (const typed of ['KXQB-MRTN', 'KXQB-MRT', 'KXQB-MRTN']) {
+      input.value = typed;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    expect(oncomplete).toHaveBeenCalledTimes(2);
+  });
 
   it('reports a complete code once when the parent echoes it back', async () => {
     const oncomplete = vi.fn();

@@ -895,7 +895,7 @@
             <TextArea label={$t('dev.field.sample_label')} value="Multiple lines of text entered here." />
             <NumberField label={$t('dev.field.sample_label')} unit="days" allowNever value={null} />
             <SecretField label={$t('common.field.token')} />
-            <CodeField label={$t('web.pair.page.code')} value="KXQB-MRTN" complete />
+            <CodeField label={$t('web.pair.page.code')} value="KXQB-MRTN" />
             <RadioGroup
               legend={$t('dev.field.sample_label')}
               name={`radio-cards-${theme}`}

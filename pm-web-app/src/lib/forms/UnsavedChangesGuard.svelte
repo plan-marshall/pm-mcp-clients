@@ -9,9 +9,10 @@
    * The unsaved-changes guard of one form (components-fields.adoc, Submitting).
    *
    * A route change while the form holds unsaved changes is cancelled and asked through a
-   * ConfirmDialog with the catalogue's texts: leaving clears the guard and repeats the navigation,
-   * staying keeps the page. A reload or a closed tab is asked through the browser's own
-   * `beforeunload` prompt, which no page can word. The form calls `clear()` when it submits.
+   * ConfirmDialog with the catalogue's texts: leaving repeats the navigation, which passes unasked
+   * once, and staying keeps the page. A reload or a closed tab is asked through the browser's own
+   * `beforeunload` prompt, which no page can word. The guard asks whenever `dirty` holds, so the
+   * form tells it nothing when it submits: `dirty` is measured against the last successful save.
    */
   interface Props {
     /** Whether the form holds changes that are not saved. */
@@ -38,11 +39,6 @@
       }),
   });
 
-  /** Stops the guard from asking for the changes held now; a submit calls it. */
-  export function clear(): void {
-    guard.clear();
-  }
-
   /** @param leave whether the operator chose to leave the page */
   function settle(leave: boolean): void {
     open = false;
@@ -53,13 +49,14 @@
 
   beforeNavigate((navigation) => {
     // Leaving the app (reload, closed tab, another site) is asked by the browser's own prompt.
-    if (navigation.type === 'leave' || !navigation.to || !guard.isDirty()) return;
+    if (navigation.type === 'leave' || !navigation.to || !guard.shouldAsk()) return;
     navigation.cancel();
     const target = navigation.to.url;
     void guard.canLeave().then((leave) => {
       if (!leave) return;
-      guard.clear();
-      void goto(target);
+      // Only the repeated navigation passes unasked; once it has settled, the guard asks again.
+      guard.allowLeave();
+      void goto(target).finally(() => guard.endLeave());
     });
   });
 
@@ -71,11 +68,6 @@
   $effect(() => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  });
-
-  // A form that is clean again re-arms a cleared guard, so changes made after a submit are asked for.
-  $effect(() => {
-    if (!dirty) guard.isDirty();
   });
 </script>
 

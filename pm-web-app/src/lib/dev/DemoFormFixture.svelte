@@ -16,13 +16,12 @@
   const form = createForm({ fields: { title: { initial: '', required: true } } });
 
   let reason = $state('');
-  /** The reason as last submitted, the baseline its unsaved changes are measured against. */
+  /** The reason as last saved, the baseline its unsaved changes are measured against. */
   let savedReason = $state('');
   let submitted = $state(false);
   let cancelled = $state(false);
   /** Whether the title differs from its baseline, followed through the form's store. */
   let titleDirty = $state(false);
-  let guard: UnsavedChangesGuard | undefined = $state();
 
   $effect(() =>
     form.subscribe(() => {
@@ -48,13 +47,17 @@
     return 'neutral';
   });
 
-  /** Marks the form saved only once the form module reports the save as succeeded. */
+  /**
+   * Marks the form saved only once the form module reports the save as succeeded. The reason saved
+   * is the one submitted, not one typed while the save was pending, and the guard is told nothing:
+   * it asks whenever the form differs from what was saved.
+   */
   function handleSubmit(): void {
     if (!isValid) return;
+    const submittedReason = reason;
     void form.submit().then((saved) => {
       if (!saved) return;
-      savedReason = reason;
-      guard?.clear();
+      savedReason = submittedReason;
       submitted = true;
       cancelled = false;
     });
@@ -66,7 +69,7 @@
   }
 </script>
 
-<UnsavedChangesGuard {dirty} bind:this={guard}>
+<UnsavedChangesGuard {dirty}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <form
     class="dev__stack"
