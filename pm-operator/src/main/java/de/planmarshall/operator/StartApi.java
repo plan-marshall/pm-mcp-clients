@@ -343,13 +343,19 @@ final class StartApi {
         }
     }
 
-    /** An act the runtime refused; the dialogue prints it and asks again. */
+    /**
+     * An act the runtime refused; the dialogue prints {@link #message(String)} in the operator's locale
+     * and asks again.
+     */
     static final class StartActException extends RuntimeException {
         private static final long serialVersionUID = 1L;
         private static final String KEY_MESSAGE = "message";
         /** The member of an error body that names its code. */
         private static final String KEY_ERROR = "error";
 
+        private final String linkId;
+        private final @Nullable String bodyMessage;
+        private final OperatorRefusedException refusal;
         private final @Nullable ApiErrorCode code;
 
         /**
@@ -357,8 +363,38 @@ final class StartApi {
          * @param response the runtime's refusal
          */
         StartActException(String linkId, HttpResponse response) {
-            super(linkId + ": " + messageOf(response));
+            this.linkId = linkId;
+            var message = bodyMember(response, KEY_MESSAGE);
+            this.bodyMessage = message != null ? OutputSafety.stripControlSequences(message) : null;
+            this.refusal = new OperatorRefusedException(KEY_ERROR, response);
             this.code = codeOf(response);
+        }
+
+        /**
+         * The refusal's one line as a screen shows it: the refused act's link id, then the message the
+         * body names, or else the catalogue's text of the refusal in the operator's locale (the title of
+         * its code, or what a body without one is), never the bare HTTP status.
+         *
+         * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"})
+         * @return the text a screen shows for this refusal
+         */
+        String message(String locale) {
+            return text(locale);
+        }
+
+        /**
+         * The default-locale text of the refusal, for diagnostics only; a screen shows
+         * {@link #message(String)} in the operator's locale instead.
+         *
+         * @return the refusal's text in the default locale
+         */
+        @Override
+        public String getMessage() {
+            return text(null);
+        }
+
+        private String text(@Nullable String locale) {
+            return linkId + ": " + (bodyMessage != null ? bodyMessage : refusal.message(locale));
         }
 
         /**
@@ -367,20 +403,6 @@ final class StartApi {
         @Nullable
         ApiErrorCode code() {
             return code;
-        }
-
-        /**
-         * @param response the runtime's refusal
-         * @return the message the body names, or else the catalogue's text of the refusal (the title
-         *         of its code, or what a body without one is), never the bare HTTP status
-         */
-        private static String messageOf(HttpResponse response) {
-            var message = bodyMember(response, KEY_MESSAGE);
-            if (message != null) {
-                return OutputSafety.stripControlSequences(message);
-            }
-            // The act carries no locale here; the catalogue's default text names the refusal.
-            return new OperatorRefusedException(KEY_ERROR, response).message(null);
         }
 
         private static @Nullable ApiErrorCode codeOf(HttpResponse response) {

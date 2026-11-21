@@ -133,7 +133,7 @@ final class StartDialogue {
             dialogue.prompt.line("start.entry.left", Map.of());
             return EXIT_OK;
         } catch (StartApi.StartActException refused) {
-            dialogue.prompt.raw(OutputSafety.stripControlSequences(refused.getMessage()));
+            dialogue.prompt.raw(OutputSafety.stripControlSequences(refused.message(dialogue.prompt.locale())));
             return EXIT_FAILURE;
         }
     }
@@ -853,7 +853,7 @@ final class StartDialogue {
         try {
             new ChatDialogue(api, prompt, kind, project).run(entryId, api.openEntryChat(entryId));
         } catch (StartApi.StartActException refused) {
-            prompt.raw(OutputSafety.stripControlSequences(refused.getMessage()));
+            prompt.raw(OutputSafety.stripControlSequences(refused.message(prompt.locale())));
         }
         state = api.fetch(entryId);
     }

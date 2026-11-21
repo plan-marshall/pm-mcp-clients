@@ -98,7 +98,7 @@ final class ChatDialogue {
                                         TerminalSanitizer.sanitizeLine(chat.role().name()))));
                 }
             } catch (StartApi.StartActException e) {
-                prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
+                prompt.raw(OutputSafety.stripControlSequences(e.message(prompt.locale())));
             }
         }
     }
@@ -118,7 +118,7 @@ final class ChatDialogue {
                 // The chat ended meanwhile, with the entry's create or another device's end.
                 return true;
             }
-            prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
+            prompt.raw(OutputSafety.stripControlSequences(e.message(prompt.locale())));
             return false;
         }
     }
@@ -159,7 +159,7 @@ final class ChatDialogue {
             renderTurns(entryId, answered);
             return answered;
         } catch (StartApi.StartActException e) {
-            prompt.raw(OutputSafety.stripControlSequences(e.getMessage()));
+            prompt.raw(OutputSafety.stripControlSequences(e.message(prompt.locale())));
             return chat;
         }
     }

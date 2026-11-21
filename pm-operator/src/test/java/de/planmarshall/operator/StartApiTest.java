@@ -283,6 +283,20 @@ class StartApiTest {
     }
 
     @Test
+    @DisplayName("a refused act shows the catalogue's text in the operator's locale, the default only for diagnostics")
+    void refusalTextTakesTheOperatorLocale() throws Exception {
+        var body = Generators.letterStrings(8, 24).next();
+        serve(failure(409, body));
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act("ent-1", "add_issue", Map.of()));
+        assertAll(
+                            () -> assertEquals("add_issue: Die Runtime hat die Anfrage abgelehnt: " + body,
+                                                refused.message("de")),
+                            () -> assertEquals("add_issue: The runtime refused: " + body, refused.message("en")),
+                            () -> assertEquals("add_issue: The runtime refused: " + body, refused.getMessage()));
+    }
+
+    @Test
     @DisplayName("the decomposition is absent, and a failed check or commit is reported")
     void decompositionPaths() throws Exception {
         serve((request, response) -> {

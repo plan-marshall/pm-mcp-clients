@@ -739,13 +739,41 @@ class StartDialogueTest {
                                 () -> assertEquals(1, occurrences(rendered, ENDED), rendered));
         }
 
+        @Test
+        @DisplayName("an end the runtime refuses without a message reads in the German operator's language")
+        void refusedEndReadsInGerman() throws Exception {
+            var body = Generators.letterStrings(8, 24).next();
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END) && ends.getAndIncrement() == 0) {
+                    response.json(503, body);
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n\n", "de");
+
+            assertAll(
+                                () -> assertTrue(rendered.contains("chat: Die Runtime hat die Anfrage abgelehnt: " + body),
+                                                    rendered),
+                                () -> assertFalse(rendered.contains("The runtime refused"), rendered));
+        }
+
         private String chat(ChatResource opened, StartApi.ReplyWait wait, String input) throws Exception {
+            return chat(opened, wait, input, "en");
+        }
+
+        private String chat(ChatResource opened, StartApi.ReplyWait wait, String input, String locale)
+                            throws Exception {
             try (var driver = TerminalTestDriver.create()) {
                 var environment = new HashMap<>(fixture.environment());
-                environment.put(LANG, ENGLISH);
+                environment.put(LANG, "en".equals(locale) ? ENGLISH : "de_DE.UTF-8");
                 driver.project(environment, fixture.base().getParent());
                 driver.type(input);
-                var prompt = new StartPrompt(driver.context(), driver.writer(), "en", false);
+                var prompt = new StartPrompt(driver.context(), driver.writer(), locale, false);
                 new ChatDialogue(new StartApi(driver.context(), wait), prompt, EntryKind.PLAN, PROJECT)
                                     .run(ENTRY, opened);
                 return driver.render();
