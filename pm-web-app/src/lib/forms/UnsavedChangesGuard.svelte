@@ -12,8 +12,9 @@
    * ConfirmDialog with the catalogue's texts: leaving repeats the navigation, which passes unasked
    * once, and staying keeps the page; while the question is on screen a further route change is
    * cancelled and the question keeps its target. A reload, a closed tab or a link that unloads the
-   * page is asked through the browser's own `beforeunload` prompt, which no page can word. The guard asks whenever `dirty` holds, so the
-   * form tells it nothing when it submits: `dirty` is measured against the last successful save.
+   * page is asked through the browser's own `beforeunload` prompt, which no page can word. The
+   * guard asks whenever `dirty` holds, so the form tells it nothing when it submits: `dirty` is
+   * measured against the last successful save.
    */
   interface Props {
     /** Whether the form holds changes that are not saved. */
