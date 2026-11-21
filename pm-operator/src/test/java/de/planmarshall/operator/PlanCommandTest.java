@@ -1143,5 +1143,96 @@ class PlanCommandTest {
             return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
         }
     }
+
+    /** {@code plan settings} and {@code plan report} in German carry no English text the code wrote. */
+    @Nested
+    @DisplayName("in German")
+    class InGerman {
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String aspect = Generators.letterStrings(5, 10).next().toLowerCase();
+        private final String value = Generators.letterStrings(4, 8).next().toLowerCase();
+
+        /**
+         * Serves the plan's settings with the given choices for the aspect and refuses every write.
+         *
+         * @param choices the choices the runtime names for the aspect
+         */
+        private void serveRefusingSettings(List<String> choices) throws IOException {
+            var choiceList = String.join(",", choices.stream().map(choice -> "\"" + choice + "\"").toList());
+            var settings = "{\"plan_id\":\"" + planId + "\",\"revision\":3,\"values\":[{\"aspect\":\"" + aspect
+                                + "\",\"value\":\"" + value + "\",\"origin\":\"plan\",\"choices\":[" + choiceList + "]}]}";
+            fixture.start((request, response) -> {
+                if (("/api/v1/plans/" + planId + "/settings").equals(request.target())) {
+                    if ("PUT".equals(request.method())) {
+                        response.json(422, "{\"code\":\"invalid_value\"}");
+                    } else {
+                        response.json(200, settings);
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("a refused value that fits no rule is refused in German")
+        void refusedValueThatDoesNotFit() throws Exception {
+            serveRefusingSettings(List.of());
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().contains(value + " wird abgelehnt: der Wert passt nicht"),
+                                                    err.toString()),
+                                () -> assertFalse(err.toString().contains("the value does not fit"), err.toString()),
+                                () -> assertFalse(err.toString().contains("is refused"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("a refused value outside the choices names them in German")
+        void refusedValueOutsideTheChoices() throws Exception {
+            var first = Generators.letterStrings(3, 6).next().toLowerCase();
+            var second = Generators.letterStrings(3, 6).next().toLowerCase();
+            serveRefusingSettings(List.of(first, second));
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().contains("er ist keiner von " + first + ", " + second),
+                                                    err.toString()),
+                                () -> assertFalse(err.toString().contains("it is not one of"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("the plan's settings name their origin in German")
+        void settingsListInGerman() throws Exception {
+            serveRefusingSettings(List.of());
+
+            int code = executeWithLocale("de", "plan", "settings", planId);
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("Einstellungen · " + planId), out.toString()),
+                                () -> assertTrue(out.toString().contains("vom Plan"), out.toString()),
+                                () -> assertFalse(out.toString().contains("from the plan"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("the completion report counts its unmeasured tasks in German")
+        void reportCountsUnmeasuredInGerman() throws Exception {
+            serve("/api/v1/plans/" + planId + "/completion",
+                                COMPLETION_REPORT.replaceFirst("\"unmeasured\": 0", "\"unmeasured\": 2"));
+
+            int code = executeWithLocale("de", "plan", "report", planId, "--tokens");
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains("2 nicht gemessen"), out.toString()),
+                                () -> assertFalse(out.toString().contains("not measured"), out.toString()));
+        }
+    }
 }
 

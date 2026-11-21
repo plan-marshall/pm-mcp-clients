@@ -562,7 +562,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the resource's object
      * @throws IOException on transport failure, or the runtime's refusal
      */
-    private static Map<String, Object> cleanupState(RuntimeClient runtime, String path, String verb)
+    private Map<String, Object> cleanupState(RuntimeClient runtime, String path, String verb)
                         throws IOException {
         var res = runtime.send(HttpRequest.get(path));
         if (res.status() != 200) {
@@ -570,7 +570,8 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var parsed = JsonTree.asObject(JsonTree.parse(res.bodyText()));
         if (parsed == null) {
-            throw new OperatorRefusedException(verb + ": the runtime's cleanup is no object");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.state_no_object", Map.of("verb", verb)));
         }
         return parsed;
     }
@@ -588,7 +589,8 @@ public final class CleanupCommand implements Callable<Integer> {
     private String nothingDue(Map<String, Object> state, String verb) throws OperatorRefusedException {
         var nextCheck = JsonTree.string(state, "next_check_at");
         if (nextCheck == null || nextCheck.isBlank()) {
-            throw new OperatorRefusedException(verb + ": the runtime's cleanup names no next check");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.state_no_next_check", Map.of("verb", verb)));
         }
         return MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.none",
                             Map.of("time", OutputSafety.stripControlSequences(nextCheck)));

@@ -91,33 +91,35 @@ public final class ReportsCommand implements Callable<Integer> {
         out.println(MessageCatalogue.format(locale, "operator.reports.title",
                             Map.of(KEY_COUNT, page.unreadCount())));
 
-        var projectGroups = groupReportsByProject(page.items());
+        var projectGroups = groupReportsByProject(page.items(), locale);
         for (var entry : projectGroups.entrySet()) {
-            printProjectGroup(out, entry.getKey(), entry.getValue());
+            printProjectGroup(out, locale, entry.getKey(), entry.getValue());
         }
 
         var firstId = page.items().get(0).id();
-        out.println(MessageCatalogue.format("operator.reports.read_hint", Map.of("id", firstId)));
+        out.println(MessageCatalogue.format(locale, "operator.reports.read_hint", Map.of("id", firstId)));
 
         if (page.hasOlder() && page.olderCount() > 0) {
-            out.println(MessageCatalogue.format("operator.reports.older", Map.of(KEY_COUNT, page.olderCount())));
+            out.println(MessageCatalogue.format(locale, "operator.reports.older", Map.of(KEY_COUNT, page.olderCount())));
         }
         out.flush();
     }
 
-    private static Map<String, List<ReportItem>> groupReportsByProject(List<ReportItem> items) {
+    private static Map<String, List<ReportItem>> groupReportsByProject(List<ReportItem> items, String locale) {
         var projectGroups = new LinkedHashMap<String, List<ReportItem>>();
+        var thisMachine = MessageCatalogue.format(locale, "report.list.machine", Map.of());
         for (var item : items) {
-            var proj = item.from().isSystem() ? "This machine" : item.from().project();
+            var proj = item.from().isSystem() ? thisMachine : item.from().project();
             if (proj == null || proj.isBlank()) {
-                proj = "This machine";
+                proj = thisMachine;
             }
             projectGroups.computeIfAbsent(proj, _ -> new ArrayList<>()).add(item);
         }
         return projectGroups;
     }
 
-    private static void printProjectGroup(PrintWriter out, String projectName, List<ReportItem> projectItems) {
+    private static void printProjectGroup(PrintWriter out, String locale, String projectName,
+                        List<ReportItem> projectItems) {
         out.println(ConsoleNotice.stripControlSequences(projectName));
 
         var epicGroups = new LinkedHashMap<String, List<ReportItem>>();
@@ -137,40 +139,43 @@ public final class ReportsCommand implements Callable<Integer> {
         for (var epicEntry : epicGroups.entrySet()) {
             out.println("  " + ConsoleNotice.stripControlSequences(epicEntry.getKey()));
             for (var item : epicEntry.getValue()) {
-                printReportItem(out, item, "    ");
+                printReportItem(out, locale, item, "    ");
             }
         }
         for (var item : planItems) {
-            printReportItem(out, item, "  ");
+            printReportItem(out, locale, item, "  ");
         }
         for (var item : projSelfItems) {
-            printReportItem(out, item, "  ");
+            printReportItem(out, locale, item, "  ");
         }
     }
 
-    private static String resolveTargetName(ReportItem item) {
+    private static String resolveTargetName(ReportItem item, String locale) {
         var targetName = item.from().plan();
         if (targetName == null || targetName.isBlank()) {
             targetName = item.from().epic();
         }
         if (targetName == null || targetName.isBlank()) {
-            targetName = "project";
+            return MessageCatalogue.format(locale, "report.list.project", Map.of());
         }
         return ConsoleNotice.stripControlSequences(targetName);
     }
 
-    private static void printReportItem(PrintWriter out, ReportItem item, String indent) {
+    private static void printReportItem(PrintWriter out, String locale, ReportItem item, String indent) {
         var id = ConsoleNotice.stripControlSequences(item.id());
-        var targetName = resolveTargetName(item);
+        var targetName = resolveTargetName(item, locale);
         var subject = ConsoleNotice.stripControlSequences(item.subject());
-        var timeStr = ConsoleNotice.stripControlSequences(
-                            item.isSentLater() ? item.created() + " · sent " + item.sent() : item.created());
+        var created = ConsoleNotice.stripControlSequences(item.created());
+        var timeStr = item.isSentLater()
+                            ? created + " · " + MessageCatalogue.format(locale, "report.list.sent_at",
+                                                Map.of("time", ConsoleNotice.stripControlSequences(item.sent())))
+                            : created;
 
         out.printf("%s%-10s %-19s %-37s %s%n", indent, id, targetName, subject, timeStr);
 
         var body = item.body() != null && !item.body().isBlank() ? ConsoleNotice.stripControlSequences(item.body()) : "";
         var detailHint = item.detail() != null && !item.detail().isBlank()
-                            ? MessageCatalogue.format("operator.reports.open_hint", Map.of("id", id)) : "";
+                            ? MessageCatalogue.format(locale, "operator.reports.open_hint", Map.of("id", id)) : "";
 
         printItemBodyAndDetail(out, indent, body, detailHint);
     }
@@ -268,7 +273,8 @@ public final class ReportsCommand implements Callable<Integer> {
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
                 } else if (response.status() == 404) {
-                    out.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", id)));
+                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                        "operator.reports.not_found", Map.of("id", id)));
                 }
             }
             out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
@@ -319,7 +325,8 @@ public final class ReportsCommand implements Callable<Integer> {
             }
             if (response.status() == 404) {
                 var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format("operator.reports.not_found", Map.of("id", reportId)));
+                err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.reports.not_found", Map.of("id", reportId)));
                 err.flush();
                 return 1;
             }

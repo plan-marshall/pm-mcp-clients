@@ -234,8 +234,8 @@ final class ActionSupport {
         @Nullable String act = null;
         if (effectiveReason == null || effectiveReason.isBlank()) {
             if (options.noInput) {
-                var label = CANCEL.equalsIgnoreCase(actionVerb) ? "Cancellation" : "Abandon";
-                out.printf("%s reason required (--reason)%n", label);
+                out.println(MessageCatalogue.format(context.locale(), "operator.actions.end.reason_missing",
+                                    Map.of("action", actionVerb.toLowerCase(Locale.ROOT))));
                 out.flush();
                 return 3;
             }
@@ -377,10 +377,11 @@ final class ActionSupport {
     }
 
     /**
-     * Renders a list of running work items (plans, epics).
+     * Renders a list of running work items (plans, epics). An empty list is the caller's to say, in
+     * its own catalogue text.
      *
      * @param out      the output writer
-     * @param heading  the list header
+     * @param heading  the list header, in the operator's locale
      * @param stateKey the property name for state/phase
      * @param list     the list of work item maps
      */
@@ -388,10 +389,6 @@ final class ActionSupport {
         Objects.requireNonNull(out, "out");
         Objects.requireNonNull(heading, "heading");
         Objects.requireNonNull(stateKey, "stateKey");
-        if (list.isEmpty()) {
-            out.println("No " + heading.toLowerCase() + " running.");
-            return;
-        }
         out.println(heading);
         for (var item : list) {
             if (item instanceof Map<?, ?> work) {

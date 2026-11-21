@@ -47,6 +47,8 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class ProjectsCommand implements Callable<Integer> {
 
+    private static final String KEY_COUNT = "count";
+
     private final OperatorContext context;
 
     @Spec
@@ -179,7 +181,7 @@ public final class ProjectsCommand implements Callable<Integer> {
             return;
         }
 
-        out.println("Projects");
+        out.println(MessageCatalogue.format(locale, "project.explorer.title", Map.of()));
         out.println("─────────────────────────────────────────────────────────────────────────────");
 
         if (filter != null && !filter.isBlank()) {
@@ -230,9 +232,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (favourites.isEmpty()) {
             return;
         }
-        out.println(MessageCatalogue.hasKey("project.explorer.favourites")
-                            ? MessageCatalogue.format(locale, "project.explorer.favourites", Map.of())
-                            : "Favourites");
+        out.println(MessageCatalogue.format(locale, "project.explorer.favourites", Map.of()));
         for (var p : favourites) {
             printProjectRow(out, p, locale, clock);
         }
@@ -242,9 +242,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (recent.isEmpty()) {
             return;
         }
-        out.println(MessageCatalogue.hasKey("project.explorer.recent")
-                            ? MessageCatalogue.format(locale, "project.explorer.recent", Map.of())
-                            : "Recent");
+        out.println(MessageCatalogue.format(locale, "project.explorer.recent", Map.of()));
         for (var p : recent) {
             printProjectRow(out, p, locale, clock);
         }
@@ -254,12 +252,8 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (allProjects.isEmpty()) {
             return;
         }
-        var allTitle = MessageCatalogue.hasKey("project.explorer.all")
-                            ? MessageCatalogue.format(locale, "project.explorer.all", Map.of())
-                            : "All projects";
-        var byName = MessageCatalogue.hasKey("project.explorer.by_name")
-                            ? MessageCatalogue.format(locale, "project.explorer.by_name", Map.of())
-                            : "by name";
+        var allTitle = MessageCatalogue.format(locale, "project.explorer.all", Map.of());
+        var byName = MessageCatalogue.format(locale, "project.explorer.by_name", Map.of());
         out.println(allTitle + " (" + byName + ")");
         for (var p : allProjects) {
             printProjectRow(out, p, locale, clock);
@@ -270,28 +264,33 @@ public final class ProjectsCommand implements Callable<Integer> {
         var mark = project.isFavourite() ? "  ★ " : "    ";
         var name = OutputSafety.stripControlSequences(project.displayName());
         var readiness = switch (project.readiness()) {
-            case READY -> "ready";
-            case RELEASED -> "released";
-            case SETUP_NEEDS -> "setup needs: " + OutputSafety.stripControlSequences(
-                                project.setupNeedsSummary() != null ? project.setupNeedsSummary() : "setup");
+            case READY -> MessageCatalogue.format(locale, "project.state.ready", Map.of());
+            case RELEASED -> MessageCatalogue.format(locale, "project.state.released", Map.of());
+            case SETUP_NEEDS -> MessageCatalogue.format(locale, "project.state.setup_needs", Map.of("need",
+                                project.setupNeedsSummary() != null
+                                                    ? OutputSafety.stripControlSequences(project.setupNeedsSummary())
+                                                    : MessageCatalogue.format(locale, "project.state.setup", Map.of())));
         };
 
         var sb = new StringBuilder();
         sb.append(mark).append(String.format("%-18s", name)).append("   ").append(readiness);
 
         if (project.needsOperatorCount() > 0) {
-            sb.append("   needs you: ").append(project.needsOperatorCount());
+            sb.append("   ").append(MessageCatalogue.format(locale, "project.explorer.needs_you",
+                                Map.of(KEY_COUNT, project.needsOperatorCount())));
         }
 
-        if (project.activePlansCount() > 0 && project.activeEpicsCount() > 0) {
-            sb.append("   ").append(project.activePlansCount()).append(" plans · ")
-                                .append(project.activeEpicsCount()).append(project.activeEpicsCount() == 1 ? " epic" : " epics");
-        } else if (project.activePlansCount() > 0) {
-            sb.append("   ").append(project.activePlansCount())
-                                .append(project.activePlansCount() == 1 ? " plan" : " plans");
-        } else if (project.activeEpicsCount() > 0) {
-            sb.append("   ").append(project.activeEpicsCount())
-                                .append(project.activeEpicsCount() == 1 ? " epic" : " epics");
+        var work = new ArrayList<String>();
+        if (project.activePlansCount() > 0) {
+            work.add(MessageCatalogue.format(locale, "project.explorer.plans_count",
+                                Map.of(KEY_COUNT, project.activePlansCount())));
+        }
+        if (project.activeEpicsCount() > 0) {
+            work.add(MessageCatalogue.format(locale, "project.explorer.epics_count",
+                                Map.of(KEY_COUNT, project.activeEpicsCount())));
+        }
+        if (!work.isEmpty()) {
+            sb.append("   ").append(String.join(" · ", work));
         }
 
         if (project.lastActive() != null) {

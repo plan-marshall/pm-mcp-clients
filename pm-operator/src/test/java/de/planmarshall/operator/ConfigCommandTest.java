@@ -1036,7 +1036,7 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config cleanup --remind never is refused with the remind-specific text")
+    @DisplayName("config cleanup --remind never is refused with the remind-specific text, its one day singular")
     void cleanupRemindNeverIsRefusedWithItsOwnText() throws Exception {
         fixture.start((request, response) -> response.json(200, SETTINGS));
 
@@ -1044,7 +1044,8 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code, out.toString()),
-                            () -> assertTrue(err.toString().contains("At least 1 days."), err.toString()),
+                            () -> assertTrue(err.toString().contains("At least 1 day."), err.toString()),
+                            () -> assertFalse(err.toString().contains("1 days"), err.toString()),
                             () -> assertFalse(err.toString().contains("or never"), err.toString()));
     }
 

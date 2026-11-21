@@ -22,6 +22,8 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -60,6 +62,48 @@ class ReportsCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int executeWithLocale(String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, null, null);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    @Test
+    @DisplayName("reports in German names this machine, the project and the later sending in German")
+    void reportsListInGerman() throws Exception {
+        var systemId = "rep-" + Generators.integers(1000, 9999).next();
+        var projectId = "rep-" + Generators.integers(1000, 9999).next();
+        var project = Generators.letterStrings(6, 12).next().toLowerCase();
+        fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "items": [
+                                        {"id":"%s","from":{"project_id":"system"},"subject":"cleanup",
+                                         "created_at":"2020-03-02T10:00:00Z","sent_at":"2020-03-02T12:00:00Z"},
+                                        {"id":"%s","from":{"project_id":"%s"},"subject":"onboarded",
+                                         "created_at":"2020-03-02T10:00:00Z"}
+                                      ],
+                                      "unread_count": 2
+                                    }
+                                    """.formatted(systemId, projectId, project));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithLocale("de", "reports");
+        var output = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Diese Maschine"), output),
+                            () -> assertTrue(output.contains("gesendet "), output),
+                            () -> assertTrue(output.contains("Projekt"), output),
+                            () -> assertFalse(output.contains("This machine"), output),
+                            () -> assertFalse(output.contains(" sent "), output));
     }
 
     @Test

@@ -257,8 +257,8 @@ final class DecompositionSupport {
         }
         var projectId = JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "project_id");
         if (projectId == null || projectId.isBlank()) {
-            throw new OperatorRefusedException("epic " + OutputSafety.stripControlSequences(epicId)
-                                + ": the runtime's epic names no project");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.locale(),
+                                "operator.decompose.epic_no_project", Map.of("epic", OutputSafety.stripControlSequences(epicId))));
         }
         return projectId;
     }

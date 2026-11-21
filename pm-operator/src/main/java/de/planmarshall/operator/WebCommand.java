@@ -206,7 +206,8 @@ public final class WebCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.web.pair_code",
                                     Map.of("code", code, "time", validUntil)));
                 out.println(MessageCatalogue.format(locale, "operator.web.pair_url", Map.of("url", url)) + "\n");
-                var sideLines = List.of(url, "Code " + code + ", valid until " + validUntil);
+                var sideLines = List.of(url, MessageCatalogue.format(locale, "operator.web.code_valid_until",
+                                    Map.of("code", code, "time", validUntil)));
                 out.println(QrCodeRenderer.render(url, sideLines));
                 out.flush();
                 return 0;
@@ -283,7 +284,8 @@ public final class WebCommand implements Callable<Integer> {
             var port = EntryFlow.getWebPort(status);
             var pairing = new EntryFlow(context).issuePairingCode(runtime, port);
             var validUntil = LocalTime.now(context.clock()).plusMinutes(10).format(TIME_FORMATTER);
-            var sideLines = List.of(pairing.url(), "Code " + pairing.code() + ", valid until " + validUntil);
+            var sideLines = List.of(pairing.url(), MessageCatalogue.format(localeFor(context),
+                                "operator.web.code_valid_until", Map.of("code", pairing.code(), "time", validUntil)));
             var out = spec.commandLine().getOut();
             out.println(QrCodeRenderer.render(pairing.url(), sideLines));
             out.flush();
@@ -622,9 +624,11 @@ public final class WebCommand implements Callable<Integer> {
         private static void printDevice(PrintWriter out, int idx, Object item, String locale, Clock clock) {
             if (item instanceof Map<?, ?> dev) {
                 var rawLabel = dev.get(LABEL);
-                var labelVal = rawLabel != null ? TerminalSanitizer.sanitizeLine(rawLabel.toString()) : "browser";
+                var labelVal = rawLabel != null
+                                    ? TerminalSanitizer.sanitizeLine(rawLabel.toString())
+                                    : MessageCatalogue.format(locale, "operator.devices.unnamed", Map.of());
                 var pairedFrom = dev.get("paired_from");
-                var fromStr = "network";
+                var fromStr = MessageCatalogue.format(locale, "operator.devices.from_network", Map.of());
                 if (LOOPBACK.equals(pairedFrom)) {
                     fromStr = LOOPBACK;
                 } else if (pairedFrom != null) {

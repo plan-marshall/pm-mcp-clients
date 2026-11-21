@@ -130,7 +130,8 @@ public final class EpicCommand implements Callable<Integer> {
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                ActionSupport.printWorkList(out, "Epics:", "state", list);
+                ActionSupport.printWorkList(out, MessageCatalogue.format(context.locale(),
+                                    "operator.epic.running_title", Map.of()), "state", list);
             } else {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.epic.none_running", Map.of()));
