@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import type * as AppNavigation from '$app/navigation';
 import DemoFormFixture from './DemoFormFixture.svelte';
 import { currentLocale, messagesStore } from '../i18n';
@@ -99,6 +100,20 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
       expect(title.closest('.field')).not.toHaveTextContent(reason);
     },
   );
+
+  it('shows the title error in the language the operator switches to while it is shown', async () => {
+    render(DemoFormFixture);
+    const title = screen.getByTestId('demo-form-text') as HTMLInputElement;
+    await fireEvent.blur(title);
+    expect(title.closest('.field')).toHaveTextContent('Fill in this field.');
+
+    currentLocale.set('de');
+    messagesStore.set(loadMessages('de'));
+    await tick();
+
+    expect(title.closest('.field')).toHaveTextContent('Fülle dieses Feld aus.');
+    expect(title.closest('.field')).not.toHaveTextContent('Fill in this field.');
+  });
 
   it('submits on Enter in TextField when valid', async () => {
     render(DemoFormFixture);

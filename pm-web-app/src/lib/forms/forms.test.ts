@@ -327,6 +327,27 @@ describe('lib/forms: The shape of a form', () => {
       },
     );
 
+    it('reads a shown catalogue reason in the language the operator switches to, and keeps a field reason as set', () => {
+      const form = createForm({
+        fields: {
+          title: { initial: '', required: true },
+          reason: { initial: '', required: true, requiredReason: 'Give a reason.' },
+        },
+      });
+      const seen: FormState<{ title: string; reason: string }>[] = [];
+      const unsubscribe = form.subscribe((state) => seen.push(state));
+      form.onFieldBlur('title');
+      form.onFieldBlur('reason');
+      expect(seen.at(-1)?.errors.title).toBe('Fill in this field.');
+
+      currentLocale.set('de');
+      messagesStore.set(loadMessages('de'));
+      unsubscribe();
+
+      expect(seen.at(-1)?.errors).toEqual({ title: 'Fülle dieses Feld aus.', reason: 'Give a reason.' });
+      expect(form.getErrors()).toEqual({ title: 'Fülle dieses Feld aus.', reason: 'Give a reason.' });
+    });
+
     it('hands its values and errors to a subscriber on input, blur, submit and save', async () => {
       const form = createForm({
         fields: {
@@ -391,6 +412,22 @@ describe('lib/forms: The shape of a form', () => {
 
       form.onFieldInput('title', 'Release notes, second draft');
       expect(form.isDirty()).toBe(true);
+    });
+
+    it('stays clean when onSubmit keeps its argument and changes it after the save', async () => {
+      const kept: Array<{ title: string }> = [];
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: (submitted) => {
+          kept.push(submitted);
+        },
+      });
+      form.onFieldInput('title', 'Release notes');
+
+      await expect(form.submit()).resolves.toBe(true);
+      kept[0].title = 'Changed by the caller';
+
+      expect(form.isDirty()).toBe(false);
     });
 
     it('makes the values clean without an onSubmit of the caller', async () => {

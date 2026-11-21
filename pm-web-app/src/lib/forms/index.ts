@@ -7,7 +7,7 @@
  * Unsaved-changes guard asks before route change, close or reload while dirty.
  */
 
-import { get, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 import { t } from '../i18n';
 
 /** The keyboard listeners of one one-line form, attached to the form element itself. */
@@ -118,25 +118,77 @@ function isEmptyValue(val: unknown): boolean {
 }
 
 /**
+ * Stands for the catalogue's default required reason in the errors a form holds. It is resolved
+ * only when the errors are read, so a shown error follows the locale the screen shows then.
+ */
+const DEFAULT_REQUIRED_REASON = Symbol('web.form.required');
+
+/** The catalogue key of the default required reason. */
+const REQUIRED_REASON_KEY = 'web.form.required';
+
+/** An error as a form holds it: a message, the unresolved default required reason, or none. */
+type HeldError = string | typeof DEFAULT_REQUIRED_REASON | null;
+
+/** The catalogue lookup of the active locale, as the `t` store hands it. */
+type Translate = (key: string) => string;
+
+/**
+ * @param field the field's configuration
+ * @returns the reason a required-empty field names: its own, or the catalogue's default, unresolved
+ */
+function heldRequiredReasonOf(
+  field: Pick<FieldConfig, 'requiredReason'>,
+): string | typeof DEFAULT_REQUIRED_REASON {
+  return field.requiredReason ?? DEFAULT_REQUIRED_REASON;
+}
+
+/**
+ * @param error an error as the form holds it
+ * @param translate the catalogue lookup of the locale the screen shows
+ * @returns the error as a reader shows it
+ */
+function resolveError(error: HeldError, translate: Translate): string | null {
+  return error === DEFAULT_REQUIRED_REASON ? translate(REQUIRED_REASON_KEY) : error;
+}
+
+/**
+ * @param errors the errors as the form holds them
+ * @param translate the catalogue lookup of the locale the screen shows
+ * @returns the errors as a reader shows them
+ */
+function resolveErrors(
+  errors: Record<string, HeldError>,
+  translate: Translate,
+): Record<string, string | null> {
+  const resolved: Record<string, string | null> = {};
+  for (const [key, error] of Object.entries(errors)) {
+    resolved[key] = resolveError(error, translate);
+  }
+  return resolved;
+}
+
+/**
  * @param field the field's configuration
  * @returns the reason a required-empty field names: its own, or the catalogue's default, read in
- *          the locale the screen shows when the reason is produced
+ *          the locale the screen shows when the reason is asked for
  */
 function requiredReasonOf(field: Pick<FieldConfig, 'requiredReason'>): string {
-  return field.requiredReason ?? get(t)('web.form.required');
+  return field.requiredReason ?? get(t)(REQUIRED_REASON_KEY);
 }
 
 /**
  * Manages form state, blur checking, required-empty reason, and first invalid focus.
  *
  * The values and errors are held in a store the form exposes with `subscribe`, so a component that
- * reads it re-renders on input, blur, submit and a finished save. A submit whose save succeeded makes
- * the submitted values the new baseline `isDirty` compares against.
+ * reads it re-renders on input, blur, submit and a finished save. A shown catalogue reason is read in
+ * the active locale whenever the errors are read, so it follows a language switch; the store follows
+ * the locale only while it has a subscriber. A submit whose save succeeded makes the submitted values
+ * the new baseline `isDirty` compares against.
  */
 export function createForm<T extends Record<string, unknown>>(config: FormConfig<T>) {
   const fields = config.fields;
   const values = {} as T;
-  const errors: Record<string, string | null> = {};
+  const errors: Record<string, HeldError> = {};
 
   for (const [key, fieldConfig] of Object.entries(fields)) {
     values[key as keyof T] = (fieldConfig as FieldConfig<T[keyof T]>).initial;
@@ -147,18 +199,28 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
   let latestSave = 0;
   /** The number of the newest save that has succeeded; only a newer success moves the baseline. */
   let appliedSave = 0;
-  const state = writable<FormState<T>>({ values: { ...values }, errors: { ...errors } });
+  const held = writable<{ values: T; errors: Record<string, HeldError> }>({
+    values: { ...values },
+    errors: { ...errors },
+  });
+  const state = derived(
+    [held, t],
+    ([$held, $t]): FormState<T> => ({
+      values: $held.values,
+      errors: resolveErrors($held.errors, $t),
+    }),
+  );
 
   /** Hands the current values and errors to every subscriber. */
   function publish(): void {
-    state.set({ values: { ...values }, errors: { ...errors } });
+    held.set({ values: { ...values }, errors: { ...errors } });
   }
 
-  function validateFieldValue(key: string, val: unknown): string | null {
+  function validateFieldValue(key: string, val: unknown): HeldError {
     const f = fields[key as keyof T];
     if (!f) return null;
     if (f.required && isEmptyValue(val)) {
-      return requiredReasonOf(f);
+      return heldRequiredReasonOf(f);
     }
     if (f.validate) {
       return (f.validate as (value: unknown) => string | null | undefined)(val) ?? null;
@@ -180,7 +242,7 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
   }
 
   function getErrors(): Record<string, string | null | undefined> {
-    return { ...errors };
+    return resolveErrors(errors, get(t));
   }
 
   /**
@@ -267,7 +329,8 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     const submitted = { ...values };
     const sequence = ++latestSave;
     publish();
-    await config.onSubmit?.(submitted);
+    // onSubmit gets its own copy: one that keeps and changes its argument never moves the baseline.
+    await config.onSubmit?.({ ...submitted });
     // A success moves the baseline only when no newer save has succeeded yet: an older success
     // resolving after a newer one never moves the baseline back to the values that one replaced.
     if (sequence > appliedSave) {
