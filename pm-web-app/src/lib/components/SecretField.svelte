@@ -98,13 +98,16 @@
   /**
    * Inserts the trimmed paste at the selection, places the caret after it and sends the input
    * event a typed character would, so `value` and the caller's `oninput` follow once. A paste
-   * that trims to nothing (an image, only whitespace) is left to the browser, so the selected
-   * part of the secret is never replaced with nothing.
+   * without text (an image, no clipboard data) is left to the browser, which inserts no text
+   * into the field. A paste of whitespace only is cancelled and changes nothing, so the browser
+   * never inserts it untrimmed and the selected part of the secret is never replaced with nothing.
    */
   function handlePaste(e: ClipboardEvent & { currentTarget: HTMLInputElement }): void {
-    const pasted = (e.clipboardData?.getData('text') ?? '').trim();
-    if (!pasted) return;
+    const raw = e.clipboardData?.getData('text') ?? '';
+    if (!raw) return;
     e.preventDefault();
+    const pasted = raw.trim();
+    if (!pasted) return;
     const input = e.currentTarget;
     // A text or password input always has a selection, so both ends are numbers here.
     const start = input.selectionStart as number;
