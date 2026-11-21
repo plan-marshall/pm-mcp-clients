@@ -630,7 +630,7 @@ public final class PmConsole {
                                 Map.of("url", pairing.url())));
         } catch (IOException e) {
             out.println(MessageCatalogue.format(locale, "operator.console.code_failed",
-                                Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
+                                Map.of("reason", TerminalSanitizer.sanitize(OperatorRefusedException.screenText(e, locale)))));
         }
     }
 
@@ -974,7 +974,7 @@ public final class PmConsole {
                                 Map.of("url", pairing.url())));
         } catch (IOException e) {
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.code_failed_fresh",
-                                Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
+                                Map.of("reason", TerminalSanitizer.sanitize(OperatorRefusedException.screenText(e, locale)))));
         }
     }
 

@@ -323,7 +323,8 @@ final class WorkActionDialogue {
         try {
             StartDialogue.run(context, out, EntryKind.PLAN, answers);
         } catch (IOException refused) {
-            prompt.raw(OutputSafety.stripControlSequences(refused.getMessage()));
+            prompt.raw(OutputSafety.stripControlSequences(
+                                OperatorRefusedException.screenText(refused, prompt.locale())));
         }
     }
 

@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import de.planmarshall.api.http.HttpResponse;
@@ -54,21 +55,128 @@ class OperatorRefusedExceptionTest {
     }
 
     @Test
-    @DisplayName("constructors with message set serverMessage and default or explicit exitCode")
-    void constructorsWithMessage() {
-        var ex1 = new OperatorRefusedException("local refusal");
-        assertNull(ex1.verb());
-        assertNull(ex1.code());
-        assertNull(ex1.rawCode());
-        assertEquals(0, ex1.status());
-        assertEquals(1, ex1.exitCode());
-        assertEquals("local refusal", ex1.serverMessage());
-        assertEquals("local refusal", ex1.getMessage());
+    @DisplayName("a local refusal carries its own text in every locale and exits 1")
+    void constructorWithMessage() {
+        var text = Generators.letterStrings(4, 12).next();
 
-        var ex2 = new OperatorRefusedException("denied", 4);
-        assertEquals(4, ex2.exitCode());
-        assertEquals("denied", ex2.serverMessage());
-        assertEquals("denied", ex2.getMessage());
+        var ex = new OperatorRefusedException(text);
+
+        assertAll(
+                            () -> assertNull(ex.verb()),
+                            () -> assertNull(ex.code()),
+                            () -> assertNull(ex.rawCode()),
+                            () -> assertEquals(0, ex.status()),
+                            () -> assertEquals(1, ex.exitCode()),
+                            () -> assertEquals(text, ex.serverMessage()),
+                            () -> assertEquals(text, ex.getMessage()),
+                            () -> assertEquals(text, ex.message("de")));
+    }
+
+    @Test
+    @DisplayName("a stack trace wrapped in a JSON message is no text for the operator")
+    void jsonWrappedTraceIsNotPrinted() {
+        var detail = Generators.letterStrings(4, 10).next();
+        var tabTrace = "java.lang.IllegalStateException: " + detail + "\\n\\tat a.b.C.d(C.java:1)";
+        var spaceTrace = "java.lang.IllegalStateException: " + detail + "\\n    at a.b.C.d(C.java:1)";
+
+        var tab = refusal(500, "{\"message\":\"" + tabTrace + "\"}");
+        var space = refusal(500, "{\"error\":\"" + spaceTrace + "\"}");
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, tab.kind()),
+                            () -> assertNull(tab.serverMessage()),
+                            () -> assertFalse(tab.getMessage().contains(detail), tab.getMessage()),
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, space.kind()),
+                            () -> assertNull(space.serverMessage()),
+                            () -> assertFalse(space.getMessage().contains(detail), space.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a stack trace beside a known code keeps the code and drops the trace")
+    void jsonWrappedTraceBesideAKnownCodeKeepsTheCode() {
+        var detail = Generators.letterStrings(4, 10).next();
+        var json = "{\"error\":\"internal_fault\",\"message\":\"java.lang.IllegalStateException: " + detail
+                            + "\\n\\tat a.b.C.d(C.java:1)\"}";
+
+        var ex = refusal(500, json);
+
+        assertAll(
+                            () -> assertEquals(ApiErrorCode.INTERNAL_FAULT, ex.code()),
+                            () -> assertNull(ex.serverMessage()));
+    }
+
+    @Test
+    @DisplayName("a plain sentence that starts with Error: is the message, not a trace")
+    void plainErrorSentenceIsPrinted() {
+        var sentence = "Error: select a configured " + Generators.letterStrings(4, 10).next() + ".";
+
+        var ex = refusal(500, sentence);
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.RUNTIME, ex.kind()),
+                            () -> assertEquals(sentence, ex.serverMessage()),
+                            () -> assertEquals("The runtime refused: " + sentence, ex.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a plain body with a frame indented by four spaces is a trace")
+    void plainBodyWithSpaceIndentedFrameIsATrace() {
+        var detail = Generators.letterStrings(4, 10).next();
+
+        var ex = refusal(500, "java.lang.IllegalStateException: " + detail + "\n    at a.b.C.d(C.java:1)");
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, ex.kind()),
+                            () -> assertNull(ex.serverMessage()));
+    }
+
+    @Test
+    @DisplayName("a JSON message and a body argument longer than the cap are cut")
+    void jsonMessageAndArgumentAreCapped() {
+        var longText = Generators.letterStrings(OperatorRefusedException.MAX_MESSAGE_LENGTH + 50,
+                            OperatorRefusedException.MAX_MESSAGE_LENGTH + 150).next();
+        var json = "{\"error\":\"enrolment_tampered\",\"message\":\"" + longText + "\",\"project_id\":\""
+                            + longText + "\"}";
+
+        var ex = refusal(409, json);
+
+        var expected = longText.substring(0, OperatorRefusedException.MAX_MESSAGE_LENGTH) + "…";
+        assertAll(
+                            () -> assertEquals(expected, ex.serverMessage()),
+                            () -> assertEquals(expected, ex.arguments().get("project_id")));
+    }
+
+    @Test
+    @DisplayName("message(de) is German while getMessage() stays the English diagnostic")
+    void messageFollowsTheLocale() {
+        var detail = Generators.letterStrings(4, 12).next();
+        var unknown = refusal(409, "{\"error\":\"not_found\",\"message\":\"" + detail + "\"}");
+        var known = new OperatorRefusedException(ApiErrorCode.SCOPE_NOT_FOUND);
+
+        assertAll(
+                            () -> assertEquals("Die Runtime hat die Anfrage abgelehnt: " + detail, unknown.message("de")),
+                            () -> assertEquals("The runtime refused: " + detail, unknown.getMessage()),
+                            () -> assertEquals("Diesen Eintrag gibt es nicht", known.message("de")),
+                            () -> assertEquals("This entry does not exist", known.getMessage()));
+    }
+
+    @Test
+    @DisplayName("screenText localises a refusal and keeps the message of any other I/O failure")
+    void screenTextLocalisesOnlyARefusal() {
+        var text = Generators.letterStrings(4, 12).next();
+        var refusal = new OperatorRefusedException(ApiErrorCode.SCOPE_NOT_FOUND);
+        var other = new IOException(text);
+
+        assertAll(
+                            () -> assertEquals("Diesen Eintrag gibt es nicht", OperatorRefusedException.screenText(refusal, "de")),
+                            () -> assertEquals("This entry does not exist", OperatorRefusedException.screenText(refusal, "en")),
+                            () -> assertEquals(text, OperatorRefusedException.screenText(other, "de")),
+                            () -> assertEquals("", OperatorRefusedException.screenText(new IOException(), "de")));
+    }
+
+    private static OperatorRefusedException refusal(int status, String body) {
+        return new OperatorRefusedException("plan", new HttpResponse(status, "application/json",
+                            body.getBytes(StandardCharsets.UTF_8)));
     }
 
     @Test

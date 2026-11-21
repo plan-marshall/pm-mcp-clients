@@ -233,7 +233,7 @@ public final class ProjectSelector {
             }
             return order(ProjectExplorer.fromJson(response.bodyText()));
         } catch (IOException failure) {
-            err.println(OutputSafety.stripControlSequences(failure.getMessage()));
+            err.println(OutputSafety.stripControlSequences(OperatorRefusedException.screenText(failure, locale)));
             err.flush();
             return null;
         }
