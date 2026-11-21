@@ -2306,6 +2306,8 @@ class MockRuntimeEngineTest {
     private static final String EVENT_DECISION_CLOSED = "decision.closed";
     private static final String EVENT_DRAINING = "runtime.draining";
     private static final String THEN_EXIT = "exit";
+    private static final String CREDENTIAL_PATH_WITH_DECISION_SEGMENT =
+            "/api/v1/credentials/github/decisions/d-1/answer";
 
     /**
      * Forces the interleaving a lock-order inversion between a stop and a reset deadlocks on: the stop
@@ -2607,7 +2609,9 @@ class MockRuntimeEngineTest {
         try (var recordingEngine = new MockRuntimeEngine(registry,
                      registry.resolve(StandardScenarios.STATUS_ONLY),
                      runtimeToken, deviceSecret, true)) {
-            send(recordingEngine, "PUT", "/api/v1/credentials/github", auth,
+            // The credential path carries a decision segment and ends like an answer, so only the
+            // credential exclusion of the guard keeps its secret body out of the act log.
+            send(recordingEngine, "PUT", CREDENTIAL_PATH_WITH_DECISION_SEGMENT, auth,
                     "{\"token\":\"secret\"}".getBytes(StandardCharsets.UTF_8), false);
             send(recordingEngine, "POST", "/api/v1/decisions/d-1/chat", auth,
                     "{\"message\":\"hello\"}".getBytes(StandardCharsets.UTF_8), false);
@@ -2622,7 +2626,7 @@ class MockRuntimeEngineTest {
 
             var credAct = JsonTree.asObject(acts.get(0));
             assertNotNull(credAct);
-            assertEquals("/api/v1/credentials/github", credAct.get("path"));
+            assertEquals(CREDENTIAL_PATH_WITH_DECISION_SEGMENT, credAct.get("path"));
             assertFalse(credAct.containsKey("body"), "credential body must not be recorded in acts");
 
             var chatAct = JsonTree.asObject(acts.get(1));

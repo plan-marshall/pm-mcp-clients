@@ -18,6 +18,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -29,11 +30,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 /**
  * Tests for Picocli in the operator's language and custom exception handling (D3).
  */
 @DisplayName("Picocli in the operator's language (D3)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PicocliLanguageTest {
 
     private RuntimeFixture fixture;
@@ -70,24 +75,35 @@ class PicocliLanguageTest {
         return PmOperator.execute(context, new PrintWriter(out, true), new PrintWriter(err, true), args);
     }
 
+    /**
+     * @return a lowercase word no registered verb is: the prefix {@code zq} starts none of them
+     */
+    private static String unknownVerb() {
+        return "zq" + Generators.letterStrings(4, 10).next().toLowerCase(Locale.ROOT);
+    }
+
     @Test
-    @DisplayName("bogus in German prints localized refusal with exit code 2 and no English words outside glossary")
-    void bogusInGerman() {
-        int code = runWithEnv(Map.of("LC_ALL", "de_DE.UTF-8"), "bogus");
+    @DisplayName("an unknown verb in German prints localized refusal with exit code 2 and no English words outside glossary")
+    void unknownVerbInGerman() {
+        var verb = unknownVerb();
+        int code = runWithEnv(Map.of("LC_ALL", "de_DE.UTF-8"), verb);
         assertEquals(2, code);
         String errorOutput = err.toString();
-        assertTrue(errorOutput.contains("✗ bogus ist kein Verb. → pm-operator --help listet sie auf."), "Expected refusal line in: " + errorOutput);
+        assertTrue(errorOutput.contains("✗ " + verb + " ist kein Verb. → pm-operator --help listet sie auf."),
+                "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }
 
     @Test
-    @DisplayName("bogus in English prints localized refusal with exit code 2")
-    void bogusInEnglish() {
-        int code = runWithEnv(Map.of("LC_ALL", "en_US.UTF-8"), "bogus");
+    @DisplayName("an unknown verb in English prints localized refusal with exit code 2")
+    void unknownVerbInEnglish() {
+        var verb = unknownVerb();
+        int code = runWithEnv(Map.of("LC_ALL", "en_US.UTF-8"), verb);
         assertEquals(2, code);
         String errorOutput = err.toString();
-        assertTrue(errorOutput.contains("✗ bogus is not a verb. → pm-operator --help lists them."), "Expected refusal line in: " + errorOutput);
+        assertTrue(errorOutput.contains("✗ " + verb + " is not a verb. → pm-operator --help lists them."),
+                "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }

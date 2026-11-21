@@ -1049,6 +1049,23 @@ class ConfigCommandTest {
                             () -> assertFalse(err.toString().contains("or never"), err.toString()));
     }
 
+    @Test
+    @DisplayName("the editor's reminder prompt does not offer never")
+    void cleanupEditorRemindPromptOffersNoNever() throws Exception {
+        serveSettings(body -> {
+            // left before anything is written
+        });
+
+        int code = executeWithTyped("remind\n\n\n", "config", "cleanup");
+
+        var dayPrompts = out.toString().lines().filter(line -> line.contains("Days, at least")).toList();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertFalse(dayPrompts.isEmpty(), out.toString()),
+                            () -> assertTrue(dayPrompts.stream().noneMatch(line -> line.contains("never")),
+                                                out.toString()));
+    }
+
     /** A settings server that records the machine-settings write, or {@code null} when none came. */
     private void serveSettings(Consumer<String> onWrite) throws Exception {
         fixture.start((request, response) -> {
