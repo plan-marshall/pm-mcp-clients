@@ -138,7 +138,7 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
   });
 
   test('reads an uploaded unit in the browser', async ({ page }) => {
-    await page.getByRole('button', { name: 'Upload a file' }).click();
+    await page.getByRole('radio', { name: 'Upload a file' }).click();
     await page.getByTestId('designer-file-input').setInputFiles({
       name: 'uploaded.pmwf',
       mimeType: 'text/plain',
@@ -199,7 +199,7 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
 
   test('asks before leaving a changed draft', async ({ page }) => {
     await page.getByTestId('workflow-text').fill('workflow changed version 1 format 1\n');
-    await page.getByTestId('designer-back').click();
+    await page.getByTestId('unit-open-epic').click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('Leave the designer?');
