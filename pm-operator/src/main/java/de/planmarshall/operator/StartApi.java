@@ -375,11 +375,12 @@ final class StartApi {
          * body names, or else the catalogue's text of the refusal in the operator's locale (the title of
          * its code, or what a body without one is), never the bare HTTP status.
          *
-         * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"})
+         * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"}), or {@code null} for the
+         *               default locale
          * @return the text a screen shows for this refusal
          */
-        String message(String locale) {
-            return text(locale);
+        String message(@Nullable String locale) {
+            return linkId + ": " + (bodyMessage != null ? bodyMessage : refusal.message(locale));
         }
 
         /**
@@ -390,11 +391,7 @@ final class StartApi {
          */
         @Override
         public String getMessage() {
-            return text(null);
-        }
-
-        private String text(@Nullable String locale) {
-            return linkId + ": " + (bodyMessage != null ? bodyMessage : refusal.message(locale));
+            return message(null);
         }
 
         /**
