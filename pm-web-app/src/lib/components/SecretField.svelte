@@ -91,10 +91,19 @@
     return ids.length > 0 ? ids.join(' ') : undefined;
   });
 
-  function handlePaste(e: ClipboardEvent): void {
+  /**
+   * Inserts the trimmed paste at the selection, places the caret after it and sends the input
+   * event a typed character would, so `value` and the caller's `oninput` follow once.
+   */
+  function handlePaste(e: ClipboardEvent & { currentTarget: HTMLInputElement }): void {
     e.preventDefault();
-    const pasted = e.clipboardData?.getData('text') ?? '';
-    value = pasted.trim();
+    const input = e.currentTarget;
+    const pasted = (e.clipboardData?.getData('text') ?? '').trim();
+    // A text or password input always has a selection, so both ends are numbers here.
+    const start = input.selectionStart as number;
+    const end = input.selectionEnd as number;
+    input.setRangeText(pasted, start, end, 'end');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
   }
 
   function handleInput(e: Event & { currentTarget: HTMLInputElement }): void {
@@ -102,11 +111,21 @@
     oninput?.(e);
   }
 
+  /**
+   * Hands the secret to `onstore` and forgets it: the field is cleared and masked at once. A
+   * rejected store puts the secret back, still masked, so the operator's input is not lost; the
+   * caller reports the failure through `error`, so the rejection is not rethrown.
+   */
   async function handleStore(): Promise<void> {
     if (!value || disabled) return;
     const secretToStore = value;
     value = '';
-    await onstore?.(secretToStore);
+    revealed = false;
+    try {
+      await onstore?.(secretToStore);
+    } catch {
+      value = secretToStore;
+    }
   }
 </script>
 
