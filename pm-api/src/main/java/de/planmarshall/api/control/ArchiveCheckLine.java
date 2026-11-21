@@ -37,8 +37,10 @@ public record ArchiveCheckLine(
         @Nullable String action
 ) {
 
+    private static final String LABEL = "label";
+
     public ArchiveCheckLine {
-        Objects.requireNonNull(label, "label");
+        Objects.requireNonNull(label, LABEL);
     }
 
     /**
@@ -46,7 +48,7 @@ public record ArchiveCheckLine(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("label", label);
+        map.put(LABEL, label);
         map.put("passed", passed);
         if (note != null) {
             map.put("note", note);
@@ -71,7 +73,7 @@ public record ArchiveCheckLine(
      */
     public static ArchiveCheckLine fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var label = JsonTree.string(map, "label");
+        var label = JsonTree.string(map, LABEL);
         if (label == null) {
             throw new JsonFormatException("Missing label in ArchiveCheckLine");
         }

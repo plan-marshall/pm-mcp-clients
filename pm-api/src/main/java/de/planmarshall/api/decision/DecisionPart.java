@@ -44,9 +44,11 @@ public record DecisionPart(
         boolean allowOwnWords,
         boolean allowNote
 ) {
+    private static final String QUESTION = "question";
+
     public DecisionPart {
         Objects.requireNonNull(partId, "partId");
-        Objects.requireNonNull(question, "question");
+        Objects.requireNonNull(question, QUESTION);
         Objects.requireNonNull(answerType, "answerType");
         options = options != null ? List.copyOf(options) : List.of();
     }
@@ -59,7 +61,7 @@ public record DecisionPart(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("part_id", partId);
-        map.put("question", question);
+        map.put(QUESTION, question);
         map.put("answer_type", answerType.value());
         var optsList = new ArrayList<Map<String, Object>>();
         for (var opt : options) {
@@ -96,7 +98,7 @@ public record DecisionPart(
             partId = JsonTree.string(map, "id");
             if (partId == null) partId = "1";
         }
-        var question = JsonTree.string(map, "question");
+        var question = JsonTree.string(map, QUESTION);
         if (question == null) question = "";
         var atStr = JsonTree.string(map, "answer_type");
         var answerType = atStr != null ? AnswerType.fromValue(atStr) : AnswerType.ONE_OPTION;

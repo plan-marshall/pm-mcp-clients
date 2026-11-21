@@ -32,14 +32,16 @@ public record OffTrackInfo(
         @Nullable Integer value,
         @Nullable Integer threshold
 ) {
+    private static final String SIGNAL = "signal";
+
     public OffTrackInfo {
-        Objects.requireNonNull(signal, "signal");
+        Objects.requireNonNull(signal, SIGNAL);
         action = action != null ? action : "show";
     }
 
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("signal", signal);
+        map.put(SIGNAL, signal);
         map.put("action", action);
         if (value != null) {
             map.put("value", value);
@@ -56,7 +58,7 @@ public record OffTrackInfo(
 
     public static OffTrackInfo fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var signal = JsonTree.string(map, "signal");
+        var signal = JsonTree.string(map, SIGNAL);
         if (signal == null) {
             throw new JsonFormatException("Missing signal in OffTrackInfo");
         }

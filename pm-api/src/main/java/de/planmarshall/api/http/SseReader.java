@@ -69,14 +69,17 @@ public final class SseReader {
         switch (name) {
             case "data" -> pending.appendData(value);
             case "event" -> pending.event = value;
-            case "id" -> {
-                if (value.indexOf('\0') < 0) {
-                    lastEventId = value;
-                }
-            }
+            case "id" -> acceptEventId(value);
             default -> {
                 // "retry" and unknown fields are ignored
             }
+        }
+    }
+
+    /** Takes an {@code id} field as the last event id; an id holding NUL is ignored. */
+    private void acceptEventId(String value) {
+        if (value.indexOf('\0') < 0) {
+            lastEventId = value;
         }
     }
 
@@ -98,29 +101,32 @@ public final class SseReader {
     /** Reads one line ending in CR, LF, or CRLF; returns {@code null} at the end of the stream. */
     private String readLine() throws IOException {
         var line = new ByteArrayOutputStream(128);
-        while (true) {
-            var b = in.read();
-            if (b < 0) {
-                return null;
-            }
-            if (skipLineFeed) {
-                skipLineFeed = false;
-                if (b == '\n') {
-                    continue;
-                }
-            }
-            if (b == '\n') {
-                break;
-            }
-            if (b == '\r') {
-                skipLineFeed = true;
-                break;
-            }
+        var b = firstByte();
+        while (b >= 0 && b != '\n' && b != '\r') {
             if (line.size() >= HttpLines.MAX_LINE * 64) {
                 throw new HttpProtocolException("Event stream line too long");
             }
             line.write(b);
+            b = in.read();
+        }
+        if (b < 0) {
+            return null;
+        }
+        if (b == '\r') {
+            skipLineFeed = true;
         }
         return line.toString(StandardCharsets.UTF_8);
+    }
+
+    /** Reads the first byte of a line, skipping the LF of a CRLF whose CR ended the previous line. */
+    private int firstByte() throws IOException {
+        var b = in.read();
+        if (b >= 0 && skipLineFeed) {
+            skipLineFeed = false;
+            if (b == '\n') {
+                b = in.read();
+            }
+        }
+        return b;
     }
 }

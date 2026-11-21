@@ -97,50 +97,25 @@ public record ActiveEpicSummary(
      */
     public static ActiveEpicSummary fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var epicId = JsonTree.string(map, "epic_id");
-        if (epicId == null) {
-            epicId = JsonTree.string(map, "id");
-        }
+        var epicId = firstString(map, "epic_id", "id");
         if (epicId == null) {
             throw new JsonFormatException("Missing epic_id in ActiveEpicSummary");
         }
 
         var title = JsonTree.string(map, "title");
-        var runningSinceStr = JsonTree.string(map, "running_since");
-        if (runningSinceStr == null) {
-            runningSinceStr = JsonTree.string(map, "created_at");
-        }
+        var runningSinceStr = firstString(map, "running_since", "created_at");
         Instant runningSince = runningSinceStr != null ? Instant.parse(runningSinceStr) : null;
 
-        var runningPlansNum = JsonTree.number(map, "running_plans_count");
-        int runningPlans = runningPlansNum != null ? runningPlansNum.intValue() : 0;
+        int runningPlans = intOrZero(map, "running_plans_count");
+        int stagedPlans = intOrZero(map, "staged_plans_count");
+        int plansDone = intOrZero(map, "plans_done");
+        int plansTotal = intOrZero(map, "plans_total");
 
-        var stagedPlansNum = JsonTree.number(map, "staged_plans_count");
-        int stagedPlans = stagedPlansNum != null ? stagedPlansNum.intValue() : 0;
-
-        var plansDoneNum = JsonTree.number(map, "plans_done");
-        int plansDone = plansDoneNum != null ? plansDoneNum.intValue() : 0;
-
-        var plansTotalNum = JsonTree.number(map, "plans_total");
-        int plansTotal = plansTotalNum != null ? plansTotalNum.intValue() : 0;
-
-        var needsKind = JsonTree.string(map, "needs_operator_kind");
-        if (needsKind == null) {
-            needsKind = JsonTree.string(map, "needs_operator");
-        }
+        var needsKind = firstString(map, "needs_operator_kind", "needs_operator");
         var needsCountNum = JsonTree.number(map, "needs_operator_count");
         Integer needsOperatorCount = needsCountNum != null ? needsCountNum.intValue() : null;
 
-        var plansListObj = JsonTree.asArray(map.get("plans"));
-        var plans = new ArrayList<ActivePlanSummary>();
-        if (plansListObj != null) {
-            for (var elem : plansListObj) {
-                var pMap = JsonTree.asObject(elem);
-                if (pMap != null) {
-                    plans.add(ActivePlanSummary.fromMap(pMap));
-                }
-            }
-        }
+        var plans = readPlans(map);
 
         return new ActiveEpicSummary(
                 epicId,
@@ -154,6 +129,32 @@ public record ActiveEpicSummary(
                 needsOperatorCount,
                 plans
         );
+    }
+
+    /** The member under the current name, else the one under the legacy name. */
+    private static String firstString(Map<String, Object> map, String current, String legacy) {
+        var value = JsonTree.string(map, current);
+        return value != null ? value : JsonTree.string(map, legacy);
+    }
+
+    private static int intOrZero(Map<String, Object> map, String key) {
+        var number = JsonTree.number(map, key);
+        return number != null ? number.intValue() : 0;
+    }
+
+    private static List<ActivePlanSummary> readPlans(Map<String, Object> map) throws IOException {
+        var plans = new ArrayList<ActivePlanSummary>();
+        var plansListObj = JsonTree.asArray(map.get("plans"));
+        if (plansListObj == null) {
+            return plans;
+        }
+        for (var elem : plansListObj) {
+            var pMap = JsonTree.asObject(elem);
+            if (pMap != null) {
+                plans.add(ActivePlanSummary.fromMap(pMap));
+            }
+        }
+        return plans;
     }
 
     /**

@@ -93,43 +93,37 @@ public record ProjectDetailResponse(
             displayName = projectId;
         }
 
-        var plansListObj = JsonTree.asArray(map.get("plans"));
-        var plans = new ArrayList<ActivePlanSummary>();
-        if (plansListObj != null) {
-            for (var elem : plansListObj) {
-                var pMap = JsonTree.asObject(elem);
-                if (pMap != null) {
-                    plans.add(ActivePlanSummary.fromMap(pMap));
-                }
-            }
-        }
-
-        var epicsListObj = JsonTree.asArray(map.get("epics"));
-        var epics = new ArrayList<ActiveEpicSummary>();
-        if (epicsListObj != null) {
-            for (var elem : epicsListObj) {
-                var eMap = JsonTree.asObject(elem);
-                if (eMap != null) {
-                    epics.add(ActiveEpicSummary.fromMap(eMap));
-                }
-            }
-        }
+        var plans = readObjects(JsonTree.asArray(map.get("plans")), ActivePlanSummary::fromMap);
+        var epics = readObjects(JsonTree.asArray(map.get("epics")), ActiveEpicSummary::fromMap);
 
         var landingsListObj = JsonTree.asArray(map.get("alongside_landings"));
         if (landingsListObj == null) {
             landingsListObj = JsonTree.asArray(map.get("alongside"));
         }
-        var alongside = new ArrayList<AlongsideLanding>();
-        if (landingsListObj != null) {
-            for (var elem : landingsListObj) {
-                var lMap = JsonTree.asObject(elem);
-                if (lMap != null) {
-                    alongside.add(AlongsideLanding.fromMap(lMap));
-                }
-            }
-        }
+        var alongside = readObjects(landingsListObj, AlongsideLanding::fromMap);
 
         return new ProjectDetailResponse(projectId, displayName, plans, epics, alongside);
+    }
+
+    /** Reads one element of a list from its JSON object. */
+    @FunctionalInterface
+    private interface ElementReader<T> {
+        T read(Map<String, Object> map) throws IOException;
+    }
+
+    /** Reads every object element of a list, in order, skipping the elements that are no object. */
+    private static <T> List<T> readObjects(List<Object> list, ElementReader<T> reader) throws IOException {
+        var result = new ArrayList<T>();
+        if (list == null) {
+            return result;
+        }
+        for (var elem : list) {
+            var element = JsonTree.asObject(elem);
+            if (element != null) {
+                result.add(reader.read(element));
+            }
+        }
+        return result;
     }
 
     /**

@@ -28,10 +28,13 @@ public record WorkerMetric(
         WorkerState state,
         @Nullable String currentPlanTitle
 ) {
+    private static final String HARNESS = "harness";
+    private static final String MODEL = "model";
+
     public WorkerMetric {
         Objects.requireNonNull(role, "role");
-        Objects.requireNonNull(harness, "harness");
-        Objects.requireNonNull(model, "model");
+        Objects.requireNonNull(harness, HARNESS);
+        Objects.requireNonNull(model, MODEL);
         state = state != null ? state : WorkerState.IDLE;
     }
 
@@ -43,8 +46,8 @@ public record WorkerMetric(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("role", role);
-        map.put("harness", harness);
-        map.put("model", model);
+        map.put(HARNESS, harness);
+        map.put(MODEL, model);
         map.put("state", state.value());
         if (currentPlanTitle != null) {
             map.put("current_plan_title", currentPlanTitle);
@@ -71,8 +74,8 @@ public record WorkerMetric(
     public static WorkerMetric fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var role = JsonTree.string(map, "role");
-        var harness = JsonTree.string(map, "harness");
-        var model = JsonTree.string(map, "model");
+        var harness = JsonTree.string(map, HARNESS);
+        var model = JsonTree.string(map, MODEL);
         if (role == null || harness == null || model == null) {
             throw new JsonFormatException("Missing required fields for WorkerMetric: role, harness, or model");
         }

@@ -144,58 +144,32 @@ public record ActivePlanSummary(
      */
     public static ActivePlanSummary fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var planId = JsonTree.string(map, "plan_id");
-        if (planId == null) {
-            planId = JsonTree.string(map, "id");
-        }
+        var planId = firstString(map, "plan_id", "id");
         if (planId == null) {
             throw new JsonFormatException("Missing plan_id in ActivePlanSummary");
         }
 
         var title = JsonTree.string(map, "title");
-        var currentPhase = JsonTree.string(map, "current_phase");
-        if (currentPhase == null) {
-            currentPhase = JsonTree.string(map, "phase");
-        }
-        var phaseState = JsonTree.string(map, "phase_state");
-        if (phaseState == null) {
-            phaseState = JsonTree.string(map, "state");
-        }
+        var currentPhase = firstString(map, "current_phase", "phase");
+        var phaseState = firstString(map, "phase_state", "state");
         var pausingPoint = JsonTree.string(map, "pausing_point");
 
-        var phaseEnteredAtStr = JsonTree.string(map, "phase_entered_at");
-        Instant phaseEnteredAt = phaseEnteredAtStr != null ? Instant.parse(phaseEnteredAtStr) : null;
+        Instant phaseEnteredAt = instantOrNull(JsonTree.string(map, "phase_entered_at"));
+        Instant runningSince = instantOrNull(firstString(map, "running_since", "created_at"));
 
-        var runningSinceStr = JsonTree.string(map, "running_since");
-        if (runningSinceStr == null) {
-            runningSinceStr = JsonTree.string(map, "created_at");
-        }
-        Instant runningSince = runningSinceStr != null ? Instant.parse(runningSinceStr) : null;
-
-        var doneNum = JsonTree.number(map, "tasks_done");
-        int tasksDone = doneNum != null ? doneNum.intValue() : 0;
-
-        var totalNum = JsonTree.number(map, "tasks_total");
-        int tasksTotal = totalNum != null ? totalNum.intValue() : 0;
+        int tasksDone = Objects.requireNonNullElse(optInt(map, "tasks_done"), 0);
+        int tasksTotal = Objects.requireNonNullElse(optInt(map, "tasks_total"), 0);
 
         var epicId = JsonTree.string(map, "epic_id");
         var epicTitle = JsonTree.string(map, "epic_title");
 
-        var prNum = JsonTree.number(map, "pull_request_number");
-        Integer pullRequestNumber = prNum != null ? prNum.intValue() : null;
+        Integer pullRequestNumber = optInt(map, "pull_request_number");
         var prUrl = JsonTree.string(map, "pull_request_url");
 
-        var offTrackSignal = JsonTree.string(map, "off_track_signal");
-        if (offTrackSignal == null) {
-            offTrackSignal = JsonTree.string(map, "off_track");
-        }
+        var offTrackSignal = firstString(map, "off_track_signal", "off_track");
 
-        var needsKind = JsonTree.string(map, "needs_operator_kind");
-        if (needsKind == null) {
-            needsKind = JsonTree.string(map, "needs_operator");
-        }
-        var needsCountNum = JsonTree.number(map, "needs_operator_count");
-        Integer needsOperatorCount = needsCountNum != null ? needsCountNum.intValue() : null;
+        var needsKind = firstString(map, "needs_operator_kind", "needs_operator");
+        Integer needsOperatorCount = optInt(map, "needs_operator_count");
 
         var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
         var queuedRevisionMap = JsonTree.objectOrNull(map, QUEUED_REVISION, "ActivePlanSummary");
@@ -221,6 +195,21 @@ public record ActivePlanSummary(
                 change,
                 queuedRevision
         );
+    }
+
+    /** The member under the current name, else the one under the legacy name. */
+    private static @Nullable String firstString(Map<String, Object> map, String current, String legacy) {
+        var value = JsonTree.string(map, current);
+        return value != null ? value : JsonTree.string(map, legacy);
+    }
+
+    private static @Nullable Integer optInt(Map<String, Object> map, String key) {
+        var number = JsonTree.number(map, key);
+        return number != null ? number.intValue() : null;
+    }
+
+    private static @Nullable Instant instantOrNull(@Nullable String text) {
+        return text != null ? Instant.parse(text) : null;
     }
 
     /**

@@ -29,15 +29,17 @@ public record TokensChangedEvent(
 ) {
     public static final String EVENT_NAME = "tokens.changed";
 
+    private static final String TOKENS = "tokens";
+
     public TokensChangedEvent {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(tokens, "tokens");
+        Objects.requireNonNull(tokens, TOKENS);
     }
 
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
-        map.put("tokens", tokens.toMap());
+        map.put(TOKENS, tokens.toMap());
         return map;
     }
 
@@ -51,7 +53,7 @@ public record TokensChangedEvent(
         if (planId == null) planId = JsonTree.string(map, "planId");
         if (planId == null) throw new JsonFormatException("Missing plan_id in TokensChangedEvent");
 
-        var tokensObj = JsonTree.asObject(map.get("tokens"));
+        var tokensObj = JsonTree.asObject(map.get(TOKENS));
         if (tokensObj == null) {
             tokensObj = JsonTree.asObject(map.get("tokens_so_far"));
         }

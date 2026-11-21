@@ -258,50 +258,60 @@ public final class MessageCatalogue {
         int i = 0;
         int len = template.length();
         while (i < len) {
-            int openIdx = template.indexOf('{', i);
-            if (openIdx < 0) {
-                sb.append(template.substring(i));
-                break;
-            }
-            sb.append(template, i, openIdx);
-            int closeIdx = findMatchingBrace(template, openIdx);
-            if (closeIdx < 0) {
-                sb.append(template.substring(openIdx));
-                break;
-            }
-            String expr = template.substring(openIdx + 1, closeIdx).trim();
-            int firstComma = expr.indexOf(',');
-            if (firstComma < 0) {
-                Object val = params.get(expr);
-                sb.append(val != null ? val : "{" + expr + "}");
-            } else {
-                String varName = expr.substring(0, firstComma).trim();
-                int secondComma = expr.indexOf(',', firstComma + 1);
-                if (secondComma < 0) {
-                    Object val = params.get(varName);
-                    sb.append(val != null ? val : "{" + expr + "}");
-                } else {
-                    String type = expr.substring(firstComma + 1, secondComma).trim().toLowerCase();
-                    String body = expr.substring(secondComma + 1).trim();
-                    Object rawVal = params.get(varName);
-                    if ("select".equals(type)) {
-                        String selector = rawVal != null ? rawVal.toString() : "";
-                        String selected = evaluateSelect(body, selector);
-                        sb.append(evaluateTemplate(selected, params));
-                    } else if ("plural".equals(type)) {
-                        long count = parseCount(rawVal);
-                        String selected = evaluatePlural(body, count);
-                        selected = selected.replace("#", String.valueOf(count));
-                        sb.append(evaluateTemplate(selected, params));
-                    } else {
-                        Object val = params.get(varName);
-                        sb.append(val != null ? val : "{" + expr + "}");
-                    }
-                }
-            }
-            i = closeIdx + 1;
+            i = appendNextPart(template, i, params, sb);
         }
         return sb.toString();
+    }
+
+    /**
+     * Appends the literal text from {@code start} and the placeholder that follows it.
+     *
+     * @return the index after the appended part, the template's length when nothing follows
+     */
+    private static int appendNextPart(String template, int start, Map<String, ?> params, StringBuilder sb) {
+        int openIdx = template.indexOf('{', start);
+        if (openIdx < 0) {
+            sb.append(template.substring(start));
+            return template.length();
+        }
+        sb.append(template, start, openIdx);
+        int closeIdx = findMatchingBrace(template, openIdx);
+        if (closeIdx < 0) {
+            sb.append(template.substring(openIdx));
+            return template.length();
+        }
+        sb.append(evaluateExpression(template.substring(openIdx + 1, closeIdx).trim(), params));
+        return closeIdx + 1;
+    }
+
+    /** Evaluates one placeholder expression: {@code name}, {@code name, type} or {@code name, type, body}. */
+    private static String evaluateExpression(String expr, Map<String, ?> params) {
+        int firstComma = expr.indexOf(',');
+        if (firstComma < 0) {
+            return valueOrPlaceholder(params.get(expr), expr);
+        }
+        String varName = expr.substring(0, firstComma).trim();
+        int secondComma = expr.indexOf(',', firstComma + 1);
+        if (secondComma < 0) {
+            return valueOrPlaceholder(params.get(varName), expr);
+        }
+        String type = expr.substring(firstComma + 1, secondComma).trim().toLowerCase();
+        String body = expr.substring(secondComma + 1).trim();
+        Object rawVal = params.get(varName);
+        if ("select".equals(type)) {
+            String selector = rawVal != null ? rawVal.toString() : "";
+            return evaluateTemplate(evaluateSelect(body, selector), params);
+        }
+        if ("plural".equals(type)) {
+            long count = parseCount(rawVal);
+            String selected = evaluatePlural(body, count).replace("#", String.valueOf(count));
+            return evaluateTemplate(selected, params);
+        }
+        return valueOrPlaceholder(rawVal, expr);
+    }
+
+    private static String valueOrPlaceholder(Object val, String expr) {
+        return val != null ? String.valueOf(val) : "{" + expr + "}";
     }
 
     private static int findMatchingBrace(String text, int start) {

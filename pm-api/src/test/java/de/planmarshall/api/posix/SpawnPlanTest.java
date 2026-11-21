@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import de.planmarshall.api.MachinePaths;
 
@@ -93,6 +94,19 @@ class SpawnPlanTest {
             assertEquals(new SpawnPlan.Open(1, LOG.toString(), 0x441, 0600), plan.fileActions().get(1));
             assertTrue(PosixPlatform.LINUX.usesCloseFromAction());
             assertFalse(PosixPlatform.MACOS.usesCloseFromAction());
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @EnumSource(PosixPlatform.class)
+        @DisplayName("creates the daemon log with mode 0600, read and write for the owner only")
+        void daemonLogMode(PosixPlatform platform) {
+            var ownerReadWrite = Integer.parseInt("600", 8);
+
+            var plan = SpawnPlan.detachedDaemon(platform, DAEMON, LOG, Map.of());
+
+            assertEquals(ownerReadWrite, SpawnPlan.DAEMON_LOG_MODE);
+            assertEquals(new SpawnPlan.Open(1, LOG.toString(), platform.appendFlags(), ownerReadWrite),
+                    plan.fileActions().get(1));
         }
 
         @Test

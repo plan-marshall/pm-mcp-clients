@@ -28,12 +28,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 @DisplayName("RuntimeClient")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class RuntimeClientTest {
 
     private static final FakeRuntimeServer.Handler OK = (request, response) -> response.json(200, "{\"ok\":true}");
@@ -161,6 +164,23 @@ class RuntimeClientTest {
             var client = client(starts::incrementAndGet);
 
             assertThrows(RuntimeUnavailableException.class, () -> client.send(HttpRequest.get("/a")));
+            assertEquals(1, starts.get());
+        }
+
+        @Test
+        @DisplayName("refuses the credential of a runtime it started without starting it a second time")
+        void startedRuntimeRefusesCredential() {
+            var written = Generators.letterStrings(8, 16).next();
+            var accepted = Generators.letterStrings(8, 16).next() + written;
+            var starts = new AtomicInteger();
+            var client = client(() -> {
+                starts.incrementAndGet();
+                fixture.writeToken(written);
+                fixture.start(OK);
+                fixture.acceptToken(accepted);
+            });
+
+            assertThrows(UnauthorizedException.class, () -> client.send(HttpRequest.get("/a")));
             assertEquals(1, starts.get());
         }
 

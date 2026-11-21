@@ -33,10 +33,14 @@ public record AutoResultItem(
         String value,
         AutoResultReason reason
 ) {
+    private static final String ASPECT = "aspect";
+    private static final String VALUE = "value";
+    private static final String REASON = "reason";
+
     public AutoResultItem {
-        Objects.requireNonNull(aspect, "aspect");
-        Objects.requireNonNull(value, "value");
-        Objects.requireNonNull(reason, "reason");
+        Objects.requireNonNull(aspect, ASPECT);
+        Objects.requireNonNull(value, VALUE);
+        Objects.requireNonNull(reason, REASON);
     }
 
     /**
@@ -46,9 +50,9 @@ public record AutoResultItem(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("aspect", aspect.wireValue());
-        map.put("value", value);
-        map.put("reason", reason.wireValue());
+        map.put(ASPECT, aspect.wireValue());
+        map.put(VALUE, value);
+        map.put(REASON, reason.wireValue());
         return map;
     }
 
@@ -70,15 +74,15 @@ public record AutoResultItem(
      */
     public static AutoResultItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var aspect = OnboardingAspect.fromWire(JsonTree.string(map, "aspect"));
+        var aspect = OnboardingAspect.fromWire(JsonTree.string(map, ASPECT));
         if (aspect == null) {
             throw new JsonFormatException("Unknown or missing aspect in AutoResultItem");
         }
-        var value = JsonTree.string(map, "value");
+        var value = JsonTree.string(map, VALUE);
         if (value == null) {
             throw new JsonFormatException("Missing value in AutoResultItem");
         }
-        var reason = AutoResultReason.fromWire(JsonTree.string(map, "reason"));
+        var reason = AutoResultReason.fromWire(JsonTree.string(map, REASON));
         if (reason == null) {
             throw new JsonFormatException("Unknown or missing reason in AutoResultItem");
         }

@@ -35,8 +35,10 @@ public record PlanSettingsValue(
         String origin,
         List<String> choices
 ) {
+    private static final String ASPECT = "aspect";
+
     public PlanSettingsValue {
-        Objects.requireNonNull(aspect, "aspect");
+        Objects.requireNonNull(aspect, ASPECT);
         origin = origin != null && !origin.isBlank() ? origin : "default";
         choices = choices != null ? List.copyOf(choices) : List.of();
     }
@@ -48,7 +50,7 @@ public record PlanSettingsValue(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("aspect", aspect);
+        map.put(ASPECT, aspect);
         if (value != null) {
             map.put("value", value);
         }
@@ -68,7 +70,7 @@ public record PlanSettingsValue(
      */
     public static PlanSettingsValue fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var aspect = JsonTree.string(map, "aspect");
+        var aspect = JsonTree.string(map, ASPECT);
         if (aspect == null) {
             aspect = JsonTree.string(map, "key");
         }

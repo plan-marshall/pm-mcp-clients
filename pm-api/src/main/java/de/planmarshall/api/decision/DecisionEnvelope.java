@@ -68,13 +68,19 @@ public record DecisionEnvelope(
         @Nullable String project,
         @Nullable String plan
 ) {
+    private static final String TITLE = "title";
+    private static final String SUBJECT = "subject";
+    private static final String SCOPE = "scope";
+    private static final String BLOCKS = "blocks";
+    private static final String REVERSIBILITY = "reversibility";
+
     public DecisionEnvelope {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(title, "title");
-        Objects.requireNonNull(subject, "subject");
-        Objects.requireNonNull(scope, "scope");
-        Objects.requireNonNull(blocks, "blocks");
-        Objects.requireNonNull(reversibility, "reversibility");
+        Objects.requireNonNull(title, TITLE);
+        Objects.requireNonNull(subject, SUBJECT);
+        Objects.requireNonNull(scope, SCOPE);
+        Objects.requireNonNull(blocks, BLOCKS);
+        Objects.requireNonNull(reversibility, REVERSIBILITY);
         parts = parts != null ? List.copyOf(parts) : List.of();
     }
 
@@ -87,14 +93,14 @@ public record DecisionEnvelope(
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
         map.put("revision", revision);
-        map.put("title", title);
+        map.put(TITLE, title);
         if (header != null) map.put("header", header);
-        map.put("subject", subject);
-        map.put("scope", scope.value());
+        map.put(SUBJECT, subject);
+        map.put(SCOPE, scope.value());
         if (askingPhase != null) map.put("asking_phase", askingPhase);
         if (askingRole != null) map.put("asking_role", askingRole);
-        map.put("blocks", blocks);
-        map.put("reversibility", reversibility.value());
+        map.put(BLOCKS, blocks);
+        map.put(REVERSIBILITY, reversibility.value());
         if (description != null) map.put("description", description);
         if (evidence != null) map.put("evidence", evidence);
 
@@ -154,16 +160,16 @@ public record DecisionEnvelope(
             throw new JsonFormatException("Missing id in DecisionEnvelope");
         }
         var rev = Objects.requireNonNullElse(JsonTree.integer(map, "revision"), 1);
-        var title = Objects.requireNonNullElse(JsonTree.string(map, "title"), "");
-        var subject = JsonTree.string(map, "subject");
+        var title = Objects.requireNonNullElse(JsonTree.string(map, TITLE), "");
+        var subject = JsonTree.string(map, SUBJECT);
         if (subject == null) {
             var plan = JsonTree.string(map, "plan");
             subject = plan != null ? "plan " + plan : id;
         }
 
-        var scopeStr = JsonTree.string(map, "scope");
+        var scopeStr = JsonTree.string(map, SCOPE);
         var scope = scopeStr != null ? DecisionScope.fromValue(scopeStr) : DecisionScope.PLAN;
-        var revStr = JsonTree.string(map, "reversibility");
+        var revStr = JsonTree.string(map, REVERSIBILITY);
         var reversibility = revStr != null ? Reversibility.fromValue(revStr) : Reversibility.REVERSIBLE;
         var isWaiver = Boolean.TRUE.equals(JsonTree.bool(map, "is_waiver")) || id.startsWith("WR-")
                 || "waiver".equalsIgnoreCase(JsonTree.string(map, "kind"));
@@ -171,7 +177,7 @@ public record DecisionEnvelope(
         return new DecisionEnvelope(
                 id, rev, title, JsonTree.string(map, "header"), subject, scope,
                 firstString(map, "asking_phase", "phase"), firstString(map, "asking_role", "role"),
-                Objects.requireNonNullElse(JsonTree.string(map, "blocks"), "plan"), reversibility,
+                Objects.requireNonNullElse(JsonTree.string(map, BLOCKS), "plan"), reversibility,
                 JsonTree.string(map, "description"), evidenceOf(map.get("evidence")), partsOf(map.get("parts")),
                 deliveredAt(JsonTree.string(map, "delivered_at")),
                 isWaiver, firstString(map, "waiver_gate", "gate"), firstString(map, "waiver_result", "result"),

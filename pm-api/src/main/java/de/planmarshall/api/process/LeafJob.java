@@ -57,7 +57,7 @@ public record LeafJob(
         return JsonTree.write(toMap());
     }
 
-    public static LeafJob fromMap(Map<String, Object> map) throws IOException {
+    public static LeafJob fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var kind = JsonTree.string(map, "kind");
         var status = JsonTree.string(map, "status");

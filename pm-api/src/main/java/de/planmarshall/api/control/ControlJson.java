@@ -31,16 +31,16 @@ final class ControlJson {
      * Reads the named field of a record as a list of strings. An absent field yields an empty list;
      * a present {@code null}, a non-array value, or a structured element fails closed.
      *
-     * @param record the record's map
+     * @param fields the record's map
      * @param key    the field key
      * @return the strings, never {@code null}
      * @throws IOException if a present value is not a scalar array
      */
-    static List<String> readStrings(Map<String, Object> record, String key) throws IOException {
-        if (!record.containsKey(key)) {
+    static List<String> readStrings(Map<String, Object> fields, String key) throws IOException {
+        if (!fields.containsKey(key)) {
             return List.of();
         }
-        return strings(record.get(key), key);
+        return strings(fields.get(key), key);
     }
 
     /**
@@ -48,16 +48,16 @@ final class ControlJson {
      * a present {@code null}, a non-array value, or an element that is not an object fails closed
      * instead of being dropped silently.
      *
-     * @param record the record's map
+     * @param fields the record's map
      * @param key    the field key
      * @return the object maps, never {@code null}
      * @throws IOException if a present value is not an object array
      */
-    static List<Map<String, Object>> readObjects(Map<String, Object> record, String key) throws IOException {
-        if (!record.containsKey(key)) {
+    static List<Map<String, Object>> readObjects(Map<String, Object> fields, String key) throws IOException {
+        if (!fields.containsKey(key)) {
             return List.of();
         }
-        return objects(record.get(key), key);
+        return objects(fields.get(key), key);
     }
 
     private static List<String> strings(Object raw, String key) throws IOException {

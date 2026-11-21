@@ -27,6 +27,9 @@ public record CleanupResidue(
         long bytes,
         @Nullable String lastSweep
 ) {
+    private static final String COUNT = "count";
+    private static final String BYTES = "bytes";
+
     public CleanupResidue {
         Objects.requireNonNull(step, "step");
     }
@@ -39,8 +42,8 @@ public record CleanupResidue(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("step", step);
-        map.put("count", count);
-        map.put("bytes", bytes);
+        map.put(COUNT, count);
+        map.put(BYTES, bytes);
         if (lastSweep != null) {
             map.put("last_sweep", lastSweep);
         }
@@ -69,8 +72,9 @@ public record CleanupResidue(
         if (step == null) {
             throw new JsonFormatException("Missing step in CleanupResidue");
         }
-        var count = JsonTree.integer(map, "count") != null ? (int) JsonTree.integer(map, "count") : 0;
-        var bytes = JsonTree.number(map, "bytes") != null ? JsonTree.number(map, "bytes").longValue() : 0L;
+        int count = Objects.requireNonNullElse(JsonTree.integer(map, COUNT), 0);
+        var bytesNumber = JsonTree.number(map, BYTES);
+        var bytes = bytesNumber != null ? bytesNumber.longValue() : 0L;
         var lastSweep = JsonTree.string(map, "last_sweep");
         return new CleanupResidue(step, count, bytes, lastSweep);
     }

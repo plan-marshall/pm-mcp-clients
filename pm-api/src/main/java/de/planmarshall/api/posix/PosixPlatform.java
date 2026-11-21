@@ -38,10 +38,12 @@ import de.planmarshall.api.MachinePaths;
 public enum PosixPlatform {
 
     /** macOS (libSystem). */
-    MACOS((short) 0x0400, (short) 0x4000, 8, 8, 4, ValueLayout.JAVA_SHORT, 0x200, 0x8, false),
+    MACOS(new SpawnFlags((short) 0x0400, (short) 0x4000), new StructSizes(8, 8, 4), ValueLayout.JAVA_SHORT,
+            new OpenFlags(0x200, 0x8), false),
 
     /** Linux with glibc. */
-    LINUX((short) 0x80, (short) 0, 336, 80, 128, ValueLayout.JAVA_INT, 0x40, 0x400, true);
+    LINUX(new SpawnFlags((short) 0x80, (short) 0), new StructSizes(336, 80, 128), ValueLayout.JAVA_INT,
+            new OpenFlags(0x40, 0x400), true);
 
     /** {@code POSIX_SPAWN_SETSIGDEF}. */
     public static final short SPAWN_SETSIGDEF = 0x04;
@@ -64,17 +66,45 @@ public enum PosixPlatform {
     private final int oAppend;
     private final boolean closeFromAction;
 
-    PosixPlatform(short setsid, short cloexecDefault, long spawnAttrSize, long fileActionsSize, long sigsetSize,
-                  ValueLayout modeLayout, int oCreat, int oAppend, boolean closeFromAction) {
-        this.setsid = setsid;
-        this.cloexecDefault = cloexecDefault;
-        this.spawnAttrSize = spawnAttrSize;
-        this.fileActionsSize = fileActionsSize;
-        this.sigsetSize = sigsetSize;
+    PosixPlatform(SpawnFlags spawnFlags, StructSizes sizes, ValueLayout modeLayout, OpenFlags openFlags,
+                  boolean closeFromAction) {
+        this.setsid = spawnFlags.setsid();
+        this.cloexecDefault = spawnFlags.cloexecDefault();
+        this.spawnAttrSize = sizes.spawnAttr();
+        this.fileActionsSize = sizes.fileActions();
+        this.sigsetSize = sizes.sigset();
         this.modeLayout = modeLayout;
-        this.oCreat = oCreat;
-        this.oAppend = oAppend;
+        this.oCreat = openFlags.oCreat();
+        this.oAppend = openFlags.oAppend();
         this.closeFromAction = closeFromAction;
+    }
+
+    /**
+     * The platform's {@code posix_spawnattr_setflags} values.
+     *
+     * @param setsid         {@code POSIX_SPAWN_SETSID}
+     * @param cloexecDefault {@code POSIX_SPAWN_CLOEXEC_DEFAULT}, {@code 0} where the platform has none
+     */
+    private record SpawnFlags(short setsid, short cloexecDefault) {
+    }
+
+    /**
+     * The sizes of the platform's opaque structures, in bytes.
+     *
+     * @param spawnAttr   {@code posix_spawnattr_t}
+     * @param fileActions {@code posix_spawn_file_actions_t}
+     * @param sigset      {@code sigset_t}
+     */
+    private record StructSizes(long spawnAttr, long fileActions, long sigset) {
+    }
+
+    /**
+     * The platform's {@code open} flags.
+     *
+     * @param oCreat  {@code O_CREAT}
+     * @param oAppend {@code O_APPEND}
+     */
+    private record OpenFlags(int oCreat, int oAppend) {
     }
 
     /**

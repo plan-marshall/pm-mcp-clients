@@ -74,23 +74,29 @@ public final class DottedIdentifier {
             if (length == 0 || maxSegmentLength > 0 && length > maxSegmentLength) {
                 return false;
             }
-            var first = value.charAt(start);
-            if (segments == 0 || letterAtEverySegmentStart) {
-                if (!isLowerLetter(first)) {
-                    return false;
-                }
-            } else if (!restAllowed.test(first)) {
+            var letterFirst = segments == 0 || letterAtEverySegmentStart;
+            if (!segmentAllowed(value, start, i, letterFirst, restAllowed)) {
                 return false;
-            }
-            for (var j = start + 1; j < i; j++) {
-                if (!restAllowed.test(value.charAt(j))) {
-                    return false;
-                }
             }
             segments++;
             start = i + 1;
         }
         return segments >= minSegments;
+    }
+
+    /** Checks the characters of one non-empty segment {@code [start, end)} of a dotted value. */
+    private static boolean segmentAllowed(String value, int start, int end, boolean letterFirst,
+                                          IntPredicate restAllowed) {
+        var first = value.charAt(start);
+        if (letterFirst ? !isLowerLetter(first) : !restAllowed.test(first)) {
+            return false;
+        }
+        for (var j = start + 1; j < end; j++) {
+            if (!restAllowed.test(value.charAt(j))) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isLowerLetter(int c) {

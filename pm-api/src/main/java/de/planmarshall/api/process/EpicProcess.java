@@ -44,9 +44,11 @@ public record EpicProcess(
         @Nullable ProcessTokens tokensSoFar,
         boolean reviewReady
 ) {
+    private static final String PROJECT = "project";
+
     public EpicProcess {
         Objects.requireNonNull(epicId, "epicId");
-        project = project != null ? project : "project";
+        project = project != null ? project : PROJECT;
         title = title != null ? title : epicId;
         state = state != null ? state : "running";
         runningPlans = runningPlans != null ? List.copyOf(runningPlans) : List.of();
@@ -57,7 +59,7 @@ public record EpicProcess(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("epic_id", epicId);
-        map.put("project", project);
+        map.put(PROJECT, project);
         map.put("title", title);
         map.put("state", state);
 
@@ -110,38 +112,13 @@ public record EpicProcess(
             throw new JsonFormatException("Missing epic_id in EpicProcess");
         }
 
-        var project = JsonTree.string(map, "project");
+        var project = JsonTree.string(map, PROJECT);
         var title = JsonTree.string(map, "title");
         var state = JsonTree.string(map, "state");
 
-        var runningPlans = new ArrayList<EpicProcessPlan>();
-        if (map.get("running_plans") instanceof List<?> list) {
-            for (var item : list) {
-                var pMap = JsonTree.asObject(item);
-                if (pMap != null) {
-                    runningPlans.add(EpicProcessPlan.fromMap(pMap));
-                }
-            }
-        }
-
-        var stagedPlans = new ArrayList<EpicProcessPlan>();
-        if (map.get("staged_plans") instanceof List<?> list) {
-            for (var item : list) {
-                var pMap = JsonTree.asObject(item);
-                if (pMap != null) {
-                    stagedPlans.add(EpicProcessPlan.fromMap(pMap));
-                }
-            }
-        }
-
-        var alongsideLandings = new ArrayList<String>();
-        if (map.get("alongside_landings") instanceof List<?> list) {
-            for (var item : list) {
-                if (item != null) {
-                    alongsideLandings.add(item.toString());
-                }
-            }
-        }
+        var runningPlans = readPlans(map.get("running_plans"));
+        var stagedPlans = readPlans(map.get("staged_plans"));
+        var alongsideLandings = readStrings(map.get("alongside_landings"));
 
         ProcessTokens tokensSoFar = null;
         var tokensObj = JsonTree.asObject(map.get("tokens_so_far"));
@@ -163,6 +140,33 @@ public record EpicProcess(
                 tokensSoFar,
                 reviewReady
         );
+    }
+
+    /** Reads the object entries of a plan list; an entry that is not an object is skipped. */
+    private static List<EpicProcessPlan> readPlans(@Nullable Object raw) throws IOException {
+        var plans = new ArrayList<EpicProcessPlan>();
+        if (raw instanceof List<?> list) {
+            for (var item : list) {
+                var pMap = JsonTree.asObject(item);
+                if (pMap != null) {
+                    plans.add(EpicProcessPlan.fromMap(pMap));
+                }
+            }
+        }
+        return plans;
+    }
+
+    /** Reads the entries of a list as text; a {@code null} entry is skipped. */
+    private static List<String> readStrings(@Nullable Object raw) {
+        var values = new ArrayList<String>();
+        if (raw instanceof List<?> list) {
+            for (var item : list) {
+                if (item != null) {
+                    values.add(item.toString());
+                }
+            }
+        }
+        return values;
     }
 
     public static EpicProcess fromJson(String json) throws IOException {

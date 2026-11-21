@@ -45,8 +45,9 @@ public record HttpResponse(int status, String contentType, byte[] body) {
 
     @Override
     public boolean equals(Object other) {
-        return other instanceof HttpResponse that && status == that.status
-                && Objects.equals(contentType, that.contentType) && Arrays.equals(body, that.body);
+        return other instanceof HttpResponse(var thatStatus, var thatContentType, var thatBody)
+                && status == thatStatus
+                && Objects.equals(contentType, thatContentType) && Arrays.equals(body, thatBody);
     }
 
     @Override

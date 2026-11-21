@@ -39,7 +39,7 @@ public record RuntimeStatus(
         @Nullable String lastUpgradeResult
 ) {
     public RuntimeStatus {
-        Objects.requireNonNull(version, "version");
+        Objects.requireNonNull(version, KEY_VERSION);
         state = state != null ? state : RuntimeLifecycleState.RUNNING;
         drainRemainingItems = drainRemainingItems != null ? List.copyOf(drainRemainingItems) : List.of();
     }

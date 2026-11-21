@@ -14,6 +14,7 @@ import java.nio.file.NoSuchFileException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpExchange;
@@ -80,29 +81,40 @@ public final class RuntimeClient {
     public HttpExchange open(HttpRequest request) throws IOException {
         var started = false;
         var renewed = false;
-        while (true) {
-            HttpExchange exchange;
-            try {
-                exchange = http.open(withHeaders(request, authenticator.credential()));
-            } catch (NoSuchFileException | RuntimeUnreachableException e) {
-                if (starter == null || started) {
-                    throw new RuntimeUnavailableException("The PM-MCP runtime is not running (" + http.socket() + ")",
-                            e);
-                }
-                starter.ensureRunning();
-                authenticator.renew();
+        HttpExchange result = null;
+        while (result == null) {
+            var exchange = tryOpen(request, !started);
+            if (exchange == null) {
                 started = true;
-                continue;
-            }
-            if (exchange.status() == 401) {
+            } else if (exchange.status() != 401) {
+                result = exchange;
+            } else {
                 exchange.close();
-                if (!renewed && authenticator.renew()) {
-                    renewed = true;
-                    continue;
+                if (renewed || !authenticator.renew()) {
+                    throw new UnauthorizedException("The PM-MCP runtime refused the credential (401)");
                 }
-                throw new UnauthorizedException("The PM-MCP runtime refused the credential (401)");
+                renewed = true;
             }
-            return exchange;
+        }
+        return result;
+    }
+
+    /**
+     * Opens one exchange; when no runtime answers and this attempt may start one, starts it.
+     *
+     * @return the exchange, or {@code null} when the runtime was started and the request is to be sent again
+     */
+    private @Nullable HttpExchange tryOpen(HttpRequest request, boolean mayStart) throws IOException {
+        try {
+            return http.open(withHeaders(request, authenticator.credential()));
+        } catch (NoSuchFileException | RuntimeUnreachableException e) {
+            if (starter == null || !mayStart) {
+                throw new RuntimeUnavailableException("The PM-MCP runtime is not running (" + http.socket() + ")",
+                        e);
+            }
+            starter.ensureRunning();
+            authenticator.renew();
+            return null;
         }
     }
 
@@ -138,7 +150,7 @@ public final class RuntimeClient {
             }
         } catch (InsecureRuntimeFileException e) {
             throw e;
-        } catch (IOException e) {
+        } catch (IOException _) {
             // absent token, no listener, or a runtime still starting: not live
             return false;
         }

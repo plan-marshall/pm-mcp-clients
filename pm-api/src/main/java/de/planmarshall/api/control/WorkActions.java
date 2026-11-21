@@ -42,6 +42,8 @@ public record WorkActions(
         @Nullable String epicId,
         List<ActionAvailability> actions
 ) {
+    private static final String EPIC_ID = "epic_id";
+
     public WorkActions {
         Objects.requireNonNull(subjectId, "subjectId");
         subjectKind = subjectKind == null || subjectKind.isBlank() ? "plan" : subjectKind;
@@ -79,7 +81,7 @@ public record WorkActions(
             map.put("hold_kind", holdKind);
         }
         if (epicId != null) {
-            map.put("epic_id", epicId);
+            map.put(EPIC_ID, epicId);
         }
         map.put("actions", actions.stream().map(ActionAvailability::toMap).toList());
         return map;
@@ -108,7 +110,7 @@ public record WorkActions(
             subjectId = JsonTree.string(map, "plan_id");
         }
         if (subjectId == null) {
-            subjectId = JsonTree.string(map, "epic_id");
+            subjectId = JsonTree.string(map, EPIC_ID);
         }
         if (subjectId == null) {
             throw new JsonFormatException("Missing subject_id in WorkActions");
@@ -129,7 +131,7 @@ public record WorkActions(
                 JsonTree.string(map, "state"),
                 JsonTree.string(map, "pausing_point"),
                 JsonTree.string(map, "hold_kind"),
-                JsonTree.string(map, "epic_id"),
+                JsonTree.string(map, EPIC_ID),
                 actions
         );
     }

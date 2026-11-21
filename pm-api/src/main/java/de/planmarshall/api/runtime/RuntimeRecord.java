@@ -45,7 +45,7 @@ public record RuntimeRecord(long pid, Instant startInstant, String version) {
         byte[] bytes;
         try {
             bytes = Files.readAllBytes(file);
-        } catch (NoSuchFileException e) {
+        } catch (NoSuchFileException _) {
             return Optional.empty();
         }
         try {
@@ -56,7 +56,7 @@ public record RuntimeRecord(long pid, Instant startInstant, String version) {
             var start = JsonTree.string(root, "start_instant");
             return Optional.of(new RuntimeRecord(pid.longValue(), start == null ? null : Instant.parse(start),
                     JsonTree.string(root, "version")));
-        } catch (IOException | NumberFormatException | DateTimeParseException e) {
+        } catch (IOException | NumberFormatException | DateTimeParseException _) {
             return Optional.empty();
         }
     }

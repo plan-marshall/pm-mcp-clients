@@ -30,10 +30,12 @@ public record CleanupKeptItem(
         String keptAt,
         String who
 ) {
+    private static final String TITLE = "title";
+
     public CleanupKeptItem {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, TITLE);
         how = how != null ? how : "ignore";
         keptAt = keptAt != null ? keptAt : "";
         who = who != null ? who : "";
@@ -48,7 +50,7 @@ public record CleanupKeptItem(
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
         map.put("kind", kind);
-        map.put("title", title);
+        map.put(TITLE, title);
         map.put("how", how);
         map.put("kept_at", keptAt);
         map.put("who", who);
@@ -75,7 +77,7 @@ public record CleanupKeptItem(
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
         var kind = JsonTree.string(map, "kind");
-        var title = JsonTree.string(map, "title");
+        var title = JsonTree.string(map, TITLE);
         if (id == null || kind == null || title == null) {
             throw new JsonFormatException("Missing required fields for CleanupKeptItem");
         }

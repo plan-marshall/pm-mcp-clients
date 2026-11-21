@@ -33,6 +33,15 @@ public record SpawnPlan(Path executable, List<String> argv, List<String> environ
     /** Environment variables never passed to a started runtime. */
     static final List<String> WITHHELD_VARIABLES = List.of("PM_MCP_JOB_TOKEN");
 
+    /** The owner's read permission bit of a file mode ({@code S_IRUSR}). */
+    private static final int OWNER_READ = 1 << 8;
+
+    /** The owner's write permission bit of a file mode ({@code S_IWUSR}). */
+    private static final int OWNER_WRITE = 1 << 7;
+
+    /** The creation mode of the daemon log: read and write for the owner only ({@code 0600}). */
+    static final int DAEMON_LOG_MODE = OWNER_READ | OWNER_WRITE;
+
     /**
      * Validates and copies the components.
      *
@@ -104,7 +113,7 @@ public record SpawnPlan(Path executable, List<String> argv, List<String> environ
                                            Map<String, String> environment) {
         var actions = new ArrayList<FileAction>();
         actions.add(new Open(0, "/dev/null", PosixPlatform.O_RDONLY, 0));
-        actions.add(new Open(1, log.toString(), platform.appendFlags(), 0600));
+        actions.add(new Open(1, log.toString(), platform.appendFlags(), DAEMON_LOG_MODE));
         actions.add(new Dup2(1, 2));
         if (platform.usesCloseFromAction()) {
             actions.add(new CloseFrom(3));

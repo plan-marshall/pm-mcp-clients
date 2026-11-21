@@ -22,9 +22,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The generic reader of the shipped client profile documents below {@code classpath:/profiles}: it
@@ -239,13 +241,16 @@ public class ProfileDocumentReader {
         if (clientId == null || !clientId.matches(CLIENT_ID_PATTERN)) {
             throw new IllegalStateException("client_id must be a client id of the schema");
         }
-        if (detection == null) {
-            throw new IllegalStateException("detection is required");
+        var requiredDetection = required(detection, "detection is required");
+        var requiredIdentity = required(identity, "identity is required");
+        return new Profile(clientId, requiredDetection, requiredIdentity);
+    }
+
+    private static <T> T required(@Nullable T value, String message) {
+        if (value == null) {
+            throw new IllegalStateException(message);
         }
-        if (identity == null) {
-            throw new IllegalStateException("identity is required");
-        }
-        return new Profile(clientId, detection, identity);
+        return value;
     }
 
     private static Detection parseDetection(JsonParser parser) throws IOException {
@@ -266,10 +271,10 @@ public class ProfileDocumentReader {
         if (precedence == null || precedence < 1) {
             throw new IllegalStateException("detection.precedence must be a positive integer");
         }
-        if (primarySignals == null || secondarySignals == null) {
-            throw new IllegalStateException("detection.primary_signals and detection.secondary_signals are required");
-        }
-        return new Detection(precedence, primarySignals, secondarySignals);
+        var signalsRequired = "detection.primary_signals and detection.secondary_signals are required";
+        var primary = required(primarySignals, signalsRequired);
+        var secondary = required(secondarySignals, signalsRequired);
+        return new Detection(precedence, primary, secondary);
     }
 
     private static Identity parseIdentity(JsonParser parser) throws IOException {
@@ -287,7 +292,7 @@ public class ProfileDocumentReader {
             switch (field) {
                 case "session_id_variable" -> sessionIdVariable = readText(parser, "identity.session_id_variable");
                 case "version_probe" -> {
-                    versionProbe = readStrings(parser, "identity.version_probe");
+                    versionProbe = readStrings(parser, "identity.version_probe").orElse(null);
                     probeDeclared = true;
                 }
                 case "version_pattern" -> {
@@ -351,9 +356,9 @@ public class ProfileDocumentReader {
         return new HostDetection.Signal(variable, equals);
     }
 
-    private static List<String> readStrings(JsonParser parser, String field) throws IOException {
+    private static Optional<List<String>> readStrings(JsonParser parser, String field) throws IOException {
         if (parser.currentToken() == JsonToken.VALUE_NULL) {
-            return null;
+            return Optional.empty();
         }
         if (parser.currentToken() != JsonToken.START_ARRAY) {
             throw new IllegalStateException(field + " must be an array or null");
@@ -368,7 +373,7 @@ public class ProfileDocumentReader {
         if (values.isEmpty()) {
             throw new IllegalStateException(field + " must not be empty");
         }
-        return values;
+        return Optional.of(values);
     }
 
     private static String readText(JsonParser parser, String field) throws IOException {
@@ -388,7 +393,7 @@ public class ProfileDocumentReader {
         return parser.getIntValue();
     }
 
-    private static boolean readBoolean(JsonParser parser, String field) throws IOException {
+    private static boolean readBoolean(JsonParser parser, String field) {
         var token = parser.currentToken();
         if (token != JsonToken.VALUE_TRUE && token != JsonToken.VALUE_FALSE) {
             throw new IllegalStateException(field + " must be a boolean");
@@ -396,7 +401,7 @@ public class ProfileDocumentReader {
         return token == JsonToken.VALUE_TRUE;
     }
 
-    private static void requireObject(JsonParser parser, String what) throws IOException {
+    private static void requireObject(JsonParser parser, String what) {
         if (parser.currentToken() != JsonToken.START_OBJECT) {
             throw new IllegalStateException(what + " must be a JSON object");
         }
