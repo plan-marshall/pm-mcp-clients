@@ -15,10 +15,10 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
   Anchor: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-layout[Runtime & Interaction Model § Layout]; link:../../../pm-mcp-core/doc/specification/workflow-dsl/07-loop-back-diagrams-verification.adoc#diagram-layout[Workflow DSL § Positioned Layout].
   Proof: contract tests against the scenarios.
 . Drawing a layout in the web app.
-  Anchor: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[CLI, Coordination & Security § Diagrams].
+  Anchor: link:../specification/cli-and-security/03-web-app.adoc#web-diagrams[CLI, Coordination & Security § Web App, Diagrams].
   Proof: the web app's tests draw the fixture layouts with every label within its box (PM-WATCH-DSL-38).
 . A Mermaid block of model text as an image.
-  Anchor: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[CLI, Coordination & Security § Diagrams].
+  Anchor: link:../specification/cli-and-security/03-web-app.adoc#web-diagrams[CLI, Coordination & Security § Web App, Diagrams].
   Proof: the web app's tests show a block as an image and a refused block as its source, with the runtime's security headers unchanged.
 . The setting `diagrams.format` for the machine and a project, in both clients.
   Anchor: link:../../../pm-mcp-core/doc/specification/store-schemas/08-project-configuration-local.adoc#project-levels[Store Schemas § Project Values over Machine Values].
@@ -32,6 +32,6 @@ their implementation watch and the traceability live in this repository (`doc/Sp
 specifications of the engine and their watch documents stay in `pm-mcp-core`.
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11], link:../../../plan-marshall-documentation/doc/requirements/03-skills.adoc#PM-SKILL-2[PM-SKILL-2]
-* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-layout[Runtime & Interaction Model § Layout], link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[CLI, Coordination & Security § Diagrams], link:../../../pm-mcp-core/doc/specification/workflow-dsl/07-loop-back-diagrams-verification.adoc#diagram-layout[Workflow DSL § Positioned Layout], link:../../../pm-mcp-core/doc/specification/store-schemas/08-project-configuration-local.adoc#project-levels[Store Schemas § Project Values over Machine Values]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-layout[Runtime & Interaction Model § Layout], link:../specification/cli-and-security/03-web-app.adoc#web-diagrams[CLI, Coordination & Security § Web App, Diagrams], link:../../../pm-mcp-core/doc/specification/workflow-dsl/07-loop-back-diagrams-verification.adoc#diagram-layout[Workflow DSL § Positioned Layout], link:../../../pm-mcp-core/doc/specification/store-schemas/08-project-configuration-local.adoc#project-levels[Store Schemas § Project Values over Machine Values]
 * Watch: link:../../../pm-mcp-core/doc/implementation-watch/workflow-dsl.adoc#PM-WATCH-DSL-38[PM-WATCH-DSL-38] (its browser test belongs here)
 * Reason: link:../../../plan-marshall-documentation/doc/articles/pele-mermaid-renderer-pele.adoc[Pele]

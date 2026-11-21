@@ -16,8 +16,10 @@ move into `plan-marshall-mcp`, beside the code that implements them. Until then,
 `Traceability`, `Status` and the daemon's
 `Modules` rows stay with the family index in `plan-marshall-documentation`
 (link:../../../plan-marshall-documentation/doc/specification/runtime-model.adoc[the family index]); this document
-lists the parts of this repository alone. The client side of the local API (`01#local-api`, `01#_start_modes`) is
-stated there, in the section that specifies it for both sides, and `pm-api` implements it. The requirements stay in
+lists the parts of this repository alone. The client side of the local API (`01#local-api`) is
+stated there, in the section that specifies it for both sides, and `pm-api` implements it; the on-demand start of
+the start modes (`01#_start_modes`) is specified here, with the terminal client that performs it
+(link:cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start]). The requirements stay in
 `plan-marshall-documentation`
 (link:../../../plan-marshall-documentation/doc/Requirements.adoc[Requirements Document]); what implements and verifies
 each of them is recorded in link:../Traceability.adoc[Traceability].
@@ -30,9 +32,8 @@ Structure Specification], `Specified in`):
 
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 06,
   the event catalogue of the event streams, the `over_size` distribution resource and the hidden-character rule of its
-  encoder; the local API and the start
-  modes its socket client and its on-demand
-  start implement
+  encoder; the local API its socket client implements (its on-demand start is specified in
+  link:cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[CLI, Coordination & Security, part 01])
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`]: part
   03, the relay rules; part 05, the MCP endpoint its integration tests run against
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-operator[`pm-operator`]:
@@ -47,7 +48,8 @@ Structure Specification], `Specified in`):
 * link:runtime-model/03-relay.adoc[Relay] — the relay `pm-mcp serve --job`: its contract, the harness protocol forms
   as the relay serves them (the runtime's answers to them are a section of
   link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#runtime-protocol-forms[part 01]),
-  the connection metadata, the generations at the relay, the relay rules, and the request and response flow
+  the connection metadata, the generations at the relay, the relay rules, the request and response flow, and the
+  relay's verification
 * link:runtime-model/05-mock-runtime.adoc[Mock Runtime] — the mock runtime `pm-mock-runtime`: its endpoints and start,
   the scenario files, the realistic and deterministic timing, the scenarios per flow, and the drift against the real
   runtime

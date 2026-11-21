@@ -10,7 +10,40 @@ link:../ImplementationWatch.adoc[Implementation Watch] » Runtime Model
 == Overview
 
 Watch items for the link:../specification/runtime-model.adoc[Runtime & Interaction Model Specification]. The sections mirror the
-specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Implementation Watch].
+specification. Item format and lifecycle: link:../ImplementationWatch.adoc[Implementation Watch]. The items of the
+on-demand start (`PM-WATCH-RUN-1`, `-5`) watch the section of the terminal client that starts the runtime, in part 01
+of the link:../specification/cli-and-security.adoc[CLI, Coordination & Security Specification].
+
+== Runtime Access & On-Demand Start
+
+[#PM-WATCH-RUN-1]
+=== PM-WATCH-RUN-1: Started means reachable
+
+Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[CLI & Security § Runtime Access & On-Demand Start],
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7]
+Hazard:: A daemon start reported `running` before liveness was verified.
+Guard:: Every on-demand start by `pm-operator` and `pm-operator status` report `running` only after a
+successful authenticated round trip on the runtime's socket (runtime token); `status` is an API request, so its
+`running` is that round trip, and `state/runtime.json` serves only the "not running" answer (no live record) without
+starting the runtime; a test kills the runtime during start, and another leaves a `runtime.json` of a dead process
+and a stale `runtime.token`.
+Source:: plan-marshall defect truthful-signals PLAN-TRUTH-150 D8.
+
+[#PM-WATCH-RUN-5]
+=== PM-WATCH-RUN-5: Without a runtime, the runtime-free verbs start nothing and write nothing
+
+Anchor:: link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[CLI & Security § Runtime Access & On-Demand Start],
+link:../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-7[PM-ARCH-7]
+Hazard:: A status query, a harness status check, or a drain that silently brings up the runtime or writes a file
+breaks the single-writer rule and turns a read-only check into a state change.
+Guard:: With no runtime running, each command of the closed list
+(link:../specification/cli-and-security/01-cli-and-installer.adoc#cli-without-runtime[CLI & Security § Without the runtime])
+runs against a `PM_MCP_BASE` whose tree is hashed before and after: no runtime process is started,
+no socket exists afterwards, and the tree is byte-identical (contents, names, and modes), and each verb opens only
+files of the closed list of direct file reads; matched control: each command of the on-demand list (a `pm-operator` command
+that sends an API request, and `pm-operator runtime start`) starts the runtime on demand; negative control: the worker relay `pm-mcp serve --job`
+started without a runtime starts no runtime process.
+Source:: design review.
 
 == Relay
 

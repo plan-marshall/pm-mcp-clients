@@ -1,16 +1,6 @@
 # pm-mcp-clients
 
-The client contract of [plan-marshall-mcp](https://github.com/plan-marshall/plan-marshall-mcp) and everything that runs outside the daemon:
-
-| Module | What it is |
-|---|---|
-| [`pm-api`](pm-api/) | Client contract of the daemon's API: socket client, on-demand start, runtime-token validation, and harness detection |
-| [`pm-exec`](pm-exec/) | Job confinement launcher, native binary `pm-exec` |
-| [`pm-relay`](pm-relay/) | Harness- and model-facing CLI with the `serve` relay, native binary `pm-mcp` |
-| [`pm-operator`](pm-operator/) | Terminal operator CLI and interactive JLine console, native binary `pm-operator` |
-| [`pm-mock-runtime`](pm-mock-runtime/) | Scenario-driven in-memory mock server providing Unix domain socket and loopback HTTP API |
-| [`pm-web-app`](pm-web-app/) | Browser-based operator web interface (SvelteKit + Vite) |
-| [`pm-web-e2e`](pm-web-e2e/) | End-to-end Playwright tests for the web interface |
+The client contract of [plan-marshall-mcp](https://github.com/plan-marshall/plan-marshall-mcp) and everything that runs outside the daemon: the contract of the daemon's API, the job launcher, the relay, the terminal client, the mock runtime and the web app with its browser tests. The modules, what each holds and what it may depend on are listed only in the [Module Structure Specification](../plan-marshall-documentation/doc/specification/module-structure.adoc#modules) of `plan-marshall-documentation` (the repositories checked out beside each other).
 
 The modules are proprietary software; see [LICENSE.md](LICENSE.md). They are deployed as `SNAPSHOT` versions to the GitHub Packages registry of the organisation `plan-marshall` on every merge to `main` and are never released; the product consumes them from there.
 
