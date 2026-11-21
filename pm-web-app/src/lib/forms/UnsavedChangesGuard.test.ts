@@ -112,6 +112,21 @@ describe('UnsavedChangesGuard', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 
+  it('handles a confirmed leave whose navigation fails, and asks on the next route change', async () => {
+    navigation.goto.mockRejectedValue(new Error('navigation failed'));
+    render(UnsavedChangesGuard, { props: { dirty: true } });
+    navigate(navigationTo('link', TARGET));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+    await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
+    await expect(navigation.goto.mock.results[0]?.value).rejects.toThrow('navigation failed');
+
+    const next = navigationTo('link', TARGET);
+    navigate(next);
+
+    expect(next.cancel).toHaveBeenCalledOnce();
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
   it('lets the beforeunload of a confirmed leave through once, and asks for the next one', async () => {
     navigation.goto.mockReturnValue(new Promise<void>(() => {}));
     render(UnsavedChangesGuard, { props: { dirty: true } });

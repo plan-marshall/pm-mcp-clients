@@ -173,6 +173,23 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
       },
     );
+
+    it('keeps the reason of the newer save when two saves overlap', async () => {
+      render(DemoFormFixture);
+      const { title, reason } = await fill();
+
+      // The first save is still pending when the operator edits the reason and saves again: the
+      // events are dispatched at once and awaited only afterwards.
+      const older = fireEvent.keyDown(title, { key: 'Enter' });
+      const edit = fireEvent.input(reason, { target: { value: 'Second draft' } });
+      const newer = fireEvent.keyDown(title, { key: 'Enter' });
+      await Promise.all([older, edit, newer]);
+
+      expect(screen.getByRole('status')).toHaveTextContent(/submitted/i);
+      expect(changeRoute().cancel).not.toHaveBeenCalled();
+      await fireEvent.input(reason, { target: { value: 'Ship it' } });
+      expect(changeRoute().cancel).toHaveBeenCalledOnce();
+    });
   });
 
   it('cancels on Escape', async () => {

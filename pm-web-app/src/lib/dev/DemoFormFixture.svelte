@@ -18,6 +18,8 @@
   let reason = $state('');
   /** The reason as last saved, the baseline its unsaved changes are measured against. */
   let savedReason = $state('');
+  /** The number of the latest save; only that save may move `savedReason`. */
+  let latestSave = 0;
   let submitted = $state(false);
   let cancelled = $state(false);
   /** Whether the title differs from its baseline, followed through the form's store. */
@@ -50,13 +52,15 @@
   /**
    * Marks the form saved only once the form module reports the save as succeeded. The reason saved
    * is the one submitted, not one typed while the save was pending, and the guard is told nothing:
-   * it asks whenever the form differs from what was saved.
+   * it asks whenever the form differs from what was saved. As in the form module, only the latest
+   * save moves the saved reason: an older one resolving before or after it is superseded.
    */
   function handleSubmit(): void {
     if (!isValid) return;
     const submittedReason = reason;
+    const sequence = ++latestSave;
     void form.submit().then((saved) => {
-      if (!saved) return;
+      if (!saved || sequence !== latestSave) return;
       savedReason = submittedReason;
       submitted = true;
       cancelled = false;

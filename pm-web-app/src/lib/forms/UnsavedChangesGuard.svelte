@@ -29,6 +29,8 @@
   const UNASKED = (): void => {};
   /** Settles the question that is on screen, with `true` to leave. */
   let answer: (leave: boolean) => void = UNASKED;
+  /** A repeated navigation that failed leaves the page as it is, and the guard asks again. */
+  const STAYED = (): void => {};
 
   const guard = createUnsavedChangesGuard({
     isDirty: () => dirty,
@@ -56,7 +58,9 @@
       if (!leave) return;
       // Only the repeated navigation passes unasked; once it has settled, the guard asks again.
       guard.allowLeave();
-      void goto(target).finally(() => guard.endLeave());
+      void goto(target)
+        .finally(() => guard.endLeave())
+        .catch(STAYED);
     });
   });
 

@@ -108,6 +108,8 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
   }
 
   let baseline: T = { ...values };
+  /** The number of the latest save handed to `onSubmit`; only that save may move the baseline. */
+  let latestSave = 0;
   const state = writable<FormState<T>>({ values: { ...values }, errors: { ...errors } });
 
   /** Hands the current values and errors to every subscriber. */
@@ -187,10 +189,13 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
    * Checks every field and, when all pass, hands the values to `onSubmit`. The values become the
    * baseline `isDirty` compares against only once the save has succeeded: while an async save is
    * pending and after a save that rejects or throws, the form stays dirty, so the unsaved-changes
-   * guard still asks.
+   * guard still asks. Of saves that overlap, only the latest one handed to `onSubmit` moves the
+   * baseline, whatever order they resolve in: an older save that resolves before it leaves the form
+   * dirty until the latest has succeeded, and one that resolves after it leaves the baseline alone.
    *
    * @returns a promise of `false` for a refused submit (the first invalid field takes the focus),
-   *          of `true` once the save has succeeded; it rejects with the error of a failed save
+   *          of `true` once the save has succeeded, superseded or not; it rejects with the error of
+   *          a failed save
    */
   async function submit(): Promise<boolean> {
     let firstInvalid: string | null = null;
@@ -215,9 +220,14 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
     }
 
     const submitted = { ...values };
+    const sequence = ++latestSave;
     publish();
     await config.onSubmit?.(submitted);
-    baseline = submitted;
+    // Only the latest save moves the baseline: an older one resolving before or after it is
+    // superseded, so it never sets the baseline to values a newer save has replaced.
+    if (sequence === latestSave) {
+      baseline = submitted;
+    }
     publish();
     return true;
   }

@@ -355,6 +355,55 @@ describe('lib/forms: The shape of a form', () => {
       expect(form.isDirty()).toBe(false);
     });
 
+    /** @returns a form whose saves stay pending until the test resolves each by its position */
+    function formWithPendingSaves() {
+      const saves: Array<() => void> = [];
+      const form = createForm({
+        fields: { title: { initial: '' } },
+        onSubmit: () =>
+          new Promise<void>((resolve) => {
+            saves.push(resolve);
+          }),
+      });
+      return { form, saves };
+    }
+
+    it('keeps the newer values as the baseline when an older save resolves after the newer one', async () => {
+      const { form, saves } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+
+      saves[1]();
+      await expect(newer).resolves.toBe(true);
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+    });
+
+    it('moves the baseline to the newer values when the saves resolve in order', async () => {
+      const { form, saves } = formWithPendingSaves();
+      form.onFieldInput('title', 'Release notes');
+      const older = form.submit();
+      form.onFieldInput('title', 'Release notes, second draft');
+      const newer = form.submit();
+
+      saves[0]();
+      await expect(older).resolves.toBe(true);
+      // The newer save is still pending: the form holds values not yet saved.
+      expect(form.isDirty()).toBe(true);
+      saves[1]();
+      await expect(newer).resolves.toBe(true);
+
+      expect(form.isDirty()).toBe(false);
+      form.onFieldInput('title', 'Release notes');
+      expect(form.isDirty()).toBe(true);
+    });
+
     it('stays dirty after a rejected save and hands the rejection to the caller', async () => {
       const failure = new Error('save failed');
       const form = createForm({
