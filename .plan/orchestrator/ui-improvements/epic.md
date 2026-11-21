@@ -288,6 +288,16 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Decisions
 
+- 2026-11-21 (operator, "analyze, land and emit. From now only emit runbook-lane plans"): **EMIT FORM: every emitted plan goes out as
+  `/plan-marshall-runbook-lane plan=…`, whatever its size**; the row `lane` is set to `runbook` at emit. Plans already running keep their lane.
+- 2026-11-21 (`analyze` of PLAN-173's four candidate lessons, `web-field-system-fixes-001..004`): **all four PROMOTED.** 001 (the
+  pre-merge findings gate blocks on the run's own prescribed squash-message comment), 002 (branch-cleanup prescribes a `ci repo` verb
+  for the squash commit-message default that does not exist) and 004 (quote `manage-status loop-back admit` as a canonical invocation in
+  the finalize loop-back docs) name `plan-marshall:phase-6-finalize`; this repository's store refuses them (`wrong_store`), so they were
+  filed in the OWNING store `/Users/oliver/git/plan-marshall/.plan/local/lessons-learned` as `2026-11-21-19-001`, `-002`, `-003`.
+  003 (web field changes: list async, IME and paste cases up front; verify a relayed review-fix instruction before passing it on) is
+  filed here as `2026-11-21-19-001` (component `pm-web-app`).
+
 - 2026-11-14 (operator, `analyze` of `analyze-fix-build-time-004.md` / `-005.md`, handover and recorded-only findings of the closed plan): "Fold into
   PLAN-165". PLAN-165 gains deliverables 4 (run `-Pe2e` first and fix the specs that still fail), 5 (a module-local `sonar` profile in
   `pm-web-app/pom.xml` so the Sonar job reads a web LCOV report; CI's Sonar job runs `-Psonar`, not `-Pcoverage`, so dropping
@@ -653,6 +663,19 @@ plan spec names the plan, proposal and finding documents it comes from.
 - **handle-open 2026-11-19 (threshold 90, source: unset default; questions only, as the operator worded it).** Populations: the open operator questions 5 (the `OPERATOR DECISIONS OPEN` line of `resume_anchor.md`, read); `## Open Defects` and `## Watches` were NOT walked this run (not unreadable: not asked). Question 1 of 5, the three majors of PLAN-167's landing: presented at the orchestrator's confidence 75 (the defects re-read at `file:line`; the vehicle is the operator's call), operator chose proposal 1: three small direct documentation changes, one per repository (`pm-mcp-core`, `pm-mcp-clients`, `plan-marshall-documentation`), each in its own worktree with a `skip-bot-review` pull request, no lane plan. Decided_by: operator. Follow-up named, nothing staged or started by the orchestrator: the three fixes spelled out in the PLAN-167 Open Defect entry. Question 2 of 5, the fix of PLAN-66's two layer-3 majors (L3-1, L3-2): presented at confidence 70 (both defects re-read at `ac538733`; the scope and the staging are the operator's), operator chose proposal 1: ONE web-side residue plan, staged now as PLAN-169 `web-onboarding-residue` (six deliverables, HELD behind the running PLAN-165, 13 shared files); the mock cut-back is a second plan, named and NOT staged, held behind PLAN-79 and PLAN-168. Decided_by: operator; the staging is the operator's word. Question 3 of 5, the lint defects of PLAN-151: presented at confidence 60 (the defects re-read at `ac538733`; the vehicle is the operator's, the symlink guard not run), operator chose proposal 2: a small plan of its own, staged now as PLAN-170 `vocabulary-lint-hardening` (five deliverables; emittable by the gate, not emitted: this verb emits nothing). Decided_by: operator; the staging is the operator's word. Question 4 of 5, PLAN-168's two outline questions (one item, two parts): part A, the audit id of an `internal_fault` refusal, presented at confidence 65, operator chose proposal 2 (correct the design line and the pack's fix text; no code prints the id) AGAINST the recommended proposal 1; part B, `epic next` with an unknown running count, presented at confidence 60, operator chose proposal 1 (the code wins; two design lines corrected). Decided_by: operator. Consequence: the spec of the STAGED PLAN-168 is amended (deliverables 1d and 6); nothing emitted. Question 5 of 5, the stream of a refusal (stdout or stderr), presented at confidence 65 and re-presented at 75 after the operator asked for the CLI convention (POSIX: stderr for diagnostics, stdout for the result; a refusal that exits 1 is a diagnostic) and whether the TUI breaks (no, by reading): operator chose proposal 1: a verb run as a command prints its refusal to stderr, the interactive console keeps one stream; folded into PLAN-168 deliverable 2 (still six deliverables). Decided_by: operator. All five questions of the run are decided; Open Defects and Watches were not walked.
 
 ## Open Defects
+
+- **PLAN-173 landed (2026-11-21, #525, `88cc8cb3`), analyzed; owner: the operator's decision (no fix plan staged; the orchestrator never fixes inline).**
+  `landings/PLAN-173.md`, three-layer reading by one leaf, every checked point re-read at `88cc8cb3`. The lane says 6 of 6; by the
+  spec's rule at most 3 are met as written. **L2 major: D4(b) is unfixed in the form module** — `forms/index.ts:320-322` builds the
+  first-invalid selector without `CSS.escape`, no test uses a key like `2fa`, `a.b` or a quoted key, and it is not reported as
+  "not reproduced" (the `RadioGroup` half is fixed). **L3-1 (minor, same defect):** such a key makes `submit()` throw before `publish()`
+  — no error shown, no focus move, an unhandled rejection at `DemoFormFixture.svelte:65`. **L3-2 (minor):** `NumberField.commit()`
+  (`:170-180`) clamps and calls `onchange` but fires no `input`, so an `oninput`-wired form keeps the unclamped value and Enter submits
+  it. L2 minors: D3.2 a rejected `onstore` shows nothing (`SecretField.svelte:143` `catch {}`); D6.3 the order test never moves focus by
+  Tab (`DemoFormFixture.test.ts:50`); the checkbox-Enter test passes at the base (`CheckField.test.ts:37`); PLAN-150's `Field.test.ts:57`
+  outline regex is untouched (no role-derived guard); `super-secret-token` still in `SecretField.test.ts:149-160`; the accepted
+  `plan.activity.kind.egress` key is read by nothing. **False claim:** `review_body_findings_total=1`, the provider shows 16 (all 19
+  of the plan's pr-comment findings carry a disposition). Sonar 0 confirmed by the lane at the last analysed head `5bf56b6e`.
 
 - **PLAN-142 layer-3 defects (2026-11-15), owner: operator's decision (fix plan not staged; the orchestrator never fixes inline).**
   `landings/PLAN-142.md` L3-1 (major): a key-driven move to the object after a peek (`TriagePage.svelte:296-299` with

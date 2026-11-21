@@ -2,10 +2,10 @@
   "id": "PLAN-173",
   "slug": "web-field-system-fixes",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "web-field-system-fixes",
+  "pr": "525",
+  "landing": "landings/PLAN-173.md",
   "seq": 173
 }
