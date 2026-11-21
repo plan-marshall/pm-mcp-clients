@@ -371,10 +371,10 @@ export interface UnsavedChangesGuardOptions {
  * A route change asks through the caller's `ask` (the view's ConfirmDialog); a reload or a closed
  * tab is asked through the browser's own `beforeunload` prompt.
  *
- * The one thing the guard holds is a confirmed leave: `allowLeave()` lets the very next check pass
- * unasked — the navigation the confirmed leave repeats — and that check consumes it; `endLeave()`
+ * The one thing the guard holds is a confirmed leave: `allowLeave()` lets the very next route check
+ * pass unasked — the navigation the confirmed leave repeats — and that check consumes it; `endLeave()`
  * withdraws it once that navigation has settled, so a leave that did not happen never lets a later
- * navigation through.
+ * navigation through. A `beforeunload` is not a route check and leaves the confirmed leave alone.
  */
 export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
   const { ask } = options;
@@ -407,8 +407,13 @@ export function createUnsavedChangesGuard(options: UnsavedChangesGuardOptions) {
       return ask();
     },
 
+    /**
+     * Asks through the browser's prompt whenever the form is dirty. An unload is a departure of its
+     * own, so it neither uses nor consumes a confirmed leave: that stays for the route change it
+     * repeats.
+     */
     handleBeforeUnload(e: BeforeUnloadEvent): void {
-      if (!shouldAsk()) return;
+      if (!options.isDirty()) return;
       e.preventDefault();
     },
   };

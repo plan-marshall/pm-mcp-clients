@@ -10,8 +10,9 @@
    *
    * A route change while the form holds unsaved changes is cancelled and asked through a
    * ConfirmDialog with the catalogue's texts: leaving repeats the navigation, which passes unasked
-   * once, and staying keeps the page. A reload or a closed tab is asked through the browser's own
-   * `beforeunload` prompt, which no page can word. The guard asks whenever `dirty` holds, so the
+   * once, and staying keeps the page; while the question is on screen a further route change is
+   * cancelled and the question keeps its target. A reload, a closed tab or a link that unloads the
+   * page is asked through the browser's own `beforeunload` prompt, which no page can word. The guard asks whenever `dirty` holds, so the
    * form tells it nothing when it submits: `dirty` is measured against the last successful save.
    */
   interface Props {
@@ -50,8 +51,16 @@
   }
 
   beforeNavigate((navigation) => {
-    // Leaving the app (reload, closed tab, another site) is asked by the browser's own prompt.
-    if (navigation.type === 'leave' || !navigation.to || !guard.shouldAsk()) return;
+    // Unloading the page (reload, closed tab, a link to another site) is asked by the browser's own
+    // prompt, which the beforeunload listener below raises.
+    if (navigation.willUnload || !navigation.to) return;
+    if (open) {
+      // One question at a time: a further navigation while it is on screen (Back, then Forward) is
+      // cancelled and the open question keeps its target.
+      navigation.cancel();
+      return;
+    }
+    if (!guard.shouldAsk()) return;
     navigation.cancel();
     const target = navigation.to.url;
     void guard.canLeave().then((leave) => {

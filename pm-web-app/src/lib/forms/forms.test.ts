@@ -637,11 +637,22 @@ describe('lib/forms: The shape of a form', () => {
       expect(guard.shouldAsk()).toBe(true);
 
       guard.allowLeave();
-      const leaving = new Event('beforeunload', { cancelable: true });
-      guard.handleBeforeUnload(leaving as BeforeUnloadEvent);
-      expect(leaving.defaultPrevented).toBe(false);
+      await expect(guard.canLeave()).resolves.toBe(true);
       await expect(guard.canLeave()).resolves.toBe(false);
       expect(ask).toHaveBeenCalledOnce();
+    });
+
+    it('prevents a beforeunload of a dirty form after a confirmed leave, and keeps the leave for the route check', async () => {
+      const ask = vi.fn<() => Promise<boolean>>().mockResolvedValue(false);
+      const guard = createUnsavedChangesGuard({ isDirty: () => true, ask });
+
+      guard.allowLeave();
+      const unload = new Event('beforeunload', { cancelable: true });
+      guard.handleBeforeUnload(unload as BeforeUnloadEvent);
+
+      expect(unload.defaultPrevented).toBe(true);
+      await expect(guard.canLeave()).resolves.toBe(true);
+      expect(ask).not.toHaveBeenCalled();
     });
 
     it('asks again once a confirmed leave is withdrawn unconsumed', () => {

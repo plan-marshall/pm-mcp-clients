@@ -34,14 +34,19 @@ const TARGET = new URL('http://localhost/projects');
 /**
  * @param type the kind of navigation
  * @param to where it leads, or `null` where it leads nowhere SvelteKit knows
+ * @param willUnload whether the navigation unloads the page (a same-tab link to another site)
  * @returns a navigation as SvelteKit hands it to `beforeNavigate`, with its cancel spied
  */
-function navigationTo(type: BeforeNavigate['type'], to: URL | null): BeforeNavigate {
+function navigationTo(
+  type: BeforeNavigate['type'],
+  to: URL | null,
+  willUnload = type === 'leave',
+): BeforeNavigate {
   return {
     type,
     from: null,
     to: to === null ? null : { url: to, params: {}, route: { id: null } },
-    willUnload: type === 'leave',
+    willUnload,
     cancel: vi.fn(),
     complete: Promise.resolve(),
   } as unknown as BeforeNavigate;
@@ -127,20 +132,51 @@ describe('UnsavedChangesGuard', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
   });
 
-  it('lets the beforeunload of a confirmed leave through once, and asks for the next one', async () => {
+  it('asks for an unload between a confirmed leave and its route replay, and keeps the leave for the replay', async () => {
+    // The repeated navigation stays pending and has not passed beforeNavigate yet.
     navigation.goto.mockReturnValue(new Promise<void>(() => {}));
     render(UnsavedChangesGuard, { props: { dirty: true } });
     navigate(navigationTo('link', TARGET));
     await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
     await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
 
-    const leaving = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(leaving);
-    const later = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(later);
+    // A reload or a closed tab is a departure of its own: the browser's prompt asks for it.
+    const unload = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unload);
+    expect(unload.defaultPrevented).toBe(true);
 
-    expect(leaving.defaultPrevented).toBe(false);
-    expect(later.defaultPrevented).toBe(true);
+    const replay = navigationTo('goto', TARGET);
+    navigate(replay);
+
+    expect(replay.cancel).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('cancels a further navigation while the question is on screen, and leaves to the first target', async () => {
+    render(UnsavedChangesGuard, { props: { dirty: true } });
+    navigate(navigationTo('link', TARGET));
+    await screen.findByRole('dialog');
+
+    const elsewhere = new URL('http://localhost/settings');
+    const further = navigationTo('popstate', elsewhere);
+    navigate(further);
+    expect(further.cancel).toHaveBeenCalledOnce();
+
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(navigation.goto).toHaveBeenCalledWith(TARGET));
+    expect(navigation.goto).toHaveBeenCalledOnce();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('leaves a link that unloads the page to the browser prompt, without cancelling it or a dialog', () => {
+    render(UnsavedChangesGuard, { props: { dirty: true } });
+    const external = navigationTo('link', new URL('https://example.org/docs'), true);
+
+    navigate(external);
+
+    expect(external.cancel).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('keeps the page when the operator stays', async () => {
