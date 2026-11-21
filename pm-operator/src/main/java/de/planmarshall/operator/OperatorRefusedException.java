@@ -45,9 +45,6 @@ public class OperatorRefusedException extends IOException {
     /** The longest body text a refusal carries; a longer body is no refusal of this API. */
     static final int MAX_MESSAGE_LENGTH = 200;
 
-    /** The process exit code of every refusal. */
-    private static final int EXIT_REFUSED = 1;
-
     /** The catalogue key of the prefix of an unknown refusal whose message the body carries. */
     static final String PREFIX_KEY = "operator.refusal.prefix";
 
@@ -442,10 +439,10 @@ public class OperatorRefusedException extends IOException {
     }
 
     /**
-     * @return the process exit code
+     * @return the process exit code of every refusal
      */
     public int exitCode() {
-        return EXIT_REFUSED;
+        return PmOperator.EXIT_FAILURE;
     }
 
     /**
