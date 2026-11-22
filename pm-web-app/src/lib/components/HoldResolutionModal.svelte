@@ -105,6 +105,13 @@
     onClose();
   }
 
+  // A confirmation belongs to the opening it was asked in: a modal its owner closes, or a hold the
+  // runtime no longer reports, leaves no pending act behind.
+  $: if (!open || hold === null) {
+    confirming = null;
+    reason = '';
+  }
+
   $: title = hold === null ? '' : $t('control.hold.title', { kind: hold.kind, name: hold.subject_id });
 
   /** The figures of the hold, as the one list of figures: the cause, the attempts, the tampered file. */

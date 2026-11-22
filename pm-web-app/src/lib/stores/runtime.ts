@@ -38,6 +38,7 @@ import {
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
+import { isLoopbackSession } from '../utils/loopback';
 import { refreshesProjectView } from './refreshEvents';
 import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
@@ -891,8 +892,6 @@ export async function refreshDecisionsCount(): Promise<void> {
   }
 }
 
-const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-
 /**
  * Records that the network listener this browser reached the machine over was closed.
  *
@@ -901,7 +900,7 @@ const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
  * that says why, with its pairing kept.
  */
 function markListenerClosed(): void {
-  const onLoopback = loopbackHosts.has(window.location.hostname);
+  const onLoopback = isLoopbackSession();
   const closedAt = new Date().toISOString();
   runtimeStore.update((s) => ({
     ...s,

@@ -276,6 +276,32 @@ describe('Dialog', () => {
     expect(document.activeElement).toBe(first);
   });
 
+  it('closes the dialog on top on Escape, and leaves the one below it open', async () => {
+    const onInnerClose = vi.fn();
+    const onOuterClose = vi.fn();
+    render(NestedDialogFixture, {
+      props: {
+        outerTitle: 'Outer',
+        innerTitle: 'Inner',
+        openInnerLabel: 'Open inner',
+        outerActLabel: 'Outer act',
+        innerFirstLabel: 'Inner first',
+        innerLastLabel: 'Inner last',
+        onInnerClose,
+        onOuterClose,
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    await screen.findByRole('dialog', { name: 'Inner' });
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onInnerClose).toHaveBeenCalledOnce();
+    expect(onOuterClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Outer' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Inner' })).not.toBeInTheDocument();
+  });
+
   it('does not take the focus from a child that takes it as it mounts', async () => {
     render(DialogWithAutofocusFixture, { props: { label: 'Name' } });
     await tick();

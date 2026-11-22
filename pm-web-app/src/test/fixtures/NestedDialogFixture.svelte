@@ -12,17 +12,26 @@
   export let outerActLabel = '';
   export let innerFirstLabel = '';
   export let innerLastLabel = '';
+  export let onOuterClose: () => void = () => {};
+  export let onInnerClose: () => void = () => {};
 
   let innerOpen = false;
 </script>
 
-<Dialog open={true} title={outerTitle} onClose={() => {}}>
+<Dialog open={true} title={outerTitle} onClose={onOuterClose}>
   <Button on:click={() => (innerOpen = true)}>{openInnerLabel}</Button>
   <svelte:fragment slot="footer">
     <Button variant="ghost">{outerActLabel}</Button>
   </svelte:fragment>
 
-  <Dialog open={innerOpen} title={innerTitle} onClose={() => (innerOpen = false)}>
+  <Dialog
+    open={innerOpen}
+    title={innerTitle}
+    onClose={() => {
+      innerOpen = false;
+      onInnerClose();
+    }}
+  >
     <Button>{innerFirstLabel}</Button>
     <svelte:fragment slot="footer">
       <Button>{innerLastLabel}</Button>
