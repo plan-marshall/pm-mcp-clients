@@ -157,7 +157,7 @@ public record EpicProcess(
     }
 
     /** Reads the entries of a list as text; a {@code null} entry is skipped. */
-    private static List<String> readStrings(@Nullable Object raw) {
+    static List<String> readStrings(@Nullable Object raw) {
         var values = new ArrayList<String>();
         if (raw instanceof List<?> list) {
             for (var item : list) {

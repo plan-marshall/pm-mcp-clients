@@ -89,10 +89,8 @@ public record AlongsideLanding(
         }
         var countNum = JsonTree.number(map, "count");
         Integer count = countNum != null ? countNum.intValue() : null;
+        // an absent kind stays null here: the canonical constructor supplies the default
         var kind = JsonTree.string(map, "kind");
-        if (kind == null) {
-            kind = defaultKind(count);
-        }
         var holdKind = JsonTree.string(map, "hold_kind");
         if (holdKind == null) {
             holdKind = JsonTree.string(map, "holdKind");

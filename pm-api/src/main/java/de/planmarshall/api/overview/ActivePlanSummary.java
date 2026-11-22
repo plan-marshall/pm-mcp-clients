@@ -198,7 +198,7 @@ public record ActivePlanSummary(
     }
 
     /** The member under the current name, else the one under the legacy name. */
-    private static @Nullable String firstString(Map<String, Object> map, String current, String legacy) {
+    static @Nullable String firstString(Map<String, Object> map, String current, String legacy) {
         var value = JsonTree.string(map, current);
         return value != null ? value : JsonTree.string(map, legacy);
     }

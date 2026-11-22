@@ -97,13 +97,13 @@ public record ActiveEpicSummary(
      */
     public static ActiveEpicSummary fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var epicId = firstString(map, "epic_id", "id");
+        var epicId = ActivePlanSummary.firstString(map, "epic_id", "id");
         if (epicId == null) {
             throw new JsonFormatException("Missing epic_id in ActiveEpicSummary");
         }
 
         var title = JsonTree.string(map, "title");
-        var runningSinceStr = firstString(map, "running_since", "created_at");
+        var runningSinceStr = ActivePlanSummary.firstString(map, "running_since", "created_at");
         Instant runningSince = runningSinceStr != null ? Instant.parse(runningSinceStr) : null;
 
         int runningPlans = intOrZero(map, "running_plans_count");
@@ -111,7 +111,7 @@ public record ActiveEpicSummary(
         int plansDone = intOrZero(map, "plans_done");
         int plansTotal = intOrZero(map, "plans_total");
 
-        var needsKind = firstString(map, "needs_operator_kind", "needs_operator");
+        var needsKind = ActivePlanSummary.firstString(map, "needs_operator_kind", "needs_operator");
         var needsCountNum = JsonTree.number(map, "needs_operator_count");
         Integer needsOperatorCount = needsCountNum != null ? needsCountNum.intValue() : null;
 
@@ -129,12 +129,6 @@ public record ActiveEpicSummary(
                 needsOperatorCount,
                 plans
         );
-    }
-
-    /** The member under the current name, else the one under the legacy name. */
-    private static String firstString(Map<String, Object> map, String current, String legacy) {
-        var value = JsonTree.string(map, current);
-        return value != null ? value : JsonTree.string(map, legacy);
     }
 
     private static int intOrZero(Map<String, Object> map, String key) {

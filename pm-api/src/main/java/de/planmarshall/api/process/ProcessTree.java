@@ -166,7 +166,7 @@ public record ProcessTree(
         var tokensSoFar = tokensObj != null ? ProcessTokens.fromMap(tokensObj) : null;
 
         var nodes = readNodes(map.get("nodes"));
-        var currentPositionPath = readStrings(map.get("current_position_path"));
+        var currentPositionPath = EpicProcess.readStrings(map.get("current_position_path"));
 
         var prNum = JsonTree.number(map, "pull_request_number");
         Integer pullRequestNumber = prNum != null ? prNum.intValue() : null;
@@ -234,19 +234,6 @@ public record ProcessTree(
             }
         }
         return nodes;
-    }
-
-    /** Reads the entries of a list as text; a {@code null} entry is skipped. */
-    private static List<String> readStrings(@Nullable Object raw) {
-        var values = new ArrayList<String>();
-        if (raw instanceof List<?> list) {
-            for (var item : list) {
-                if (item != null) {
-                    values.add(item.toString());
-                }
-            }
-        }
-        return values;
     }
 
     public static ProcessTree fromJson(String json) throws IOException {
