@@ -6,6 +6,9 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
+  import TextField from '../components/TextField.svelte';
+  import CheckField from '../components/CheckField.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { apiClient } from '../api/client';
   import type {
@@ -75,6 +78,16 @@
   let isChatting = $state(false);
   let confirmAbandon = $state(false);
 
+  /** The identity the operator edits on step 2, and the run it was proposed from. */
+  interface IdentityDraft {
+    id: string;
+    name: string;
+    pilot: boolean;
+  }
+
+  let identityDraft = $state<IdentityDraft | null>(null);
+  let identityKey = $state('');
+
   const currentStep = $derived(stepOf(run));
   const isNewRun = $derived(!projectId && !run);
   const isComplete = $derived(run?.state === 'project.completed');
@@ -83,6 +96,30 @@
     run?.chat_disabled_reason ? $t(run.chat_disabled_reason) : $t('project.chat.disabled.no_role'),
   );
   const stepRows = $derived(buildStepRows(run, currentStep));
+
+  /**
+   * The identity of the run, from the state where it publishes one and from the checkout otherwise
+   * (`15-project-onboarding.adoc:65`: the id proposed from the remote's name, the display name from
+   * its owner and name).
+   */
+  const identity = $derived(identityDraft ?? identityProposal(run));
+
+  /**
+   * Whether this step waits for something only the terminal can give it: the build environment of
+   * the machine, which the terminal client captures (`project-onboarding.adoc#build-environment`).
+   */
+  const needsTerminal = $derived(
+    run !== null && currentStep <= 3 && !run.build_environment?.captured_at,
+  );
+
+  // A run that reaches the identity step — or a new run — proposes its values again, and keeps the
+  // operator's edits while the step stays the one on screen.
+  $effect(() => {
+    const key = `${currentStep}|${run?.onboarding_id ?? ''}|${run?.checkout_path ?? ''}`;
+    if (key === identityKey) return;
+    identityKey = key;
+    identityDraft = identityProposal(run);
+  });
 
   onMount(() => {
     void load();
@@ -115,6 +152,55 @@
     void $t;
     measureStepLine();
   });
+
+  /**
+   * @param value the run, or `null` while none is loaded
+   * @returns the identity the operator starts from
+   */
+  function identityProposal(value: ProjectOnboardingState | null): IdentityDraft {
+    const publishedId = typeof value?.id === 'string' ? value.id : '';
+    const publishedName = typeof value?.name === 'string' ? value.name : '';
+    const derived = idFromCheckout(value?.checkout_path);
+    return {
+      id: publishedId || derived,
+      name: publishedName || derived,
+      pilot: value?.pilot === true,
+    };
+  }
+
+  /**
+   * @param checkoutPath the checkout of the run
+   * @returns an id the identifier grammar accepts, proposed from the checkout's own name
+   */
+  function idFromCheckout(checkoutPath?: string | null): string {
+    const name = (checkoutPath ?? '').split('/').filter(Boolean).pop() ?? '';
+    const folded = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    if (!folded) return '';
+    return /^[a-z]/.test(folded) ? folded : `p-${folded}`;
+  }
+
+  /**
+   * Writes one field of the identity the operator edits.
+   *
+   * @param field the field changed
+   * @param value its new value
+   */
+  function setIdentityField(field: keyof IdentityDraft, value: string | boolean): void {
+    identityDraft = { ...identity, [field]: value } as IdentityDraft;
+  }
+
+  /** Records the identity and moves the run on. */
+  async function saveIdentity(): Promise<void> {
+    if (!projectId) return;
+    await applyStep('set', {
+      id: identity.id,
+      name: identity.name,
+      pilot: identity.pilot,
+    });
+  }
 
   /**
    * @param value the run, or `null` while none is loaded
@@ -531,7 +617,78 @@
           {/if}
         </div>
 
-        {#if currentStep <= 3}
+        {#if currentStep === 2}
+          <section class="identity" data-testid="project-identity-step">
+            <h3 class="identity__title">{$t('project.identity.title')}</h3>
+            <TextField
+              label={$t('project.identity.id')}
+              value={identity.id}
+              mono
+              autocomplete="off"
+              spellcheck={false}
+              hint={$t('project.identity.id_hint')}
+              testid="project-identity-id"
+              oninput={(event) =>
+                setIdentityField('id', (event.currentTarget as HTMLInputElement).value)}
+            />
+            <TextField
+              label={$t('project.identity.name')}
+              value={identity.name}
+              autocomplete="off"
+              testid="project-identity-name"
+              oninput={(event) =>
+                setIdentityField('name', (event.currentTarget as HTMLInputElement).value)}
+            />
+            <CheckField
+              label={$t('project.identity.pilot')}
+              description={$t('project.identity.pilot_hint')}
+              checked={identity.pilot}
+              testid="project-identity-pilot"
+              onchange={(checked) => setIdentityField('pilot', checked)}
+            />
+            <div class="identity__actions">
+              <Button
+                variant="primary"
+                loading={isSubmitting}
+                disabled={!identity.id.trim() || !identity.name.trim()}
+                on:click={saveIdentity}
+                data-testid="project-identity-save"
+              >
+                {$t('project.identity.save')}
+              </Button>
+            </div>
+          </section>
+        {/if}
+
+        {#if needsTerminal}
+          <!-- A step that waits on the terminal says what is missing, the command that supplies it,
+               how the run goes on, and offers the check that reads the machine again before the
+               operator leaves the browser (PLAN-59 D3). -->
+          <section class="needs-terminal" data-testid="project-needs-terminal">
+            <h3 class="needs-terminal__title">
+              <Icon name="state.alert" size={16} />
+              {$t('project.needs_terminal.title')}
+            </h3>
+            <p class="needs-terminal__line">
+              {$t('project.needs_terminal.missing', {
+                what: $t('project.needs_terminal.what'),
+              })}
+            </p>
+            <p class="needs-terminal__command-label">{$t('project.needs_terminal.command')}</p>
+            <code class="needs-terminal__command mono" data-testid="project-needs-terminal-command"
+              >{run.build_environment?.command ?? 'pm-operator project add'}</code
+            >
+            <p class="needs-terminal__line">{$t('project.needs_terminal.after')}</p>
+            <Button
+              variant="secondary"
+              loading={isLoading}
+              on:click={() => load()}
+              data-testid="project-needs-terminal-check"
+            >
+              {$t('project.needs_terminal.check_again')}
+            </Button>
+          </section>
+        {:else if currentStep <= 3}
           <section class="build-env" data-testid="project-build-environment">
             <h3 class="build-env__title">{$t('project.onboarding.build_env.title')}</h3>
             {#if run.build_environment?.captured_at}
@@ -644,7 +801,7 @@
             </Button>
             {#if beingAdded}
               <Button
-                variant="danger"
+                variant="secondary"
                 on:click={() => (confirmAbandon = true)}
                 data-testid="project-abandon"
               >
@@ -750,6 +907,67 @@
 {/if}
 
 <style>
+  .identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+  }
+
+  .identity__title {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .identity__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .needs-terminal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-attention-subtle);
+  }
+
+  .needs-terminal__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .needs-terminal__line,
+  .needs-terminal__command-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .needs-terminal__command {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   .project-onboarding {
     min-height: 100vh;
     background-color: var(--color-bg-app);

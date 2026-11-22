@@ -109,6 +109,18 @@ test.describe('Projects lens (UC-PRJ-1..3)', () => {
     await expect(page).not.toHaveURL(/\/projects\/?$/);
   });
 
+  test('shows the three identity fields of a project being added', async ({ page }) => {
+    const being = page.getByTestId('being-added-row');
+    await being.getByTestId('continue-onboarding-btn').click();
+
+    await expect(page).toHaveURL(/\/projects\/onboard$/);
+    const identity = page.getByTestId('project-identity-step');
+    await expect(identity).toBeVisible();
+    await expect(page.getByTestId('project-identity-id')).toHaveValue('cui-parent');
+    await expect(page.getByTestId('project-identity-name')).toHaveValue('cui-parent');
+    await expect(page.getByTestId('project-identity-pilot')).toBeVisible();
+  });
+
   test('shows Add a plan disabled with its reason on a project that is not ready', async ({
     page,
   }) => {

@@ -116,7 +116,7 @@ describe('ProjectOnboardingView component', () => {
     }
   });
 
-  it('names the command that captures a build environment that was never captured', async () => {
+  it('shows what is missing, the command and what happens next when a step needs the terminal', async () => {
     vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
       ...RUN,
       build_environment: null,
@@ -124,11 +124,82 @@ describe('ProjectOnboardingView component', () => {
 
     render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
 
+    const pattern = await screen.findByTestId('project-needs-terminal');
+    expect(pattern).toHaveTextContent('This step needs a terminal');
+    expect(pattern).toHaveTextContent('Still missing: the build environment of this machine');
+    expect(pattern).toHaveTextContent('Run this in a terminal of this machine');
+    expect(screen.getByTestId('project-needs-terminal-command')).toHaveTextContent(
+      'pm-operator project add',
+    );
+    expect(pattern).toHaveTextContent('The run goes on as soon as the machine has it');
+    // The step's own act stays secondary beside the pattern's own check.
+    expect(screen.getByTestId('project-needs-terminal-check')).toHaveTextContent('Check again');
+    expect(screen.queryByTestId('project-build-environment')).not.toBeInTheDocument();
+  });
+
+  it('re-reads the state when Check again is clicked', async () => {
+    const loadSpy = vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      build_environment: null,
+    });
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    await screen.findByTestId('project-needs-terminal');
+    expect(loadSpy).toHaveBeenCalledTimes(1);
+
+    // The terminal captured the environment meanwhile: the check reads the state again and the
+    // pattern gives way to the captured environment.
+    loadSpy.mockResolvedValue(RUN);
+    await fireEvent.click(screen.getByTestId('project-needs-terminal-check'));
+
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(2));
     await waitFor(() =>
-      expect(screen.getByTestId('project-build-environment')).toBeInTheDocument(),
+      expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument(),
     );
     expect(screen.getByTestId('project-build-environment')).toHaveTextContent(
-      'No build environment captured yet: run pm-operator project add',
+      'captured by the terminal client',
+    );
+  });
+
+  it('proposes the identity of the step from the checkout and records it', async () => {
+    const stepSpy = vi.spyOn(apiClient, 'stepProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      step: 3,
+      state: 'project.enrolment',
+    });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      onboarding_id: null,
+      project_id: null,
+      step: 2,
+      state: 'project.identity',
+      summary: 'Identity',
+      checkout_path: '~/git/cui-parent',
+      links: { set: { href: '/api/v1/entries/ent-cui/step' }, abandon: { href: '#' } },
+    });
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    const idField = (await screen.findByTestId('project-identity-id')) as HTMLInputElement;
+    const nameField = screen.getByTestId('project-identity-name') as HTMLInputElement;
+    const pilot = screen.getByTestId('project-identity-pilot');
+    expect(idField.value).toBe('cui-parent');
+    expect(nameField.value).toBe('cui-parent');
+    expect(pilot).not.toBeChecked();
+
+    await fireEvent.input(idField, { target: { value: 'cui-parent-checkout' } });
+    await fireEvent.input(nameField, { target: { value: 'CUI Parent' } });
+    await fireEvent.click(pilot);
+
+    await fireEvent.click(screen.getByTestId('project-identity-save'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('pm-mcp-clients', 'set', {
+        id: 'cui-parent-checkout',
+        name: 'CUI Parent',
+        pilot: true,
+      }),
     );
   });
 
