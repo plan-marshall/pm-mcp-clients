@@ -31,13 +31,13 @@ public record CleanupDecidedEvent(
 ) {
     public static final String EVENT_NAME = "cleanup.decided";
 
-    private static final String DECISION = "decision";
+    private static final String DECISION_KEY = "decision";
     private static final String DELETED_COUNT = "deleted_count";
     private static final String FREED_BYTES = "freed_bytes";
 
     public CleanupDecidedEvent {
         Objects.requireNonNull(jobId, "jobId");
-        Objects.requireNonNull(decision, DECISION);
+        Objects.requireNonNull(decision, DECISION_KEY);
         Objects.requireNonNull(who, "who");
     }
 
@@ -49,7 +49,7 @@ public record CleanupDecidedEvent(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("job_id", jobId);
-        map.put(DECISION, decision);
+        map.put(DECISION_KEY, decision);
         map.put("who", who);
         map.put(DELETED_COUNT, deletedCount);
         map.put(FREED_BYTES, freedBytes);
@@ -81,7 +81,7 @@ public record CleanupDecidedEvent(
         if (jobId == null) {
             jobId = JsonTree.string(map, "id");
         }
-        var decision = JsonTree.string(map, DECISION);
+        var decision = JsonTree.string(map, DECISION_KEY);
         var who = JsonTree.string(map, "who");
         if (jobId == null || decision == null || who == null) {
             throw new JsonFormatException("Missing jobId, decision, or who in CleanupDecidedEvent");

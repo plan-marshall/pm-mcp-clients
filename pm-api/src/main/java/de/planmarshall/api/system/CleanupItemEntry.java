@@ -32,7 +32,7 @@ public record CleanupItemEntry(
         int readReportsCount,
         @Nullable String keptUntil
 ) {
-    private static final String TITLE = "title";
+    private static final String TITLE_KEY = "title";
     private static final String SIZE_BYTES = "size_bytes";
     private static final String LOGS_COUNT = "logs_count";
     private static final String READ_REPORTS_COUNT = "read_reports_count";
@@ -40,7 +40,7 @@ public record CleanupItemEntry(
     public CleanupItemEntry {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(title, TITLE);
+        Objects.requireNonNull(title, TITLE_KEY);
     }
 
     /**
@@ -52,7 +52,7 @@ public record CleanupItemEntry(
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
         map.put("kind", kind);
-        map.put(TITLE, title);
+        map.put(TITLE_KEY, title);
         if (outcome != null) {
             map.put("outcome", outcome);
         }
@@ -88,7 +88,7 @@ public record CleanupItemEntry(
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
         var kind = JsonTree.string(map, "kind");
-        var title = JsonTree.string(map, TITLE);
+        var title = JsonTree.string(map, TITLE_KEY);
         if (id == null || kind == null || title == null) {
             throw new JsonFormatException("Missing id, kind, or title in CleanupItemEntry");
         }
