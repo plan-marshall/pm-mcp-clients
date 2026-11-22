@@ -308,6 +308,33 @@ class WebDevicesCommandTest {
         );
     }
 
+    @ParameterizedTest(name = "{1} in {0}")
+    @CsvSource(delimiter = '|', value = {
+                        "en | rename | rename requires <deviceId> <newLabel>",
+                        "de | rename | rename verlangt <deviceId> <newLabel>",
+                        "en | revoke | revoke requires <deviceId>, --others, or --all",
+                        "de | revoke | revoke verlangt <deviceId>, --others oder --all"})
+    @DisplayName("a rename or revoke missing its arguments is a usage error in the operator's language, on stderr with exit 2")
+    void usageRefusalInTheOperatorsLanguage(String language, String action, String text) throws Exception {
+        seedRuntimeRoutes(true);
+        var inStream = new ByteArrayInputStream(new byte[0]);
+        var terminal = new DumbTerminal(inStream, new ByteArrayOutputStream());
+        var clientEnv = new ClientEnvironment(language, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
+        var out = new StringWriter();
+        var err = new StringWriter();
+        var args = "rename".equals(action)
+                            ? new String[]{"web", "devices", action, Generators.letterStrings(4, 8).next()}
+                            : new String[]{"web", "devices", action};
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+
+        assertAll(
+                            () -> assertEquals(2, code, err.toString()),
+                            () -> assertTrue(err.toString().contains(text), err.toString()),
+                            () -> assertFalse(out.toString().contains(text), out.toString()));
+    }
+
     @Test
     @DisplayName("renames device directly via CLI arguments")
     void renamesDeviceDirectly() throws Exception {

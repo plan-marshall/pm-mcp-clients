@@ -449,6 +449,30 @@ class AnswerRefusalTest {
                             () -> assertEquals(2, posts.get(), "the answer is sent again after the part is asked again"));
     }
 
+    @ParameterizedTest(name = "in {0}: {1}")
+    @CsvSource(delimiter = '|', value = {
+                        "en | Error reading interactive input: ",
+                        "de | Fehler beim Lesen der Eingabe: "})
+    @DisplayName("an input error of the dialogue is a refusal: its line on stderr, never on stdout, exit 1")
+    void interactiveInputErrorOnStderr(String language, String text) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.raw("this is no http response\r\n\r\n");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run(language, "1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(err.toString().contains(text), err.toString()),
+                            () -> assertFalse(out.toString().contains(text), out.toString()));
+    }
+
     @ParameterizedTest(name = "{0} refused as {1} in German")
     @CsvSource(delimiter = '|', nullValues = "NULL", value = {
                         "later    | conflict              | NULL           | In der Zwischenzeit hat sich etwas geändert: Die Entscheidung wurde aktualisiert.",

@@ -266,6 +266,8 @@ public final class ReportsCommand implements Callable<Integer> {
 
         private Integer readByIds(PrintWriter out) throws IOException {
             int marked = 0;
+            var refused = false;
+            var locale = context.clientEnvironment().locale();
             var err = spec.commandLine().getErr();
             for (var id : reportIds) {
                 var safeId = OperatorUrlUtil.encodePathSegment(id);
@@ -273,18 +275,21 @@ public final class ReportsCommand implements Callable<Integer> {
                                     HttpRequest.json("POST", REPORTS_API + safeId + "/read", "{}"));
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
-                } else if (response.status() == 404) {
-                    // The runtime refused this id: a refusal goes to stderr even where the verb
-                    // marks the others and exits 0 (03-dialogues.adoc#refusals).
-                    err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                        "operator.reports.not_found", Map.of("id", id)));
+                    continue;
+                }
+                // The runtime refused this id: every refusal names its cause on stderr, the ids
+                // that read fine are still marked, and the verb exits 1 (03-dialogues.adoc#refusals).
+                refused = true;
+                if (response.status() == 404) {
+                    err.println(MessageCatalogue.format(locale, "operator.reports.not_found", Map.of("id", id)));
                     err.flush();
+                } else {
+                    RefusalRenderer.render(err, locale, new OperatorRefusedException("reports read", response));
                 }
             }
-            out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,
-                                Map.of(KEY_COUNT, marked)));
+            out.println(GLYPH_CHECK + MessageCatalogue.format(locale, KEY_READ_DONE, Map.of(KEY_COUNT, marked)));
             out.flush();
-            return 0;
+            return refused ? 1 : 0;
         }
     }
 

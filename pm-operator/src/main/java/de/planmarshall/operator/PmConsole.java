@@ -601,7 +601,8 @@ public final class PmConsole {
         var sideLines = new ArrayList<String>();
         sideLines.add(url);
         if (activePairingCode != null) {
-            sideLines.add("Code " + activePairingCode + ", valid until " + validUntil);
+            sideLines.add(MessageCatalogue.format(locale(), "operator.web.code_valid_until",
+                                Map.of("code", activePairingCode, "time", validUntil)));
         }
         out.println(QrCodeRenderer.render(url, sideLines));
     }

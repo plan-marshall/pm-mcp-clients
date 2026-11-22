@@ -32,6 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @DisplayName("ReportsCommand")
 @EnableGeneratorController
@@ -351,10 +353,51 @@ class ReportsCommandTest {
 
         int code = execute("reports", "read", presentId, missingId);
         var refused = missingId + " is no report of this machine; reports lists the unread ones.";
-        assertEquals(0, code);
+        assertEquals(1, code, "a refused id makes the verb exit 1");
         assertTrue(err.toString().contains(refused), err.toString());
         assertFalse(out.toString().contains(refused), out.toString());
         assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString());
+    }
+
+    @Test
+    @DisplayName("reports read in German names an unknown id in German on stderr and exits 1")
+    void reportsReadUnknownIdInGerman() throws Exception {
+        var id = "rep-" + Generators.integers(1000, 9999).next();
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = executeWithLocale("de", "reports", "read", id);
+
+        var refused = id + " ist kein Bericht dieser Maschine; reports listet die ungelesenen.";
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(err.toString().contains(refused), err.toString()),
+                            () -> assertFalse(out.toString().contains(refused), out.toString()));
+    }
+
+    @ParameterizedTest(name = "a {0} on one id")
+    @ValueSource(ints = {403, 409, 500})
+    @DisplayName("reports read names a refusal other than 404 with its cause on stderr, marks the others and exits 1")
+    void reportsReadOtherRefusal(int status) throws Exception {
+        var refusedId = "rep-" + Generators.integers(1000, 9999).next();
+        var cause = Generators.letterStrings(8, 16).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/reports/rep-001/read".equals(request.target())) {
+                response.send(200, null, "");
+            } else if (("/api/v1/reports/" + refusedId + "/read").equals(request.target())) {
+                response.json(status, "{\"error\":\"report_locked\",\"message\":\"%s\"}".formatted(cause));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("reports", "read", "rep-001", refusedId);
+
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(err.toString().contains("✗ "), err.toString()),
+                            () -> assertTrue(err.toString().contains(cause), err.toString()),
+                            () -> assertFalse(out.toString().contains(cause), out.toString()),
+                            () -> assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString()));
     }
 
     @Test

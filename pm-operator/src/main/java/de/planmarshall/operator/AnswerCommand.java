@@ -639,9 +639,12 @@ public final class AnswerCommand implements Callable<Integer> {
             // An answer the runtime refused is the design's refusal, never an input error.
             throw refused;
         } catch (IOException e) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.input_error",
-                                Map.of("message", TerminalSanitizer.sanitizeLine(e.getMessage()))));
+            // A one-shot refusal names its cause on stderr, as not_found and parts_unreadable do.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, "operator.decision.input_error",
+                                Map.of("message", TerminalSanitizer.sanitizeLine(e.getMessage()))));
+            err.flush();
             return 1;
         }
     }

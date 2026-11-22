@@ -541,7 +541,7 @@ class QuestionsCommandTest {
     }
 
     @Test
-    @DisplayName("an interactive answer whose terminal cannot be opened reports it and leaves with 1")
+    @DisplayName("an interactive answer whose terminal cannot be opened reports it on stderr and leaves with 1")
     void answerInteractiveTerminalFailure() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
@@ -573,7 +573,9 @@ class QuestionsCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Error reading interactive input: terminal is gone"),
+                            () -> assertTrue(err.toString().contains("Error reading interactive input: terminal is gone"),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("Error reading interactive input"),
                                                 out.toString()));
     }
 

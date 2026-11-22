@@ -391,6 +391,39 @@ class PmConsoleTest {
                             () -> assertFalse(output.contains("This entry does not exist"), output));
     }
 
+    @Test
+    @DisplayName("web qr in German shows the code's validity from the catalogue, never the English line")
+    void webQrInGermanShowsTheGermanValidity() throws Exception {
+        var code = Generators.letterStrings(8, 8).next().toUpperCase();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"label\":\"Firefox\",\"paired_by\":\"open\"}]");
+            } else if ("/api/v1/web/pairings".equals(request.target())) {
+                response.json(201, "{\"code\":\"%s\",\"url\":\"http://127.0.0.1:7420/pair#code=%s\"}"
+                                    .formatted(code, code));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var inStream = new ByteArrayInputStream("web pair\nweb qr\nexit\n".getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(inStream, outStream), null);
+
+        new PmConsole(context).run();
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(output.contains("Code " + code + ", gültig bis "), output),
+                            () -> assertFalse(output.contains(", valid until "), output));
+    }
+
     private OperatorContext consoleContext(String typed, ByteArrayOutputStream outStream) {
         var inStream = new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8));
         return new OperatorContext(

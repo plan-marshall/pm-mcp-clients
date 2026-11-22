@@ -386,8 +386,8 @@ public final class WebCommand implements Callable<Integer> {
         private int handleRename(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (deviceId == null || newLabel == null) {
-                throw new CommandLine.ParameterException(
-                                    spec.commandLine(), "rename requires <deviceId> <newLabel>");
+                throw new CommandLine.ParameterException(spec.commandLine(),
+                                    MessageCatalogue.format(locale, "operator.devices.rename_usage", Map.of()));
             }
             var cleanLabel = TerminalSanitizer.sanitizeLine(newLabel);
             var body = JsonTree.write(Map.of(LABEL, cleanLabel));
@@ -403,8 +403,8 @@ public final class WebCommand implements Callable<Integer> {
         private int handleRevoke(RuntimeClient runtime, PrintWriter out, PrintWriter failures) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (!others && !all && deviceId == null) {
-                throw new CommandLine.ParameterException(
-                                    spec.commandLine(), "revoke requires <deviceId>, --others, or --all");
+                throw new CommandLine.ParameterException(spec.commandLine(),
+                                    MessageCatalogue.format(locale, "operator.devices.revoke_usage", Map.of()));
             }
 
             // Every revocation asks, since it cannot be undone; --yes answers it in a script
