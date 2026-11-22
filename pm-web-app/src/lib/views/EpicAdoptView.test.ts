@@ -13,7 +13,6 @@ describe('EpicAdoptView', () => {
           {
             epic_id: 'relay-hardening',
             title: 'relay-hardening',
-            status: 'staged',
           },
         ],
         projectId: 'pm-mcp-clients',
@@ -42,7 +41,7 @@ describe('EpicAdoptView', () => {
       props: {
         failure: {
           epic_id: 'relay-hardening',
-          reason: 'scope_overlap',
+          reason: 'ledger_invalid',
           detail: 'overlaps with existing epic',
         },
         projectId: 'pm-mcp-clients',

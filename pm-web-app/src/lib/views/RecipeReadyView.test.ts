@@ -11,8 +11,11 @@ describe('RecipeReadyView', () => {
       props: {
         mode: 'parameters',
         recipe: {
+          key: 'code-review',
           name: 'code-review',
           description: 'A code review recipe',
+          origin: 'builtin',
+          takes_request: false,
           parameters: [],
         },
         parameters: [
@@ -62,8 +65,11 @@ describe('RecipeReadyView', () => {
       props: {
         mode: 'ready',
         recipe: {
+          key: 'code-review',
           name: 'code-review',
           description: 'A code review recipe',
+          origin: 'builtin',
+          takes_request: false,
           parameters: [],
         },
         title: 'Review relay code',
