@@ -381,7 +381,8 @@ class ControlCommandTest {
     void settingsUnknownAspectRefusedNamesNoCause() throws Exception {
         var plan = planId();
         serveRefusingWrite(plan, 400, "{\"error\":\"refused\"}", landing());
-        var aspect = "landin" + Generators.letterStrings(1, 4).next().toLowerCase(Locale.ROOT);
+        // landing's aspect plus a dash and at least one letter: never the served aspect, for every seed
+        var aspect = landing().aspect() + "-" + Generators.letterStrings(1, 4).next().toLowerCase(Locale.ROOT);
         var value = Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT);
 
         int code = execute("plan", "settings", plan, "--set", aspect + "=" + value);
