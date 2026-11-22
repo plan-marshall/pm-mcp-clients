@@ -107,7 +107,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     expect(expandedBox.height).toBeGreaterThan(initialBox.height);
   });
 
-  test('sets unread rows apart with a dot and a bold subject, and opening reads them', async ({
+  test('sets unread rows apart with a StatusLabel dot and bold subject, follows the row slot order, and opening reads them', async ({
     page,
   }) => {
     await page
@@ -116,13 +116,45 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
+    // Group heads carry no count and no act button
+    const projectHead = page.locator('.project-header', { hasText: 'pm-mcp-clients' }).first();
+    await expect(projectHead).toBeVisible();
+    await expect(projectHead.getByRole('button')).toHaveCount(0);
+    await expect(projectHead).not.toContainText(/\d/);
+
     const row = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
 
     await expect(row).toHaveAttribute('data-unread', 'true');
-    await expect(row.locator('.report-card__unread-dot')).toBeVisible();
+    const kindMark = row.locator('.report-card__header .kind-mark');
     const subject = row.locator('.report-card__subject');
+    const statusLabel = row.getByTestId('report-unread-state').locator('.status-label--running');
+    const time = row.locator('.item-time');
+    const rowMenu = row.locator('.report-card__header').getByRole('button', {
+      name: /Report actions/i,
+    });
+
+    await expect(kindMark).toHaveAttribute('data-kind', 'plan');
+    await expect(statusLabel.locator('.status-label__dot')).toBeVisible();
+    await expect(statusLabel).toContainText('unread');
     await expect(subject).toHaveClass(/report-card__subject--unread/);
     expect(await subject.evaluate((element) => getComputedStyle(element).fontWeight)).toBe('600');
+
+    // Verify slot order left-to-right / document order: KindMark -> subject -> StatusLabel -> time -> RowMenu
+    const inOrder = await row.evaluate((el) => {
+      const km = el.querySelector('.report-card__header .kind-mark');
+      const sub = el.querySelector('.report-card__subject');
+      const st = el.querySelector('.report-card__header .status-label');
+      const tm = el.querySelector('.item-time');
+      const rm = el.querySelector('.report-card__header [data-testid="report-row-menu"]');
+      if (!km || !sub || !st || !tm || !rm) return false;
+      return Boolean(
+        km.compareDocumentPosition(sub) & Node.DOCUMENT_POSITION_FOLLOWING &&
+          sub.compareDocumentPosition(st) & Node.DOCUMENT_POSITION_FOLLOWING &&
+          st.compareDocumentPosition(tm) & Node.DOCUMENT_POSITION_FOLLOWING &&
+          tm.compareDocumentPosition(rm) & Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+    expect(inOrder).toBe(true);
 
     const before = await unreadCount(page);
 
@@ -131,11 +163,11 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.completion-report')).toBeVisible();
     await expect.poll(() => unreadCount(page)).toBeLessThan(before);
 
-    // While the detail is open the row stays beside it, read: no dot, the normal weight.
+    // While the detail is open the row stays beside it, read: neutral StatusLabel, normal weight.
     const active = page.locator('.report-card--active');
     await expect(active).toHaveCount(1);
     await expect(active).toHaveAttribute('data-unread', 'false');
-    await expect(active.locator('.report-card__unread-dot')).toHaveCount(0);
+    await expect(active.getByTestId('report-unread-state')).toHaveCount(0);
     await expect(active.getByTestId('report-read-state')).toContainText('read');
 
     // Back on the list the report the view read is gone from the unread reports.
@@ -233,10 +265,9 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
   });
 
   test('each part of the from path opens its view without reading the report', async ({ page }) => {
-    await page
-      .getByRole('button', { name: /Open the plan fix-relay/i })
-      .first()
-      .click();
+    const planLink = page.getByRole('link', { name: 'fix-relay' }).first();
+    await expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
+    await planLink.click();
     await expect(page).toHaveURL(/\/plans\/fix-relay$/);
 
     await page

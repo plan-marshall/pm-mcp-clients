@@ -293,15 +293,16 @@ describe('ReportsView component', () => {
     expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
   });
 
-  it('marks unread rows with a dot and the bold subject', async () => {
+  it('marks unread rows with a StatusLabel dot and the bold subject', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
     const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
     expect(card).toHaveAttribute('data-unread', 'true');
-    expect(card.querySelector('.report-card__unread-dot')).not.toBeNull();
+    const status = within(card).getByTestId('report-unread-state');
+    expect(status.querySelector('.status-label--running .status-label__dot')).not.toBeNull();
     // The unread word is anchored to this row, not matched anywhere on the page.
-    expect(within(card).getByText('unread')).toBeInTheDocument();
+    expect(within(status).getByText('unread')).toBeInTheDocument();
     expect(
       screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
     ).toBe(true);
@@ -321,8 +322,10 @@ describe('ReportsView component', () => {
     });
     const active = document.querySelector('.report-card--active') as HTMLElement;
     expect(active).toHaveAttribute('data-unread', 'false');
-    expect(active.querySelector('.report-card__unread-dot')).toBeNull();
-    expect(within(active).getByTestId('report-read-state')).toHaveTextContent('read');
+    expect(within(active).queryByTestId('report-unread-state')).toBeNull();
+    const readState = within(active).getByTestId('report-read-state');
+    expect(readState.querySelector('.status-label--neutral')).not.toBeNull();
+    expect(readState).toHaveTextContent('read');
     expect(
       screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
     ).toBe(false);
@@ -485,30 +488,17 @@ describe('ReportsView component', () => {
     expect(apiClient.getReports).toHaveBeenCalledWith(true);
   });
 
-  it('navigates from each part of the from path without reading the report', async () => {
+  it('links each part of the from path to its route without reading the report', async () => {
     render(ReportsView);
 
-    const projectLink = await screen.findAllByRole('button', {
-      name: /Open the project pm-mcp-clients/i,
-    });
-    await fireEvent.click(projectLink[0]);
-    // A project link opens the one project page, not the old explorer query.
-    expect(get(runtimeStore).currentRoute).toBe('project');
-    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+    const projectLinks = await screen.findAllByRole('link', { name: 'pm-mcp-clients' });
+    expect(projectLinks[0]).toHaveAttribute('href', '/projects/pm-mcp-clients');
 
-    const epicLink = (
-      await screen.findAllByRole('button', {
-        name: /Open the epic relay-hardening/i,
-      })
-    )[0];
-    await fireEvent.click(epicLink);
-    expect(get(runtimeStore).currentRoute).toBe('epic');
-    expect(get(runtimeStore).selectedEpicId).toBe('relay-hardening');
+    const epicLinks = await screen.findAllByRole('link', { name: 'relay-hardening' });
+    expect(epicLinks[0]).toHaveAttribute('href', '/epics/relay-hardening');
 
-    const planLink = await screen.findByRole('button', { name: /Open the plan fix-relay/i });
-    await fireEvent.click(planLink);
-    expect(get(runtimeStore).currentRoute).toBe('plan');
-    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    const planLink = await screen.findByRole('link', { name: 'fix-relay' });
+    expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
 
     expect(apiClient.markReportRead).not.toHaveBeenCalled();
   });
@@ -1754,15 +1744,13 @@ describe('ReportsView component', () => {
     render(ReportsView);
     await screen.findByText('Real project named __machine__ is onboarded');
 
-    const projectBtns = screen.getAllByRole('button', { name: /Open the project __machine__/i });
-    expect(projectBtns.length).toBeGreaterThan(0);
-    const projectBtn = projectBtns[0];
-    expect(projectBtn).toBeInTheDocument();
+    const projectHeading = screen.getByRole('heading', { level: 2, name: /__machine__/i });
+    expect(projectHeading).toBeInTheDocument();
 
-    expect(screen.getByText('This machine')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /This machine/i })).toBeInTheDocument();
 
     const machineSection = screen
-      .getByText('This machine')
+      .getByRole('heading', { level: 2, name: /This machine/i })
       .closest('.project-section') as HTMLElement;
     expect(within(machineSection).getByText('System cleanup due on machine')).toBeInTheDocument();
     expect(within(machineSection).getByText('Drain started')).toBeInTheDocument();
@@ -1770,7 +1758,7 @@ describe('ReportsView component', () => {
       within(machineSection).queryByText('Real project named __machine__ is onboarded'),
     ).toBeNull();
 
-    const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
+    const realProjectSection = projectHeading.closest('.project-section') as HTMLElement;
     expect(
       within(realProjectSection).getByText('Real project named __machine__ is onboarded'),
     ).toBeInTheDocument();
@@ -2460,6 +2448,78 @@ describe('ReportsView component', () => {
       expect(within(filterEmpty).queryByTestId('mascot-figure')).toBeNull();
       expect(screen.queryByTestId('mascot-figure')).toBeNull();
       expect(screen.queryByTestId('empty-state')).toBeNull();
+    });
+  });
+
+  describe('D1 vocabulary: row slot order, group heads, and path links (PLAN-154 D1)', () => {
+    it('places KindMark (wordHidden), subject, StatusLabel, relative time, and RowMenu last in each row', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      expect(card).not.toBeNull();
+
+      const header = card.querySelector('.report-card__header') as HTMLElement;
+      expect(header).not.toBeNull();
+
+      const kindMark = header.querySelector('.kind-mark') as HTMLElement;
+      const subject = header.querySelector('.report-card__subject') as HTMLElement;
+      const statusLabel = header.querySelector('.status-label') as HTMLElement;
+      const time = header.querySelector('.item-time') as HTMLElement;
+      const menuTrigger = within(header).getByRole('button', {
+        name: 'Report actions: Ended: merged (#214)',
+      });
+
+      expect(kindMark).not.toBeNull();
+      expect(kindMark).toHaveAttribute('data-kind', 'plan');
+      expect(kindMark.querySelector('.kind-mark__word')).toHaveClass('sr-only');
+      expect(statusLabel).not.toBeNull();
+      expect(statusLabel).toHaveTextContent('unread');
+      expect(subject).toHaveClass('report-card__subject--unread');
+
+      // Verify fixed slot order in document order: KindMark -> subject -> StatusLabel -> time -> RowMenu
+      expect(kindMark.compareDocumentPosition(subject) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(subject.compareDocumentPosition(statusLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(statusLabel.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(time.compareDocumentPosition(menuTrigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+      // Project-level report shows project KindMark
+      const projectCard = document.querySelector('[data-report-id="rep-0131"]') as HTMLElement;
+      expect(projectCard.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'project');
+    });
+
+    it('renders group heads as headings with KindMark, no count, no act button, and no raw glyphs', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const projectHeading = screen.getByRole('heading', { level: 2, name: /pm-mcp-clients/i });
+      expect(within(projectHeading).queryByRole('button')).toBeNull();
+      expect(projectHeading.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'project');
+      expect(projectHeading.textContent).not.toMatch(/\d/);
+
+      const epicHeading = screen.getByRole('heading', { level: 3, name: /relay-hardening/i });
+      expect(within(epicHeading).queryByRole('button')).toBeNull();
+      expect(epicHeading.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'epic');
+      expect(epicHeading.textContent).not.toContain('◇');
+      expect(epicHeading.textContent).not.toMatch(/\d/);
+    });
+
+    it('renders the origin path project › epic › plan as Link anchors with real hrefs', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      const from = card.querySelector('.report-from') as HTMLElement;
+      expect(from).not.toBeNull();
+
+      const projectLink = within(from).getByRole('link', { name: 'pm-mcp-clients' });
+      expect(projectLink).toHaveAttribute('href', '/projects/pm-mcp-clients');
+
+      const epicLink = within(from).getByRole('link', { name: 'relay-hardening' });
+      expect(epicLink).toHaveAttribute('href', '/epics/relay-hardening');
+
+      const planLink = within(from).getByRole('link', { name: 'fix-relay' });
+      expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
     });
   });
 });

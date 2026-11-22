@@ -3,9 +3,10 @@
   import { t, currentLocale } from '../i18n';
   import { formatDay, formatTime as formatInstant } from '../display/format';
   import Button from '../components/Button.svelte';
-  import Icon from '../components/Icon.svelte';
-  import IconButton from '../components/IconButton.svelte';
+  import KindMark, { type Kind } from '../components/KindMark.svelte';
+  import Link from '../components/Link.svelte';
   import RowMenu from '../components/RowMenu.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import EmptyState from '../components/EmptyState.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -13,6 +14,7 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
+  import { pathForRoute } from '../routes';
   import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
   import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
@@ -787,21 +789,21 @@
   }
 
   /**
-   * Opens a part of the report's origin without reading the report.
-   *
-   * The path is the way to the subject's view; only the details action reads.
-   *
-   * @param part the part of the path the operator chose
-   * @param report the report whose path it is
+   * @param report a report
+   * @returns the kind of its subject, for the row's leading KindMark
    */
-  function openFromPart(part: 'project' | 'epic' | 'plan', report: ReportItem): void {
-    if (part === 'project' && report.from?.project) {
-      openProjectInExplorer(report.from.project);
-    } else if (part === 'epic' && report.from?.epic) {
-      navigateTo('epic', { epicId: report.from.epic });
-    } else if (part === 'plan' && report.from?.plan) {
-      navigateTo('plan', { planId: report.from.plan });
-    }
+  function kindMarkOf(report: ReportItem): Kind {
+    if (report.kind?.startsWith('system.')) return 'machine';
+    const kind = subjectKindOf(report);
+    if (kind === 'cleanup') return 'machine';
+    if (kind === 'project') return 'project';
+    if (kind === 'epic') return 'epic';
+    if (kind === 'decision') return 'decision';
+    if (kind === 'plan' || kind === 'plan_completed') return 'plan';
+    if (report.from?.plan) return 'plan';
+    if (report.from?.epic) return 'epic';
+    if (report.from?.project) return 'project';
+    return 'report';
   }
 
   /**
@@ -1152,22 +1154,10 @@
         {#each groupedReports as pGroup (pGroup.key)}
           <section class="project-section">
             <h2 class="project-header">
-              <span class="project-glyph" aria-hidden="true"
-                ><Icon name="state.dot" size={16} /></span
-              >
-              {#if pGroup.isMachine}
-                <span class="project-title">{$t('report.list.machine')}</span>
-              {:else}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={$t('report.from.open_project', { project: pGroup.key })}
-                  onclick={() =>
-                    openProjectInExplorer(pGroup.key)}
-                >
-                  {pGroup.key}
-                </Button>
-              {/if}
+              <KindMark kind={pGroup.isMachine ? 'machine' : 'project'} wordHidden />
+              <span class="project-title">
+                {pGroup.isMachine ? $t('report.list.machine') : pGroup.key}
+              </span>
             </h2>
 
             <div class="project-content">
@@ -1175,15 +1165,8 @@
               {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems] (epicName)}
                 <div class="epic-section">
                   <h3 class="epic-header">
-                    <span class="epic-glyph" aria-hidden="true">◇</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={$t('report.from.open_epic', { epic: epicName })}
-                      onclick={() => openFromPart('epic', epicItems[0])}
-                    >
-                      {epicName}
-                    </Button>
+                    <KindMark kind="epic" wordHidden />
+                    <span class="epic-title">{epicName}</span>
                   </h3>
                   <div class="items-list">
                     {#each epicItems as item (item.id)}
@@ -1268,54 +1251,64 @@
     data-unread={unread ? 'true' : 'false'}
   >
     <div class="report-card__header">
-      {#if unread}
-        <span class="report-card__unread-dot" aria-hidden="true"></span>
-        <span class="sr-only">{$t('report.state.unread')}</span>
-      {:else}
-        <span class="item-state text-muted" data-testid="report-read-state">
-          {$t('report.state.read')}
-        </span>
-      {/if}
-      <span class="report-from mono">
-        {#if item.from?.project}
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_project', { project: item.from.project })}
-            onclick={() => openFromPart('project', item)}
-          >
-            {item.from.project}
-          </Button>
-        {:else}
-          <span class="text-muted">{$t('report.list.machine')}</span>
-        {/if}
-        {#if item.from?.epic}
-          <span class="path-sep" aria-hidden="true">›</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
-            onclick={() => openFromPart('epic', item)}
-          >
-            {item.from.epic}
-          </Button>
-        {/if}
-        {#if item.from?.plan}
-          <span class="path-sep" aria-hidden="true">›</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
-            onclick={() => openFromPart('plan', item)}
-          >
-            {item.from.plan}
-          </Button>
-        {/if}
-      </span>
+      <KindMark kind={kindMarkOf(item)} wordHidden />
       <span class="report-card__subject" class:report-card__subject--unread={unread}>
         {item.subject}
       </span>
-      <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
+      <div class="report-card__tail">
+        <span
+          class="report-card__read-state"
+          data-testid={unread ? 'report-unread-state' : 'report-read-state'}
+        >
+          <StatusLabel
+            tone={unread ? 'running' : 'neutral'}
+            label={unread ? $t('report.state.unread') : $t('report.state.read')}
+          />
+        </span>
+        <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
+        <div class="report-card__menu">
+          <RowMenu
+            icon="act.more"
+            size="sm"
+            data-testid="report-row-menu"
+            label={rowMenuLabel(item)}
+            advisory={$t('report.list.row_menu.title')}
+            items={[
+              {
+                id: 'mark-read',
+                label: $t('report.action.mark_read'),
+                title: $t('report.action.mark_read.title'),
+                onclick: () => chooseMarkRead(item),
+              },
+            ]}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="report-from mono">
+      {#if item.from?.project}
+        <Link
+          href={pathForRoute('project', { projectId: item.from.project }) ?? ''}
+          label={item.from.project}
+        />
+      {:else}
+        <span class="text-muted">{$t('report.list.machine')}</span>
+      {/if}
+      {#if item.from?.epic}
+        <span class="path-sep" aria-hidden="true">›</span>
+        <Link
+          href={pathForRoute('epic', { epicId: item.from.epic }) ?? ''}
+          label={item.from.epic}
+        />
+      {/if}
+      {#if item.from?.plan}
+        <span class="path-sep" aria-hidden="true">›</span>
+        <Link
+          href={pathForRoute('plan', { planId: item.from.plan }) ?? ''}
+          label={item.from.plan}
+        />
+      {/if}
     </div>
 
     {#if item.body || item.summary}
@@ -1340,8 +1333,8 @@
       {/if}
     {/if}
 
-    <div class="report-card__actions">
-      {#if hasDetail(item)}
+    {#if hasDetail(item)}
+      <div class="report-card__actions">
         <Button
           variant="secondary"
           size="sm"
@@ -1366,25 +1359,8 @@
             })}
           </span>
         {/if}
-      {/if}
-      <div class="report-card__menu">
-        <RowMenu
-          icon="act.more"
-          size="sm"
-          data-testid="report-row-menu"
-          label={rowMenuLabel(item)}
-          advisory={$t('report.list.row_menu.title')}
-          items={[
-            {
-              id: 'mark-read',
-              label: $t('report.action.mark_read'),
-              title: $t('report.action.mark_read.title'),
-              onclick: () => chooseMarkRead(item),
-            },
-          ]}
-        />
       </div>
-    </div>
+    {/if}
   </article>
 {/snippet}
 
@@ -1559,10 +1535,6 @@
     gap: var(--space-2);
   }
 
-  .project-glyph {
-    color: var(--color-primary);
-  }
-
   .project-content {
     display: flex;
     flex-direction: column;
@@ -1586,10 +1558,6 @@
     gap: var(--space-2);
   }
 
-  .epic-glyph {
-    color: var(--color-text-muted);
-  }
-
   .items-list {
     display: flex;
     flex-direction: column;
@@ -1609,20 +1577,23 @@
 
   .report-card__header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
     font-size: var(--text-sm);
   }
 
-  /* The dot is the design system's mark of what is new; the bold subject carries the same word. */
-  .report-card__unread-dot {
-    inline-size: var(--space-2);
-    block-size: var(--space-2);
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary);
-    flex: 0 0 auto;
-    align-self: center;
+  .report-card__tail {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .report-card__read-state {
+    display: inline-flex;
+    align-items: center;
   }
 
   .report-from {
@@ -1632,6 +1603,7 @@
     color: var(--color-text-secondary);
     font-size: var(--text-xs);
     flex-wrap: wrap;
+    padding-left: var(--space-4);
   }
 
   .path-sep {
@@ -1652,11 +1624,6 @@
     box-shadow: inset 3px 0 0 var(--color-primary);
   }
 
-  .item-state {
-    font-size: var(--text-xs);
-    font-style: italic;
-  }
-
   .report-card__subject {
     color: var(--color-text-primary);
     flex: 1 1 auto;
@@ -1669,7 +1636,6 @@
 
   .item-time {
     font-size: var(--text-xs);
-    margin-left: auto;
   }
 
   .report-card__body {
