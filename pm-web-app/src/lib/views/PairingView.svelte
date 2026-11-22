@@ -21,18 +21,33 @@
   let errorMessage = '';
   let isCodeValid = false;
   let isHeroVisible = true;
+  let pairingFrame: HTMLElement | null = null;
+
+  function updateHeroVisibility(): void {
+    const width =
+      pairingFrame?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 0);
+    const height = typeof window !== 'undefined' ? window.innerHeight : 0;
+    isHeroVisible = width > 800 && (height > 520 || height === 0);
+  }
 
   if (typeof window !== 'undefined') {
-    isHeroVisible = window.innerWidth > 800 && (window.innerHeight > 520 || window.innerHeight === 0);
+    updateHeroVisibility();
   }
 
   onMount(() => {
-    const update = () => {
-      isHeroVisible = window.innerWidth > 800 && (window.innerHeight > 520 || window.innerHeight === 0);
+    updateHeroVisibility();
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateHeroVisibility())
+        : null;
+    if (pairingFrame && ro) {
+      ro.observe(pairingFrame);
+    }
+    window.addEventListener('resize', updateHeroVisibility);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', updateHeroVisibility);
     };
-    update();
-    window.addEventListener('resize', update);
-    return () => window.removeEventListener('resize', update);
   });
 
   const cmdLocal = 'pm-operator web open --pair';
@@ -85,7 +100,7 @@
 <!-- The hero stands beside the card on a wide, tall page; the stylesheet hides it where the page is
      too narrow to hold both and below the free-height threshold, and switches the brand icon from
      28 px to 64 px with it. -->
-<div class="pairing-frame">
+<div class="pairing-frame" bind:this={pairingFrame}>
   <div class="pairing-page">
     <div class="pair-card" data-testid="pairing-view">
       {#if $runtimeStore.isRevoked}

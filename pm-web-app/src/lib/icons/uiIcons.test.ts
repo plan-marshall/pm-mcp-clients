@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { cleanup, render } from '@testing-library/svelte';
 import { UI_ICON_IDS, isUiIconId, uiIconUrl } from './uiIcons';
 import Icon from '../components/Icon.svelte';
-import { walk } from '../../test/textFiles';
+import { walk, RASTER_IMAGE } from '../../test/textFiles';
 
 // The suite runs from `pm-web-app` under npm and the repository root under a direct call.
 const projectRoot = existsSync(join(process.cwd(), 'src/lib/icons/ui'))
@@ -140,9 +140,6 @@ describe('Icon component', () => {
     expect(container.querySelector('.ui-icon')).toBeNull();
   });
 });
-
-/** Raster images under `src/` (the mascot figures): binary files, not text a character can sit in. */
-const RASTER_IMAGE = /\.(webp|png)$/;
 
 describe('the emoji sweep', () => {
   it('leaves no pictographic character anywhere in the web app source', () => {

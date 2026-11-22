@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { messagesStore } from '../lib/i18n';
 import Layout from './+layout.svelte';
@@ -114,7 +114,8 @@ describe('the app shell', () => {
     unmount();
 
     resolveMessages(loadMessages('en'));
-    await new Promise((r) => setTimeout(r, 50));
+    await tick();
+    await Promise.resolve();
 
     expect(getConnSpy).not.toHaveBeenCalled();
     expect(get(runtimeStore).isInitialized).toBe(false);

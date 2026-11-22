@@ -92,12 +92,18 @@ describe('MascotFigure', () => {
       expect(buf.subarray(12, 15).toString('ascii')).toBe('VP8');
     });
 
-    it('inlines no mascot file as a data: URL in source', () => {
+    it('inlines no mascot file as a data: URL in source or build output', () => {
       const srcDir = path.resolve(__dirname, '../..');
       for (const file of walk(srcDir)) {
-        if (/\.(webp|png|jpg)$/.test(file)) continue;
         const text = fs.readFileSync(file, 'utf-8');
         expect(text).not.toMatch(/data:image\/webp/);
+      }
+      const buildDir = path.resolve(__dirname, '../../../build');
+      if (fs.existsSync(buildDir)) {
+        for (const file of walk(buildDir)) {
+          const text = fs.readFileSync(file, 'utf-8');
+          expect(text).not.toMatch(/data:image\/webp/);
+        }
       }
     });
   });
