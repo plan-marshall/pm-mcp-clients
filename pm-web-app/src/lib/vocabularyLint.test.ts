@@ -1,14 +1,45 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { parse } from 'svelte/compiler';
 import {
+  RULES,
   lintSvelteSource,
   lintCssSource,
   scanProject,
   formatTable,
   runCli,
 } from '../../scripts/vocabulary-lint.mjs';
+
+/**
+ * Answers what the Svelte compiler itself reports for a source that does not parse, so a test can
+ * state the parser's message and line as the expectation instead of a placeholder.
+ *
+ * @param source the source the lint reads
+ * @returns the error the parser threw
+ */
+function parserErrorOf(source: string): Error & { start?: { line: number } } {
+  try {
+    parse(source, { modern: true });
+  } catch (err) {
+    return err as Error & { start?: { line: number } };
+  }
+  throw new Error('the source parsed, so there is no parser error to compare against');
+}
+
+/**
+ * Collects what the CLI writes to `console.error`, so a test can assert the message it claims.
+ *
+ * @returns the lines the run reports, and the spy to restore
+ */
+function captureErrors(): { lines: string[]; restore: () => void } {
+  const lines: string[] = [];
+  const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+    lines.push(args.map(String).join(' '));
+  });
+  return { lines, restore: () => spy.mockRestore() };
+}
 
 const APP_DIR = path.resolve(__dirname, '../..');
 const BASELINE_PATH = path.join(APP_DIR, 'scripts', 'vocabulary-baseline.json');
@@ -227,16 +258,18 @@ describe('vocabularyLint', () => {
     });
   });
 
-  it('yields an unparseable finding on .svelte syntax error and exits 1 under --error', () => {
+  it('names the parser message and the line it reports on an unparseable .svelte source', () => {
     const brokenSvelte = '<script>\n  let x = ;\n</script>\n<div>Broken</div>';
+    const parserError = parserErrorOf(brokenSvelte);
+    expect(parserError.start?.line).toBeGreaterThan(1);
+
     const findings = parseFindings(lintSvelteSource(brokenSvelte, 'src/lib/views/Broken.svelte'));
     expect(findings).toHaveLength(1);
     expect(findings[0].rule).toBe('unparseable');
     expect(findings[0].file).toBe('src/lib/views/Broken.svelte');
-    expect(findings[0].line).toBeGreaterThanOrEqual(1);
-    expect(findings[0].component).toBeDefined();
-    expect(typeof findings[0].component).toBe('string');
-    expect(findings[0].component.length).toBeGreaterThan(0);
+    expect(findings[0].line).toBe(parserError.start?.line);
+    expect(findings[0].component).toBe(parserError.message);
+    expect(findings[0].message).toBe(parserError.message);
 
     const tempDir = path.join(APP_DIR, 'target', 'test-unparseable-svelte-app');
     const tempSrc = path.join(tempDir, 'src');
@@ -282,10 +315,11 @@ describe('vocabularyLint', () => {
     expect(result.errors.some((e) => e.includes('Stale baseline'))).toBe(false);
   });
 
-  it('--write-baseline refuses to increase baseline counts and leaves baseline byte-identical', () => {
+  it('--write-baseline refuses to increase baseline counts, names the file and both counts, and leaves the baseline byte-identical', () => {
     const tempDir = path.join(APP_DIR, 'target', 'test-increase-baseline-app');
     const tempSrc = path.join(tempDir, 'src');
     const tempScripts = path.join(tempDir, 'scripts');
+    const errors = captureErrors();
     try {
       fs.mkdirSync(tempSrc, { recursive: true });
       fs.mkdirSync(tempScripts, { recursive: true });
@@ -304,9 +338,49 @@ describe('vocabularyLint', () => {
       const exitCode = runCli(['--write-baseline'], tempDir);
       expect(exitCode).toBe(1);
 
+      const reported = errors.lines.join('\n');
+      expect(reported).toContain('src/Sample.svelte');
+      expect(reported).toContain('rule button');
+      expect(reported).toContain('new count is 2');
+      expect(reported).toContain('baseline is 1');
+
       const contentAfter = fs.readFileSync(baselineFile, 'utf-8');
       expect(contentAfter).toBe(initialContent);
     } finally {
+      errors.restore();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--write-baseline refuses a file the baseline does not hold, names it and both counts', () => {
+    const tempDir = path.join(APP_DIR, 'target', 'test-new-file-baseline-app');
+    const tempSrc = path.join(tempDir, 'src');
+    const tempScripts = path.join(tempDir, 'scripts');
+    const errors = captureErrors();
+    try {
+      fs.mkdirSync(tempSrc, { recursive: true });
+      fs.mkdirSync(tempScripts, { recursive: true });
+      const initialBaseline = {
+        'src/Sample.svelte': { button: 1 },
+      };
+      const baselineFile = path.join(tempScripts, 'vocabulary-baseline.json');
+      const initialContent = JSON.stringify(initialBaseline, null, 2) + '\n';
+      fs.writeFileSync(baselineFile, initialContent, 'utf-8');
+
+      fs.writeFileSync(path.join(tempSrc, 'Sample.svelte'), '<button>1</button>');
+      fs.writeFileSync(path.join(tempSrc, 'Newcomer.svelte'), '<button>fresh</button>');
+
+      const exitCode = runCli(['--write-baseline'], tempDir);
+      expect(exitCode).toBe(1);
+
+      const reported = errors.lines.join('\n');
+      expect(reported).toContain('src/Newcomer.svelte');
+      expect(reported).toContain('found 1 finding(s)');
+      expect(reported).toContain('baseline had 0');
+
+      expect(fs.readFileSync(baselineFile, 'utf-8')).toBe(initialContent);
+    } finally {
+      errors.restore();
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
   });
@@ -340,9 +414,10 @@ describe('vocabularyLint', () => {
     }
   });
 
-  it('--write-baseline with missing scripts directory outputs error and does not throw', () => {
+  it('--write-baseline with missing scripts directory reports the missing directory and does not throw', () => {
     const tempDir = path.join(APP_DIR, 'target', 'test-missing-scripts-app');
     const tempSrc = path.join(tempDir, 'src');
+    const errors = captureErrors();
     try {
       fs.mkdirSync(tempSrc, { recursive: true });
       fs.writeFileSync(path.join(tempSrc, 'Sample.svelte'), '<button>1</button>');
@@ -352,6 +427,53 @@ describe('vocabularyLint', () => {
         exitCode = runCli(['--write-baseline'], tempDir);
       }).not.toThrow();
       expect(exitCode).toBe(1);
+
+      const reported = errors.lines.join('\n');
+      expect(reported).toContain('scripts directory does not exist');
+      expect(reported).toContain(path.join(tempDir, 'scripts'));
+    } finally {
+      errors.restore();
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it('--write-baseline leaves an unchanged baseline byte-identical, rule order included', () => {
+    const tempDir = path.join(APP_DIR, 'target', 'test-unchanged-baseline-app');
+    const tempSrc = path.join(tempDir, 'src');
+    const tempScripts = path.join(tempDir, 'scripts');
+    try {
+      fs.mkdirSync(tempSrc, { recursive: true });
+      fs.mkdirSync(tempScripts, { recursive: true });
+      // Eight files, as the committed baseline holds, each with its rules in the order a hand
+      // wrote them rather than alphabetically: select before button, textarea before input.
+      const files: Array<[string, string, string]> = [
+        ['Alpha', '<select><option>1</option></select><button>a</button>', 'src/Alpha.svelte'],
+        ['Beta', '<select><option>1</option></select><button>b</button>', 'src/Beta.svelte'],
+        ['Gamma', '<textarea></textarea><input type="text" />', 'src/Gamma.svelte'],
+        ['Delta', '<textarea></textarea><input type="text" />', 'src/Delta.svelte'],
+        ['Epsilon', '<a href="/x">x</a><button>e</button>', 'src/Epsilon.svelte'],
+        ['Zeta', '<a href="/y">y</a><button>z</button>', 'src/Zeta.svelte'],
+        ['Eta', '<select><option>1</option></select><a href="/z">z</a>', 'src/Eta.svelte'],
+        ['Theta', '<textarea></textarea><button>t</button>', 'src/Theta.svelte'],
+      ];
+      const initialBaseline: Record<string, Record<string, number>> = {};
+      for (const [name, source, rel] of files) {
+        fs.writeFileSync(path.join(tempSrc, `${name}.svelte`), source);
+        const findings = parseFindings(lintSvelteSource(source, rel));
+        const counts: Record<string, number> = {};
+        for (const finding of findings) {
+          counts[finding.rule] = (counts[finding.rule] || 0) + 1;
+        }
+        initialBaseline[rel] = counts;
+      }
+      const baselineFile = path.join(tempScripts, 'vocabulary-baseline.json');
+      const initialContent = JSON.stringify(initialBaseline, null, 2) + '\n';
+      fs.writeFileSync(baselineFile, initialContent, 'utf-8');
+
+      const exitCode = runCli(['--write-baseline'], tempDir);
+      expect(exitCode).toBe(0);
+
+      expect(fs.readFileSync(baselineFile, 'utf-8')).toBe(initialContent);
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
@@ -398,11 +520,28 @@ describe('vocabularyLint', () => {
     }
   });
 
-  it('a lint rule added to the rule list appears as a column of the printed table', () => {
-    const table = formatTable([
-      { file: 'src/Sample.svelte', line: 1, rule: 'unparseable', component: 'syntax error' },
-    ]);
-    expect(table).toContain('unparseable');
+  it('a lint rule added to the rule list appears as a column of the printed table without a finding', () => {
+    const addedRule = 'aria-hidden-on-focusable';
+    expect(RULES[addedRule]).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (RULES as any)[addedRule] = { type: 'element', component: 'SomeComponent' };
+    try {
+      // The only finding is a `button` one: no finding carries the added rule, so its column can
+      // only come from the rule list itself.
+      const table = formatTable([
+        { file: 'src/Sample.svelte', line: 1, rule: 'button', component: 'Button' },
+      ]);
+      const rows = table.split('\n');
+      const header = rows[0].split('|').map((cell) => cell.trim());
+      const column = header.indexOf(addedRule);
+      expect(column).toBeGreaterThan(0);
+      // The finding row and the totals row both carry a zero in that column.
+      expect(rows[2].split('|')[column].trim()).toBe('0');
+      expect(rows[rows.length - 1].split('|')[column].trim()).toBe('**0**');
+    } finally {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (RULES as any)[addedRule];
+    }
   });
 
   it('enforces vocabulary baseline ratchet (clean files stay clean, counted files never grow)', () => {

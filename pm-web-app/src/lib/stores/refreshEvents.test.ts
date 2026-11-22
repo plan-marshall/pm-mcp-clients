@@ -87,10 +87,38 @@ describe('the refresh events', () => {
     expect(refreshesPlanProcess('chat.turn.delta')).toBe(false);
   });
 
-  // No literal inventory of the three sets is kept here: the set IS the definition, and the
-  // behaviour-unchanged evidence is the consumers' own tests, which iterate the exported sets on the
-  // events they served before (`runtime.test.ts`, `ProjectExplorerView.test.ts`, `StartView.test.ts`,
-  // `PlanView.test.ts`).
+  // The sets themselves are the definition the views read, but a pin is what makes a removed
+  // member fail: a consumer test that iterates `it.each(<the set>)` proves only what is still there.
+  // The literals are the sets of `ac538733` (PLAN-165's base) minus `project.released` and
+  // `project.enrolled`, the two names the operator dropped because `EventName` does not hold them.
+  it.each([
+    ['project', PROJECT_REFRESH_EVENTS, ['project.changed']],
+    [
+      'entry',
+      ENTRY_REFRESH_EVENTS,
+      [
+        'reset',
+        'source.added',
+        'source.removed',
+        'source.flagged',
+        'progress.changed',
+        'check.result',
+        'entry.moved',
+        'state.entered',
+      ],
+    ],
+    [
+      'plan process',
+      PLAN_PROCESS_REFRESH_EVENTS,
+      ['activity.changed', 'phase.changed', 'task.off_track', 'project.work_ended'],
+    ],
+  ] as ReadonlyArray<readonly [string, readonly string[], readonly string[]]>)(
+    'pins the content of the %s refresh set as a literal inventory',
+    (_stream, actual, expected) => {
+      expect([...actual]).toEqual([...expected]);
+    },
+  );
+
   it('refreshes the entry on an event that changes what it holds, and never on a chat turn', () => {
     expect(refreshesEntry('source.added')).toBe(true);
     expect(refreshesEntry('reset')).toBe(true);
