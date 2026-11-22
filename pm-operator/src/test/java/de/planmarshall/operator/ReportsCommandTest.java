@@ -350,8 +350,10 @@ class ReportsCommandTest {
         });
 
         int code = execute("reports", "read", presentId, missingId);
+        var refused = missingId + " is no report of this machine; reports lists the unread ones.";
         assertEquals(0, code);
-        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
+        assertTrue(err.toString().contains(refused), err.toString());
+        assertFalse(out.toString().contains(refused), out.toString());
         assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString());
     }
 

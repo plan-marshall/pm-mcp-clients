@@ -266,6 +266,7 @@ public final class ReportsCommand implements Callable<Integer> {
 
         private Integer readByIds(PrintWriter out) throws IOException {
             int marked = 0;
+            var err = spec.commandLine().getErr();
             for (var id : reportIds) {
                 var safeId = OperatorUrlUtil.encodePathSegment(id);
                 var response = context.runtime(true).send(
@@ -273,8 +274,11 @@ public final class ReportsCommand implements Callable<Integer> {
                 if (response.status() == 200 || response.status() == 204) {
                     marked++;
                 } else if (response.status() == 404) {
-                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                    // The runtime refused this id: a refusal goes to stderr even where the verb
+                    // marks the others and exits 0 (03-dialogues.adoc#refusals).
+                    err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.reports.not_found", Map.of("id", id)));
+                    err.flush();
                 }
             }
             out.println(GLYPH_CHECK + MessageCatalogue.format(context.clientEnvironment().locale(), KEY_READ_DONE,

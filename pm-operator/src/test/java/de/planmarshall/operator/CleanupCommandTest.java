@@ -620,7 +620,8 @@ class CleanupCommandTest {
 
             assertAll(
                                 () -> assertEquals(1, code),
-                                () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."), out.toString()),
+                                () -> assertTrue(err.toString().contains(unknown + " is no item of the open cleanup."), err.toString()),
+                                () -> assertFalse(out.toString().contains("is no item of the open cleanup"), out.toString()),
                                 () -> assertEquals(0, deletes.get())
             );
         }
@@ -1789,7 +1790,9 @@ class CleanupCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."),
+                            () -> assertTrue(err.toString().contains(unknown + " is no item of the open cleanup."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("is no item of the open cleanup"),
                                                 out.toString()),
                             () -> assertEquals(0, deletes.get(), "no delete was sent")
         );

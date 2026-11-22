@@ -119,8 +119,10 @@ public final class ProjectSelector {
             return Outcome.stopping(FAILURE_CODE);
         }
         if (projects.isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "project.explorer.empty", Map.of()));
-            out.flush();
+            // Nothing to choose stops the verb with a failure: its line goes to stderr like the
+            // selector's other refusals.
+            err.println(MessageCatalogue.format(locale, "project.explorer.empty", Map.of()));
+            err.flush();
             return Outcome.stopping(FAILURE_CODE);
         }
         printList(out, locale, projects);

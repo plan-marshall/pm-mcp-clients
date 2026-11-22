@@ -25,9 +25,17 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.control.PlanSettingsRecord;
+import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.CleanupItemEntry;
+import de.planmarshall.api.system.CleanupJob;
+import de.planmarshall.api.system.CleanupJobState;
+import de.planmarshall.api.system.CleanupProjectItem;
+import de.planmarshall.api.system.CleanupSummary;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -174,5 +182,61 @@ class LocalRefusalStreamTest {
         int code = execute("runtime", "stop", "--now");
 
         assertRefusedOnStderr(code, "The runtime is not answering.");
+    }
+
+    @Test
+    @DisplayName("cleanup --delete --exclude of an item the open job does not carry refuses on stderr")
+    void cleanupExcludeOutsideTheJob() throws Exception {
+        var item = word();
+        var items = List.of(new CleanupItemEntry(item, "plan", item, "merged", "12 Sep", 1024L, 1, 0, null));
+        var project = new CleanupProjectItem(word(), 1, 0, 1, 0, 1024L, items);
+        var summary = new CleanupSummary(1, 0, 1, 0, 0, 1024L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-" + word(), CleanupJobState.OPEN, "today 03:00", summary, List.of(project),
+                            Map.of());
+        var deletes = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            if (request.target().endsWith("/delete")) {
+                deletes.add(request.target());
+            }
+            response.json(200, JsonTree.write(job.toMap()));
+        });
+        var unknown = "plan:zz" + word();
+
+        int code = execute("cleanup", "--delete", "--exclude", unknown, "--yes");
+
+        assertRefusedOnStderr(code, unknown + " is no item of the open cleanup.");
+        assertTrue(deletes.isEmpty(), "no delete may be sent: " + deletes);
+    }
+
+    @Test
+    @DisplayName("plan settings --set overtaken by another client refuses on stderr without --no-input")
+    void planSettingsConflict() throws Exception {
+        var plan = word();
+        var current = "method." + word();
+        var settingsPath = "/api/v1/plans/" + plan + "/settings";
+        fixture.start((request, response) -> {
+            if (settingsPath.equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, new PlanSettingsRecord(plan, 3, List.of()).toJson());
+            } else if (settingsPath.equals(request.target())) {
+                response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":4,\"current_value\":\""
+                                    + current + "\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "settings", plan, "--set", "method=method." + word());
+
+        assertRefusedOnStderr(code, "Changed meanwhile: it is now " + current + ". Yours was not applied.");
+    }
+
+    @Test
+    @DisplayName("--project ? with no enrolled project refuses on stderr")
+    void projectSelectorWithoutProjects() throws Exception {
+        fixture.start((request, response) -> response.json(200, "{\"projects\":[]}"));
+
+        int code = execute("questions", "--project", "?");
+
+        assertRefusedOnStderr(code, "No project is enrolled yet.");
     }
 }

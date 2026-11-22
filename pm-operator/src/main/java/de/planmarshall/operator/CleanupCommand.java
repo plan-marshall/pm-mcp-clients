@@ -604,7 +604,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (job == null) {
             return 0;
         }
-        var uncheckedIds = resolveExclude(out, job);
+        var uncheckedIds = resolveExclude(spec.commandLine().getErr(), job);
         if (uncheckedIds == null) {
             return 1;
         }
@@ -645,13 +645,14 @@ public final class CleanupCommand implements Callable<Integer> {
     /**
      * Resolves every {@code --exclude} token to an item of the open job: a number as the job prints
      * it, an id, or {@code kind:id}. A token the job does not carry is reported
-     * ({@code operator.cleanup.not_in_job}) and stops the delete.
+     * ({@code operator.cleanup.not_in_job}) and stops the delete. The line is a refusal of the verb,
+     * so it goes to stderr and stdout carries none of it ({@code 03-dialogues.adoc#refusals}).
      *
-     * @param out the verb's writer
+     * @param err the verb's error writer
      * @param job the open cleanup job
      * @return the ids the delete leaves out, or {@code null} when a token names no item
      */
-    private @Nullable List<String> resolveExclude(PrintWriter out, CleanupJob job) {
+    private @Nullable List<String> resolveExclude(PrintWriter err, CleanupJob job) {
         if (exclude == null || exclude.isEmpty()) {
             return List.of();
         }
@@ -661,9 +662,9 @@ public final class CleanupCommand implements Callable<Integer> {
             var raw = OutputSafety.stripControlSequences(token);
             var item = findItem(items, raw);
             if (item == null) {
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     NOT_IN_JOB, Map.of("item", raw)));
-                out.flush();
+                err.flush();
                 return null;
             }
             if (!ids.contains(item.id())) {

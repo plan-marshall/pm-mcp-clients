@@ -114,9 +114,11 @@ public final class ProjectCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
 
         if (response.status() == 404) {
-            out.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
+            // A project the runtime does not know is a refusal of the verb: stderr, never stdout.
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
                                 Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
-            out.flush();
+            err.flush();
             return 1;
         }
 

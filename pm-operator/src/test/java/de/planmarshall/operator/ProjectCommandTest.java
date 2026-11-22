@@ -318,14 +318,15 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project inspect not found returns 1")
+    @DisplayName("project inspect not found returns 1 with its line on stderr")
     void projectInspectNotFound() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
 
         int code = execute("project", "nonexistent");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Project nonexistent not found."))
+                            () -> assertTrue(err.toString().contains("Project nonexistent not found."), err.toString()),
+                            () -> assertFalse(out.toString().contains("not found"), out.toString())
         );
     }
 
@@ -365,8 +366,9 @@ class ProjectCommandTest {
         int code = executeGerman("project", projectId);
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Projekt " + projectId + " nicht gefunden."),
-                                                out.toString())
+                            () -> assertTrue(err.toString().contains("Projekt " + projectId + " nicht gefunden."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("nicht gefunden"), out.toString())
         );
     }
 

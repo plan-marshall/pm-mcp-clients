@@ -1617,13 +1617,18 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                     return refused(out, aspect, value);
                 }
-                out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(KEY_VALUE, current)));
                 if (noInput) {
+                    // The --no-input stop prints the state and the option that answers it on stdout.
+                    out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(KEY_VALUE, current)));
                     out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(KEY_VALUE, current)));
                     out.flush();
                     return 3;
                 }
+                // A change another client overtook is refused: its line goes to stderr.
                 out.flush();
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(KEY_VALUE, current)));
+                err.flush();
                 return 1;
             }
             return refused(out, aspect, value);
