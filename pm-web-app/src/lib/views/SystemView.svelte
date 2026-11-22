@@ -610,11 +610,11 @@
 
   /** The workers as the table's rows; every cell is text the view already formatted. */
   const workerColumns: DataTableColumn[] = [
-    { id: 'role', header: $t('system.workers.col.role'), width: '14%' },
-    { id: 'harness', header: $t('system.workers.col.harness'), width: '12%' },
-    { id: 'model', header: $t('system.workers.col.model'), width: '22%' },
-    { id: 'state', header: $t('system.workers.col.state'), width: '12%' },
-    { id: 'item', header: $t('system.workers.col.current_item'), width: '40%' },
+    { id: 'role', header: $t('system.workers.col.role'), width: '8rem' },
+    { id: 'harness', header: $t('system.workers.col.harness'), width: '5.5rem' },
+    { id: 'model', header: $t('system.workers.col.model'), width: '6.5rem' },
+    { id: 'state', header: $t('system.workers.col.state'), width: '7rem' },
+    { id: 'item', header: $t('system.workers.col.current_item'), width: '8rem' },
   ];
 
   let workerRows = $derived<DataTableRow[]>(
@@ -635,11 +635,11 @@
     {
       id: 'model',
       header: $t(selectedGroupBy === 'model' ? 'system.models.col.model' : 'system.models.col.role'),
-      width: '28%',
+      width: '16rem',
     },
-    { id: 'calls', header: $t('system.models.col.calls'), width: '12%', numeric: true },
-    { id: 'tokens', header: $t('system.models.col.tokens'), width: '36%', numeric: true },
-    { id: 'status', header: $t('system.models.col.status'), width: '24%' },
+    { id: 'calls', header: $t('system.models.col.calls'), width: '6rem', numeric: true },
+    { id: 'tokens', header: $t('system.models.col.tokens'), width: '22rem', numeric: true },
+    { id: 'status', header: $t('system.models.col.status'), width: '10rem' },
   ]);
 
   /**
