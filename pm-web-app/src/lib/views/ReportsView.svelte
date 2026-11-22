@@ -508,8 +508,8 @@
       const page: ReportsPage = await apiClient.getReports();
       // A newer read owns the list now: this answer is older than it, even though it arrived last.
       if (generation !== loadGeneration) return;
-      // An event changed the list while the read was in flight; its mutation is newer than this
-      // snapshot, so read again instead of putting the older list back.
+      // An event or a local mark-read mutation changed the list while the read was in flight; its
+      // mutation is newer than this snapshot, so read again instead of putting the older list back.
       if (epochAtStart !== listEpoch) {
         void loadReports();
         return;
@@ -642,7 +642,7 @@
       // A read the runtime has already reported stays read, and a row another request still holds
       // keeps its marker: only a read nobody else holds and nobody reported returns to unread.
       const stillHeld = (pendingReadIds.get(item.id) ?? 0) > 0;
-      if (retain && !countedReadIds.has(item.id) && !stillHeld) {
+      if (retainedReadIds[item.id] && !countedReadIds.has(item.id) && !stillHeld) {
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
@@ -1264,9 +1264,11 @@
     data-unread={unread ? 'true' : 'false'}
   >
     <div class="report-card__header">
-      <KindMark kind={kindMarkOf(item)} wordHidden />
-      <span class="report-card__subject" class:report-card__subject--unread={unread}>
-        {item.subject}
+      <span class="report-card__lead">
+        <KindMark kind={kindMarkOf(item)} wordHidden />
+        <span class="report-card__subject" class:report-card__subject--unread={unread}>
+          {item.subject}
+        </span>
       </span>
       <div class="report-card__tail">
         <span
@@ -1623,10 +1625,17 @@
     box-shadow: inset 3px 0 0 var(--color-primary);
   }
 
+  .report-card__lead {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1 1 12rem;
+    min-inline-size: 0;
+  }
+
   .report-card__subject {
     color: var(--color-text-primary);
-    flex: 1 1 auto;
-    min-inline-size: 12rem;
+    min-inline-size: 0;
   }
 
   .report-card__subject--unread {
@@ -1680,9 +1689,8 @@
       padding-left: 0;
     }
 
-    .item-time {
+    .report-card__tail {
       margin-left: 0;
-      width: 100%;
     }
   }
 </style>
