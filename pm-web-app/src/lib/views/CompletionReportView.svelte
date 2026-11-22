@@ -937,6 +937,7 @@
   .waste-item {
     display: grid;
     grid-template-columns: 180px 100px 1fr;
+    gap: var(--space-3);
     font-size: var(--text-sm);
     align-items: baseline;
   }
