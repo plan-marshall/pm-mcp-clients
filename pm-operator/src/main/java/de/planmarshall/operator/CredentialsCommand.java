@@ -133,7 +133,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         }
         var locale = locale();
         err.println(MessageCatalogue.format(locale, "operator.credentials.status_failed",
-                            Map.of(KEY, key, REASON, new OperatorRefusedException("credentials", response)
+                            Map.of(KEY, key, REASON, new OperatorRefusedException(CREDENTIALS, response)
                                                 .message(locale))));
         err.flush();
         statusFailed = true;
@@ -244,7 +244,7 @@ public final class CredentialsCommand implements Callable<Integer> {
         var locale = locale();
         if (response.status() != 200 && response.status() != 201 && response.status() != 204) {
             err.println(MessageCatalogue.format(locale, FAILED,
-                                Map.of(KEY, key, REASON, new OperatorRefusedException("credentials", response)
+                                Map.of(KEY, key, REASON, new OperatorRefusedException(CREDENTIALS, response)
                                                     .message(locale))));
             err.flush();
             return PmOperator.EXIT_FAILURE;

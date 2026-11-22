@@ -66,6 +66,7 @@ public final class ProjectCommand implements Callable<Integer> {
     private static final String KEY_PROJECT_NOT_FOUND = "operator.project.not_found";
     private static final String PARAM_PROJECT = "project";
     private static final String PARAM_VALUE = "value";
+    private static final String PARAM_REASON = "reason";
     private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
@@ -379,7 +380,7 @@ public final class ProjectCommand implements Callable<Integer> {
         private static String enrolFailed(String locale, String safePath, HttpResponse response) {
             var refusal = new OperatorRefusedException("project add", response);
             return MessageCatalogue.format(locale, "enrolment.enrol.failed",
-                                Map.of("path", safePath, "reason", refusal.message(locale)));
+                                Map.of("path", safePath, PARAM_REASON, refusal.message(locale)));
         }
 
         private Started resolveSource(HttpResponse response) throws IOException {
@@ -743,7 +744,7 @@ public final class ProjectCommand implements Callable<Integer> {
                                         Map.of("id", sanitizedId)));
                 } else {
                     err.println(MessageCatalogue.format(locale, "enrolment.unenrol.failed",
-                                        Map.of("id", sanitizedId, "reason", new OperatorRefusedException(
+                                        Map.of("id", sanitizedId, PARAM_REASON, new OperatorRefusedException(
                                                             VERB_UNENROL, response).message(locale))));
                 }
                 err.flush();
@@ -779,7 +780,7 @@ public final class ProjectCommand implements Callable<Integer> {
     static String refusalReason(String body) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, "reason");
+            var reason = JsonTree.string(map, PARAM_REASON);
             if (reason == null) {
                 reason = JsonTree.string(map, "error");
             }

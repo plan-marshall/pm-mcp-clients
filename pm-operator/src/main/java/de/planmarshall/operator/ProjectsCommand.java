@@ -207,7 +207,7 @@ public final class ProjectsCommand implements Callable<Integer> {
                                 Map.of("filter", OutputSafety.stripControlSequences(filter))));
         } else {
             out.println(MessageCatalogue.format(locale, "project.explorer.matches", Map.of(
-                                "filter", OutputSafety.stripControlSequences(filter), "count", matches.size())));
+                                "filter", OutputSafety.stripControlSequences(filter), KEY_COUNT, matches.size())));
             for (var p : matches) {
                 printProjectRow(out, p, locale, clock);
             }

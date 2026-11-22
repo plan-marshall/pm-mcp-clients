@@ -550,8 +550,8 @@ public final class EntryFlow {
             var locale = context.clientEnvironment().locale();
             var reason = OperatorRefusedException.screenText(e, locale);
             out.println(MessageCatalogue.format(locale, "operator.console.code_failed",
-                                Map.of("reason", TerminalSanitizer.sanitizeLine(!reason.isEmpty()
-                                                    ? reason : e.getClass().getSimpleName()))));
+                                Map.of("reason", TerminalSanitizer.sanitizeLine(reason.isEmpty()
+                                                    ? e.getClass().getSimpleName() : reason))));
             return null;
         }
     }
