@@ -345,8 +345,8 @@ public final class WebCommand implements Callable<Integer> {
             }
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
-            // A refusal of the verb itself goes to stderr, --interactive or not
-            // (03-dialogues.adoc); only the acts of the dialogue after a listed set answer on stdout.
+            // Every refusal of this verb goes to stderr, --interactive or not, the acts of the
+            // dialogue after a listed set included: it runs as one shell command (03-dialogues.adoc).
             var failures = spec.commandLine().getErr();
 
             int code = 0;
@@ -486,13 +486,13 @@ public final class WebCommand implements Callable<Integer> {
             if (interactive && context.isInteractiveTerminal()) {
                 var parsed = JsonTree.parse(response.body());
                 if (parsed instanceof List<?> list && !list.isEmpty()) {
-                    return handleInteractive(runtime, out, list);
+                    return handleInteractive(runtime, out, failures, list);
                 }
             }
             return 0;
         }
 
-        private int handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
+        private int handleInteractive(RuntimeClient runtime, PrintWriter out, PrintWriter failures, List<?> list) {
             var locale = context.clientEnvironment().locale();
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
@@ -507,7 +507,7 @@ public final class WebCommand implements Callable<Integer> {
                                                                             "operator.devices.leave", Map.of())));
                 var line = reader.readLine(prompt);
                 if (line != null) {
-                    return processInteractiveChoice(runtime, out, reader, list, line.trim());
+                    return processInteractiveChoice(runtime, out, failures, reader, list, line.trim());
                 }
                 return 0;
             }
@@ -523,28 +523,29 @@ public final class WebCommand implements Callable<Integer> {
             catch (IOException _) {
                 // The act did not run: say so on stderr and leave with the failure, never a silent 0.
                 out.flush();
-                var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
-                err.flush();
+                failures.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
+                failures.flush();
                 return PmOperator.EXIT_FAILURE;
             }
         }
 
-        private int processInteractiveChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+        private int processInteractiveChoice(RuntimeClient runtime, PrintWriter out, PrintWriter failures,
+                            LineReader reader, List<?> list, String choice) throws IOException {
             if ("q".equalsIgnoreCase(choice) || "leave".equalsIgnoreCase(choice) || choice.isEmpty()) {
                 return 0;
             }
             if ("o".equalsIgnoreCase(choice)) {
                 this.others = true;
-                return handleRevoke(runtime, out, out);
+                return handleRevoke(runtime, out, failures);
             }
             if ("n".equalsIgnoreCase(choice)) {
-                return handleListenerOff(runtime, out, out);
+                return handleListenerOff(runtime, out, failures);
             }
-            return processDeviceIndexChoice(runtime, out, reader, list, choice);
+            return processDeviceIndexChoice(runtime, out, failures, reader, list, choice);
         }
 
-        private int processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+        private int processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, PrintWriter failures,
+                            LineReader reader, List<?> list, String choice) throws IOException {
             var locale = context.clientEnvironment().locale();
             int num;
             try {
@@ -572,13 +573,13 @@ public final class WebCommand implements Callable<Integer> {
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
                     this.deviceId = devInfo.id();
                     this.newLabel = newLbl.trim();
-                    return handleRename(runtime, out, out);
+                    return handleRename(runtime, out, failures);
                 }
                 return 0;
             }
             if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
                 this.deviceId = devInfo.id();
-                return handleRevoke(runtime, out, out);
+                return handleRevoke(runtime, out, failures);
             }
             return 0;
         }

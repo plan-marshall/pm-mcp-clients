@@ -659,9 +659,9 @@ class WebDevicesCommandTest {
         );
     }
 
-    @ParameterizedTest(name = "a refused {0} in the interactive list leaves with 1 and the refusal")
+    @ParameterizedTest(name = "a refused {0} in the interactive list leaves with 1 and the refusal on stderr")
     @MethodSource("refusedInteractiveActs")
-    @DisplayName("a refused act in the interactive list leaves with 1 and the refusal")
+    @DisplayName("a refused act in the interactive list leaves with 1 and its refusal on stderr, none of it on stdout")
     void aRefusedInteractiveActLeavesWithOne(String act, String refusedMethod, String typed, String refusal)
                         throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -685,15 +685,21 @@ class WebDevicesCommandTest {
 
         var context = createContext(typed);
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         int code = cmd.execute("-i");
 
+        // web devices --interactive runs as one shell command: its refusals go to stderr
+        // and stdout carries none of them (03-dialogues.adoc).
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains(refusal), output)
+                            () -> assertTrue(failures.toString().contains(refusal), failures.toString()),
+                            () -> assertFalse(output.contains(refusal), output),
+                            () -> assertFalse(output.contains("runtime refused"), output)
         );
     }
 

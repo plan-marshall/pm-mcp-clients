@@ -290,6 +290,61 @@ class ControlCommandTest {
         );
     }
 
+    /**
+     * Serves the landing setting and refuses every write with a server error, which names no cause.
+     *
+     * @param plan     the plan
+     * @param revision its settings revision
+     */
+    private void serveRefusingLanding(String plan, int revision) throws IOException {
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + plan + "/settings").equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, settingsJson(plan, revision, landing()));
+            } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
+                response.send(500, "application/json", "{\"error\":\"internal\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("plan settings refusing a value among the choices names no false cause, on stderr")
+    void settingsRefusedInChoicesNamesNoCause() throws Exception {
+        var plan = planId();
+        serveRefusingLanding(plan, Generators.integers(2, 90).next());
+        var choices = landing().choices();
+        var value = choices.get(Generators.integers(0, choices.size() - 1).next());
+
+        int code = execute("plan", "settings", plan, "--set", "landing=" + value);
+
+        var refused = "landing = " + value + " is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("not one of"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("plan settings --remove refused names the setting and no false cause, on stderr")
+    void settingsRemoveRefusedNamesNoCause() throws Exception {
+        var plan = planId();
+        serveRefusingLanding(plan, Generators.integers(2, 90).next());
+
+        int code = execute("plan", "settings", plan, "--remove", "landing");
+
+        var refused = "Removing the plan's own value of landing is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("not one of"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
     @Test
     @DisplayName("plan settings reports a missing plan")
     void settingsMissingPlan() throws Exception {

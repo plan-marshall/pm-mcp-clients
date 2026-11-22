@@ -106,6 +106,7 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KEY_OUTPUT = "output";
     private static final String KEY_COUNT = "count";
     private static final String KEY_STATE_ROW = "state";
+    private static final String KEY_ASPECT = "aspect";
     private static final String PHASE = "phase";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
@@ -1650,7 +1651,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         private PlanSettingsUpdateResult put(int revision, String aspect, @Nullable String value) throws IOException {
             var payload = new LinkedHashMap<String, Object>();
-            payload.put("aspect", aspect);
+            payload.put(KEY_ASPECT, aspect);
             if (value != null) {
                 payload.put(KEY_VALUE, value);
             } else {
@@ -1666,25 +1667,44 @@ public final class PlanCommand implements Callable<Integer> {
         }
 
         private int refused(PrintWriter out, String aspect, @Nullable String value) throws IOException {
+            var line = refusalLine(aspect, value);
+            // A refused setting is a failure of the one-shot verb: its line goes to stderr.
+            out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(line);
+            err.flush();
+            return 1;
+        }
+
+        /**
+         * Words a refused change. A cause is named only where it is known: "not one of" its choices
+         * only for a submitted value outside them. A removal, or a value among the choices, gets a
+         * line that names the setting without a cause, since the refusal may have any other.
+         *
+         * @param aspect the setting
+         * @param value  the submitted value, {@code null} for a removal
+         * @return the refusal line in the operator's language
+         */
+        private String refusalLine(String aspect, @Nullable String value) throws IOException {
+            var locale = context.locale();
+            if (value == null) {
+                return MessageCatalogue.format(locale, "control.settings.refused_remove", Map.of(KEY_ASPECT, aspect));
+            }
             var response = context.runtime(true).send(
                                 HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
-            var locale = context.locale();
             var reason = MessageCatalogue.format(locale, "control.settings.refused.does_not_fit", Map.of());
             if (response.status() == 200) {
-                var current = PlanSettingsRecord.fromJson(response.bodyText());
-                var entry = current.value(aspect);
+                var entry = PlanSettingsRecord.fromJson(response.bodyText()).value(aspect);
                 if (entry != null && !entry.choices().isEmpty()) {
+                    if (entry.choices().contains(value)) {
+                        return MessageCatalogue.format(locale, "control.settings.refused_set",
+                                            Map.of(KEY_ASPECT, aspect, KEY_VALUE, value));
+                    }
                     reason = MessageCatalogue.format(locale, "control.settings.refused.not_a_choice",
                                         Map.of("choices", String.join(", ", entry.choices())));
                 }
             }
-            // A refused setting is a failure of the one-shot verb: its line goes to stderr.
-            out.flush();
-            var err = spec.commandLine().getErr();
-            err.println(MessageCatalogue.format(locale, "control.settings.refused",
-                                Map.of(KEY_VALUE, value != null ? value : aspect, KEY_REASON, reason)));
-            err.flush();
-            return 1;
+            return MessageCatalogue.format(locale, "control.settings.refused", Map.of(KEY_VALUE, value, KEY_REASON, reason));
         }
 
         private void printSettings(PrintWriter out, PlanSettingsRecord settings) {

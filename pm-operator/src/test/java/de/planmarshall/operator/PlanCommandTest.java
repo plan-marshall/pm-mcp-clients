@@ -1209,6 +1209,41 @@ class PlanCommandTest {
         }
 
         @Test
+        @DisplayName("a refused value among the choices names no false cause in German")
+        void refusedValueAmongTheChoices() throws Exception {
+            var other = "other-" + Generators.letterStrings(3, 6).next().toLowerCase();
+            serveRefusingSettings(List.of(value, other));
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            var refused = aspect + " = " + value + " wird abgelehnt; nichts wurde geändert.";
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                                () -> assertFalse(err.toString().contains("keiner von"), err.toString()),
+                                () -> assertFalse(err.toString().contains("is refused"), err.toString()),
+                                () -> assertFalse(out.toString().contains("abgelehnt"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("a refused removal names the setting and no false cause in German")
+        void refusedRemovalNamesNoCause() throws Exception {
+            var first = "first-" + Generators.letterStrings(3, 6).next().toLowerCase();
+            serveRefusingSettings(List.of(first, value));
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--remove", aspect);
+
+            var refused = "Den eigenen Wert des Plans für " + aspect + " zu entfernen, wird abgelehnt; "
+                                + "nichts wurde geändert.";
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                                () -> assertFalse(err.toString().contains("keiner von"), err.toString()),
+                                () -> assertFalse(err.toString().contains("is refused"), err.toString()),
+                                () -> assertFalse(out.toString().contains("abgelehnt"), out.toString()));
+        }
+
+        @Test
         @DisplayName("the plan's settings name their origin in German")
         void settingsListInGerman() throws Exception {
             serveRefusingSettings(List.of());

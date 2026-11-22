@@ -5,8 +5,10 @@
 # `cleanup` (before-keys): the screen is the console prompt, the .after.txt is the cleanup list with
 # the keyed choice bar under it. The delete captures type `d` too, so their .after.txt is the
 # delete confirmation with its y/n question. The exit keys leave the dialogue (`q`, `v` in German)
-# and then the console (`exit`). Two .after.txt screens are committed below PLAN-174/ (the delete
-# confirmation at 80x24 and 120x30, en). They are manual review evidence only: ScreenCaptureIT writes
+# and then the console (`exit`). Eight .after.txt screens are committed below PLAN-174/, one per
+# capture listed here: the choice bar and the delete confirmation, each at 80x24 and 120x30, in en and
+# de (PLAN-174-cleanup-{choice,delete}-{80x24,120x30}-{en,de}.after.txt). They are manual review
+# evidence only: ScreenCaptureIT writes
 # the screens of a run below target/screens/PLAN-174/ and compares none of them with these files, so a
 # drifted screen is found by reading the new capture against them, not by a failing test. The text of
 # the delete confirmation itself is asserted by CleanupCommandTest.
