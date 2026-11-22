@@ -3,7 +3,7 @@
   import { t } from '../i18n';
   import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
-  import { createReconnectLoop } from '../stores/runtime';
+  import { createReconnectLoop, retryRuntime } from '../stores/runtime';
 
   /**
    * The page of a runtime that is not reachable on this machine (entry.adoc, After Pairing).
@@ -18,7 +18,7 @@
    * the page is too narrow to hold both, the figure is hidden, never stacked above the text.
    */
 
-  const loop = createReconnectLoop();
+  const loop = createReconnectLoop(undefined, () => retryRuntime());
 
   onMount(() => {
     loop.start();

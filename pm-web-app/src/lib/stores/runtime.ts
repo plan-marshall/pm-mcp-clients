@@ -314,7 +314,10 @@ export async function retryRuntime(): Promise<void> {
  * @param onStateChange optional callback notified when reconnecting state changes
  * @returns controller with reconnect, start, and stop methods
  */
-export function createReconnectLoop(onStateChange?: (reconnecting: boolean) => void) {
+export function createReconnectLoop(
+  onStateChange?: (reconnecting: boolean) => void,
+  retryFn: () => Promise<void> = retryRuntime,
+) {
   let isReconnecting = false;
   let interval: ReturnType<typeof setInterval> | null = null;
   let mounted = true;
@@ -324,7 +327,7 @@ export function createReconnectLoop(onStateChange?: (reconnecting: boolean) => v
     isReconnecting = true;
     onStateChange?.(true);
     try {
-      await retryRuntime();
+      await retryFn();
     } catch {
       // Swallowed: retries continue on the interval or manual trigger
     } finally {

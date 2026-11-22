@@ -3,7 +3,7 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import { formatTime } from '../display/format';
-  import { runtimeStore, createReconnectLoop } from '../stores/runtime';
+  import { runtimeStore, createReconnectLoop, retryRuntime } from '../stores/runtime';
   import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
 
@@ -21,7 +21,7 @@
   let isReconnecting = false;
   const loop = createReconnectLoop((reconnecting) => {
     isReconnecting = reconnecting;
-  });
+  }, () => retryRuntime());
 
   onMount(() => {
     loop.start();
