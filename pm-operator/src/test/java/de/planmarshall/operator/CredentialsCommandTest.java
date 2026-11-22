@@ -404,6 +404,53 @@ class CredentialsCommandTest {
         assertFalse(err.toString().contains("HTTP"), err.toString());
     }
 
+    /** Fails the read of the entry's status with a server error and records every request. */
+    private void failStatusRead() throws Exception {
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(500, null, "");
+        });
+    }
+
+    /**
+     * Asserts the refused status read: exit 1, the refusal on stderr and not the absent entry's,
+     * no header on stdout and no write of the entry.
+     *
+     * @param code the verb's exit code
+     */
+    private void assertStatusReadRefused(int code) {
+        var refusal = "Failed to read github: " + ErrorTexts.title("en", (ApiErrorCode) null);
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains(refusal), err.toString()),
+                            // the failed read is not taken for an absent entry
+                            () -> assertFalse(err.toString().contains("No entry github exists"), err.toString()),
+                            () -> assertFalse(out.toString().contains("github"), out.toString()),
+                            () -> assertTrue(requests.contains("GET /api/v1/credentials/github"), requests.toString()),
+                            () -> assertTrue(requests.stream().noneMatch(request -> request.startsWith("PUT ")),
+                                                requests.toString()));
+    }
+
+    @Test
+    @DisplayName("rotate stops when the entry's status cannot be read: exit 1, refusal on stderr, nothing stored")
+    void rotateStopsOnAFailedStatusRead() throws Exception {
+        failStatusRead();
+
+        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
+
+        assertStatusReadRefused(code);
+    }
+
+    @Test
+    @DisplayName("set stops when the entry's status cannot be read: exit 1, refusal on stderr, nothing stored")
+    void setStopsOnAFailedStatusRead() throws Exception {
+        failStatusRead();
+
+        var code = run(context("s3cret\n"), "credentials", "set", "github", "--yes");
+
+        assertStatusReadRefused(code);
+    }
+
     @Test
     @DisplayName("the verb without a subcommand prints its usage")
     void usage() throws Exception {

@@ -1159,13 +1159,25 @@ class PlanCommandTest {
          * @param choices the choices the runtime names for the aspect
          */
         private void serveRefusingSettings(List<String> choices) throws IOException {
+            serveRefusingSettings(choices, 422, "{\"code\":\"invalid_value\"}");
+        }
+
+        /**
+         * Serves the plan's settings with the given choices for the aspect and refuses every write
+         * with the given answer.
+         *
+         * @param choices the choices the runtime names for the aspect
+         * @param status  the status of the refusal
+         * @param body    the body of the refusal
+         */
+        private void serveRefusingSettings(List<String> choices, int status, String body) throws IOException {
             var choiceList = String.join(",", choices.stream().map(choice -> "\"" + choice + "\"").toList());
             var settings = "{\"plan_id\":\"" + planId + "\",\"revision\":3,\"values\":[{\"aspect\":\"" + aspect
                                 + "\",\"value\":\"" + value + "\",\"origin\":\"plan\",\"choices\":[" + choiceList + "]}]}";
             fixture.start((request, response) -> {
                 if (("/api/v1/plans/" + planId + "/settings").equals(request.target())) {
                     if ("PUT".equals(request.method())) {
-                        response.json(422, "{\"code\":\"invalid_value\"}");
+                        response.json(status, body);
                     } else {
                         response.json(200, settings);
                     }
@@ -1188,6 +1200,36 @@ class PlanCommandTest {
                                                     err.toString()),
                                 () -> assertFalse(err.toString().contains("the value does not fit"), err.toString()),
                                 () -> assertFalse(err.toString().contains("is refused"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("a value refused without the runtime's value code names no cause in German")
+        void refusedFreeFormValueNamesNoCause() throws Exception {
+            serveRefusingSettings(List.of(), 403, "{\"error\":\"refused\"}");
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            var refused = aspect + " = " + value + " wird abgelehnt; nichts wurde geändert.";
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                                () -> assertFalse(err.toString().contains("der Wert passt nicht"), err.toString()),
+                                () -> assertFalse(err.toString().contains("is refused"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("a value of an unknown setting refused names no cause in German")
+        void refusedUnknownSettingNamesNoCause() throws Exception {
+            serveRefusingSettings(List.of(), 400, "{\"error\":\"refused\"}");
+            var unknown = aspect + "x";
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", unknown + "=" + value);
+
+            var refused = unknown + " = " + value + " wird abgelehnt; nichts wurde geändert.";
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                                () -> assertFalse(err.toString().contains("der Wert passt nicht"), err.toString()));
         }
 
         @Test
