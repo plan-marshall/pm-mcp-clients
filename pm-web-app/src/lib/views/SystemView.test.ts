@@ -217,6 +217,8 @@ describe('SystemView component', () => {
 
     expect(screen.getAllByText(/pm-mcpd 0\.9\.1/)[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^3 running/ })).toBeInTheDocument();
+    // The workers' head carries its count as a CountBadge, whose accessible name is the sentence.
+    expect(screen.getByText('5 · 3 busy · 2 idle')).toBeInTheDocument();
     expect(screen.getByText('fix-relay')).toBeInTheDocument();
     expect(screen.getByText('relay-docs')).toBeInTheDocument();
     expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
@@ -381,6 +383,29 @@ describe('SystemView component', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(screen.queryByText('When what runs is done')).toBeNull();
     await waitFor(() => expect(trigger).toHaveFocus());
+  });
+
+  it('ignores a second confirmation while the stop runs', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    let resolveStop: (value: unknown) => void = () => {};
+    const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(
+      new Promise((resolve) => {
+        resolveStop = resolve;
+      }) as never,
+    );
+
+    render(SystemView);
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
+    await fireEvent.click(await openRuntimeAct('Stop…'));
+
+    const confirm = screen.getByRole('button', { name: /Stop when done/i });
+    await fireEvent.click(confirm);
+    await fireEvent.click(confirm);
+
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+
+    resolveStop({ lifecycle_state: 'draining' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it("shows the sentence of the act failure's code instead of the code", async () => {
@@ -867,7 +892,7 @@ describe('SystemView component', () => {
       await screen.findByTestId('action-bar-overflow');
       await fireEvent.click(await openRuntimeAct('Restart…'));
 
-      expect(screen.getByText(/Every client connects again by itself/)).toBeInTheDocument();
+      expect(screen.getByText('Every client connects again by itself.')).toBeInTheDocument();
       await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
       await fireEvent.click(screen.getByRole('button', { name: 'Restart now' }));
 
@@ -1071,7 +1096,13 @@ describe('SystemView component', () => {
       const links = screen.getAllByRole('link', { name: 'Release notes' });
       expect(links).toHaveLength(2);
       for (const link of links) {
-        expect(link).toHaveAttribute('href', '/api/v1/system/release-notes?version=0.10.0');
+        // The runtime serves the notes at a path of the app; the link resolves it against the
+        // origin and keeps the new tab the view has always opened it in.
+        expect(link.getAttribute('href')).toMatch(
+          /\/api\/v1\/system\/release-notes\?version=0\.10\.0$/,
+        );
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
       }
     });
 

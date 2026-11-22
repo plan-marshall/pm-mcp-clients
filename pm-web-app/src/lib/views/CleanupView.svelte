@@ -311,12 +311,15 @@
 
   /**
    * @param item one item of the job
-   * @returns the detail line: what it is, when it ended and its own detail; the size stands in its own column
+   * @returns the detail line: what it is (unless its row carries a `KindMark`), when it ended and its
+   *   own detail; the size stands in its own column
    */
   function itemDescription(item: CleanupItemEntry): string {
     const parts: string[] = [];
-    const kind = displayState('cleanup', item.kind, $t);
-    if (kind) parts.push(kind);
+    if (!kindOf(item.kind)) {
+      const kind = displayState('cleanup', item.kind, $t);
+      if (kind) parts.push(kind);
+    }
     if (item.ended_at) parts.push($t('system.cleanup.details.ended', { time: item.ended_at }));
     if (item.detail) parts.push(item.detail);
     return parts.join(' · ');

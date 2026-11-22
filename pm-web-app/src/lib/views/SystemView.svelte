@@ -36,8 +36,7 @@
   import Dialog from '../components/Dialog.svelte';
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import RadioGroup from '../components/RadioGroup.svelte';
-  import Link from '../components/Link.svelte';
-  import ExternalLink, { isWebAddress } from '../components/ExternalLink.svelte';
+  import ExternalLink from '../components/ExternalLink.svelte';
   import { actsFor } from '../actions/byState';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
@@ -554,6 +553,20 @@
     return snapshot.models;
   });
 
+  /**
+   * @param url the release-notes address the runtime offers, a path of the app or an absolute one
+   * @returns an absolute http(s) address, resolved against the app's own origin where it is a path
+   */
+  function releaseNotesHref(url: string): string {
+    if (/^https?:\/\//i.test(url)) return url;
+    if (typeof window === 'undefined') return url;
+    try {
+      return new URL(url, window.location.origin).href;
+    } catch {
+      return url;
+    }
+  }
+
   /** The tones of `StatusLabel`, chosen from the state word the runtime serves. */
   const DANGER_STATES = ['failed', 'landing_failed', 'error'];
   const ATTENTION_STATES = ['waiting_for_you', 'stalled', 'held'];
@@ -609,13 +622,13 @@
   ]);
 
   /** The workers as the table's rows; every cell is text the view already formatted. */
-  const workerColumns: DataTableColumn[] = [
+  let workerColumns = $derived<DataTableColumn[]>([
     { id: 'role', header: $t('system.workers.col.role'), width: '8rem' },
     { id: 'harness', header: $t('system.workers.col.harness'), width: '5.5rem' },
     { id: 'model', header: $t('system.workers.col.model'), width: '6.5rem' },
     { id: 'state', header: $t('system.workers.col.state'), width: '7rem' },
     { id: 'item', header: $t('system.workers.col.current_item'), width: '8rem' },
-  ];
+  ]);
 
   let workerRows = $derived<DataTableRow[]>(
     (snapshot?.workers ?? []).map((worker, index) => ({
@@ -753,17 +766,10 @@
         {/if}
         <div class="upgrade-panel__actions">
           {#if snapshot.runtime.upgrade_release_notes_url}
-            {#if isWebAddress(snapshot.runtime.upgrade_release_notes_url)}
-              <ExternalLink
-                href={snapshot.runtime.upgrade_release_notes_url}
-                label={$t('system.runtime.release_notes')}
-              />
-            {:else}
-              <Link
-                href={snapshot.runtime.upgrade_release_notes_url}
-                label={$t('system.runtime.release_notes')}
-              />
-            {/if}
+            <ExternalLink
+              href={releaseNotesHref(snapshot.runtime.upgrade_release_notes_url)}
+              label={$t('system.runtime.release_notes')}
+            />
           {/if}
           <Button
             variant="primary"
@@ -971,17 +977,10 @@
                     })}</strong
                   >
                   {#if snapshot.runtime.upgrade_release_notes_url}
-                    {#if isWebAddress(snapshot.runtime.upgrade_release_notes_url)}
-                      <ExternalLink
-                        href={snapshot.runtime.upgrade_release_notes_url}
-                        label={$t('system.runtime.release_notes')}
-                      />
-                    {:else}
-                      <Link
-                        href={snapshot.runtime.upgrade_release_notes_url}
-                        label={$t('system.runtime.release_notes')}
-                      />
-                    {/if}
+                    <ExternalLink
+                      href={releaseNotesHref(snapshot.runtime.upgrade_release_notes_url)}
+                      label={$t('system.runtime.release_notes')}
+                    />
                   {/if}
                 </span>
               </div>

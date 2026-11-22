@@ -28,7 +28,7 @@ The guards of the web app's visual verification are separate checks (VD-V-02, VD
 . A run that could not execute a rule says so: the report names the rules it ran and the rules it did not run and why (no browser, a route that did not load), and is never read as a pass.
   Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
   Proof: a test with a route that fails to load reports its rules as not run and exits with a failure.
-. The catalogue runs once against every declared view of `pm-web-app` in both themes, and its findings are fixed or waived with a reason; the five uses of `transition: all` (`Button`, `CheckGroup`, `RadioGroup`, `SystemView`, `CleanupView`) are the first findings the run is expected to show.
+. The catalogue runs once against every declared view of `pm-web-app` in both themes, and its findings are fixed or waived with a reason; the remaining uses of `transition: all` (`Button`, `CheckGroup`, `RadioGroup`) are the first findings the run is expected to show.
   Anchor: link:../design/web-app/theme-readability.adoc#verification-matrix[Theme Readability, Automated Verification Matrix].
   Proof: the run is green; the waivers it needed are listed in the pull request.
 
