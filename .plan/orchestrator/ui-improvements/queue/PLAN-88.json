@@ -2,10 +2,10 @@
   "id": "PLAN-88",
   "slug": "web-designer-panes",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-88-web-designer-panes",
+  "pr": "528",
+  "landing": "landings/PLAN-88.md",
   "seq": 88
 }
