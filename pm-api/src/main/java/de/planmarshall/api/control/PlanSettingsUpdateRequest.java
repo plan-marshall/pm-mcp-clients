@@ -34,10 +34,10 @@ public record PlanSettingsUpdateRequest(
         @Nullable String value,
         int revision
 ) {
-    private static final String ASPECT = "aspect";
+    private static final String ASPECT_KEY = "aspect";
 
     public PlanSettingsUpdateRequest {
-        Objects.requireNonNull(aspect, ASPECT);
+        Objects.requireNonNull(aspect, ASPECT_KEY);
     }
 
     /**
@@ -47,7 +47,7 @@ public record PlanSettingsUpdateRequest(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put(ASPECT, aspect);
+        map.put(ASPECT_KEY, aspect);
         if (value != null) {
             map.put("value", value);
         } else {
@@ -75,7 +75,7 @@ public record PlanSettingsUpdateRequest(
      */
     public static PlanSettingsUpdateRequest fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var aspect = JsonTree.string(map, ASPECT);
+        var aspect = JsonTree.string(map, ASPECT_KEY);
         if (aspect == null) {
             aspect = JsonTree.string(map, "key");
         }

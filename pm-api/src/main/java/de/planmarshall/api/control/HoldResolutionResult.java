@@ -40,7 +40,7 @@ public record HoldResolutionResult(
         subject = subject != null ? subject : holdId;
     }
 
-    private static final String SUBJECT = "subject";
+    private static final String SUBJECT_KEY = "subject";
 
     /**
      * Converts to JSON tree map.
@@ -51,7 +51,7 @@ public record HoldResolutionResult(
         var map = new LinkedHashMap<String, Object>();
         map.put("hold_id", holdId);
         map.put("released", released);
-        map.put(SUBJECT, subject);
+        map.put(SUBJECT_KEY, subject);
         if (cause != null) {
             map.put("cause", cause);
         }
@@ -84,7 +84,7 @@ public record HoldResolutionResult(
                 holdId,
                 Boolean.TRUE.equals(JsonTree.bool(map, "released")),
                 JsonTree.string(map, "cause"),
-                Objects.requireNonNullElse(JsonTree.string(map, SUBJECT), holdId)
+                Objects.requireNonNullElse(JsonTree.string(map, SUBJECT_KEY), holdId)
         );
     }
 

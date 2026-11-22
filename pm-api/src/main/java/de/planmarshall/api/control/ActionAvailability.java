@@ -33,10 +33,10 @@ public record ActionAvailability(
         boolean available,
         @Nullable String reason
 ) {
-    private static final String ACTION = "action";
+    private static final String ACTION_KEY = "action";
 
     public ActionAvailability {
-        Objects.requireNonNull(action, ACTION);
+        Objects.requireNonNull(action, ACTION_KEY);
     }
 
     /**
@@ -63,7 +63,7 @@ public record ActionAvailability(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put(ACTION, action);
+        map.put(ACTION_KEY, action);
         map.put("available", available);
         if (reason != null) {
             map.put("reason", reason);
@@ -89,7 +89,7 @@ public record ActionAvailability(
      */
     public static ActionAvailability fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var action = JsonTree.string(map, ACTION);
+        var action = JsonTree.string(map, ACTION_KEY);
         if (action == null) {
             action = JsonTree.string(map, "name");
         }

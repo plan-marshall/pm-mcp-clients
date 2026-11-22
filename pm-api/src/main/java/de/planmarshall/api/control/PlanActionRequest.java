@@ -37,8 +37,8 @@ public record PlanActionRequest(
         @Nullable Boolean withPlans,
         Map<String, Object> extra
 ) {
-    private static final String POINT = "point";
-    private static final String REASON = "reason";
+    private static final String POINT_KEY = "point";
+    private static final String REASON_KEY = "reason";
     private static final String CLOSE_PR = "close_pr";
     private static final String RAISE_SCOPE = "raise_scope";
     private static final String WITH_PLANS = "with_plans";
@@ -79,10 +79,10 @@ public record PlanActionRequest(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         if (point != null) {
-            map.put(POINT, point);
+            map.put(POINT_KEY, point);
         }
         if (reason != null) {
-            map.put(REASON, reason);
+            map.put(REASON_KEY, reason);
         }
         if (closePr != null) {
             map.put(CLOSE_PR, closePr);
@@ -117,15 +117,15 @@ public record PlanActionRequest(
         var known = new LinkedHashMap<String, Object>();
         for (var entry : source.entrySet()) {
             switch (entry.getKey()) {
-                case POINT, REASON, CLOSE_PR, RAISE_SCOPE, WITH_PLANS -> {
+                case POINT_KEY, REASON_KEY, CLOSE_PR, RAISE_SCOPE, WITH_PLANS -> {
                     // handled below
                 }
                 default -> known.put(entry.getKey(), entry.getValue());
             }
         }
         return new PlanActionRequest(
-                JsonTree.string(source, POINT),
-                JsonTree.string(source, REASON),
+                JsonTree.string(source, POINT_KEY),
+                JsonTree.string(source, REASON_KEY),
                 JsonTree.bool(source, CLOSE_PR),
                 JsonTree.bool(source, RAISE_SCOPE),
                 JsonTree.bool(source, WITH_PLANS),

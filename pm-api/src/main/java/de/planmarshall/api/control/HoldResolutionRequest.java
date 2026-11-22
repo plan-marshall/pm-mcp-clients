@@ -35,7 +35,7 @@ public record HoldResolutionRequest(
         params = params != null ? Map.copyOf(params) : Map.of();
     }
 
-    private static final String REASON = "reason";
+    private static final String REASON_KEY = "reason";
 
     /**
      * Converts to JSON tree map.
@@ -46,7 +46,7 @@ public record HoldResolutionRequest(
         var map = new LinkedHashMap<String, Object>();
         map.put("act", act);
         if (reason != null) {
-            map.put(REASON, reason);
+            map.put(REASON_KEY, reason);
         }
         map.putAll(params);
         return map;
@@ -76,8 +76,8 @@ public record HoldResolutionRequest(
         }
         var rest = new LinkedHashMap<String, Object>(map);
         rest.remove("act");
-        rest.remove(REASON);
-        return new HoldResolutionRequest(act, JsonTree.string(map, REASON), rest);
+        rest.remove(REASON_KEY);
+        return new HoldResolutionRequest(act, JsonTree.string(map, REASON_KEY), rest);
     }
 
     /**
