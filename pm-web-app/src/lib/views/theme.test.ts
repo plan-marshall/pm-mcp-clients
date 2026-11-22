@@ -255,8 +255,8 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
         expect(attentionStyle.display).not.toBe('none');
       });
 
-      it('renders modal dialog overlays with the theme overlay token', () => {
-        const { container } = render(FindingsReviewModal, {
+      it('renders the review as the design dialog of the theme', () => {
+        render(FindingsReviewModal, {
           props: {
             epicId: 'relay-hardening',
             open: true,
@@ -265,12 +265,10 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
           },
         });
 
-        const modal = container.querySelector('.review-modal');
-        expect(modal).not.toBeNull();
-        expect(modal).toHaveClass('review-modal');
+        const modal = screen.getByTestId('review-modal');
 
-        const panel = container.querySelector('.review-modal__panel');
-        expect(panel).not.toBeNull();
+        expect(modal).toHaveClass('dialog');
+        expect(modal.closest('.dialog-backdrop')).not.toBeNull();
       });
     });
   }
