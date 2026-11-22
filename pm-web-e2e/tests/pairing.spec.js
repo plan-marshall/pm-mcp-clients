@@ -30,14 +30,35 @@ test.describe('Web Client Pairing Flow', () => {
     await page.reload();
   });
 
-  test('displays pairing form when not paired', async ({ page }) => {
+  test('displays pairing form when not paired, accepts code in any case and with/without dash, and copies command chips', async ({
+    page,
+  }) => {
     await page.goto('/');
 
     await expect(page.locator('h1')).toHaveText('Pair this browser');
-    await expect(page.locator('#pairing-code')).toBeVisible();
+    const codeInput = page.locator('#pairing-code');
+    await expect(codeInput).toBeVisible();
 
     const pairBtn = page.getByRole('button', { name: 'Pair this browser' });
     await expect(pairBtn).toBeDisabled();
+
+    // Below 8 chars: button disabled
+    await codeInput.fill('kxqb');
+    await expect(pairBtn).toBeDisabled();
+    await codeInput.fill('KXQB-MR');
+    await expect(pairBtn).toBeDisabled();
+
+    // 8 chars in any case with or without dash enables button
+    for (const code of ['kxqb-mrtn', 'kxqbmrtn', 'KXQBMRTN', 'KXQB-MRTN']) {
+      await codeInput.fill(code);
+      await expect(pairBtn).not.toBeDisabled();
+    }
+
+    // Command chips copy on click
+    const chips = page.locator('.chip');
+    await expect(chips).toHaveCount(2);
+    await chips.first().click();
+    await expect(chips.first()).toContainText('Copied');
   });
 
   test('presents the mark, the wordmark, the code and the QR on the pairing page', async ({
@@ -54,14 +75,14 @@ test.describe('Web Client Pairing Flow', () => {
     await expect(mark).toHaveAttribute('data-rendering', 'colour');
     await expect(pairView.getByText('plan-marshall')).toBeVisible();
 
-    // The code is entered in the page's largest monospace figure (VD-P-08, --text-3xl).
+    // The code is entered in CodeField monospace (VD-P-08, --text-2xl).
     const code = page.locator('#pairing-code');
     await expect(code).toBeVisible();
     const codeStyle = await code.evaluate((el) => {
       const style = getComputedStyle(el);
       return { fontSize: style.fontSize, fontFamily: style.fontFamily };
     });
-    expect(codeStyle.fontSize).toBe('36px');
+    expect(codeStyle.fontSize).toBe('28px');
     expect(codeStyle.fontFamily.toLowerCase()).toContain('mono');
 
     // The complete code is also presented as a QR code, drawn locally.
@@ -217,12 +238,12 @@ test.describe('Web Client Pairing Flow', () => {
 
     // Assert: no re-redemption, no refusal, no revoked page; the fragment is dropped.
     await expect(page).not.toHaveURL(/#code=/);
-    await expect(page.getByTestId('pairing-error')).toHaveCount(0);
+    await expect(page.locator('.field-error')).toHaveCount(0);
     await expect(page.getByText('This browser is no longer paired')).toHaveCount(0);
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
   });
 
-  test('refuses the consumed code in a second browser with the single-use message', async ({
+  test('refuses the consumed code in a second browser with the single-use message under the field', async ({
     page,
     browser,
   }) => {
@@ -235,10 +256,11 @@ test.describe('Web Client Pairing Flow', () => {
     const secondPage = await secondContext.newPage();
     await secondPage.goto('/#code=KXQB-MRTN');
 
-    // Assert: a single-use explanation, not a revoked pairing.
-    await expect(secondPage.getByTestId('pairing-error')).toContainText(
+    // Assert: a single-use explanation under the field, not a revoked pairing.
+    await expect(secondPage.locator('.field-error')).toContainText(
       'A code works once. Get a fresh one in a terminal of the machine.',
     );
+    await expect(secondPage.locator('#pairing-code')).toHaveAttribute('aria-invalid', 'true');
     await expect(secondPage.getByText('This browser is no longer paired')).toHaveCount(0);
 
     await secondContext.close();

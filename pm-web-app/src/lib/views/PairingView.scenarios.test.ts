@@ -78,54 +78,97 @@ describe('PairingView against the mock runtime scenarios', () => {
     expect(screen.getByText('pm-operator web pair')).toBeInTheDocument();
   });
 
-  it('accepts the code with or without the dash and in any case', async () => {
+  it.each([
+    ['lowercase with dash', 'kxqb-mrtn'],
+    ['lowercase without dash', 'kxqbmrtn'],
+    ['uppercase with dash', 'KXQB-MRTN'],
+    ['uppercase without dash', 'KXQBMRTN'],
+  ])('accepts the code in %s and enables the submit button at 8 characters', async (_label, code) => {
     render(PairingView);
 
     const input = screen.getByLabelText(/code/i);
     const submit = screen.getByRole('button', { name: /pair this browser/i });
     expect(submit).toBeDisabled();
 
-    await fireEvent.input(input, { target: { value: 'kxqbmrtn' } });
+    // Below 8 chars
+    await fireEvent.input(input, { target: { value: code.slice(0, 4) } });
+    expect(submit).toBeDisabled();
+
+    // 8 characters
+    await fireEvent.input(input, { target: { value: code } });
     expect(submit).not.toBeDisabled();
   });
 
-  it('reports a code that does not work with the single-use explanation', async () => {
+  it('renders command chips that copy on click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    const { container } = render(PairingView);
+
+    const chips = container.querySelectorAll('.chip');
+    expect(chips).toHaveLength(2);
+
+    await fireEvent.click(chips[0]);
+    expect(writeText).toHaveBeenCalledWith('pm-operator web open --pair');
+
+    await fireEvent.click(chips[1]);
+    expect(writeText).toHaveBeenCalledWith('pm-operator web pair');
+  });
+
+  it('reports a code that does not work with the error under the field', async () => {
     vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('invalid_code'));
 
-    render(PairingView);
-    await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQB-MRTN' } });
+    const { container } = render(PairingView);
+    const input = screen.getByLabelText(/code/i);
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
     await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('pairing-error')).toHaveTextContent(
+      const codeInput = screen.getByLabelText(/code/i);
+      expect(codeInput).toHaveAttribute('aria-invalid', 'true');
+      const error = container.querySelector('.field-error');
+      expect(error).toBeInTheDocument();
+      expect(error).toHaveTextContent(
         'A code works once. Get a fresh one in a terminal of the machine.',
       );
     });
   });
 
-  it('explains an unreachable machine instead of blaming the code', async () => {
+  it('explains an unreachable machine with the error under the field', async () => {
     vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('network_offline'));
 
-    render(PairingView);
-    await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQB-MRTN' } });
+    const { container } = render(PairingView);
+    const input = screen.getByLabelText(/code/i);
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
     await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('pairing-error')).toHaveTextContent(
+      const codeInput = screen.getByLabelText(/code/i);
+      expect(codeInput).toHaveAttribute('aria-invalid', 'true');
+      const error = container.querySelector('.field-error');
+      expect(error).toBeInTheDocument();
+      expect(error).toHaveTextContent(
         'The machine cannot be reached right now. Check the connection and try again.',
       );
     });
   });
 
-  it('shows the pairing-lost reason when the runtime refuses the secret', async () => {
+  it('shows the pairing-lost reason under the field when the runtime refuses the secret', async () => {
     vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('unauthorized'));
 
-    render(PairingView);
-    await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQB-MRTN' } });
+    const { container } = render(PairingView);
+    const input = screen.getByLabelText(/code/i);
+    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
     await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('pairing-error')).toHaveTextContent(
+      const codeInput = screen.getByLabelText(/code/i);
+      expect(codeInput).toHaveAttribute('aria-invalid', 'true');
+      const error = container.querySelector('.field-error');
+      expect(error).toBeInTheDocument();
+      expect(error).toHaveTextContent(
         'Its pairing is no longer accepted.',
       );
     });
