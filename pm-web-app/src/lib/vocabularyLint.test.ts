@@ -524,9 +524,9 @@ describe('vocabularyLint', () => {
 
   it('a lint rule added to the rule list appears as a column of the printed table without a finding', () => {
     const addedRule = 'aria-hidden-on-focusable';
-    expect(RULES[addedRule]).toBeUndefined();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (RULES as any)[addedRule] = { type: 'element', component: 'SomeComponent' };
+    const rules = RULES as Record<string, { type: string; component: string }>;
+    expect(rules[addedRule]).toBeUndefined();
+    rules[addedRule] = { type: 'element', component: 'SomeComponent' };
     try {
       // The only finding is a `button` one: no finding carries the added rule, so its column can
       // only come from the rule list itself.
@@ -541,8 +541,7 @@ describe('vocabularyLint', () => {
       expect(rows[2].split('|')[column].trim()).toBe('0');
       expect(rows[rows.length - 1].split('|')[column].trim()).toBe('**0**');
     } finally {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      delete (RULES as any)[addedRule];
+      delete rules[addedRule];
     }
   });
 
