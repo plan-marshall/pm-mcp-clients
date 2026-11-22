@@ -22,7 +22,7 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
     await expect(page.getByTestId('workstream-WS-2')).toContainText('Authentication');
     await expect(page.getByTestId('plan-relay-auth-v2')).toContainText('relay-auth-v2');
     await expect(page.getByTestId('plan-relay-auth-v2')).toContainText('check failed');
-    await expect(page.getByTestId('plan-relay-cursor-order')).toContainText('checked');
+    await expect(page.getByTestId('plan-relay-reconnect-backoff')).toContainText('checked');
     await expect(page.getByTestId('plan-surface-relay-auth-v2')).toContainText('pm-api/src/cursor');
     await expect(page.getByTestId('conflict-banner')).toBeVisible();
     await expect(page.getByTestId('agree-commit')).toHaveAttribute('aria-disabled', 'true');
