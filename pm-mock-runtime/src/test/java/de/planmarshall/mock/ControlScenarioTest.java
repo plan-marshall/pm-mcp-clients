@@ -553,7 +553,10 @@ class ControlScenarioTest {
                 assertEquals(entry.getValue(), JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())),
                         "error"), entry.getKey());
             }
-            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/actions/pause", "{}").status());
+            var planAction = post(runtime, "/api/v1/plans/" + unknownPlan + "/actions/pause", "{}");
+            assertEquals(404, planAction.status());
+            assertEquals("scope_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(planAction.body())), "error"));
             var message = new ChatTurnRequest(Generators.letterStrings(4, 12).next(),
                     Generators.letterStrings(8, 12).next());
             var turn = post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/turns", message.toJson());
@@ -580,6 +583,11 @@ class ControlScenarioTest {
             assertEquals(404, review.status());
             assertEquals("target_not_found",
                     JsonTree.string(JsonTree.asObject(JsonTree.parse(review.body())), "error"));
+
+            var archiveCheck = get(runtime, "/api/v1/epics/platform-setup/archive-check");
+            assertEquals(404, archiveCheck.status());
+            assertEquals("target_not_found",
+                    JsonTree.string(JsonTree.asObject(JsonTree.parse(archiveCheck.body())), "error"));
         }
     }
 

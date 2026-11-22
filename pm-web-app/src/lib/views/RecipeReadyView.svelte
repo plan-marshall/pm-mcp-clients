@@ -1,6 +1,10 @@
 <script lang="ts">
   import { t } from '../i18n';
   import type { RecipeParameter, RecipeRef, StartSource } from '../api/client';
+  import Field from '../components/Field.svelte';
+  import TextField from '../components/TextField.svelte';
+  import SelectField, { type SelectOption } from '../components/SelectField.svelte';
+  import Button from '../components/Button.svelte';
 
   export let mode: 'parameters' | 'ready' = 'ready';
   export let recipe: RecipeRef | null = null;
@@ -17,11 +21,31 @@
   export let onTitle: (value: string) => void = () => {};
   export let onId: (value: string) => void = () => {};
   export let onParameter: (name: string, value: string) => void = () => {};
+  export let onSubmit: (() => void) | undefined = undefined;
 
   $: recipeName = recipe?.name ?? '';
 
+  $: actLabel =
+    mode === 'parameters'
+      ? $t('start.sources.continue')
+      : recipe
+        ? $t('start.recipe.run')
+        : kind === 'epic'
+          ? $t('start.ready.start_epic')
+          : $t('start.ready.start_plan');
+
   function valueOf(parameter: RecipeParameter): string {
     return parameter.value ?? parameter.options[0] ?? '';
+  }
+
+  function optionsOf(parameter: RecipeParameter): SelectOption[] {
+    return parameter.options.map((option) => ({ value: option, label: option }));
+  }
+
+  function handleKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.isComposing) {
+      onSubmit?.();
+    }
   }
 </script>
 
@@ -40,33 +64,46 @@
   {#if mode === 'parameters'}
     <div class="recipe-ready__parameters" data-testid="recipe-parameters">
       {#each parameters as parameter (parameter.name)}
-        <label class="recipe-ready__field">
-          <span>
-            {parameter.name}
-            {#if parameter.proposed}
-              <em data-testid={`proposed-${parameter.name}`}>{$t('start.recipe.proposed')}</em>
-            {/if}
-          </span>
-          {#if parameter.options.length > 0}
-            <select
-              data-testid={`parameter-${parameter.name}`}
+        {#if parameter.options.length > 0}
+          <div class="recipe-ready__param">
+            <SelectField
+              label={parameter.name}
+              options={optionsOf(parameter)}
               value={valueOf(parameter)}
               disabled={busy}
-              on:change={(event) => onParameter(parameter.name, event.currentTarget.value)}
-            >
-              {#each parameter.options as option}
-                <option value={option}>{option}</option>
-              {/each}
-            </select>
-          {:else}
+              testid={`parameter-${parameter.name}`}
+              hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
+              onchange={(val) => onParameter(parameter.name, val)}
+            />
+            {#if parameter.proposed}
+              <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
+            {/if}
+          </div>
+        {:else if parameter.available !== false}
+          <div class="recipe-ready__param">
+            <TextField
+              label={parameter.name}
+              value={valueOf(parameter)}
+              disabled={busy}
+              testid={`parameter-${parameter.name}`}
+              hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
+              oninput={(event) => onParameter(parameter.name, event.currentTarget.value)}
+              onkeydown={handleKeyDown}
+            />
+            {#if parameter.proposed}
+              <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
+            {/if}
+          </div>
+        {:else}
+          <Field label={parameter.name}>
             <span class="recipe-ready__no-option" data-testid={`no-option-${parameter.name}`}>
               {$t('start.recipe.no_option', {
                 parameter: parameter.name,
                 reason: parameter.reason ?? $t('start.recipe.no_module'),
               })}
             </span>
-          {/if}
-        </label>
+          </Field>
+        {/if}
       {/each}
     </div>
   {:else}
@@ -81,31 +118,26 @@
       </ul>
     {/if}
 
-    <label class="recipe-ready__field">
-      <span>{$t('start.ready.title')}</span>
-      <input
-        type="text"
-        data-testid="ready-title"
-        value={title}
-        disabled={busy}
-        on:input={(event) => onTitle(event.currentTarget.value)}
-      />
-    </label>
+    <TextField
+      label={$t('start.ready.title')}
+      value={title}
+      disabled={busy}
+      testid="ready-title"
+      oninput={(event) => onTitle(event.currentTarget.value)}
+      onkeydown={handleKeyDown}
+    />
 
-    <label class="recipe-ready__field">
-      <span>{$t('start.ready.id')}</span>
-      <input
-        type="text"
-        data-testid="ready-id"
-        value={planId}
-        readonly={!idEditable}
-        disabled={busy}
-        on:input={(event) => onId(event.currentTarget.value)}
-      />
-      {#if idFromTitle}
-        <span class="recipe-ready__hint">{$t('start.ready.id_from_title')}</span>
-      {/if}
-    </label>
+    <TextField
+      label={$t('start.ready.id')}
+      value={planId}
+      readonly={!idEditable}
+      disabled={busy}
+      mono
+      hint={idFromTitle ? $t('start.ready.id_from_title') : undefined}
+      testid="ready-id"
+      oninput={(event) => onId(event.currentTarget.value)}
+      onkeydown={handleKeyDown}
+    />
 
     {#if parameters.length > 0}
       <dl class="recipe-ready__chosen" data-testid="recipe-chosen-parameters">
@@ -125,6 +157,19 @@
       </p>
     {/if}
   {/if}
+
+  {#if onSubmit}
+    <div class="recipe-ready__actions">
+      <Button
+        variant="primary"
+        data-testid="ready-start-act"
+        disabled={busy}
+        onclick={onSubmit}
+      >
+        {actLabel}
+      </Button>
+    </div>
+  {/if}
 </section>
 
 <style>
@@ -140,7 +185,6 @@
   }
 
   .recipe-ready__origin,
-  .recipe-ready__hint,
   .recipe-ready__auto {
     margin: 0;
     color: var(--color-text-muted);
@@ -153,18 +197,6 @@
     flex-direction: column;
     gap: var(--space-2);
     margin: 0;
-  }
-
-  .recipe-ready__field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .recipe-ready__field input,
-  .recipe-ready__field select {
-    min-height: 44px;
-    padding: var(--space-1);
   }
 
   .recipe-ready__no-option {
@@ -198,5 +230,11 @@
 
   .recipe-ready__chosen dd {
     margin: 0 0 var(--space-1, 0.25rem) 0;
+  }
+
+  .recipe-ready__actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-2);
   }
 </style>

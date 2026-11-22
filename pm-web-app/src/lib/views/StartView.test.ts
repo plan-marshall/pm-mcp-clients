@@ -278,7 +278,9 @@ describe('StartView', () => {
       );
       expect(screen.getByTestId('start-step')).toHaveTextContent('Decomposition');
 
-      await fireEvent.click(screen.getByTestId('decomposition-retry'));
+      const retryBtn = screen.getByTestId('decomposition-retry');
+      expect(retryBtn).toHaveClass('btn--secondary');
+      await fireEvent.click(retryBtn);
       expect(await screen.findByTestId('decomposition-title')).toHaveTextContent(
         'relay-hardening · decomposition',
       );
@@ -317,10 +319,12 @@ describe('StartView', () => {
 
       await fireEvent.click(screen.getByTestId('started-decompose'));
       await fireEvent.click(await screen.findByTestId('plan-edit-relay-cursor-order'));
-      await fireEvent.input(screen.getByTestId('instruct-input'), {
+      const instructPanel = screen.getByTestId('decomposition-instruction');
+      const textbox = within(instructPanel).getByRole('textbox', { name: 'What should change?' });
+      await fireEvent.input(textbox, {
         target: { value: 'Order the cursor first.' },
       });
-      await fireEvent.click(screen.getByTestId('instruct-submit'));
+      await fireEvent.keyDown(textbox, { key: 'Enter' });
 
       expect(instruct).toHaveBeenCalledWith(PROJECT, 'relay-hardening', {
         plan_id: 'relay-cursor-order',

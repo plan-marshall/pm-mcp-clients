@@ -221,10 +221,67 @@ class DecompositionScenarioTest {
     void refusesUnknownEpicAndProject() throws Exception {
         var unknown = Generators.letterStrings(4, 10).next().toLowerCase();
         try (var runtime = MockRuntime.start(STATE)) {
-            assertEquals(404, get(runtime, BASE + unknown + "/decomposition").status());
-            assertEquals(404, get(runtime,
-                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition").status());
+            var getEpic = get(runtime, BASE + unknown + "/decomposition");
+            assertEquals(404, getEpic.status());
+            assertEquals("scope_not_found", errorCode(getEpic));
+
+            var getProj = get(runtime,
+                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition");
+            assertEquals(404, getProj.status());
+            assertEquals("project_not_enrolled", errorCode(getProj));
+
+            var checkEpic = post(runtime, BASE + unknown + "/decomposition/check", "");
+            assertEquals(404, checkEpic.status());
+            assertEquals("scope_not_found", errorCode(checkEpic));
+
+            var checkProj = post(runtime,
+                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition/check", "");
+            assertEquals(404, checkProj.status());
+            assertEquals("project_not_enrolled", errorCode(checkProj));
+
+            var instructEpic = post(runtime, BASE + unknown + "/decomposition/instruct",
+                    "{\"instruction\":\"test\"}");
+            assertEquals(404, instructEpic.status());
+            assertEquals("scope_not_found", errorCode(instructEpic));
+
+            var instructProj = post(runtime,
+                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition/instruct",
+                    "{\"instruction\":\"test\"}");
+            assertEquals(404, instructProj.status());
+            assertEquals("project_not_enrolled", errorCode(instructProj));
+
+            var commitEpic = post(runtime, BASE + unknown + "/decomposition/commit", "");
+            assertEquals(404, commitEpic.status());
+            assertEquals("scope_not_found", errorCode(commitEpic));
+
+            var commitProj = post(runtime,
+                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition/commit", "");
+            assertEquals(404, commitProj.status());
+            assertEquals("project_not_enrolled", errorCode(commitProj));
         }
+
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var getTarget = get(runtime, BASE + "relay-docs-epic/decomposition");
+            assertEquals(404, getTarget.status());
+            assertEquals("target_not_found", errorCode(getTarget));
+
+            var checkTarget = post(runtime, BASE + "relay-docs-epic/decomposition/check", "");
+            assertEquals(404, checkTarget.status());
+            assertEquals("target_not_found", errorCode(checkTarget));
+
+            var instructTarget = post(runtime, BASE + "relay-docs-epic/decomposition/instruct",
+                    "{\"instruction\":\"test\"}");
+            assertEquals(404, instructTarget.status());
+            assertEquals("target_not_found", errorCode(instructTarget));
+
+            var commitTarget = post(runtime, BASE + "relay-docs-epic/decomposition/commit", "");
+            assertEquals(404, commitTarget.status());
+            assertEquals("target_not_found", errorCode(commitTarget));
+        }
+    }
+
+    private static String errorCode(HttpResponse response) throws Exception {
+        return JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())), "error");
     }
 
     private static HttpResponse get(MockRuntime runtime, String path) throws Exception {

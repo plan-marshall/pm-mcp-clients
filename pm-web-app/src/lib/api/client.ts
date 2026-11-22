@@ -1937,8 +1937,10 @@ export interface StagedPlanRecord {
   plan_id: string;
   title: string;
   objective?: string | null;
+  deliverables?: string[];
   expected_surface: string[];
   dependencies: string[];
+  order?: number;
   status: string;
 }
 

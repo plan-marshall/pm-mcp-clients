@@ -2193,6 +2193,25 @@
                     "completion_review_first": true,
                     "passed": false
                   }
+                },
+                {
+                  "epic_id": "platform-setup",
+                  "state": "running",
+                  "auto_start": false,
+                  "scope": 1,
+                  "running": 0,
+                  "overlap_max_files": 0,
+                  "resource": {
+                    "epic_id": "platform-setup",
+                    "project_id": "plan-marshall",
+                    "display_name": "plan-marshall",
+                    "state": "running",
+                    "auto_start": false,
+                    "overlap_max_files": 0,
+                    "scope": 1,
+                    "running": 0,
+                    "workstreams": []
+                  }
                 }
               ],
               "holds": [
