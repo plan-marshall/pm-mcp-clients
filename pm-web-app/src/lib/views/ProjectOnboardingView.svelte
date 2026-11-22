@@ -280,10 +280,13 @@
    * @param startedPath the checkout a run was just started at, when the screen started one
    */
   async function load(startedPath?: string): Promise<void> {
-    isLoading = true;
+    // A check that reads the state again keeps the card on screen: only a first read shows the
+    // skeleton, so the button that started the check keeps its busy state.
+    if (!run) {
+      isLoading = true;
+    }
     loadError = null;
     error = '';
-    run = null;
     beingAdded = null;
     try {
       if (projectId) {
@@ -650,7 +653,8 @@
               <Button
                 variant="primary"
                 loading={isSubmitting}
-                disabled={!identity.id.trim() || !identity.name.trim()}
+                disabled={!identity.id.trim() || !identity.name.trim() || !projectId}
+                disabledReason={!projectId ? $t('project.identity.enrol_in_terminal') : undefined}
                 on:click={saveIdentity}
                 data-testid="project-identity-save"
               >
@@ -882,28 +886,17 @@
 {/if}
 
 {#if confirmAbandon && beingAdded}
-  <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="project-abandon-modal">
-    <div class="modal-card">
-      <h2 class="modal-title">
-        {$t('project.adding.abandon_title', { path: beingAdded.checkout_path })}
-      </h2>
-      <p class="modal-explain">
-        {$t('project.adding.abandon_confirm', { path: beingAdded.checkout_path })}
-      </p>
-      <div class="modal-actions">
-        <Button
-          variant="secondary"
-          on:click={() => (confirmAbandon = false)}
-          data-testid="project-abandon-cancel"
-        >
-          {$t('common.action.cancel')}
-        </Button>
-        <Button variant="danger" on:click={abandonRun} data-testid="project-abandon-confirm">
-          {$t('project.adding.abandon')}
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ConfirmDialog
+    open={true}
+    title={$t('project.adding.abandon_title', { path: beingAdded.checkout_path })}
+    consequences={[$t('project.adding.abandon_confirm', { path: beingAdded.checkout_path })]}
+    actionLabel={$t('project.adding.abandon')}
+    cancelLabel={$t('common.action.cancel')}
+    busy={false}
+    testid="project-abandon-modal"
+    onConfirm={abandonRun}
+    onClose={() => (confirmAbandon = false)}
+  />
 {/if}
 
 <style>

@@ -69,16 +69,14 @@ test.describe('Web chrome, navigation and action advisories', () => {
     expect(repeated).toEqual([]);
 
     await page.getByTestId('nav-projects-btn').click();
-    await expect(page.locator('.project-card').first()).toBeVisible();
+    await expect(page.locator('[data-testid^="project-row-"]').first()).toBeVisible();
 
     // The icon-only favourite control explains itself; the list's text buttons do not.
     await expect(page.locator('[data-testid^="star-btn-"]').first()).toHaveAttribute(
       'title',
       /favourite/,
     );
-    await expect(page.locator('[data-testid^="running-work-btn-"]').first()).not.toHaveAttribute(
-      'title',
-    );
+    await expect(page.locator('[data-testid^="add-plan-"]').first()).not.toHaveAttribute('title');
   });
 
   test('gives the plan actions an advisory that differs from their label', async ({ page }) => {

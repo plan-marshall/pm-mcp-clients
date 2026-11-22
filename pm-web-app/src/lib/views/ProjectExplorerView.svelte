@@ -138,22 +138,7 @@
 
   const selectedProject = $derived.by(() => {
     if (!requestedProjectId) return null;
-    const found = listProjects.find((p) => p.project_id === requestedProjectId);
-    if (found) return found;
-    // The page opened before the list finished loading: its head is drawn from what it read itself.
-    if (detail?.project_id === requestedProjectId) {
-      return {
-        project_id: detail.project_id,
-        display_name: detail.display_name,
-        readiness: 'ready',
-        needs_operator_count: 0,
-        active_plans_count: detail.plans.length,
-        active_epics_count: detail.epics.length,
-        is_favourite: false,
-        is_released: false,
-      } satisfies EnrolledProject;
-    }
-    return null;
+    return listProjects.find((p) => p.project_id === requestedProjectId) ?? null;
   });
 
   const filteredProjects = $derived.by(() => {
@@ -476,12 +461,16 @@
    */
   function handleFavouriteKeydown(event: KeyboardEvent, index: number): void {
     if (!event.altKey || !explorer) return;
+    // The route belongs to the row, not to the controls inside it: a key pressed in the favourite
+    // toggle, the Add-a-plan button or the row menu keeps its own meaning.
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button, a, input, select, textarea') !== null) return;
     const delta = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
     if (delta === 0) return;
-    const target = index + delta;
-    if (target < 0 || target >= explorer.favourites.length) return;
+    const target_index = index + delta;
+    if (target_index < 0 || target_index >= explorer.favourites.length) return;
     event.preventDefault();
-    moveFavourite(index, target);
+    moveFavourite(index, target_index);
   }
 
   /**
@@ -753,16 +742,20 @@
    */
   function rowMenuItems(project: EnrolledProject) {
     return projectActs(project)
-      .filter((act) => act.id !== 'add_plan' && act.id !== 'open_running_work')
-      .map((act) => ({
-        id: act.id,
-        label: $t(act.labelKey),
-        advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
-        destructive: act.destructive === true,
-        disabled: act.disabled,
-        disabledReason: act.disabledReason,
-        onclick: () => runProjectAct(project, act.id),
-      }));
+      .filter((act) => act.id !== 'add_plan')
+      .map((act) => {
+        const notReady = project.readiness !== 'ready';
+        const gate = notReady && (act.id === 'add_plan' || act.id === 'add_epic');
+        return {
+          id: act.id,
+          label: $t(act.labelKey),
+          advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+          destructive: act.destructive === true,
+          disabled: gate || act.disabled,
+          disabledReason: gate ? addPlanReason(project) : act.disabledReason,
+          onclick: () => runProjectAct(project, act.id),
+        };
+      });
   }
 
   /**
@@ -778,6 +771,7 @@
     }
     const target = event.target as HTMLElement | null;
     if (target?.closest('button') !== null) return;
+    if (target?.closest('[role="menu"]') !== null) return;
     const anchor = target?.closest('a');
     if (anchor !== null && !anchor.classList.contains('row-link__title')) return;
     event.preventDefault();
@@ -813,15 +807,16 @@
       if (!act) return;
       const role: ActionBarAct['role'] =
         index === 0 ? 'primary' : index <= 2 ? 'secondary' : 'overflow';
-      const disabled = id === 'add_plan' && project.readiness !== 'ready';
+      const notReady = project.readiness !== 'ready';
+      const gate = notReady && (id === 'add_plan' || id === 'add_epic');
       acts.push({
         id: act.id,
         label: $t(act.labelKey),
         advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
         role,
         destructive: act.destructive,
-        disabled: disabled || act.disabled,
-        disabledReason: disabled ? addPlanReason(project) : act.disabledReason,
+        disabled: gate || act.disabled,
+        disabledReason: gate ? addPlanReason(project) : act.disabledReason,
       });
     });
     return acts;
@@ -1158,9 +1153,38 @@
       {/if}
     </section>
 
-    {#if selectedProject}
+    {#if requestedProjectId && !selectedProject}
+      <section class="project-page" data-testid="project-page-pending">
+        {#if isLoading && !explorer}
+          <Skeleton shape="card" rows={3} label={$t('project.page.loading')} />
+        {:else if errorMessage !== null}
+          <div class="alert alert--danger">
+            <ErrorState
+              code={errorMessage}
+              actionLabel={$t('common.action.retry')}
+              onAct={loadExplorer}
+              titleLevel={2}
+            />
+          </div>
+        {:else}
+          <p class="text-muted" data-testid="project-page-not-found">
+            {$t('project.page.not_found', { project: requestedProjectId })}
+          </p>
+        {/if}
+      </section>
+    {:else if selectedProject}
       <section class="project-page" aria-labelledby="project-page-title" data-testid="project-page">
         <header class="project-page__head">
+          <div class="project-page__back">
+            <Button
+              variant="ghost"
+              size="sm"
+              on:click={() => navigateTo('projects')}
+              data-testid="project-page-back"
+            >
+              ← {$t('project.page.back')}
+            </Button>
+          </div>
           <div class="project-page__identity">
             <KindMark kind="project" />
             <div class="project-page__names">
@@ -1233,7 +1257,9 @@
                       <RowLink href={`/epics/${epic.epic_id}`} title={epic.title}>
                         {#snippet kind()}<KindMark kind="epic" wordHidden />{/snippet}
                         {#snippet tags()}
-                          <StatusLabel tone="running" label={epic.title} />
+                          {#if (epic.needs_operator_count ?? 0) > 0}
+                            <ReasonBadge reason="decision" count={epic.needs_operator_count ?? 1} />
+                          {/if}
                           <span class="text-xs text-secondary"
                             >{$t('project.explorer.counts', {
                               plans: epic.running_plans_count,
@@ -1747,6 +1773,11 @@
     padding-bottom: var(--space-3);
   }
 
+  /* The back step belongs to the phone, where the page takes the screen and the list waits. */
+  .project-page__back {
+    display: none;
+  }
+
   .project-page__identity {
     display: flex;
     flex-wrap: wrap;
@@ -1964,6 +1995,17 @@
       inset-block-start: var(--space-4);
       max-block-size: calc(100vh - var(--space-8));
       overflow-y: auto;
+    }
+  }
+
+  /* The phone: an opened project takes the screen, and its head carries the way back to the list. */
+  @media (max-width: 1023px) {
+    .projects-lens--object-open .projects-list {
+      display: none;
+    }
+
+    .project-page__back {
+      display: block;
     }
   }
 

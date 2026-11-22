@@ -329,7 +329,7 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.getByTestId('project-abandon-modal')).toBeInTheDocument();
     expect(abandonSpy).not.toHaveBeenCalled();
 
-    await fireEvent.click(screen.getByTestId('project-abandon-confirm'));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
     expect(abandonSpy).toHaveBeenCalledWith('/api/v1/entries/ent-cui/abandon');
   });
