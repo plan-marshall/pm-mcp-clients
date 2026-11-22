@@ -773,7 +773,8 @@ public final class PlanCommand implements Callable<Integer> {
             answers.move = move;
             answers.noInput = noInput;
             answers.entryId = entryId;
-            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.PLAN, answers);
+            return StartDialogue.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(),
+                                EntryKind.PLAN, answers);
         }
     }
 

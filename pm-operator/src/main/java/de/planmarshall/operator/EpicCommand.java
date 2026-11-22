@@ -461,7 +461,8 @@ public final class EpicCommand implements Callable<Integer> {
             answers.noInput = noInput;
             answers.entryId = entryId;
             answers.instruction = instruction;
-            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.EPIC, answers);
+            return StartDialogue.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(),
+                                EntryKind.EPIC, answers);
         }
     }
 

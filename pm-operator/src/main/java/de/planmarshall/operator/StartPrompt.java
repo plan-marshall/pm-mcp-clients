@@ -42,19 +42,39 @@ public final class StartPrompt {
 
     private final OperatorContext context;
     private final PrintWriter out;
+    private final PrintWriter err;
     private final String locale;
     private final boolean noInput;
     private @Nullable LineReader reader;
 
     /**
+     * A prompt with one stream: a console or a view shows its refusals where it shows everything
+     * else.
+     *
      * @param context the operator context
      * @param out     the output of the verb
      * @param locale  the interface locale
      * @param noInput whether the verb may ask nothing
      */
     public StartPrompt(OperatorContext context, PrintWriter out, String locale, boolean noInput) {
+        this(context, out, out, locale, noInput);
+    }
+
+    /**
+     * A prompt of a verb run as one shell command: the refusals that end it go to its standard error
+     * ({@code 03-dialogues.adoc#refusals}), everything else to its standard output.
+     *
+     * @param context the operator context
+     * @param out     the output of the verb
+     * @param err     the error output of the verb, which carries the refusals that end it
+     * @param locale  the interface locale
+     * @param noInput whether the verb may ask nothing
+     */
+    public StartPrompt(OperatorContext context, PrintWriter out, PrintWriter err, String locale,
+                        boolean noInput) {
         this.context = Objects.requireNonNull(context, "context");
         this.out = Objects.requireNonNull(out, "out");
+        this.err = Objects.requireNonNull(err, "err");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.noInput = noInput;
     }
@@ -71,6 +91,14 @@ public final class StartPrompt {
      */
     public PrintWriter out() {
         return out;
+    }
+
+    /**
+     * @return the writer of the refusals that end the dialogue; the same as {@link #out()} where the
+     *         prompt has one stream
+     */
+    public PrintWriter err() {
+        return err;
     }
 
     /**
@@ -99,6 +127,26 @@ public final class StartPrompt {
     void raw(String text) {
         out.println(text);
         out.flush();
+    }
+
+    /**
+     * Prints a catalogue line of a refusal that ends the dialogue, on the error writer.
+     *
+     * @param key  the message key
+     * @param args the arguments
+     */
+    void refusalLine(String key, Map<String, ?> args) {
+        refusalRaw(MessageCatalogue.format(locale, key, args));
+    }
+
+    /**
+     * Prints an already rendered line of a refusal that ends the dialogue, on the error writer.
+     *
+     * @param text the line
+     */
+    void refusalRaw(String text) {
+        err.println(text);
+        err.flush();
     }
 
     /**

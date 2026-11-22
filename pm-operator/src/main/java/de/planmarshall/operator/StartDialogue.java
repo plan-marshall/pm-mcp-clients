@@ -94,32 +94,38 @@ final class StartDialogue {
     private @Nullable String idOverride;
     private @Nullable StartStateResource state;
 
-    private StartDialogue(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers) {
+    private StartDialogue(OperatorContext context, PrintWriter out, PrintWriter err, EntryKind kind,
+                        StartAnswers answers) {
         this.context = Objects.requireNonNull(context, "context");
         this.kind = Objects.requireNonNull(kind, "kind");
         this.environment = Map.copyOf(context.environment());
         this.answers = Objects.requireNonNull(answers, "answers");
         this.api = new StartApi(Objects.requireNonNull(context, "context"));
         this.prompt = new StartPrompt(context, Objects.requireNonNull(out, "out"),
-                            context.clientEnvironment().locale(), answers.noInput);
+                            Objects.requireNonNull(err, "err"), context.clientEnvironment().locale(),
+                            answers.noInput);
         this.renderer = new StartRenderer(prompt);
     }
 
     /**
-     * Runs one starting verb.
+     * Runs one starting verb. The refusals that end it with exit code {@code 1} — copy and move
+     * together, an act the runtime refused, a refused start, and the project selector's own — go to
+     * {@code err} ({@code 03-dialogues.adoc#refusals}); the dialogue itself goes to {@code out}. A
+     * caller that shows one stream, a console or a view, passes the same writer twice.
      *
      * @param context the operator context
      * @param out     the verb's output
+     * @param err     the verb's error output
      * @param kind    the kind of work
      * @param answers the answers the verb carries
      * @return the exit code
      * @throws IOException on transport failure
      */
-    static int run(OperatorContext context, PrintWriter out, EntryKind kind, StartAnswers answers)
-                        throws IOException {
-        var dialogue = new StartDialogue(context, out, kind, answers);
+    static int run(OperatorContext context, PrintWriter out, PrintWriter err, EntryKind kind,
+                        StartAnswers answers) throws IOException {
+        var dialogue = new StartDialogue(context, out, err, kind, answers);
         if (answers.copy && answers.move) {
-            dialogue.prompt.line("start.documents.mode.conflict", Map.of());
+            dialogue.prompt.refusalLine("start.documents.mode.conflict", Map.of());
             return EXIT_FAILURE;
         }
         try {
@@ -133,7 +139,8 @@ final class StartDialogue {
             dialogue.prompt.line("start.entry.left", Map.of());
             return EXIT_OK;
         } catch (StartApi.StartActException refused) {
-            dialogue.prompt.raw(OutputSafety.stripControlSequences(refused.message(dialogue.prompt.locale())));
+            dialogue.prompt.refusalRaw(OutputSafety.stripControlSequences(
+                                refused.message(dialogue.prompt.locale())));
             return EXIT_FAILURE;
         }
     }
@@ -159,7 +166,7 @@ final class StartDialogue {
         if (!prompt.asks()) {
             StartPrompt.missing(KEY_STATE_PROJECT, text("operator.projects.select.title", Map.of()), null);
         }
-        var selection = ProjectSelector.rewrite(context, prompt.out(), prompt.out(),
+        var selection = ProjectSelector.rewrite(context, prompt.out(), prompt.err(),
                             new String[]{"--project", "?"}, prompt.reader());
         if (!selection.proceed()) {
             return selection.exitCode();

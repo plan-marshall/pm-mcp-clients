@@ -321,7 +321,8 @@ final class WorkActionDialogue {
             answers.withProject(project);
         }
         try {
-            StartDialogue.run(context, out, EntryKind.PLAN, answers);
+            // The view shows one stream, so the dialogue's refusals stay where everything else is.
+            StartDialogue.run(context, out, out, EntryKind.PLAN, answers);
         } catch (IOException refused) {
             prompt.raw(OutputSafety.stripControlSequences(
                                 OperatorRefusedException.screenText(refused, prompt.locale())));

@@ -265,7 +265,8 @@ final class StartRenderer {
     }
 
     /**
-     * Renders a refusal of the setup gate.
+     * Renders a refusal of the setup gate. It ends the dialogue, so both its lines go to the
+     * prompt's error writer ({@code 03-dialogues.adoc#refusals}).
      *
      * @param refusal the refusal
      */
@@ -274,8 +275,8 @@ final class StartRenderer {
                             ? text("start.gate.machine", Map.of("need", tenant(refusal.need())))
                             : text("start.gate.project", Map.of(KEY_PROJECT, tenant(refusal.projectId()),
                             "need", tenant(refusal.need())));
-        prompt.raw(text("start.refused.message", Map.of("message", message)));
-        prompt.raw(text("start.refused.action", Map.of("action", text(refusal.actionKey(), Map.of()))));
+        prompt.refusalRaw(text("start.refused.message", Map.of("message", message)));
+        prompt.refusalRaw(text("start.refused.action", Map.of("action", text(refusal.actionKey(), Map.of()))));
     }
 
     /**

@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,8 +82,12 @@ class LocalRefusalStreamTest {
     }
 
     private int execute(String... args) {
-        var context = new OperatorContext(fixture.environment(), tempDir, true,
-                            ClientEnvironment.capture(fixture.environment()),
+        return execute(fixture.environment(), args);
+    }
+
+    private int execute(Map<String, String> environment, String... args) {
+        var context = new OperatorContext(environment, tempDir, true,
+                            ClientEnvironment.capture(environment),
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
                             null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
@@ -236,6 +241,18 @@ class LocalRefusalStreamTest {
         fixture.start((request, response) -> response.json(200, "{\"projects\":[]}"));
 
         int code = execute("questions", "--project", "?");
+
+        assertRefusedOnStderr(code, "No project is enrolled yet.");
+    }
+
+    @Test
+    @DisplayName("plan add that resolves no project and finds none enrolled refuses on stderr")
+    void startWithoutProjects() throws Exception {
+        fixture.start((request, response) -> response.json(200, "{\"projects\":[]}"));
+        var environment = new HashMap<>(fixture.environment());
+        environment.remove("PM_PROJECT");
+
+        int code = execute(environment, "plan", "add", "--description", word());
 
         assertRefusedOnStderr(code, "No project is enrolled yet.");
     }
