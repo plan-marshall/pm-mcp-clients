@@ -158,7 +158,8 @@ describe('BrandMark component', () => {
 
     it('refuses at runtime a color mark at an undelivered size', () => {
       expect(() =>
-        render(BrandMark, { props: { rendering: 'colour', size: 20 as any } }),
+        // @ts-expect-error undelivered size at runtime
+        render(BrandMark, { props: { rendering: 'colour', size: 20 } }),
       ).toThrow(/not delivered/);
     });
   });

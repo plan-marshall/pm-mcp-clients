@@ -76,8 +76,8 @@ describe('MascotFigure', () => {
     });
 
     it('exports the figure height constant 180 for entry pages', async () => {
-      const mod = await import('./MascotFigure.svelte');
-      expect((mod as any).FIGURE_HEIGHT || (mod as any).ENTRY_FIGURE_HEIGHT).toBe(180);
+      const mod = (await import('./MascotFigure.svelte')) as unknown as Record<string, unknown>;
+      expect(mod.FIGURE_HEIGHT || mod.ENTRY_FIGURE_HEIGHT).toBe(180);
     });
 
     it.each([

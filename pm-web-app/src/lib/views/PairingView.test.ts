@@ -53,7 +53,7 @@ describe('PairingView component', () => {
   });
 
   it('renders pairing page title and input with CodeField', () => {
-    const { container } = render(PairingView);
+    render(PairingView);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pair this browser');
     const input = screen.getByLabelText(/code/i);
