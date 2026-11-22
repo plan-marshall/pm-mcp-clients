@@ -73,7 +73,11 @@ describe('ActionBar', () => {
     expect(next.getAttribute('title')).toBe('Every slot is busy');
   });
 
-  it('a click on a disabled-with-reason primary act through on:click calls nothing', async () => {
+  // A regression guard, not a proof: Svelte 5's handler wrapper already skips a forwarded `on:click`
+  // once the act's own handler stopped propagation, so this test passes on the code before PLAN-172
+  // too. The raw-`addEventListener` tests of `Button.test.ts` and `IconButton.test.ts` are the ones
+  // that pin `stopImmediatePropagation`.
+  it('regression guard: a click on a disabled-with-reason primary act through on:click calls nothing', async () => {
     const onAct = vi.fn();
     render(ActionBar, {
       props: {

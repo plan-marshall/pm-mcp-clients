@@ -198,7 +198,7 @@ So `RowMenu` takes the `disabledReason` the `ActionBar` already has (today it sk
 
 The menu opens at its trigger — at the row, never in a panel elsewhere on the page — below it, aligned to the trigger's inline end. It opens above the trigger instead when it would pass the bottom of the viewport below the trigger and the viewport has more room above the trigger than below it. It is placed again while it is open, whenever the page scrolls or the viewport changes its size, and opens below again as soon as there is room. A menu taller than the room on its side is capped to that room and scrolls, so none of its entries lies beyond the viewport. The open menu lies on the menu layer (<<layers>>), above the bottom bar of a phone and below a dialog: a row at the bottom of a phone screen therefore opens its menu where the bar does not cover it — upwards into the page, or, where the menu still fits in the viewport, over the bar until it closes. `pm-web-e2e/tests/row-menu.spec.js` measures this at 390 px.
 
-Source and surface: `pm-web-app/src/lib/components/RowMenu.svelte`, tests in `RowMenu.test.ts`; the props are `items` (`id`, `label`, `destructive`, `disabled`, `disabledReason`, `advisory`, `onclick`), `label`, `advisory`, `size`, `disabled`, and forwarded button attributes. The menu itself is shared with `ActionBar.svelte`.
+Source and surface: `pm-web-app/src/lib/components/RowMenu.svelte`, tests in `RowMenu.test.ts`; the props are `items` (`id`, `label`, `destructive`, `disabled`, `disabledReason`, `advisory`, `title`, `onclick`), `label`, `advisory`, `size`, `disabled`, and forwarded button attributes. The menu itself is shared with `ActionBar.svelte`. A menu a view opens from its own act, without a click on the trigger, finds its trigger itself and hands the focus back to it when it closes.
 
 [#layers]
 ==== Layers
@@ -273,7 +273,7 @@ image::../../resources/diagrams/web-component-toggle.svg[A favourite toggle off 
 
 One thing on or off: a favourite, the follow mode, revealing a secret. A `<button>` with `aria-pressed`, its label naming the thing, not the state; the pressed state is drawn by the icon (a filled star) and by the pressed ground, never by colour alone.
 
-Source and surface: `pm-web-app/src/lib/components/Toggle.svelte` (new), tests beside it; the props are `pressed`, `label`, `icon` and `onToggle(pressed)`.
+Source and surface: `pm-web-app/src/lib/components/Toggle.svelte` (new), tests beside it; the props are `pressed`, `label`, `icon`, `pressedIcon`, `disabled`, `disabledReason` and `onToggle(pressed)` — a toggle disabled with a reason stays in the tab order, carries the reason as its advisory and its description, and does nothing on a click (link:interaction-affordances.adoc[Interaction Affordances]).
 
 [#tabs]
 === Tabs
@@ -300,14 +300,16 @@ image::../../resources/diagrams/web-component-dialog.svg[A danger dialogue over 
 
 Every modal of the app: radius 12 px, `--shadow-overlay`, on the modal layer (<<layers>>), the title at `--text-xl` as its accessible name, the focus held inside while it is open. The footer is right-aligned: the cancel act (ghost) on the left, the confirming act (primary, or danger) on the right, in every dialog. `Escape` closes it, as cancel does, and the focus returns to the act that opened it.
 
-Source and surface: `pm-web-app/src/lib/components/Dialog.svelte`, tests in `Dialog.test.ts`; the props are `open`, `title`, `danger`, `consequences` and `onClose`, plus the `footer` slot.
+The dialog is drawn under the page's body, or under the nearest section that carries a theme of its own (`data-theme`), so a dialog opened inside a themed section keeps that section's palette and every dialog at the page level takes the document theme. Two dialogs may be open at once, one opened from the other: the one on top owns the keyboard, so `Tab` walks it alone and `Escape` closes it first. `Escape` yields to an open menu only when the menu holds the focus — that menu closes itself on the press — and closes the dialog otherwise. A field that takes the focus as it mounts keeps it; the dialog box takes the focus only where nothing inside the dialog holds it.
+
+Source and surface: `pm-web-app/src/lib/components/Dialog.svelte`, tests in `Dialog.test.ts`; the props are `open`, `title`, `danger`, `consequences`, `onClose`, `testid` and `returnFocusElement`, plus the `footer` slot. The portal that draws every dialog under its theme scope is `pm-web-app/src/lib/utils/portal.ts`, with its test beside it.
 
 [#confirm-dialog]
 === ConfirmDialog
 
 The confirmation of an act: the `Dialog` with the act's question as its title, its consequences in a list, and the act's own label on its confirming button. A destructive act's confirmation names the consequences in the danger colour, and its confirming button is the one filled danger control of the screen. Where the act is as wide as a pairing or an enrolment, the operator types the resource's name first. While the act runs, a second confirm is ignored and `Escape` and cancel are held.
 
-Source and surface: `pm-web-app/src/lib/components/ConfirmDialog.svelte`, tests beside it; the props are `title`, `consequences`, `actionLabel`, `cancelLabel`, an optional `typedName`, `busy`, `confirmDisabled` and `testid`.
+Source and surface: `pm-web-app/src/lib/components/ConfirmDialog.svelte`, tests in `ConfirmDialog.test.ts`; the props are `open`, `title`, `consequences`, `actionLabel`, `cancelLabel`, an optional `typedName`, `busy`, `confirmDisabled`, `testid`, `returnFocusElement`, `onConfirm` and `onClose`.
 
 [#hierarchy]
 == Hierarchy

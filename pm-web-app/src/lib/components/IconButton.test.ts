@@ -65,7 +65,10 @@ describe('IconButton component', () => {
     expect(clicked).toHaveBeenCalledOnce();
   });
 
-  it('a click on a disabled-with-reason IconButton through on:click calls nothing', async () => {
+  // A regression guard, not a proof: Svelte 5's handler wrapper already skips a forwarded `on:click`
+  // once the act's own handler stopped propagation, so this test passes on the code before PLAN-172
+  // too. The raw-`addEventListener` test below is the one that pins `stopImmediatePropagation`.
+  it('regression guard: a click on a disabled-with-reason IconButton through on:click calls nothing', async () => {
     const onClick = vi.fn();
     render(IconButtonOnClickFixture, {
       props: { disabled: true, disabledReason: 'Nothing to copy', label: 'Copy', onClick },
