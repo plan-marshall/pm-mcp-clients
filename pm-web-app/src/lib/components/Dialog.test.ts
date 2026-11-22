@@ -202,6 +202,7 @@ describe('Dialog', () => {
     expect(style).toContain('z-index: var(--layer-dialog)');
     expect(style).toContain('border-radius: var(--radius-lg)');
     expect(style).toContain('box-shadow: var(--shadow-overlay)');
+    expect(style).toContain('background-color: var(--color-overlay)');
     expect(style).toContain('font-size: var(--text-xl)');
     expect(style).toContain('justify-content: flex-end');
   });

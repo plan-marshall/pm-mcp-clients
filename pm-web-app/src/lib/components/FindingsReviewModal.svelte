@@ -12,9 +12,10 @@
    * with its rules, origin and proposal, and the acts that decide it.
    *
    * It is the design `Dialog`: the title names the register, the item rows are `Button`s, each row's
-   * disposition is a `StatusLabel`, the acts follow the hierarchy (_Finish_ primary, the rest
-   * secondary), the operator's words are a `Compose` and the drop reason a `TextField`. The order of
-   * the items, the first-open selection and the register's logic are the review's own.
+   * disposition is a `StatusLabel`, the acts follow the hierarchy (_Finish_ primary, the named acts
+   * secondary, the ways out ghost), the operator's words are a `Compose` and the drop reason a
+   * `TextField`. The order of the items, the first-open selection and the register's logic are the
+   * review's own.
    */
   interface Props {
     epicId: string;

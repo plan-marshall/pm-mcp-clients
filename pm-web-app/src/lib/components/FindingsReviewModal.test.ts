@@ -282,6 +282,44 @@ describe('FindingsReviewModal component', () => {
     expect(screen.getByTestId('review-read-back-discard')).toBeInTheDocument();
   });
 
+  it('asks the planning role to draft the plan again only with the operator’s words', async () => {
+    const onPromote = vi.fn();
+    render(FindingsReviewModal, {
+      props: {
+        epicId: 'relay-hardening',
+        review: {
+          ...review,
+          drafted_plan: {
+            plan_id: 'relay-cursor-fix',
+            objective: 'fix the cursor order',
+            deliverables: ['the cursor order'],
+            surface: ['pm-relay/src'],
+            dependencies: [],
+          },
+        },
+        open: true,
+        onPromote,
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('review-item-F-0004'));
+    await fireEvent.click(screen.getByTestId('review-promote'));
+    expect(onPromote).toHaveBeenCalledWith('F-0004', undefined);
+    expect(await screen.findByTestId('review-drafted-plan')).toBeInTheDocument();
+
+    onPromote.mockClear();
+    // An empty redraft sends nothing: the act was disabled before the restyle and stays inert.
+    await fireEvent.click(screen.getByTestId('review-plan-redraft'));
+    expect(onPromote).not.toHaveBeenCalled();
+
+    await fireEvent.input(screen.getByTestId('review-plan-instruction'), {
+      target: { value: 'name the transport' },
+    });
+    await fireEvent.click(screen.getByTestId('review-plan-redraft'));
+
+    expect(onPromote).toHaveBeenCalledWith('F-0004', 'name the transport');
+  });
+
   it('stages a drafted plan after a promotion', async () => {
     const onStagePlan = vi.fn();
     render(FindingsReviewModal, {

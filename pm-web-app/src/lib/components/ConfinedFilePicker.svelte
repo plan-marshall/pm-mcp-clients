@@ -100,17 +100,15 @@
     count: (listing?.entries ?? []).filter((entry) => !entry.directory).length,
     types: typesOf(),
   });
-  $: fileOptions = (listing?.entries ?? [])
-    .filter((entry) => !entry.directory)
-    .map((entry): CheckOption => {
-      const message = entry.refusal ? failureMessage(entry.refusal) : null;
-      return {
-        value: entry.path,
-        label: entry.name,
-        disabled: !entry.readable || Boolean(entry.refusal),
-        disabledReason: message ? $t(message.key, message.args) : undefined,
-      };
-    });
+  $: entryOptions = (listing?.entries ?? []).map((entry): CheckOption => {
+    const message = entry.refusal ? failureMessage(entry.refusal) : null;
+    return {
+      value: entry.path,
+      label: entry.name,
+      disabled: !entry.readable || Boolean(entry.refusal),
+      disabledReason: message ? $t(message.key, message.args) : undefined,
+    };
+  });
 
   $: if (open && projectId) {
     const key = `${projectId}|${root}|${path}`;
@@ -185,10 +183,10 @@
       </ul>
     {/if}
 
-    {#if fileOptions.length > 0}
+    {#if entryOptions.length > 0}
       <CheckGroup
         legend={summary}
-        options={fileOptions}
+        options={entryOptions}
         values={selected}
         onchange={(values) => (selected = values)}
         testid="picker-files"

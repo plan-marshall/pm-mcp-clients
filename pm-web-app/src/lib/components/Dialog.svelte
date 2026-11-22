@@ -111,13 +111,10 @@
       if (event.defaultPrevented) {
         return;
       }
-      // The Escape yields to an open menu only when the menu is the one the keyboard is in: that
-      // menu closes itself on this press. A menu that merely lies somewhere in the dialog is no
-      // reason to swallow the Escape.
-      const target = event.target;
-      const targetElement = target instanceof Element ? target : null;
+      // The Escape yields to the menu that holds the keyboard: that menu closes itself on this
+      // press. A menu that merely lies somewhere in the dialog is no reason to swallow the Escape.
       const focused = document.activeElement instanceof Element ? document.activeElement : null;
-      if (targetElement?.closest('[role="menu"]') || focused?.closest('[role="menu"]')) {
+      if (focused?.closest('[role="menu"]')) {
         return;
       }
       // Captured before the page's own Escape handlers, so the dialog closes on its own.
