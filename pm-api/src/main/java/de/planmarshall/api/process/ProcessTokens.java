@@ -62,7 +62,7 @@ public record ProcessTokens(
         return JsonTree.write(toMap());
     }
 
-    public static ProcessTokens fromMap(Map<String, Object> map) throws IOException {
+    public static ProcessTokens fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var totNum = JsonTree.number(map, "total");
         long total = totNum != null ? totNum.longValue() : 0L;

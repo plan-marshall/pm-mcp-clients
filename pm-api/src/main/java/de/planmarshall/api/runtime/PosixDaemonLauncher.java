@@ -56,7 +56,7 @@ public final class PosixDaemonLauncher implements DaemonLauncher {
         Thread.ofPlatform().daemon().name("pm-mcpd-reaper-" + pid).start(() -> {
             try {
                 exit.set(PosixSpawn.exitCode(spawn.waitFor(pid)));
-            } catch (NativeCallException e) {
+            } catch (NativeCallException _) {
                 // the child cannot be reaped; its exit stays unknown
             }
         });

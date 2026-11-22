@@ -21,7 +21,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("SseReader")
+@EnableGeneratorController
 class SseReaderTest {
 
     private static SseReader reader(String text) {
@@ -53,6 +57,35 @@ class SseReaderTest {
     @DisplayName("drops an event without its blank line at the end of the stream")
     void incomplete() throws Exception {
         assertNull(reader("data: x\n").next());
+    }
+
+    @Test
+    @DisplayName("reads a stream that mixes CRLF, a lone CR and LF, and takes a CR before CRLF as two line ends")
+    void mixedTerminators() throws Exception {
+        var first = Generators.letterStrings(1, 12).next();
+        var second = Generators.letterStrings(1, 12).next();
+        var third = Generators.letterStrings(1, 12).next();
+        var events = reader("data: " + first + "\r\n\rdata: " + second + "\n\r\ndata: " + third + "\r\r\n");
+
+        assertEquals(new SseEvent("message", first, null), events.next());
+        assertEquals(new SseEvent("message", second, null), events.next());
+        assertEquals(new SseEvent("message", third, null), events.next());
+        assertNull(events.next());
+    }
+
+    @Test
+    @DisplayName("ends the stream after a final CR and drops a last line that has no terminator")
+    void endOfStreamAfterCarriageReturn() throws Exception {
+        var data = Generators.letterStrings(1, 12).next();
+        var trailing = Generators.letterStrings(1, 12).next();
+
+        var endedByCr = reader("data: " + data + "\r\r");
+        var unterminated = reader("data: " + data + "\n\ndata: " + trailing);
+
+        assertEquals(new SseEvent("message", data, null), endedByCr.next());
+        assertNull(endedByCr.next());
+        assertEquals(new SseEvent("message", data, null), unterminated.next());
+        assertNull(unterminated.next());
     }
 
     @Test

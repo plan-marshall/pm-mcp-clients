@@ -36,7 +36,12 @@ public record AlongsideLanding(
 ) {
     public AlongsideLanding {
         state = state != null ? state : "running";
-        kind = kind != null ? kind : (count != null ? "removal" : "unit");
+        kind = kind != null ? kind : defaultKind(count);
+    }
+
+    /** An alongside landing that names a count removes, one that names none lands a unit. */
+    private static String defaultKind(@Nullable Integer count) {
+        return count != null ? "removal" : "unit";
     }
 
     /**
@@ -74,9 +79,8 @@ public record AlongsideLanding(
      *
      * @param map map representation
      * @return parsed alongside landing
-     * @throws IOException on format error
      */
-    public static AlongsideLanding fromMap(Map<String, Object> map) throws IOException {
+    public static AlongsideLanding fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var unit = JsonTree.string(map, "unit");
         var state = JsonTree.string(map, "state");
@@ -85,10 +89,8 @@ public record AlongsideLanding(
         }
         var countNum = JsonTree.number(map, "count");
         Integer count = countNum != null ? countNum.intValue() : null;
+        // an absent kind stays null here: the canonical constructor supplies the default
         var kind = JsonTree.string(map, "kind");
-        if (kind == null) {
-            kind = count != null ? "removal" : "unit";
-        }
         var holdKind = JsonTree.string(map, "hold_kind");
         if (holdKind == null) {
             holdKind = JsonTree.string(map, "holdKind");

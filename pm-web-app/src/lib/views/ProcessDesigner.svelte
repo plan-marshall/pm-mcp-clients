@@ -7,6 +7,14 @@
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import Icon from '../components/Icon.svelte';
   import WorkflowValidationResults from '../components/WorkflowValidationResults.svelte';
+  import SegmentedControl, {
+    type SegmentedControlOption,
+  } from '../components/SegmentedControl.svelte';
+  import Dialog from '../components/Dialog.svelte';
+  import Field from '../components/Field.svelte';
+  import SelectField, { type SelectOption } from '../components/SelectField.svelte';
+  import TextField from '../components/TextField.svelte';
+  import TextArea from '../components/TextArea.svelte';
   import {
     apiClient,
     type BuildingBlock,
@@ -15,7 +23,7 @@
     type WorkflowUnit,
     type WorkflowValidationResult,
   } from '../api/client';
-  import { runtimeStore, navigateTo, replaceDesignerProject } from '../stores/runtime';
+  import { runtimeStore, replaceDesignerProject } from '../stores/runtime';
   import { actFailureReason, errorCodeOf, isClientError } from '../api/errors';
   import { diffLines, type DiffRow, type LineDiff } from '../utils/lineDiff';
   import {
@@ -52,12 +60,34 @@
   type PlaceStage = 'idle' | 'target' | 'diff' | 'progress' | 'failed' | 'conflict' | 'done';
 
   let projectId = $state<string | null>(null);
+  /** The project value bound to the project SelectField. */
+  let projectSelectValue = $state('');
+
+  $effect(() => {
+    projectSelectValue = projectId ?? '';
+  });
+
   /** The project the open units were loaded for, to restore on a cancelled change. */
   let loadedProjectId = $state<string | null>(null);
   let projects = $state<Array<{ project_id: string; display_name: string }>>([]);
   let units = $state<WorkflowUnit[]>([]);
   let catalogue = $state<WorkflowCatalogue | null>(null);
   let selectedBlock = $state<BuildingBlock | null>(null);
+
+  const intakeOptions = $derived<SegmentedControlOption[]>([
+    { id: 'installed', label: $t('designer.input.installed') },
+    { id: 'upload', label: $t('designer.input.upload') },
+    { id: 'paste', label: $t('designer.input.paste') },
+    { id: 'template', label: $t('designer.input.template') },
+  ]);
+
+  const projectOptions = $derived<SelectOption[]>([
+    { value: '', label: $t('designer.level.machine') },
+    ...projects.map((project) => ({
+      value: project.project_id,
+      label: project.display_name,
+    })),
+  ]);
 
   let unitName = $state('');
   let unitKind = $state('subworkflow');
@@ -111,6 +141,19 @@
   let landingError = $state('');
   /** Whether the failure left the placement's outcome unknown, so no claim about the unit is made. */
   let placeOutcomeUnknown = $state(false);
+
+  const placeTitle = $derived.by(() => {
+    if (placeStage === 'target') return $t('designer.place.question', { unit: unitName });
+    if (placeStage === 'diff') {
+      return $t('designer.confirm.title', {
+        unit: unitName,
+        target: placeTargetProject ? 'project' : 'machine',
+        project: placeTargetProject ?? '',
+      });
+    }
+    if (placeStage === 'progress') return $t('designer.place.progress', { unit: unitName });
+    return $t('designer.place.action');
+  });
 
   let projectLabel = $derived(projectId ?? '');
   let checkedAgainst = $derived(
@@ -338,6 +381,7 @@
     // panel and the blocks match the text the operator sees.
     if (draft?.projectId) projectId = draft.projectId;
     loadedProjectId = projectId;
+    projectSelectValue = projectId ?? '';
     try {
       await fetchAll();
 
@@ -408,6 +452,7 @@
   function stayInDesigner(): void {
     pendingAction = null;
     projectId = loadedProjectId;
+    projectSelectValue = loadedProjectId ?? '';
     appliedRouteProjectId = loadedProjectId;
     replaceDesignerProject(loadedProjectId);
   }
@@ -434,20 +479,17 @@
   async function adoptProject(next: string | null): Promise<void> {
     const previousProjectId = loadedProjectId;
     projectId = next;
+    projectSelectValue = next ?? '';
     appliedRouteProjectId = next;
     if (await loadAll()) {
       replaceDesignerProject(loadedProjectId);
       return;
     }
     projectId = previousProjectId;
+    projectSelectValue = previousProjectId ?? '';
     loadedProjectId = previousProjectId;
     appliedRouteProjectId = previousProjectId;
     replaceDesignerProject(previousProjectId);
-  }
-
-  /** Leaves the designer, asking first when a draft is unsaved. */
-  function leaveDesigner(): void {
-    navigateTo('projects');
   }
 
   function onTextEdited(): void {
@@ -876,6 +918,7 @@
 
   /** Closes the placement dialogue and returns to the editor. */
   function closePlace(): void {
+    if (isPlacing) return;
     placeStage = 'idle';
     landingError = '';
     landingSteps = [];
@@ -894,8 +937,9 @@
   }
 
   /** Opens the selected scope once the leave guard commits, and keeps it in the address bar. */
-  function onProjectChange(): void {
-    guardDraft(() => void adoptProject(projectId));
+  function handleProjectSelect(value: string): void {
+    const next = value === '' ? null : value;
+    guardDraft(() => void adoptProject(next));
   }
 
   /** @param kind a diff row's kind @returns its glyph, so the row does not rely on colour */
@@ -941,22 +985,17 @@
       <span class="designer__checked" data-testid="designer-checked">{checkedAgainst}</span>
     </div>
     <div class="designer__head-right">
-      <select
-        class="designer__project"
-        bind:value={projectId}
-        onchange={onProjectChange}
-        data-testid="project-select"
-        aria-label={$t('designer.open.question')}
-      >
-        <option value={null}>{$t('designer.level.machine')}</option>
-        {#each projects as project (project.project_id)}
-          <option value={project.project_id}>{project.display_name}</option>
-        {/each}
-      </select>
+      <SelectField
+        bind:value={projectSelectValue}
+        options={projectOptions}
+        onchange={handleProjectSelect}
+        testid="project-select"
+        ariaLabel={$t('designer.open.question')}
+      />
       <Button
         variant="primary"
         loading={isValidating}
-        on:click={validate}
+        onclick={validate}
         data-testid="validate-button"
       >
         {$t('designer.validate.action')}
@@ -966,19 +1005,12 @@
           variant="secondary"
           disabled={!result?.valid || outdated || isPlacing || isCompiledOnly}
           loading={isPlacing}
-          on:click={openPlace}
+          onclick={openPlace}
           data-testid="place-button"
         >
           {$t('designer.place.action')}
         </Button>
       {/if}
-      <Button
-        variant="ghost"
-        on:click={() => guardDraft(leaveDesigner)}
-        data-testid="designer-back"
-      >
-        {$t('designer.back')}
-      </Button>
     </div>
   </header>
 
@@ -1002,84 +1034,52 @@
       <h2 id="designer-intake-title" class="designer__intake-title">
         {$t('designer.open.title')}
       </h2>
-      <div class="designer__intake-modes" role="group" aria-label={$t('designer.open.question')}>
-        <button
-          type="button"
-          class="intake-mode"
-          class:intake-mode--active={intakeMode === 'installed'}
-          onclick={() => {
-            intakeMode = 'installed';
-          }}
-        >
-          {$t('designer.input.installed')}
-        </button>
-        <button
-          type="button"
-          class="intake-mode"
-          class:intake-mode--active={intakeMode === 'upload'}
-          onclick={() => {
-            intakeMode = 'upload';
-          }}
-        >
-          {$t('designer.input.upload')}
-        </button>
-        <button
-          type="button"
-          class="intake-mode"
-          class:intake-mode--active={intakeMode === 'paste'}
-          onclick={() => {
-            intakeMode = 'paste';
-          }}
-        >
-          {$t('designer.input.paste')}
-        </button>
-        <button
-          type="button"
-          class="intake-mode"
-          class:intake-mode--active={intakeMode === 'template'}
-          onclick={() => {
-            intakeMode = 'template';
-          }}
-        >
-          {$t('designer.input.template')}
-        </button>
-      </div>
+      <SegmentedControl
+        options={intakeOptions}
+        value={intakeMode}
+        label={$t('designer.open.question')}
+        onChange={(id) => {
+          intakeMode = id as IntakeMode;
+        }}
+        data-testid="intake-mode-control"
+      />
 
       {#if intakeMode === 'upload'}
         <div class="intake-panel">
-          <label class="intake-label" for="designer-file">{$t('designer.input.upload')}</label>
-          <input
+          <Field
             id="designer-file"
-            class="intake-file"
-            type="file"
-            accept=".pmwf,.txt,text/plain"
-            onchange={handleFile}
-            data-testid="designer-file-input"
-          />
-          <span class="text-muted text-xs">
-            {$t('designer.input.upload_hint', { limit: $t('designer.input.limit') })}
-          </span>
+            label={$t('designer.input.upload')}
+            hint={$t('designer.input.upload_hint', { limit: $t('designer.input.limit') })}
+          >
+            <input
+              id="designer-file"
+              class="intake-file"
+              type="file"
+              accept=".pmwf,.txt,text/plain"
+              onchange={handleFile}
+              data-testid="designer-file-input"
+            />
+          </Field>
         </div>
       {:else if intakeMode === 'paste'}
         <div class="intake-panel">
-          <label class="intake-label" for="designer-paste">{$t('designer.input.paste')}</label>
-          <textarea
+          <TextArea
             id="designer-paste"
-            class="intake-paste"
+            label={$t('designer.input.paste')}
             bind:value={pasteText}
-            spellcheck="false"
-            aria-label={$t('designer.input.paste')}
-            data-testid="designer-paste"
-          ></textarea>
+            spellcheck={false}
+            rows={4}
+            testid="designer-paste"
+          />
           <Button variant="secondary" onclick={openPastedText} data-testid="designer-paste-open">
-            {$t('designer.input.open')}
+            {$t('designer.input.open_paste')}
           </Button>
         </div>
       {:else if intakeMode === 'template'}
         <div class="intake-panel">
           <p class="text-muted text-sm">{$t('designer.input.template_hint')}</p>
           <Button variant="secondary" onclick={startFromTemplate} data-testid="designer-template">
-            {$t('designer.input.open')}
+            {$t('designer.input.open_template')}
           </Button>
         </div>
       {:else}
@@ -1197,14 +1197,11 @@
 
           {#if needsAuthor && !isPhone}
             <div class="frontmatter__author-ask">
-              <label class="frontmatter__label" for="designer-author">
-                {$t('designer.frontmatter.author')}
-              </label>
-              <input
+              <TextField
                 id="designer-author"
-                class="frontmatter__input"
+                label={$t('designer.frontmatter.author')}
                 bind:value={authorDraft}
-                data-testid="designer-author-input"
+                testid="designer-author-input"
               />
               <Button
                 variant="secondary"
@@ -1216,44 +1213,34 @@
             </div>
           {/if}
 
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.name')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.displayName}
-              readonly={isPhone || isCompiledOnly}
-              oninput={(event) => setField('displayName', event.currentTarget.value)}
-              data-testid="frontmatter-name"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.description')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.description}
-              readonly={isPhone || isCompiledOnly}
-              oninput={(event) => setField('description', event.currentTarget.value)}
-              data-testid="frontmatter-description"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.type')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.type}
-              readonly={isPhone || isCompiledOnly || isReplacing}
-              oninput={(event) => setField('type', event.currentTarget.value)}
-              data-testid="frontmatter-type"
-            />
-          </label>
+          <TextField
+            label={$t('designer.frontmatter.name')}
+            value={frontmatter.displayName}
+            readonly={isPhone || isCompiledOnly}
+            oninput={(event) => setField('displayName', event.currentTarget.value)}
+            testid="frontmatter-name"
+          />
+          <TextField
+            label={$t('designer.frontmatter.description')}
+            value={frontmatter.description}
+            readonly={isPhone || isCompiledOnly}
+            oninput={(event) => setField('description', event.currentTarget.value)}
+            testid="frontmatter-description"
+          />
+          <TextField
+            label={$t('designer.frontmatter.type')}
+            value={frontmatter.type}
+            readonly={isPhone || isCompiledOnly || isReplacing}
+            oninput={(event) => setField('type', event.currentTarget.value)}
+            testid="frontmatter-type"
+          />
           {#if isReplacing}
             <p class="frontmatter__kept text-muted text-xs">
               {$t('designer.frontmatter.interface_kept')}
             </p>
           {/if}
-          <div class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.icon')}</span>
-            <span class="frontmatter__icon">
+          <Field label={$t('designer.frontmatter.icon')}>
+            <div class="frontmatter__icon">
               <WorkflowIcon id={currentIcon} size={20} />
               <input
                 class="frontmatter__input"
@@ -1263,58 +1250,43 @@
                 oninput={(event) => setField('icon', event.currentTarget.value)}
                 data-testid="frontmatter-icon"
               />
-            </span>
-          </div>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.entries')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.entries.map((entry) => entry.id).join(', ')}
-              readonly={isPhone || isCompiledOnly || isReplacing}
-              oninput={(event) => setInterface('entries', event.currentTarget.value)}
-              data-testid="frontmatter-entries"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.exits')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.exits.map((entry) => entry.id).join(', ')}
-              readonly={isPhone || isCompiledOnly || isReplacing}
-              oninput={(event) => setInterface('exits', event.currentTarget.value)}
-              data-testid="frontmatter-exits"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.author_label')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.author}
-              readonly={isPhone || isCompiledOnly}
-              oninput={(event) => setField('author', event.currentTarget.value)}
-              data-testid="frontmatter-author"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.modified')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.modified}
-              readonly={isPhone || isCompiledOnly}
-              oninput={(event) => setField('modified', event.currentTarget.value)}
-              data-testid="frontmatter-modified"
-            />
-          </label>
-          <label class="frontmatter__row">
-            <span class="frontmatter__label">{$t('designer.frontmatter.release')}</span>
-            <input
-              class="frontmatter__input"
-              value={frontmatter.release}
-              readonly={isPhone || isCompiledOnly}
-              oninput={(event) => setField('release', event.currentTarget.value)}
-              data-testid="frontmatter-release"
-            />
-          </label>
+            </div>
+          </Field>
+          <TextField
+            label={$t('designer.frontmatter.entries')}
+            value={frontmatter.entries.map((entry) => entry.id).join(', ')}
+            readonly={isPhone || isCompiledOnly || isReplacing}
+            oninput={(event) => setInterface('entries', event.currentTarget.value)}
+            testid="frontmatter-entries"
+          />
+          <TextField
+            label={$t('designer.frontmatter.exits')}
+            value={frontmatter.exits.map((entry) => entry.id).join(', ')}
+            readonly={isPhone || isCompiledOnly || isReplacing}
+            oninput={(event) => setInterface('exits', event.currentTarget.value)}
+            testid="frontmatter-exits"
+          />
+          <TextField
+            label={$t('designer.frontmatter.author_label')}
+            value={frontmatter.author}
+            readonly={isPhone || isCompiledOnly}
+            oninput={(event) => setField('author', event.currentTarget.value)}
+            testid="frontmatter-author"
+          />
+          <TextField
+            label={$t('designer.frontmatter.modified')}
+            value={frontmatter.modified}
+            readonly={isPhone || isCompiledOnly}
+            oninput={(event) => setField('modified', event.currentTarget.value)}
+            testid="frontmatter-modified"
+          />
+          <TextField
+            label={$t('designer.frontmatter.release')}
+            value={frontmatter.release}
+            readonly={isPhone || isCompiledOnly}
+            oninput={(event) => setField('release', event.currentTarget.value)}
+            testid="frontmatter-release"
+          />
           <p class="frontmatter__signature text-muted text-xs">
             {$t('designer.frontmatter.signature')}:
             {frontmatter.signature || $t('designer.frontmatter.signature_none')}
@@ -1392,7 +1364,7 @@
             project: displayNameFor(result.composed.project.project_id),
           })}
         </h2>
-        <Button variant="ghost" on:click={() => (previewOpen = false)} data-testid="preview-close">
+        <Button variant="ghost" onclick={() => (previewOpen = false)} data-testid="preview-close">
           {$t('common.action.close')}
         </Button>
       </div>
@@ -1409,182 +1381,162 @@
   {/if}
 </div>
 
-{#if pendingAction}
-  <div class="designer__modal" role="dialog" aria-modal="true" aria-labelledby="leave-title">
-    <div class="designer__modal-card">
-      <h2 id="leave-title" class="designer__modal-title">{$t('designer.leave.question')}</h2>
-      <div class="designer__modal-actions">
-        <Button variant="secondary" onclick={stayInDesigner}>{$t('designer.leave.stay')}</Button>
-        <Button
-          variant="danger"
-          onclick={discardDraft}
-          data-advisory={$t('designer.leave.discard.title')}>{$t('designer.leave.discard')}</Button
-        >
-      </div>
-    </div>
-  </div>
-{/if}
+<Dialog
+  open={Boolean(pendingAction)}
+  title={$t('designer.leave.question')}
+  onClose={stayInDesigner}
+  testid="designer-leave-dialog"
+>
+  <svelte:fragment slot="footer">
+    <Button variant="secondary" onclick={stayInDesigner}>{$t('designer.leave.stay')}</Button>
+    <Button
+      variant="danger"
+      onclick={discardDraft}
+      data-advisory={$t('designer.leave.discard.title')}
+    >
+      {$t('designer.leave.discard')}
+    </Button>
+  </svelte:fragment>
+</Dialog>
 
-{#if placeStage !== 'idle'}
-  <div
-    class="designer__modal"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="place-title"
-    data-testid="place-dialog"
-  >
-    <div class="designer__modal-card designer__modal-card--wide">
-      {#if placeStage === 'target'}
-        <h2 id="place-title" class="designer__modal-title">
-          {$t('designer.place.question', { unit: unitName })}
-        </h2>
-        <fieldset class="designer__targets">
-          <label class="designer__target">
-            <input
-              type="radio"
-              name="placeTarget"
-              checked={placeTargetProject === null}
-              onchange={() => {
-                placeTargetProject = null;
-              }}
-            />
-            <span>
-              <strong>{$t('designer.place.machine')}</strong>
-              <span class="text-muted text-sm">{$t('designer.place.machine_hint')}</span>
-            </span>
-          </label>
-          {#each projects as project (project.project_id)}
-            <label class="designer__target">
-              <input
-                type="radio"
-                name="placeTarget"
-                checked={placeTargetProject === project.project_id}
-                onchange={() => {
-                  placeTargetProject = project.project_id;
-                }}
-              />
-              <span>
-                <strong>{$t('designer.place.project', { project: project.display_name })}</strong>
-              </span>
-            </label>
-          {/each}
-        </fieldset>
-        <p class="text-muted text-sm">{$t('designer.place.order')}</p>
-        <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('designer.back')}</Button>
-          <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare">
-            {$t('designer.place.compare')}
-          </Button>
-        </div>
-      {:else if placeStage === 'diff' && placeDiff}
-        <h2 id="place-title" class="designer__modal-title">
-          {$t('designer.confirm.title', {
-            unit: unitName,
+<Dialog
+  open={placeStage !== 'idle'}
+  title={placeTitle}
+  onClose={closePlace}
+  testid="place-dialog"
+>
+  {#if placeStage === 'target'}
+    <fieldset class="designer__targets">
+      <label class="designer__target">
+        <input
+          type="radio"
+          name="placeTarget"
+          checked={placeTargetProject === null}
+          onchange={() => {
+            placeTargetProject = null;
+          }}
+        />
+        <span>
+          <strong>{$t('designer.place.machine')}</strong>
+          <span class="text-muted text-sm">{$t('designer.place.machine_hint')}</span>
+        </span>
+      </label>
+      {#each projects as project (project.project_id)}
+        <label class="designer__target">
+          <input
+            type="radio"
+            name="placeTarget"
+            checked={placeTargetProject === project.project_id}
+            onchange={() => {
+              placeTargetProject = project.project_id;
+            }}
+          />
+          <span>
+            <strong>{$t('designer.place.project', { project: project.display_name })}</strong>
+          </span>
+        </label>
+      {/each}
+    </fieldset>
+    <p class="text-muted text-sm">{$t('designer.place.order')}</p>
+  {:else if placeStage === 'diff' && placeDiff}
+    <p class="text-muted text-sm">
+      {$t('designer.confirm.against', { level: placeAgainst })} ·
+      {$t('designer.confirm.lines', {
+        added: placeDiff.added,
+        removed: placeDiff.removed,
+      })}
+    </p>
+    {@render diffTable(placeDiff.rows, 'designer-diff')}
+    <p class="text-muted text-sm">
+      {$t('designer.confirm.projects', {
+        projects:
+          projects
+            .filter(
+              (project) => !placeTargetProject || project.project_id === placeTargetProject,
+            )
+            .map((project) => project.display_name)
+            .join(', ') || $t('designer.level.machine'),
+        others: placeTargetProject ? Math.max(projects.length - 1, 0) : 0,
+      })}
+    </p>
+    {#if placeDiff.added === 0 && placeDiff.removed === 0}
+      <p class="designer__note">{$t('designer.place.unchanged')}</p>
+    {/if}
+  {:else if placeStage === 'progress'}
+    <!-- The landing's steps arrive with the result, which ends this stage. -->
+    <p class="text-muted text-sm">{$t('designer.place.starting')}</p>
+  {:else if placeStage === 'failed'}
+    <p class="designer__notice" role="alert" data-testid="designer-place-failed">
+      {#if placeOutcomeUnknown}
+        {$t('designer.place.unknown', { reason: landingError })}
+      {:else}
+        {$t('designer.place.failed', { reason: landingError })}
+      {/if}
+    </p>
+  {:else if placeStage === 'conflict' && conflictDiff}
+    <p class="designer__notice" role="alert" data-testid="designer-place-conflict">
+      {$t('designer.place.conflict', { unit: unitName })}
+    </p>
+    <div class="designer__diff--conflict">
+      {@render diffTable(conflictDiff.rows, 'designer-conflict-diff')}
+    </div>
+  {:else if placeStage === 'done'}
+    <ul class="designer__landing" data-testid="designer-landing">
+      {#each landingSteps as step}
+        <li class="designer__landing-step">
+          <span aria-hidden="true"><Icon name="state.check" size={16} /></span>
+          {$t('designer.place.step', {
+            step,
+            path: targetPath(),
+            commit: '',
+          })}
+        </li>
+      {/each}
+    </ul>
+    <p class="designer__placed" data-testid="designer-place-done">{placeMessage}</p>
+  {/if}
+
+  <svelte:fragment slot="footer">
+    {#if placeStage === 'target'}
+      <Button variant="secondary" onclick={closePlace}>{$t('common.action.cancel')}</Button>
+      <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare">
+        {$t('designer.place.compare')}
+      </Button>
+    {:else if placeStage === 'diff' && placeDiff}
+      <Button variant="secondary" onclick={closePlace}>{$t('common.action.cancel')}</Button>
+      {#if placeDiff.added > 0 || placeDiff.removed > 0}
+        <Button
+          variant="primary"
+          loading={isPlacing}
+          onclick={place}
+          data-testid="place-confirm"
+        >
+          {$t('designer.confirm.place', {
             target: placeTargetProject ? 'project' : 'machine',
             project: placeTargetProject ?? '',
           })}
-        </h2>
-        <p class="text-muted text-sm">
-          {$t('designer.confirm.against', { level: placeAgainst })} ·
-          {$t('designer.confirm.lines', {
-            added: placeDiff.added,
-            removed: placeDiff.removed,
-          })}
-        </p>
-        {@render diffTable(placeDiff.rows, 'designer-diff')}
-        <p class="text-muted text-sm">
-          {$t('designer.confirm.projects', {
-            projects:
-              projects
-                .filter(
-                  (project) => !placeTargetProject || project.project_id === placeTargetProject,
-                )
-                .map((project) => project.display_name)
-                .join(', ') || $t('designer.level.machine'),
-            others: placeTargetProject ? Math.max(projects.length - 1, 0) : 0,
-          })}
-        </p>
-        {#if placeDiff.added === 0 && placeDiff.removed === 0}
-          <p class="designer__note">{$t('designer.place.unchanged')}</p>
-        {/if}
-        <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('designer.back')}</Button>
-          {#if placeDiff.added > 0 || placeDiff.removed > 0}
-            <Button
-              variant="primary"
-              loading={isPlacing}
-              onclick={place}
-              data-testid="place-confirm"
-            >
-              {$t('designer.confirm.place', {
-                target: placeTargetProject ? 'project' : 'machine',
-                project: placeTargetProject ?? '',
-              })}
-            </Button>
-          {/if}
-        </div>
-      {:else if placeStage === 'progress'}
-        <h2 id="place-title" class="designer__modal-title">
-          {$t('designer.place.progress', { unit: unitName })}
-        </h2>
-        <!-- The landing's steps arrive with the result, which ends this stage. -->
-        <p class="text-muted text-sm">{$t('designer.place.starting')}</p>
-      {:else if placeStage === 'failed'}
-        <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
-        <p class="designer__notice" role="alert" data-testid="designer-place-failed">
-          {#if placeOutcomeUnknown}
-            {$t('designer.place.unknown', { reason: landingError })}
-          {:else}
-            {$t('designer.place.failed', { reason: landingError })}
-          {/if}
-        </p>
-        <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
-          <Button
-            variant="primary"
-            loading={isPlacing}
-            onclick={retryPlacement}
-            data-testid="place-retry"
-          >
-            {$t('designer.place.retry')}
-          </Button>
-        </div>
-      {:else if placeStage === 'conflict' && conflictDiff}
-        <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
-        <p class="designer__notice" role="alert" data-testid="designer-place-conflict">
-          {$t('designer.place.conflict', { unit: unitName })}
-        </p>
-        <div class="designer__diff--conflict">
-          {@render diffTable(conflictDiff.rows, 'designer-conflict-diff')}
-        </div>
-        <div class="designer__modal-actions">
-          <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
-          <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare-again">
-            {$t('designer.place.compare')}
-          </Button>
-        </div>
-      {:else if placeStage === 'done'}
-        <h2 id="place-title" class="designer__modal-title">{$t('designer.place.action')}</h2>
-        <ul class="designer__landing" data-testid="designer-landing">
-          {#each landingSteps as step}
-            <li class="designer__landing-step">
-              <span aria-hidden="true"><Icon name="state.check" size={16} /></span>
-              {$t('designer.place.step', {
-                step,
-                path: targetPath(),
-                commit: '',
-              })}
-            </li>
-          {/each}
-        </ul>
-        <p class="designer__placed" data-testid="designer-place-done">{placeMessage}</p>
-        <div class="designer__modal-actions">
-          <Button variant="primary" onclick={closePlace}>{$t('common.action.close')}</Button>
-        </div>
+        </Button>
       {/if}
-    </div>
-  </div>
-{/if}
+    {:else if placeStage === 'failed'}
+      <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
+      <Button
+        variant="primary"
+        loading={isPlacing}
+        onclick={retryPlacement}
+        data-testid="place-retry"
+      >
+        {$t('designer.place.retry')}
+      </Button>
+    {:else if placeStage === 'conflict' && conflictDiff}
+      <Button variant="secondary" onclick={closePlace}>{$t('common.action.close')}</Button>
+      <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare-again">
+        {$t('designer.place.compare')}
+      </Button>
+    {:else if placeStage === 'done'}
+      <Button variant="primary" onclick={closePlace}>{$t('common.action.close')}</Button>
+    {/if}
+  </svelte:fragment>
+</Dialog>
 
 <style>
   .designer {
@@ -1640,13 +1592,9 @@
     gap: var(--space-2);
   }
 
-  .designer__project {
-    padding: var(--space-2);
-    font-size: var(--text-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-app);
-    color: var(--color-text-primary);
+  .designer__head-right :global(.field) {
+    width: auto;
+    min-width: 180px;
   }
 
   .designer__notice {
@@ -1686,28 +1634,6 @@
     margin: 0;
   }
 
-  .designer__intake-modes {
-    display: flex;
-    gap: var(--space-1);
-    flex-wrap: wrap;
-  }
-
-  .intake-mode {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: transparent;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-  }
-
-  .intake-mode--active {
-    background-color: var(--color-primary);
-    border-color: var(--color-primary);
-    color: var(--color-primary-text);
-  }
-
   .intake-panel {
     display: flex;
     align-items: center;
@@ -1715,22 +1641,9 @@
     flex-wrap: wrap;
   }
 
-  .intake-label {
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-
-  .intake-paste {
+  .intake-panel :global(.field) {
     flex: 1;
     min-width: 240px;
-    min-height: 4rem;
-    padding: var(--space-2);
-    font-family: var(--font-mono, monospace);
-    font-size: var(--text-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-app);
-    color: var(--color-text-primary);
   }
 
   .designer__workspace {
@@ -1964,19 +1877,6 @@
     border-bottom: 1px solid var(--color-border);
   }
 
-  .frontmatter__row {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .frontmatter__label {
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    font-weight: 600;
-  }
-
   .frontmatter__icon {
     display: flex;
     align-items: center;
@@ -2059,45 +1959,8 @@
     color: var(--color-text-muted);
   }
 
-  .designer__modal {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .designer__modal-card {
-    background-color: var(--color-bg-surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    width: 100%;
-    max-width: 520px;
-    max-height: 90vh;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .designer__modal-card--wide {
-    max-width: 1000px;
-  }
-
-  .designer__modal-title {
-    font-size: var(--text-lg);
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .designer__modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    flex-wrap: wrap;
+  :global([data-testid="place-dialog"]) {
+    inline-size: min(1000px, 100%);
   }
 
   .designer__targets {

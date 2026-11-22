@@ -55,7 +55,7 @@ public record LessonPremiseCheckResult(
 
     public LessonPremiseCheckResult {
         Objects.requireNonNull(lessonId, "lessonId");
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
         evidence = evidence == null ? List.of() : List.copyOf(evidence);
     }
 

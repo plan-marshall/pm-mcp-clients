@@ -36,6 +36,12 @@ public record CleanupProjectItem(
         items = items != null ? List.copyOf(items) : List.of();
     }
 
+    private static final String PLANS_COUNT = "plans_count";
+    private static final String EPICS_COUNT = "epics_count";
+    private static final String LOGS_COUNT = "logs_count";
+    private static final String READ_REPORTS_COUNT = "read_reports_count";
+    private static final String TOTAL_BYTES = "total_bytes";
+
     /**
      * Converts to JSON map.
      *
@@ -44,11 +50,11 @@ public record CleanupProjectItem(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("project_id", projectId);
-        map.put("plans_count", plansCount);
-        map.put("epics_count", epicsCount);
-        map.put("logs_count", logsCount);
-        map.put("read_reports_count", readReportsCount);
-        map.put("total_bytes", totalBytes);
+        map.put(PLANS_COUNT, plansCount);
+        map.put(EPICS_COUNT, epicsCount);
+        map.put(LOGS_COUNT, logsCount);
+        map.put(READ_REPORTS_COUNT, readReportsCount);
+        map.put(TOTAL_BYTES, totalBytes);
         map.put("items", items.stream().map(CleanupItemEntry::toMap).toList());
         return map;
     }
@@ -75,11 +81,12 @@ public record CleanupProjectItem(
         if (projectId == null) {
             throw new JsonFormatException("Missing project_id in CleanupProjectItem");
         }
-        var plansCount = JsonTree.integer(map, "plans_count") != null ? (int) JsonTree.integer(map, "plans_count") : 0;
-        var epicsCount = JsonTree.integer(map, "epics_count") != null ? (int) JsonTree.integer(map, "epics_count") : 0;
-        var logsCount = JsonTree.integer(map, "logs_count") != null ? (int) JsonTree.integer(map, "logs_count") : 0;
-        var readReportsCount = JsonTree.integer(map, "read_reports_count") != null ? (int) JsonTree.integer(map, "read_reports_count") : 0;
-        var totalBytes = JsonTree.number(map, "total_bytes") != null ? JsonTree.number(map, "total_bytes").longValue() : 0L;
+        int plansCount = Objects.requireNonNullElse(JsonTree.integer(map, PLANS_COUNT), 0);
+        int epicsCount = Objects.requireNonNullElse(JsonTree.integer(map, EPICS_COUNT), 0);
+        int logsCount = Objects.requireNonNullElse(JsonTree.integer(map, LOGS_COUNT), 0);
+        int readReportsCount = Objects.requireNonNullElse(JsonTree.integer(map, READ_REPORTS_COUNT), 0);
+        var totalNumber = JsonTree.number(map, TOTAL_BYTES);
+        var totalBytes = totalNumber != null ? totalNumber.longValue() : 0L;
         var items = new ArrayList<CleanupItemEntry>();
         if (map.get("items") instanceof List<?> list) {
             for (var obj : list) {

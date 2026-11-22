@@ -123,10 +123,11 @@ public record OnboardingProgress(
         var steps = JsonTree.positiveInteger(map, FIELD_STEPS);
         var completed = Boolean.TRUE.equals(JsonTree.bool(map, FIELD_COMPLETED))
                 || COMPLETED_STATE.equals(state);
+        int defaultStep = completed ? DEFAULT_STEPS : 0;
         try {
             return new OnboardingProgress(
                     state,
-                    step != null ? step : (completed ? DEFAULT_STEPS : 0),
+                    step != null ? step : defaultStep,
                     steps != null ? steps : DEFAULT_STEPS,
                     completed);
         } catch (IllegalArgumentException e) {

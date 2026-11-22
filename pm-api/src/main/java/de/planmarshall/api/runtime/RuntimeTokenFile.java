@@ -19,6 +19,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
@@ -33,10 +34,12 @@ import de.planmarshall.api.MachinePaths;
 public final class RuntimeTokenFile {
 
     /** Mode {@code 0700}. */
-    public static final Set<PosixFilePermission> DIRECTORY_MODE = PosixFilePermissions.fromString("rwx------");
+    public static final Set<PosixFilePermission> DIRECTORY_MODE =
+            Collections.unmodifiableSet(PosixFilePermissions.fromString("rwx------"));
 
     /** Mode {@code 0600}. */
-    public static final Set<PosixFilePermission> FILE_MODE = PosixFilePermissions.fromString("rw-------");
+    public static final Set<PosixFilePermission> FILE_MODE =
+            Collections.unmodifiableSet(PosixFilePermissions.fromString("rw-------"));
 
     private static final int MAX_TOKEN_BYTES = 1024;
 

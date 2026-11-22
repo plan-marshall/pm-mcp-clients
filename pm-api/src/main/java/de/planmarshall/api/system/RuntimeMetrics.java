@@ -48,7 +48,7 @@ public record RuntimeMetrics(
         @Nullable String upgradeUnsupportedReason
 ) {
     public RuntimeMetrics {
-        Objects.requireNonNull(version, "version");
+        Objects.requireNonNull(version, KEY_VERSION);
         build = build != null ? build : "";
         startedAt = startedAt != null ? startedAt : "";
         measuredAt = measuredAt != null ? measuredAt : "";

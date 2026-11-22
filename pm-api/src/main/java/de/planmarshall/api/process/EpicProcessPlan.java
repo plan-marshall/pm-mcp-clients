@@ -37,11 +37,20 @@ public record EpicProcessPlan(
         int tasksTotal,
         boolean running
 ) {
+    private static final String RUNNING_KEY = "running";
+    private static final String STATE_RUNNING = "running";
+    private static final String STATE_STAGED = "staged";
+
     public EpicProcessPlan {
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
         currentPhase = currentPhase != null ? currentPhase : "init";
-        phaseState = phaseState != null ? phaseState : (running ? "running" : "staged");
+        phaseState = phaseState != null ? phaseState : defaultPhaseState(running);
+    }
+
+    /** A plan that names no phase state is running when it runs, else staged. */
+    private static String defaultPhaseState(boolean running) {
+        return running ? STATE_RUNNING : STATE_STAGED;
     }
 
     public Map<String, Object> toMap() {
@@ -52,7 +61,7 @@ public record EpicProcessPlan(
         map.put("phase_state", phaseState);
         map.put("tasks_done", tasksDone);
         map.put("tasks_total", tasksTotal);
-        map.put("running", running);
+        map.put(RUNNING_KEY, running);
         return map;
     }
 
@@ -72,7 +81,7 @@ public record EpicProcessPlan(
         int tasksDone = doneNum != null ? doneNum.intValue() : 0;
         var totNum = JsonTree.number(map, "tasks_total");
         int tasksTotal = totNum != null ? totNum.intValue() : 0;
-        var running = Boolean.TRUE.equals(map.get("running"));
+        var running = Boolean.TRUE.equals(map.get(RUNNING_KEY));
 
         // absent members stay null here: the canonical constructor supplies the defaults
         return new EpicProcessPlan(

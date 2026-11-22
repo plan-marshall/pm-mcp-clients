@@ -31,11 +31,13 @@ public record CleanupJob(
         List<CleanupProjectItem> projectItems,
         Map<String, String> links
 ) {
+    private static final String SUMMARY_KEY = "summary";
+
     public CleanupJob {
         Objects.requireNonNull(jobId, "jobId");
         state = state != null ? state : CleanupJobState.OPEN;
         dueSince = dueSince != null ? dueSince : "";
-        Objects.requireNonNull(summary, "summary");
+        Objects.requireNonNull(summary, SUMMARY_KEY);
         projectItems = projectItems != null ? List.copyOf(projectItems) : List.of();
         links = links != null ? Collections.unmodifiableMap(new LinkedHashMap<>(links)) : Map.of();
     }
@@ -57,7 +59,7 @@ public record CleanupJob(
         map.put("job_id", jobId);
         map.put("state", state.value());
         map.put("due_since", dueSince);
-        map.put("summary", summary.toMap());
+        map.put(SUMMARY_KEY, summary.toMap());
         map.put("project_items", projectItems.stream().map(CleanupProjectItem::toMap).toList());
         map.put("links", links);
         return map;
@@ -91,7 +93,7 @@ public record CleanupJob(
         var stateStr = JsonTree.string(map, "state");
         var state = CleanupJobState.fromValue(stateStr);
         var dueSince = JsonTree.string(map, "due_since");
-        var summaryObj = JsonTree.asObject(map.get("summary"));
+        var summaryObj = JsonTree.asObject(map.get(SUMMARY_KEY));
         if (summaryObj == null) {
             throw new JsonFormatException("Missing summary in CleanupJob");
         }

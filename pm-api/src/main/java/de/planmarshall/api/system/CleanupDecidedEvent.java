@@ -31,9 +31,13 @@ public record CleanupDecidedEvent(
 ) {
     public static final String EVENT_NAME = "cleanup.decided";
 
+    private static final String DECISION_KEY = "decision";
+    private static final String DELETED_COUNT = "deleted_count";
+    private static final String FREED_BYTES = "freed_bytes";
+
     public CleanupDecidedEvent {
         Objects.requireNonNull(jobId, "jobId");
-        Objects.requireNonNull(decision, "decision");
+        Objects.requireNonNull(decision, DECISION_KEY);
         Objects.requireNonNull(who, "who");
     }
 
@@ -45,10 +49,10 @@ public record CleanupDecidedEvent(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("job_id", jobId);
-        map.put("decision", decision);
+        map.put(DECISION_KEY, decision);
         map.put("who", who);
-        map.put("deleted_count", deletedCount);
-        map.put("freed_bytes", freedBytes);
+        map.put(DELETED_COUNT, deletedCount);
+        map.put(FREED_BYTES, freedBytes);
         if (decidedAt != null) {
             map.put("decided_at", decidedAt);
         }
@@ -77,13 +81,14 @@ public record CleanupDecidedEvent(
         if (jobId == null) {
             jobId = JsonTree.string(map, "id");
         }
-        var decision = JsonTree.string(map, "decision");
+        var decision = JsonTree.string(map, DECISION_KEY);
         var who = JsonTree.string(map, "who");
         if (jobId == null || decision == null || who == null) {
             throw new JsonFormatException("Missing jobId, decision, or who in CleanupDecidedEvent");
         }
-        var deletedCount = JsonTree.integer(map, "deleted_count") != null ? (int) JsonTree.integer(map, "deleted_count") : 0;
-        var freedBytes = JsonTree.number(map, "freed_bytes") != null ? JsonTree.number(map, "freed_bytes").longValue() : 0L;
+        int deletedCount = Objects.requireNonNullElse(JsonTree.integer(map, DELETED_COUNT), 0);
+        var freedNumber = JsonTree.number(map, FREED_BYTES);
+        var freedBytes = freedNumber != null ? freedNumber.longValue() : 0L;
         var decidedAt = JsonTree.string(map, "decided_at");
         return new CleanupDecidedEvent(jobId, decision, who, deletedCount, freedBytes, decidedAt);
     }

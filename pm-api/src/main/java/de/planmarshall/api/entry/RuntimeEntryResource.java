@@ -130,9 +130,12 @@ public record RuntimeEntryResource(
         Objects.requireNonNull(map, "map");
         var onboard = JsonTree.object(map, FIELD_ONBOARD);
         var onboarded = isOnboarded(map, onboard);
-        var onboarding = onboard != null
-                ? OnboardingProgress.fromMap(onboard)
-                : (onboarded ? OnboardingProgress.complete() : OnboardingProgress.notStarted());
+        OnboardingProgress onboarding;
+        if (onboard != null) {
+            onboarding = OnboardingProgress.fromMap(onboard);
+        } else {
+            onboarding = onboarded ? OnboardingProgress.complete() : OnboardingProgress.notStarted();
+        }
         var listeners = parseListeners(map.get(FIELD_LISTENERS));
         if (listeners == null) {
             listeners = deriveListeners(map);

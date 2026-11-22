@@ -39,9 +39,11 @@ public record DecisionAnsweredEvent(
 ) {
     public static final String EVENT_NAME = "decision.answered";
 
+    private static final String ANSWER_KEY = "answer";
+
     public DecisionAnsweredEvent {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(answer, "answer");
+        Objects.requireNonNull(answer, ANSWER_KEY);
     }
 
     /**
@@ -52,7 +54,7 @@ public record DecisionAnsweredEvent(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
-        map.put("answer", answer);
+        map.put(ANSWER_KEY, answer);
         if (channel != null) {
             map.put("channel", channel);
         }
@@ -85,7 +87,7 @@ public record DecisionAnsweredEvent(
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
         if (id == null) throw new JsonFormatException("Missing id in DecisionAnsweredEvent");
-        var answer = JsonTree.string(map, "answer");
+        var answer = JsonTree.string(map, ANSWER_KEY);
         if (answer == null) answer = "";
         var channel = JsonTree.string(map, "channel");
         var device = JsonTree.string(map, "device");

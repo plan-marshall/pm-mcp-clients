@@ -10,6 +10,7 @@
 package de.planmarshall.api.host;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -118,7 +119,7 @@ public class HostDetection {
      * The hosts in detection precedence, read from the shipped profile documents. The neutral
      * fallback profile is not a host: it carries no signal and is never detected.
      */
-    public static final List<Host> HOSTS = loadHosts();
+    public static final List<Host> HOSTS = Collections.unmodifiableList(loadHosts());
 
     /**
      * Secondary agent signals not yet mapped to a host (provisional; the mapping is a host fact

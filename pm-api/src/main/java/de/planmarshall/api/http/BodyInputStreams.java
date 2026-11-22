@@ -104,7 +104,7 @@ class BodyInputStreams {
             var hex = (extension >= 0 ? sizeLine.substring(0, extension) : sizeLine).trim().toLowerCase(Locale.ROOT);
             try {
                 remaining = Long.parseLong(hex, 16);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 throw new HttpProtocolException("Invalid chunk size: " + sizeLine);
             }
             if (remaining < 0) {

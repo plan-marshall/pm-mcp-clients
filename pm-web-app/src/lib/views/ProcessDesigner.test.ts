@@ -393,7 +393,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Paste text' }));
     const pasted = finalizeText.replace('phase-6-finalize', 'pasted-unit');
     await fireEvent.input(screen.getByTestId('designer-paste'), { target: { value: pasted } });
     await fireEvent.click(screen.getByTestId('designer-paste-open'));
@@ -406,7 +406,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Start from a template' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Start from a template' }));
     await fireEvent.click(screen.getByTestId('designer-template'));
 
     expect((screen.getByTestId('workflow-text') as HTMLTextAreaElement).value).toContain(
@@ -932,7 +932,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
   async function openNewUnit(): Promise<void> {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
-    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Paste text' }));
     await fireEvent.input(screen.getByTestId('designer-paste'), {
       target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
     });
@@ -979,7 +979,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
   it('adds a frontmatter to a unit that has none, named after the unit', async () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
-    await fireEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Paste text' }));
     await fireEvent.input(screen.getByTestId('designer-paste'), {
       target: { value: 'workflow bare-unit version 1 format 1\nstate bare.one\n' },
     });
@@ -1023,7 +1023,7 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     async function upload(file: File): Promise<void> {
       render(ProcessDesigner);
       await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
-      await fireEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+      await fireEvent.click(screen.getByRole('radio', { name: 'Upload a file' }));
       const input = screen.getByTestId('designer-file-input');
       Object.defineProperty(input, 'files', { value: [file], configurable: true });
       await fireEvent.change(input);

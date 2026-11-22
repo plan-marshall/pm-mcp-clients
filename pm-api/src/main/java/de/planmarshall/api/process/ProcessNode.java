@@ -52,10 +52,13 @@ public record ProcessNode(
         @Nullable String waitsFor,
         Map<String, String> links
 ) {
+    private static final String STATE_KEY = "state";
+    private static final String KIND_STATE = "state";
+
     public ProcessNode {
         Objects.requireNonNull(nodeId, "nodeId");
         title = title != null ? title : nodeId;
-        kind = kind != null ? kind : "state";
+        kind = kind != null ? kind : KIND_STATE;
         state = state != null ? state : "planned";
         subNodes = subNodes != null ? List.copyOf(subNodes) : List.of();
         leafTasks = leafTasks != null ? List.copyOf(leafTasks) : List.of();
@@ -67,7 +70,7 @@ public record ProcessNode(
         map.put("node_id", nodeId);
         map.put("title", title);
         map.put("kind", kind);
-        map.put("state", state);
+        map.put(STATE_KEY, state);
         map.put("run_count", runCount);
         map.put("current_run", currentRun);
         map.put("duration_seconds", durationSeconds);
@@ -128,7 +131,7 @@ public record ProcessNode(
         }
         var title = JsonTree.string(map, "title");
         var kind = JsonTree.string(map, "kind");
-        var state = JsonTree.string(map, "state");
+        var state = JsonTree.string(map, STATE_KEY);
 
         var runCountNum = JsonTree.number(map, "run_count");
         int runCount = runCountNum != null ? runCountNum.intValue() : 1;
@@ -141,42 +144,15 @@ public record ProcessNode(
 
         var pruneReason = JsonTree.string(map, "prune_reason");
 
-        var subNodes = new ArrayList<ProcessNode>();
-        if (map.get("sub_nodes") instanceof List<?> list) {
-            for (var item : list) {
-                var nodeMap = JsonTree.asObject(item);
-                if (nodeMap != null) {
-                    subNodes.add(ProcessNode.fromMap(nodeMap));
-                }
-            }
-        }
+        var subNodes = readSubNodes(map.get("sub_nodes"));
+        var leafTasks = readLeafTasks(map.get("leaf_tasks"));
 
-        var leafTasks = new ArrayList<LeafTask>();
-        if (map.get("leaf_tasks") instanceof List<?> list) {
-            for (var item : list) {
-                var taskMap = JsonTree.asObject(item);
-                if (taskMap != null) {
-                    leafTasks.add(LeafTask.fromMap(taskMap));
-                }
-            }
-        }
-
-        LeafJob leafJob = null;
         var leafJobObj = JsonTree.asObject(map.get("leaf_job"));
-        if (leafJobObj != null) {
-            leafJob = LeafJob.fromMap(leafJobObj);
-        }
+        LeafJob leafJob = leafJobObj != null ? LeafJob.fromMap(leafJobObj) : null;
 
         var waitsFor = JsonTree.string(map, "waits_for");
 
-        var links = new LinkedHashMap<String, String>();
-        if (map.get("links") instanceof Map<?, ?> linkMap) {
-            for (var entry : linkMap.entrySet()) {
-                if (entry.getKey() != null && entry.getValue() != null) {
-                    links.put(entry.getKey().toString(), entry.getValue().toString());
-                }
-            }
-        }
+        var links = readLinks(map.get("links"));
 
         // absent members stay null here: the canonical constructor supplies the defaults
         return new ProcessNode(
@@ -194,6 +170,47 @@ public record ProcessNode(
                 waitsFor,
                 links
         );
+    }
+
+    /** Reads the object entries of {@code sub_nodes}; an entry that is not an object is skipped. */
+    private static List<ProcessNode> readSubNodes(@Nullable Object raw) throws IOException {
+        var subNodes = new ArrayList<ProcessNode>();
+        if (raw instanceof List<?> list) {
+            for (var item : list) {
+                var nodeMap = JsonTree.asObject(item);
+                if (nodeMap != null) {
+                    subNodes.add(ProcessNode.fromMap(nodeMap));
+                }
+            }
+        }
+        return subNodes;
+    }
+
+    /** Reads the object entries of {@code leaf_tasks}; an entry that is not an object is skipped. */
+    private static List<LeafTask> readLeafTasks(@Nullable Object raw) throws IOException {
+        var leafTasks = new ArrayList<LeafTask>();
+        if (raw instanceof List<?> list) {
+            for (var item : list) {
+                var taskMap = JsonTree.asObject(item);
+                if (taskMap != null) {
+                    leafTasks.add(LeafTask.fromMap(taskMap));
+                }
+            }
+        }
+        return leafTasks;
+    }
+
+    /** Reads the {@code links} object as text; a link whose key or value is {@code null} is skipped. */
+    private static Map<String, String> readLinks(@Nullable Object raw) {
+        var links = new LinkedHashMap<String, String>();
+        if (raw instanceof Map<?, ?> linkMap) {
+            for (var entry : linkMap.entrySet()) {
+                if (entry.getKey() != null && entry.getValue() != null) {
+                    links.put(entry.getKey().toString(), entry.getValue().toString());
+                }
+            }
+        }
+        return links;
     }
 
     public static ProcessNode fromJson(String json) throws IOException {

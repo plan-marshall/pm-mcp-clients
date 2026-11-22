@@ -200,7 +200,7 @@ public class JsonTree {
                 generator.writeEndArray();
             }
             case String text -> generator.writeString(text);
-            case JsonNumber number -> generator.writeNumber(number.text());
+            case JsonNumber(String numberText) -> generator.writeNumber(numberText);
             case Boolean flag -> generator.writeBoolean(flag);
             case Integer number -> generator.writeNumber(number);
             case Long number -> generator.writeNumber(number);
@@ -322,12 +322,12 @@ public class JsonTree {
         return switch (val) {
             case null -> null;
             case Number n -> n;
-            case JsonNumber jn -> {
+            case JsonNumber(String text) -> {
                 try {
-                    yield Long.parseLong(jn.text());
+                    yield Long.parseLong(text);
                 } catch (NumberFormatException _) {
                     try {
-                        yield Double.parseDouble(jn.text());
+                        yield Double.parseDouble(text);
                     } catch (NumberFormatException _) {
                         yield null;
                     }
@@ -450,15 +450,10 @@ public class JsonTree {
      * @return the member as Boolean, or {@code null}
      */
     public static Boolean bool(Map<String, Object> object, String name) {
-        if (object == null) {
-            return null;
-        }
-        var val = object.get(name);
-        return switch (val) {
-            case null -> null;
+        return switch (object != null ? object.get(name) : null) {
             case Boolean b -> b;
             case String s -> Boolean.parseBoolean(s);
-            default -> null;
+            case null, default -> null;
         };
     }
 }

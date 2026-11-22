@@ -37,9 +37,12 @@ public record DecompositionCheck(
     /** A note that does not block the cut. */
     public static final String SEVERITY_WARNING = "warning";
 
+    private static final String SEVERITY_KEY = "severity";
+    private static final String MESSAGE_KEY = "message";
+
     public DecompositionCheck {
-        Objects.requireNonNull(severity, "severity");
-        Objects.requireNonNull(message, "message");
+        Objects.requireNonNull(severity, SEVERITY_KEY);
+        Objects.requireNonNull(message, MESSAGE_KEY);
     }
 
     /**
@@ -57,8 +60,8 @@ public record DecompositionCheck(
         if (planId != null) {
             map.put("plan_id", planId);
         }
-        map.put("severity", severity);
-        map.put("message", message);
+        map.put(SEVERITY_KEY, severity);
+        map.put(MESSAGE_KEY, message);
         return map;
     }
 
@@ -76,8 +79,8 @@ public record DecompositionCheck(
      */
     public static DecompositionCheck fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var severity = JsonTree.string(map, "severity");
-        var message = JsonTree.string(map, "message");
+        var severity = JsonTree.string(map, SEVERITY_KEY);
+        var message = JsonTree.string(map, MESSAGE_KEY);
         if (severity == null || message == null) {
             throw new JsonFormatException("Missing required fields for DecompositionCheck: severity, message");
         }

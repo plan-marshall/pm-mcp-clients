@@ -55,6 +55,9 @@ public record HoldRecord(
         List<String> acts,
         @Nullable String pullRequestUrl
 ) {
+    private static final String RECORDED_SIZE = "recorded_size";
+    private static final String CURRENT_SIZE = "current_size";
+
     public HoldRecord {
         Objects.requireNonNull(holdId, "holdId");
         Objects.requireNonNull(subjectId, "subjectId");
@@ -91,13 +94,13 @@ public record HoldRecord(
             map.put("file_path", filePath);
         }
         if (recordedSize != null) {
-            map.put("recorded_size", recordedSize);
+            map.put(RECORDED_SIZE, recordedSize);
         }
         if (recordedDigest != null) {
             map.put("recorded_digest", recordedDigest);
         }
         if (currentSize != null) {
-            map.put("current_size", currentSize);
+            map.put(CURRENT_SIZE, currentSize);
         }
         if (currentDigest != null) {
             map.put("current_digest", currentDigest);
@@ -167,9 +170,9 @@ public record HoldRecord(
                 attempts != null ? attempts : 0,
                 lastTriedStr != null ? Instant.parse(lastTriedStr) : null,
                 JsonTree.string(map, "file_path"),
-                JsonTree.number(map, "recorded_size") != null ? JsonTree.number(map, "recorded_size").longValue() : null,
+                ControlJson.optLong(map, RECORDED_SIZE),
                 JsonTree.string(map, "recorded_digest"),
-                JsonTree.number(map, "current_size") != null ? JsonTree.number(map, "current_size").longValue() : null,
+                ControlJson.optLong(map, CURRENT_SIZE),
                 JsonTree.string(map, "current_digest"),
                 acts,
                 JsonTree.string(map, "pull_request_url")

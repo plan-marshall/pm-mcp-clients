@@ -2,6 +2,9 @@
   import { t } from '../i18n';
   import Icon from '../components/Icon.svelte';
   import Button from '../components/Button.svelte';
+  import Compose from '../components/Compose.svelte';
+  import TextArea from '../components/TextArea.svelte';
+  import KeyValueList, { type KeyValueItem } from '../components/KeyValueList.svelte';
   import type {
     DecompositionCheckFinding,
     EpicDecomposition,
@@ -29,6 +32,7 @@
   let editing: string | null = null;
   let adding = false;
   let instruction = '';
+  let editedObjective = '';
   let drafting = false;
 
   $: failures = (decomposition?.findings ?? []).filter(
@@ -37,9 +41,25 @@
   $: plans = (decomposition?.workstreams ?? []).flatMap((stream) => stream.staged_plans);
 
   function submitInstruct(): void {
-    if (!instruction.trim()) return;
-    onInstruct(editing, instruction.trim());
+    const currentPlan = plans.find((p) => p.plan_id === editing);
+    const originalObjective = (currentPlan?.objective ?? '').trim();
+    const objectiveChanged = editedObjective.trim() !== originalObjective;
+    const trimmedInstruction = instruction.trim();
+    const trimmedObjective = editedObjective.trim();
+
+    let text = '';
+    if (objectiveChanged && trimmedObjective && trimmedInstruction) {
+      text = `${trimmedObjective}\n${trimmedInstruction}`;
+    } else if (trimmedInstruction) {
+      text = trimmedInstruction;
+    } else if (objectiveChanged && trimmedObjective) {
+      text = trimmedObjective;
+    }
+
+    if (!text) return;
+    onInstruct(editing, text);
     instruction = '';
+    editedObjective = '';
     editing = null;
     adding = false;
   }
@@ -69,6 +89,40 @@
     }
     return finding.message;
   }
+
+  function planDetails(plan: StagedPlanRecord, stream: WorkstreamRecord): KeyValueItem[] {
+    return [
+      {
+        label: $t('start.decomposition.objective'),
+        value: plan.objective || $t('start.decomposition.none'),
+      },
+      {
+        label: $t('start.decomposition.deliverables'),
+        value:
+          plan.deliverables && plan.deliverables.length > 0
+            ? plan.deliverables.join(', ')
+            : $t('start.decomposition.none'),
+      },
+      {
+        label: $t('start.decomposition.surface'),
+        value:
+          plan.expected_surface && plan.expected_surface.length > 0
+            ? plan.expected_surface.join(', ')
+            : $t('start.decomposition.none'),
+      },
+      {
+        label: $t('start.decomposition.depends_on'),
+        value:
+          plan.dependencies && plan.dependencies.length > 0
+            ? plan.dependencies.join(', ')
+            : $t('start.decomposition.none'),
+      },
+      {
+        label: $t('start.decomposition.order'),
+        value: String(plan.order ?? stream.order ?? 1),
+      },
+    ];
+  }
 </script>
 
 <section class="decomposition-review" data-testid="decomposition-review">
@@ -83,15 +137,15 @@
         {#if readBack.before}
           <dt>{$t('start.decomposition.edit')}</dt>
           <dd class="decomposition-review__old" data-testid="read-back-before">
-            {readBack.before.title}
+            − {readBack.before.title}
             {#if readBack.before.objective}
               <span> · {readBack.before.objective}</span>
             {/if}
           </dd>
         {/if}
         <dt>{$t('start.decomposition.keep')}</dt>
-        <dd data-testid="read-back-after">
-          {readBack.after.title}
+        <dd class="decomposition-review__new" data-testid="read-back-after">
+          + {readBack.after.title}
           {#if readBack.after.objective}
             <span> · {readBack.after.objective}</span>
           {/if}
@@ -99,18 +153,18 @@
         </dd>
       </dl>
       <div class="decomposition-review__actions">
-        <Button variant="secondary" data-testid="read-back-accept" disabled={busy} on:click={onAccept}>
+        <Button variant="primary" data-testid="read-back-accept" disabled={busy} onclick={onAccept}>
           {$t('start.decomposition.accept')}
         </Button>
         <Button
-          variant="ghost"
+          variant="secondary"
           data-testid="read-back-instruct"
           disabled={busy}
-          on:click={onInstructAgain}
+          onclick={onInstructAgain}
         >
           {$t('start.decomposition.instruct_again')}
         </Button>
-        <Button variant="ghost" data-testid="read-back-discard" disabled={busy} on:click={onDiscard}>
+        <Button variant="ghost" data-testid="read-back-discard" disabled={busy} onclick={onDiscard}>
           {$t('start.decomposition.discard')}
         </Button>
       </div>
@@ -128,62 +182,65 @@
           <ul class="decomposition-review__rows">
             {#each rowsOf(stream) as plan (plan.plan_id)}
               <li class="decomposition-review__row" data-testid={`plan-${plan.plan_id}`}>
-                <span class="decomposition-review__mark" aria-hidden="true">
-                  <Icon name={failed(plan.plan_id) ? 'state.error' : 'state.check'} size={16} />
-                </span>
-                <span class="decomposition-review__plan-title">{plan.title}</span>
-                {#if plan.objective}
-                  <span class="decomposition-review__objective">{plan.objective}</span>
-                {/if}
-                <span
-                  class="decomposition-review__surface"
-                  data-testid={`plan-surface-${plan.plan_id}`}
-                >
-                  {plan.expected_surface.join(', ')}
-                </span>
-                {#if failed(plan.plan_id)}
-                  <span
-                    class="decomposition-review__conflict"
-                    data-testid={`plan-conflict-${plan.plan_id}`}
-                  >
-                    {#each failures.filter( (finding) => finding.affected_plans.includes(plan.plan_id) ) as finding}
-                      {findingText(finding, plan.plan_id)}
-                    {/each}
+                <div class="decomposition-review__row-top">
+                  <span class="decomposition-review__mark" aria-hidden="true">
+                    <Icon name={failed(plan.plan_id) ? 'state.error' : 'state.check'} size={16} />
                   </span>
-                {/if}
-                <span class="decomposition-review__row-actions">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`plan-keep-${plan.plan_id}`}
-                    disabled={busy}
-                    on:click={() => onKeep(plan.plan_id)}
+                  <span class="decomposition-review__plan-title">{plan.title}</span>
+                  <span
+                    class="decomposition-review__surface"
+                    data-testid={`plan-surface-${plan.plan_id}`}
                   >
-                    {$t('start.decomposition.keep')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`plan-edit-${plan.plan_id}`}
-                    disabled={busy}
-                    on:click={() => {
-                      editing = plan.plan_id;
-                      adding = false;
-                      instruction = '';
-                    }}
-                  >
-                    {$t('start.decomposition.edit')}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    data-testid={`plan-drop-${plan.plan_id}`}
-                    disabled={busy}
-                    on:click={() => onDrop(plan.plan_id)}
-                  >
-                    {$t('start.decomposition.drop')}
-                  </Button>
-                </span>
+                    {plan.expected_surface.join(', ')}
+                  </span>
+                  {#if failed(plan.plan_id)}
+                    <span
+                      class="decomposition-review__conflict"
+                      data-testid={`plan-conflict-${plan.plan_id}`}
+                    >
+                      {#each failures.filter((finding) => finding.affected_plans.includes(plan.plan_id)) as finding}
+                        {findingText(finding, plan.plan_id)}
+                      {/each}
+                    </span>
+                  {/if}
+                  <span class="decomposition-review__row-actions">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`plan-keep-${plan.plan_id}`}
+                      disabled={busy}
+                      onclick={() => onKeep(plan.plan_id)}
+                    >
+                      {$t('start.decomposition.keep')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`plan-edit-${plan.plan_id}`}
+                      disabled={busy}
+                      onclick={() => {
+                        editing = plan.plan_id;
+                        adding = false;
+                        instruction = '';
+                        editedObjective = plan.objective ?? '';
+                      }}
+                    >
+                      {$t('start.decomposition.edit')}
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      data-testid={`plan-drop-${plan.plan_id}`}
+                      disabled={busy}
+                      onclick={() => onDrop(plan.plan_id)}
+                    >
+                      {$t('start.decomposition.drop')}
+                    </Button>
+                  </span>
+                </div>
+                <div class="decomposition-review__plan-details" data-testid={`plan-details-${plan.plan_id}`}>
+                  <KeyValueList items={planDetails(plan, stream)} />
+                </div>
               </li>
             {/each}
           </ul>
@@ -198,22 +255,30 @@
             plan: editing ?? $t('start.decomposition.add'),
           })}
         </h3>
-        <textarea data-testid="instruct-input" bind:value={instruction} disabled={busy} rows="3"
-        ></textarea>
+        {#if editing}
+          <TextArea
+            label={$t('start.decomposition.objective')}
+            bind:value={editedObjective}
+            disabled={busy}
+            rows={2}
+            testid="edit-objective"
+          />
+        {/if}
+        <Compose
+          bind:value={instruction}
+          label={$t('start.decomposition.instruct_prompt')}
+          sendLabel={$t('start.decomposition.edit')}
+          inputTestid="instruct-input"
+          submitTestid="instruct-submit"
+          disabled={busy || (!instruction.trim() && !editedObjective.trim())}
+          onsend={submitInstruct}
+        />
         <div class="decomposition-review__actions">
-          <Button
-            variant="secondary"
-            data-testid="instruct-submit"
-            disabled={busy || !instruction.trim()}
-            on:click={submitInstruct}
-          >
-            {$t('start.decomposition.edit')}
-          </Button>
           <Button
             variant="ghost"
             data-testid="instruct-cancel"
             disabled={busy}
-            on:click={() => {
+            onclick={() => {
               editing = null;
               adding = false;
             }}
@@ -227,16 +292,23 @@
     {#if drafting}
       <section class="decomposition-review__instruction" data-testid="draft-again-panel">
         <h3>{$t('start.decomposition.draft_again')}</h3>
-        <textarea data-testid="draft-input" bind:value={instruction} disabled={busy} rows="3"
-        ></textarea>
+        <Compose
+          bind:value={instruction}
+          label={$t('start.decomposition.draft_again')}
+          sendLabel={$t('start.decomposition.draft_again')}
+          disabled={busy || !instruction.trim()}
+          onsend={submitDraft}
+        />
         <div class="decomposition-review__actions">
           <Button
-            variant="secondary"
-            data-testid="draft-submit"
-            disabled={busy || !instruction.trim()}
-            on:click={submitDraft}
+            variant="ghost"
+            data-testid="draft-cancel"
+            disabled={busy}
+            onclick={() => {
+              drafting = false;
+            }}
           >
-            {$t('start.decomposition.draft_again')}
+            {$t('common.action.close')}
           </Button>
         </div>
       </section>
@@ -244,25 +316,26 @@
 
     <div class="decomposition-review__footer">
       <Button
-        variant="ghost"
+        variant="secondary"
         data-testid="decomposition-add"
         disabled={busy}
-        on:click={() => {
+        onclick={() => {
           adding = true;
           editing = null;
           instruction = '';
+          editedObjective = '';
         }}
       >
         {$t('start.decomposition.add')}
       </Button>
-      <Button variant="ghost" data-testid="decomposition-chat" disabled={busy} on:click={onChat}>
+      <Button variant="secondary" data-testid="decomposition-chat" disabled={busy} onclick={onChat}>
         {$t('start.decomposition.chat')}
       </Button>
       <Button
-        variant="ghost"
+        variant="secondary"
         data-testid="decomposition-draft-again"
         disabled={busy}
-        on:click={() => {
+        onclick={() => {
           drafting = true;
           instruction = '';
         }}
@@ -273,7 +346,10 @@
         variant="primary"
         data-testid="agree-commit"
         disabled={busy || failures.length > 0}
-        on:click={onAgree}
+        disabledReason={failures.length > 0
+          ? $t('start.decomposition.checks_fail', { count: failures.length })
+          : undefined}
+        onclick={onAgree}
       >
         {$t('start.decomposition.agree')}
       </Button>
@@ -299,34 +375,27 @@
     gap: var(--space-3, 0.75rem);
   }
 
-  .decomposition-review__title {
-    margin: 0;
-    font-size: var(--text-lg, 1.125rem);
-  }
-
-  .decomposition-review__stream,
-  .decomposition-review__instruction,
-  .decomposition-review__read-back {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2, 0.5rem);
+  .decomposition-review__stream {
+    margin-bottom: var(--space-4, 1rem);
   }
 
   .decomposition-review__stream-title {
-    margin: 0;
-    font-size: var(--text-base, 1rem);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    font-weight: 600;
   }
 
   .decomposition-review__count {
-    margin-left: var(--space-2);
     color: var(--color-text-muted);
-    font-size: var(--text-sm);
+    font-weight: 400;
   }
 
   .decomposition-review__rows {
     list-style: none;
-    margin: 0;
     padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -334,11 +403,21 @@
 
   .decomposition-review__row {
     display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .decomposition-review__row-top {
+    display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-1) var(--space-2);
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--color-border);
+  }
+
+  .decomposition-review__plan-details {
+    padding-inline-start: var(--space-6);
   }
 
   .decomposition-review__mark {
@@ -350,7 +429,6 @@
     font-weight: 600;
   }
 
-  .decomposition-review__objective,
   .decomposition-review__surface,
   .decomposition-review__checks,
   .decomposition-review__empty {
@@ -373,15 +451,10 @@
     gap: var(--space-2);
   }
 
-  .decomposition-review textarea {
-    width: 100%;
-    min-height: 44px;
-    padding: var(--space-1);
-  }
-
-  .decomposition-review__old {
-    text-decoration: line-through;
-    color: var(--color-text-muted);
+  .decomposition-review__old,
+  .decomposition-review__new {
+    margin: 0;
+    color: var(--color-text-primary);
   }
 
   .decomposition-review dl {

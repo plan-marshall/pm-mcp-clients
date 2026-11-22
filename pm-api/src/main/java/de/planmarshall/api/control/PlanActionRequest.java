@@ -37,6 +37,12 @@ public record PlanActionRequest(
         @Nullable Boolean withPlans,
         Map<String, Object> extra
 ) {
+    private static final String POINT_KEY = "point";
+    private static final String REASON_KEY = "reason";
+    private static final String CLOSE_PR = "close_pr";
+    private static final String RAISE_SCOPE = "raise_scope";
+    private static final String WITH_PLANS = "with_plans";
+
     public PlanActionRequest {
         extra = extra != null ? Map.copyOf(extra) : Map.of();
     }
@@ -73,19 +79,19 @@ public record PlanActionRequest(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         if (point != null) {
-            map.put("point", point);
+            map.put(POINT_KEY, point);
         }
         if (reason != null) {
-            map.put("reason", reason);
+            map.put(REASON_KEY, reason);
         }
         if (closePr != null) {
-            map.put("close_pr", closePr);
+            map.put(CLOSE_PR, closePr);
         }
         if (raiseScope != null) {
-            map.put("raise_scope", raiseScope);
+            map.put(RAISE_SCOPE, raiseScope);
         }
         if (withPlans != null) {
-            map.put("with_plans", withPlans);
+            map.put(WITH_PLANS, withPlans);
         }
         map.putAll(extra);
         return map;
@@ -105,25 +111,24 @@ public record PlanActionRequest(
      *
      * @param map map representation
      * @return parsed request
-     * @throws IOException on format failure
      */
-    public static PlanActionRequest fromMap(Map<String, Object> map) throws IOException {
+    public static PlanActionRequest fromMap(Map<String, Object> map) {
         var source = map != null ? map : Map.<String, Object>of();
         var known = new LinkedHashMap<String, Object>();
         for (var entry : source.entrySet()) {
             switch (entry.getKey()) {
-                case "point", "reason", "close_pr", "raise_scope", "with_plans" -> {
+                case POINT_KEY, REASON_KEY, CLOSE_PR, RAISE_SCOPE, WITH_PLANS -> {
                     // handled below
                 }
                 default -> known.put(entry.getKey(), entry.getValue());
             }
         }
         return new PlanActionRequest(
-                JsonTree.string(source, "point"),
-                JsonTree.string(source, "reason"),
-                JsonTree.bool(source, "close_pr"),
-                JsonTree.bool(source, "raise_scope"),
-                JsonTree.bool(source, "with_plans"),
+                JsonTree.string(source, POINT_KEY),
+                JsonTree.string(source, REASON_KEY),
+                JsonTree.bool(source, CLOSE_PR),
+                JsonTree.bool(source, RAISE_SCOPE),
+                JsonTree.bool(source, WITH_PLANS),
                 known
         );
     }

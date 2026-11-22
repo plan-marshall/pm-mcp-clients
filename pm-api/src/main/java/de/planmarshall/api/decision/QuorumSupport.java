@@ -36,6 +36,10 @@ public record QuorumSupport(
         @Nullable String dissentSummary,
         List<QuorumVote> votes
 ) {
+    private static final String VOTES_COUNT = "votes_count";
+    private static final String TOTAL_VOTES = "total_votes";
+    private static final String MODELS_COUNT = "models_count";
+
     public QuorumSupport {
         Objects.requireNonNull(band, "band");
         votes = votes != null ? List.copyOf(votes) : List.of();
@@ -48,9 +52,9 @@ public record QuorumSupport(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("votes_count", votesCount);
-        map.put("total_votes", totalVotes);
-        map.put("models_count", modelsCount);
+        map.put(VOTES_COUNT, votesCount);
+        map.put(TOTAL_VOTES, totalVotes);
+        map.put(MODELS_COUNT, modelsCount);
         map.put("band", band.value());
         if (dissentSummary != null) {
             map.put("dissent_summary", dissentSummary);
@@ -71,9 +75,9 @@ public record QuorumSupport(
      */
     public static QuorumSupport fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
-        var votesCount = JsonTree.integer(map, "votes_count") != null ? JsonTree.integer(map, "votes_count") : 0;
-        var totalVotes = JsonTree.integer(map, "total_votes") != null ? JsonTree.integer(map, "total_votes") : 0;
-        var modelsCount = JsonTree.integer(map, "models_count") != null ? JsonTree.integer(map, "models_count") : 0;
+        int votesCount = Objects.requireNonNullElse(JsonTree.integer(map, VOTES_COUNT), 0);
+        int totalVotes = Objects.requireNonNullElse(JsonTree.integer(map, TOTAL_VOTES), 0);
+        int modelsCount = Objects.requireNonNullElse(JsonTree.integer(map, MODELS_COUNT), 0);
         var bandStr = JsonTree.string(map, "band");
         var band = bandStr != null ? QuorumBand.fromValue(bandStr) : QuorumBand.SPLIT;
         var dissent = JsonTree.string(map, "dissent_summary");

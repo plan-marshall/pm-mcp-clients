@@ -45,7 +45,7 @@ public record EpicDecomposition(
 
     public EpicDecomposition {
         Objects.requireNonNull(epicId, "epicId");
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
         workstreams = workstreams == null ? List.of() : List.copyOf(workstreams);
         findings = findings == null ? List.of() : List.copyOf(findings);
     }

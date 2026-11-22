@@ -49,8 +49,8 @@ public record DecompositionCheckFinding(
     private static final String FIELD_MESSAGE = "message";
 
     public DecompositionCheckFinding {
-        Objects.requireNonNull(severity, "severity");
-        Objects.requireNonNull(rule, "rule");
+        Objects.requireNonNull(severity, FIELD_SEVERITY);
+        Objects.requireNonNull(rule, FIELD_RULE);
         affectedPlans = affectedPlans == null ? List.of() : List.copyOf(affectedPlans);
         message = message == null ? "" : message;
     }

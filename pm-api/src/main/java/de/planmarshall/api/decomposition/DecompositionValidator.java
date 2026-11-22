@@ -41,7 +41,7 @@ public class DecompositionValidator {
         findings.addAll(checkWorkstreamIntegrity(safe));
         findings.addAll(checkSurfaceDisjointness(safe));
         var cycle = dependencyCycle(safe);
-        if (cycle != null) {
+        if (!cycle.isEmpty()) {
             findings.add(new DecompositionCheckFinding(CheckSeverity.ERROR,
                     DecompositionCheckFinding.RULE_DEPENDENCY_CYCLE, cycle,
                     "the dependencies form a cycle: " + String.join(" -> ", cycle)));
@@ -133,11 +133,11 @@ public class DecompositionValidator {
         var state = new LinkedHashMap<String, Integer>();
         for (var node : nodes) {
             var cycle = visit(node, edges, nodes, state, new ArrayList<>());
-            if (cycle != null) {
+            if (!cycle.isEmpty()) {
                 return cycle;
             }
         }
-        return null;
+        return List.of();
     }
 
     private static List<String> visit(String node, Map<String, List<String>> edges, Set<String> nodes,
@@ -150,7 +150,7 @@ public class DecompositionValidator {
             return cycle;
         }
         if (current == 2) {
-            return null;
+            return List.of();
         }
         state.put(node, 1);
         path.add(node);
@@ -159,12 +159,12 @@ public class DecompositionValidator {
                 continue;
             }
             var cycle = visit(dependency, edges, nodes, state, path);
-            if (cycle != null) {
+            if (!cycle.isEmpty()) {
                 return cycle;
             }
         }
-        path.remove(path.size() - 1);
+        path.removeLast();
         state.put(node, 2);
-        return null;
+        return List.of();
     }
 }

@@ -40,7 +40,7 @@ public class PmVersion {
             var properties = new Properties();
             properties.load(in);
             return properties.getProperty("version", UNKNOWN);
-        } catch (IOException e) {
+        } catch (IOException _) {
             return UNKNOWN;
         }
     }

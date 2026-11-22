@@ -47,13 +47,11 @@ const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
   [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
   [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
   [path.normalize('lib/components/StartWorkModal.svelte')]: 'the V parts',
-  [path.normalize('lib/views/EpicDecompositionView.svelte')]: 'the V parts',
   [path.normalize('lib/components/PlanSettingsModal.svelte')]: 'PLAN-55',
   [path.normalize('lib/components/GitSourceIntakeModal.svelte')]: 'PLAN-53',
   [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',
   [path.normalize('lib/views/ProjectOnboardingView.svelte')]: 'PLAN-59',
   [path.normalize('lib/views/ProjectExplorerView.svelte')]: 'PLAN-59',
-  [path.normalize('lib/views/ProcessDesigner.svelte')]: 'PLAN-88',
   [path.normalize('lib/templates/SideColumn.svelte')]: 'the V parts',
 };
 

@@ -41,9 +41,11 @@ public record DecompositionResource(
         List<DecompositionCheck> checks
 ) {
 
+    private static final String STATE_KEY = "state";
+
     public DecompositionResource {
         Objects.requireNonNull(epicId, "epicId");
-        Objects.requireNonNull(state, "state");
+        Objects.requireNonNull(state, STATE_KEY);
         workstreams = workstreams != null ? List.copyOf(workstreams) : List.of();
         checks = checks != null ? List.copyOf(checks) : List.of();
     }
@@ -68,7 +70,7 @@ public record DecompositionResource(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("epic_id", epicId);
-        map.put("state", state);
+        map.put(STATE_KEY, state);
         map.put("revision", revision);
         map.put("workstreams", workstreams.stream().map(DecompositionWorkstream::toMap).toList());
         map.put("checks", checks.stream().map(DecompositionCheck::toMap).toList());
@@ -90,7 +92,7 @@ public record DecompositionResource(
     public static DecompositionResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var epicId = JsonTree.string(map, "epic_id");
-        var state = JsonTree.string(map, "state");
+        var state = JsonTree.string(map, STATE_KEY);
         if (epicId == null || state == null) {
             throw new JsonFormatException("Missing required fields for DecompositionResource: epic_id, state");
         }

@@ -232,6 +232,32 @@ class EnrolScenarioTest {
     }
 
     @Test
+    @DisplayName("reports project_not_enrolled or target_not_found when accepting edit for missing store")
+    void shouldReportNotFoundOnAcceptEditForMissingStore() throws Exception {
+        try (var runtime = MockRuntime.start(ENROLMENT)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var unknownRes = client.send(HttpRequest.json("POST",
+                    "/api/v1/projects/" + unknownProject + "/stores/accept-edit",
+                    new AcceptEditRequest(".plan/marshal.json", CURRENT_SHA).toJson())
+                    .withHeader("Authorization", auth));
+            assertEquals(404, unknownRes.status());
+            var unknownJson = JsonTree.asObject(JsonTree.parse(unknownRes.bodyText()));
+            assertEquals("project_not_enrolled", unknownJson.get("error"));
+
+            var missingStoreRes = client.send(HttpRequest.json("POST",
+                    "/api/v1/projects/pm-mcp-core/stores/accept-edit",
+                    new AcceptEditRequest(".plan/marshal.json", CURRENT_SHA).toJson())
+                    .withHeader("Authorization", auth));
+            assertEquals(404, missingStoreRes.status());
+            var missingStoreJson = JsonTree.asObject(JsonTree.parse(missingStoreRes.bodyText()));
+            assertEquals("target_not_found", missingStoreJson.get("error"));
+        }
+    }
+
+    @Test
     @DisplayName("serves the enrolment scan state with the same enrolment verbs")
     void shouldServeEnrolScanState() throws Exception {
         try (var runtime = MockRuntime.start(ENROL_SCAN)) {
