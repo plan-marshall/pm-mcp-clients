@@ -51,6 +51,97 @@ describe('RevokedView component', () => {
     expect(screen.getByTestId('pair-browser-button')).toHaveTextContent('Pair this browser');
   });
 
+  describe('reason lines (web.revoked.reason.*)', () => {
+    it('shows reason when revoked from another device (web.revoked.reason.device)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'device',
+          revoked_by: 'iPad (Safari)',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was revoked from iPad (Safari) at 14:32.',
+      );
+    });
+
+    it('shows reason when revoked in the terminal (web.revoked.reason.terminal)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'terminal',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was revoked in the terminal at 14:32.',
+      );
+    });
+
+    it('shows reason when all other devices were revoked (web.revoked.reason.others)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'others',
+          revoked_by: 'Firefox on mbp-oliver',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'All other devices were revoked from Firefox on mbp-oliver at 14:32.',
+      );
+    });
+
+    it('shows reason when this device was revoked from itself (web.revoked.reason.self)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'self',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'You revoked this browser at 14:32.',
+      );
+    });
+
+    it('shows reason when idle expiry occurred (web.revoked.reason.idle)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'idle',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was not used for 30 days, so its pairing expired.',
+      );
+    });
+
+    it('shows fallback reason when reason is unknown (web.revoked.reason.unknown)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: null,
+        revokedReason: '',
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+    });
+  });
+
   it('renders expiration reason when revokedInfo reason is device_expired', () => {
     runtimeStore.update((s) => ({
       ...s,

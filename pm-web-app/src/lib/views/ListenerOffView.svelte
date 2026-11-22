@@ -70,7 +70,7 @@
     <p class="listener-off__wait">{$t('web.entry.lan_off.wait')}</p>
 
     <div class="listener-off__actions">
-      <Button variant="secondary" loading={isReconnecting} on:click={reconnect}>
+      <Button variant="primary" loading={isReconnecting} on:click={reconnect}>
         {$t('web.offline.reconnecting')}
       </Button>
     </div>

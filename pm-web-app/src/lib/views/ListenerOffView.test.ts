@@ -1,10 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import path from 'node:path';
-import { render, screen, within } from '@testing-library/svelte';
+import { render, screen, within, fireEvent } from '@testing-library/svelte';
 import type { Writable } from 'svelte/store';
 import ListenerOffView from './ListenerOffView.svelte';
 import { heldFigure } from '../stores/heldFigure';
 import { runtimeStore } from '../stores/runtime';
+import * as runtimeModule from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -127,6 +128,18 @@ describe('ListenerOffView', () => {
         'This browser stays paired: it works again once the network access is on (pm-operator web lan).',
       );
       expect(view).not.toHaveTextContent('This machine is not reachable over the network.');
+    });
+
+    it('provides exactly one primary act for reconnecting', async () => {
+      const initSpy = vi.spyOn(runtimeModule, 'initRuntime').mockResolvedValue(undefined);
+      render(ListenerOffView);
+      const view = screen.getByTestId('listener-off-view');
+      const reconnectBtn = within(view).getByRole('button', {
+        name: loadMessages('en')['web.offline.reconnecting'],
+      });
+      expect(reconnectBtn).toHaveClass('btn--primary');
+      await fireEvent.click(reconnectBtn);
+      expect(initSpy).toHaveBeenCalled();
     });
   });
 });
