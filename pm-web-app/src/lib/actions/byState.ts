@@ -514,13 +514,13 @@ export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
       id: 'stop',
       labelKey: 'system.action.stop',
       advisoryKey: 'system.action.stop.title',
-      ...SECONDARY,
+      ...DESTRUCTIVE,
     },
     {
       id: 'restart',
       labelKey: 'system.action.restart',
       advisoryKey: 'system.action.restart.title',
-      ...SECONDARY,
+      ...DESTRUCTIVE,
     },
   ],
   update_available: [
@@ -528,19 +528,19 @@ export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
       id: 'upgrade',
       labelKey: 'system.action.upgrade',
       advisoryKey: 'system.action.upgrade.title',
-      ...PRIMARY,
+      ...DESTRUCTIVE,
     },
     {
       id: 'stop',
       labelKey: 'system.action.stop',
       advisoryKey: 'system.action.stop.title',
-      ...SECONDARY,
+      ...DESTRUCTIVE,
     },
     {
       id: 'restart',
       labelKey: 'system.action.restart',
       advisoryKey: 'system.action.restart.title',
-      ...SECONDARY,
+      ...DESTRUCTIVE,
     },
     {
       id: 'check',

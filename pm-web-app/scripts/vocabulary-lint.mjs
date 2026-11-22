@@ -10,10 +10,17 @@ import { parse, parseCss } from 'svelte/compiler';
  * <button>, <a>, <input>, <textarea>, <select>, and any `outline: none` or `outline: 0`
  * in <style> blocks or .css files outside src/lib/components/.
  *
- * Reports each violation as:
- * warning: <file>:<line> <rule> — use <Component>
+ * The printed format:
  *
- * and prints a per-file table with totals.
+ *   warning: <file>:<line> <rule> — use <Component>
+ *   warning: <file>:<line> unparseable — <the parser's message>
+ *
+ * An `unparseable` line names the parser's message instead of a component, because there is no
+ * component to use: the source must parse first. Every finding is also counted in one per-file
+ * table whose columns are the rules of `RULES` — the `unparseable` column is always present, even
+ * when no file failed to parse — followed by
+ * `Total vocabulary findings: <n> (warning|error)`.
+ *
  * Exits 0 by default (warnings).
  * Exits 1 on any finding when run with --error.
  */
@@ -329,7 +336,9 @@ export function generateBaseline(findings) {
  * @returns {string}
  */
 export function formatTable(findings, ruleNames = null) {
-  const distinctRules = new Set(RULE_NAMES);
+  // The rule list is read live, not from a snapshot taken at import: a rule added to `RULES` is a
+  // column of the next table, even before any finding names it.
+  const distinctRules = new Set(Object.keys(RULES));
   for (const f of findings) {
     if (f.rule) {
       distinctRules.add(f.rule);
@@ -415,8 +424,9 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
     }
 
     let existingBaseline;
+    let baselineRaw;
     try {
-      const baselineRaw = fs.readFileSync(baselinePath, 'utf-8');
+      baselineRaw = fs.readFileSync(baselinePath, 'utf-8');
       existingBaseline = JSON.parse(baselineRaw);
     } catch (err) {
       console.error(`Error reading baseline at ${baselinePath}: ${err.message}`);
@@ -446,12 +456,14 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
       }
     }
 
-    // Lower counts and remove files that reached zero
+    // Lower counts and remove files that reached zero. The order of the file's own keys and of the
+    // file itself is the order the baseline already has, so an unchanged baseline serialises to the
+    // bytes it was read from and is left untouched.
     const updatedBaseline = {};
-    for (const file of Object.keys(existingBaseline).sort()) {
+    for (const file of Object.keys(existingBaseline)) {
       const fileCounts = {};
       let fileTotal = 0;
-      for (const rule of Object.keys(existingBaseline[file]).sort()) {
+      for (const rule of Object.keys(existingBaseline[file])) {
         const currentCount = newBaseline[file]?.[rule] ?? 0;
         if (currentCount > 0) {
           fileCounts[rule] = currentCount;
@@ -463,7 +475,13 @@ export function runCli(argv = process.argv.slice(2), appDirOverride = null) {
       }
     }
 
-    fs.writeFileSync(baselinePath, JSON.stringify(updatedBaseline, null, 2) + '\n', 'utf-8');
+    const updatedContent = JSON.stringify(updatedBaseline, null, 2) + '\n';
+    if (updatedContent === baselineRaw) {
+      console.info(`Baseline unchanged: ${findings.length} findings across ${Object.keys(updatedBaseline).length} files.`);
+      return 0;
+    }
+
+    fs.writeFileSync(baselinePath, updatedContent, 'utf-8');
     console.info(
       `Updated baseline with ${findings.length} findings across ${Object.keys(updatedBaseline).length} files.`,
     );

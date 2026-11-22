@@ -55,43 +55,42 @@ export function validatePendingList(
  * Checks whether a component is rendered as an actual tag in a markup position.
  * Uses the Svelte compiler AST to verify the component is used as a tag,
  * avoiding false positives from attribute strings or comments.
+ *
+ * A fixture that does not parse is an error, never a guess: a regex over broken markup cannot tell a
+ * tag from a comment, and a broken fixture must fail the test with the parser's own message.
  */
 export function hasComponentFixture(name: string, templateSource: string): boolean {
+  let ast;
   try {
-    const ast = parse(templateSource, { modern: true });
-    let found = false;
-
-    function walk(node: unknown): void {
-      if (found || !node || typeof node !== 'object') return;
-      const n = node as Record<string, unknown>;
-      if (
-        (n.type === 'Component' || n.type === 'RegularElement') &&
-        n.name === name
-      ) {
-        found = true;
-        return;
-      }
-      for (const key of Object.keys(n)) {
-        if (key === 'parent' || key === 'css') continue;
-        const child = n[key];
-        if (Array.isArray(child)) {
-          for (const item of child) walk(item);
-        } else if (child && typeof child === 'object') {
-          walk(child);
-        }
-      }
-    }
-
-    if (ast.fragment) {
-      walk(ast.fragment);
-    }
-    return found;
-  } catch {
-    // Fallback regex ensuring tag is outside attribute values
-    // eslint-disable-next-line security/detect-non-literal-regexp
-    const tagRegex = new RegExp(`<${name}\\b(?![^<]*>)`);
-    return tagRegex.test(templateSource);
+    ast = parse(templateSource, { modern: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`The fixture source does not parse: ${message}`);
   }
+  let found = false;
+
+  function walk(node: unknown): void {
+    if (found || !node || typeof node !== 'object') return;
+    const n = node as Record<string, unknown>;
+    if ((n.type === 'Component' || n.type === 'RegularElement') && n.name === name) {
+      found = true;
+      return;
+    }
+    for (const key of Object.keys(n)) {
+      if (key === 'parent' || key === 'css') continue;
+      const child = n[key];
+      if (Array.isArray(child)) {
+        for (const item of child) walk(item);
+      } else if (child && typeof child === 'object') {
+        walk(child);
+      }
+    }
+  }
+
+  if (ast.fragment) {
+    walk(ast.fragment);
+  }
+  return found;
 }
 
 /**
@@ -150,6 +149,24 @@ describe('vocabulary completeness', () => {
     const fakeMarkup = '<div data-info="<Button"></div>';
     const hasTag = hasComponentFixture('Button', fakeMarkup);
     expect(hasTag).toBe(false);
+  });
+
+  it('a fixture that does not parse fails the fixture check with the parser message', () => {
+    const brokenMarkup = '<!-- <Button < --> <div>';
+    let parserMessage = '';
+    try {
+      parse(brokenMarkup, { modern: true });
+    } catch (err) {
+      parserMessage = err instanceof Error ? err.message : String(err);
+    }
+    expect(parserMessage).not.toBe('');
+
+    expect(() => hasComponentFixture('Button', brokenMarkup)).toThrow(parserMessage);
+  });
+
+  it('a comment that mentions <Name does not satisfy the fixture check', () => {
+    const commentOnly = '<!-- <Button /> --><div>Nothing renders it</div>';
+    expect(hasComponentFixture('Button', commentOnly)).toBe(false);
   });
 
   it('PENDING_LIST names only components that do not exist yet on disk', () => {

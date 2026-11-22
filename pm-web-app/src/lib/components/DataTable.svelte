@@ -61,7 +61,10 @@
   }
 </script>
 
-<div class="data-table__scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- The scroll area of a wide table must be a keyboard stop of its own (WCAG 2.1.1; axe's
+     scrollable-region-focusable): a person who cannot use a pointer scrolls it with the keys. -->
+<div class="data-table__scroll" tabindex="0">
   <table
     class="data-table"
     class:data-table--compact={compact}
@@ -138,6 +141,14 @@
        while the rows scroll under it. */
     max-block-size: 70vh;
     overflow: auto;
+  }
+
+  /* A scroll area is a keyboard stop of its own: without one the region it scrolls is unreachable
+     by a keyboard (WCAG 2.1.1, axe's scrollable-region-focusable), so it takes the focus ring the
+     rest of the design system gives every control. */
+  .data-table__scroll:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 
   .data-table {
