@@ -11,6 +11,7 @@ import full1xUrl from '../assets/mascot/mascot-full-1x.webp?url';
 import full2xUrl from '../assets/mascot/mascot-full-2x.webp?url';
 import { blockOf, ruleOf, stylesheetOf } from '../test/stylesheet';
 import { reportBox } from '../test/resizeObserver';
+import { walk } from '../../test/textFiles';
 
 /**
  * `MascotFigure` (components-brand.adoc, MascotFigure): one decorative figure of the mascot by pose
@@ -65,13 +66,40 @@ describe('MascotFigure', () => {
       expect(screen.getByTestId('mascot-figure').getAttribute('data-crop')).toBe('full');
     });
 
-    it.each([
-      'mascot-full-1x.webp',
-      'mascot-full-2x.webp',
-      'mascot-bust-1x.webp',
-      'mascot-bust-2x.webp',
-    ])('keeps %s within 60 KB', (file) => {
+    const webpFiles = fs
+      .readdirSync(ASSET_DIR)
+      .filter((file) => file.endsWith('.webp'))
+      .sort();
+
+    it.each(webpFiles)('keeps %s within 60 KB', (file) => {
       expect(fs.statSync(path.join(ASSET_DIR, file)).size).toBeLessThanOrEqual(MAX_FILE_BYTES);
+    });
+
+    it('exports the figure height constant 180 for entry pages', async () => {
+      const mod = (await import('./MascotFigure.svelte')) as unknown as Record<string, unknown>;
+      expect(mod.FIGURE_HEIGHT || mod.ENTRY_FIGURE_HEIGHT).toBe(180);
+    });
+
+    it.each(webpFiles)('verifies the WebP signature (RIFF....WEBPVP8) of %s', (file) => {
+      const buf = fs.readFileSync(path.join(ASSET_DIR, file));
+      expect(buf.subarray(0, 4).toString('ascii')).toBe('RIFF');
+      expect(buf.subarray(8, 12).toString('ascii')).toBe('WEBP');
+      expect(buf.subarray(12, 15).toString('ascii')).toBe('VP8');
+    });
+
+    it('inlines no mascot file as a data: URL in source or build output', () => {
+      const srcDir = path.resolve(__dirname, '../..');
+      for (const file of walk(srcDir)) {
+        const text = fs.readFileSync(file, 'utf-8');
+        expect(text).not.toMatch(/data:image\/webp/);
+      }
+      const buildDir = path.resolve(__dirname, '../../../build');
+      if (fs.existsSync(buildDir)) {
+        for (const file of walk(buildDir)) {
+          const text = fs.readFileSync(file, 'utf-8');
+          expect(text).not.toMatch(/data:image\/webp/);
+        }
+      }
     });
   });
 

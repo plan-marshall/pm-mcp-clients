@@ -17,25 +17,28 @@ const held = writable('');
 /** The held object URL of the `searching` figure; empty until the fetch completed. */
 export const heldFigure: Readable<string> = { subscribe: held.subscribe };
 
-/** Whether the one fetch of the session has been started. */
+/** Whether a successful fetch of the session has completed or is in flight. */
 let requested = false;
 
 /**
- * Fetches the `searching` figure once and holds it as an object URL.
+ * Fetches the `searching` figure and holds it as an object URL.
  *
- * Only the first call fetches; every later call returns at once, so the figure is never fetched
- * twice and never from a state that lost the connection after the start.
+ * Once held, subsequent calls return at once. A failed fetch allows retry on the next request.
  *
- * @returns a promise that settles when the one fetch has been held or given up
+ * @returns a promise that settles when the fetch has been held or given up
  */
 export async function holdFigure(): Promise<void> {
   if (requested) return;
   requested = true;
   try {
     const response = await fetch(mascotFiles('searching', 'full').src2x);
-    if (!response.ok) return;
+    if (!response.ok) {
+      requested = false;
+      return;
+    }
     held.set(URL.createObjectURL(await response.blob()));
   } catch {
+    requested = false;
     // The connection is gone or the file did not arrive: the states show without their figure.
   }
 }

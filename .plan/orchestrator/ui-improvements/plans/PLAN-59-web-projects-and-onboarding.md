@@ -88,7 +88,7 @@ Source of this plan (read before scoping):
 - HYPOTHESIS: the explorer does not render `project.action.add_plan` / `project.action.disabled_not_ready` although both keys exist — confirm/refute at `pm-web-app/src/lib/views/ProjectExplorerView.svelte` § actions (verify-at-outline)
   - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectExplorerView renders neither key (no web source uses add_plan or disabled_not_ready); PROJECT_ACTS byState.ts:425 has no add_plan
 - HYPOTHESIS: the project page route `/projects/{id}` does not exist; only `/projects/[id]/start` does — confirm/refute at `pm-web-app/src/routes/projects/` (verify-at-outline)
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: Route /projects/{id} now exists: src/routes/projects/[id]/+page.svelte and routes.ts:310 pattern for route project (address scheme #446)
+  - verdict: contradicted | checked_at: a4fa36fa | by: ui-improvements/analyze | rescoped: yes | evidence: The route exists: src/routes/projects/[id]/+page.svelte adopts the address (routes.ts:338 pattern /projects/{id} for route project) and AppRouter.svelte:49-50 renders ProjectExplorerView for both projects and project, so the address is there but the one project page is not: deliverable 1 builds the project page content as the object column, no new route file is needed; the run address of the onboarding is route project-onboarding (routes.ts:33), re-read at outline
 
 ## Expected Surface
 
@@ -106,6 +106,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/actions/byState.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/actions/byState.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/routes/projects/` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-app/src/routes/projects/[id]/+page.svelte` — present at `a4fa36fa` (the address of the project page; adopts the route, 12 lines; re-scope 2026-11-22)
+- OBSERVED: `pm-web-app/src/lib/views/AppRouter.svelte` — present at `a4fa36fa` (`:49-50` renders `ProjectExplorerView` for both `projects` and `project`; re-scope 2026-11-22)
 - OBSERVED: `pm-web-e2e/tests/projects.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/project-explorer.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/shared/project-onboarding.adoc` — present at HEAD 1cc0e10e
@@ -196,3 +198,11 @@ Recorded in the epic's decision log (AskUserQuestion, 2026-11-10). They settle t
 Emit after `PLAN-53`, `PLAN-146` (the chart mounted on the setup tab) and `PLAN-150`.
 - Re-ground at outline: the order in `project-explorer.adoc:38-40` differs from `plan-overview.adoc:55`.
 - The routes `/projects/{id}` and `/project-onboarding/{entry}` are missing from the surface.
+
+## Re-Scope 2026-11-22 (analyze, the operator asked for a candidate for the fourth slot)
+
+Settles the one blocking claim (claim 7, `/projects/{id}` does not exist), checked at `a4fa36fa`:
+
+- The ADDRESS exists since PLAN-143 (#446): `routes/projects/[id]/+page.svelte` adopts the route and `routes.ts:338` maps `/projects/{id}` to the route `project`; `AppRouter.svelte:49-50` renders `ProjectExplorerView` for `projects` AND `project`, so the one project page is NOT built: `/projects/{id}` shows the list. Deliverable 1 therefore builds the page content (the object column: head, ActionBar, work tab, `?tab=setup`), and adds no route file. The `Unparked` bullet "the routes are missing from the surface" is stale: both route files are in the surface above.
+- The onboarding run's address is the route `project-onboarding` (`routes.ts:33`, path `/projects/onboard`): deliverable 2's "its own address `/project-onboarding/{entry}`" is re-read at outline against `routes.ts`, not assumed.
+- Dependencies are met: PLAN-53, 146, 150 shipped; the views package (PLAN-153, 155) landed. PLAN-156 and 157 (running) share no file with this spec (the disjointness gate, 2026-11-22).

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { render } from '@testing-library/svelte';
 import BrandMark, { DELIVERED_SIZES, type BrandMarkProps } from './BrandMark.svelte';
+import { walk } from '../../test/textFiles';
 
 const SOURCE_DIR = path.resolve(__dirname, '../..');
 const COMPONENT_PATH = path.resolve(__dirname, 'BrandMark.svelte');
@@ -13,23 +14,6 @@ const OLD_GLYPH = String.fromCodePoint(0x2726);
 /** The sizes each rendering is delivered at (brand-mark.adoc, Where the Icon Is Used). */
 const COLOUR_SIZES = [16, 28, 64] as const;
 const MONOCHROME_SIZES = [16, 20, 24, 28, 64] as const;
-
-/**
- * @param directory the directory to walk
- * @returns every file below it, recursively
- */
-function walk(directory: string): string[] {
-  const found: string[] = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const full = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      found.push(...walk(full));
-    } else {
-      found.push(full);
-    }
-  }
-  return found;
-}
 
 /**
  * @param source the component source
@@ -170,6 +154,13 @@ describe('BrandMark component', () => {
       const monochromeAt20: BrandMarkProps = { rendering: 'monochrome', size: 20 };
 
       expect([colourAt20.size, defaultAt24.size, monochromeAt20.size]).toEqual([20, 24, 20]);
+    });
+
+    it('refuses at runtime a color mark at an undelivered size', () => {
+      expect(() =>
+        // @ts-expect-error undelivered size at runtime
+        render(BrandMark, { props: { rendering: 'colour', size: 20 } }),
+      ).toThrow(/not delivered/);
     });
   });
 

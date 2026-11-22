@@ -102,6 +102,26 @@ describe('the app shell', () => {
     expect(get(runtimeStore).currentRoute).toBe('designer');
   });
 
+  it('exercises shellGone by unmounting while the catalogue wait is unresolved', async () => {
+    let resolveMessages!: (messages: Record<string, string>) => void;
+    const pendingMessages = new Promise<Record<string, string>>((resolve) => {
+      resolveMessages = resolve;
+    });
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    const getMessagesSpy = vi.spyOn(apiClient, 'getMessages').mockReturnValue(pendingMessages);
+    const getConnSpy = vi.spyOn(apiClient, 'getConnectionStatus');
+
+    const { unmount } = render(Layout);
+    await waitFor(() => expect(getMessagesSpy).toHaveBeenCalled());
+    unmount();
+
+    resolveMessages(loadMessages('en'));
+    await waitFor(() => expect(get(messagesStore)['web.frame.brand']).toBeDefined());
+
+    expect(getConnSpy).not.toHaveBeenCalled();
+    expect(get(runtimeStore).isInitialized).toBe(false);
+  });
+
   it('gives the header actions a hover advisory that adds to their label', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);

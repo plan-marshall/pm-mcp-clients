@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
-  import MascotFigure from '../components/MascotFigure.svelte';
+  import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
-  import { RECONNECT_INTERVAL_MS, retryRuntime } from '../stores/runtime';
+  import { createReconnectLoop, retryRuntime } from '../stores/runtime';
 
   /**
    * The page of a runtime that is not reachable on this machine (entry.adoc, After Pairing).
@@ -18,35 +18,15 @@
    * the page is too narrow to hold both, the figure is hidden, never stacked above the text.
    */
 
-  /** The figure's height beside the text, within the design's 160–200 px. */
-  const FIGURE_HEIGHT = 180;
-
-  let isReconnecting = false;
-  let retry: ReturnType<typeof setInterval> | null = null;
-  let isMounted = true;
+  const loop = createReconnectLoop(undefined, () => retryRuntime());
 
   onMount(() => {
-    isMounted = true;
-    retry = setInterval(() => void reconnect(), RECONNECT_INTERVAL_MS);
+    loop.start();
   });
 
   onDestroy(() => {
-    isMounted = false;
-    if (retry) {
-      clearInterval(retry);
-      retry = null;
-    }
+    loop.stop();
   });
-
-  async function reconnect(): Promise<void> {
-    if (isReconnecting || !isMounted) return;
-    isReconnecting = true;
-    try {
-      await retryRuntime();
-    } finally {
-      isReconnecting = false;
-    }
-  }
 </script>
 
 <div class="unreachable" data-testid="unreachable-view" role="alert">
