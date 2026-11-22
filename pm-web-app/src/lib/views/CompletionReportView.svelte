@@ -4,6 +4,7 @@
   import Button from '../components/Button.svelte';
   import Card from '../components/Card.svelte';
   import Chip from '../components/Chip.svelte';
+  import DataTable, { type DataTableColumn, type DataTableRow } from '../components/DataTable.svelte';
   import ExternalLink from '../components/ExternalLink.svelte';
   import Icon from '../components/Icon.svelte';
   import KeyValueList, { type KeyValueItem } from '../components/KeyValueList.svelte';
@@ -17,7 +18,7 @@
   import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
   import { displayState, formatChangeSize } from '../display';
-  import { pathForRoute } from '../routes';
+  import { formatAddress, pathForRoute } from '../routes';
   import { openAddress } from '../stores/runtime';
 
   interface Props {
@@ -196,6 +197,117 @@
   function changeText(change: ChangeSizeRecord): string {
     return formatChangeSize(change, $t);
   }
+
+  function phaseHref(id: string, phase: string): string {
+    return (
+      formatAddress({ route: 'plan', planId: id, mode: 'ended', node: phase }) ??
+      pathForRoute('plan', { planId: id }) ??
+      ''
+    );
+  }
+
+  function formatBreakdownSplit(
+    total: number,
+    input: number,
+    output: number,
+    floor: boolean,
+    unmeasured: number,
+  ): string {
+    if (total === 0 && unmeasured > 0) {
+      return $t('state.model.not_measured');
+    }
+    return formatSplit(total, input, output, floor, $currentLocale);
+  }
+
+  function formatRawComponentsRow(components: {
+    input: number;
+    cache_read: number;
+    cache_write: number;
+    output: number;
+    reasoning: number;
+  }): string {
+    return $t('report.completion.component_row', {
+      input: formatTokens(components.input, false, $currentLocale),
+      cache_read: formatTokens(components.cache_read, false, $currentLocale),
+      cache_write: formatTokens(components.cache_write, false, $currentLocale),
+      output: formatTokens(components.output, false, $currentLocale),
+      reasoning: formatTokens(components.reasoning, false, $currentLocale),
+    });
+  }
+
+  const tokenSummaryItems = $derived.by<KeyValueItem[]>(() => {
+    const usage = data?.token_usage;
+    if (!usage) return [];
+    const totalValue =
+      usage.tasks_total > 0 && usage.tasks_measured === 0
+        ? $t('state.model.not_measured')
+        : `${formatSplit(usage.total, usage.input, usage.output, usage.is_floor, $currentLocale)}${
+            data?.ran ? ` · ${data.ran}` : ''
+          }`;
+    const coverageValue =
+      usage.tasks_total > usage.tasks_measured
+        ? $t('common.tokens.coverage', {
+            unmeasured: usage.tasks_total - usage.tasks_measured,
+            total: usage.tasks_total,
+            reason: usage.unmeasured_reason || 'none',
+          })
+        : $t('report.completion.tasks_measured', {
+            count: usage.tasks_total,
+            total: usage.tasks_total,
+          });
+    return [
+      { label: $t('report.completion.total'), value: totalValue },
+      { label: $t('report.completion.coverage'), value: coverageValue },
+    ];
+  });
+
+  const roleColumns = $derived<DataTableColumn[]>([
+    { id: 'name', header: $t('report.completion.by_role'), width: '10rem' },
+    { id: 'pin', header: $t('report.completion.by_model'), width: '14rem' },
+    { id: 'tokens', header: $t('report.completion.tokens'), width: '16rem', numeric: true },
+    { id: 'coverage', header: $t('report.completion.coverage'), width: '10rem', numeric: true },
+  ]);
+
+  const roleRows = $derived<DataTableRow[]>(
+    (data?.token_usage?.by_role ?? []).map((item) => ({
+      id: item.name,
+      cells: {
+        name: item.name,
+        pin: item.harness_model ? `${item.harness_model}${item.effort ? ` · ${item.effort}` : ''}` : '',
+        tokens: formatBreakdownSplit(
+          item.total,
+          item.input,
+          item.output,
+          item.floor,
+          item.unmeasured,
+        ),
+        coverage: item.unmeasured > 0 ? $t('report.tokens.unmeasured', { count: item.unmeasured }) : '',
+      },
+    })),
+  );
+
+  const modelColumns = $derived<DataTableColumn[]>([
+    { id: 'name', header: $t('report.completion.by_model'), width: '16rem' },
+    { id: 'tokens', header: $t('report.completion.tokens'), width: '16rem', numeric: true },
+    { id: 'coverage', header: $t('report.completion.coverage'), width: '10rem', numeric: true },
+  ]);
+
+  const modelRows = $derived<DataTableRow[]>(
+    (data?.token_usage?.by_model ?? []).map((item) => ({
+      id: item.name,
+      cells: {
+        name: item.name,
+        tokens: formatBreakdownSplit(
+          item.total,
+          item.input,
+          item.output,
+          item.floor,
+          item.unmeasured,
+        ),
+        coverage: item.unmeasured > 0 ? $t('report.tokens.unmeasured', { count: item.unmeasured }) : '',
+      },
+    })),
+  );
 </script>
 
 <div class="completion-report" bind:this={rootEl}>
@@ -422,185 +534,99 @@
             </Button>
           </div>
           <div class="tokens-section">
-
-          <!-- Total & Coverage -->
-          <div class="tokens-total-card">
-            <div class="total-row">
-              <span class="total-label">{$t('report.completion.total')}</span>
-              <span class="total-value mono font-semibold">
-                {formatSplit(
-                  usage.total,
-                  usage.input,
-                  usage.output,
-                  usage.is_floor,
-                  $currentLocale,
-                )}
-                {#if data.ran}
-                  <span class="total-ran text-muted">· {data.ran}</span>
-                {/if}
-              </span>
+            <!-- Total & Coverage -->
+            <div class="tokens-total-block">
+              <KeyValueList items={tokenSummaryItems} />
             </div>
-            <div class="coverage-row text-muted">
-              <span class="coverage-label">{$t('report.completion.coverage')}</span>
-              <span>
-                {#if usage.tasks_total > usage.tasks_measured}
-                  {$t('common.tokens.coverage', {
-                    unmeasured: usage.tasks_total - usage.tasks_measured,
-                    total: usage.tasks_total,
-                    reason: usage.unmeasured_reason || 'none',
-                  })}
-                {:else}
-                  {$t('report.completion.tasks_measured', {
-                    count: usage.tasks_total,
-                    total: usage.tasks_total,
-                  })}
-                {/if}
-              </span>
-            </div>
-          </div>
 
-          <!-- Breakdown by Phase -->
-          {#if usage.by_phase && usage.by_phase.length > 0}
-            <div class="breakdown-group">
-              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
-                {$t('report.completion.by_phase')}
-              </svelte:element>
-              <table class="breakdown-table">
-                <tbody>
-                  {#each usage.by_phase as item}
-                    <tr>
-                      <td class="col-name mono">{item.name}</td>
-                      <td class="col-value mono">
-                        {formatSplit(
-                          item.total,
-                          item.input,
-                          item.output,
-                          item.floor,
-                          $currentLocale,
-                        )}
-                      </td>
-                      <td class="col-extra text-muted">
-                        {#if item.unmeasured > 0}
-                          {item.unmeasured} not measured
-                        {/if}
-                      </td>
-                    </tr>
-                    {#if showRawComponents && item.components}
-                      <tr class="raw-components-row">
-                        <td colspan="3" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
-                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
-                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
-                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
-                            item.components.reasoning,
-                            false,
-                            $currentLocale,
+            <!-- Breakdown by Phase -->
+            {#if usage.by_phase && usage.by_phase.length > 0}
+              <div class="breakdown-group">
+                <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                  {$t('report.completion.by_phase')}
+                </svelte:element>
+                <table class="breakdown-table" aria-label={$t('report.completion.by_phase')}>
+                  <tbody>
+                    {#each usage.by_phase as item}
+                      <tr>
+                        <td class="col-name mono">
+                          <Link href={phaseHref(data.plan_id, item.name)} label={item.name} />
+                        </td>
+                        <td class="col-value col-numeric mono">
+                          {formatBreakdownSplit(
+                            item.total,
+                            item.input,
+                            item.output,
+                            item.floor,
+                            item.unmeasured,
                           )}
                         </td>
+                        <td class="col-extra col-numeric text-muted">
+                          {#if item.unmeasured > 0}
+                            {$t('report.tokens.unmeasured', { count: item.unmeasured })}
+                          {/if}
+                        </td>
                       </tr>
-                    {/if}
-                  {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
+                      {#if showRawComponents && item.components}
+                        <tr class="raw-components-row">
+                          <td colspan="3" class="mono text-muted">
+                            {formatRawComponentsRow(item.components)}
+                          </td>
+                        </tr>
+                      {/if}
+                    {/each}
+                  </tbody>
+                </table>
+              </div>
+            {/if}
 
-          <!-- Breakdown by Role -->
-          {#if usage.by_role && usage.by_role.length > 0}
-            <div class="breakdown-group">
-              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
-                {$t('report.completion.by_role')}
-              </svelte:element>
-              <table class="breakdown-table">
-                <tbody>
+            <!-- Breakdown by Role -->
+            {#if usage.by_role && usage.by_role.length > 0}
+              <div class="breakdown-group">
+                <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                  {$t('report.completion.by_role')}
+                </svelte:element>
+                <DataTable
+                  columns={roleColumns}
+                  rows={roleRows}
+                  label={$t('report.completion.by_role')}
+                  compact
+                />
+                {#if showRawComponents}
                   {#each usage.by_role as item}
-                    <tr>
-                      <td class="col-name mono">{item.name}</td>
-                      <td class="col-pin text-muted mono">
-                        {#if item.harness_model}
-                          {item.harness_model}{item.effort ? ` · ${item.effort}` : ''}
-                        {/if}
-                      </td>
-                      <td class="col-value mono">
-                        {formatSplit(
-                          item.total,
-                          item.input,
-                          item.output,
-                          item.floor,
-                          $currentLocale,
-                        )}
-                      </td>
-                      <td class="col-extra text-muted">
-                        {#if item.unmeasured > 0}
-                          {item.unmeasured} not measured
-                        {/if}
-                      </td>
-                    </tr>
-                    {#if showRawComponents && item.components}
-                      <tr class="raw-components-row">
-                        <td colspan="4" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
-                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
-                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
-                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
-                            item.components.reasoning,
-                            false,
-                            $currentLocale,
-                          )}
-                        </td>
-                      </tr>
+                    {#if item.components}
+                      <p class="raw-components-line mono text-muted">
+                        {item.name}: {formatRawComponentsRow(item.components)}
+                      </p>
                     {/if}
                   {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
+                {/if}
+              </div>
+            {/if}
 
-          <!-- Breakdown by Model -->
-          {#if usage.by_model && usage.by_model.length > 0}
-            <div class="breakdown-group">
-              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
-                {$t('report.completion.by_model')}
-              </svelte:element>
-              <table class="breakdown-table">
-                <tbody>
+            <!-- Breakdown by Model -->
+            {#if usage.by_model && usage.by_model.length > 0}
+              <div class="breakdown-group">
+                <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                  {$t('report.completion.by_model')}
+                </svelte:element>
+                <DataTable
+                  columns={modelColumns}
+                  rows={modelRows}
+                  label={$t('report.completion.by_model')}
+                  compact
+                />
+                {#if showRawComponents}
                   {#each usage.by_model as item}
-                    <tr>
-                      <td class="col-name mono">{item.name}</td>
-                      <td class="col-value mono">
-                        {formatSplit(
-                          item.total,
-                          item.input,
-                          item.output,
-                          item.floor,
-                          $currentLocale,
-                        )}
-                      </td>
-                      <td class="col-extra text-muted">
-                        {#if item.unmeasured > 0}
-                          {item.unmeasured} not measured
-                        {/if}
-                      </td>
-                    </tr>
-                    {#if showRawComponents && item.components}
-                      <tr class="raw-components-row">
-                        <td colspan="3" class="mono text-muted">
-                          input {formatTokens(item.components.input, false, $currentLocale)} · cache read
-                          {formatTokens(item.components.cache_read, false, $currentLocale)} · cache write
-                          {formatTokens(item.components.cache_write, false, $currentLocale)} · output
-                          {formatTokens(item.components.output, false, $currentLocale)} · reasoning {formatTokens(
-                            item.components.reasoning,
-                            false,
-                            $currentLocale,
-                          )}
-                        </td>
-                      </tr>
+                    {#if item.components}
+                      <p class="raw-components-line mono text-muted">
+                        {item.name}: {formatRawComponentsRow(item.components)}
+                      </p>
                     {/if}
                   {/each}
-                </tbody>
-              </table>
-            </div>
-          {/if}
+                {/if}
+              </div>
+            {/if}
 
           <!-- Waste breakdown -->
           {#if (usage.total_waste_tokens && usage.total_waste_tokens > 0) || (usage.waste_records && usage.waste_records.length > 0)}
@@ -830,27 +856,11 @@
     overflow-x: auto;
   }
 
-  .tokens-total-card {
+  .tokens-total-block {
     background: var(--color-bg-subtle);
     border-radius: var(--radius-md);
     padding: var(--space-4);
     margin-bottom: var(--space-5);
-  }
-
-  .total-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: var(--space-2);
-  }
-
-  .total-label {
-    font-size: var(--text-base);
-    font-weight: 600;
-  }
-
-  .total-value {
-    font-size: var(--text-base);
   }
 
   .breakdown-group {
@@ -880,26 +890,32 @@
     width: 25%;
   }
 
-  .col-pin {
-    width: 30%;
-    font-size: var(--text-xs);
-  }
-
   .col-value {
-    width: 30%;
+    width: 45%;
   }
 
   .col-extra {
-    width: 15%;
-    text-align: right;
+    width: 30%;
     font-size: var(--text-xs);
   }
 
-  .raw-components-row td {
+  .col-numeric {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .raw-components-row td,
+  .raw-components-line {
     padding: var(--space-1) var(--space-2);
     font-size: var(--text-xs);
     background: var(--color-bg-subtle);
     border-radius: var(--radius-sm);
+    margin: var(--space-2) 0 0 0;
+  }
+
+  .waste-tokens {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
   }
 
   .waste-header {

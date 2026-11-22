@@ -212,7 +212,7 @@ describe('CompletionReportView component', () => {
   it('renders tokens section with coverage, breakdown, and toggles raw components', async () => {
     render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
 
-    expect(screen.getByText('Tokens')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Tokens' })).toBeInTheDocument();
     expect(
       screen.getByText(/3 of 41 tasks not measured: their worker was terminated/),
     ).toBeInTheDocument();
@@ -535,6 +535,96 @@ describe('CompletionReportView component', () => {
         report: { ...mockReport, deliverables: [] },
       });
       expect(screen.getByText('no deliverables yet: it ended in refine')).toBeInTheDocument();
+    });
+  });
+
+  describe('D4 vocabulary: tokens section with floor sign, not measured, coverage, DataTable/KeyValueList, and phase links (PLAN-154 D4)', () => {
+    it('renders total and coverage in KeyValueList, floor sign, unmeasured model count, DataTable for role/model, and phase Link to ended plan', () => {
+      const reportWithUnmeasured: PlanCompletionReport = {
+        ...mockReport,
+        token_usage: {
+          ...mockReport.token_usage!,
+          by_phase: [
+            ...mockReport.token_usage!.by_phase!,
+            {
+              name: 'execute',
+              total: 241000,
+              input: 222000,
+              output: 19000,
+              unmeasured: 3,
+              floor: true,
+            },
+          ],
+          by_model: [
+            ...mockReport.token_usage!.by_model!,
+            {
+              name: 'codex:gpt-5',
+              total: 14000,
+              input: 13000,
+              output: 1000,
+              unmeasured: 3,
+              floor: true,
+            },
+          ],
+        },
+      };
+
+      render(CompletionReportView, { planId: 'fix-relay', report: reportWithUnmeasured });
+
+      const tokensSection = document.querySelector('.tokens-section') as HTMLElement;
+      expect(tokensSection).not.toBeNull();
+
+      // Total & coverage rendered via KeyValueList with floor sign
+      const tokenKv = tokensSection.querySelector('[data-testid="key-value-list"]') as HTMLElement;
+      expect(tokenKv).not.toBeNull();
+      expect(tokenKv).toHaveTextContent('≥ 412 k');
+      expect(tokenKv).toHaveTextContent('3 of 41 tasks not measured: their worker was terminated');
+
+      // By phase lines are Links to the phase in the ended plan view
+      const refineLink = screen.getByRole('link', { name: 'refine' });
+      expect(refineLink).toHaveAttribute('href', '/plans/fix-relay?mode=ended&node=refine');
+      const executeLink = screen.getByRole('link', { name: 'execute' });
+      expect(executeLink).toHaveAttribute('href', '/plans/fix-relay?mode=ended&node=execute');
+
+      // By role and by model use DataTable with right-aligned numeric cells
+      const tables = tokensSection.querySelectorAll('[data-testid="data-table"]');
+      expect(tables.length).toBeGreaterThanOrEqual(2);
+      const numericCells = tokensSection.querySelectorAll('td[data-align="end"]');
+      expect(numericCells.length).toBeGreaterThan(0);
+
+      // Model with unmeasured tasks shows floor sign and unmeasured count
+      const modelTable = tables[1] as HTMLElement;
+      expect(modelTable).toHaveTextContent('codex:gpt-5');
+      expect(modelTable).toHaveTextContent('≥ 14 k');
+      expect(modelTable).toHaveTextContent('3 not measured');
+    });
+
+    it('renders "not measured" without 0 or floor sign when zero tasks were measured', () => {
+      const unmeasuredReport: PlanCompletionReport = {
+        ...mockReport,
+        token_usage: {
+          ...mockReport.token_usage!,
+          total: 0,
+          input: 0,
+          output: 0,
+          tasks_measured: 0,
+          tasks_total: 5,
+          is_floor: true,
+          by_phase: [],
+          by_role: [],
+          by_model: [],
+          waste_records: [],
+          total_waste_tokens: 0,
+        },
+      };
+
+      render(CompletionReportView, { planId: 'fix-relay', report: unmeasuredReport });
+
+      const tokensSection = document.querySelector('.tokens-section') as HTMLElement;
+      const tokenKv = tokensSection.querySelector('[data-testid="key-value-list"]') as HTMLElement;
+      expect(tokenKv).not.toBeNull();
+      expect(tokenKv).toHaveTextContent('not measured');
+      expect(tokenKv).not.toHaveTextContent('≥');
     });
   });
 });
