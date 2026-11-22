@@ -29,6 +29,7 @@
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import TextArea from '../components/TextArea.svelte';
   import { actsFor, type ActSpec } from '../actions/byState';
+  import ActionBar, { type ActionBarAct } from '../components/ActionBar.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { refreshesProjectView } from '../stores/refreshEvents';
   import {
@@ -792,6 +793,41 @@
   }
 
   /**
+   * The acts of the project page's head as the `ActionBar` draws them: one primary, the secondary
+   * acts beside it, and everything else — the two destructive acts included — in the overflow.
+   *
+   * @param project the project
+   * @returns the bar's acts, the most important first
+   */
+  function pageActs(project: EnrolledProject): ActionBarAct[] {
+    const order =
+      project.readiness === 'released'
+        ? ['enrol_again', 'ended_work']
+        : project.readiness === 'setup_needs'
+          ? ['continue_setup', 'add_plan', 'add_epic', 'setup', 'release', 'unenrol']
+          : ['add_plan', 'add_epic', 'setup', 'release', 'unenrol'];
+    const byId = new Map(projectActs(project).map((act) => [act.id, act]));
+    return order
+      .map((id, index) => {
+        const act = byId.get(id);
+        if (!act) return null;
+        const role: ActionBarAct['role'] =
+          index === 0 && !project.disabled ? 'primary' : index <= 2 ? 'secondary' : 'overflow';
+        const disabled = id === 'add_plan' && project.readiness !== 'ready';
+        return {
+          id: act.id,
+          label: $t(act.labelKey),
+          advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+          role,
+          destructive: act.destructive,
+          disabled: disabled || act.disabled,
+          disabledReason: disabled ? addPlanReason(project) : act.disabledReason,
+        } satisfies ActionBarAct;
+      })
+      .filter((act): act is ActionBarAct => act !== null);
+  }
+
+  /**
    * Opens an ended plan or epic of the project.
    *
    * @param item the ended work row
@@ -1018,20 +1054,23 @@
               <h2 class="section-title">{$t('project.adding.title')}</h2>
               <ul class="project-rows">
                 {#each explorer.being_added as being (being.checkout_path)}
-                  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-                  <li
-                    class="being-added-row"
-                    data-testid="being-added-row"
-                    onclick={(event) => {
-                      const target = event.target as HTMLElement | null;
-                      if (target?.closest('button') !== null) return;
-                      const anchor = target?.closest('a');
-                      if (anchor !== null && !anchor.classList.contains('row-link__title')) return;
-                      event.preventDefault();
-                      handleContinueOnboarding(being);
-                    }}
-                  >
-                    <RowLink href="/projects/onboard" title={being.checkout_path}>
+                  <li class="being-added-row" data-testid="being-added-row">
+                    <!-- The row's keyboard route is the RowLink anchor; this wrapper only carries the
+                         pointer target, so it is a presentation box, never a control. -->
+                    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+                    <div
+                      class="being-added-row__inner"
+                      role="presentation"
+                      onclick={(event) => {
+                        const target = event.target as HTMLElement | null;
+                        if (target?.closest('button') !== null) return;
+                        const anchor = target?.closest('a');
+                        if (anchor !== null && !anchor.classList.contains('row-link__title')) return;
+                        event.preventDefault();
+                        handleContinueOnboarding(being);
+                      }}
+                    >
+                      <RowLink href="/projects/onboard" title={being.checkout_path}>
                       {#snippet tags()}
                         <span class="being-added-step text-sm">
                           {$t('project.adding.step', {
@@ -1063,6 +1102,7 @@
                         </Button>
                       {/snippet}
                     </RowLink>
+                    </div>
                   </li>
                 {/each}
               </ul>
@@ -1150,24 +1190,10 @@
             />
           </div>
           <div class="project-page__acts" data-testid="project-page-acts">
-            {#each projectActs(selectedProject) as act (act.id)}
-              {#if act.id !== 'open_running_work' && act.id !== 'ended_work'}
-                <Button
-                  variant={act.id === 'add_plan'
-                    ? 'primary'
-                    : act.destructive
-                      ? 'ghost'
-                      : 'secondary'}
-                  size="sm"
-                  disabled={act.disabled}
-                  disabledReason={act.disabledReason}
-                  on:click={() => runProjectAct(selectedProject, act.id)}
-                  data-testid="project-act-{act.id}"
-                >
-                  {$t(act.labelKey)}
-                </Button>
-              {/if}
-            {/each}
+            <ActionBar
+              acts={pageActs(selectedProject)}
+              onAct={(id) => runProjectAct(selectedProject, id)}
+            />
           </div>
         </header>
 
@@ -1695,6 +1721,10 @@
 
   .being-added-step {
     color: var(--color-text-secondary);
+  }
+
+  .being-added-row__inner {
+    display: block;
   }
 
   /* The project page: the object column of the lens. */

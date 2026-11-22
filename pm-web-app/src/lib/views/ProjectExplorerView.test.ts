@@ -542,9 +542,13 @@ describe('the one project page', () => {
     expect(await screen.findByTestId('project-page')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: 'pm-mcp-clients' })).toBeInTheDocument();
     expect(await screen.findByTestId('project-page-work')).toHaveTextContent('Fix Relay Transport');
-    expect(screen.getByTestId('project-act-add_plan')).toBeInTheDocument();
-    expect(screen.getByTestId('project-act-add_epic')).toBeInTheDocument();
-    expect(screen.getByTestId('project-act-release')).toBeInTheDocument();
+    expect(screen.getByTestId('action-add_plan')).toBeInTheDocument();
+    expect(screen.getByTestId('action-add_epic')).toBeInTheDocument();
+    // The two destructive acts stay in the bar's overflow.
+    expect(screen.queryByTestId('action-release')).toBeNull();
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    expect(await screen.findByTestId('action-release')).toBeInTheDocument();
+    expect(screen.getByTestId('action-unenrol')).toBeInTheDocument();
   });
 
   it('opens the ended work on the work tab', async () => {
