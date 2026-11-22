@@ -1015,6 +1015,26 @@ describe('the recovery of a failed start', () => {
     expect(status).toHaveBeenCalledTimes(2);
   });
 
+  describe('createReconnectLoop', () => {
+    it('manages timer and reconnects via retryRuntime', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+      const status = vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
+      stubLoadedRuntime();
+
+      const mod = await import('./runtime');
+      const loop = mod.createReconnectLoop();
+
+      expect(loop).toBeDefined();
+      loop.start();
+
+      await vi.advanceTimersByTimeAsync(RECONNECT_INTERVAL_MS);
+      expect(status).toHaveBeenCalled();
+
+      loop.stop();
+      vi.useRealTimers();
+    });
+  });
+
   it('stops retrying when the runtime refuses the stored pairing', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     const status = vi

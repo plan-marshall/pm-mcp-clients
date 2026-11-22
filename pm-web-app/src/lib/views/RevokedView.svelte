@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import MascotFigure from '../components/MascotFigure.svelte';
+  import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { runtimeStore } from '../stores/runtime';
 
   /**
@@ -10,15 +10,72 @@
    * Where the page is too narrow to hold both, the figure is hidden and the card takes the width.
    */
 
-  /** The figure's height beside the text, within the design's 160–200 px. */
-  const FIGURE_HEIGHT = 180;
-
   $: info = $runtimeStore.revokedInfo;
-  $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
-  $: by = info?.revoked_by || 'the terminal client';
+  $: reasonKey = info?.reason ?? $runtimeStore.revokedReason ?? '';
+  $: by = info?.revoked_by || '';
   // The runtime ships this value display-ready (`today at 14:10`); it is shown as it arrives,
   // like the other fields the wire already formats.
   $: time = info?.revoked_at ?? '';
+
+  /**
+   * Resolves the reason sentence following entry.adoc (§ #revoked) and web.revoked.reason.*.
+   */
+  function resolveReason(
+    revokedInfo: typeof info,
+    fallbackKey: string,
+    revokedBy: string,
+    revokedTime: string,
+    translate: typeof $t,
+  ): string {
+    const rawReason = revokedInfo?.reason ?? (fallbackKey || '');
+    if (!rawReason || rawReason === 'unknown' || rawReason === 'web.revoked.reason.unknown') {
+      return translate('web.revoked.reason.unknown');
+    }
+
+    const device =
+      revokedInfo?.revoked_by ||
+      (revokedInfo as unknown as Record<string, string>)?.device ||
+      revokedBy ||
+      '';
+    const tVal =
+      revokedInfo?.revoked_at ??
+      (revokedInfo as unknown as Record<string, string>)?.time ??
+      revokedTime;
+
+    if (rawReason === 'device' || rawReason === 'web.revoked.reason.device') {
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('web.revoked.reason.device', { device, time: tVal });
+    }
+    if (rawReason === 'terminal' || rawReason === 'web.revoked.reason.terminal') {
+      return translate('web.revoked.reason.terminal', { time: tVal });
+    }
+    if (rawReason === 'others' || rawReason === 'all_others' || rawReason === 'web.revoked.reason.others') {
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('web.revoked.reason.others', { device, time: tVal });
+    }
+    if (rawReason === 'self' || rawReason === 'this_device' || rawReason === 'web.revoked.reason.self') {
+      return translate('web.revoked.reason.self', { time: tVal });
+    }
+    if (rawReason === 'idle' || rawReason === 'web.revoked.reason.idle') {
+      return translate('web.revoked.reason.idle', { days: 30 });
+    }
+    if (rawReason === 'device_revoked') {
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
+    }
+    if (rawReason === 'device_expired') {
+      return translate('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
+    }
+    return translate('web.revoked.reason.unknown');
+  }
+
+  $: reasonText = resolveReason(info, reasonKey, by, time, $t);
 
   function handlePair() {
     runtimeStore.update((s) => ({
@@ -37,7 +94,7 @@
     <hr class="revoked-divider" />
 
     <p class="revoked-reason" data-testid="revoked-reason">
-      {$t('devices.revoked.reason', { reason: reasonKey, by, time })}
+      {reasonText}
     </p>
 
     <p class="revoked-how-back">

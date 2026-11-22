@@ -4,6 +4,7 @@ import { flushSync } from 'svelte';
 import { render, screen } from '@testing-library/svelte';
 import NavRail from './NavRail.svelte';
 import MascotFigure from '../components/MascotFigure.svelte';
+import { mascotFiles } from '../assets/mascot/mascotFiles';
 import { runtimeStore } from '../stores/runtime';
 import { attentionStore } from '../stores/attention';
 import { currentLocale, messagesStore } from '../i18n';
@@ -237,6 +238,12 @@ describe('NavRail component', () => {
       );
 
       expect(dark).toMatch(/opacity:\s*0\.12\s*;/);
+    });
+
+    it('sets aspect-ratio matching the bust crop dimensions in mascotFiles.ts', () => {
+      const bear = ruleOf(blockOf(stylesheet, BEAR_CONTAINER), '.nav-rail--bear .nav-rail__bear');
+      const bust = mascotFiles('welcome', 'bust');
+      expect(bear).toMatch(new RegExp(`aspect-ratio:\\s*${bust.width}\\s*\\/\\s*${bust.height}\\s*;`));
     });
 
     it('shows only where the free height below the destinations reaches 260 px', () => {

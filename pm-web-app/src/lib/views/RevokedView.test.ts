@@ -1,17 +1,22 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { get } from 'svelte/store';
 import RevokedView from './RevokedView.svelte';
+import { currentLocale, messagesStore } from '../i18n';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /** The container query under which the figure is hidden: a page too narrow for it beside the card. */
 const FIGURE_HIDDEN_NARROW = '@container revoked-view (max-width: 36rem)';
 
 describe('RevokedView component', () => {
   beforeEach(() => {
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,
@@ -49,6 +54,157 @@ describe('RevokedView component', () => {
       screen.getByText(/To use the web app here again, pair it with a new code/i),
     ).toBeInTheDocument();
     expect(screen.getByTestId('pair-browser-button')).toHaveTextContent('Pair this browser');
+  });
+
+  describe('reason lines (web.revoked.reason.*)', () => {
+    it('shows reason when revoked from another device (web.revoked.reason.device)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'device',
+          revoked_by: 'iPad (Safari)',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was revoked from iPad (Safari) at 14:32.',
+      );
+    });
+
+    it('shows reason when revoked in the terminal (web.revoked.reason.terminal)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'terminal',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was revoked in the terminal at 14:32.',
+      );
+    });
+
+    it('shows reason when all other devices were revoked (web.revoked.reason.others)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'others',
+          revoked_by: 'Firefox on mbp-oliver',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'All other devices were revoked from Firefox on mbp-oliver at 14:32.',
+      );
+    });
+
+    it('shows reason when this device was revoked from itself (web.revoked.reason.self)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'self',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'You revoked this browser at 14:32.',
+      );
+    });
+
+    it('shows reason when idle expiry occurred (web.revoked.reason.idle)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'idle',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'It was not used for 30 days, so its pairing expired.',
+      );
+    });
+
+    it('shows fallback reason when reason is unknown (web.revoked.reason.unknown)', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: null,
+        revokedReason: '',
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+    });
+
+    it('falls back to unknown reason when actor is missing for device or others reasons', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'device',
+          revoked_by: '',
+          revoked_at: '14:32',
+        },
+      }));
+
+      const { unmount } = render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+      unmount();
+
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'others',
+          revoked_by: '',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+    });
+
+    it('updates reason text when locale messages change dynamically', async () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'terminal',
+          revoked_at: '14:32',
+        },
+      }));
+
+      try {
+        currentLocale.set('en');
+        messagesStore.set(loadMessages('en'));
+        render(RevokedView);
+        expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+          'It was revoked in the terminal at 14:32.',
+        );
+
+        currentLocale.set('de');
+        messagesStore.set(loadMessages('de'));
+        await tick();
+        expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+          'Er wurde um 14:32 im Terminal entfernt.',
+        );
+      } finally {
+        currentLocale.set('en');
+        messagesStore.set(loadMessages('en'));
+      }
+    });
   });
 
   it('renders expiration reason when revokedInfo reason is device_expired', () => {
