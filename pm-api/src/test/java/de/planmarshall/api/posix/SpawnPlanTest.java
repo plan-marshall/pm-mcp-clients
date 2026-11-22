@@ -104,7 +104,7 @@ class SpawnPlanTest {
 
             var plan = SpawnPlan.detachedDaemon(platform, DAEMON, LOG, Map.of());
 
-            assertEquals(ownerReadWrite, SpawnPlan.DAEMON_LOG_MODE);
+            assertEquals(SpawnPlan.DAEMON_LOG_MODE, ownerReadWrite);
             assertEquals(new SpawnPlan.Open(1, LOG.toString(), platform.appendFlags(), ownerReadWrite),
                     plan.fileActions().get(1));
         }
