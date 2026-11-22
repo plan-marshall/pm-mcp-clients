@@ -30,9 +30,11 @@ public record QuorumVote(
         @Nullable Integer confidencePercent,
         @Nullable String reason
 ) {
+    private static final String MODEL_KEY = "model";
+
     public QuorumVote {
         Objects.requireNonNull(role, "role");
-        Objects.requireNonNull(model, "model");
+        Objects.requireNonNull(model, MODEL_KEY);
     }
 
     /**
@@ -43,7 +45,7 @@ public record QuorumVote(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("role", role);
-        map.put("model", model);
+        map.put(MODEL_KEY, model);
         if (confidencePercent != null) {
             map.put("confidence_percent", confidencePercent);
         }
@@ -63,7 +65,7 @@ public record QuorumVote(
         Objects.requireNonNull(map, "map");
         var role = JsonTree.string(map, "role");
         if (role == null) role = "";
-        var model = JsonTree.string(map, "model");
+        var model = JsonTree.string(map, MODEL_KEY);
         if (model == null) model = "";
         var conf = JsonTree.integer(map, "confidence_percent");
         if (conf == null) {

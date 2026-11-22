@@ -44,7 +44,7 @@ public record LessonClaimResult(
 
     public LessonClaimResult {
         Objects.requireNonNull(lessonId, "lessonId");
-        Objects.requireNonNull(status, "status");
+        Objects.requireNonNull(status, FIELD_STATUS);
     }
 
     /**

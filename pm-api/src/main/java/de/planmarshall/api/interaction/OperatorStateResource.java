@@ -70,6 +70,8 @@ public record OperatorStateResource(
         @Nullable Long revision,
         List<OperatorLink> links
 ) {
+    private static final String RESOURCE_NAME = "OperatorStateResource";
+
     public static final String FIELD_SCOPE = "scope";
     public static final String FIELD_STATE = "state";
     public static final String FIELD_STATE_ID = "state_id";
@@ -212,7 +214,7 @@ public record OperatorStateResource(
      */
     public static OperatorStateResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        requireOnlyKnown(map, KNOWN_FIELDS, "OperatorStateResource");
+        requireOnlyKnown(map, KNOWN_FIELDS, RESOURCE_NAME);
 
         var scopeMap = JsonTree.object(map, FIELD_SCOPE);
         if (scopeMap == null) {
@@ -242,13 +244,13 @@ public record OperatorStateResource(
         }
 
         OperatorProgress progress = null;
-        var progressMap = JsonTree.objectOrNull(map, FIELD_PROGRESS, "OperatorStateResource");
+        var progressMap = JsonTree.objectOrNull(map, FIELD_PROGRESS, RESOURCE_NAME);
         if (progressMap != null) {
             progress = OperatorProgress.fromMap(progressMap);
         }
 
         OperatorText title = null;
-        var titleMap = JsonTree.objectOrNull(map, FIELD_TITLE, "OperatorStateResource");
+        var titleMap = JsonTree.objectOrNull(map, FIELD_TITLE, RESOURCE_NAME);
         if (titleMap != null) {
             title = OperatorText.fromMap(titleMap);
         }
@@ -268,7 +270,7 @@ public record OperatorStateResource(
                     progress,
                     title,
                     textsFromArray(map.get(FIELD_TEXTS)),
-                    JsonTree.objectOrNull(map, FIELD_FACTS, "OperatorStateResource"),
+                    JsonTree.objectOrNull(map, FIELD_FACTS, RESOURCE_NAME),
                     proposalFromArray(map.get(FIELD_PROPOSAL)),
                     OperatorItem.fromArray(map.get(FIELD_ITEMS)),
                     revision,

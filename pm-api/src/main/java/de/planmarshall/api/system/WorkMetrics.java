@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
@@ -38,6 +39,10 @@ public record WorkMetrics(
         recoveringProjects = recoveringProjects != null ? List.copyOf(recoveringProjects) : List.of();
     }
 
+    private static final String TASKS_RUNNING = "tasks_running";
+    private static final String TASKS_QUEUED = "tasks_queued";
+    private static final String ACTIVE_PROJECTS_COUNT = "active_projects_count";
+
     /**
      * Converts to JSON map.
      *
@@ -47,9 +52,9 @@ public record WorkMetrics(
         var map = new LinkedHashMap<String, Object>();
         map.put("plans_by_state", plansByState);
         map.put("epics_by_state", epicsByState);
-        map.put("tasks_running", tasksRunning);
-        map.put("tasks_queued", tasksQueued);
-        map.put("active_projects_count", activeProjectsCount);
+        map.put(TASKS_RUNNING, tasksRunning);
+        map.put(TASKS_QUEUED, tasksQueued);
+        map.put(ACTIVE_PROJECTS_COUNT, activeProjectsCount);
         map.put("recovering_projects", recoveringProjects);
         return map;
     }
@@ -68,55 +73,14 @@ public record WorkMetrics(
      *
      * @param map tree map
      * @return parsed work metrics
-     * @throws IOException on error
      */
-    public static WorkMetrics fromMap(Map<String, Object> map) throws IOException {
+    public static WorkMetrics fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
-        var plansByState = new LinkedHashMap<String, Integer>();
-        if (map.get("plans_by_state") instanceof Map<?, ?> m) {
-            for (var entry : m.entrySet()) {
-                var v = entry.getValue();
-                if (v instanceof Number n) {
-                    plansByState.put(String.valueOf(entry.getKey()), n.intValue());
-                } else if (v instanceof JsonNumber jn) {
-                    try {
-                        plansByState.put(String.valueOf(entry.getKey()), (int) jn.longValue());
-                    } catch (NumberFormatException _) {
-                        // ignore
-                    }
-                } else if (v instanceof String s) {
-                    try {
-                        plansByState.put(String.valueOf(entry.getKey()), Integer.parseInt(s));
-                    } catch (NumberFormatException _) {
-                        // ignore
-                    }
-                }
-            }
-        }
-        var epicsByState = new LinkedHashMap<String, Integer>();
-        if (map.get("epics_by_state") instanceof Map<?, ?> m) {
-            for (var entry : m.entrySet()) {
-                var v = entry.getValue();
-                if (v instanceof Number n) {
-                    epicsByState.put(String.valueOf(entry.getKey()), n.intValue());
-                } else if (v instanceof JsonNumber jn) {
-                    try {
-                        epicsByState.put(String.valueOf(entry.getKey()), (int) jn.longValue());
-                    } catch (NumberFormatException _) {
-                        // ignore
-                    }
-                } else if (v instanceof String s) {
-                    try {
-                        epicsByState.put(String.valueOf(entry.getKey()), Integer.parseInt(s));
-                    } catch (NumberFormatException _) {
-                        // ignore
-                    }
-                }
-            }
-        }
-        var tasksRunning = JsonTree.integer(map, "tasks_running") != null ? (int) JsonTree.integer(map, "tasks_running") : 0;
-        var tasksQueued = JsonTree.integer(map, "tasks_queued") != null ? (int) JsonTree.integer(map, "tasks_queued") : 0;
-        var activeProjectsCount = JsonTree.integer(map, "active_projects_count") != null ? (int) JsonTree.integer(map, "active_projects_count") : 0;
+        var plansByState = readCounts(map.get("plans_by_state"));
+        var epicsByState = readCounts(map.get("epics_by_state"));
+        int tasksRunning = Objects.requireNonNullElse(JsonTree.integer(map, TASKS_RUNNING), 0);
+        int tasksQueued = Objects.requireNonNullElse(JsonTree.integer(map, TASKS_QUEUED), 0);
+        int activeProjectsCount = Objects.requireNonNullElse(JsonTree.integer(map, ACTIVE_PROJECTS_COUNT), 0);
         var recoveringProjects = new ArrayList<String>();
         if (map.get("recovering_projects") instanceof List<?> list) {
             for (var item : list) {
@@ -124,6 +88,33 @@ public record WorkMetrics(
             }
         }
         return new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjectsCount, recoveringProjects);
+    }
+
+    /** Reads a count per state; an entry whose value is no readable integer is skipped. */
+    private static Map<String, Integer> readCounts(Object raw) {
+        var counts = new LinkedHashMap<String, Integer>();
+        if (raw instanceof Map<?, ?> m) {
+            for (var entry : m.entrySet()) {
+                var count = countOf(entry.getValue());
+                if (count != null) {
+                    counts.put(String.valueOf(entry.getKey()), count);
+                }
+            }
+        }
+        return counts;
+    }
+
+    private static @Nullable Integer countOf(Object value) {
+        try {
+            return switch (value) {
+                case Number n -> n.intValue();
+                case JsonNumber jn -> (int) jn.longValue();
+                case String s -> Integer.parseInt(s);
+                case null, default -> null;
+            };
+        } catch (NumberFormatException _) {
+            return null;
+        }
     }
 
     /**

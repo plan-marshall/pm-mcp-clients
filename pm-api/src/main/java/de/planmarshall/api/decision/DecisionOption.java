@@ -34,9 +34,11 @@ public record DecisionOption(
         @Nullable String previewDiff,
         @Nullable QuorumSupport quorumSupport
 ) {
+    private static final String LABEL_KEY = "label";
+
     public DecisionOption {
         Objects.requireNonNull(key, "key");
-        Objects.requireNonNull(label, "label");
+        Objects.requireNonNull(label, LABEL_KEY);
     }
 
     /**
@@ -47,7 +49,7 @@ public record DecisionOption(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("key", key);
-        map.put("label", label);
+        map.put(LABEL_KEY, label);
         if (tradeoffDescription != null) {
             map.put("tradeoff_description", tradeoffDescription);
         }
@@ -73,7 +75,7 @@ public record DecisionOption(
         Objects.requireNonNull(map, "map");
         var key = JsonTree.string(map, "key");
         if (key == null) key = "";
-        var label = JsonTree.string(map, "label");
+        var label = JsonTree.string(map, LABEL_KEY);
         if (label == null) label = key;
         var tradeoff = JsonTree.string(map, "tradeoff_description");
         if (tradeoff == null) tradeoff = JsonTree.string(map, "tradeoff");

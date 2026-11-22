@@ -43,8 +43,10 @@ public record ChatProposalResource(
         @Nullable String applies
 ) {
 
+    private static final String SUMMARY_KEY = "summary";
+
     public ChatProposalResource {
-        Objects.requireNonNull(summary, "summary");
+        Objects.requireNonNull(summary, SUMMARY_KEY);
     }
 
     /**
@@ -52,7 +54,7 @@ public record ChatProposalResource(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("summary", summary);
+        map.put(SUMMARY_KEY, summary);
         if (before != null) {
             map.put("before", before);
         }
@@ -79,7 +81,7 @@ public record ChatProposalResource(
      */
     public static ChatProposalResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var summary = JsonTree.string(map, "summary");
+        var summary = JsonTree.string(map, SUMMARY_KEY);
         if (summary == null) {
             throw new JsonFormatException("Missing summary in ChatProposalResource");
         }

@@ -67,11 +67,14 @@ public record EpicResource(
         List<EpicEvent> events
 ) {
 
+    private static final String STATE_RUNNING = "running";
+    private static final String RUNNING_KEY = "running";
+
     public EpicResource {
         Objects.requireNonNull(epicId, "epicId");
         Objects.requireNonNull(projectId, "projectId");
         displayName = displayName != null ? displayName : projectId;
-        state = state == null || state.isBlank() ? "running" : state;
+        state = state == null || state.isBlank() ? STATE_RUNNING : state;
         workstreams = workstreams != null ? List.copyOf(workstreams) : List.of();
         sources = sources != null ? List.copyOf(sources) : List.of();
         findings = findings != null ? findings : new RegisterSummary(0, 0, 0);
@@ -120,7 +123,7 @@ public record EpicResource(
         map.put("overlap_max_files", overlapMaxFiles);
         map.put("scope", scope);
         if (running != null) {
-            map.put("running", running);
+            map.put(RUNNING_KEY, running);
         }
         if (terminalReason != null) {
             map.put("terminal_reason", terminalReason);
@@ -163,7 +166,7 @@ public record EpicResource(
                 ControlJson.bool(map, "auto_start"),
                 integer(map, "overlap_max_files"),
                 integer(map, "scope"),
-                ControlJson.optCount(map, "running"),
+                ControlJson.optCount(map, RUNNING_KEY),
                 JsonTree.string(map, "terminal_reason"),
                 readWorkstreams(map),
                 ControlJson.readStrings(map, "sources"),

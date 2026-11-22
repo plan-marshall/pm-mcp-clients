@@ -78,7 +78,7 @@ public record StagedPlanRecord(
 
     public StagedPlanRecord {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, FIELD_TITLE);
         expectedSurface = expectedSurface == null ? List.of() : List.copyOf(expectedSurface);
         dependencies = dependencies == null ? List.of() : List.copyOf(dependencies);
         status = status == null || status.isBlank() ? STATUS_STAGED : status;

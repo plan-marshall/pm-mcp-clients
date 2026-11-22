@@ -52,7 +52,7 @@ public record UnclaimedLessonSummary(
 
     public UnclaimedLessonSummary {
         Objects.requireNonNull(lessonId, "lessonId");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, FIELD_TITLE);
         summary = summary == null ? "" : summary;
         recordedAt = recordedAt == null ? Instant.now() : recordedAt;
         symbolsCited = symbolsCited == null ? List.of() : List.copyOf(symbolsCited);

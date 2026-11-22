@@ -33,9 +33,7 @@ public record CleanupDurations(
     public static final int MINIMUM_RETENTION_DAYS = 7;
     public static final int MINIMUM_REMIND_DAYS = 1;
 
-    public CleanupDurations {
-        // -1 represents "never"
-    }
+    // a duration of -1 represents "never"
 
     /**
      * Default system cleanup durations.
@@ -76,9 +74,8 @@ public record CleanupDurations(
      *
      * @param map tree map
      * @return parsed durations
-     * @throws IOException on error
      */
-    public static CleanupDurations fromMap(Map<String, Object> map) throws IOException {
+    public static CleanupDurations fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var plansVal = JsonTree.integer(map, "plans_after_days");
         var epicsVal = JsonTree.integer(map, "epics_after_days");

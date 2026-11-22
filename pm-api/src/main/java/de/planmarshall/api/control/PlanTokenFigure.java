@@ -25,9 +25,11 @@ import de.planmarshall.api.json.JsonTree;
  */
 public record PlanTokenFigure(String planId, TokenFigure figure) {
 
+    private static final String FIGURE_KEY = "figure";
+
     public PlanTokenFigure {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(figure, "figure");
+        Objects.requireNonNull(figure, FIGURE_KEY);
     }
 
     /**
@@ -36,7 +38,7 @@ public record PlanTokenFigure(String planId, TokenFigure figure) {
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
-        map.put("figure", figure.toMap());
+        map.put(FIGURE_KEY, figure.toMap());
         return map;
     }
 
@@ -55,7 +57,7 @@ public record PlanTokenFigure(String planId, TokenFigure figure) {
     public static PlanTokenFigure fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         var planId = JsonTree.string(map, "plan_id");
-        var figure = JsonTree.asObject(map.get("figure"));
+        var figure = JsonTree.asObject(map.get(FIGURE_KEY));
         if (planId == null || figure == null) {
             throw new JsonFormatException("Missing required fields for PlanTokenFigure: plan_id, figure");
         }

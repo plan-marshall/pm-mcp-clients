@@ -35,12 +35,12 @@ public record SystemSnapshot(
         @Nullable String project
 ) {
     public SystemSnapshot {
-        Objects.requireNonNull(runtime, "runtime");
+        Objects.requireNonNull(runtime, KEY_RUNTIME);
         Objects.requireNonNull(work, "work");
         workers = workers != null ? List.copyOf(workers) : List.of();
         jobs = jobs != null ? Collections.unmodifiableMap(new LinkedHashMap<>(jobs)) : Map.of();
         models = models != null ? List.copyOf(models) : List.of();
-        Objects.requireNonNull(cleanup, "cleanup");
+        Objects.requireNonNull(cleanup, KEY_CLEANUP);
         window = window != null ? window : SystemWindow.HOUR;
     }
 

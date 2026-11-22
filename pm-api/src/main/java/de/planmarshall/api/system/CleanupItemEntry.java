@@ -32,10 +32,15 @@ public record CleanupItemEntry(
         int readReportsCount,
         @Nullable String keptUntil
 ) {
+    private static final String TITLE_KEY = "title";
+    private static final String SIZE_BYTES = "size_bytes";
+    private static final String LOGS_COUNT = "logs_count";
+    private static final String READ_REPORTS_COUNT = "read_reports_count";
+
     public CleanupItemEntry {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(title, "title");
+        Objects.requireNonNull(title, TITLE_KEY);
     }
 
     /**
@@ -47,16 +52,16 @@ public record CleanupItemEntry(
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
         map.put("kind", kind);
-        map.put("title", title);
+        map.put(TITLE_KEY, title);
         if (outcome != null) {
             map.put("outcome", outcome);
         }
         if (endedAt != null) {
             map.put("ended_at", endedAt);
         }
-        map.put("size_bytes", sizeBytes);
-        map.put("logs_count", logsCount);
-        map.put("read_reports_count", readReportsCount);
+        map.put(SIZE_BYTES, sizeBytes);
+        map.put(LOGS_COUNT, logsCount);
+        map.put(READ_REPORTS_COUNT, readReportsCount);
         if (keptUntil != null) {
             map.put("kept_until", keptUntil);
         }
@@ -83,15 +88,16 @@ public record CleanupItemEntry(
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
         var kind = JsonTree.string(map, "kind");
-        var title = JsonTree.string(map, "title");
+        var title = JsonTree.string(map, TITLE_KEY);
         if (id == null || kind == null || title == null) {
             throw new JsonFormatException("Missing id, kind, or title in CleanupItemEntry");
         }
         var outcome = JsonTree.string(map, "outcome");
         var endedAt = JsonTree.string(map, "ended_at");
-        var sizeBytes = JsonTree.number(map, "size_bytes") != null ? JsonTree.number(map, "size_bytes").longValue() : 0L;
-        var logsCount = JsonTree.integer(map, "logs_count") != null ? (int) JsonTree.integer(map, "logs_count") : 0;
-        var readReportsCount = JsonTree.integer(map, "read_reports_count") != null ? (int) JsonTree.integer(map, "read_reports_count") : 0;
+        var sizeNumber = JsonTree.number(map, SIZE_BYTES);
+        var sizeBytes = sizeNumber != null ? sizeNumber.longValue() : 0L;
+        int logsCount = Objects.requireNonNullElse(JsonTree.integer(map, LOGS_COUNT), 0);
+        int readReportsCount = Objects.requireNonNullElse(JsonTree.integer(map, READ_REPORTS_COUNT), 0);
         var keptUntil = JsonTree.string(map, "kept_until");
 
         return new CleanupItemEntry(id, kind, title, outcome, endedAt, sizeBytes, logsCount, readReportsCount, keptUntil);

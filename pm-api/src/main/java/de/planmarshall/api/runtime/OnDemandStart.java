@@ -181,7 +181,7 @@ public final class OnDemandStart implements RuntimeStarter {
             // the attribute is narrowed by the umask, never widened; the explicit mode follows
             Files.createDirectory(directory, PosixFilePermissions.asFileAttribute(RuntimeTokenFile.DIRECTORY_MODE));
             Files.setPosixFilePermissions(directory, RuntimeTokenFile.DIRECTORY_MODE);
-        } catch (FileAlreadyExistsException e) {
+        } catch (FileAlreadyExistsException _) {
             // created concurrently by another client: left as it is
         }
     }

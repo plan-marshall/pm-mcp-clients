@@ -32,23 +32,18 @@ import java.util.Objects;
  * ({@code java.net.http.HttpClient} cannot use Unix domain sockets). Each exchange uses its own
  * connection ({@code Connection: close}); bodies are framed by {@code Content-Length},
  * {@code chunked}, or the end of the connection.
+ *
+ * @param socket the path of the runtime's socket
  */
-public final class UnixSocketHttpClient {
+public record UnixSocketHttpClient(Path socket) {
 
     private static final int BUFFER_SIZE = 8192;
-
-    private final Path socket;
 
     /**
      * @param socket the path of the runtime's socket
      */
-    public UnixSocketHttpClient(Path socket) {
-        this.socket = Objects.requireNonNull(socket, "socket");
-    }
-
-    /** @return the socket path */
-    public Path socket() {
-        return socket;
+    public UnixSocketHttpClient {
+        Objects.requireNonNull(socket, "socket");
     }
 
     /**
@@ -132,7 +127,7 @@ public final class UnixSocketHttpClient {
         }
         try {
             return Integer.parseInt(parts[1]);
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException _) {
             throw new HttpProtocolException("Invalid status line: " + statusLine);
         }
     }
@@ -172,7 +167,7 @@ public final class UnixSocketHttpClient {
                     throw new HttpProtocolException("Negative Content-Length");
                 }
                 return BodyInputStreams.bounded(in, length);
-            } catch (NumberFormatException e) {
+            } catch (NumberFormatException _) {
                 throw new HttpProtocolException("Invalid Content-Length: " + contentLength.getFirst());
             }
         }

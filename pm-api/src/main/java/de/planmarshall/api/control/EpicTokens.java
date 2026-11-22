@@ -37,8 +37,10 @@ public record EpicTokens(
         List<PlanTokenFigure> plans
 ) {
 
+    private static final String TOTAL_KEY = "total";
+
     public EpicTokens {
-        Objects.requireNonNull(total, "total");
+        Objects.requireNonNull(total, TOTAL_KEY);
         Objects.requireNonNull(own, "own");
         plans = plans != null ? List.copyOf(plans) : List.of();
     }
@@ -62,7 +64,7 @@ public record EpicTokens(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("total", total.toMap());
+        map.put(TOTAL_KEY, total.toMap());
         map.put("own", own.toMap());
         map.put("plans", plans.stream().map(PlanTokenFigure::toMap).toList());
         map.put("not_measured", notMeasured());
@@ -84,7 +86,7 @@ public record EpicTokens(
      */
     public static EpicTokens fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var total = JsonTree.asObject(map.get("total"));
+        var total = JsonTree.asObject(map.get(TOTAL_KEY));
         if (total == null) {
             throw new JsonFormatException("Missing total in EpicTokens");
         }

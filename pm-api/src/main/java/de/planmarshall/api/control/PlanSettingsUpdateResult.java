@@ -92,9 +92,8 @@ public record PlanSettingsUpdateResult(
      *
      * @param map map representation
      * @return parsed result
-     * @throws IOException on format failure
      */
-    public static PlanSettingsUpdateResult fromMap(Map<String, Object> map) throws IOException {
+    public static PlanSettingsUpdateResult fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
         var revision = JsonTree.integer(map, "revision");
         return new PlanSettingsUpdateResult(

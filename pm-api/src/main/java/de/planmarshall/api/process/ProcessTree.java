@@ -65,11 +65,13 @@ public record ProcessTree(
         @Nullable QueuedRevision queuedRevision
 ) {
     private static final String QUEUED_REVISION = "queued_revision";
+    private static final String PROJECT_KEY = "project";
+    private static final String DEFAULT_PROJECT_ID = "project";
 
     public ProcessTree {
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
-        Objects.requireNonNull(project, "project");
+        Objects.requireNonNull(project, PROJECT_KEY);
         currentPhase = currentPhase != null ? currentPhase : "execute";
         phaseState = phaseState != null ? phaseState : "running";
         tokensSoFar = tokensSoFar != null ? tokensSoFar : new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
@@ -81,7 +83,7 @@ public record ProcessTree(
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
         map.put("title", title);
-        map.put("project", project.toMap());
+        map.put(PROJECT_KEY, project.toMap());
         if (epic != null) {
             map.put("epic", epic.toMap());
         }
@@ -148,27 +150,8 @@ public record ProcessTree(
 
         var title = JsonTree.string(map, "title");
 
-        ProcessProjectRef project;
-        var projObj = JsonTree.asObject(map.get("project"));
-        if (projObj != null) {
-            project = ProcessProjectRef.fromMap(projObj);
-        } else {
-            // the flat members follow the reference's own rule: an absent name is the project id
-            var projId = JsonTree.string(map, "project_id");
-            project = new ProcessProjectRef(projId != null ? projId : "project",
-                    JsonTree.string(map, "project_name"), null);
-        }
-
-        ProcessEpicRef epic = null;
-        var epicObj = JsonTree.asObject(map.get("epic"));
-        if (epicObj != null) {
-            epic = ProcessEpicRef.fromMap(epicObj);
-        } else {
-            var epicId = JsonTree.string(map, "epic_id");
-            if (epicId != null) {
-                epic = new ProcessEpicRef(epicId, JsonTree.string(map, "epic_title"), null);
-            }
-        }
+        var project = readProject(map);
+        var epic = readEpic(map);
 
         var currentPhase = JsonTree.string(map, "current_phase");
         var phaseState = JsonTree.string(map, "phase_state");
@@ -182,24 +165,8 @@ public record ProcessTree(
         var tokensObj = JsonTree.asObject(map.get("tokens_so_far"));
         var tokensSoFar = tokensObj != null ? ProcessTokens.fromMap(tokensObj) : null;
 
-        var nodes = new ArrayList<ProcessNode>();
-        if (map.get("nodes") instanceof List<?> list) {
-            for (var item : list) {
-                var nodeMap = JsonTree.asObject(item);
-                if (nodeMap != null) {
-                    nodes.add(ProcessNode.fromMap(nodeMap));
-                }
-            }
-        }
-
-        var currentPositionPath = new ArrayList<String>();
-        if (map.get("current_position_path") instanceof List<?> list) {
-            for (var item : list) {
-                if (item != null) {
-                    currentPositionPath.add(item.toString());
-                }
-            }
-        }
+        var nodes = readNodes(map.get("nodes"));
+        var currentPositionPath = EpicProcess.readStrings(map.get("current_position_path"));
 
         var prNum = JsonTree.number(map, "pull_request_number");
         Integer pullRequestNumber = prNum != null ? prNum.intValue() : null;
@@ -231,6 +198,42 @@ public record ProcessTree(
                 change,
                 queuedRevision
         );
+    }
+
+    /** The {@code project} object, else the flat members, following the reference's own rule. */
+    private static ProcessProjectRef readProject(Map<String, Object> map) throws IOException {
+        var projObj = JsonTree.asObject(map.get(PROJECT_KEY));
+        if (projObj != null) {
+            return ProcessProjectRef.fromMap(projObj);
+        }
+        // the flat members follow the reference's own rule: an absent name is the project id
+        var projId = JsonTree.string(map, "project_id");
+        return new ProcessProjectRef(projId != null ? projId : DEFAULT_PROJECT_ID,
+                JsonTree.string(map, "project_name"), null);
+    }
+
+    /** The {@code epic} object, else the flat members, or {@code null} when the plan has no epic. */
+    private static @Nullable ProcessEpicRef readEpic(Map<String, Object> map) throws IOException {
+        var epicObj = JsonTree.asObject(map.get("epic"));
+        if (epicObj != null) {
+            return ProcessEpicRef.fromMap(epicObj);
+        }
+        var epicId = JsonTree.string(map, "epic_id");
+        return epicId != null ? new ProcessEpicRef(epicId, JsonTree.string(map, "epic_title"), null) : null;
+    }
+
+    /** Reads the object entries of {@code nodes}; an entry that is not an object is skipped. */
+    private static List<ProcessNode> readNodes(@Nullable Object raw) throws IOException {
+        var nodes = new ArrayList<ProcessNode>();
+        if (raw instanceof List<?> list) {
+            for (var item : list) {
+                var nodeMap = JsonTree.asObject(item);
+                if (nodeMap != null) {
+                    nodes.add(ProcessNode.fromMap(nodeMap));
+                }
+            }
+        }
+        return nodes;
     }
 
     public static ProcessTree fromJson(String json) throws IOException {

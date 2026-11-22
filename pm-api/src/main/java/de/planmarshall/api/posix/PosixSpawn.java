@@ -96,26 +96,26 @@ public final class PosixSpawn {
             throws NativeCallException {
         for (var action : plan) {
             switch (action) {
-                case SpawnPlan.Open open -> {
-                    var path = arena.allocateFrom(open.path());
+                case SpawnPlan.Open(int fd, String file, int flags, int mode) -> {
+                    var path = arena.allocateFrom(file);
                     if (platform.modeLayout() == JAVA_SHORT) {
-                        var mode = (short) open.mode();
+                        var shortMode = (short) mode;
                         Libc.check(ADD_OPEN, () -> (int) h.addOpen
-                                .invokeExact(actions, open.fd(), path, open.flags(), mode));
+                                .invokeExact(actions, fd, path, flags, shortMode));
                     } else {
                         Libc.check(ADD_OPEN, () -> (int) h.addOpen
-                                .invokeExact(actions, open.fd(), path, open.flags(), open.mode()));
+                                .invokeExact(actions, fd, path, flags, mode));
                     }
                 }
-                case SpawnPlan.Dup2 dup2 -> Libc.check("posix_spawn_file_actions_adddup2",
-                        () -> (int) h.addDup2.invokeExact(actions, dup2.fd(), dup2.newFd()));
-                case SpawnPlan.CloseFrom closeFrom -> {
+                case SpawnPlan.Dup2(int fd, int newFd) -> Libc.check("posix_spawn_file_actions_adddup2",
+                        () -> (int) h.addDup2.invokeExact(actions, fd, newFd));
+                case SpawnPlan.CloseFrom(int lowFd) -> {
                     if (h.addCloseFrom == null) {
                         throw new NativeCallException(
                                 ADD_CLOSE_FROM + " is unavailable (glibc 2.34 or later required)");
                     }
                     Libc.check(ADD_CLOSE_FROM,
-                            () -> (int) h.addCloseFrom.invokeExact(actions, closeFrom.lowFd()));
+                            () -> (int) h.addCloseFrom.invokeExact(actions, lowFd));
                 }
             }
         }

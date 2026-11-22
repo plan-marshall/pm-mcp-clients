@@ -36,7 +36,7 @@ public record DecompositionInstructRequest(
     private static final String FIELD_ACTION = "action";
 
     public DecompositionInstructRequest {
-        Objects.requireNonNull(instruction, "instruction");
+        Objects.requireNonNull(instruction, FIELD_INSTRUCTION);
         action = action == null ? InstructAction.EDIT : action;
     }
 
