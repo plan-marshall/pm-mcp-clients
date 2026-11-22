@@ -32,11 +32,11 @@ public record DecisionClosedEvent(
 ) {
     public static final String EVENT_NAME = "decision.closed";
 
-    private static final String OUTCOME = "outcome";
+    private static final String OUTCOME_KEY = "outcome";
 
     public DecisionClosedEvent {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(outcome, OUTCOME);
+        Objects.requireNonNull(outcome, OUTCOME_KEY);
     }
 
     /**
@@ -47,7 +47,7 @@ public record DecisionClosedEvent(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("id", id);
-        map.put(OUTCOME, outcome);
+        map.put(OUTCOME_KEY, outcome);
         if (reason != null) {
             map.put("reason", reason);
         }
@@ -74,7 +74,7 @@ public record DecisionClosedEvent(
         Objects.requireNonNull(map, "map");
         var id = JsonTree.string(map, "id");
         if (id == null) throw new JsonFormatException("Missing id in DecisionClosedEvent");
-        var outcome = JsonTree.string(map, OUTCOME);
+        var outcome = JsonTree.string(map, OUTCOME_KEY);
         if (outcome == null) outcome = "answered";
         var reason = JsonTree.string(map, "reason");
         return new DecisionClosedEvent(id, outcome, reason);
