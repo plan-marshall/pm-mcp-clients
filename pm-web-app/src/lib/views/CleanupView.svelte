@@ -330,6 +330,52 @@
     { id: 'job', label: $t('system.cleanup.title') },
     { id: 'kept', label: $t('system.cleanup.kept.title'), count: keptItems.length },
   ]);
+
+  /** The checked items per kind, so the delete act names what it deletes from the catalogue. */
+  let checkedKinds = $derived.by(() => {
+    const counts = { plans: 0, epics: 0, logs: 0, reports: 0, projects: 0 };
+    for (const item of checkedItems) {
+      switch (item.kind) {
+        case 'plan':
+          counts.plans += 1;
+          break;
+        case 'epic':
+          counts.epics += 1;
+          break;
+        case 'logs':
+          counts.logs += 1;
+          break;
+        case 'report':
+          counts.reports += 1;
+          break;
+        case 'unenrolled':
+          counts.projects += 1;
+          break;
+      }
+    }
+    return counts;
+  });
+
+  /** What _Delete_ removes, in the catalogue's own words; empty while nothing is checked. */
+  let deleteWhat = $derived.by(() => {
+    const parts: string[] = [];
+    if (checkedKinds.plans > 0) {
+      parts.push($t('system.cleanup.summary.plans', { count: checkedKinds.plans }));
+    }
+    if (checkedKinds.epics > 0) {
+      parts.push($t('system.cleanup.summary.epics', { count: checkedKinds.epics }));
+    }
+    if (checkedKinds.logs > 0) {
+      parts.push($t('system.cleanup.summary.logs', { count: checkedKinds.logs }));
+    }
+    if (checkedKinds.reports > 0) {
+      parts.push($t('system.cleanup.summary.read_reports', { count: checkedKinds.reports }));
+    }
+    if (checkedKinds.projects > 0) {
+      parts.push($t('system.cleanup.summary.unenrolled', { count: checkedKinds.projects }));
+    }
+    return parts.join(' · ');
+  });
 </script>
 
 <div class="cleanup-container" data-testid="cleanup-view">
@@ -548,7 +594,7 @@
               : undefined}
             onclick={openDeleteModal}
           >
-            {$t('system.cleanup.action.delete', { what: `${checkedItems.length} items` })}
+            {$t('system.cleanup.action.delete', { what: deleteWhat })}
           </Button>
         </div>
       </div>
@@ -612,7 +658,7 @@
 <!-- Delete Confirmation Dialogue -->
 <ConfirmDialog
   open={isDeleteModalOpen}
-  title={$t('system.cleanup.confirm.title', { what: `${checkedItems.length} items` })}
+  title={$t('system.cleanup.confirm.title', { what: deleteWhat })}
   consequences={[
     $t('system.cleanup.confirm.frees', { size: formatBytes(selectedFreedBytes) }),
     $t('system.cleanup.confirm.stays'),

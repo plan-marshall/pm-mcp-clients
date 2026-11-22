@@ -128,8 +128,8 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
     // Uncheck first item
     await checkboxes.first().click();
 
-    // Delete button should show updated count
-    const deleteBtn = page.getByRole('button', { name: /Delete.*items/i });
+    // Delete button should name what is still checked
+    const deleteBtn = page.getByRole('button', { name: /Delete 2 plans/i });
     await expect(deleteBtn).toBeVisible();
     await deleteBtn.click();
 

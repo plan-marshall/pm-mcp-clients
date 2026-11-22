@@ -49,6 +49,8 @@ interface Finding {
   line: number;
   rule: string;
   component: string;
+  /** The parser's own message; only an `unparseable` finding carries one. */
+  message?: string;
 }
 
 function parseFindings(raw: unknown): Finding[] {

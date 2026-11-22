@@ -303,20 +303,23 @@
 
   async function executeLifecycleAction() {
     if (!activeModal) return;
+    // The operator can change the radio group while the request runs: the choice the request was
+    // sent with is the one the state update must follow.
+    const when = modalWhen;
     isExecutingAction = true;
     actionError = '';
     try {
       if (activeModal === 'stop') {
-        await apiClient.stopRuntime(modalWhen);
+        await apiClient.stopRuntime(when);
         advanceLifecycleEpoch();
-        if (modalWhen === 'drain') {
+        if (when === 'drain') {
           runtimeStore.update((s) => ({ ...s, isDraining: true }));
         } else {
           // This stop has no recorded attribution yet: a previous stop's must not be shown for it.
           runtimeStore.update((s) => ({ ...s, isStopped: true, stoppedInfo: null }));
         }
       } else {
-        await apiClient.stopRuntime(modalWhen, 'restart');
+        await apiClient.stopRuntime(when, 'restart');
         advanceLifecycleEpoch();
       }
       closeModal();
@@ -421,6 +424,7 @@
       label: $t(spec.labelKey),
       advisory: spec.advisoryKey ? $t(spec.advisoryKey) : undefined,
       role: spec.role,
+      destructive: spec.destructive,
     })),
   );
 

@@ -165,8 +165,8 @@ describe('CleanupView component', () => {
     await fireEvent.click(checkboxes[0]);
     expect(checkboxes[0]).not.toBeChecked();
 
-    // Delete button should now show 2 items
-    expect(screen.getByRole('button', { name: /Delete 2 items/i })).toBeInTheDocument();
+    // Delete button should now name the two kinds it still removes
+    expect(screen.getByRole('button', { name: /Delete 1 log/i })).toBeInTheDocument();
   });
 
   it('uncheck all (None) unchecks every item of the job, and Check all checks them again', async () => {
@@ -202,7 +202,7 @@ describe('CleanupView component', () => {
     await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
     await fireEvent.click(screen.getByRole('button', { name: 'None' }));
 
-    const deleteButton = screen.getByRole('button', { name: /Delete 0 items/i });
+    const deleteButton = screen.getByRole('button', { name: /^Delete/ });
     expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
     expect(deleteButton).toHaveAttribute(
       'aria-describedby',
@@ -234,13 +234,13 @@ describe('CleanupView component', () => {
     await fireEvent.click(checkboxes[0]);
 
     // Click Delete button
-    const deleteBtn = screen.getByRole('button', { name: /Delete 2 items/i });
+    const deleteBtn = screen.getByRole('button', { name: /Delete 1 log/i });
     await fireEvent.click(deleteBtn);
 
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
     // The confirmation names the counts, the space and what stays.
-    expect(dialog).toHaveTextContent('Delete 2 items?');
+    expect(dialog).toHaveTextContent('Delete 1 log · 1 unenrolled project?');
     expect(dialog).toHaveTextContent('This frees 1.7 GB. It cannot be undone.');
     expect(dialog).toHaveTextContent('Branches, pull requests, the remote');
     expect(dialog).toHaveTextContent('1 unchecked item is kept for good.');
@@ -265,7 +265,7 @@ describe('CleanupView component', () => {
     render(CleanupView);
 
     await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
-    await fireEvent.click(screen.getByRole('button', { name: /Delete 3 items/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /Delete 1 plan/i }));
     await fireEvent.click(screen.getByRole('button', { name: /^Delete$/i }));
 
     expect(
