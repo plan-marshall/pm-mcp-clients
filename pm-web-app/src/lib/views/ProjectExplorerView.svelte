@@ -802,29 +802,29 @@
   function pageActs(project: EnrolledProject): ActionBarAct[] {
     const order =
       project.readiness === 'released'
-        ? ['enrol_again', 'ended_work']
+        ? ['enrol_again', 'ended_work', 'unenrol']
         : project.readiness === 'setup_needs'
           ? ['continue_setup', 'add_plan', 'add_epic', 'setup', 'release', 'unenrol']
           : ['add_plan', 'add_epic', 'setup', 'release', 'unenrol'];
     const byId = new Map(projectActs(project).map((act) => [act.id, act]));
-    return order
-      .map((id, index) => {
-        const act = byId.get(id);
-        if (!act) return null;
-        const role: ActionBarAct['role'] =
-          index === 0 && !project.disabled ? 'primary' : index <= 2 ? 'secondary' : 'overflow';
-        const disabled = id === 'add_plan' && project.readiness !== 'ready';
-        return {
-          id: act.id,
-          label: $t(act.labelKey),
-          advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
-          role,
-          destructive: act.destructive,
-          disabled: disabled || act.disabled,
-          disabledReason: disabled ? addPlanReason(project) : act.disabledReason,
-        } satisfies ActionBarAct;
-      })
-      .filter((act): act is ActionBarAct => act !== null);
+    const acts: ActionBarAct[] = [];
+    order.forEach((id, index) => {
+      const act = byId.get(id);
+      if (!act) return;
+      const role: ActionBarAct['role'] =
+        index === 0 ? 'primary' : index <= 2 ? 'secondary' : 'overflow';
+      const disabled = id === 'add_plan' && project.readiness !== 'ready';
+      acts.push({
+        id: act.id,
+        label: $t(act.labelKey),
+        advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+        role,
+        destructive: act.destructive,
+        disabled: disabled || act.disabled,
+        disabledReason: disabled ? addPlanReason(project) : act.disabledReason,
+      });
+    });
+    return acts;
   }
 
   /**

@@ -461,6 +461,76 @@ describe('ProjectExplorerView component', () => {
 
     await waitFor(() => expect(screen.getByTestId('explorer-error')).toBeInTheDocument());
   });
+
+  it('opens the project page when the row is clicked', async () => {
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    await fireEvent.click(row.querySelector('.row-link__title') as HTMLElement);
+
+    await waitFor(() => expect(get(runtimeStore).currentRoute).toBe('project'));
+    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+  });
+
+  it('ignores a reorder key without Alt and at the ends of the list', async () => {
+    render(ProjectExplorerView);
+
+    const favouriteRows = await screen.findByTestId('favourite-rows');
+    const rows = favouriteRows.querySelectorAll('[data-testid^="project-row-"]');
+    await fireEvent.keyDown(rows[0] as HTMLElement, { key: 'ArrowDown' });
+    await fireEvent.keyDown(rows[0] as HTMLElement, { key: 'ArrowUp', altKey: true });
+    await fireEvent.keyDown(rows[1] as HTMLElement, { key: 'ArrowDown', altKey: true });
+    await fireEvent.keyDown(rows[0] as HTMLElement, { key: 'Enter', altKey: true });
+
+    expect(apiClient.reorderFavouriteProjects).not.toHaveBeenCalled();
+  });
+
+  it('says so when a favourite cannot be toggled', async () => {
+    vi.spyOn(apiClient, 'toggleFavourite').mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+    await fireEvent.click(await screen.findByTestId('star-btn-pm-mcp-clients'));
+
+    expect(await screen.findByTestId('explorer-action-error')).toHaveTextContent(
+      'Failed to update favourite',
+    );
+  });
+
+  it('refuses an unenrol while work runs, with the way out', async () => {
+    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('scope_active'));
+
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    await fireEvent.click(
+      within(row).getByRole('button', { name: 'Actions for pm-mcp-clients' }),
+    );
+    await fireEvent.click(await screen.findByTestId('action-unenrol'));
+    const modal = await screen.findByTestId('unenrol-modal');
+    await fireEvent.click(within(modal).getByTestId('confirm-dialog-confirm'));
+
+    const banner = await screen.findByTestId('unenrol-error-banner');
+    expect(banner).toHaveTextContent('cannot be unenrolled while work runs');
+    expect(banner).toHaveTextContent('release the project');
+  });
+
+  it('reports a release the runtime refuses', async () => {
+    vi.spyOn(apiClient, 'releaseProject').mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    await fireEvent.click(
+      within(row).getByRole('button', { name: 'Actions for pm-mcp-clients' }),
+    );
+    await fireEvent.click(await screen.findByTestId('action-release'));
+    await fireEvent.input(screen.getByTestId('release-reason-input'), {
+      target: { value: 'done' },
+    });
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    expect(await screen.findByTestId('release-error-banner')).toBeInTheDocument();
+  });
 });
 
 describe('the one project page', () => {
@@ -632,5 +702,147 @@ describe('the one project page', () => {
     await fireEvent.click(within(conflict).getByTestId('project-conflict-apply'));
 
     await waitFor(() => expect(apiClient.saveProjectSettings).toHaveBeenCalledTimes(2));
+  });
+
+  it('keeps the other client’s value and closes the card', async () => {
+    vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValueOnce({
+      applied: false,
+      conflict: true,
+      revision: 9,
+      current_value: 'landing.pull-request',
+    });
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    const input = await screen.findByTestId('setting-input-landing');
+    await fireEvent.change(input, { target: { value: 'landing.files' } });
+    await fireEvent.click(screen.getByTestId('save-setting-landing'));
+    const conflict = await screen.findByTestId('project-conflict');
+
+    await fireEvent.click(within(conflict).getByTestId('project-conflict-keep'));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('project-conflict')).not.toBeInTheDocument(),
+    );
+  });
+
+  it('says so when the setup values cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectSettings').mockRejectedValue(new ClientError('network_offline'));
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    const setup = await screen.findByTestId('project-page-setup');
+    await waitFor(() => expect(within(setup).getByRole('button', { name: 'Try again' })).toBeVisible());
+  });
+
+  it('says so when the setup steps and the over-size spread cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockRejectedValue(
+      new ClientError('network_offline'),
+    );
+    vi.spyOn(apiClient, 'getOverSize').mockRejectedValue(new ClientError('network_offline'));
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    const setup = await screen.findByTestId('project-page-setup');
+    await waitFor(() =>
+      expect(within(setup).getAllByRole('button', { name: 'Try again' }).length).toBeGreaterThan(0),
+    );
+  });
+
+  it('says so when the running work cannot be read', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+
+    const work = await screen.findByTestId('project-page-work');
+    await waitFor(() => expect(within(work).getByRole('button', { name: 'Try again' })).toBeVisible());
+  });
+
+  it('says so when the ended work cannot be read', async () => {
+    vi.spyOn(apiClient, 'getEndedWork').mockRejectedValue(new ClientError('network_offline'));
+
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('project-ended-toggle'));
+
+    const work = screen.getByTestId('project-page-work');
+    await waitFor(() =>
+      expect(within(work).getByRole('button', { name: 'Try again' })).toBeVisible(),
+    );
+  });
+
+  it('offers Continue the setup first on a project that is not ready', async () => {
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'plan-marshall',
+        objectTab: null,
+      }),
+    );
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'plan-marshall',
+      display_name: 'plan-marshall',
+      plans: [],
+      epics: [],
+      alongside_landings: [],
+    });
+
+    render(ProjectExplorerView);
+
+    expect(await screen.findByTestId('action-continue_setup')).toBeInTheDocument();
+    expect(screen.getByTestId('action-add_plan')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('offers Enrol again first on a released project', async () => {
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'legacy-portal',
+        objectTab: null,
+      }),
+    );
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'legacy-portal',
+      display_name: 'legacy-portal',
+      plans: [],
+      epics: [],
+      alongside_landings: [],
+    });
+
+    render(ProjectExplorerView);
+
+    expect(await screen.findByTestId('action-enrol_again')).toBeInTheDocument();
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    expect(await screen.findByTestId('action-unenrol')).toBeInTheDocument();
+  });
+
+  it('opens the setup tab and offers release and unenrol at its end', async () => {
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByRole('tab', { name: 'Setup' }));
+    const setup = await screen.findByTestId('project-page-setup');
+    expect(await within(setup).findByTestId('setup-release-btn')).toBeInTheDocument();
+    expect(within(setup).getByTestId('setup-unenrol-btn')).toBeInTheDocument();
   });
 });
