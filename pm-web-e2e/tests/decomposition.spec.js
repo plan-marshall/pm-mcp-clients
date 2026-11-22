@@ -21,8 +21,12 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
     await expect(page.getByTestId('workstream-WS-1')).toContainText('Reconnect');
     await expect(page.getByTestId('workstream-WS-2')).toContainText('Authentication');
     await expect(page.getByTestId('plan-relay-auth-v2')).toContainText('relay-auth-v2');
+    await expect(page.getByTestId('plan-relay-auth-v2')).toContainText('check failed');
+    await expect(page.getByTestId('plan-relay-cursor-order')).toContainText('checked');
     await expect(page.getByTestId('plan-surface-relay-auth-v2')).toContainText('pm-api/src/cursor');
     await expect(page.getByTestId('conflict-banner')).toBeVisible();
+    await expect(page.getByTestId('agree-commit')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByTestId('agree-commit')).toHaveAttribute('aria-describedby');
   });
 
   test('edits a plan, reads the change back, and agrees the cut', async ({ page }) => {
@@ -30,8 +34,17 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
 
     const modal = page.getByTestId('instruct-modal');
     await expect(modal).toBeVisible();
-    await page.getByTestId('instruct-input').fill('the exchange belongs into pm-relay');
-    await page.getByTestId('instruct-submit').click();
+
+    // Escape closes Dialog
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
+
+    // Reopen and submit via Compose
+    await page.getByTestId('plan-edit-relay-auth-v2').click();
+    await expect(modal).toBeVisible();
+    const input = modal.getByRole('textbox');
+    await input.fill('the exchange belongs into pm-relay');
+    await input.press('Enter');
 
     const readBack = page.getByTestId('read-back');
     await expect(readBack).toBeVisible();
@@ -52,9 +65,11 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
 
   test('adds a plan through the instruction modal', async ({ page }) => {
     await page.getByTestId('add-plan').click();
-    await expect(page.getByTestId('instruct-modal')).toBeVisible();
-    await page.getByTestId('instruct-input').fill('add a docs plan for pm-relay');
-    await page.getByTestId('instruct-submit').click();
+    const modal = page.getByTestId('instruct-modal');
+    await expect(modal).toBeVisible();
+    const input = modal.getByRole('textbox');
+    await input.fill('add a docs plan for pm-relay');
+    await input.press('Enter');
     await expect(page.getByTestId('read-back')).toBeVisible();
   });
 });

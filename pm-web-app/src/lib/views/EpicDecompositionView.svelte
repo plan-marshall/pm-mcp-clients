@@ -2,6 +2,10 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Dialog from '../components/Dialog.svelte';
+  import Compose from '../components/Compose.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
   import { errorCodeOf } from '../api/errors';
@@ -96,6 +100,43 @@
   function changeMarker(plan: StagedPlanRecord): string | null {
     if (plan.status === 'staged' || plan.status === 'committed') return null;
     return $t('decomposition.change', { change: plan.status });
+  }
+
+  interface PlanCheckState {
+    tone: 'success' | 'danger' | 'neutral' | 'attention';
+    label: string;
+    icon: string;
+  }
+
+  function checkStateOf(plan: StagedPlanRecord): PlanCheckState {
+    const conflicts = conflictsFor(plan.plan_id);
+    if (conflicts.length > 0) {
+      const reason = conflicts.map((c) => c.message).join('; ');
+      return {
+        tone: 'danger',
+        label: $t('decomposition.check.failed', { reason }),
+        icon: 'state.error',
+      };
+    }
+    if (plan.status === 'changed') {
+      return {
+        tone: 'attention',
+        label: $t('decomposition.check.edited'),
+        icon: 'act.edit',
+      };
+    }
+    if (plan.dependencies.length > 0) {
+      return {
+        tone: 'neutral',
+        label: $t('decomposition.check.waiting'),
+        icon: 'state.clock',
+      };
+    }
+    return {
+      tone: 'success',
+      label: $t('decomposition.check.checked'),
+      icon: 'state.check',
+    };
   }
 
   function openInstruct(planId: string | null, action: 'edit' | 'add' | 'rewrite') {
@@ -317,12 +358,17 @@
           </h2>
           <div class="plans">
             {#each workstream.staged_plans as plan (plan.plan_id)}
+              {@const check = checkStateOf(plan)}
               <div
                 class="plan"
                 class:plan--error={erroredPlans.has(plan.plan_id)}
                 class:plan--dropped={droppedPlans.includes(plan.plan_id)}
                 data-testid="plan-{plan.plan_id}"
               >
+                <div class="plan__status" data-testid="plan-status-{plan.plan_id}">
+                  <Icon name={check.icon} size={16} />
+                  <StatusLabel tone={check.tone} label={check.label} />
+                </div>
                 <div class="plan__head">
                   <span class="plan__title">{plan.title}</span>
                   {#if plan.status === 'locked'}
@@ -354,27 +400,30 @@
                   </div>
                 {/each}
                 <div class="plan__actions">
-                  <button
-                    type="button"
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     data-testid="plan-keep-{plan.plan_id}"
                     onclick={() => keep(plan.plan_id)}
                   >
                     {$t('decomposition.keep')}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     data-testid="plan-edit-{plan.plan_id}"
                     onclick={() => openInstruct(plan.plan_id, 'edit')}
                   >
                     {$t('decomposition.edit')}
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     data-testid="plan-drop-{plan.plan_id}"
                     onclick={() => drop(plan.plan_id)}
                   >
                     {$t('decomposition.drop')}
-                  </button>
+                  </Button>
                 </div>
               </div>
             {/each}
@@ -400,23 +449,23 @@
           </ul>
         {/if}
         <div class="read-back__actions">
-          <Button onclick={acceptReadBack} data-testid="read-back-accept"
+          <Button variant="secondary" onclick={acceptReadBack} data-testid="read-back-accept"
             >{$t('decomposition.accept')}</Button
           >
-          <button type="button" data-testid="read-back-discard" onclick={discardReadBack}>
+          <Button variant="ghost" data-testid="read-back-discard" onclick={discardReadBack}>
             {$t('decomposition.discard')}
-          </button>
+          </Button>
         </div>
       </div>
     {/if}
 
     <footer class="decomposition__footer">
-      <button type="button" data-testid="add-plan" onclick={() => openInstruct(null, 'add')}>
+      <Button variant="secondary" data-testid="add-plan" onclick={() => openInstruct(null, 'add')}>
         + {$t('decomposition.add')}
-      </button>
-      <button type="button" data-testid="draft-again" onclick={() => openInstruct(null, 'rewrite')}>
+      </Button>
+      <Button variant="secondary" data-testid="draft-again" onclick={() => openInstruct(null, 'rewrite')}>
         {$t('decomposition.draft_again')}
-      </button>
+      </Button>
       <span class="checks" data-testid="decomposition-checks">
         {everyCheckPasses(cut)
           ? $t('decomposition.checks_pass')
@@ -425,6 +474,9 @@
       <Button
         variant="primary"
         disabled={!everyCheckPasses(cut) || busy}
+        disabledReason={!everyCheckPasses(cut)
+          ? $t('decomposition.checks_fail', { count: errorFindings.length })
+          : undefined}
         onclick={agree}
         data-testid="agree-commit"
       >
@@ -434,33 +486,25 @@
   {/if}
 </div>
 
-{#if instructOpen}
-  <div class="instruct-modal" data-testid="instruct-modal" role="dialog" aria-modal="true">
-    <div class="instruct-modal__panel">
-      <h2>
-        {$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.add') })}
-      </h2>
-      <textarea
-        class="instruct-modal__input"
-        data-testid="instruct-input"
-        bind:value={instruction}
-        rows="3"
-      ></textarea>
-      <div class="instruct-modal__actions">
-        <Button
-          onclick={submitInstruct}
-          disabled={busy || instruction.trim().length === 0}
-          data-testid="instruct-submit"
-        >
-          {$t('decomposition.instruct.prompt')}
-        </Button>
-        <button type="button" data-testid="instruct-cancel" onclick={() => (instructOpen = false)}>
-          {$t('decomposition.discard')}
-        </button>
-      </div>
-    </div>
-  </div>
-{/if}
+<Dialog
+  open={instructOpen}
+  title={$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.add') })}
+  onClose={() => (instructOpen = false)}
+  testid="instruct-modal"
+>
+  <Compose
+    bind:value={instruction}
+    label={$t('decomposition.instruct.prompt')}
+    sendLabel={$t('decomposition.instruct.prompt')}
+    disabled={busy || instruction.trim().length === 0}
+    onsend={submitInstruct}
+  />
+  <svelte:fragment slot="footer">
+    <Button variant="ghost" data-testid="instruct-cancel" onclick={() => (instructOpen = false)}>
+      {$t('decomposition.discard')}
+    </Button>
+  </svelte:fragment>
+</Dialog>
 
 <style>
   .decomposition {
@@ -605,9 +649,17 @@
     margin-top: var(--space-1);
   }
 
-  .plan__actions button {
-    min-height: 32px;
-    cursor: pointer;
+  .plan__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .plan__actions {
+    display: flex;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
   }
 
   .read-back {
@@ -667,44 +719,6 @@
     margin-left: auto;
   }
 
-  .decomposition__footer button {
-    min-height: 44px;
-    cursor: pointer;
-  }
-
-  .instruct-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--color-overlay);
-    z-index: 50;
-  }
-
-  .instruct-modal__panel {
-    width: 100%;
-    max-width: 32rem;
-    margin: var(--space-3);
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-    background-color: var(--color-bg-surface);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .instruct-modal__input {
-    width: 100%;
-    min-height: 4rem;
-    padding: var(--space-2);
-  }
-
-  .instruct-modal__actions {
-    display: flex;
-    gap: var(--space-2);
-  }
-
   .mono {
     font-family: monospace;
   }
@@ -716,12 +730,6 @@
   @media (max-width: 480px) {
     .decomposition {
       padding: var(--space-3);
-    }
-
-    .instruct-modal__panel {
-      margin: 0;
-      border-radius: 0;
-      min-height: 100%;
     }
   }
 </style>
