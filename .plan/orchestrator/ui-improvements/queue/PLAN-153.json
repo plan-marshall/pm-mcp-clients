@@ -2,10 +2,10 @@
   "id": "PLAN-153",
   "slug": "web-views-system-and-cleanup",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-153-web-views-system-and-cleanup",
+  "pr": "532",
+  "landing": "landings/PLAN-153.md",
   "seq": 153
 }

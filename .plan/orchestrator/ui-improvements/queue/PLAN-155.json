@@ -2,10 +2,10 @@
   "id": "PLAN-155",
   "slug": "web-views-decomposition-and-start-steps",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-155-web-views-decomposition-and-start-steps",
+  "pr": "531",
+  "landing": "landings/PLAN-155.md",
   "seq": 155
 }

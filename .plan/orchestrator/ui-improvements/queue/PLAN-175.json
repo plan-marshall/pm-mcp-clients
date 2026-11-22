@@ -2,10 +2,10 @@
   "id": "PLAN-175",
   "slug": "sonar-standing-debt",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "plan-175-sonar-standing-debt",
+  "pr": "530",
+  "landing": "landings/PLAN-175.md",
   "seq": 175
 }
