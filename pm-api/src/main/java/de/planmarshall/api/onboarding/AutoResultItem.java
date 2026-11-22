@@ -33,14 +33,14 @@ public record AutoResultItem(
         String value,
         AutoResultReason reason
 ) {
-    private static final String ASPECT = "aspect";
-    private static final String VALUE = "value";
-    private static final String REASON = "reason";
+    private static final String ASPECT_KEY = "aspect";
+    private static final String VALUE_KEY = "value";
+    private static final String REASON_KEY = "reason";
 
     public AutoResultItem {
-        Objects.requireNonNull(aspect, ASPECT);
-        Objects.requireNonNull(value, VALUE);
-        Objects.requireNonNull(reason, REASON);
+        Objects.requireNonNull(aspect, ASPECT_KEY);
+        Objects.requireNonNull(value, VALUE_KEY);
+        Objects.requireNonNull(reason, REASON_KEY);
     }
 
     /**
@@ -50,9 +50,9 @@ public record AutoResultItem(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put(ASPECT, aspect.wireValue());
-        map.put(VALUE, value);
-        map.put(REASON, reason.wireValue());
+        map.put(ASPECT_KEY, aspect.wireValue());
+        map.put(VALUE_KEY, value);
+        map.put(REASON_KEY, reason.wireValue());
         return map;
     }
 
@@ -74,15 +74,15 @@ public record AutoResultItem(
      */
     public static AutoResultItem fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
-        var aspect = OnboardingAspect.fromWire(JsonTree.string(map, ASPECT));
+        var aspect = OnboardingAspect.fromWire(JsonTree.string(map, ASPECT_KEY));
         if (aspect == null) {
             throw new JsonFormatException("Unknown or missing aspect in AutoResultItem");
         }
-        var value = JsonTree.string(map, VALUE);
+        var value = JsonTree.string(map, VALUE_KEY);
         if (value == null) {
             throw new JsonFormatException("Missing value in AutoResultItem");
         }
-        var reason = AutoResultReason.fromWire(JsonTree.string(map, REASON));
+        var reason = AutoResultReason.fromWire(JsonTree.string(map, REASON_KEY));
         if (reason == null) {
             throw new JsonFormatException("Unknown or missing reason in AutoResultItem");
         }

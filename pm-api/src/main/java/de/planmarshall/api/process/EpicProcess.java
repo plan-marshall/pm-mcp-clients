@@ -44,11 +44,11 @@ public record EpicProcess(
         @Nullable ProcessTokens tokensSoFar,
         boolean reviewReady
 ) {
-    private static final String PROJECT = "project";
+    private static final String PROJECT_KEY = "project";
 
     public EpicProcess {
         Objects.requireNonNull(epicId, "epicId");
-        project = project != null ? project : PROJECT;
+        project = project != null ? project : PROJECT_KEY;
         title = title != null ? title : epicId;
         state = state != null ? state : "running";
         runningPlans = runningPlans != null ? List.copyOf(runningPlans) : List.of();
@@ -59,7 +59,7 @@ public record EpicProcess(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("epic_id", epicId);
-        map.put(PROJECT, project);
+        map.put(PROJECT_KEY, project);
         map.put("title", title);
         map.put("state", state);
 
@@ -112,7 +112,7 @@ public record EpicProcess(
             throw new JsonFormatException("Missing epic_id in EpicProcess");
         }
 
-        var project = JsonTree.string(map, PROJECT);
+        var project = JsonTree.string(map, PROJECT_KEY);
         var title = JsonTree.string(map, "title");
         var state = JsonTree.string(map, "state");
 

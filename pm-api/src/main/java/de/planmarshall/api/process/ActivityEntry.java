@@ -48,10 +48,10 @@ public record ActivityEntry(
         @Nullable String launchModel,
         @Nullable String servedModel
 ) {
-    private static final String TIMESTAMP = "timestamp";
+    private static final String TIMESTAMP_KEY = "timestamp";
 
     public ActivityEntry {
-        Objects.requireNonNull(timestamp, TIMESTAMP);
+        Objects.requireNonNull(timestamp, TIMESTAMP_KEY);
         Objects.requireNonNull(kind, "kind");
         files = files != null ? List.copyOf(files) : List.of();
         questions = questions != null ? List.copyOf(questions) : List.of();
@@ -59,7 +59,7 @@ public record ActivityEntry(
 
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put(TIMESTAMP, timestamp);
+        map.put(TIMESTAMP_KEY, timestamp);
         map.put("kind", kind);
         if (toolName != null) {
             map.put("tool_name", toolName);
@@ -97,7 +97,7 @@ public record ActivityEntry(
 
     public static ActivityEntry fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
-        var timestamp = JsonTree.string(map, TIMESTAMP);
+        var timestamp = JsonTree.string(map, TIMESTAMP_KEY);
         if (timestamp == null) {
             timestamp = JsonTree.string(map, "time");
         }

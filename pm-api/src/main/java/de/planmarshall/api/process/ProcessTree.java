@@ -65,13 +65,13 @@ public record ProcessTree(
         @Nullable QueuedRevision queuedRevision
 ) {
     private static final String QUEUED_REVISION = "queued_revision";
-    private static final String PROJECT = "project";
+    private static final String PROJECT_KEY = "project";
     private static final String DEFAULT_PROJECT_ID = "project";
 
     public ProcessTree {
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
-        Objects.requireNonNull(project, PROJECT);
+        Objects.requireNonNull(project, PROJECT_KEY);
         currentPhase = currentPhase != null ? currentPhase : "execute";
         phaseState = phaseState != null ? phaseState : "running";
         tokensSoFar = tokensSoFar != null ? tokensSoFar : new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false);
@@ -83,7 +83,7 @@ public record ProcessTree(
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
         map.put("title", title);
-        map.put(PROJECT, project.toMap());
+        map.put(PROJECT_KEY, project.toMap());
         if (epic != null) {
             map.put("epic", epic.toMap());
         }
@@ -202,7 +202,7 @@ public record ProcessTree(
 
     /** The {@code project} object, else the flat members, following the reference's own rule. */
     private static ProcessProjectRef readProject(Map<String, Object> map) throws IOException {
-        var projObj = JsonTree.asObject(map.get(PROJECT));
+        var projObj = JsonTree.asObject(map.get(PROJECT_KEY));
         if (projObj != null) {
             return ProcessProjectRef.fromMap(projObj);
         }

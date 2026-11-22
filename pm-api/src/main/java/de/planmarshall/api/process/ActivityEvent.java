@@ -31,19 +31,19 @@ public record ActivityEvent(
 ) {
     public static final String EVENT_NAME = "activity";
 
-    private static final String ENTRY = "entry";
+    private static final String ENTRY_KEY = "entry";
 
     public ActivityEvent {
         Objects.requireNonNull(planId, "planId");
         Objects.requireNonNull(taskId, "taskId");
-        Objects.requireNonNull(entry, ENTRY);
+        Objects.requireNonNull(entry, ENTRY_KEY);
     }
 
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
         map.put("task_id", taskId);
-        map.put(ENTRY, entry.toMap());
+        map.put(ENTRY_KEY, entry.toMap());
         return map;
     }
 
@@ -61,7 +61,7 @@ public record ActivityEvent(
         if (taskId == null) taskId = JsonTree.string(map, "taskId");
         if (taskId == null) throw new JsonFormatException("Missing task_id in ActivityEvent");
 
-        var entryObj = JsonTree.asObject(map.get(ENTRY));
+        var entryObj = JsonTree.asObject(map.get(ENTRY_KEY));
         if (entryObj == null) throw new JsonFormatException("Missing entry in ActivityEvent");
 
         return new ActivityEvent(planId, taskId, ActivityEntry.fromMap(entryObj));

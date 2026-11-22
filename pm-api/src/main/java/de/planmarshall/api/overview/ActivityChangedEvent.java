@@ -32,11 +32,11 @@ public record ActivityChangedEvent(
 ) {
     public static final String EVENT_NAME = "activity.changed";
 
-    private static final String ACTIVITY = "activity";
+    private static final String ACTIVITY_KEY = "activity";
 
     public ActivityChangedEvent {
         Objects.requireNonNull(planId, "planId");
-        Objects.requireNonNull(activity, ACTIVITY);
+        Objects.requireNonNull(activity, ACTIVITY_KEY);
     }
 
     /**
@@ -47,7 +47,7 @@ public record ActivityChangedEvent(
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
-        map.put(ACTIVITY, activity);
+        map.put(ACTIVITY_KEY, activity);
         if (point != null) {
             map.put("point", point);
         }
@@ -80,7 +80,7 @@ public record ActivityChangedEvent(
             throw new JsonFormatException("Missing plan_id in ActivityChangedEvent");
         }
 
-        var activity = JsonTree.string(map, ACTIVITY);
+        var activity = JsonTree.string(map, ACTIVITY_KEY);
         if (activity == null) {
             activity = JsonTree.string(map, "state");
         }

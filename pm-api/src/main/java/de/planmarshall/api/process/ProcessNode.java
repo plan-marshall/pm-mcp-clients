@@ -52,7 +52,7 @@ public record ProcessNode(
         @Nullable String waitsFor,
         Map<String, String> links
 ) {
-    private static final String STATE = "state";
+    private static final String STATE_KEY = "state";
     private static final String KIND_STATE = "state";
 
     public ProcessNode {
@@ -70,7 +70,7 @@ public record ProcessNode(
         map.put("node_id", nodeId);
         map.put("title", title);
         map.put("kind", kind);
-        map.put(STATE, state);
+        map.put(STATE_KEY, state);
         map.put("run_count", runCount);
         map.put("current_run", currentRun);
         map.put("duration_seconds", durationSeconds);
@@ -131,7 +131,7 @@ public record ProcessNode(
         }
         var title = JsonTree.string(map, "title");
         var kind = JsonTree.string(map, "kind");
-        var state = JsonTree.string(map, STATE);
+        var state = JsonTree.string(map, STATE_KEY);
 
         var runCountNum = JsonTree.number(map, "run_count");
         int runCount = runCountNum != null ? runCountNum.intValue() : 1;
