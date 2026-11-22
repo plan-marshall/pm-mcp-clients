@@ -135,7 +135,7 @@ describe('CompletionReportView component', () => {
 
     expect(screen.getAllByText('fix-relay').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('merged')).toBeInTheDocument();
-    expect(screen.getByText('#214')).toBeInTheDocument();
+    expect(screen.getByText('PR #214')).toBeInTheDocument();
     expect(screen.getByText('the pull request #214 was merged into main')).toBeInTheDocument();
     expect(
       screen.getByText('2 h 40 min, 08:40 to 11:20 · paused 20 min by you'),
@@ -441,5 +441,100 @@ describe('CompletionReportView component', () => {
       invoking.remove();
       elsewhere.remove();
     }
+  });
+
+  describe('D3 vocabulary: object head, Card/KeyValueList sections, and deliverable states (PLAN-154 D3)', () => {
+    it('renders the object head with KindMark(plan), title, Chip(plan_id), PrChip, StatusLabel, end time, plan view Link, and secondary Chat Button', () => {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+      const header = document.querySelector('.report-header') as HTMLElement;
+      expect(header).not.toBeNull();
+
+      const kindMark = header.querySelector('.kind-mark') as HTMLElement;
+      expect(kindMark).not.toBeNull();
+      expect(kindMark).toHaveAttribute('data-kind', 'plan');
+
+      expect(header.querySelector('.report-title')).toHaveTextContent('fix-relay');
+
+      const chip = header.querySelector('.chip') as HTMLElement;
+      expect(chip).not.toBeNull();
+      expect(chip).toHaveTextContent('fix-relay');
+
+      const prLink = header.querySelector('a.external-link.link--chip') as HTMLElement;
+      expect(prLink).not.toBeNull();
+      expect(prLink).toHaveTextContent('PR #214');
+      expect(prLink).toHaveAttribute(
+        'href',
+        'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+      );
+
+      const status = header.querySelector('.status-label--success') as HTMLElement;
+      expect(status).not.toBeNull();
+      expect(status).toHaveTextContent('merged');
+
+      expect(header.querySelector('.ended-time')).toHaveTextContent('today 11:20');
+
+      const planViewLink = screen.getByRole('link', { name: 'Its plan view' });
+      expect(planViewLink).toHaveAttribute('href', '/plans/fix-relay');
+
+      const chatBtn = screen.getByRole('button', { name: /Chat/i });
+      expect(chatBtn).toHaveClass('btn--secondary');
+    });
+
+    it('renders every section inside Cards without nested cards and puts summary rows in KeyValueList', () => {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+      const cards = screen.getAllByTestId('card');
+      expect(cards.length).toBeGreaterThanOrEqual(6);
+      expect(screen.queryByTestId('card-nested')).toBeNull();
+
+      const kvList = screen.getAllByTestId('key-value-list')[0];
+      expect(kvList).toHaveTextContent('Outcome');
+      expect(kvList).toHaveTextContent('the pull request #214 was merged into main');
+      expect(kvList).toHaveTextContent('Reason');
+      expect(kvList).toHaveTextContent('Ran');
+      expect(kvList).toHaveTextContent('2 h 40 min, 08:40 to 11:20 · paused 20 min by you');
+      expect(kvList).toHaveTextContent('Change');
+      expect(kvList).toHaveTextContent('12 files · +340 −27 · 2 unplanned');
+
+      // Decisions use Chip for decision id, own calls use StatusLabel for judgment
+      expect(document.querySelectorAll('.own-call-chip')).toHaveLength(0);
+      expect(document.querySelectorAll('.section-badge')).toHaveLength(0);
+    });
+
+    it('renders deliverables in done, not_done and dropped states with icon and word, and handles no deliverables yet', () => {
+      const mixed: PlanCompletionReport = {
+        ...mockReport,
+        deliverables: [
+          { name: 'cursor write order', state: 'done' },
+          { name: 'pending transport check', state: 'not_done' },
+          { name: 'legacy fallback removed', state: 'dropped' },
+        ],
+      };
+      const { unmount } = render(CompletionReportView, { planId: 'fix-relay', report: mixed });
+
+      const items = document.querySelectorAll('.deliverable-item');
+      expect(items).toHaveLength(3);
+
+      expect(items[0].querySelector('[data-icon="state.check"]')).not.toBeNull();
+      expect(items[0]).toHaveTextContent('done');
+      expect(items[0]).toHaveTextContent('cursor write order');
+
+      expect(items[1].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(items[1]).toHaveTextContent('not done');
+      expect(items[1]).toHaveTextContent('pending transport check');
+
+      expect(items[2].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(items[2]).toHaveTextContent('dropped');
+      expect(items[2]).toHaveTextContent('legacy fallback removed');
+
+      unmount();
+
+      render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: { ...mockReport, deliverables: [] },
+      });
+      expect(screen.getByText('no deliverables yet: it ended in refine')).toBeInTheDocument();
+    });
   });
 });
