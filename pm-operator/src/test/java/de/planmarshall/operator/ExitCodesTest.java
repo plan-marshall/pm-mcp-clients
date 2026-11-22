@@ -28,13 +28,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -70,6 +73,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
 /**
@@ -163,7 +167,9 @@ class ExitCodesTest {
      *
      * @param label    the name of the case
      * @param setup    what the case runs against
-     * @param args     the arguments, {@link #ID} and {@link #CLIENT} replaced at run time
+     * @param args     the arguments after the verb, {@link #ID} and {@link #CLIENT} replaced at run
+     *                 time; the verb itself is the name {@link PmOperator} registers, prepended by
+     *                 {@link #run(String, Row)}
      * @param ownLines the lines a refusal that renders no runtime refusal prints on stderr, or
      *                 {@code null} for the three lines of {@link RefusalRenderer}
      */
@@ -181,7 +187,11 @@ class ExitCodesTest {
     record VerbCases(List<Row> success, List<Row> refusal, List<Row> usage) {
     }
 
-    /** Collects the cases of one verb. */
+    /**
+     * Collects the cases of one verb. Every case stores only the arguments after the verb: the verb
+     * the case runs is the name {@link PmOperator} registers, so a row cannot name another verb than
+     * the registry entry it belongs to.
+     */
     private static final class Cases {
         private final String verb;
         private final List<Row> success = new ArrayList<>();
@@ -190,29 +200,32 @@ class ExitCodesTest {
 
         private Cases(String verb) {
             this.verb = verb;
-            usage.add(new Row(verb + " --<unknown>", ExitCodesTest::noRuntime,
-                                List.of(verb, UNKNOWN_OPTION_TOKEN), null));
+            usage.add(new Row(verb + " --<unknown>", ExitCodesTest::noRuntime, List.of(UNKNOWN_OPTION_TOKEN), null));
+        }
+
+        private String label(String... args) {
+            return args.length == 0 ? verb : verb + " " + String.join(" ", args);
         }
 
         /** Replaces the default usage case, for a verb whose required parameter picocli checks first. */
         Cases usage(String... args) {
             usage.clear();
-            usage.add(new Row(String.join(" ", args), ExitCodesTest::noRuntime, List.of(args), null));
+            usage.add(new Row(label(args), ExitCodesTest::noRuntime, List.of(args), null));
             return this;
         }
 
         Cases success(Setup setup, String... args) {
-            success.add(new Row(String.join(" ", args), setup, List.of(args), null));
+            success.add(new Row(label(args), setup, List.of(args), null));
             return this;
         }
 
         Cases refusal(String... args) {
-            refusal.add(new Row(String.join(" ", args), ExitCodesTest::refuseEverything, List.of(args), null));
+            refusal.add(new Row(label(args), ExitCodesTest::refuseEverything, List.of(args), null));
             return this;
         }
 
         Cases refusal(Setup setup, @Nullable Function<ExitCodesTest, List<String>> ownLines, String... args) {
-            refusal.add(new Row(String.join(" ", args), setup, List.of(args), ownLines));
+            refusal.add(new Row(label(args), setup, List.of(args), ownLines));
             return this;
         }
 
@@ -228,100 +241,100 @@ class ExitCodesTest {
     private static Map<String, VerbCases> registry() {
         var all = List.of(
                             new Cases("status")
-                                                .success(ExitCodesTest::noRuntime, "status")
-                                                .refusal("status"),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal(),
                             new Cases("plans")
-                                                .success(ExitCodesTest::serveReads, "plans", "--json")
-                                                .refusal("plans"),
+                                                .success(ExitCodesTest::serveReads, "--json")
+                                                .refusal(),
                             new Cases("web")
-                                                .success(ExitCodesTest::noRuntime, "web")
-                                                .refusal("web", "devices"),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal("devices"),
                             new Cases("runtime")
-                                                .success(ExitCodesTest::serveReads, "runtime", "upgrade", "--notes")
-                                                .refusal("runtime", "upgrade", "--notes"),
+                                                .success(ExitCodesTest::serveReads, "upgrade", "--notes")
+                                                .refusal("upgrade", "--notes"),
                             new Cases("drain")
-                                                .success(ExitCodesTest::noRuntime, "drain")
+                                                .success(ExitCodesTest::noRuntime)
                                                 .refusal(ExitCodesTest::recordUnidentifiableRuntime,
-                                                                    ExitCodesTest::drainNotIdentifiable, "drain"),
+                                                                    ExitCodesTest::drainNotIdentifiable),
                             new Cases("config")
-                                                .success(ExitCodesTest::serveReadsAndLeave, "config")
-                                                .refusal("config")
-                                                .refusal("config", "show"),
+                                                .success(ExitCodesTest::serveReadsAndLeave)
+                                                .refusal()
+                                                .refusal("show"),
                             new Cases("credentials")
-                                                .success(ExitCodesTest::noRuntime, "credentials")
+                                                .success(ExitCodesTest::noRuntime)
                                                 .refusal(ExitCodesTest::refuseEverything,
                                                                     test -> List.of(MessageCatalogue.format(test.locale(),
                                                                                         "operator.credentials.status_failed",
                                                                                         Map.of("key", test.id, "reason", test.refusalTitle()))),
-                                                                    "credentials", "status", ID),
+                                                                    "status", ID),
                             new Cases("project")
-                                                .success(ExitCodesTest::noRuntime, "project")
-                                                .refusal("project", ID),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal(ID),
                             new Cases("projects")
-                                                .success(ExitCodesTest::serveReads, "projects")
-                                                .refusal("projects"),
+                                                .success(ExitCodesTest::serveReads)
+                                                .refusal(),
                             new Cases("client")
-                                                .success(ExitCodesTest::noRuntime, "client")
-                                                .refusal("client", "status"),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal("status"),
                             new Cases("plan")
-                                                .success(ExitCodesTest::serveReads, "plan", "watches", ID)
-                                                .refusal("plan", ID)
-                                                .refusal("plan", "findings", ID)
-                                                .refusal("plan", "watches", ID)
-                                                .refusal("plan", "settings", ID),
+                                                .success(ExitCodesTest::serveReads, "watches", ID)
+                                                .refusal(ID)
+                                                .refusal("findings", ID)
+                                                .refusal("watches", ID)
+                                                .refusal("settings", ID),
                             new Cases("epic")
-                                                .success(ExitCodesTest::serveReads, "epic", "findings", ID)
-                                                .refusal("epic", ID)
-                                                .refusal("epic", "findings", ID)
-                                                .refusal("epic", "watches", ID),
+                                                .success(ExitCodesTest::serveReads, "findings", ID)
+                                                .refusal(ID)
+                                                .refusal("findings", ID)
+                                                .refusal("watches", ID),
                             new Cases("recipe")
-                                                .success(ExitCodesTest::noRuntime, "recipe")
-                                                .refusal("recipe", "run", ID, "--project", ID, "--no-input"),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal("run", ID, "--project", ID, "--no-input"),
                             new Cases("lesson")
-                                                .success(ExitCodesTest::noRuntime, "lesson")
-                                                .refusal("lesson", "check", ID),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal("check", ID),
                             new Cases("questions")
-                                                .success(ExitCodesTest::serveReads, "questions")
-                                                .refusal("questions"),
+                                                .success(ExitCodesTest::serveReads)
+                                                .refusal(),
                             new Cases("answer")
-                                                .usage("answer", ID, UNKNOWN_OPTION_TOKEN)
-                                                .success(ExitCodesTest::serveReads, "answer", ID, "later")
-                                                .refusal(ExitCodesTest::serveDecisionRefuseActs, null, "answer", ID, "later")
+                                                .usage(ID, UNKNOWN_OPTION_TOKEN)
+                                                .success(ExitCodesTest::serveReads, ID, "later")
+                                                .refusal(ExitCodesTest::serveDecisionRefuseActs, null, ID, "later")
                                                 .refusal(ExitCodesTest::refuseEverything,
                                                                     test -> List.of(MessageCatalogue.format(test.locale(),
                                                                                         "operator.decision.parts_unreadable",
                                                                                         Map.of("id", test.id))),
-                                                                    "answer", ID, "1"),
+                                                                    ID, "1"),
                             new Cases("reports")
-                                                .success(ExitCodesTest::serveReads, "reports")
-                                                .refusal("reports"),
+                                                .success(ExitCodesTest::serveReads)
+                                                .refusal(),
                             new Cases("system")
-                                                .success(ExitCodesTest::serveReads, "system", "--json")
-                                                .refusal("system"),
+                                                .success(ExitCodesTest::serveReads, "--json")
+                                                .refusal(),
                             new Cases("cleanup")
-                                                .success(ExitCodesTest::serveReads, "cleanup", "--kept")
-                                                .refusal("cleanup")
-                                                .refusal("cleanup", "--kept"),
+                                                .success(ExitCodesTest::serveReads, "--kept")
+                                                .refusal()
+                                                .refusal("--kept"),
                             new Cases("enrol-harness")
-                                                .success(ExitCodesTest::serveReadsWithHarness, "enrol-harness", CLIENT, "--yes")
-                                                .refusal(ExitCodesTest::refuseEverythingWithHarness, null, "enrol-harness", CLIENT),
+                                                .success(ExitCodesTest::serveReadsWithHarness, CLIENT, "--yes")
+                                                .refusal(ExitCodesTest::refuseEverythingWithHarness, null, CLIENT),
                             new Cases("roles")
-                                                .success(ExitCodesTest::noRuntime, "roles")
-                                                .refusal("roles", "list")
-                                                .refusal("roles", "show", ID),
+                                                .success(ExitCodesTest::noRuntime)
+                                                .refusal("list")
+                                                .refusal("show", ID),
                             new Cases("accept-edit")
-                                                .success(ExitCodesTest::serveReads, "accept-edit", "workspace", ID, "--project", ID)
+                                                .success(ExitCodesTest::serveReads, "workspace", ID, "--project", ID)
                                                 .refusal(ExitCodesTest::refuseEverything,
                                                                     test -> List.of(MessageCatalogue.format(test.locale(),
                                                                                         "enrolment.accept.failed",
                                                                                         Map.of("path", test.id, "reason", test.refusalTitle()))),
-                                                                    "accept-edit", "workspace", ID, "--project", ID),
+                                                                    "workspace", ID, "--project", ID),
                             new Cases("needs")
-                                                .success(ExitCodesTest::serveReads, "needs", "--json")
-                                                .refusal("needs"),
+                                                .success(ExitCodesTest::serveReads, "--json")
+                                                .refusal(),
                             new Cases("find")
-                                                .success(ExitCodesTest::serveReads, "find", ID, "--print")
-                                                .refusal("find", ID)
+                                                .success(ExitCodesTest::serveReads, ID, "--print")
+                                                .refusal(ID)
         );
         var registry = new LinkedHashMap<String, VerbCases>();
         for (var cases : all) {
@@ -549,10 +562,53 @@ class ExitCodesTest {
 
     private String unknownOption = "";
 
-    private int run(Row row) throws IOException {
+    /**
+     * @return every option name of every command {@link PmOperator} registers, at any depth: a
+     *         generated unknown option must be none of them
+     */
+    private Set<String> registeredOptions() {
+        var context = new OperatorContext(environment(), tempDir, true);
+        var root = new CommandLine(new PmOperator(context),
+                            new CommandLine.IFactory() {
+                                @Override
+                                public <K> K create(Class<K> type) throws Exception {
+                                    try {
+                                        return type.getDeclaredConstructor(OperatorContext.class).newInstance(context);
+                                    } catch (NoSuchMethodException _) {
+                                        return CommandLine.defaultFactory().create(type);
+                                    }
+                                }
+                            });
+        var names = new HashSet<String>();
+        var pending = new ArrayDeque<CommandLine>();
+        pending.add(root);
+        while (!pending.isEmpty()) {
+            var command = pending.poll();
+            names.addAll(command.getCommandSpec().optionsMap().keySet());
+            pending.addAll(command.getSubcommands().values());
+        }
+        return names;
+    }
+
+    /** @return a generated option name no registered command recognises */
+    private String generateUnknownOption() {
+        var registered = registeredOptions();
+        var candidate = "--" + Generators.letterStrings(6, 12).next().toLowerCase(Locale.ROOT);
+        while (registered.contains(candidate)) {
+            candidate = "--" + Generators.letterStrings(6, 12).next().toLowerCase(Locale.ROOT);
+        }
+        return candidate;
+    }
+
+    /**
+     * Runs a row of a registered verb: the command line is the verb {@link PmOperator} registers
+     * followed by the row's arguments, never a verb the row names itself.
+     */
+    private int run(String verb, Row row) throws IOException {
+        assertTrue(registeredVerbs().contains(verb), verb + " is no verb PmOperator registers");
         row.setup().apply(this);
-        unknownOption = "--" + Generators.letterStrings(6, 12).next().toLowerCase(Locale.ROOT);
-        var args = row.args().stream()
+        unknownOption = generateUnknownOption();
+        var args = Stream.concat(Stream.of(verb), row.args().stream()
                             .map(arg -> switch (arg) {
                                 case ID -> id;
                                 case CLIENT -> {
@@ -561,7 +617,7 @@ class ExitCodesTest {
                                 }
                                 case UNKNOWN_OPTION_TOKEN -> unknownOption;
                                 default -> arg;
-                            })
+                            }))
                             .toArray(String[]::new);
         return execute(args);
     }
@@ -601,7 +657,7 @@ class ExitCodesTest {
         void successExitsZero(String label, String verb, int index) throws IOException {
             var row = row(verb, index, VerbCases::success);
 
-            var code = run(row);
+            var code = run(verb, row);
 
             assertEquals(0, code, label + " did not exit 0." + streams());
             assertEquals(List.of(), errLinesAfterNotice(), label + " printed on stderr." + streams());
@@ -636,7 +692,7 @@ class ExitCodesTest {
         void refusalRendersThreeLines(String label, String verb, int index) throws IOException {
             var row = row(verb, index, VerbCases::refusal);
 
-            var code = run(row);
+            var code = run(verb, row);
 
             assertEquals(1, code, label + " did not exit 1." + streams());
             assertEquals("", out.toString(), label + " printed on stdout." + streams());
@@ -653,7 +709,7 @@ class ExitCodesTest {
                                                     label + ": title line." + streams()),
                                 () -> assertEquals(ErrorTexts.cause(locale(), REFUSAL), lines.get(1),
                                                     label + ": cause line." + streams()),
-                                () -> assertTrue(lines.get(2).startsWith(GLYPH_FIX),
+                                () -> assertEquals(GLYPH_FIX + ErrorTexts.fix(locale(), REFUSAL), lines.get(2),
                                                     label + ": fix line." + streams())
             );
         }
@@ -681,7 +737,7 @@ class ExitCodesTest {
         void unknownOptionExitsTwo(String label, String verb, int index) throws IOException {
             var row = row(verb, index, VerbCases::usage);
 
-            var code = run(row);
+            var code = run(verb, row);
 
             assertEquals(2, code, label + " did not exit 2." + streams());
             assertEquals(MessageCatalogue.format(locale(), "operator.cli.unknown_option",

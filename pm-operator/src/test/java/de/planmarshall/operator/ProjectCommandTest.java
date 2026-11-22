@@ -1138,8 +1138,9 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(err.toString().contains("/malicious/path"), err.toString()),
-                            () -> assertFalse(err.toString().contains("\u001B[31m")),
-                            () -> assertFalse(out.toString().contains("\u001B[31m"))
+                            // neither the opening nor the closing sequence survives: no escape at all
+                            () -> assertFalse(err.toString().contains("\u001B"), err.toString()),
+                            () -> assertFalse(out.toString().contains("\u001B"), out.toString())
         );
     }
 }

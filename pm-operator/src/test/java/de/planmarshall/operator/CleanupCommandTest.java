@@ -497,6 +497,31 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("the delete of the whole job asks the confirmation the PLAN-174 delete capture shows")
+    void deleteOfTheWholeJobAsksTheCapturedConfirmation() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--delete", "--no-input");
+        var lines = out.toString().lines().map(String::strip).toList();
+        assertAll(
+                            () -> assertEquals(3, code, out.toString() + err),
+                            () -> assertTrue(lines.contains(
+                                                "Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?"),
+                                                out.toString()),
+                            () -> assertTrue(lines.contains("This frees 1.8 GB. It cannot be undone."), out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("cleanup --delete --yes deletes selected items")
     void cleanupDeleteConfirmed() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);

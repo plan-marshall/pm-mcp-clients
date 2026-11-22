@@ -172,13 +172,18 @@ class LocalRefusalStreamTest {
 
     @ParameterizedTest(name = "config {0}")
     @MethodSource("planRefusals")
-    @DisplayName("a blank --plan or --plan beside the verb's other options refuses on stderr")
+    @DisplayName("a blank --plan or --plan beside the verb's other options refuses on stderr before any request")
     void planOptionRefusals(String name, String[] args, String line) throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.target());
+            response.send(404, null, "");
+        });
 
         int code = execute(args);
 
         assertRefusedOnStderr(code, line);
+        assertTrue(requests.isEmpty(), name + " sent " + requests);
     }
 
     @Test

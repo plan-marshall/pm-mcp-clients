@@ -131,6 +131,49 @@ class OperatorRefusedExceptionTest {
     }
 
     @Test
+    @DisplayName("a frame wrapped in a colour sequence is a trace, in a JSON message as without the colour")
+    void colourWrappedFrameInAJsonMessageIsATrace() {
+        var detail = Generators.letterStrings(4, 10).next();
+        var plainFrame = "Error: " + detail + "\\n    at a.b.C.d(C.java:1)";
+        var colouredFrame = "Error: " + detail + "\\n\\u001b[31m    at a.b.C.d(C.java:1)\\u001b[0m";
+
+        var plain = refusal(500, "{\"message\":\"" + plainFrame + "\"}");
+        var coloured = refusal(500, "{\"message\":\"" + colouredFrame + "\"}");
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, plain.kind()),
+                            () -> assertNull(plain.serverMessage()),
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, coloured.kind()),
+                            () -> assertNull(coloured.serverMessage()),
+                            () -> assertFalse(coloured.getMessage().contains("a.b.C.d"), coloured.getMessage()));
+    }
+
+    @Test
+    @DisplayName("a plain body whose frame starts with a colour sequence is a trace")
+    void plainBodyWithColourWrappedFrameIsATrace() {
+        var detail = Generators.letterStrings(4, 10).next();
+
+        var ex = refusal(500, "java.lang.IllegalStateException: " + detail
+                            + "\n\u001b[31m    at a.b.C.d(C.java:1)\u001b[0m");
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.UNREADABLE, ex.kind()),
+                            () -> assertNull(ex.serverMessage()));
+    }
+
+    @Test
+    @DisplayName("a coloured Error: sentence without a frame stays the message")
+    void colouredErrorSentenceIsPrinted() {
+        var sentence = "Error: select a configured " + Generators.letterStrings(4, 10).next() + ".";
+
+        var ex = refusal(500, "\u001b[31m" + sentence + "\u001b[0m");
+
+        assertAll(
+                            () -> assertEquals(OperatorRefusedException.Kind.RUNTIME, ex.kind()),
+                            () -> assertEquals(sentence, ex.serverMessage()));
+    }
+
+    @Test
     @DisplayName("a JSON message and a body argument longer than the cap are cut")
     void jsonMessageAndArgumentAreCapped() {
         var longText = Generators.letterStrings(OperatorRefusedException.MAX_MESSAGE_LENGTH + 50,

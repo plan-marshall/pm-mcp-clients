@@ -24,6 +24,8 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -33,7 +35,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("ReportsCommand")
 @EnableGeneratorController
@@ -374,26 +377,40 @@ class ReportsCommandTest {
                             () -> assertFalse(out.toString().contains(refused), out.toString()));
     }
 
-    @ParameterizedTest(name = "a {0} on one id")
-    @ValueSource(ints = {403, 409, 500})
+    /** @return each refusal status, once with the refused id first and once with it last */
+    static Stream<Arguments> refusalOrders() {
+        return Stream.of(403, 409, 500)
+                            .flatMap(status -> Stream.of(Arguments.of(status, true), Arguments.of(status, false)));
+    }
+
+    @ParameterizedTest(name = "a {0} on one id, refused id first: {1}")
+    @MethodSource("refusalOrders")
     @DisplayName("reports read names a refusal other than 404 with its cause on stderr, marks the others and exits 1")
-    void reportsReadOtherRefusal(int status) throws Exception {
+    void reportsReadOtherRefusal(int status, boolean refusedFirst) throws Exception {
         var refusedId = "rep-" + Generators.integers(1000, 9999).next();
         var cause = Generators.letterStrings(8, 16).next();
+        var markPath = "/api/v1/reports/rep-001/read";
+        var refusedPath = "/api/v1/reports/" + refusedId + "/read";
+        var requests = new CopyOnWriteArrayList<String>();
         fixture.start((request, response) -> {
-            if ("/api/v1/reports/rep-001/read".equals(request.target())) {
+            requests.add(request.target());
+            if (markPath.equals(request.target())) {
                 response.send(200, null, "");
-            } else if (("/api/v1/reports/" + refusedId + "/read").equals(request.target())) {
+            } else if (refusedPath.equals(request.target())) {
                 response.json(status, "{\"error\":\"report_locked\",\"message\":\"%s\"}".formatted(cause));
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("reports", "read", "rep-001", refusedId);
+        int code = refusedFirst
+                            ? execute("reports", "read", refusedId, "rep-001")
+                            : execute("reports", "read", "rep-001", refusedId);
 
         assertAll(
                             () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(requests.contains(markPath), requests.toString()),
+                            () -> assertTrue(requests.contains(refusedPath), requests.toString()),
                             () -> assertTrue(err.toString().contains("✗ "), err.toString()),
                             () -> assertTrue(err.toString().contains(cause), err.toString()),
                             () -> assertFalse(out.toString().contains(cause), out.toString()),

@@ -1193,8 +1193,10 @@ class PlanCommandTest {
         @Test
         @DisplayName("a refused value outside the choices names them in German")
         void refusedValueOutsideTheChoices() throws Exception {
-            var first = Generators.letterStrings(3, 6).next().toLowerCase();
-            var second = Generators.letterStrings(3, 6).next().toLowerCase();
+            // the prefixes keep both choices apart from each other and from the submitted value,
+            // which carries no hyphen
+            var first = "first-" + Generators.letterStrings(3, 6).next().toLowerCase();
+            var second = "second-" + Generators.letterStrings(3, 6).next().toLowerCase();
             serveRefusingSettings(List.of(first, second));
 
             int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);

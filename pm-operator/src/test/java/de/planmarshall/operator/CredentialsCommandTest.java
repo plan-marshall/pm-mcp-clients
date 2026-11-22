@@ -372,7 +372,9 @@ class CredentialsCommandTest {
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
                             () -> assertTrue(err.toString().contains(
                                                 "Failed to read the secret: no secret was typed"), err.toString()),
-                            () -> assertFalse(out.toString().contains("Failed to read the secret"), out.toString()));
+                            () -> assertFalse(out.toString().contains("Failed to read the secret"), out.toString()),
+                            () -> assertFalse(requests.contains("PUT /api/v1/credentials/github"),
+                                                requests.toString()));
     }
 
     @Test

@@ -866,6 +866,28 @@ class WebDevicesCommandTest {
     }
 
     @Test
+    @DisplayName("a refused list of web devices --interactive in a terminal renders the refusal on stderr")
+    void aRefusedInteractiveListGoesToStderr() throws Exception {
+        seedRefusedRoutes();
+        var context = createContext("q\n");
+        var writer = new StringWriter();
+        var failures = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertTrue(context.isInteractiveTerminal(), "the case runs in a terminal"),
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(failures.toString().contains(REFUSED_LINE), failures.toString()),
+                            () -> assertFalse(output.contains(REFUSED_LINE), output)
+        );
+    }
+
+    @Test
     @DisplayName("formatLastUsed with a fixed clock renders the age rule, never a count of weeks")
     void formatLastUsedWithFixedClock() {
         var fixedNow = Instant.parse("2026-06-01T12:00:00Z");

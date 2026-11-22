@@ -925,6 +925,9 @@ public final class ConfigCommand implements Callable<Integer> {
                 return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
                                     Map.of("key", key, ASPECT, getOwningAspect(key))));
             }
+            if (plan != null && plan.isBlank()) {
+                return blankPlan(context, err);
+            }
             if (!oneLevel(machine, project, plan)) {
                 return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
             }
@@ -979,6 +982,9 @@ public final class ConfigCommand implements Callable<Integer> {
             if (isAspectOwned(key)) {
                 return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
                                     Map.of("key", key, ASPECT, getOwningAspect(key))));
+            }
+            if (plan != null && plan.isBlank()) {
+                return blankPlan(context, err);
             }
             if (!oneLevel(machine, project, plan)) {
                 return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));

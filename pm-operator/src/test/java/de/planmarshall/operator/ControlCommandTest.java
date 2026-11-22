@@ -22,6 +22,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -271,16 +272,22 @@ class ControlCommandTest {
                                 && "GET".equals(request.method())) {
                 response.json(200, settingsJson(plan, revision, landing()));
             } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
-                response.send(400, "application/json", "{\"error\":\"refused\",\"reason\":\"protected\"}");
+                // the refusal carries no reason of its own: the client names the one it reads back
+                response.send(400, "application/json", "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
             }
         });
+        var value = "landing.zz" + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
 
-        int code = execute("plan", "settings", plan, "--set", "landing=landing.main");
-        assertEquals(1, code);
-        assertTrue(err.toString().contains("landing.main is refused:"));
-        assertFalse(out.toString().contains("landing.main is refused:"));
+        int code = execute("plan", "settings", plan, "--set", "landing=" + value);
+        var refused = value + " is refused: it is not one of landing.pull-request, landing.main, landing.files";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            // the reason stands on the same line as the refused value
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(out.toString().contains(value + " is refused:"), out.toString())
+        );
     }
 
     @Test

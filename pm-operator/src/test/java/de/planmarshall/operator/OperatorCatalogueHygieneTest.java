@@ -14,13 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.message.MessageCatalogue;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The packs carry no text a screen prints that is already known to be wrong: no key of an area a
@@ -78,8 +79,18 @@ class OperatorCatalogueHygieneTest {
                         "operator.client.update_failed",
                         "operator.client.remove_failed");
 
+    /**
+     * Every area of the catalogue: a screen of either client may print any of them, so the guard
+     * reads the catalogue's own registration instead of a hand-kept list that misses an area.
+     *
+     * @return the registered areas
+     */
+    static Stream<String> areas() {
+        return MessageCatalogue.SUPPORTED_AREAS.stream();
+    }
+
     @ParameterizedTest(name = "the {0} area")
-    @ValueSource(strings = {"operator", "enrolment", "control", "reports"})
+    @MethodSource("areas")
     @DisplayName("no key of an area a command prints carries an HTTP status a screen would print")
     void noPrintedKeyNamesAnHttpStatus(String area) {
         for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {

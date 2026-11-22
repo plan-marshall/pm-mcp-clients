@@ -498,6 +498,44 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("config set --plan \"\" refuses on stderr before any request")
+    void configSetRefusesABlankPlan() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(404, null, "");
+        });
+        var key = "custom." + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("config", "set", key, Generators.letterStrings(4, 8).next(), "--plan", "");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains("--plan needs a plan id."), err.toString()),
+                            () -> assertEquals("", out.toString()),
+                            () -> assertTrue(requests.isEmpty(), requests.toString()));
+    }
+
+    @Test
+    @DisplayName("config unset --plan \"\" refuses on stderr before any request")
+    void configUnsetRefusesABlankPlan() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(404, null, "");
+        });
+        var key = "custom." + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("config", "unset", key, "--plan", "");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains("--plan needs a plan id."), err.toString()),
+                            () -> assertEquals("", out.toString()),
+                            () -> assertTrue(requests.isEmpty(), requests.toString()));
+    }
+
+    @Test
     @DisplayName("a refused settings read names the refusal and leaves with 1")
     void aRefusedSettingsReadLeavesWithOne() throws Exception {
         fixture.start((request, response) -> {

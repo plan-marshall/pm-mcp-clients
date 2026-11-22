@@ -345,9 +345,9 @@ public final class WebCommand implements Callable<Integer> {
             }
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
-            var failures = interactive && context.isInteractiveTerminal()
-                                ? out
-                                : spec.commandLine().getErr();
+            // A refusal of the verb itself goes to stderr, --interactive or not
+            // (03-dialogues.adoc); only the acts of the dialogue after a listed set answer on stdout.
+            var failures = spec.commandLine().getErr();
 
             int code = 0;
             if (isRename()) {

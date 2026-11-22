@@ -398,7 +398,11 @@ class DecomposeCommandTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(refusal.contains("✗ 1 check fails"), refusal),
                             () -> assertFalse(output.contains("✗ 1 check fails"), output),
-                            () -> assertTrue(output.contains("relay-auth-v2"), output));
+                            // a workstream row and a plan row of the tree, neither of which the finding's text carries
+                            () -> assertTrue(output.lines().anyMatch(line -> line.equals("  WS-2  Authentication")),
+                                                output),
+                            () -> assertTrue(output.lines().anyMatch(line -> line.startsWith("    1) relay-cursor-order")
+                                                && line.contains("pm-relay/src/cursor")), output));
     }
 
     @Test
@@ -559,14 +563,23 @@ class DecomposeCommandTest {
     @DisplayName("epic instruct requires words, and a plan to edit")
     void instructRequiresWordsAndAPlan() {
         var noWords = execute("epic", "instruct", "ep-001", "--plan", "relay-auth-v2");
+        var noWordsOut = out.toString();
+        var noWordsErr = err.toString();
+        out.getBuffer().setLength(0);
+        err.getBuffer().setLength(0);
         var noPlan = execute("epic", "instruct", "ep-001", "--instruction", "words");
+        var noPlanOut = out.toString();
+        var noPlanErr = err.toString();
 
         assertAll(
                             () -> assertEquals(1, noWords),
-                            () -> assertTrue(err.toString().contains("What should change?"), err.toString()),
+                            () -> assertTrue(noWordsErr.contains("What should change?"), noWordsErr),
+                            () -> assertFalse(noWordsOut.contains("What should change?"), noWordsOut),
+                            () -> assertFalse(noWordsErr.contains("--plan is required"), noWordsErr),
                             () -> assertEquals(1, noPlan),
-                            () -> assertTrue(err.toString().contains("--plan is required"), err.toString()),
-                            () -> assertFalse(out.toString().contains("--plan is required"), out.toString())
+                            () -> assertTrue(noPlanErr.contains("--plan is required"), noPlanErr),
+                            () -> assertFalse(noPlanOut.contains("--plan is required"), noPlanOut),
+                            () -> assertFalse(noPlanErr.contains("What should change?"), noPlanErr)
         );
     }
 
