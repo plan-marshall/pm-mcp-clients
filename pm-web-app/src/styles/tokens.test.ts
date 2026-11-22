@@ -42,7 +42,6 @@ const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
  */
 const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
   [path.normalize('lib/components/FindingsReviewModal.svelte')]: 'the V parts',
-  [path.normalize('lib/components/HoldResolutionModal.svelte')]: 'the V parts',
   [path.normalize('lib/components/ConfinedFilePicker.svelte')]: 'the V parts',
   [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
   [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
