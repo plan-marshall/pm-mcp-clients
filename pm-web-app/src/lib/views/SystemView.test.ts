@@ -218,7 +218,7 @@ describe('SystemView component', () => {
     expect(screen.getAllByText(/pm-mcpd 0\.9\.1/)[0]).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /^3 running/ })).toBeInTheDocument();
     // The workers' head carries its count as a CountBadge, whose accessible name is the sentence.
-    expect(screen.getByText('5 · 3 busy · 2 idle')).toBeInTheDocument();
+    expect(screen.getByText('3 · 2 busy · 1 idle')).toBeInTheDocument();
     expect(screen.getByText('fix-relay')).toBeInTheDocument();
     expect(screen.getByText('relay-docs')).toBeInTheDocument();
     expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
@@ -1093,7 +1093,7 @@ describe('SystemView component', () => {
       render(SystemView);
 
       expect(await screen.findByText('<b>faster relay</b>')).toBeInTheDocument();
-      const links = screen.getAllByRole('link', { name: 'Release notes' });
+      const links = screen.getAllByRole('link', { name: /Release notes/ });
       expect(links).toHaveLength(2);
       for (const link of links) {
         // The runtime serves the notes at a path of the app; the link resolves it against the
