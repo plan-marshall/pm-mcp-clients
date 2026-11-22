@@ -96,8 +96,11 @@ export interface OnboardingScreenContext {
   consentAction: () => string;
   /** The body of the completed card. */
   completedSummary: () => string;
-  /** The harness names the model screen groups by. */
-  harnessNames: () => Record<string, string>;
+  /**
+   * The harness names the view resolves, so a model screen groups a harness the state does not
+   * enumerate under the name the scan listed (PLAN-59 D5).
+   */
+  harnessNames: Record<string, string>;
   /** The first link of the given ids the state offers. */
   linkBy: (...ids: string[]) => OfferedLink | undefined;
 }

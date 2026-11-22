@@ -199,19 +199,46 @@
     return Array.isArray(value) ? (value as readonly T[]) : (EMPTY_ARRAY as readonly T[]);
   }
 
-  function harnessNames(): Record<string, string> {
+  /**
+   * The harness scan the run has seen, kept while the onboarding stays mounted.
+   *
+   * `catalogue.select` publishes the model rows and nothing else, so a harness that cannot list its
+   * models — and therefore has no row — is named by no fact of that state. The scan of the
+   * harness step is the one fact that names it, and keeping it here gives that harness its group
+   * and its text field instead of dropping it silently (PLAN-59 D5; the engine's row publishes no
+   * fact naming a harness with zero rows, which the landing records as a contract gap).
+   */
+  let scannedHarnesses: ReadonlyArray<Record<string, unknown>> = [];
+
+  $: if (Array.isArray(currentState?.harnesses) && currentState.harnesses.length > 0) {
+    scannedHarnesses = currentState.harnesses as Array<Record<string, unknown>>;
+  }
+
+  /**
+   * The names of the harnesses the onboarding knows: the state's own `harnesses[]` where it names
+   * any, else the scan the run saw.
+   *
+   * @param stateHarnesses the state's `harnesses[]`, when it carries one
+   * @param scanned the harnesses the scan listed
+   * @returns the display name per harness id
+   */
+  function harnessNamesFrom(
+    stateHarnesses: unknown,
+    scanned: ReadonlyArray<Record<string, unknown>>,
+  ): Record<string, string> {
     const names: Record<string, string> = Object.create(null);
-    const harnesses = currentState?.harnesses ?? $runtimeStore.onboarding?.harnesses;
-    if (Array.isArray(harnesses)) {
-      for (const harness of harnesses as Array<Record<string, unknown>>) {
-        const label = harness.display_name ?? harness.name;
-        if (harness.harness_id && label) {
-          names[String(harness.harness_id)] = String(label);
-        }
+    const listed =
+      Array.isArray(stateHarnesses) && stateHarnesses.length > 0 ? stateHarnesses : scanned;
+    for (const harness of listed as Array<Record<string, unknown>>) {
+      const label = harness.display_name ?? harness.name;
+      if (harness.harness_id && label) {
+        names[String(harness.harness_id)] = String(label);
       }
     }
     return names;
   }
+
+  $: harnessNameMap = harnessNamesFrom(currentState?.harnesses, scannedHarnesses);
 
   /**
    * The action the consent's primary button names, by the kind the runtime reports; a kind
@@ -267,7 +294,7 @@
     linkLabel,
     consentAction,
     completedSummary,
-    harnessNames,
+    harnessNames: harnessNameMap,
     linkBy,
   } satisfies OnboardingScreenContext;
 </script>

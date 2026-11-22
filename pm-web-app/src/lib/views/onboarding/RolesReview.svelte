@@ -199,7 +199,7 @@
 
   /** The harnesses a role can be assigned to, by their names. */
   const harnessOptions = $derived.by((): SelectOption[] => {
-    const names = view.harnessNames();
+    const names = view.harnessNames;
     const options: SelectOption[] = [];
     for (const [id, name] of Object.entries(names)) {
       options.push({ value: id, label: name });
@@ -215,7 +215,7 @@
 
   /** @param id the harness's id @returns the name the runtime reports for it, or the id */
   function harnessLabel(id: string): string {
-    return view.harnessNames()[id] ?? id;
+    return view.harnessNames[id] ?? id;
   }
 
   const effortOptions = $derived<SelectOption[]>([

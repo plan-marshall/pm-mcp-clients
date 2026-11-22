@@ -39,7 +39,7 @@
   <ModelsChoice
     models={view.arrayField<ModelRow>('models')}
     harnesses={view.arrayField<ModelHarnessInfo>('harnesses')}
-    harnessNames={view.harnessNames()}
+    harnessNames={view.harnessNames}
     defaultHarness={view.field('default')}
     recommendation={recommendationText}
     busy={view.busy}
