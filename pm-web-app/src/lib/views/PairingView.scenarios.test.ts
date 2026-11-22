@@ -117,8 +117,24 @@ describe('PairingView against the mock runtime scenarios', () => {
     expect(writeText).toHaveBeenCalledWith('pm-operator web pair');
   });
 
-  it('reports a code that does not work with the error under the field', async () => {
-    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('invalid_code'));
+  it.each([
+    [
+      'reports a code that does not work with the error under the field',
+      'invalid_code',
+      'A code works once. Get a fresh one in a terminal of the machine.',
+    ],
+    [
+      'explains an unreachable machine with the error under the field',
+      'network_offline',
+      'The machine cannot be reached right now. Check the connection and try again.',
+    ],
+    [
+      'shows the pairing-lost reason under the field when the runtime refuses the secret',
+      'unauthorized',
+      'Its pairing is no longer accepted.',
+    ],
+  ])('%s', async (_title, errorCode, expectedError) => {
+    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error(errorCode));
 
     const { container } = render(PairingView);
     const input = screen.getByLabelText(/code/i);
@@ -130,47 +146,7 @@ describe('PairingView against the mock runtime scenarios', () => {
       expect(codeInput).toHaveAttribute('aria-invalid', 'true');
       const error = container.querySelector('.field-error');
       expect(error).toBeInTheDocument();
-      expect(error).toHaveTextContent(
-        'A code works once. Get a fresh one in a terminal of the machine.',
-      );
-    });
-  });
-
-  it('explains an unreachable machine with the error under the field', async () => {
-    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('network_offline'));
-
-    const { container } = render(PairingView);
-    const input = screen.getByLabelText(/code/i);
-    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
-    await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
-
-    await waitFor(() => {
-      const codeInput = screen.getByLabelText(/code/i);
-      expect(codeInput).toHaveAttribute('aria-invalid', 'true');
-      const error = container.querySelector('.field-error');
-      expect(error).toBeInTheDocument();
-      expect(error).toHaveTextContent(
-        'The machine cannot be reached right now. Check the connection and try again.',
-      );
-    });
-  });
-
-  it('shows the pairing-lost reason under the field when the runtime refuses the secret', async () => {
-    vi.spyOn(apiClient, 'pair').mockRejectedValue(new Error('unauthorized'));
-
-    const { container } = render(PairingView);
-    const input = screen.getByLabelText(/code/i);
-    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
-    await fireEvent.click(screen.getByRole('button', { name: /pair this browser/i }));
-
-    await waitFor(() => {
-      const codeInput = screen.getByLabelText(/code/i);
-      expect(codeInput).toHaveAttribute('aria-invalid', 'true');
-      const error = container.querySelector('.field-error');
-      expect(error).toBeInTheDocument();
-      expect(error).toHaveTextContent(
-        'Its pairing is no longer accepted.',
-      );
+      expect(error).toHaveTextContent(expectedError);
     });
   });
 

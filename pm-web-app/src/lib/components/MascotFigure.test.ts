@@ -66,12 +66,12 @@ describe('MascotFigure', () => {
       expect(screen.getByTestId('mascot-figure').getAttribute('data-crop')).toBe('full');
     });
 
-    it.each([
-      'mascot-full-1x.webp',
-      'mascot-full-2x.webp',
-      'mascot-bust-1x.webp',
-      'mascot-bust-2x.webp',
-    ])('keeps %s within 60 KB', (file) => {
+    const webpFiles = fs
+      .readdirSync(ASSET_DIR)
+      .filter((file) => file.endsWith('.webp'))
+      .sort();
+
+    it.each(webpFiles)('keeps %s within 60 KB', (file) => {
       expect(fs.statSync(path.join(ASSET_DIR, file)).size).toBeLessThanOrEqual(MAX_FILE_BYTES);
     });
 
@@ -80,12 +80,7 @@ describe('MascotFigure', () => {
       expect(mod.FIGURE_HEIGHT || mod.ENTRY_FIGURE_HEIGHT).toBe(180);
     });
 
-    it.each([
-      'mascot-full-1x.webp',
-      'mascot-full-2x.webp',
-      'mascot-bust-1x.webp',
-      'mascot-bust-2x.webp',
-    ])('verifies the WebP signature (RIFF....WEBPVP8) of %s', (file) => {
+    it.each(webpFiles)('verifies the WebP signature (RIFF....WEBPVP8) of %s', (file) => {
       const buf = fs.readFileSync(path.join(ASSET_DIR, file));
       expect(buf.subarray(0, 4).toString('ascii')).toBe('RIFF');
       expect(buf.subarray(8, 12).toString('ascii')).toBe('WEBP');

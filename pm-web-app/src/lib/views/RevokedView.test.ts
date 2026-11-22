@@ -1,17 +1,22 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import { get } from 'svelte/store';
 import RevokedView from './RevokedView.svelte';
+import { currentLocale, messagesStore } from '../i18n';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { blockOf, ruleOf, stylesheetOf, withoutBlocks } from '../test/stylesheet';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /** The container query under which the figure is hidden: a page too narrow for it beside the card. */
 const FIGURE_HIDDEN_NARROW = '@container revoked-view (max-width: 36rem)';
 
 describe('RevokedView component', () => {
   beforeEach(() => {
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,
@@ -139,6 +144,66 @@ describe('RevokedView component', () => {
       expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
         'Its pairing is no longer accepted.',
       );
+    });
+
+    it('falls back to unknown reason when actor is missing for device or others reasons', () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'device',
+          revoked_by: '',
+          revoked_at: '14:32',
+        },
+      }));
+
+      const { unmount } = render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+      unmount();
+
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'others',
+          revoked_by: '',
+          revoked_at: '14:32',
+        },
+      }));
+
+      render(RevokedView);
+      expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+        'Its pairing is no longer accepted.',
+      );
+    });
+
+    it('updates reason text when locale messages change dynamically', async () => {
+      runtimeStore.update((s) => ({
+        ...s,
+        revokedInfo: {
+          reason: 'terminal',
+          revoked_at: '14:32',
+        },
+      }));
+
+      try {
+        currentLocale.set('en');
+        messagesStore.set(loadMessages('en'));
+        render(RevokedView);
+        expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+          'It was revoked in the terminal at 14:32.',
+        );
+
+        currentLocale.set('de');
+        messagesStore.set(loadMessages('de'));
+        await tick();
+        expect(screen.getByTestId('revoked-reason')).toHaveTextContent(
+          'Er wurde um 14:32 im Terminal entfernt.',
+        );
+      } finally {
+        currentLocale.set('en');
+        messagesStore.set(loadMessages('en'));
+      }
     });
   });
 

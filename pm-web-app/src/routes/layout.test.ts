@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
-import { createRawSnippet, tick } from 'svelte';
+import { createRawSnippet } from 'svelte';
 import { get, type Writable } from 'svelte/store';
 import { messagesStore } from '../lib/i18n';
 import Layout from './+layout.svelte';
@@ -107,15 +107,16 @@ describe('the app shell', () => {
     const pendingMessages = new Promise<Record<string, string>>((resolve) => {
       resolveMessages = resolve;
     });
-    vi.spyOn(apiClient, 'getMessages').mockReturnValue(pendingMessages);
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    const getMessagesSpy = vi.spyOn(apiClient, 'getMessages').mockReturnValue(pendingMessages);
     const getConnSpy = vi.spyOn(apiClient, 'getConnectionStatus');
 
     const { unmount } = render(Layout);
+    await waitFor(() => expect(getMessagesSpy).toHaveBeenCalled());
     unmount();
 
     resolveMessages(loadMessages('en'));
-    await tick();
-    await Promise.resolve();
+    await waitFor(() => expect(get(messagesStore)['web.frame.brand']).toBeDefined());
 
     expect(getConnSpy).not.toHaveBeenCalled();
     expect(get(runtimeStore).isInitialized).toBe(false);

@@ -25,40 +25,57 @@
     fallbackKey: string,
     revokedBy: string,
     revokedTime: string,
+    translate: typeof $t,
   ): string {
     const rawReason = revokedInfo?.reason ?? (fallbackKey || '');
     if (!rawReason || rawReason === 'unknown' || rawReason === 'web.revoked.reason.unknown') {
-      return $t('web.revoked.reason.unknown');
+      return translate('web.revoked.reason.unknown');
     }
 
-    const device = revokedInfo?.revoked_by || (revokedInfo as unknown as Record<string, string>)?.device || revokedBy || 'the terminal client';
-    const tVal = revokedInfo?.revoked_at ?? (revokedInfo as unknown as Record<string, string>)?.time ?? revokedTime;
+    const device =
+      revokedInfo?.revoked_by ||
+      (revokedInfo as unknown as Record<string, string>)?.device ||
+      revokedBy ||
+      '';
+    const tVal =
+      revokedInfo?.revoked_at ??
+      (revokedInfo as unknown as Record<string, string>)?.time ??
+      revokedTime;
 
     if (rawReason === 'device' || rawReason === 'web.revoked.reason.device') {
-      return $t('web.revoked.reason.device', { device, time: tVal });
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('web.revoked.reason.device', { device, time: tVal });
     }
     if (rawReason === 'terminal' || rawReason === 'web.revoked.reason.terminal') {
-      return $t('web.revoked.reason.terminal', { time: tVal });
+      return translate('web.revoked.reason.terminal', { time: tVal });
     }
     if (rawReason === 'others' || rawReason === 'all_others' || rawReason === 'web.revoked.reason.others') {
-      return $t('web.revoked.reason.others', { device, time: tVal });
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('web.revoked.reason.others', { device, time: tVal });
     }
     if (rawReason === 'self' || rawReason === 'this_device' || rawReason === 'web.revoked.reason.self') {
-      return $t('web.revoked.reason.self', { time: tVal });
+      return translate('web.revoked.reason.self', { time: tVal });
     }
     if (rawReason === 'idle' || rawReason === 'web.revoked.reason.idle') {
-      return $t('web.revoked.reason.idle', { days: 30 });
+      return translate('web.revoked.reason.idle', { days: 30 });
     }
     if (rawReason === 'device_revoked') {
-      return $t('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
+      if (!device) {
+        return translate('web.revoked.reason.unknown');
+      }
+      return translate('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
     }
     if (rawReason === 'device_expired') {
-      return $t('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
+      return translate('devices.revoked.reason', { reason: rawReason, by: device, time: tVal });
     }
-    return $t('web.revoked.reason.unknown');
+    return translate('web.revoked.reason.unknown');
   }
 
-  $: reasonText = resolveReason(info, reasonKey, by, time);
+  $: reasonText = resolveReason(info, reasonKey, by, time, $t);
 
   function handlePair() {
     runtimeStore.update((s) => ({
