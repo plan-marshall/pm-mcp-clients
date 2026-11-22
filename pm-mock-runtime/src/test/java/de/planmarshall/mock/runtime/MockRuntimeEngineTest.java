@@ -807,6 +807,7 @@ class MockRuntimeEngineTest {
         // 8. DELETE non-existent single -> 404
         var delNotFound = send("DELETE", "/api/v1/web/devices/non-existent", auth, new byte[0], false);
         assertEquals(404, delNotFound.status());
+        assertEquals("target_not_found", delNotFound.json().get("error"));
 
         // 9. DELETE /api/v1/web/devices?others (on web)
         var webAuth = Map.of("Authorization", "Bearer " + deviceSecret);

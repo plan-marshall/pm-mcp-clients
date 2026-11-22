@@ -65,25 +65,35 @@
     <div class="recipe-ready__parameters" data-testid="recipe-parameters">
       {#each parameters as parameter (parameter.name)}
         {#if parameter.options.length > 0}
-          <SelectField
-            label={parameter.name}
-            options={optionsOf(parameter)}
-            value={valueOf(parameter)}
-            disabled={busy}
-            testid={`parameter-${parameter.name}`}
-            hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
-            onchange={(val) => onParameter(parameter.name, val)}
-          />
+          <div class="recipe-ready__param">
+            <SelectField
+              label={parameter.name}
+              options={optionsOf(parameter)}
+              value={valueOf(parameter)}
+              disabled={busy}
+              testid={`parameter-${parameter.name}`}
+              hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
+              onchange={(val) => onParameter(parameter.name, val)}
+            />
+            {#if parameter.proposed}
+              <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
+            {/if}
+          </div>
         {:else if parameter.available !== false}
-          <TextField
-            label={parameter.name}
-            value={valueOf(parameter)}
-            disabled={busy}
-            testid={`parameter-${parameter.name}`}
-            hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
-            oninput={(event) => onParameter(parameter.name, event.currentTarget.value)}
-            onkeydown={handleKeyDown}
-          />
+          <div class="recipe-ready__param">
+            <TextField
+              label={parameter.name}
+              value={valueOf(parameter)}
+              disabled={busy}
+              testid={`parameter-${parameter.name}`}
+              hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
+              oninput={(event) => onParameter(parameter.name, event.currentTarget.value)}
+              onkeydown={handleKeyDown}
+            />
+            {#if parameter.proposed}
+              <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
+            {/if}
+          </div>
         {:else}
           <Field label={parameter.name}>
             <span class="recipe-ready__no-option" data-testid={`no-option-${parameter.name}`}>
