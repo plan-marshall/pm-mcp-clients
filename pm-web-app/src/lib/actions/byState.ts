@@ -421,7 +421,15 @@ export const EPIC_ACTS: Record<string, ActSpec[]> = {
   ],
 };
 
-/** A project's acts by state (UX-P-04; the grid that draws them is PLAN-59). */
+/**
+ * A project's acts by state (UX-P-04; the rows and the one project page draw them, PLAN-59 D4).
+ *
+ * `add_plan` is the one visible act a row may carry beside its marks (`project-explorer.adoc`,
+ * `#project-row`), so a plan starts without opening the project first; the bar keeps it in the
+ * secondary place and the row draws it from there. A state a project is not in — `setup_needs`,
+ * `released` — opens with the act that moves it on (`Continue the setup`, `Enrol again`), and the
+ * two destructive acts live in the overflow behind their confirmation.
+ */
 export const PROJECT_ACTS: Record<string, ActSpec[]> = {
   ready: [
     {
@@ -431,33 +439,97 @@ export const PROJECT_ACTS: Record<string, ActSpec[]> = {
       ...PRIMARY,
     },
     {
-      id: 'start_plan',
-      labelKey: 'project.act.start_plan',
-      advisoryKey: 'project.act.start_plan.title',
+      id: 'add_plan',
+      labelKey: 'project.action.add_plan',
+      advisoryKey: 'project.action.add_plan.title',
       ...SECONDARY,
     },
     {
-      id: 'start_epic',
-      labelKey: 'project.act.start_epic',
-      advisoryKey: 'project.act.start_epic.title',
+      id: 'add_epic',
+      labelKey: 'project.action.add_epic',
+      advisoryKey: 'project.action.add_epic.title',
       ...SECONDARY,
+    },
+    {
+      id: 'ended_work',
+      labelKey: 'project.action.ended_work',
+      advisoryKey: 'project.action.ended_work.title',
+      ...OVERFLOW,
     },
     {
       id: 'setup',
-      labelKey: 'project.act.setup',
-      advisoryKey: 'project.act.setup.title',
+      labelKey: 'project.action.setup',
+      advisoryKey: 'project.action.setup.title',
       ...OVERFLOW,
     },
     {
       id: 'release',
-      labelKey: 'project.act.release',
-      advisoryKey: 'project.act.release.title',
+      labelKey: 'project.action.release',
+      advisoryKey: 'project.action.release.title',
       ...DESTRUCTIVE,
     },
     {
       id: 'unenrol',
-      labelKey: 'project.act.unenrol',
-      advisoryKey: 'project.act.unenrol.title',
+      labelKey: 'project.action.unenrol',
+      advisoryKey: 'project.action.unenrol.title',
+      ...DESTRUCTIVE,
+    },
+  ],
+  setup_needs: [
+    {
+      id: 'continue_setup',
+      labelKey: 'project.action.continue_setup',
+      advisoryKey: 'project.action.continue_setup.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'add_plan',
+      labelKey: 'project.action.add_plan',
+      advisoryKey: 'project.action.add_plan.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'add_epic',
+      labelKey: 'project.action.add_epic',
+      advisoryKey: 'project.action.add_epic.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'setup',
+      labelKey: 'project.action.setup',
+      advisoryKey: 'project.action.setup.title',
+      ...OVERFLOW,
+    },
+    {
+      id: 'release',
+      labelKey: 'project.action.release',
+      advisoryKey: 'project.action.release.title',
+      ...DESTRUCTIVE,
+    },
+    {
+      id: 'unenrol',
+      labelKey: 'project.action.unenrol',
+      advisoryKey: 'project.action.unenrol.title',
+      ...DESTRUCTIVE,
+    },
+  ],
+  released: [
+    {
+      id: 'enrol_again',
+      labelKey: 'project.action.enrol_again',
+      advisoryKey: 'project.action.enrol_again.title',
+      ...PRIMARY,
+    },
+    {
+      id: 'ended_work',
+      labelKey: 'project.action.ended_work',
+      advisoryKey: 'project.action.ended_work.title',
+      ...SECONDARY,
+    },
+    {
+      id: 'unenrol',
+      labelKey: 'project.action.unenrol',
+      advisoryKey: 'project.action.unenrol.title',
       ...DESTRUCTIVE,
     },
   ],

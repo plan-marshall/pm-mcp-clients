@@ -364,9 +364,9 @@ The status of a package is `open`, `in progress`, `blocked`, `done` or `dropped`
 |Milestone 11
 
 |link:web-moving-between-plans.adoc[`web-moving-between-plans`]
-|Web app: the work list beside a plan and an epic (the column chain of link:../design/web-app/navigation.adoc#levels[Navigation]), _Add a plan_ on a project's row, one notification for a burst and none after a reconnect; built by the navigation engine, `PLAN-59` and `PLAN-51` (the notification part landed with `PLAN-51`; the row is set `done` by the last of the three, so it stays open until the navigation engine and `PLAN-59`'s _Add a plan_ land)
-|`open`
-|`overview-order-and-size`; the navigation engine; `PLAN-51` (task 3); `PLAN-59` (task 2)
+|Web app: the work list beside a plan and an epic (the column chain of link:../design/web-app/navigation.adoc#levels[Navigation]), _Add a plan_ on a project's row, one notification for a burst and none after a reconnect; built by the navigation engine, `PLAN-59` and `PLAN-51` (the notification part landed with `PLAN-51`, the navigation engine with `PLAN-143`, which superseded `PLAN-83`, and _Add a plan_ on the row with `PLAN-59`)
+|`done`
+|`overview-order-and-size`
 |Milestone 11
 
 |link:relay-session-mode-removal.adoc[`relay-session-mode-removal`]

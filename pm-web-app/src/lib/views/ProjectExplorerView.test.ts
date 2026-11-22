@@ -1,130 +1,142 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
 import { runtimeStore } from '../stores/runtime';
-import { PROJECT_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ProjectExplorer } from '../api/client';
 import { ClientError } from '../api/errors';
 
-describe('ProjectExplorerView component', () => {
-  const mockExplorer: ProjectExplorer = {
-    favourites: [
-      {
-        project_id: 'pm-mcp-clients',
-        display_name: 'pm-mcp-clients',
-        remote_url: 'https://github.com/plan-marshall/pm-mcp-clients',
-        readiness: 'ready',
-        needs_operator_count: 2,
-        active_plans_count: 3,
-        active_epics_count: 1,
-        last_active: '2026-10-17T10:04:00Z',
-        is_favourite: true,
-        is_released: false,
-      },
-      {
-        project_id: 'pm-mcp-core',
-        display_name: 'pm-mcp-core',
-        remote_url: 'https://github.com/plan-marshall/pm-mcp-core',
-        readiness: 'ready',
-        needs_operator_count: 0,
-        active_plans_count: 2,
-        active_epics_count: 0,
-        last_active: '2026-10-17T09:57:00Z',
-        is_favourite: true,
-        is_released: false,
-      },
-    ],
-    recent: [
-      {
-        project_id: 'plan-marshall',
-        display_name: 'plan-marshall',
-        remote_url: 'https://github.com/plan-marshall/plan-marshall',
-        readiness: 'setup_needs',
-        setup_needs_summary: 'credential sonar',
-        needs_operator_count: 1,
-        active_plans_count: 0,
-        active_epics_count: 0,
-        last_active: '2026-10-16T10:00:00Z',
-        is_favourite: false,
-        is_released: false,
-      },
-    ],
-    all_projects: [
-      {
-        project_id: 'API-Sheriff',
-        display_name: 'API-Sheriff',
-        remote_url: 'https://github.com/plan-marshall/api-sheriff',
-        readiness: 'ready',
-        needs_operator_count: 0,
-        active_plans_count: 0,
-        active_epics_count: 0,
-        last_active: '2026-09-12T10:00:00Z',
-        is_favourite: false,
-        is_released: false,
-      },
-      {
-        project_id: 'cui-http',
-        display_name: 'cui-http',
-        remote_url: 'https://github.com/cuioss/cui-http',
-        readiness: 'ready',
-        needs_operator_count: 0,
-        active_plans_count: 0,
-        active_epics_count: 0,
-        last_active: '2026-10-14T10:00:00Z',
-        is_favourite: false,
-        is_released: false,
-      },
-      {
-        project_id: 'legacy-portal',
-        display_name: 'legacy-portal',
-        remote_url: null,
-        readiness: 'released',
-        needs_operator_count: 0,
-        active_plans_count: 0,
-        active_epics_count: 0,
-        last_active: '2026-08-17T10:00:00Z',
-        is_favourite: false,
-        is_released: true,
-      },
-    ],
-    being_added: [
-      {
-        checkout_path: '~/git/cui-parent',
-        current_step: 'Identity',
-        step_number: 2,
-        total_steps: 10,
-        continue_link: '/api/v1/entries/ent-cui/continue',
-        abandon_link: '/api/v1/entries/ent-cui/abandon',
-      },
-    ],
-  };
+/**
+ * The Projects lens (PLAN-59 D1, D4): the list of rows, the one project page beside it, and the acts
+ * a project offers — the visible _Add a plan_ on a ready row, and the row menu with the two
+ * destructive acts behind their confirmation.
+ */
 
+const mockExplorer: ProjectExplorer = {
+  favourites: [
+    {
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      remote_url: 'https://github.com/plan-marshall/pm-mcp-clients',
+      readiness: 'ready',
+      needs_operator_count: 2,
+      active_plans_count: 3,
+      active_epics_count: 1,
+      last_active: '2026-10-17T10:04:00Z',
+      is_favourite: true,
+      is_released: false,
+    },
+    {
+      project_id: 'pm-mcp-core',
+      display_name: 'pm-mcp-core',
+      remote_url: 'https://github.com/plan-marshall/pm-mcp-core',
+      readiness: 'ready',
+      needs_operator_count: 0,
+      active_plans_count: 2,
+      active_epics_count: 0,
+      last_active: '2026-10-17T09:57:00Z',
+      is_favourite: true,
+      is_released: false,
+    },
+  ],
+  recent: [
+    {
+      project_id: 'plan-marshall',
+      display_name: 'plan-marshall',
+      remote_url: 'https://github.com/plan-marshall/plan-marshall',
+      readiness: 'setup_needs',
+      setup_needs_summary: 'credential sonar',
+      needs_operator_count: 1,
+      active_plans_count: 0,
+      active_epics_count: 0,
+      last_active: '2026-10-16T10:00:00Z',
+      is_favourite: false,
+      is_released: false,
+    },
+  ],
+  all_projects: [
+    {
+      project_id: 'API-Sheriff',
+      display_name: 'API-Sheriff',
+      remote_url: 'https://github.com/plan-marshall/api-sheriff',
+      readiness: 'ready',
+      needs_operator_count: 0,
+      active_plans_count: 0,
+      active_epics_count: 0,
+      last_active: '2026-09-12T10:00:00Z',
+      is_favourite: false,
+      is_released: false,
+    },
+    {
+      project_id: 'cui-http',
+      display_name: 'cui-http',
+      remote_url: 'https://github.com/cuioss/cui-http',
+      readiness: 'ready',
+      needs_operator_count: 0,
+      active_plans_count: 0,
+      active_epics_count: 0,
+      last_active: '2026-10-14T10:00:00Z',
+      is_favourite: false,
+      is_released: false,
+    },
+    {
+      project_id: 'legacy-portal',
+      display_name: 'legacy-portal',
+      remote_url: null,
+      readiness: 'released',
+      needs_operator_count: 0,
+      active_plans_count: 0,
+      active_epics_count: 0,
+      last_active: '2026-08-17T10:00:00Z',
+      is_favourite: false,
+      is_released: true,
+    },
+  ],
+  being_added: [
+    {
+      checkout_path: '~/git/cui-parent',
+      current_step: 'Identity',
+      step_number: 2,
+      total_steps: 10,
+      continue_link: '/api/v1/entries/ent-cui/continue',
+      abandon_link: '/api/v1/entries/ent-cui/abandon',
+    },
+  ],
+};
+
+/**
+ * @param over the store fields to override
+ * @returns a paired, onboarded runtime state on the projects route
+ */
+function state(over: Record<string, unknown> = {}) {
+  return makeRuntimeState({
+    isInitialized: true,
+    isPaired: true,
+    isOnboarded: true,
+    deviceLabel: 'Firefox on mbp',
+    machineName: 'local-machine',
+    currentRoute: 'projects',
+    currentState: null,
+    isRevoked: false,
+    revokedReason: '',
+    isOffline: false,
+    isListenerClosed: false,
+    completedSteps: 0,
+    isDraining: false,
+    isStopped: false,
+    activeStep: 1,
+    unreadReportsCount: 0,
+    openDecisionsCount: 0,
+    ...over,
+  });
+}
+
+describe('ProjectExplorerView component', () => {
   beforeEach(() => {
     localStorage.clear();
     window.history.replaceState(null, '', '/projects');
-    runtimeStore.set(
-      makeRuntimeState({
-        isInitialized: true,
-        isPaired: true,
-        isOnboarded: true,
-        deviceLabel: 'Firefox on mbp',
-        machineName: 'local-machine',
-        currentRoute: 'projects',
-        currentState: null,
-        isRevoked: false,
-        revokedReason: '',
-        isOffline: false,
-        isListenerClosed: false,
-        completedSteps: 0,
-        isDraining: false,
-        isStopped: false,
-        activeStep: 1,
-        unreadReportsCount: 0,
-        openDecisionsCount: 0,
-      }),
-    );
+    runtimeStore.set(state());
 
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(mockExplorer);
     vi.spyOn(apiClient, 'toggleFavourite').mockResolvedValue();
@@ -143,6 +155,36 @@ describe('ProjectExplorerView component', () => {
       status: 'ok',
       project_ids: [],
     });
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          current_phase: 'execute',
+          phase_state: 'running',
+        },
+      ],
+      epics: [],
+      alongside_landings: [],
+    });
+    vi.spyOn(apiClient, 'getEndedWork').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      page: 1,
+      total_pages: 1,
+      has_newer: false,
+      has_older: false,
+      items: [
+        {
+          id: 'session-log',
+          kind: 'plan',
+          title: 'Session log and generations',
+          outcome: 'completed',
+          ended_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
     vi.spyOn(apiClient, 'getProjectSettings').mockResolvedValue({
       project_id: 'pm-mcp-clients',
       revision: 7,
@@ -160,6 +202,19 @@ describe('ProjectExplorerView component', () => {
       conflict: false,
       revision: 8,
     });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      step: 4,
+      total_steps: 10,
+      steps: [
+        { step: 1, key: 'identity', status: 'done' },
+        { step: 4, key: 'environment', status: 'current' },
+      ],
+    });
+    vi.spyOn(apiClient, 'getOverSize').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      distributions: [{ project_id: 'pm-mcp-clients', role: 'implementer', current_multiple: 2, buckets: [] }],
+    });
   });
 
   it('draws the error pattern when the explorer cannot be read', async () => {
@@ -175,7 +230,7 @@ describe('ProjectExplorerView component', () => {
     await waitFor(() => expect(explorer).toHaveBeenCalledTimes(2));
   });
 
-  it('renders 4-part explorer view with being added, favourites, recent, and all projects', async () => {
+  it('renders the four sections as rows of the list', async () => {
     render(ProjectExplorerView);
 
     await waitFor(() => {
@@ -188,16 +243,18 @@ describe('ProjectExplorerView component', () => {
     expect(screen.getByText('~/git/cui-parent')).toBeInTheDocument();
     expect(screen.getByText('step 2 of 10: Identity')).toBeInTheDocument();
 
-    expect(screen.getByTestId('project-card-pm-mcp-clients')).toBeInTheDocument();
+    expect(screen.getByTestId('project-row-pm-mcp-clients')).toBeInTheDocument();
     expect(
       screen.getByTestId('star-btn-pm-mcp-clients').querySelector('[data-icon="act.favourite-on"]'),
     ).not.toBeNull();
 
-    expect(screen.getByTestId('project-card-plan-marshall')).toBeInTheDocument();
-    expect(screen.getByText('setup needs: credential sonar')).toBeInTheDocument();
+    expect(screen.getByTestId('project-row-plan-marshall')).toBeInTheDocument();
+    // The state word comes from the shared display vocabulary, never a raw readiness value.
+    expect(within(screen.getByTestId('project-row-plan-marshall')).getByText('setup open')).toBeVisible();
+    expect(within(screen.getByTestId('project-row-plan-marshall')).getByText('! setup')).toBeVisible();
 
-    expect(screen.getByTestId('project-card-API-Sheriff')).toBeInTheDocument();
-    expect(screen.getByTestId('project-card-legacy-portal')).toBeInTheDocument();
+    expect(screen.getByTestId('project-row-API-Sheriff')).toBeInTheDocument();
+    expect(screen.getByTestId('project-row-legacy-portal')).toBeInTheDocument();
   });
 
   it('filters projects by text query', async () => {
@@ -212,25 +269,175 @@ describe('ProjectExplorerView component', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('section-filtered-matches')).toBeInTheDocument();
-      expect(screen.getByTestId('project-card-cui-http')).toBeInTheDocument();
-      expect(screen.queryByTestId('project-card-API-Sheriff')).not.toBeInTheDocument();
+      expect(screen.getByTestId('project-row-cui-http')).toBeInTheDocument();
+      expect(screen.queryByTestId('project-row-API-Sheriff')).not.toBeInTheDocument();
     });
   });
 
-  it('toggles favourite status when star button is clicked', async () => {
+  it('toggles favourite status when the star is clicked', async () => {
     render(ProjectExplorerView);
 
     await waitFor(() => {
       expect(screen.getByTestId('star-btn-pm-mcp-clients')).toBeInTheDocument();
     });
 
-    const starBtn = screen.getByTestId('star-btn-pm-mcp-clients');
-    await fireEvent.click(starBtn);
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
 
     expect(apiClient.toggleFavourite).toHaveBeenCalledWith('pm-mcp-clients', false);
   });
 
-  it('renders empty state when no projects exist', async () => {
+  it('reorders the favourites by the keyboard route and persists the order', async () => {
+    render(ProjectExplorerView);
+
+    const favouriteRows = await screen.findByTestId('favourite-rows');
+    const rows = favouriteRows.querySelectorAll('[data-testid^="project-row-"]');
+    expect(rows).toHaveLength(2);
+
+    await fireEvent.keyDown(rows[0] as HTMLElement, { key: 'ArrowDown', altKey: true });
+
+    await waitFor(() =>
+      expect(apiClient.reorderFavouriteProjects).toHaveBeenCalledWith([
+        'pm-mcp-core',
+        'pm-mcp-clients',
+      ]),
+    );
+    expect(screen.queryByTestId('reorder-error')).not.toBeInTheDocument();
+  });
+
+  it('reorders the favourites by dragging one onto another', async () => {
+    render(ProjectExplorerView);
+
+    const favouriteRows = await screen.findByTestId('favourite-rows');
+    const rows = favouriteRows.querySelectorAll('[data-testid^="project-row-"]');
+    const dataTransfer = {
+      effectAllowed: '',
+      setData: vi.fn(),
+      getData: vi.fn(() => 'pm-mcp-clients'),
+    };
+
+    await fireEvent.dragStart(rows[0] as HTMLElement, { dataTransfer });
+    await fireEvent.drop(rows[1] as HTMLElement, { dataTransfer });
+
+    await waitFor(() =>
+      expect(apiClient.reorderFavouriteProjects).toHaveBeenCalledWith([
+        'pm-mcp-core',
+        'pm-mcp-clients',
+      ]),
+    );
+  });
+
+  it('restores the old order and says so when the runtime refuses the new one', async () => {
+    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockRejectedValue(
+      new ClientError('network_offline'),
+    );
+
+    render(ProjectExplorerView);
+
+    const favouriteRows = await screen.findByTestId('favourite-rows');
+    const rows = favouriteRows.querySelectorAll('[data-testid^="project-row-"]');
+    await fireEvent.keyDown(rows[0] as HTMLElement, { key: 'ArrowDown', altKey: true });
+
+    expect(await screen.findByTestId('reorder-error')).toBeInTheDocument();
+    const after = screen.getByTestId('favourite-rows').querySelectorAll('[data-testid^="project-row-"]');
+    expect(after[0]).toHaveTextContent('pm-mcp-clients');
+  });
+
+  it('carries Add a plan on a ready row and disables it with its reason on a not-ready row', async () => {
+    render(ProjectExplorerView);
+
+    const ready = await screen.findByTestId('add-plan-pm-mcp-clients');
+    expect(ready).toBeEnabled();
+    expect(ready).toHaveTextContent('Add a plan');
+
+    const notReady = screen.getByTestId('add-plan-plan-marshall');
+    expect(notReady).toHaveAttribute('aria-disabled', 'true');
+    expect(notReady).toHaveAttribute('title', 'plan-marshall is not ready: setup');
+    expect(notReady).toHaveAccessibleDescription('plan-marshall is not ready: setup');
+  });
+
+  it('starts a plan from a ready row without opening the project first', async () => {
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('add-plan-pm-mcp-clients'));
+
+    await waitFor(() => {
+      expect(get(runtimeStore).currentRoute).toBe('start');
+      expect(get(runtimeStore).startProjectId).toBe('pm-mcp-clients');
+      expect(get(runtimeStore).startKind).toBe('plan');
+    });
+  });
+
+  it('keeps release and unenrol out of the row and in its menu', async () => {
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    expect(within(row).queryByTestId('release-btn-pm-mcp-clients')).toBeNull();
+    expect(within(row).queryByText('Release…')).toBeNull();
+
+    await fireEvent.click(
+      within(row).getByRole('button', { name: 'Actions for pm-mcp-clients' }),
+    );
+
+    expect(await within(row).findByTestId('action-add_epic')).toBeInTheDocument();
+    expect(within(row).getByTestId('action-release')).toBeInTheDocument();
+    expect(within(row).getByTestId('action-unenrol')).toBeInTheDocument();
+    expect(within(row).queryByTestId('action-add_plan')).toBeNull();
+  });
+
+  it('releases a project through the confirmation, with its reason', async () => {
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    await fireEvent.click(
+      within(row).getByRole('button', { name: 'Actions for pm-mcp-clients' }),
+    );
+    await fireEvent.click(await screen.findByTestId('action-release'));
+
+    const modal = await screen.findByTestId('release-modal');
+    expect(modal).toBeInTheDocument();
+    await fireEvent.input(screen.getByTestId('release-reason-input'), {
+      target: { value: 'Project completed and archived' },
+    });
+    await fireEvent.click(within(modal).getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(apiClient.releaseProject).toHaveBeenCalledWith(
+        'pm-mcp-clients',
+        'Project completed and archived',
+      ),
+    );
+  });
+
+  it('unenrols a project through its confirmation', async () => {
+    render(ProjectExplorerView);
+
+    const row = await screen.findByTestId('project-row-pm-mcp-clients');
+    await fireEvent.click(
+      within(row).getByRole('button', { name: 'Actions for pm-mcp-clients' }),
+    );
+    await fireEvent.click(await screen.findByTestId('action-unenrol'));
+
+    const modal = await screen.findByTestId('unenrol-modal');
+    await fireEvent.click(within(modal).getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(apiClient.unenrolProject).toHaveBeenCalledWith('pm-mcp-clients'));
+  });
+
+  it('abandons a being-added run after its confirmation', async () => {
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('abandon-onboarding-btn'));
+    const modal = await screen.findByTestId('abandon-modal');
+    await fireEvent.click(within(modal).getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() =>
+      expect(apiClient.abandonOnboarding).toHaveBeenCalledWith(
+        '/api/v1/entries/ent-cui/abandon',
+      ),
+    );
+  });
+
+  it('renders the empty state when no project is enrolled', async () => {
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
       favourites: [],
       recent: [],
@@ -240,761 +447,186 @@ describe('ProjectExplorerView component', () => {
 
     render(ProjectExplorerView);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('empty-projects-state')).toBeInTheDocument();
-    });
-    expect(screen.getByText('No project is enrolled yet.')).toBeInTheDocument();
+    expect(await screen.findByTestId('empty-projects-state')).toBeInTheDocument();
   });
 
-  it('opens release modal and executes project release', async () => {
+  it('keeps the list when a background refresh fails', async () => {
     render(ProjectExplorerView);
+    await screen.findByTestId('project-row-pm-mcp-clients');
 
-    await waitFor(() => {
-      expect(screen.getByTestId('release-btn-pm-mcp-clients')).toBeInTheDocument();
-    });
+    vi.spyOn(apiClient, 'getProjectExplorer').mockRejectedValue(
+      new ClientError('network_offline'),
+    );
+    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
 
-    const releaseBtn = screen.getByTestId('release-btn-pm-mcp-clients');
-    await fireEvent.click(releaseBtn);
-
-    expect(screen.getByTestId('release-modal')).toBeInTheDocument();
-
-    const reasonInput = screen.getByTestId('release-reason-input');
-    await fireEvent.input(reasonInput, { target: { value: 'Finished work' } });
-
-    const confirmBtn = screen.getByTestId('confirm-release-btn');
-    await fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(apiClient.releaseProject).toHaveBeenCalledWith('pm-mcp-clients', 'Finished work');
-    });
+    await waitFor(() => expect(screen.getByTestId('explorer-error')).toBeInTheDocument());
   });
+});
 
-  it("shows the sentence of the act failure's code instead of the code", async () => {
+describe('the one project page', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState(null, '', '/projects/pm-mcp-clients');
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: null,
+      }),
+    );
+
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(mockExplorer);
-    vi.spyOn(apiClient, 'releaseProject').mockRejectedValue(new ClientError('timeout'));
-
-    render(ProjectExplorerView);
-
-    await waitFor(() =>
-      expect(screen.getByTestId('release-btn-pm-mcp-clients')).toBeInTheDocument(),
-    );
-    await fireEvent.click(screen.getByTestId('release-btn-pm-mcp-clients'));
-    await fireEvent.click(screen.getByTestId('confirm-release-btn'));
-
-    const banner = await screen.findByTestId('release-error-banner');
-    expect(banner).toHaveTextContent(
-      'Try again; if it keeps taking this long, check that the runtime is running.',
-    );
-    expect(banner).not.toHaveTextContent(/^timeout$/);
-  });
-
-  it('clears the favourite banner after a toggle succeeds', async () => {
-    vi.spyOn(apiClient, 'toggleFavourite').mockRejectedValueOnce(new ClientError('timeout'));
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => expect(screen.getByTestId('star-btn-pm-mcp-clients')).toBeInTheDocument());
-    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
-
-    expect(await screen.findByTestId('explorer-action-error')).toHaveTextContent(
-      'Failed to update favourite',
-    );
-
-    await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
-
-    await waitFor(() => expect(screen.queryByTestId('explorer-action-error')).toBeNull());
-  });
-
-  it('handles unenrolment safety check refusal on active work', async () => {
-    // A daemon refusal carries its wire code as the message, as `httpError` keeps it.
-    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(new Error('scope_active'));
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('unenrol-btn-pm-mcp-clients')).toBeInTheDocument();
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          current_phase: 'execute',
+          phase_state: 'running',
+        },
+      ],
+      epics: [],
+      alongside_landings: [],
     });
-
-    const unenrolBtn = screen.getByTestId('unenrol-btn-pm-mcp-clients');
-    await fireEvent.click(unenrolBtn);
-
-    expect(screen.getByTestId('unenrol-modal')).toBeInTheDocument();
-
-    const confirmBtn = screen.getByTestId('confirm-unenrol-btn');
-    await fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('unenrol-error-banner')).toBeInTheDocument();
+    vi.spyOn(apiClient, 'getEndedWork').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      page: 1,
+      total_pages: 1,
+      has_newer: false,
+      has_older: false,
+      items: [
+        {
+          id: 'session-log',
+          kind: 'plan',
+          title: 'Session log and generations',
+          outcome: 'completed',
+          ended_at: '2026-10-15T10:00:00Z',
+        },
+      ],
     });
-    expect(screen.getByTestId('unenrol-error-banner')).toHaveTextContent(
-      'pm-mcp-clients cannot be unenrolled while work runs. End them first, or release the project, which ends them.',
-    );
-  });
-
-  it.each([
-    [new Error('HTTP 409 scope_active'), 'Failed to unenrol project'],
-    [new ClientError('timeout'), 'Try again; if it keeps taking this long'],
-  ])('reads an unenrol refusal by its code only (%s)', async (failure, text) => {
-    vi.spyOn(apiClient, 'unenrolProject').mockRejectedValue(failure);
-    render(ProjectExplorerView);
-    await fireEvent.click(await screen.findByTestId('unenrol-btn-pm-mcp-clients'));
-
-    await fireEvent.click(screen.getByTestId('confirm-unenrol-btn'));
-
-    const banner = await screen.findByTestId('unenrol-error-banner');
-    expect(banner).toHaveTextContent(text);
-    expect(banner).not.toHaveTextContent('cannot be unenrolled while work runs');
-  });
-
-  it('unenrols a project and reads the explorer again', async () => {
-    render(ProjectExplorerView);
-    await fireEvent.click(await screen.findByTestId('unenrol-btn-pm-mcp-clients'));
-
-    await fireEvent.click(screen.getByTestId('confirm-unenrol-btn'));
-
-    await waitFor(() => expect(screen.queryByTestId('unenrol-modal')).toBeNull());
-    expect(apiClient.unenrolProject).toHaveBeenCalledWith('pm-mcp-clients');
-    expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2);
-  });
-
-  it('marks a recent project that is a favourite as one, and its star removes it', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...mockExplorer,
-      recent: [{ ...mockExplorer.recent[0], is_favourite: true }],
+    vi.spyOn(apiClient, 'getProjectSettings').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      revision: 7,
+      values: [
+        {
+          aspect: 'landing',
+          value: 'landing.main',
+          origin: 'team',
+          choices: ['landing.main', 'landing.files'],
+        },
+      ],
     });
-    render(ProjectExplorerView);
-
-    const star = await screen.findByTestId('star-btn-plan-marshall');
-
-    expect(star).toHaveAttribute('aria-label', 'Remove from favourites');
-    expect(star.querySelector('[data-icon="act.favourite-on"]')).not.toBeNull();
-    await fireEvent.click(star);
-    expect(apiClient.toggleFavourite).toHaveBeenCalledWith('plan-marshall', false);
-  });
-
-  it('reads the explorer once when it opens after a project event', async () => {
-    runtimeStore.update((state) => ({ ...state, projectEventNotice: 'pm-mcp-clients changed' }));
-
-    render(ProjectExplorerView);
-    await screen.findByTestId('section-favourites');
-
-    expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(1);
-  });
-
-  it.each(PROJECT_REFRESH_EVENTS)(
-    'reads the explorer again once on %s',
-    async (event) => {
-      let emit: (name: string) => void = () => {};
-      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
-        emit = (name) => handler(name, {});
-        return () => {};
-      });
-      render(ProjectExplorerView);
-      await screen.findByTestId('section-favourites');
-
-      emit('report.sent');
-      emit(event);
-
-      await waitFor(() => expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2));
-    },
-  );
-
-  it('reads the explorer once for a release, which the runtime reports as a project change', async () => {
-    // The mock runtime broadcasts its own `project.released` event AND `project.changed` in the same
-    // act (MockRuntimeEngine, release), and only the second is a member of the closed EventName
-    // catalogue. The explorer therefore reads once, on the catalogued name.
-    let emit: (name: string) => void = () => {};
-    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
-      emit = (name) => handler(name, {});
-      return () => {};
-    });
-    render(ProjectExplorerView);
-    await screen.findByTestId('section-favourites');
-
-    emit('project.released');
-    emit('project.changed');
-
-    await waitFor(() => expect(apiClient.getProjectExplorer).toHaveBeenCalledTimes(2));
-  });
-
-  it.each([
-    ['release-btn-pm-mcp-clients', 'release-modal', 'cancel-release-btn'],
-    ['unenrol-btn-pm-mcp-clients', 'unenrol-modal', 'cancel-unenrol-btn'],
-    ['abandon-onboarding-btn', 'abandon-modal', 'cancel-abandon-btn'],
-  ])('closes the dialog of %s without acting', async (opener, modal, cancel) => {
-    render(ProjectExplorerView);
-    await fireEvent.click(await screen.findByTestId(opener));
-    expect(screen.getByTestId(modal)).toBeInTheDocument();
-
-    await fireEvent.click(screen.getByTestId(cancel));
-
-    expect(screen.queryByTestId(modal)).toBeNull();
-    expect(apiClient.releaseProject).not.toHaveBeenCalled();
-    expect(apiClient.unenrolProject).not.toHaveBeenCalled();
-    expect(apiClient.abandonOnboarding).not.toHaveBeenCalled();
-  });
-
-  it('releases without a reason when none is given', async () => {
-    render(ProjectExplorerView);
-    await fireEvent.click(await screen.findByTestId('release-btn-pm-mcp-clients'));
-
-    await fireEvent.click(screen.getByTestId('confirm-release-btn'));
-
-    await waitFor(() => expect(screen.queryByTestId('release-modal')).toBeNull());
-    expect(apiClient.releaseProject).toHaveBeenCalledWith('pm-mcp-clients', undefined);
-  });
-
-  it('abandons a run that names no abandon link by its checkout and says why it failed', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...mockExplorer,
-      being_added: [{ ...mockExplorer.being_added[0], abandon_link: undefined }],
-    });
-    vi.spyOn(apiClient, 'abandonOnboarding').mockRejectedValue(new Error('not a code'));
-    render(ProjectExplorerView);
-    await fireEvent.click(await screen.findByTestId('abandon-onboarding-btn'));
-
-    await fireEvent.click(screen.getByTestId('confirm-abandon-btn'));
-
-    expect(await screen.findByText('Failed to abandon onboarding')).toBeInTheDocument();
-    expect(apiClient.abandonOnboarding).toHaveBeenCalledWith('~/git/cui-parent');
-  });
-
-  it('says no project matches and clears the filter', async () => {
-    render(ProjectExplorerView);
-    const input = await screen.findByTestId('project-filter-input');
-    await fireEvent.input(input, { target: { value: 'nothing-like-this' } });
-
-    expect(await screen.findByText("No projects match 'nothing-like-this'.")).toBeInTheDocument();
-    await fireEvent.click(screen.getByRole('button', { name: 'Clear filter' }));
-
-    expect(input).toHaveValue('');
-    expect(screen.getByTestId('section-favourites')).toBeInTheDocument();
-  });
-
-  it('names a matched project by its id where its name differs', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...mockExplorer,
-      all_projects: [{ ...mockExplorer.all_projects[1], display_name: 'CUI HTTP' }],
-    });
-    render(ProjectExplorerView);
-    const input = await screen.findByTestId('project-filter-input');
-
-    await fireEvent.input(input, { target: { value: 'cui' } });
-
-    const card = await screen.findByTestId('project-card-cui-http');
-    expect(card).toHaveTextContent('CUI HTTP');
-    expect(card).toHaveTextContent('cui-http');
-  });
-
-  it('lists all projects in the served order when sorted by use', async () => {
-    render(ProjectExplorerView);
-    const select = await screen.findByTestId('project-sort-select');
-
-    await fireEvent.change(select, { target: { value: 'most_used' } });
-
-    const section = screen.getByTestId('section-all-projects');
-    expect(section).toHaveTextContent('All projects (most used)');
-    const cards = section.querySelectorAll('[data-testid^="project-card-"]');
-    expect([...cards].map((card) => card.getAttribute('data-testid'))).toEqual([
-      'project-card-API-Sheriff',
-      'project-card-cui-http',
-      'project-card-legacy-portal',
-    ]);
-  });
-
-  it('opens running work from a project card', async () => {
-    render(ProjectExplorerView);
-
-    await fireEvent.click(await screen.findByTestId('running-work-btn-API-Sheriff'));
-
-    expect(get(runtimeStore).currentRoute).toBe('overview');
-  });
-
-  it.each([
-    ['text that names no favourite', { dataTransfer: { getData: () => 'not-a-favourite' } }],
-    ['the favourite itself', { dataTransfer: { getData: () => 'pm-mcp-clients' } }],
-    ['nothing at all', {}],
-  ])('ignores a drop of %s', async (_case, init) => {
-    render(ProjectExplorerView);
-    const target = await screen.findByTestId('project-card-pm-mcp-clients');
-
-    await fireEvent.drop(target, init);
-
-    expect(apiClient.reorderFavouriteProjects).not.toHaveBeenCalled();
-  });
-
-  it('drags a favourite as a move carrying its id, onto a card that accepts it', async () => {
-    render(ProjectExplorerView);
-    const card = await screen.findByTestId('project-card-pm-mcp-core');
-    const dataTransfer = { setData: vi.fn(), effectAllowed: 'all' };
-
-    await fireEvent.dragStart(card, { dataTransfer });
-    const accepted = await fireEvent.dragOver(screen.getByTestId('project-card-pm-mcp-clients'));
-
-    expect(dataTransfer.setData).toHaveBeenCalledWith('text/plain', 'pm-mcp-core');
-    expect(dataTransfer.effectAllowed).toBe('move');
-    expect(accepted).toBe(false);
-  });
-
-  it('holds the order controls while a new order is written', async () => {
-    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockReturnValue(new Promise(() => {}));
-    render(ProjectExplorerView);
-
-    await fireEvent.click(await screen.findByTestId('favourite-down-pm-mcp-clients'));
-
-    expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeDisabled();
-    expect(screen.getByTestId('favourite-down-pm-mcp-core')).toBeDisabled();
-    await fireEvent.drop(screen.getByTestId('project-card-pm-mcp-core'), {
-      dataTransfer: { getData: () => 'pm-mcp-clients' },
-    });
-    expect(apiClient.reorderFavouriteProjects).toHaveBeenCalledTimes(1);
-  });
-
-  it('leaves the filter empty when the address names a project the explorer does not hold', async () => {
-    window.history.replaceState(null, '', '/projects?project=gone-project');
-    render(ProjectExplorerView);
-
-    await screen.findByTestId('section-favourites');
-
-    expect(screen.getByTestId('project-filter-input')).toHaveValue('');
-  });
-
-  it('stops listening to project events and address steps once it is closed', async () => {
-    const unsubscribe = vi.fn();
-    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(unsubscribe);
-    const removed = vi.spyOn(window, 'removeEventListener');
-    const { unmount } = render(ProjectExplorerView);
-    await screen.findByTestId('section-favourites');
-
-    unmount();
-
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-    expect(removed).toHaveBeenCalledWith('popstate', expect.any(Function));
-    removed.mockRestore();
-  });
-
-  it('draws the error pattern when a later read of the explorer fails', async () => {
-    let emit: (name: string) => void = () => {};
-    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
-      emit = (name) => handler(name, {});
-      return () => {};
-    });
-    render(ProjectExplorerView);
-    await screen.findByTestId('section-favourites');
-    vi.mocked(apiClient.getProjectExplorer).mockRejectedValueOnce(new ClientError('timeout'));
-
-    emit('project.changed');
-
-    expect(await screen.findByTestId('explorer-error')).toHaveTextContent(
-      'The request took too long',
-    );
-    expect(screen.queryByTestId('section-favourites')).toBeNull();
-  });
-
-  it('shows a run being added without the empty word when no project is enrolled yet', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...mockExplorer,
-      favourites: [],
-      recent: [],
-      all_projects: [],
-    });
-    render(ProjectExplorerView);
-
-    expect(await screen.findByTestId('section-being-added')).toBeInTheDocument();
-    expect(screen.queryByTestId('empty-projects-state')).toBeNull();
-    expect(screen.queryByTestId('section-favourites')).toBeNull();
-    expect(screen.queryByTestId('section-recent')).toBeNull();
-    expect(screen.queryByTestId('section-all-projects')).toBeNull();
-  });
-
-  it('names the setup a project needs, or that it needs its setup', async () => {
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...mockExplorer,
-      recent: [{ ...mockExplorer.recent[0], setup_needs_summary: undefined }],
-    });
-    render(ProjectExplorerView);
-
-    const card = await screen.findByTestId('project-card-plan-marshall');
-
-    expect(card).toHaveTextContent('setup needs: setup');
-    expect(card).toHaveTextContent('! 1');
-  });
-
-  describe('the setup drawer', () => {
-    it('shows the values of the project it was last opened for', async () => {
-      let releaseFirst: (value: unknown) => void = () => {};
-      vi.spyOn(apiClient, 'getProjectSettings')
-        .mockImplementationOnce(() => new Promise((resolve) => (releaseFirst = resolve)) as never)
-        .mockResolvedValueOnce({
-          project_id: 'pm-mcp-core',
-          revision: 3,
-          values: [{ aspect: 'core.value', value: 'core', origin: 'project' }],
-        });
-      render(ProjectExplorerView);
-      await fireEvent.click(await screen.findByTestId('setup-btn-pm-mcp-clients'));
-      await fireEvent.click(screen.getByTestId('close-setup-btn'));
-      await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-core'));
-      await screen.findByTestId('setting-input-core.value');
-
-      await act(async () => {
-        releaseFirst({
-          project_id: 'pm-mcp-clients',
-          revision: 7,
-          values: [{ aspect: 'landing', value: 'landing.main', origin: 'team' }],
-        });
-      });
-
-      expect(screen.getByTestId('setup-drawer')).toHaveAccessibleName('Setup of pm-mcp-core');
-      expect(screen.queryByTestId('setting-input-landing')).toBeNull();
-    });
-
-    /** Opens the drawer of pm-mcp-clients once its values are read. */
-    async function openDrawer(): Promise<void> {
-      render(ProjectExplorerView);
-      await fireEvent.click(await screen.findByTestId('setup-btn-pm-mcp-clients'));
-      await screen.findByTestId('setup-drawer');
-    }
-
-    it.each([
-      ['its close button', () => fireEvent.click(screen.getByTestId('close-setup-btn'))],
-      ['the backdrop', () => fireEvent.click(screen.getByTestId('setup-drawer-backdrop'))],
-    ])('closes with %s', async (_name, close) => {
-      await openDrawer();
-
-      await close();
-
-      expect(screen.queryByTestId('setup-drawer')).toBeNull();
-    });
-
-    it('stays open on a click inside it', async () => {
-      await openDrawer();
-
-      await fireEvent.click(screen.getByTestId('setup-drawer'));
-
-      expect(screen.getByTestId('setup-drawer')).toBeInTheDocument();
-    });
-
-    it('says a value was saved and reads the values again', async () => {
-      await openDrawer();
-      await screen.findByTestId('save-setting-landing');
-
-      await fireEvent.click(screen.getByTestId('save-setting-landing'));
-
-      expect(await screen.findByTestId('setup-notice')).toHaveTextContent('Saved.');
-      expect(apiClient.getProjectSettings).toHaveBeenCalledTimes(2);
-    });
-
-    it.each([
-      ['refused', () => Promise.resolve({ applied: false, conflict: false, revision: 7 })],
-      ['failed', () => Promise.reject(new ClientError('timeout'))],
-    ])('says a value was not saved when the write is %s', async (_case, write) => {
-      vi.spyOn(apiClient, 'saveProjectSettings').mockImplementation(write);
-      await openDrawer();
-      await screen.findByTestId('save-setting-landing');
-
-      await fireEvent.click(screen.getByTestId('save-setting-landing'));
-
-      expect(await screen.findByTestId('setup-update-error')).toHaveTextContent(
-        'The value could not be saved',
-      );
-      expect(screen.queryByTestId('setup-notice')).toBeNull();
-    });
-
-    it('offers a free value as a text field and says when there is none', async () => {
-      vi.spyOn(apiClient, 'getProjectSettings')
-        .mockResolvedValueOnce({
-          project_id: 'pm-mcp-clients',
-          revision: 7,
-          values: [{ aspect: 'sonar.key', value: null, origin: 'project' }],
-        })
-        .mockResolvedValueOnce({ project_id: 'pm-mcp-core', revision: 1, values: [] });
-      await openDrawer();
-
-      const field = await screen.findByTestId('setting-input-sonar.key');
-      expect(field.tagName).toBe('INPUT');
-      expect(field).toHaveValue('');
-      expect(screen.getByText('from project')).toBeInTheDocument();
-
-      await fireEvent.click(screen.getByTestId('close-setup-btn'));
-      await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-core'));
-      expect(
-        await screen.findByText('This project records no value of its own.'),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it('abandons being added project onboarding after confirmation', async () => {
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('abandon-onboarding-btn')).toBeInTheDocument();
-    });
-
-    const abandonBtn = screen.getByTestId('abandon-onboarding-btn');
-    await fireEvent.click(abandonBtn);
-
-    expect(screen.getByTestId('abandon-modal')).toBeInTheDocument();
-
-    const confirmBtn = screen.getByTestId('confirm-abandon-btn');
-    await fireEvent.click(confirmBtn);
-
-    await waitFor(() => {
-      expect(apiClient.abandonOnboarding).toHaveBeenCalledWith('/api/v1/entries/ent-cui/abandon');
-    });
-  });
-
-  it('moves a favourite down and persists the new order', async () => {
-    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
-      status: 'ok',
-      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
-    });
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByTestId('favourite-down-pm-mcp-clients'));
-
-    await waitFor(() => {
-      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
-    });
-  });
-
-  it('moves a favourite up with its control and by dropping it on the one above', async () => {
-    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
-      status: 'ok',
-      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
-    });
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('favourite-up-pm-mcp-core')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByTestId('favourite-up-pm-mcp-core'));
-
-    await waitFor(() => {
-      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
-    });
-  });
-
-  it('reorders favourites by drag and drop', async () => {
-    const reorderSpy = vi.spyOn(apiClient, 'reorderFavouriteProjects').mockResolvedValue({
-      status: 'ok',
-      project_ids: ['pm-mcp-core', 'pm-mcp-clients'],
-    });
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('project-card-pm-mcp-core')).toBeInTheDocument();
-    });
-
-    await fireEvent.dragStart(screen.getByTestId('project-card-pm-mcp-core'));
-    await fireEvent.drop(screen.getByTestId('project-card-pm-mcp-clients'));
-
-    await waitFor(() => {
-      expect(reorderSpy).toHaveBeenCalledWith(['pm-mcp-core', 'pm-mcp-clients']);
-    });
-  });
-
-  it('restores the old order when the runtime refuses the new one', async () => {
-    vi.spyOn(apiClient, 'reorderFavouriteProjects').mockRejectedValue(new Error('HTTP 409'));
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('favourite-down-pm-mcp-clients')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByTestId('favourite-down-pm-mcp-clients'));
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('The new order of the favourites could not be saved'),
-      ).toBeInTheDocument();
-    });
-    // The refused order is rolled back: the first card is the one that was moved down.
-    const cards = screen
-      .getByTestId('section-favourites')
-      .querySelectorAll('[data-testid^="project-card-"]');
-    expect(cards[0]).toHaveAttribute('data-testid', 'project-card-pm-mcp-clients');
-  });
-
-  it('opens the project setup drawer and saves against the revision it was read at', async () => {
-    const saveSpy = vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
+    vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
       applied: true,
       conflict: false,
       revision: 8,
     });
-
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      steps: [{ step: 4, summary: 'Build environment', status: 'current' }],
     });
-    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('setup-drawer')).toBeInTheDocument();
-      expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
-    });
-
-    await fireEvent.change(screen.getByTestId('setting-input-landing'), {
-      target: { value: 'landing.files' },
-    });
-    await fireEvent.click(screen.getByTestId('save-setting-landing'));
-
-    await waitFor(() => {
-      expect(saveSpy).toHaveBeenCalledWith('pm-mcp-clients', 'landing', 'landing.files', 7);
+    vi.spyOn(apiClient, 'getOverSize').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      distributions: [
+        { project_id: 'pm-mcp-clients', role: 'implementer', current_multiple: 2, buckets: [] },
+      ],
     });
   });
 
-  it('draws the error pattern when the setup values cannot be read', async () => {
-    const settings = vi
-      .spyOn(apiClient, 'getProjectSettings')
-      .mockRejectedValue(new ClientError('timeout'));
-
+  it('shows the head, the acts and the running work of the project', async () => {
     render(ProjectExplorerView);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
-    });
-    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
-
-    const error = await screen.findByTestId('setup-error');
-    expect(error).toHaveTextContent('The request took too long');
-    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(settings).toHaveBeenCalledTimes(2));
+    expect(await screen.findByTestId('project-page')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'pm-mcp-clients' })).toBeInTheDocument();
+    expect(await screen.findByTestId('project-page-work')).toHaveTextContent('Fix Relay Transport');
+    expect(screen.getByTestId('project-act-add_plan')).toBeInTheDocument();
+    expect(screen.getByTestId('project-act-add_epic')).toBeInTheDocument();
+    expect(screen.getByTestId('project-act-release')).toBeInTheDocument();
   });
 
-  it('shows the other client’s value on a conflict and applies the change again', async () => {
-    const saveSpy = vi
-      .spyOn(apiClient, 'saveProjectSettings')
-      .mockResolvedValueOnce({
-        applied: false,
-        conflict: true,
-        revision: 9,
-        current_value: 'landing.files',
-      })
-      .mockResolvedValueOnce({ applied: true, conflict: false, revision: 10 });
+  it('opens the ended work on the work tab', async () => {
+    render(ProjectExplorerView);
+
+    await fireEvent.click(await screen.findByTestId('project-ended-toggle'));
+
+    expect(await screen.findByTestId('project-ended-rows')).toHaveTextContent(
+      'Session log and generations',
+    );
+  });
+
+  it('shows the setup values, the setup steps and the over-size spread on the setup tab', async () => {
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
 
     render(ProjectExplorerView);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
-    });
-    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
+    expect(await screen.findByTestId('project-page-setup')).toBeInTheDocument();
+    expect(await screen.findByTestId('setting-input-landing')).toBeInTheDocument();
+    expect(await screen.findByTestId('project-setup-steps')).toHaveTextContent('Build environment');
+    expect(await screen.findByTestId('project-oversize')).toHaveTextContent('implementer');
+    expect(screen.getByTestId('setup-release-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('setup-unenrol-btn')).toBeInTheDocument();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
-    });
-    await fireEvent.change(screen.getByTestId('setting-input-landing'), {
-      target: { value: 'landing.pull-request' },
-    });
+  it('saves one value against the revision the tab was opened at', async () => {
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    const input = await screen.findByTestId('setting-input-landing');
+    await fireEvent.change(input, { target: { value: 'landing.files' } });
     await fireEvent.click(screen.getByTestId('save-setting-landing'));
 
-    await waitFor(() => {
-      expect(screen.getByTestId('project-conflict')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('project-conflict')).toHaveTextContent('landing.files');
-    expect(screen.getByTestId('project-conflict')).toHaveTextContent('landing.pull-request');
-
-    await fireEvent.click(screen.getByTestId('project-conflict-apply'));
-
-    await waitFor(() => {
-      expect(saveSpy).toHaveBeenLastCalledWith(
+    await waitFor(() =>
+      expect(apiClient.saveProjectSettings).toHaveBeenCalledWith(
         'pm-mcp-clients',
         'landing',
-        'landing.pull-request',
-        9,
-      );
-    });
+        'landing.files',
+        7,
+      ),
+    );
+    expect(await screen.findByTestId('setup-notice')).toBeInTheDocument();
   });
 
-  it('keeps the current value on a conflict without writing again', async () => {
-    const saveSpy = vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
+  it('opens the conflict card instead of overwriting a value another client changed', async () => {
+    vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValue({
       applied: false,
       conflict: true,
       revision: 9,
-      current_value: 'landing.files',
+      current_value: 'landing.pull-request',
     });
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
 
     render(ProjectExplorerView);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('setup-btn-pm-mcp-clients')).toBeInTheDocument();
-    });
-    await fireEvent.click(screen.getByTestId('setup-btn-pm-mcp-clients'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('save-setting-landing')).toBeInTheDocument();
-    });
+    const input = await screen.findByTestId('setting-input-landing');
+    await fireEvent.change(input, { target: { value: 'landing.files' } });
     await fireEvent.click(screen.getByTestId('save-setting-landing'));
-    await waitFor(() => {
-      expect(screen.getByTestId('project-conflict')).toBeInTheDocument();
-    });
 
-    await fireEvent.click(screen.getByTestId('project-conflict-keep'));
+    const conflict = await screen.findByTestId('project-conflict');
+    expect(conflict).toHaveTextContent('landing.pull-request');
+    await fireEvent.click(within(conflict).getByTestId('project-conflict-apply'));
 
-    await waitFor(() => {
-      expect(screen.queryByTestId('project-conflict')).not.toBeInTheDocument();
-    });
-    expect(saveSpy).toHaveBeenCalledTimes(1);
-  });
-
-  it('opens the project onboarding route from adding and from continuing a run', async () => {
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('add-project-btn')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByTestId('add-project-btn'));
-    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
-
-    await fireEvent.click(screen.getByTestId('continue-onboarding-btn'));
-    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
-    expect(get(runtimeStore).selectedOnboardingId).toBe('~/git/cui-parent');
-  });
-
-  it('moves the project focus with a back or forward step', async () => {
-    window.history.replaceState(null, '', '/projects?project=API-Sheriff');
-    render(ProjectExplorerView);
-
-    const input = screen.getByTestId('project-filter-input');
-    await waitFor(() => {
-      expect(input).toHaveValue('API-Sheriff');
-    });
-
-    window.history.replaceState(null, '', '/projects?project=cui-http');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    await waitFor(() => {
-      expect(input).toHaveValue('cui-http');
-    });
-
-    window.history.replaceState(null, '', '/projects');
-    window.dispatchEvent(new PopStateEvent('popstate'));
-    await waitFor(() => {
-      expect(input).toHaveValue('');
-    });
-  });
-
-  it('continues an enrolled project’s setup by its project id', async () => {
-    render(ProjectExplorerView);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('continue-setup-btn-plan-marshall')).toBeInTheDocument();
-    });
-
-    await fireEvent.click(screen.getByTestId('continue-setup-btn-plan-marshall'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('project-onboarding');
-    expect(state.selectedProjectId).toBe('plan-marshall');
-    expect(state.selectedOnboardingId).toBeNull();
+    await waitFor(() => expect(apiClient.saveProjectSettings).toHaveBeenCalledTimes(2));
   });
 });

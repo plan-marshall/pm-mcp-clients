@@ -23,6 +23,8 @@
   export let icon = 'act.more';
   export let size: 'sm' | 'md' | 'lg' = 'sm';
   export let disabled = false;
+  /** Whether a destructive entry asks for its confirmation before it runs (a caller that confirms itself passes `false`). */
+  export let confirmDestructive = true;
 
   /**
    * The advisory the trigger carries: the catalogue's `X.title` only where it says more than the
@@ -159,6 +161,7 @@
       {above}
       {maxBlockSize}
       {triggerElement}
+      {confirmDestructive}
       onClose={() => {
         open = false;
       }}

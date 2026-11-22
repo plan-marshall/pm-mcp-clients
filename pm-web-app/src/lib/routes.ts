@@ -84,6 +84,12 @@ export type PlanTab = 'process' | 'intent' | 'changes';
 /** The tabs of an epic's object column; the first is the default. */
 export type EpicTab = 'plans' | 'intent' | 'landings' | 'reviews' | 'events';
 
+/** The tabs of a project's object column; the first is the default and is never written. */
+export type ProjectTab = 'work' | 'setup';
+
+/** Every tab of a project, first the default that an address omits. */
+export const PROJECT_TABS: ReadonlyArray<ProjectTab> = ['work', 'setup'];
+
 /**
  * The tabs of the one settings view (`/settings?tab=…`); the first is the default. Unlike a
  * plan's or an epic's tab, every settings tab is written, so the page has one spelling.
@@ -94,7 +100,7 @@ export const SETTINGS_TABS = ['setup', 'access', 'credentials', 'consents', 'ret
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 
 /** The tab of an object column, whichever object it belongs to. */
-export type ObjectTab = PlanTab | EpicTab | SettingsTab;
+export type ObjectTab = PlanTab | EpicTab | SettingsTab | ProjectTab;
 
 /** Every tab of a plan, first the default that an address omits. */
 export const PLAN_TABS: ReadonlyArray<PlanTab> = ['process', 'intent', 'changes'];
@@ -518,6 +524,9 @@ function tabOf(route: AppRoute | null, raw: string | undefined): ObjectTab | und
   if (route === 'epic' && (EPIC_TABS as ReadonlyArray<string>).includes(raw)) {
     return raw as EpicTab;
   }
+  if (route === 'project' && (PROJECT_TABS as ReadonlyArray<string>).includes(raw)) {
+    return raw as ProjectTab;
+  }
   if (route === 'settings' && (SETTINGS_TABS as ReadonlyArray<string>).includes(raw)) {
     return raw as SettingsTab;
   }
@@ -626,6 +635,7 @@ function encodeValue(value: string): string {
 function omittedTabOf(route: AppRoute | null): ObjectTab | undefined {
   if (route === 'plan') return 'process';
   if (route === 'epic') return 'plans';
+  if (route === 'project') return 'work';
   // Every settings tab is written, so the settings view has one spelling per tab.
   return undefined;
 }
