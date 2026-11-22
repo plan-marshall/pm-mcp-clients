@@ -874,7 +874,19 @@ class WebDevicesCommandTest {
     @Test
     @DisplayName("a refused list of web devices --interactive in a terminal renders the refusal on stderr")
     void aRefusedInteractiveListGoesToStderr() throws Exception {
-        seedRefusedRoutes();
+        PmOperatorTest.writeLiveRecord(fixture);
+        // only the device list is refused; any other request gets an answer that renders no refusal line
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(400, "{\"error\":\"refused\"}");
+            } else {
+                response.json(404, "{\"error\":\"not_this_route\"}");
+            }
+        });
         var context = createContext("q\n");
         var writer = new StringWriter();
         var failures = new StringWriter();
@@ -889,7 +901,12 @@ class WebDevicesCommandTest {
                             () -> assertTrue(context.isInteractiveTerminal(), "the case runs in a terminal"),
                             () -> assertEquals(1, code),
                             () -> assertTrue(failures.toString().contains(REFUSED_LINE), failures.toString()),
-                            () -> assertFalse(output.contains(REFUSED_LINE), output)
+                            () -> assertFalse(output.contains(REFUSED_LINE), output),
+                            () -> assertTrue(server.requests().stream().anyMatch(request ->
+                                                                    "GET".equals(request.method())
+                                                                                        && "/api/v1/web/devices".equals(request.target())),
+                                                "the device list was asked for: " + server.requests().stream()
+                                                                    .map(request -> request.method() + " " + request.target()).toList())
         );
     }
 

@@ -37,6 +37,7 @@ import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupJobState;
 import de.planmarshall.api.system.CleanupProjectItem;
 import de.planmarshall.api.system.CleanupSummary;
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -142,16 +143,12 @@ class LocalRefusalStreamTest {
     @MethodSource("twoLevels")
     @DisplayName("a write that names more than one level refuses on stderr before any request")
     void moreThanOneLevel(String name, String[] args) throws Exception {
-        var requests = new ArrayList<String>();
-        fixture.start((request, response) -> {
-            requests.add(request.target());
-            response.send(404, null, "");
-        });
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         int code = execute(args);
 
         assertRefusedOnStderr(code, ONE_LEVEL);
-        assertTrue(requests.isEmpty(), name + " sent " + requests);
+        assertTrue(server.requests().isEmpty(), name + " sent " + server.requests());
     }
 
     static Stream<Arguments> planRefusals() {
@@ -174,16 +171,12 @@ class LocalRefusalStreamTest {
     @MethodSource("planRefusals")
     @DisplayName("a blank --plan or --plan beside the verb's other options refuses on stderr before any request")
     void planOptionRefusals(String name, String[] args, String line) throws Exception {
-        var requests = new ArrayList<String>();
-        fixture.start((request, response) -> {
-            requests.add(request.target());
-            response.send(404, null, "");
-        });
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         int code = execute(args);
 
         assertRefusedOnStderr(code, line);
-        assertTrue(requests.isEmpty(), name + " sent " + requests);
+        assertTrue(server.requests().isEmpty(), name + " sent " + server.requests());
     }
 
     @Test
@@ -203,18 +196,14 @@ class LocalRefusalStreamTest {
         var summary = new CleanupSummary(1, 0, 1, 0, 0, 1024L, 0, "today 03:00", "tomorrow 03:00");
         var job = new CleanupJob("cln-" + word(), CleanupJobState.OPEN, "today 03:00", summary, List.of(project),
                             Map.of());
-        var deletes = new ArrayList<String>();
-        fixture.start((request, response) -> {
-            if (request.target().endsWith("/delete")) {
-                deletes.add(request.target());
-            }
-            response.json(200, JsonTree.write(job.toMap()));
-        });
+        var server = fixture.start((request, response) -> response.json(200, JsonTree.write(job.toMap())));
         var unknown = "plan:zz" + word();
 
         int code = execute("cleanup", "--delete", "--exclude", unknown, "--yes");
 
         assertRefusedOnStderr(code, unknown + " is no item of the open cleanup.");
+        var deletes = server.requests().stream().map(FakeRuntimeServer.Request::target)
+                            .filter(target -> target.endsWith("/delete")).toList();
         assertTrue(deletes.isEmpty(), "no delete may be sent: " + deletes);
     }
 

@@ -1081,7 +1081,8 @@ class LiteralTextGuardTest {
                 return true;
             }
             if (text.charAt(k) == ')') {
-                // The body of a conditional without braces: if (offline) label = "…";
+                // The body of a conditional without braces, where the statement after the closing
+                // parenthesis of the condition reassigns the name.
                 int open = matchingOpen(k);
                 if (open < 0) {
                     return false;

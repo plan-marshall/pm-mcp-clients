@@ -393,7 +393,7 @@ class ReportsCommandTest {
         var refusedPath = "/api/v1/reports/" + refusedId + "/read";
         var requests = new CopyOnWriteArrayList<String>();
         fixture.start((request, response) -> {
-            requests.add(request.target());
+            requests.add(request.method() + " " + request.target());
             if (markPath.equals(request.target())) {
                 response.send(200, null, "");
             } else if (refusedPath.equals(request.target())) {
@@ -407,10 +407,16 @@ class ReportsCommandTest {
                             ? execute("reports", "read", refusedId, "rep-001")
                             : execute("reports", "read", "rep-001", refusedId);
 
+        // the recovery is proven only if each POST is sent in the order the ids were named
+        var expectedPosts = refusedFirst
+                            ? List.of("POST " + refusedPath, "POST " + markPath)
+                            : List.of("POST " + markPath, "POST " + refusedPath);
+        var posts = requests.stream().filter(request -> request.startsWith("POST ")).toList();
         assertAll(
                             () -> assertEquals(1, code, err.toString()),
-                            () -> assertTrue(requests.contains(markPath), requests.toString()),
-                            () -> assertTrue(requests.contains(refusedPath), requests.toString()),
+                            () -> assertTrue(requests.contains("POST " + markPath), requests.toString()),
+                            () -> assertTrue(requests.contains("POST " + refusedPath), requests.toString()),
+                            () -> assertEquals(expectedPosts, posts, requests.toString()),
                             () -> assertTrue(err.toString().contains("✗ "), err.toString()),
                             () -> assertTrue(err.toString().contains(cause), err.toString()),
                             () -> assertFalse(out.toString().contains(cause), out.toString()),

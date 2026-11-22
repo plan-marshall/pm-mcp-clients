@@ -1768,7 +1768,7 @@ public final class PlanCommand implements Callable<Integer> {
                 }
                 var entry = PlanSettingsRecord.fromJson(response.bodyText()).value(aspect);
                 return entry != null ? entry.choices() : List.of();
-            } catch (IOException e) {
+            } catch (IOException _) {
                 // the re-read only explains the refusal; without it the refusal stands with the neutral line
                 return List.of();
             }
