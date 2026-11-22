@@ -1,4 +1,5 @@
 import { displayError } from '../display';
+import { hasMessage } from '../i18n';
 
 /**
  * The closed set of error codes the web client raises itself.
@@ -94,7 +95,13 @@ export function errorCodeOf(value: unknown): string {
  */
 export function actFailureText(value: unknown, fallback: string): string {
   const code = errorCodeOf(value);
-  return code.length > 0 ? displayError(code).fix : fallback;
+  if (code.length === 0) {
+    return fallback;
+  }
+  if (!hasMessage(`common.error.${code}.fix`) && !hasMessage(`error.${code}.fix`)) {
+    return fallback;
+  }
+  return displayError(code).fix;
 }
 
 /**

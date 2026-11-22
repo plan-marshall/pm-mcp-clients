@@ -65,13 +65,14 @@ class ReportsCommandTest {
     @Test
     @DisplayName("reports lists unread reports")
     void reportsList() throws Exception {
+        var reportId = "rep-" + Generators.integers(1000, 9999).next();
         fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
                                     [
-                                      {"id":"rep-0142","subject":"fix-relay","summary":"Ended: merged (#214)"}
+                                      {"id":"%s","subject":"fix-relay","summary":"Ended: merged (#214)"}
                                     ]
-                                    """);
+                                    """.formatted(reportId));
             } else {
                 response.send(404, null, "");
             }
@@ -82,7 +83,7 @@ class ReportsCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertTrue(output.contains("Reports · 1 unread")),
-                            () -> assertTrue(output.contains("rep-0142")),
+                            () -> assertTrue(output.contains(reportId)),
                             () -> assertTrue(output.contains("fix-relay"))
         );
     }
@@ -177,21 +178,26 @@ class ReportsCommandTest {
     @Test
     @DisplayName("reports read --all says that older unread reports remain when the list has a second page")
     void reportsReadAllWithOlderPage() throws Exception {
+        var firstId = "rep-" + Generators.integers(1000, 4999).next();
+        var secondId = "rep-" + Generators.integers(5000, 9999).next();
+        var markedCount = Generators.integers(2, 9).next();
+        var olderCount = Generators.integers(2, 9).next();
+        var unreadCount = markedCount + olderCount;
         var server = fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {
                                       "items": [
-                                        {"id":"rep-0142","subject":"fix-relay"},
-                                        {"id":"rep-0139","subject":"docs-typo"}
+                                        {"id":"%s","subject":"fix-relay"},
+                                        {"id":"%s","subject":"docs-typo"}
                                       ],
-                                      "unread_count": 4,
+                                      "unread_count": %d,
                                       "has_older": true,
-                                      "older_count": 2
+                                      "older_count": %d
                                     }
-                                    """);
+                                    """.formatted(firstId, secondId, unreadCount, olderCount));
             } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"count\":2}");
+                response.json(200, "{\"count\":" + markedCount + "}");
             } else {
                 response.send(404, null, "");
             }
@@ -202,10 +208,10 @@ class ReportsCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertEquals(2, server.requests().size(), "one list read and one ids write"),
-                            () -> assertTrue(out.toString().contains("✓ 2 reports marked read."),
+                            () -> assertTrue(out.toString().contains("✓ " + markedCount + " reports marked read."),
                                                 out.toString()),
                             () -> assertTrue(out.toString().contains(
-                                                                    "2 older unread reports remain. Run reports to see the unread list."),
+                                                                    olderCount + " older unread reports remain. Run reports to see the unread list."),
                                                 out.toString())
         );
     }
@@ -213,21 +219,26 @@ class ReportsCommandTest {
     @Test
     @DisplayName("reports read --all prints the older-reports notice in the client's language")
     void reportsReadAllWithOlderPageInGerman() throws Exception {
+        var firstId = "rep-" + Generators.integers(1000, 4999).next();
+        var secondId = "rep-" + Generators.integers(5000, 9999).next();
+        var markedCount = Generators.integers(2, 9).next();
+        var olderCount = Generators.integers(2, 9).next();
+        var unreadCount = markedCount + olderCount;
         var server = fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {
                                       "items": [
-                                        {"id":"rep-0142","subject":"fix-relay"},
-                                        {"id":"rep-0139","subject":"docs-typo"}
+                                        {"id":"%s","subject":"fix-relay"},
+                                        {"id":"%s","subject":"docs-typo"}
                                       ],
-                                      "unread_count": 4,
+                                      "unread_count": %d,
                                       "has_older": true,
-                                      "older_count": 2
+                                      "older_count": %d
                                     }
-                                    """);
+                                    """.formatted(firstId, secondId, unreadCount, olderCount));
             } else if ("/api/v1/reports/read".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"count\":2}");
+                response.json(200, "{\"count\":" + markedCount + "}");
             } else {
                 response.send(404, null, "");
             }
@@ -243,7 +254,7 @@ class ReportsCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertEquals(2, server.requests().size(), "one list read and one ids write"),
                             () -> assertTrue(out.toString().contains(
-                                                                    "2 ältere ungelesene Berichte bleiben."
+                                                                    olderCount + " ältere ungelesene Berichte bleiben."
                                                                                         + " Führe reports aus, um die ungelesene Liste zu sehen."),
                                                 out.toString())
         );
@@ -281,51 +292,55 @@ class ReportsCommandTest {
     @Test
     @DisplayName("reports read with specific IDs marks them read")
     void reportsReadSpecificIds() throws Exception {
+        var presentId = "rep-" + Generators.integers(1000, 4999).next();
+        var missingId = "rep-" + Generators.integers(5000, 9999).next();
         fixture.start((request, response) -> {
-            if ("/api/v1/reports/rep-001/read".equals(request.target())) {
+            if (("/api/v1/reports/" + presentId + "/read").equals(request.target())) {
                 response.send(200, null, "");
-            } else if ("/api/v1/reports/rep-404/read".equals(request.target())) {
+            } else if (("/api/v1/reports/" + missingId + "/read").equals(request.target())) {
                 response.send(404, null, "");
             } else {
                 response.send(500, null, "");
             }
         });
 
-        int code = execute("reports", "read", "rep-001", "rep-404");
+        int code = execute("reports", "read", presentId, missingId);
         assertEquals(0, code);
-        assertTrue(out.toString().contains("rep-404 is no report of this machine; reports lists the unread ones."));
+        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
         assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString());
     }
 
     @Test
     @DisplayName("reports open prints report detail and marks read")
     void reportsOpen() throws Exception {
+        var reportId = "rep-" + Generators.integers(1000, 9999).next();
         fixture.start((request, response) -> {
-            if ("/api/v1/reports/rep-0142".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "Report Detail: rep-0142 fix-relay merged");
-            } else if ("/api/v1/reports/rep-0142/read".equals(request.target()) && "POST".equals(request.method())) {
+            if (("/api/v1/reports/" + reportId).equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, "Report Detail: " + reportId + " fix-relay merged");
+            } else if (("/api/v1/reports/" + reportId + "/read").equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("reports", "open", "rep-0142");
+        int code = execute("reports", "open", reportId);
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("Report Detail: rep-0142 fix-relay merged"))
+                            () -> assertTrue(out.toString().contains("Report Detail: " + reportId + " fix-relay merged"))
         );
     }
 
     @Test
     @DisplayName("reports open executes command when detail is present in json")
     void reportsOpenDelegatesToDetail() throws Exception {
+        var reportId = "rep-" + Generators.integers(1000, 9999).next();
         fixture.start((request, response) -> {
-            if ("/api/v1/reports/rep-0142".equals(request.target()) && "GET".equals(request.method())) {
+            if (("/api/v1/reports/" + reportId).equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                                    {"id":"rep-0142","detail":"status"}
-                                    """);
-            } else if ("/api/v1/reports/rep-0142/read".equals(request.target()) && "POST".equals(request.method())) {
+                                    {"id":"%s","detail":"status"}
+                                    """.formatted(reportId));
+            } else if (("/api/v1/reports/" + reportId + "/read").equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ok\"}");
@@ -334,30 +349,35 @@ class ReportsCommandTest {
             }
         });
 
-        int code = execute("reports", "open", "rep-0142");
+        int code = execute("reports", "open", reportId);
         assertEquals(0, code);
     }
 
     @Test
     @DisplayName("reports open reports not found on 404")
     void reportsOpenNotFound() throws Exception {
+        var missingId = "rep-" + Generators.integers(1000, 9999).next();
         fixture.start((request, response) -> response.send(404, null, ""));
 
-        int code = execute("reports", "open", "rep-missing");
+        int code = execute("reports", "open", missingId);
         assertEquals(1, code);
-        assertTrue(out.toString().contains("rep-missing is no report of this machine; reports lists the unread ones."));
+        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
     }
 
     @Test
     @DisplayName("reports groups hierarchically by project, epic, and plan")
     void reportsHierarchicalGrouping() throws Exception {
+        var firstId = "rep-" + Generators.integers(1000, 3999).next();
+        var secondId = "rep-" + Generators.integers(4000, 6999).next();
+        var thirdId = "rep-" + Generators.integers(7000, 9999).next();
+        var unreadCount = Generators.integers(3, 9).next();
         fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target())) {
                 response.json(200, """
                                     {
                                       "reports": [
                                         {
-                                          "id": "rep-0142",
+                                          "id": "%s",
                                           "from": "pm-mcp-clients > relay-hardening > fix-relay",
                                           "kind": "plan.ended",
                                           "subject": "Ended: merged (#214)",
@@ -366,7 +386,7 @@ class ReportsCommandTest {
                                           "created": "today 11:20"
                                         },
                                         {
-                                          "id": "rep-0139",
+                                          "id": "%s",
                                           "from": "pm-mcp-clients > docs-typo",
                                           "kind": "plan.ended",
                                           "subject": "Ended: no change",
@@ -374,18 +394,18 @@ class ReportsCommandTest {
                                           "sent": "today 09:40"
                                         },
                                         {
-                                          "id": "rep-0131",
+                                          "id": "%s",
                                           "from": "pm-mcp-core",
                                           "kind": "project.onboarded",
                                           "subject": "Onboarded",
                                           "created": "yesterday 18:40"
                                         }
                                       ],
-                                      "unread_count": 3,
+                                      "unread_count": %d,
                                       "oldest_unread": "yesterday 18:40",
                                       "older_count": 0
                                     }
-                                    """);
+                                    """.formatted(firstId, secondId, thirdId, unreadCount));
             } else {
                 response.send(404, null, "");
             }
@@ -395,18 +415,18 @@ class ReportsCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("Reports · 3 unread")),
+                            () -> assertTrue(output.contains("Reports · " + unreadCount + " unread")),
                             () -> assertTrue(output.contains("pm-mcp-clients")),
                             () -> assertTrue(output.contains("  relay-hardening")),
-                            () -> assertTrue(output.contains("rep-0142")),
+                            () -> assertTrue(output.contains(firstId)),
                             () -> assertTrue(output.contains("fix-relay")),
                             () -> assertTrue(output.contains("Ended: merged (#214)")),
-                            () -> assertTrue(output.contains("reports open rep-0142")),
+                            () -> assertTrue(output.contains("reports open " + firstId)),
                             () -> assertTrue(output.contains("docs-typo")),
                             () -> assertTrue(output.contains("sent today 09:40")),
                             () -> assertTrue(output.contains("pm-mcp-core")),
-                            () -> assertTrue(output.contains("rep-0131")),
-                            () -> assertTrue(output.contains("reports read rep-0142 · reports read --all"))
+                            () -> assertTrue(output.contains(thirdId)),
+                            () -> assertTrue(output.contains("reports read " + firstId + " · reports read --all"))
         );
     }
 

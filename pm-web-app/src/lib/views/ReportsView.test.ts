@@ -2573,4 +2573,108 @@ describe('ReportsView component', () => {
       expect(await screen.findByTestId('error-state')).toBeInTheDocument();
     });
   });
+
+  describe('PLAN-158 residue in ReportsView (PLAN-154 D5)', () => {
+    it('advances listEpoch on a local markRead so an older in-flight reload does not restore the read row', async () => {
+      let resolveOlderReload: ((page: ReportsPage) => void) | undefined;
+      let calls = 0;
+      vi.spyOn(apiClient, 'getReports').mockImplementation(() => {
+        calls += 1;
+        if (calls === 1) return Promise.resolve(mockPage);
+        if (calls === 2) {
+          return new Promise<ReportsPage>((resolve) => {
+            resolveOlderReload = resolve;
+          });
+        }
+        return Promise.resolve({
+          items: mockReports.filter((r) => r.id !== 'rep-0142'),
+          unread_count: 2,
+          has_older: false,
+          older_count: 0,
+        });
+      });
+
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      // Trigger a reload that stays in flight while a single markRead succeeds
+      eventHandler?.('report.sent', {});
+      await waitFor(() => expect(resolveOlderReload).toBeDefined());
+
+      const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+      await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+      await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+      await waitFor(() => expect(screen.queryByText('Ended: merged (#214)')).toBeNull());
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+
+      // Now the stale reload answers with the pre-read snapshot; listEpoch must reject it and re-fetch
+      resolveOlderReload?.(mockPage);
+      await waitFor(() => expect(calls).toBe(3));
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    it('clears an unconfirmed retained marker when both markRead and markAllShownRead fail', async () => {
+      vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+      let rejectSingle: ((err: Error) => void) | undefined;
+      let rejectAll: ((err: Error) => void) | undefined;
+      vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectSingle = reject;
+          }),
+      );
+      vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+        () =>
+          new Promise<{ marked_count: number }>((_resolve, reject) => {
+            rejectAll = reject;
+          }),
+      );
+
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      // Opening detail starts a retained markRead
+      await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+      await waitFor(() => expect(rejectSingle).toBeDefined());
+
+      // While that markRead is in flight, markAllShownRead also holds the same row
+      await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+      await waitFor(() => expect(rejectAll).toBeDefined());
+
+      // First the single markRead fails (mark-all still holds the row)
+      rejectSingle?.(new Error('single failed'));
+      await tick();
+      await tick();
+
+      // Then markAllShownRead also fails: no hold remains and nothing was confirmed read
+      rejectAll?.(new Error('mark all failed'));
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
+      });
+
+      const active = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      expect(active).not.toBeNull();
+      expect(active).toHaveAttribute('data-unread', 'true');
+      expect(within(active).queryByTestId('report-read-state')).toBeNull();
+    });
+
+    it('keeps focus on the error title when Retry fails again', async () => {
+      vi.spyOn(apiClient, 'getReports')
+        .mockRejectedValueOnce(new ClientError('timeout'))
+        .mockRejectedValueOnce(new ClientError('timeout'));
+
+      render(ReportsView);
+      await screen.findByTestId('error-state');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => {
+        const title = document.querySelector('.error-state__title');
+        expect(title).not.toBeNull();
+        expect(document.activeElement).toBe(title);
+      });
+    });
+  });
 });

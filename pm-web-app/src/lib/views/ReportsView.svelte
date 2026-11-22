@@ -559,6 +559,7 @@
    */
   async function retryListLoad(): Promise<void> {
     await loadReports();
+    await tick();
     const target =
       loadError !== null
         ? (loadErrorRegion?.querySelector<HTMLElement>('.error-state__title') ?? loadErrorRegion)
@@ -618,6 +619,7 @@
     if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
+      listEpoch++;
       // The read event and this response report the same read. Whichever arrives first counts it,
       // and the other finds the marker and leaves the unread count alone. A row already read beside
       // its detail was counted when it was read; marking it read again moves no count.
@@ -672,19 +674,20 @@
 
     // Pre-mark retention for the open report among shown items before the network request
     // so an early report.read event does not discard it while in flight.
-    const newlyRetainedIds: string[] = [];
+    let preMarkedRetention = false;
     if (activeDetailPlanId !== null) {
       for (const item of matchingItems) {
         if (planIdOf(item) === activeDetailPlanId && !retainedReadIds[item.id]) {
           retainedReadIds[item.id] = true;
-          newlyRetainedIds.push(item.id);
+          preMarkedRetention = true;
         }
       }
-      if (newlyRetainedIds.length > 0) {
+      if (preMarkedRetention) {
         retainedReadIds = { ...retainedReadIds };
       }
     }
 
+    let failed = false;
     try {
       await apiClient.markAllReportsRead(shownIds);
       // Count every shown read the view has not counted yet, the retained open row included. The
@@ -710,19 +713,25 @@
       // was already in flight now cannot make this act subtract the same read twice.
       await loadReports();
     } catch (err: unknown) {
-      // Roll back only the retention markers this request added, and keep the marker of a read the
-      // runtime has already reported: a counted read stays read even though this act failed (L3-2).
-      for (const id of newlyRetainedIds) {
-        if (countedReadIds.has(id)) continue;
-        delete retainedReadIds[id];
-      }
-      if (newlyRetainedIds.length > 0) {
-        retainedReadIds = { ...retainedReadIds };
-      }
+      failed = true;
       retryAction = markAllShownRead;
       actionError = actFailureText(err, $t('report.list.mark_all_failed'));
     } finally {
       for (const id of shownIds) releasePendingRead(id);
+      if (failed) {
+        // Clear any unconfirmed retention marker once the last hold on it settles on failure,
+        // keeping markers for reads already confirmed by the runtime or still held by another act.
+        let cleared = false;
+        for (const id of shownIds) {
+          if (retainedReadIds[id] && !countedReadIds.has(id) && !pendingReadIds.has(id)) {
+            delete retainedReadIds[id];
+            cleared = true;
+          }
+        }
+        if (cleared) {
+          retainedReadIds = { ...retainedReadIds };
+        }
+      }
       isMarkingAll = false;
       // A detail that closed while the act ran leaves no row to keep beside it: the outcome is
       // known now, so a retained row without an open detail goes.

@@ -65,6 +65,15 @@ describe('actFailureText', () => {
     expect(actFailureText(new Error('Failed to fetch'), 'Failed to do it')).toBe('Failed to do it');
     expect(actFailureText(undefined, 'Failed to do it')).toBe('Failed to do it');
   });
+
+  it("uses the act's fallback for a wire-shaped code the catalogue lacks (PLAN-154 D5)", () => {
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
+
+    expect(actFailureText(new Error('unknown_future_wire_code'), 'Failed to mark report read')).toBe(
+      'Failed to mark report read',
+    );
+  });
 });
 
 describe('actFailureReason', () => {
