@@ -15,10 +15,6 @@
     "button": 4,
     "outline: none": 1
   },
-  "src/lib/views/CleanupView.svelte": {
-    "button": 7,
-    "input": 2
-  },
   "src/lib/views/CompletionReportView.svelte": {
     "a": 2
   },
@@ -75,12 +71,6 @@
   "src/lib/views/StartView.svelte": {
     "textarea": 1,
     "input": 5
-  },
-  "src/lib/views/SystemView.svelte": {
-    "select": 1,
-    "button": 9,
-    "a": 2,
-    "input": 4
   },
   "src/styles/base.css": {
     "outline: none": 1

@@ -5,6 +5,11 @@
   import Button from '../components/Button.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
+  import CheckField from '../components/CheckField.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
+  import KindMark, { type Kind } from '../components/KindMark.svelte';
+  import Link from '../components/Link.svelte';
+  import Tabs from '../components/Tabs.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import {
     apiClient,
@@ -159,35 +164,6 @@
     return checkedItems.reduce((acc, item) => acc + (item.freed_bytes || 0), 0);
   });
 
-  function toggleItem(id: string) {
-    if (uncheckedIds[id]) {
-      const copy = { ...uncheckedIds };
-      delete copy[id];
-      uncheckedIds = copy;
-    } else {
-      uncheckedIds = { ...uncheckedIds, [id]: true };
-    }
-    persistSelection();
-  }
-
-  function checkAllForProject(items: CleanupItemEntry[]) {
-    const copy = { ...uncheckedIds };
-    for (const item of items) {
-      delete copy[item.id];
-    }
-    uncheckedIds = copy;
-    persistSelection();
-  }
-
-  function uncheckAllForProject(items: CleanupItemEntry[]) {
-    const copy = { ...uncheckedIds };
-    for (const item of items) {
-      copy[item.id] = true;
-    }
-    uncheckedIds = copy;
-    persistSelection();
-  }
-
   function openDeleteModal() {
     actionError = '';
     isDeleteModalOpen = true;
@@ -273,14 +249,91 @@
       selectedKeptIds = { ...selectedKeptIds, [id]: true };
     }
   }
+
+  /** Checks every item of the job: the one act the details head offers over all projects. */
+  function checkAllItems(): void {
+    uncheckedIds = {};
+    persistSelection();
+  }
+
+  /** Unchecks every item of the job, so _Delete_ refuses until one is checked again. */
+  function uncheckAllItems(): void {
+    const copy: Record<string, boolean> = {};
+    for (const item of allItems) {
+      copy[item.id] = true;
+    }
+    uncheckedIds = copy;
+    persistSelection();
+  }
+
+  /**
+   * @param item one item of the job
+   * @returns whether _Delete_ would send it
+   */
+  function isItemChecked(item: CleanupItemEntry): boolean {
+    return !uncheckedIds[item.id];
+  }
+
+  /**
+   * @param item the item whose check changed
+   * @param checked whether the item is checked now
+   */
+  function setItemChecked(item: CleanupItemEntry, checked: boolean): void {
+    if (checked === isItemChecked(item)) return;
+    const copy = { ...uncheckedIds };
+    if (checked) {
+      delete copy[item.id];
+    } else {
+      copy[item.id] = true;
+    }
+    uncheckedIds = copy;
+    persistSelection();
+  }
+
+  /**
+   * @param kind the kind of an item or a kept entry
+   * @returns the kind mark the row carries, where the closed set names the kind
+   */
+  function kindOf(kind: string): Kind | null {
+    switch (kind) {
+      case 'plan':
+        return 'plan';
+      case 'epic':
+        return 'epic';
+      case 'unenrolled':
+        return 'project';
+      case 'report':
+        return 'report';
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * @param item one item of the job
+   * @returns the detail line: what it is, when it ended, its own detail and its size
+   */
+  function itemDescription(item: CleanupItemEntry): string {
+    const parts: string[] = [];
+    const kind = displayState('cleanup', item.kind, $t);
+    if (kind) parts.push(kind);
+    if (item.ended_at) parts.push($t('system.cleanup.details.ended', { time: item.ended_at }));
+    if (item.detail) parts.push(item.detail);
+    parts.push(formatBytes(item.freed_bytes));
+    return parts.join(' · ');
+  }
+
+  /** The tabs of the view, the kept list carrying its count. */
+  let tabs = $derived([
+    { id: 'job', label: $t('system.cleanup.title') },
+    { id: 'kept', label: $t('system.cleanup.kept.title'), count: keptItems.length },
+  ]);
 </script>
 
 <div class="cleanup-container" data-testid="cleanup-view">
   <div class="cleanup-header">
     <div class="cleanup-header__titles">
-      <button type="button" class="back-link" onclick={() => navigateTo('system')}>
-        ← {$t('system.view.title')}
-      </button>
+      <Link href="/system" label={$t('system.view.title')} />
       <h1 class="cleanup-title">{$t('system.cleanup.title')}</h1>
       {#if job?.due_since}
         <span class="text-muted text-sm">
@@ -289,32 +342,14 @@
       {/if}
     </div>
 
-    <div class="cleanup-tabs" role="tablist">
-      <button
-        type="button"
-        class="tab-btn"
-        class:tab-btn--active={activeTab === 'job'}
-        onclick={() => {
-          activeTab = 'job';
-        }}
-        role="tab"
-        aria-selected={activeTab === 'job'}
-      >
-        {$t('system.cleanup.title')}
-      </button>
-      <button
-        type="button"
-        class="tab-btn"
-        class:tab-btn--active={activeTab === 'kept'}
-        onclick={() => {
-          activeTab = 'kept';
-        }}
-        role="tab"
-        aria-selected={activeTab === 'kept'}
-      >
-        {$t('system.cleanup.kept.title')} ({keptItems.length})
-      </button>
-    </div>
+    <Tabs
+      label={$t('system.cleanup.title')}
+      active={activeTab}
+      {tabs}
+      onSelect={(id) => {
+        activeTab = id as 'job' | 'kept';
+      }}
+    />
   </div>
 
   {#if actionSuccess}
@@ -381,7 +416,7 @@
             </span>
           </div>
           <div class="summary-freed">
-            <span class="freed-badge">
+            <span class="summary-freed__text">
               {$t('system.cleanup.summary.frees', { size: formatBytes(selectedFreedBytes) })}
             </span>
           </div>
@@ -396,11 +431,17 @@
           data-testid="cleanup-preview"
         >
           <div class="preview-head">
-            <button type="button" class="btn-link" onclick={closePreview}>
-              ← {$t('system.cleanup.preview.back')}
-            </button>
+            <Button variant="ghost" onclick={closePreview}>
+              {$t('system.cleanup.preview.back')}
+            </Button>
             <h2 id="heading-preview" class="section-title">{previewItem.title}</h2>
-            <span class="badge badge--kind">{displayState('cleanup', previewItem.kind, $t)}</span>
+            {#if kindOf(previewItem.kind)}
+              <KindMark kind={kindOf(previewItem.kind) as Kind} />
+            {:else}
+              <span class="text-muted text-sm"
+                >{displayState('cleanup', previewItem.kind, $t)}</span
+              >
+            {/if}
           </div>
           <p class="text-muted text-sm">{$t('system.cleanup.preview.readonly')}</p>
           <dl class="preview-facts">
@@ -421,7 +462,17 @@
         </section>
       {:else}
         <section class="projects-section" aria-labelledby="heading-details">
-          <h2 id="heading-details" class="section-title">{$t('system.cleanup.details.title')}</h2>
+          <div class="details-head">
+            <h2 id="heading-details" class="section-title">{$t('system.cleanup.details.title')}</h2>
+            <div class="details-head__acts">
+              <Button variant="secondary" onclick={checkAllItems}>
+                {$t('system.cleanup.details.check_all')}
+              </Button>
+              <Button variant="secondary" onclick={uncheckAllItems}>
+                {$t('system.cleanup.details.check_none')}
+              </Button>
+            </div>
+          </div>
 
           {#each job.projects as project}
             <div class="card project-card">
@@ -430,65 +481,39 @@
                   <h3>{project.display_name}</h3>
                   <span class="mono text-muted text-xs">{project.project_id}</span>
                 </div>
-                <div class="project-select-actions">
-                  <button
-                    type="button"
-                    class="btn-link"
-                    onclick={() => checkAllForProject(project.items)}
-                  >
-                    {$t('system.cleanup.details.check_all')}
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-link"
-                    onclick={() => uncheckAllForProject(project.items)}
-                  >
-                    {$t('system.cleanup.details.check_none')}
-                  </button>
-                </div>
               </div>
 
               <ul class="items-list">
                 {#each project.items as item}
-                  {@const isChecked = !uncheckedIds[item.id]}
+                  {@const isChecked = isItemChecked(item)}
                   <li
                     id={`cleanup-item-${item.id}`}
                     class="item-row"
                     class:item-row--excluded={!isChecked}
                     class:item-row--highlight={item.id === highlightedItemId}
                   >
-                    <label class="item-checkbox-label">
-                      <input
-                        type="checkbox"
+                    <div class="item-check">
+                      <CheckField
                         checked={isChecked}
-                        onchange={() => toggleItem(item.id)}
+                        label={item.title}
+                        description={itemDescription(item)}
+                        onchange={(checked) => setItemChecked(item, checked)}
                       />
-                      <div class="item-info">
-                        <span class="item-title">{item.title}</span>
-                        <div class="item-meta">
-                          <span class="badge badge--kind"
-                            >{displayState('cleanup', item.kind, $t)}</span
-                          >
-                          {#if item.ended_at}
-                            <span class="text-muted text-xs">
-                              {$t('system.cleanup.details.ended', { time: item.ended_at })}
-                            </span>
-                          {/if}
-                          {#if item.detail}
-                            <span class="text-muted text-xs">· {item.detail}</span>
-                          {/if}
-                        </div>
-                      </div>
-                    </label>
+                    </div>
+                    <div class="item-kind">
+                      {#if kindOf(item.kind)}
+                        <KindMark kind={kindOf(item.kind) as Kind} wordHidden />
+                      {/if}
+                    </div>
                     <span class="item-size mono">{formatBytes(item.freed_bytes)}</span>
-                    <button
-                      type="button"
-                      class="btn-link"
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       aria-label={$t('system.cleanup.preview.open', { item: item.title })}
                       onclick={() => openPreview(item)}
                     >
                       {$t('system.cleanup.details.open')}
-                    </button>
+                    </Button>
                   </li>
                 {/each}
               </ul>
@@ -513,7 +538,14 @@
         </div>
 
         <div class="actions-right">
-          <Button variant="danger" disabled={checkedItems.length === 0} onclick={openDeleteModal}>
+          <Button
+            variant="primary"
+            disabled={checkedItems.length === 0}
+            disabledReason={checkedItems.length === 0
+              ? $t('system.cleanup.action.nothing_checked')
+              : undefined}
+            onclick={openDeleteModal}
+          >
             {$t('system.cleanup.action.delete', { what: `${checkedItems.length} items` })}
           </Button>
         </div>
@@ -548,24 +580,25 @@
         <ul class="items-list">
           {#each keptItems as k}
             <li class="item-row">
-              <label class="item-checkbox-label">
-                <input
-                  type="checkbox"
+              <div class="item-check">
+                <CheckField
                   checked={Boolean(selectedKeptIds[k.item_id])}
+                  label={k.title}
+                  description={$t('system.cleanup.kept.why', {
+                    how: k.why,
+                    time: k.kept_at,
+                    who: k.who,
+                  })}
                   onchange={() => toggleKeptItem(k.item_id)}
                 />
-                <div class="item-info">
-                  <span class="item-title">{k.title}</span>
-                  <span class="text-muted text-xs">
-                    {$t('system.cleanup.kept.why', {
-                      how: k.why,
-                      time: k.kept_at,
-                      who: k.who,
-                    })}
-                  </span>
-                </div>
-              </label>
-              <span class="badge">{displayState('cleanup', k.kind, $t)}</span>
+              </div>
+              <div class="item-kind">
+                {#if kindOf(k.kind)}
+                  <KindMark kind={kindOf(k.kind) as Kind} wordHidden />
+                {:else}
+                  <span class="text-muted text-xs">{displayState('cleanup', k.kind, $t)}</span>
+                {/if}
+              </div>
             </li>
           {/each}
         </ul>
@@ -574,40 +607,22 @@
   {/if}
 </div>
 
-<!-- Delete Confirmation Modal -->
-{#if isDeleteModalOpen}
-  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-del-title">
-    <div class="modal-card">
-      <h2 id="modal-del-title" class="modal-title">
-        {$t('system.cleanup.confirm.title', { what: `${checkedItems.length} items` })}
-      </h2>
-
-      <div class="modal-body">
-        <p class="text-danger font-bold">
-          {$t('system.cleanup.confirm.frees', { size: formatBytes(selectedFreedBytes) })}
-        </p>
-        <p class="text-muted text-sm">
-          {$t('system.cleanup.confirm.stays')}
-        </p>
-
-        {#if uncheckedCount > 0}
-          <p class="unchecked-warning text-sm">
-            {$t('system.cleanup.confirm.kept', { count: uncheckedCount })}
-          </p>
-        {/if}
-      </div>
-
-      <div class="modal-footer">
-        <Button variant="secondary" onclick={closeDeleteModal}>
-          {$t('system.cleanup.confirm.back')}
-        </Button>
-        <Button variant="danger" loading={isDeleting} onclick={confirmDelete}>
-          {$t('system.cleanup.confirm.do')}
-        </Button>
-      </div>
-    </div>
-  </div>
-{/if}
+<!-- Delete Confirmation Dialogue -->
+<ConfirmDialog
+  open={isDeleteModalOpen}
+  title={$t('system.cleanup.confirm.title', { what: `${checkedItems.length} items` })}
+  consequences={[
+    $t('system.cleanup.confirm.frees', { size: formatBytes(selectedFreedBytes) }),
+    $t('system.cleanup.confirm.stays'),
+    ...(uncheckedCount > 0 ? [$t('system.cleanup.confirm.kept', { count: uncheckedCount })] : []),
+  ]}
+  actionLabel={$t('system.cleanup.confirm.do')}
+  cancelLabel={$t('system.cleanup.confirm.back')}
+  busy={isDeleting}
+  testid="cleanup-confirm"
+  onConfirm={confirmDelete}
+  onClose={closeDeleteModal}
+/>
 
 <style>
   .cleanup-container {
@@ -626,45 +641,11 @@
     margin-bottom: var(--space-6);
   }
 
-  .back-link {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    padding: 0;
-    margin-bottom: var(--space-2);
-  }
-
   .cleanup-title {
     font-size: var(--text-2xl);
     font-weight: 700;
     margin: 0;
     color: var(--color-text-primary);
-  }
-
-  .cleanup-tabs {
-    display: flex;
-    border-bottom: 2px solid var(--color-border-subtle);
-  }
-
-  .tab-btn {
-    padding: var(--space-2) var(--space-4);
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -2px;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-
-  .tab-btn--active {
-    color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
   }
 
   .card {
@@ -727,14 +708,24 @@
     gap: var(--space-4);
   }
 
-  .freed-badge {
-    display: inline-block;
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-full);
-    background-color: var(--color-success-subtle);
-    color: var(--color-success-text);
+  .summary-freed__text {
     font-weight: 700;
-    font-size: var(--text-base);
+    color: var(--color-success-text);
+  }
+
+  .details-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .details-head__acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   .section-title {
@@ -763,16 +754,6 @@
     font-weight: 600;
   }
 
-  .btn-link {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    cursor: pointer;
-    margin-left: var(--space-3);
-  }
-
   .items-list {
     list-style: none;
     padding: 0;
@@ -783,7 +764,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-3) var(--space-5);
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-5);
     border-bottom: 1px solid var(--color-border-subtle);
     transition: background-color 0.15s;
   }
@@ -797,41 +779,16 @@
     background-color: var(--color-bg-subtle);
   }
 
-  .item-checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    cursor: pointer;
+  .item-check {
     flex: 1;
+    min-inline-size: 0;
   }
 
-  .item-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
-
-  .item-title {
-    font-weight: 500;
-    font-size: var(--text-sm);
-  }
-
-  .item-meta {
-    display: flex;
+  .item-kind {
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-2);
-  }
-
-  .badge {
-    padding: 0.15rem 0.4rem;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    background-color: var(--color-bg-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  .badge--kind {
+    min-inline-size: 1.5rem;
+    justify-content: flex-end;
   }
 
   .cleanup-actions-bar {
@@ -856,14 +813,6 @@
     font-style: italic;
   }
 
-  .unchecked-warning {
-    background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
-    padding: var(--space-2);
-    border-radius: var(--radius-sm);
-    font-weight: 500;
-  }
-
   .notice-alert {
     padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
@@ -880,41 +829,6 @@
   .notice-alert--danger {
     background-color: var(--color-danger-subtle);
     color: var(--color-danger);
-  }
-
-  /* Modal */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border-radius: var(--radius-lg);
-    max-width: 500px;
-    width: 100%;
-    padding: var(--space-6);
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: var(--space-4);
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    margin-top: var(--space-6);
   }
 
   .cleanup-kept-empty {

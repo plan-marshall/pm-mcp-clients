@@ -141,6 +141,10 @@ describe('CleanupView component', () => {
     expect(screen.getByText('Unenrolled project legacy-service')).toBeInTheDocument();
     expect(screen.getByText(/plans/i)).toBeInTheDocument();
     expect(screen.getByText(/frees 1\.8 GB/i)).toBeInTheDocument();
+    // Every item is checked when the job opens.
+    for (const checkbox of screen.getAllByRole('checkbox')) {
+      expect(checkbox).toBeChecked();
+    }
   });
 
   it('unchecking an item excludes it and updates freed bytes in delete button', async () => {
@@ -165,7 +169,7 @@ describe('CleanupView component', () => {
     expect(screen.getByRole('button', { name: /Delete 2 items/i })).toBeInTheDocument();
   });
 
-  it('uncheck all (None) unchecks all items in project', async () => {
+  it('uncheck all (None) unchecks every item of the job, and Check all checks them again', async () => {
     vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
 
@@ -175,20 +179,49 @@ describe('CleanupView component', () => {
       expect(screen.getByText('fix-relay')).toBeInTheDocument();
     });
 
-    const noneBtn = screen.getAllByText('None')[0];
-    await fireEvent.click(noneBtn);
+    await fireEvent.click(screen.getByRole('button', { name: 'None' }));
 
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes[0]).not.toBeChecked();
-    expect(checkboxes[1]).not.toBeChecked();
+    for (const checkbox of checkboxes) {
+      expect(checkbox).not.toBeChecked();
+    }
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Check all' }));
+
+    for (const checkbox of screen.getAllByRole('checkbox')) {
+      expect(checkbox).toBeChecked();
+    }
   });
 
-  it('opens delete confirmation modal and executes cleanup with excluded ids', async () => {
+  it('disables Delete while nothing is checked and says why', async () => {
     vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
     vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
-    const deleteSpy = vi
-      .spyOn(apiClient, 'executeCleanup')
-      .mockResolvedValue({ status: 'deleted', freed_bytes: 1825361100 });
+
+    render(CleanupView);
+
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: 'None' }));
+
+    const deleteButton = screen.getByRole('button', { name: /Delete 0 items/i });
+    expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
+    expect(deleteButton).toHaveAttribute(
+      'aria-describedby',
+      expect.stringContaining('btn-reason'),
+    );
+    expect(
+      screen.getByText('Nothing is checked; Ignore keeps everything listed.'),
+    ).toBeInTheDocument();
+  });
+
+  it('opens the confirmation naming the counts and executes cleanup with excluded ids once', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+    let resolveDelete: (value: { status: string; freed_bytes: number }) => void = () => {};
+    const deleteSpy = vi.spyOn(apiClient, 'executeCleanup').mockReturnValue(
+      new Promise<{ status: string; freed_bytes: number }>((resolve) => {
+        resolveDelete = resolve;
+      }),
+    );
 
     render(CleanupView);
 
@@ -204,14 +237,24 @@ describe('CleanupView component', () => {
     const deleteBtn = screen.getByRole('button', { name: /Delete 2 items/i });
     await fireEvent.click(deleteBtn);
 
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+    // The confirmation names the counts, the space and what stays.
+    expect(dialog).toHaveTextContent('Delete 2 items?');
+    expect(dialog).toHaveTextContent('This frees 1.7 GB. It cannot be undone.');
+    expect(dialog).toHaveTextContent('Branches, pull requests, the remote');
+    expect(dialog).toHaveTextContent('1 unchecked item is kept for good.');
 
-    // Confirm deletion
+    // Confirm deletion: a second confirm while the act runs is ignored.
     const confirmBtn = screen.getByRole('button', { name: /^Delete$/i });
     await fireEvent.click(confirmBtn);
+    await fireEvent.click(confirmBtn);
 
+    expect(deleteSpy).toHaveBeenCalledTimes(1);
     expect(deleteSpy).toHaveBeenCalledWith('cln-0007', ['plan-1']);
+
+    resolveDelete({ status: 'deleted', freed_bytes: 1825361100 });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 
   it("shows the sentence of the act failure's code instead of the code", async () => {
