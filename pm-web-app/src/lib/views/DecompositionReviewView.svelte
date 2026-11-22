@@ -41,7 +41,21 @@
   $: plans = (decomposition?.workstreams ?? []).flatMap((stream) => stream.staged_plans);
 
   function submitInstruct(): void {
-    const text = instruction.trim() || editedObjective.trim();
+    const currentPlan = plans.find((p) => p.plan_id === editing);
+    const originalObjective = (currentPlan?.objective ?? '').trim();
+    const objectiveChanged = editedObjective.trim() !== originalObjective;
+    const trimmedInstruction = instruction.trim();
+    const trimmedObjective = editedObjective.trim();
+
+    let text = '';
+    if (objectiveChanged && trimmedObjective && trimmedInstruction) {
+      text = `${trimmedObjective}\n${trimmedInstruction}`;
+    } else if (trimmedInstruction) {
+      text = trimmedInstruction;
+    } else if (objectiveChanged && trimmedObjective) {
+      text = trimmedObjective;
+    }
+
     if (!text) return;
     onInstruct(editing, text);
     instruction = '';

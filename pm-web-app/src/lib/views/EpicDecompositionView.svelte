@@ -87,7 +87,7 @@
   function conflictsFor(planId: string) {
     if (!cut) return [];
     return cut.findings.filter(
-      (finding) => finding.rule === 'surface_overlap' && finding.affected_plans.includes(planId),
+      (finding) => finding.severity === 'error' && finding.affected_plans.includes(planId),
     );
   }
 
@@ -692,12 +692,9 @@
     min-width: 8rem;
   }
 
-  .read-back__before {
-    color: var(--color-danger-text);
-  }
-
+  .read-back__before,
   .read-back__after {
-    color: var(--color-success-text);
+    color: var(--color-text-primary);
   }
 
   .read-back__actions {

@@ -51,9 +51,13 @@ describe('RecipeReadyView', () => {
     await fireEvent.input(targetInput, { target: { value: 'src/core' } });
     expect(onParameter).toHaveBeenCalledWith('target', 'src/core');
 
-    // Submitting parameter with Enter
+    // Pressing Enter while IME is composing does NOT submit
+    await fireEvent.keyDown(targetInput, { key: 'Enter', isComposing: true });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    // Submitting parameter with ordinary Enter
     await fireEvent.keyDown(targetInput, { key: 'Enter' });
-    expect(onSubmit).toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
   it('renders ready mode with TextField for title and id, and primary button naming the act', async () => {
@@ -93,6 +97,10 @@ describe('RecipeReadyView', () => {
     expect(submitBtn).toHaveClass('btn--primary');
     await fireEvent.click(submitBtn);
     expect(onSubmit).toHaveBeenCalled();
+
+    // Pressing Enter while IME is composing does NOT submit
+    await fireEvent.keyDown(titleInput, { key: 'Enter', isComposing: true });
+    expect(onSubmit).toHaveBeenCalledTimes(1);
 
     // Pressing Enter in title submits
     await fireEvent.keyDown(titleInput, { key: 'Enter' });

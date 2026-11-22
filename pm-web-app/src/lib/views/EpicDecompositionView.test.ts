@@ -337,4 +337,29 @@ describe('EpicDecompositionView', () => {
 
     expect(screen.getByTestId('plan-relay-auth-v2')).toHaveTextContent('dropped');
   });
+
+  it('renders check failure for dependency_cycle errors affecting a plan', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(
+      cut({
+        findings: [
+          {
+            rule: 'dependency_cycle',
+            severity: 'error',
+            message: 'plans relay-cursor-order and relay-auth-v2 form a cycle',
+            affected_plans: ['relay-cursor-order', 'relay-auth-v2'],
+          },
+        ],
+      }),
+    );
+
+    render(EpicDecompositionView);
+    await screen.findByTestId('plan-relay-cursor-order');
+
+    const card = screen.getByTestId('plan-relay-cursor-order');
+    expect(card.querySelector('.status-label--danger')).toBeInTheDocument();
+    expect(card).toHaveTextContent(
+      'check failed: plans relay-cursor-order and relay-auth-v2 form a cycle',
+    );
+    expect(card.querySelector('[data-icon="state.error"]')).toBeInTheDocument();
+  });
 });

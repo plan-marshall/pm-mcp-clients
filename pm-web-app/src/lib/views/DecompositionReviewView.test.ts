@@ -205,6 +205,36 @@ describe('the decomposition review', () => {
     expect(onDiscard).toHaveBeenCalled();
   });
 
+  it('combines edited objective and instruction when both are present', async () => {
+    const instruct = vi.fn();
+    render(DecompositionReviewView, {
+      props: {
+        decomposition: cut(),
+        onInstruct: instruct,
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('plan-edit-relay-auth-v2'));
+
+    const objectiveInput = screen.getByLabelText('Objective');
+    await fireEvent.input(objectiveInput, {
+      target: { value: 'token rotation objective' },
+    });
+
+    const instructPanel = screen.getByTestId('decomposition-instruction');
+    const textbox = within(instructPanel).getByRole('textbox', { name: 'What should change?' });
+    await fireEvent.input(textbox, {
+      target: { value: 'keep the API compatible' },
+    });
+
+    await fireEvent.click(screen.getByTestId('instruct-submit'));
+
+    expect(instruct).toHaveBeenCalledWith(
+      'relay-auth-v2',
+      'token rotation objective\nkeep the API compatible',
+    );
+  });
+
   it('disables agree while checks fail with disabledReason and agrees once passing', async () => {
     const agree = vi.fn();
     const { rerender } = render(DecompositionReviewView, {
