@@ -2,7 +2,17 @@
   import { t } from '../i18n';
   import { apiClient, type PullRequestObservation, type PrAdoptResult } from '../api/client';
   import { actFailureText } from '../api/errors';
+  import Button from './Button.svelte';
+  import TextField from './TextField.svelte';
+  import CheckField from './CheckField.svelte';
+  import PrChip from './PrChip.svelte';
 
+  /**
+   * Adopting a pull request that already exists (`shared/starting-work.adoc` § #pull-request): the
+   * reference is a `TextField` that takes a number or a URL, the observed pull request is a `PrChip`,
+   * and the acts are the design's `Button`s. A flagged pull request is adopted only once the
+   * operator accepted its screening.
+   */
   export let projectId = '';
   export let onAdopted: (result: PrAdoptResult) => void = () => {};
 
@@ -51,22 +61,27 @@
 </script>
 
 <div class="pr-adopt" data-testid="pr-adopt">
-  <label class="pr-adopt__field">
-    <span>{$t('git_sources.pr.field')}</span>
-    <input type="text" data-testid="pr-reference-input" bind:value={reference} />
-  </label>
+  <TextField
+    label={$t('git_sources.pr.field')}
+    testid="pr-reference-input"
+    bind:value={reference}
+    autocomplete="off"
+  />
 
-  <button
-    type="button"
-    data-testid="pr-observe"
-    on:click={observe}
-    disabled={busy || reference.trim().length === 0}
-  >
-    {$t('git_sources.pr.observe')}
-  </button>
+  <div>
+    <Button
+      variant="secondary"
+      data-testid="pr-observe"
+      disabled={busy || reference.trim().length === 0}
+      on:click={observe}
+    >
+      {$t('git_sources.pr.observe')}
+    </Button>
+  </div>
 
   {#if observation}
     <div class="pr-adopt__card" data-testid="pr-observation">
+      <PrChip number={observation.number} href={observation.url} />
       <p class="pr-adopt__headline">
         {$t('git_sources.pr.observation', {
           title: observation.title,
@@ -104,14 +119,13 @@
         <p class="pr-adopt__flagged" data-testid="pr-flagged-title">
           {$t('git_sources.pr.flagged.title')}
         </p>
-        <label class="pr-adopt__accept">
-          <input type="checkbox" data-testid="pr-accept-screening" bind:checked={accepted} />
-          <span>
-            {observation.screening === 'flagged'
-              ? $t('git_sources.pr.flagged.accept')
-              : $t('git_sources.pr.unscreened.accept')}
-          </span>
-        </label>
+        <CheckField
+          label={observation.screening === 'flagged'
+            ? $t('git_sources.pr.flagged.accept')
+            : $t('git_sources.pr.unscreened.accept')}
+          testid="pr-accept-screening"
+          bind:checked={accepted}
+        />
       {/if}
     </div>
   {/if}
@@ -122,40 +136,30 @@
     </p>
   {/if}
 
-  <button type="button" data-testid="pr-adopt-submit" on:click={adopt} disabled={busy || !canAdopt}>
-    {$t('git_sources.pr.adopt.action')}
-  </button>
+  <div>
+    <Button
+      variant="secondary"
+      data-testid="pr-adopt-submit"
+      disabled={busy || !canAdopt}
+      on:click={adopt}
+    >
+      {$t('git_sources.pr.adopt.action')}
+    </Button>
+  </div>
 </div>
 
 <style>
   .pr-adopt {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
-  }
-
-  .pr-adopt__field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1, 0.25rem);
-  }
-
-  .pr-adopt__field input {
-    min-height: 44px;
-    padding: var(--space-1, 0.25rem);
-  }
-
-  .pr-adopt button {
-    min-height: 44px;
-    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
-    cursor: pointer;
-    align-self: flex-start;
+    gap: var(--space-2);
   }
 
   .pr-adopt__card {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
+    align-items: flex-start;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-3);
@@ -171,18 +175,5 @@
 
   .pr-adopt__error {
     color: var(--color-danger-text);
-  }
-
-  .pr-adopt__accept {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2, 0.5rem);
-    min-height: 44px;
-  }
-
-  @media (max-width: 480px) {
-    .pr-adopt button {
-      align-self: stretch;
-    }
   }
 </style>

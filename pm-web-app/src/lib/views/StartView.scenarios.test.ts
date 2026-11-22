@@ -219,7 +219,7 @@ describe('start-documents: copied, moved, a directory, a tracked file and a refu
     expect(await screen.findByTestId('confined-file-picker')).toBeInTheDocument();
     expect(apiClient.listProjectFiles).toHaveBeenCalledWith(PROJECT, 'checkout', '');
 
-    await fireEvent.click(screen.getByTestId('picker-check-pom.xml'));
+    await fireEvent.click(screen.getByRole('checkbox', { name: 'pom.xml' }));
     await fireEvent.click(screen.getByTestId('picker-add'));
 
     expect(add).toHaveBeenCalledWith('ent-3f9a2c41', 'add_documents', {
