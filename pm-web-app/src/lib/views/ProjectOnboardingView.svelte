@@ -1232,48 +1232,6 @@
     z-index: 100;
   }
 
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 110;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    max-width: 32rem;
-    width: 100%;
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-  }
-
-  .modal-explain {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-    margin-bottom: var(--space-5);
-  }
-
-  .modal-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
   .chat-drawer {
     display: flex;
     flex-direction: column;
@@ -1370,11 +1328,6 @@
     .build-env__variable {
       grid-template-columns: 1fr;
       gap: 0;
-    }
-
-    .modal-actions {
-      flex-direction: column-reverse;
-      align-items: stretch;
     }
   }
 </style>
