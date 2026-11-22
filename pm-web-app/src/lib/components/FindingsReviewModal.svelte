@@ -139,6 +139,7 @@
   }
 
   function edit(): void {
+    promoting = false;
     editing = true;
   }
 
@@ -149,9 +150,18 @@
     editing = true;
   }
 
-  function promote(instruction: string): void {
+  /** Starts the promotion: the button asks for a draft, with no words of the operator's. */
+  function promote(): void {
     if (!selected) return;
-    onPromote(selected.item_id, instruction.trim() || undefined);
+    editing = false;
+    onPromote(selected.item_id, undefined);
+    promoting = true;
+  }
+
+  /** Asks the planning role to draft the plan again: only the words the operator typed count. */
+  function redraft(text: string): void {
+    if (!selected || !text.trim()) return;
+    onPromote(selected.item_id, text.trim());
     promoting = true;
   }
 
@@ -206,7 +216,7 @@
               >
                 <span class="review-modal__item-id mono">{item.item_id}</span>
                 <span class="review-modal__item-text">{item.statement}</span>
-                <StatusLabel tone={toneOf(item.state)} label={stateLabel(item.state)} />
+                <StatusLabel fixed tone={toneOf(item.state)} label={stateLabel(item.state)} />
               </Button>
             </li>
           {/each}
@@ -271,7 +281,7 @@
             variant="secondary"
             data-testid="review-promote"
             disabled={busy}
-            on:click={() => promote('')}
+            on:click={promote}
           >
             {$t('control.review.promote')}
           </Button>
@@ -374,7 +384,7 @@
               inputTestid="review-plan-instruction"
               submitTestid="review-plan-redraft"
               disabled={busy}
-              onsend={promote}
+              onsend={redraft}
             />
             <div class="review-modal__actions">
               <Button

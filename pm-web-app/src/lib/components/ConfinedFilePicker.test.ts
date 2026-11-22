@@ -62,6 +62,23 @@ describe('ConfinedFilePicker', () => {
     expect(within(dialog).getByText(/larger than/)).toBeInTheDocument();
   });
 
+  it('browses the checkout first, then the home directory', async () => {
+    const list = vi
+      .spyOn(apiClient, 'listProjectFiles')
+      .mockResolvedValue({ ...LISTING, root: 'home' } as ConfinedFileList);
+    render(ConfinedFilePicker, { props: { open: true, projectId: 'p-1' } });
+
+    const checkout = await screen.findByTestId('picker-root-checkout');
+    const home = screen.getByTestId('picker-root-home');
+    expect(checkout).toHaveAttribute('aria-pressed', 'true');
+
+    await fireEvent.click(home);
+
+    expect(list).toHaveBeenLastCalledWith('p-1', 'home', '');
+    expect(home).toHaveAttribute('aria-pressed', 'true');
+    expect(checkout).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('enters a directory and goes back up', async () => {
     const list = vi
       .spyOn(apiClient, 'listProjectFiles')

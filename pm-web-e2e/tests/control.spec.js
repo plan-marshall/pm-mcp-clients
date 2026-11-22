@@ -207,9 +207,10 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await confirm.getByRole('button', { name: 'Back' }).click();
 
     await page.getByTestId('hold-act-retry').click();
-    await expect(page.getByTestId('hold-still-held')).toContainText('Still held', {
-      timeout: 5000,
-    });
+    await expect(page.getByTestId('hold-still-held')).toContainText(
+      /Still held: .*references\.json changed outside the runtime/,
+      { timeout: 5000 },
+    );
   });
 
   test('shows a held item with its acts', async ({ page, request }) => {

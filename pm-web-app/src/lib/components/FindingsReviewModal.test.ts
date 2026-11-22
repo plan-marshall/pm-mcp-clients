@@ -1,4 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import FindingsReviewModal from './FindingsReviewModal.svelte';
 import type { ReviewResource } from '../api/client';
@@ -80,6 +82,8 @@ describe('FindingsReviewModal component', () => {
     expect(
       screen.getByTestId('review-item-F-0004').querySelector('.status-label--attention'),
     ).not.toBeNull();
+    // In a list the state takes the fixed slot, so the dots stand one under the other.
+    expect(screen.getByTestId('review-item-F-0004').querySelector('.status-label--fixed')).not.toBeNull();
     expect(document.querySelectorAll('.btn--secondary').length).toBeGreaterThanOrEqual(5);
     // One primary act: Finish.
     const primaries = document.querySelectorAll('.btn--primary');
@@ -194,6 +198,14 @@ describe('FindingsReviewModal component', () => {
 
     expect(screen.getByTestId('review-untrusted')).toHaveTextContent('untrusted');
     expect(screen.getByTestId('review-rules')).toHaveTextContent('no rules named');
+  });
+
+  it('draws the selected row of the register in the brand colours', () => {
+    const content = fs.readFileSync(path.resolve(__dirname, './FindingsReviewModal.svelte'), 'utf-8');
+
+    expect(content).toMatch(
+      /\.review-modal__row :global\(\.btn\[aria-current='true'\]\)\s*\{[^}]*border-color:\s*var\(--color-brand\)/,
+    );
   });
 
   it('keeps an item as a finding or moves it to the watches', async () => {

@@ -48,16 +48,12 @@ describe('HoldResolutionModal component', () => {
   };
 
   /** The five kinds of a hold, each with acts the runtime offers for it. */
-  const HOLDS: { kind: string; label: string; acts: string[] }[] = [
-    { kind: 'stalled', label: 'is stalled', acts: ['retry', 'recycle', 'end_plan'] },
-    { kind: 'condition', label: 'holds: a condition', acts: ['retry', 'grant', 'end_plan'] },
-    { kind: 'integrity_pause', label: 'holds: an integrity pause', acts: ['retry', 'accept', 'abort'] },
-    { kind: 'held', label: 'holds: a held item', acts: ['retry', 'end_plan'] },
-    {
-      kind: 'landing_failed',
-      label: 'holds: a failed landing',
-      acts: ['retry', 'show_pr', 'give_up_removal'],
-    },
+  const HOLDS: { kind: string; acts: string[] }[] = [
+    { kind: 'stalled', acts: ['retry', 'recycle', 'end_plan'] },
+    { kind: 'condition', acts: ['retry', 'grant', 'end_plan'] },
+    { kind: 'integrity_pause', acts: ['retry', 'accept', 'abort'] },
+    { kind: 'held', acts: ['retry', 'end_plan'] },
+    { kind: 'landing_failed', acts: ['retry', 'show_pr', 'give_up_removal'] },
   ];
 
   it('is the design dialog: its title names it and its acts sit in it', () => {

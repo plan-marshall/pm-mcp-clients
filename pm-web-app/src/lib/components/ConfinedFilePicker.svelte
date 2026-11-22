@@ -198,14 +198,16 @@
     {/if}
   {/if}
 
-  <p class="file-picker__hint">{$t('start.documents.loopback_only')}</p>
+  {#if loopback}
+    <p class="file-picker__hint">{$t('start.documents.loopback_only')}</p>
+  {/if}
 
   <svelte:fragment slot="footer">
     <Button variant="ghost" data-testid="picker-close" on:click={onClose}>
       {$t('common.action.close')}
     </Button>
     <Button
-      variant="secondary"
+      variant="primary"
       data-testid="picker-add"
       disabled={selected.length === 0}
       on:click={add}
