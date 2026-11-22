@@ -254,6 +254,8 @@
           bind:value={instruction}
           label={$t('start.decomposition.instruct_prompt')}
           sendLabel={$t('start.decomposition.edit')}
+          inputTestid="instruct-input"
+          submitTestid="instruct-submit"
           disabled={busy || (!instruction.trim() && !editedObjective.trim())}
           onsend={submitInstruct}
         />

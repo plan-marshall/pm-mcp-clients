@@ -55,6 +55,10 @@
     tools?: Snippet;
     /** A line under the field, such as a counter or a hint. */
     footer?: Snippet;
+    /** Test ID for the textarea. */
+    inputTestid?: string;
+    /** Test ID for the send/stop button. */
+    submitTestid?: string;
   }
 
   /**
@@ -90,6 +94,8 @@
     stop = null,
     tools,
     footer,
+    inputTestid,
+    submitTestid,
   }: Props = $props();
 
   /** The legacy `keyCode` a browser reports for a key press that belongs to an input method. */
@@ -202,6 +208,7 @@
       rows="1"
       aria-label={label ? undefined : ariaLabel}
       aria-describedby={reason ? reasonId : undefined}
+      data-testid={inputTestid}
       {placeholder}
       {onkeydown}
       oncompositionstart={() => (composing = true)}
@@ -215,6 +222,7 @@
       icon={stop ? 'act.stop' : 'act.send'}
       disabled={stop ? false : disabled}
       disabledReason={stop ? undefined : disabledReason}
+      data-testid={submitTestid}
       onclick={act}
     >
       <span class="sr-only">{stop ? stop.label : sendLabel}</span>
