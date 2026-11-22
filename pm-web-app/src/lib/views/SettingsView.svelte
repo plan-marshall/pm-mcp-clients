@@ -21,6 +21,7 @@
     type PairedDevice,
   } from '../api/client';
   import { isClientError, errorCodeOf } from '../api/errors';
+  import { isLoopbackSession } from '../utils/loopback';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
   import { formatDay, formatTime } from '../display/format';
@@ -547,10 +548,7 @@
   let tokenError = '';
 
   /** Whether the documents choice is a loopback-only one: a move deletes the operator's files. */
-  const loopbackSession =
-    typeof window !== 'undefined'
-      ? ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(window.location.hostname)
-      : true;
+  const loopbackSession = isLoopbackSession();
 
   /** Whether the form of the documents mode currently shows a change. */
   let documentsSaved = false;

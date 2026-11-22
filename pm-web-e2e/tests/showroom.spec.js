@@ -77,8 +77,8 @@ test.describe('Fully onboarded showroom', () => {
     await page.getByTestId('source-add-menu').click();
     await page.getByTestId('action-documents').click();
     await expect(page.getByTestId('confined-file-picker')).toBeVisible();
-    await expect(page.getByTestId('picker-row-doc')).toBeVisible();
-    await expect(page.getByTestId('picker-row-pom.xml')).toBeVisible();
+    await expect(page.getByTestId('picker-enter-doc')).toBeVisible();
+    await expect(page.getByRole('checkbox', { name: 'pom.xml' })).toBeVisible();
   });
 
   /*

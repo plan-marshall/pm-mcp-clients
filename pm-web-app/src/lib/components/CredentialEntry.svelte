@@ -3,18 +3,17 @@
   import Button from './Button.svelte';
   import { apiClient } from '../api/client';
   import { actFailureText } from '../api/errors';
+  import { isLoopbackSession } from '../utils/loopback';
 
   export let credentialKey: string;
   export let label: string;
-
-  const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
 
   let secret = '';
   let isSaving = false;
   let notice = '';
   let error = '';
 
-  $: isLoopback = typeof window !== 'undefined' && loopbackHosts.includes(window.location.hostname);
+  $: isLoopback = isLoopbackSession();
   $: command = `pm-operator credentials set ${credentialKey}`;
 
   async function save(): Promise<void> {
