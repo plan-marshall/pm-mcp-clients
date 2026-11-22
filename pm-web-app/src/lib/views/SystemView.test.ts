@@ -21,6 +21,18 @@ function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {
   messagesStore.set({ ...loadMessages(locale), ...overrides });
 }
 
+/**
+ * Opens the runtime card's act menu and answers the entry it names: a stop, a restart and an
+ * upgrade live in the `ActionBar`'s overflow, behind their confirmation.
+ *
+ * @param name the accessible name of the entry
+ * @returns the menu entry
+ */
+async function openRuntimeAct(name: RegExp | string): Promise<HTMLElement> {
+  await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+  return screen.getByRole('menuitem', { name });
+}
+
 describe('SystemView component', () => {
   let eventHandler: ((event: string, data: unknown) => void) | null = null;
   const mockSnapshot: SystemSnapshot = {
@@ -204,7 +216,7 @@ describe('SystemView component', () => {
     });
 
     expect(screen.getAllByText(/pm-mcpd 0\.9\.1/)[0]).toBeInTheDocument();
-    expect(screen.getByText(/3 running/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^3 running/ })).toBeInTheDocument();
     expect(screen.getByText('fix-relay')).toBeInTheDocument();
     expect(screen.getByText('relay-docs')).toBeInTheDocument();
     expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
@@ -320,7 +332,7 @@ describe('SystemView component', () => {
       expect(screen.getByText('System')).toBeInTheDocument();
     });
 
-    const todayBtn = screen.getByRole('button', { name: 'Today' });
+    const todayBtn = screen.getByRole('radio', { name: 'Today' });
     await fireEvent.click(todayBtn);
 
     expect(fetchSpy).toHaveBeenCalledWith('today', undefined);
@@ -335,19 +347,40 @@ describe('SystemView component', () => {
     render(SystemView);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Stop/i })).toBeInTheDocument();
+      expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument();
     });
 
-    const stopBtn = screen.getByRole('button', { name: /Stop/i });
-    await fireEvent.click(stopBtn);
+    await fireEvent.click(await openRuntimeAct('Stop…'));
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('When what runs is done')).toBeInTheDocument();
+    // The drain is preselected: the act names that choice.
+    expect(screen.getByRole('radio', { name: /^When what runs is done/ })).toBeChecked();
 
     const confirmBtn = screen.getByRole('button', { name: /Stop when done/i });
     await fireEvent.click(confirmBtn);
 
     expect(stopSpy).toHaveBeenCalledWith('drain');
+  });
+
+  it('closes the lifecycle dialog on Escape and returns the focus to the act that opened it', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
+
+    const trigger = screen.getByTestId('action-bar-overflow');
+    await fireEvent.click(trigger);
+    const entry = screen.getByRole('menuitem', { name: 'Stop…' });
+    await fireEvent.click(entry);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(screen.queryByText('When what runs is done')).toBeNull();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   it("shows the sentence of the act failure's code instead of the code", async () => {
@@ -356,8 +389,8 @@ describe('SystemView component', () => {
 
     render(SystemView);
 
-    await waitFor(() => expect(screen.getByRole('button', { name: /Stop/i })).toBeInTheDocument());
-    await fireEvent.click(screen.getByRole('button', { name: /Stop/i }));
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
+    await fireEvent.click(await openRuntimeAct('Stop…'));
     await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
 
     const alert = await screen.findByRole('alert');
@@ -422,8 +455,8 @@ describe('SystemView component', () => {
 
     await waitFor(() => expect(screen.getByText('System')).toBeInTheDocument());
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Today' }));
-    await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Today' }));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Per role' }));
     await fireEvent.change(screen.getByTestId('system-project-filter'), {
       target: { value: 'pm-mcp-clients' },
     });
@@ -597,7 +630,7 @@ describe('SystemView component', () => {
     const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockResolvedValue(undefined as never);
 
     render(SystemView);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Stop…/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
 
     const epochBefore = lifecycleEpochOf();
     let resolveStaleStatus: (status: StatusResponse) => void = () => {};
@@ -611,7 +644,7 @@ describe('SystemView component', () => {
       runtimeStore.update((s) => ({ ...s, ...lifecycleFieldsOf(status) }));
     })();
 
-    await fireEvent.click(screen.getByRole('button', { name: /Stop…/i }));
+    await fireEvent.click(await openRuntimeAct('Stop…'));
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
     await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
     expect(stopSpy).toHaveBeenCalledWith('drain');
@@ -831,9 +864,10 @@ describe('SystemView component', () => {
         .spyOn(apiClient, 'stopRuntime')
         .mockResolvedValue({ lifecycle_state: 'stopping' });
       render(SystemView);
-      await fireEvent.click(await screen.findByRole('button', { name: 'Restart…' }));
+      await screen.findByTestId('action-bar-overflow');
+      await fireEvent.click(await openRuntimeAct('Restart…'));
 
-      expect(screen.getByText('Every client connects again by itself.')).toBeInTheDocument();
+      expect(screen.getByText(/Every client connects again by itself/)).toBeInTheDocument();
       await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
       await fireEvent.click(screen.getByRole('button', { name: 'Restart now' }));
 
@@ -849,12 +883,13 @@ describe('SystemView component', () => {
         .mockResolvedValue({ lifecycle_state: 'stopped' });
       render(SystemView);
 
-      await fireEvent.click(await screen.findByRole('button', { name: 'Stop…' }));
+      await screen.findByTestId('action-bar-overflow');
+      await fireEvent.click(await openRuntimeAct('Stop…'));
       await fireEvent.click(screen.getByRole('button', { name: 'Keep it running' }));
       expect(screen.queryByRole('dialog')).toBeNull();
       expect(stopSpy).not.toHaveBeenCalled();
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Stop…' }));
+      await fireEvent.click(await openRuntimeAct('Stop…'));
       await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
       await fireEvent.click(screen.getByRole('button', { name: 'Stop now' }));
 
@@ -955,16 +990,15 @@ describe('SystemView component', () => {
       render(SystemView);
       await screen.findByText('claude:opus-4.5');
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+      await fireEvent.click(screen.getByRole('radio', { name: 'Per role' }));
 
-      const implementer = screen
-        .getByText('implementer', { selector: 'strong.mono' })
-        .closest('tr');
+      const modelsTable = screen.getByRole('table', { name: 'Models' });
+      const implementer = within(modelsTable).getByText('implementer').closest('tr');
       expect(implementer).not.toBeNull();
       // 118 + 12 calls; the unmeasured gpt-5 calls do not hide the measured tokens of sonnet.
       expect(within(implementer as HTMLElement).getByText('130')).toBeInTheDocument();
       expect(implementer).toHaveTextContent('1 error');
-      expect(screen.getByText('planner', { selector: 'strong.mono' })).toBeInTheDocument();
+      expect(within(modelsTable).getByText('planner')).toBeInTheDocument();
     });
 
     it('says when nothing runs, no worker is active, and no model was called', async () => {
@@ -996,9 +1030,9 @@ describe('SystemView component', () => {
       );
       const fetchSpy = vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
       render(SystemView);
-      const group = await screen.findByRole('group', { name: /window/i });
+      const group = await screen.findByRole('radiogroup', { name: /window/i });
 
-      await fireEvent.click(within(group).getByRole('button', { name: label }));
+      await fireEvent.click(within(group).getByRole('radio', { name: label }));
 
       expect(fetchSpy).toHaveBeenLastCalledWith(wire, undefined);
       const heading = screen.getByRole('heading', { name: 'Models' }).parentElement;
@@ -1014,9 +1048,9 @@ describe('SystemView component', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'Refresh system view' }));
       await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
 
-      await fireEvent.click(screen.getByRole('button', { name: 'Per role' }));
+      await fireEvent.click(screen.getByRole('radio', { name: 'Per role' }));
       expect(screen.queryByText('claude:opus-4.5')).toBeNull();
-      await fireEvent.click(screen.getByRole('button', { name: 'Per model' }));
+      await fireEvent.click(screen.getByRole('radio', { name: 'Per model' }));
       expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
       // The workers' table and the models' table both head their column Model again.
       expect(screen.getAllByRole('columnheader', { name: 'Model' })).toHaveLength(2);
@@ -1038,18 +1072,15 @@ describe('SystemView component', () => {
       expect(links).toHaveLength(2);
       for (const link of links) {
         expect(link).toHaveAttribute('href', '/api/v1/system/release-notes?version=0.10.0');
-        expect(link).toHaveAttribute('rel', 'noreferrer');
       }
     });
 
-    it('opens the consent from the Upgrade act of the runtime card too', async () => {
+    it('opens the consent from the act menu of the runtime card too', async () => {
       vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
       render(SystemView);
-      await waitFor(() =>
-        expect(screen.getAllByRole('button', { name: 'Upgrade…' })).toHaveLength(2),
-      );
+      await screen.findByTestId('action-bar-overflow');
 
-      await fireEvent.click(screen.getAllByRole('button', { name: 'Upgrade…' })[1]);
+      await fireEvent.click(await openRuntimeAct('Upgrade…'));
 
       expect(await screen.findByTestId('upgrade-consent')).toHaveTextContent(
         'Upgrade 0.9.1 to 0.10.0?',

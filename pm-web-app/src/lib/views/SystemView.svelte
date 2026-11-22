@@ -24,6 +24,20 @@
   import { formatSplit, formatBytes, formatTime } from '../display/format';
   import DashboardPage from '../templates/DashboardPage.svelte';
   import ActionBar from '../components/ActionBar.svelte';
+  import SegmentedControl from '../components/SegmentedControl.svelte';
+  import SelectField from '../components/SelectField.svelte';
+  import IconButton from '../components/IconButton.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import CountBadge from '../components/CountBadge.svelte';
+  import DataTable, {
+    type DataTableColumn,
+    type DataTableRow,
+  } from '../components/DataTable.svelte';
+  import Dialog from '../components/Dialog.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
+  import RadioGroup from '../components/RadioGroup.svelte';
+  import Link from '../components/Link.svelte';
+  import ExternalLink, { isWebAddress } from '../components/ExternalLink.svelte';
   import { actsFor } from '../actions/byState';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
@@ -539,6 +553,132 @@
     }
     return snapshot.models;
   });
+
+  /** The tones of `StatusLabel`, chosen from the state word the runtime serves. */
+  const DANGER_STATES = ['failed', 'landing_failed', 'error'];
+  const ATTENTION_STATES = ['waiting_for_you', 'stalled', 'held'];
+  const SUCCESS_STATES = ['done', 'merged', 'ready', 'completed', 'success', 'idle'];
+
+  /**
+   * @param state the state word of a plan or an epic
+   * @returns the tone its dot takes
+   */
+  function stateTone(state: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    const word = state.toLowerCase();
+    if (word === 'running' || word === 'pausing') return 'running';
+    if (ATTENTION_STATES.includes(word)) return 'attention';
+    if (DANGER_STATES.includes(word)) return 'danger';
+    if (SUCCESS_STATES.includes(word)) return 'success';
+    return 'neutral';
+  }
+
+  /** The window: three options that switch what the same figures count. */
+  let windowOptions = $derived([
+    { id: 'hour', label: $t('system.models.window', { window: 'hour' }) },
+    { id: 'today', label: $t('system.models.window', { window: 'today' }) },
+    { id: '7d', label: $t('system.models.window', { window: 'week' }) },
+  ]);
+
+  /** The grouping of the models: per model or per role. */
+  let groupOptions = $derived([
+    { id: 'model', label: $t('system.models.per_model') },
+    { id: 'role', label: $t('system.models.per_role') },
+  ]);
+
+  /** The enrolled projects of the filter, with the answer that clears it. */
+  let projectOptions = $derived([
+    { value: '', label: $t('system.work.all') },
+    ...projects.map((project) => ({
+      value: project.project_id,
+      label: project.display_name,
+    })),
+  ]);
+
+  /** The choice of when a lifecycle act takes effect, drain preselected. */
+  let whenOptions = $derived([
+    {
+      value: 'drain',
+      label: $t('system.confirm.drain'),
+      description: $t('system.confirm.drain_explain'),
+    },
+    {
+      value: 'now',
+      label: $t('system.confirm.now'),
+      description: $t('system.confirm.now_explain'),
+    },
+  ]);
+
+  /** The workers as the table's rows; every cell is text the view already formatted. */
+  const workerColumns: DataTableColumn[] = [
+    { id: 'role', header: $t('system.workers.col.role'), width: '14%' },
+    { id: 'harness', header: $t('system.workers.col.harness'), width: '12%' },
+    { id: 'model', header: $t('system.workers.col.model'), width: '22%' },
+    { id: 'state', header: $t('system.workers.col.state'), width: '12%' },
+    { id: 'item', header: $t('system.workers.col.current_item'), width: '40%' },
+  ];
+
+  let workerRows = $derived<DataTableRow[]>(
+    (snapshot?.workers ?? []).map((worker, index) => ({
+      id: `${worker.role}-${worker.model}-${index}`,
+      cells: {
+        role: worker.role,
+        harness: worker.harness,
+        model: worker.model,
+        state: displayState('worker', worker.state, $t),
+        item: worker.current_plan_title || '—',
+      },
+    })),
+  );
+
+  /** The models as the table's rows, the same figures the role grouping sums. */
+  let modelColumns = $derived<DataTableColumn[]>([
+    {
+      id: 'model',
+      header: $t(selectedGroupBy === 'model' ? 'system.models.col.model' : 'system.models.col.role'),
+      width: '28%',
+    },
+    { id: 'calls', header: $t('system.models.col.calls'), width: '12%', numeric: true },
+    { id: 'tokens', header: $t('system.models.col.tokens'), width: '36%', numeric: true },
+    { id: 'status', header: $t('system.models.col.status'), width: '24%' },
+  ]);
+
+  /**
+   * @param model one model row
+   * @returns the token figure, or the words of an unmeasured model
+   */
+  function tokenFigure(model: ModelMetric): string {
+    if (model.tokens_unmeasured && model.tokens_total === 0) {
+      return $t('system.models.not_measured', { model: model.id.split(':')[0] || model.id });
+    }
+    return formatSplit(model.tokens_total, model.tokens_in, model.tokens_out, false, $currentLocale);
+  }
+
+  /**
+   * @param model one model row
+   * @returns what its status cell says: the retries and errors, or the word for a healthy model
+   */
+  function modelStatus(model: ModelMetric): string {
+    const parts: string[] = [];
+    if (model.retries_count > 0) {
+      parts.push($t('system.models.retry', { count: model.retries_count }));
+    }
+    if (model.errors_count > 0) {
+      parts.push($t('system.models.error', { count: model.errors_count }));
+    }
+    return parts.length > 0 ? parts.join(' · ') : $t('system.models.ok');
+  }
+
+  let modelRows = $derived<DataTableRow[]>(
+    displayModels.map((model) => ({
+      id: model.id,
+      cells: {
+        model: model.id,
+        calls: String(model.calls_count),
+        tokens: tokenFigure(model),
+        status: modelStatus(model),
+      },
+    })),
+  );
 </script>
 
 <DashboardPage>
@@ -553,55 +693,30 @@
 
   <div slot="controls" class="system-header__controls">
     {#if projects.length > 0}
-      <select
-        class="project-filter"
-        aria-label={$t('system.work.per_project')}
-        value={selectedProject}
-        onchange={(event) => handleProjectChange(event.currentTarget.value)}
-        data-testid="system-project-filter"
-      >
-        <option value="">{$t('system.work.all')}</option>
-        {#each projects as project (project.project_id)}
-          <option value={project.project_id}>{project.display_name}</option>
-        {/each}
-      </select>
+      <div class="project-filter-field">
+        <SelectField
+          label={$t('system.work.per_project')}
+          testid="system-project-filter"
+          value={selectedProject}
+          options={projectOptions}
+          onchange={(value) => handleProjectChange(value)}
+        />
+      </div>
     {/if}
 
-    <div class="window-selector" role="group" aria-label={$t('system.view.window_label')}>
-      <button
-        type="button"
-        class="btn-toggle"
-        class:btn-toggle--active={selectedWindow === 'hour'}
-        onclick={() => handleWindowChange('hour')}
-      >
-        {$t('system.models.window', { window: 'hour' })}
-      </button>
-      <button
-        type="button"
-        class="btn-toggle"
-        class:btn-toggle--active={selectedWindow === 'today'}
-        onclick={() => handleWindowChange('today')}
-      >
-        {$t('system.models.window', { window: 'today' })}
-      </button>
-      <button
-        type="button"
-        class="btn-toggle"
-        class:btn-toggle--active={selectedWindow === '7d'}
-        onclick={() => handleWindowChange('7d')}
-      >
-        {$t('system.models.window', { window: 'week' })}
-      </button>
-    </div>
+    <SegmentedControl
+      label={$t('system.view.window_label')}
+      value={selectedWindow}
+      options={windowOptions}
+      onChange={(id) => handleWindowChange(id as 'hour' | 'today' | '7d')}
+    />
 
-    <button
-      type="button"
-      class="refresh-btn"
-      aria-label={$t('system.view.refresh')}
+    <IconButton
+      icon="act.refresh"
+      label={$t('system.view.refresh')}
+      advisory={$t('system.view.refresh')}
       onclick={() => loadSnapshot(true)}
-    >
-      ↻
-    </button>
+    />
   </div>
 
   <div class="system-container" data-testid="system-view">
@@ -638,14 +753,17 @@
         {/if}
         <div class="upgrade-panel__actions">
           {#if snapshot.runtime.upgrade_release_notes_url}
-            <a
-              href={snapshot.runtime.upgrade_release_notes_url}
-              target="_blank"
-              rel="noreferrer"
-              class="link-muted"
-            >
-              {$t('system.runtime.release_notes')}
-            </a>
+            {#if isWebAddress(snapshot.runtime.upgrade_release_notes_url)}
+              <ExternalLink
+                href={snapshot.runtime.upgrade_release_notes_url}
+                label={$t('system.runtime.release_notes')}
+              />
+            {:else}
+              <Link
+                href={snapshot.runtime.upgrade_release_notes_url}
+                label={$t('system.runtime.release_notes')}
+              />
+            {/if}
           {/if}
           <Button
             variant="primary"
@@ -795,7 +913,7 @@
       {#if snapshot.cleanup && (snapshot.cleanup.plans_count > 0 || snapshot.cleanup.epics_count > 0 || snapshot.cleanup.logs_count > 0)}
         <div class="cleanup-banner" role="region" aria-label={$t('system.cleanup.region')}>
           <div class="cleanup-banner__info">
-            <span class="cleanup-banner__badge"
+            <span class="cleanup-banner__label"
               ><Icon name="act.clean" size={16} /> {$t('system.cleanup.title')}</span
             >
             <span class="cleanup-banner__text">
@@ -853,14 +971,17 @@
                     })}</strong
                   >
                   {#if snapshot.runtime.upgrade_release_notes_url}
-                    <a
-                      href={snapshot.runtime.upgrade_release_notes_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      class="link-muted"
-                    >
-                      {$t('system.runtime.release_notes')}
-                    </a>
+                    {#if isWebAddress(snapshot.runtime.upgrade_release_notes_url)}
+                      <ExternalLink
+                        href={snapshot.runtime.upgrade_release_notes_url}
+                        label={$t('system.runtime.release_notes')}
+                      />
+                    {:else}
+                      <Link
+                        href={snapshot.runtime.upgrade_release_notes_url}
+                        label={$t('system.runtime.release_notes')}
+                      />
+                    {/if}
                   {/if}
                 </span>
               </div>
@@ -933,7 +1054,7 @@
           <div class="card-header">
             <h2 id="heading-work" class="card-title">{$t('system.work.title')}</h2>
             {#if snapshot.work.recovering_projects && snapshot.work.recovering_projects.length > 0}
-              <span class="badge badge--warning">
+              <span class="text-muted text-sm">
                 {$t('system.work.recovering')}: {snapshot.work.recovering_projects.join(', ')}
               </span>
             {/if}
@@ -946,9 +1067,9 @@
                 {#if snapshot.work.plans_by_state && Object.keys(snapshot.work.plans_by_state).length > 0}
                   {#each Object.entries(snapshot.work.plans_by_state) as [st, count]}
                     {#if count > 0}
-                      <button
-                        type="button"
-                        class="status-tag status-tag--{st} status-tag--link"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         aria-label={`${count} ${displayState('plan', st, $t)} — ${$t(
                           'system.work.link.plans',
                           {
@@ -958,9 +1079,9 @@
                         )}`}
                         onclick={() => openOverview('plans')}
                       >
-                        {count}
-                        {displayState('plan', st, $t)}
-                      </button>
+                        <CountBadge count={count} />
+                        <StatusLabel tone={stateTone(st)} label={displayState('plan', st, $t)} />
+                      </Button>
                     {/if}
                   {/each}
                 {:else}
@@ -975,9 +1096,9 @@
                 {#if snapshot.work.epics_by_state && Object.keys(snapshot.work.epics_by_state).length > 0}
                   {#each Object.entries(snapshot.work.epics_by_state) as [st, count]}
                     {#if count > 0}
-                      <button
-                        type="button"
-                        class="status-tag status-tag--{st} status-tag--link"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         aria-label={`${count} ${displayState('epic', st, $t)} — ${$t(
                           'system.work.link.epics',
                           {
@@ -987,9 +1108,9 @@
                         )}`}
                         onclick={() => openOverview('epics')}
                       >
-                        {count}
-                        {displayState('epic', st, $t)}
-                      </button>
+                        <CountBadge count={count} />
+                        <StatusLabel tone={stateTone(st)} label={displayState('epic', st, $t)} />
+                      </Button>
                     {/if}
                   {/each}
                 {:else}
@@ -1011,9 +1132,9 @@
             <div class="metric-row">
               <span class="metric-label">{$t('system.work.field.projects')}</span>
               <span class="metric-value">
-                <button
-                  type="button"
-                  class="metric-link"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   aria-label={`${$t('system.work.projects', {
                     count: snapshot.work.active_projects_count || 0,
                   })} — ${$t('system.work.link.projects', {
@@ -1022,7 +1143,7 @@
                   onclick={() => navigateTo('projects')}
                 >
                   {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}
-                </button>
+                </Button>
               </span>
             </div>
           </div>
@@ -1032,58 +1153,36 @@
         <section class="card" aria-labelledby="heading-workers">
           <div class="card-header">
             <h2 id="heading-workers" class="card-title">{$t('system.workers.title')}</h2>
-            <span class="badge">
-              {$t('system.workers.count', {
+            <CountBadge
+              count={snapshot.workers.length}
+              label={$t('system.workers.count', {
                 count: snapshot.workers.length,
                 busy: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
                 idle: snapshot.workers.filter((w) => w.state.toLowerCase() === 'idle').length,
               })}
-            </span>
+            />
           </div>
 
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>{$t('system.workers.col.role')}</th>
-                  <th>{$t('system.workers.col.harness')}</th>
-                  <th>{$t('system.workers.col.model')}</th>
-                  <th>{$t('system.workers.col.state')}</th>
-                  <th>{$t('system.workers.col.current_item')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#if snapshot.workers.length === 0}
-                  <tr>
-                    <td colspan="5" class="text-muted text-center">{$t('system.workers.none')}</td>
-                  </tr>
-                {:else}
-                  {#each snapshot.workers as w}
-                    <tr>
-                      <td><strong>{w.role}</strong></td>
-                      <td>{w.harness}</td>
-                      <td class="mono">{w.model}</td>
-                      <td>
-                        <span class="worker-state worker-state--{w.state.toLowerCase()}">
-                          {displayState('worker', w.state, $t)}
-                        </span>
-                      </td>
-                      <td class="text-truncate">{w.current_plan_title || '—'}</td>
-                    </tr>
-                  {/each}
-                {/if}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={workerColumns}
+            rows={workerRows}
+            label={$t('system.workers.title')}
+            compact
+          >
+            <svelte:fragment slot="empty">
+              <span class="text-muted text-center">{$t('system.workers.none')}</span>
+            </svelte:fragment>
+          </DataTable>
         </section>
 
         <!-- 4. Jobs Card -->
         <section class="card" aria-labelledby="heading-jobs">
           <div class="card-header">
             <h2 id="heading-jobs" class="card-title">{$t('system.jobs.title')}</h2>
-            <span class="badge">
-              {$t('system.jobs.locks', { count: snapshot.jobs.locks_held || 0 })}
-            </span>
+            <CountBadge
+              count={snapshot.jobs.locks_held || 0}
+              label={$t('system.jobs.locks', { count: snapshot.jobs.locks_held || 0 })}
+            />
           </div>
 
           <div class="metrics-list">
@@ -1130,97 +1229,24 @@
               </span>
             </div>
 
-            <div class="group-selector" role="group" aria-label={$t('system.models.grouping')}>
-              <button
-                type="button"
-                class="btn-toggle"
-                class:btn-toggle--active={selectedGroupBy === 'model'}
-                onclick={() => handleGroupChange('model')}
-              >
-                {$t('system.models.per_model')}
-              </button>
-              <button
-                type="button"
-                class="btn-toggle"
-                class:btn-toggle--active={selectedGroupBy === 'role'}
-                onclick={() => handleGroupChange('role')}
-              >
-                {$t('system.models.per_role')}
-              </button>
-            </div>
+            <SegmentedControl
+              label={$t('system.models.grouping')}
+              value={selectedGroupBy}
+              options={groupOptions}
+              onChange={(id) => handleGroupChange(id as 'model' | 'role')}
+            />
           </div>
 
-          <div class="table-container">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>
-                    {$t(
-                      selectedGroupBy === 'model'
-                        ? 'system.models.col.model'
-                        : 'system.models.col.role',
-                    )}
-                  </th>
-                  <th>{$t('system.models.col.calls')}</th>
-                  <th>{$t('system.models.col.tokens')}</th>
-                  <th>{$t('system.models.col.status')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#if displayModels.length === 0}
-                  <tr>
-                    <td colspan="4" class="text-muted text-center">{$t('system.models.none')}</td>
-                  </tr>
-                {:else}
-                  {#each displayModels as m}
-                    <tr>
-                      <td>
-                        <strong class="mono">{m.id}</strong>
-                      </td>
-                      <td>{m.calls_count}</td>
-                      <td>
-                        {#if m.tokens_unmeasured && m.tokens_total === 0}
-                          <span class="text-muted">
-                            {$t('system.models.not_measured', {
-                              model: m.id.split(':')[0] || m.id,
-                            })}
-                          </span>
-                        {:else}
-                          <span class="mono">
-                            {formatSplit(
-                              m.tokens_total,
-                              m.tokens_in,
-                              m.tokens_out,
-                              false,
-                              $currentLocale,
-                            )}
-                          </span>
-                        {/if}
-                      </td>
-                      <td>
-                        {#if m.errors_count > 0 || m.retries_count > 0}
-                          <div class="tags-row">
-                            {#if m.retries_count > 0}
-                              <span class="badge badge--warning">
-                                {$t('system.models.retry', { count: m.retries_count })}
-                              </span>
-                            {/if}
-                            {#if m.errors_count > 0}
-                              <span class="badge badge--danger">
-                                {$t('system.models.error', { count: m.errors_count })}
-                              </span>
-                            {/if}
-                          </div>
-                        {:else}
-                          <span class="text-muted">{$t('system.models.ok')}</span>
-                        {/if}
-                      </td>
-                    </tr>
-                  {/each}
-                {/if}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={modelColumns}
+            rows={modelRows}
+            label={$t('system.models.title')}
+            compact
+          >
+            <svelte:fragment slot="empty">
+              <span class="text-muted text-center">{$t('system.models.none')}</span>
+            </svelte:fragment>
+          </DataTable>
         </section>
       </div>
     {/if}
@@ -1228,204 +1254,123 @@
 </DashboardPage>
 
 <!-- Upgrade Consent Dialogue -->
-{#if upgradePhase === 'consent' && snapshot}
-  <div
-    class="modal-backdrop"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="upgrade-consent-title"
-    data-testid="upgrade-consent"
-  >
-    <div class="modal-card">
-      <h2 id="upgrade-consent-title" class="modal-title">
-        {$t('system.upgrade.consent', {
-          installed: snapshot.runtime.version,
-          version: snapshot.runtime.upgrade_available_version ?? '',
+<Dialog
+  open={upgradePhase === 'consent' && snapshot !== null}
+  title={snapshot
+    ? $t('system.upgrade.consent', {
+        installed: snapshot.runtime.version,
+        version: snapshot.runtime.upgrade_available_version ?? '',
+      })
+    : ''}
+  danger
+  testid="upgrade-consent"
+  onClose={() => {
+    upgradePhase = 'idle';
+  }}
+>
+  {#if snapshot}
+    <p class="text-muted text-sm">
+      {$t('system.upgrade.explain', {
+        installed: snapshot.runtime.version,
+        version: snapshot.runtime.upgrade_available_version ?? '',
+      })}
+    </p>
+
+    <h3 class="dialog-section-title">{$t('system.upgrade.check.title')}</h3>
+    <ul class="upgrade-check-list" data-testid="upgrade-check-list">
+      <li class="upgrade-check">
+        <span class="upgrade-step__glyph" aria-hidden="true"
+          ><Icon name="state.check" size={16} /></span
+        >
+        {$t('system.upgrade.check.running_workers', {
+          count: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
         })}
-      </h2>
-
-      <div class="modal-body">
-        <p class="text-muted text-sm">
-          {$t('system.upgrade.explain', {
-            installed: snapshot.runtime.version,
-            version: snapshot.runtime.upgrade_available_version ?? '',
+      </li>
+      <li class="upgrade-check">
+        <span class="upgrade-step__glyph" aria-hidden="true"
+          ><Icon name="state.check" size={16} /></span
+        >
+        {$t('system.upgrade.check.active_builds', {
+          count: snapshot.jobs.build?.slots_used ?? 0,
+        })}
+      </li>
+      <li class="upgrade-check">
+        {#if snapshot.runtime.dirty_worktrees !== null && snapshot.runtime.dirty_worktrees !== undefined}
+          <span class="upgrade-step__glyph" aria-hidden="true">
+            <Icon
+              name={snapshot.runtime.dirty_worktrees === 0 ? 'state.check' : 'state.error'}
+              size={16}
+            />
+          </span>
+          {$t('system.upgrade.check.dirty_worktrees', {
+            count: snapshot.runtime.dirty_worktrees,
           })}
-        </p>
+        {:else}
+          <span class="upgrade-step__glyph" aria-hidden="true"
+            ><Icon name="state.dot" size={16} /></span
+          >
+          {$t('system.upgrade.check.dirty_reported')}
+        {/if}
+      </li>
+    </ul>
 
-        <h3 class="modal-section-title">{$t('system.upgrade.check.title')}</h3>
-        <ul class="upgrade-check-list" data-testid="upgrade-check-list">
-          <li class="upgrade-check">
-            <span class="upgrade-step__glyph" aria-hidden="true"
-              ><Icon name="state.check" size={16} /></span
-            >
-            {$t('system.upgrade.check.running_workers', {
-              count: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
-            })}
-          </li>
-          <li class="upgrade-check">
-            <span class="upgrade-step__glyph" aria-hidden="true"
-              ><Icon name="state.check" size={16} /></span
-            >
-            {$t('system.upgrade.check.active_builds', {
-              count: snapshot.jobs.build?.slots_used ?? 0,
-            })}
-          </li>
-          <li class="upgrade-check">
-            {#if snapshot.runtime.dirty_worktrees !== null && snapshot.runtime.dirty_worktrees !== undefined}
-              <span class="upgrade-step__glyph" aria-hidden="true">
-                <Icon
-                  name={snapshot.runtime.dirty_worktrees === 0 ? 'state.check' : 'state.error'}
-                  size={16}
-                />
-              </span>
-              {$t('system.upgrade.check.dirty_worktrees', {
-                count: snapshot.runtime.dirty_worktrees,
-              })}
-            {:else}
-              <span class="upgrade-step__glyph" aria-hidden="true"
-                ><Icon name="state.dot" size={16} /></span
-              >
-              {$t('system.upgrade.check.dirty_reported')}
-            {/if}
-          </li>
-        </ul>
+    <RadioGroup
+      legend={$t('system.confirm.when')}
+      name="upgradeWhen"
+      value={modalWhen}
+      options={whenOptions}
+      onchange={(value) => {
+        modalWhen = value as 'drain' | 'now';
+      }}
+    />
+  {/if}
 
-        <fieldset class="modal-fieldset">
-          <legend class="modal-legend">{$t('system.confirm.when')}</legend>
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="upgradeWhen"
-              value="drain"
-              checked={modalWhen === 'drain'}
-              onchange={() => {
-                modalWhen = 'drain';
-              }}
-            />
-            <div class="radio-content">
-              <strong>{$t('system.confirm.drain')}</strong>
-              <span class="text-muted text-sm">{$t('system.confirm.drain_explain')}</span>
-            </div>
-          </label>
-
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="upgradeWhen"
-              value="now"
-              checked={modalWhen === 'now'}
-              onchange={() => {
-                modalWhen = 'now';
-              }}
-            />
-            <div class="radio-content">
-              <strong>{$t('system.confirm.now')}</strong>
-              <span class="text-muted text-sm">{$t('system.confirm.now_explain')}</span>
-            </div>
-          </label>
-        </fieldset>
-      </div>
-
-      <div class="modal-footer">
-        <Button
-          variant="secondary"
-          onclick={() => {
-            upgradePhase = 'idle';
-          }}
-        >
-          {$t('system.confirm.not_now')}
-        </Button>
-        <Button
-          variant={modalWhen === 'now' ? 'danger' : 'primary'}
-          loading={isExecutingAction}
-          onclick={confirmUpgrade}
-        >
-          {$t('system.confirm.do', { act: 'upgrade', when: modalWhen })}
-        </Button>
-      </div>
-    </div>
-  </div>
-{/if}
+  <svelte:fragment slot="footer">
+    <Button
+      variant="ghost"
+      onclick={() => {
+        upgradePhase = 'idle';
+      }}
+    >
+      {$t('system.confirm.not_now')}
+    </Button>
+    <Button variant="danger" loading={isExecutingAction} onclick={confirmUpgrade}>
+      {$t('system.confirm.do', { act: 'upgrade', when: modalWhen })}
+    </Button>
+  </svelte:fragment>
+</Dialog>
 
 <!-- Modal Confirmation Dialogue -->
-{#if activeModal}
-  <div class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-card">
-      <h2 id="modal-title" class="modal-title">
-        {$t('system.confirm.title', {
-          act: activeModal,
-          version: snapshot?.runtime.upgrade_available_version || '',
-        })}
-      </h2>
-
-      <div class="modal-body">
-        <div class="modal-running-notice">
-          <strong>{$t('system.confirm.running_now')}</strong>
-          <span>
-            {$t('system.confirm.running_what', {
-              tasks: snapshot?.work.tasks_running || 0,
-              projects: snapshot?.work.active_projects_count || 0,
-            })}
-          </span>
-        </div>
-
-        <fieldset class="modal-fieldset">
-          <legend class="modal-legend">{$t('system.confirm.when')}</legend>
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="modalWhen"
-              value="drain"
-              checked={modalWhen === 'drain'}
-              onchange={() => {
-                modalWhen = 'drain';
-              }}
-            />
-            <div class="radio-content">
-              <strong>{$t('system.confirm.drain')}</strong>
-              <span class="text-muted text-sm">{$t('system.confirm.drain_explain')}</span>
-            </div>
-          </label>
-
-          <label class="radio-label">
-            <input
-              type="radio"
-              name="modalWhen"
-              value="now"
-              checked={modalWhen === 'now'}
-              onchange={() => {
-                modalWhen = 'now';
-              }}
-            />
-            <div class="radio-content">
-              <strong>{$t('system.confirm.now')}</strong>
-              <span class="text-muted text-sm">{$t('system.confirm.now_explain')}</span>
-            </div>
-          </label>
-        </fieldset>
-
-        {#if activeModal === 'stop'}
-          <p class="modal-note text-muted text-sm">{$t('system.confirm.stop_note')}</p>
-        {:else if activeModal === 'restart'}
-          <p class="modal-note text-muted text-sm">{$t('system.confirm.restart_note')}</p>
-        {/if}
-      </div>
-
-      <div class="modal-footer">
-        <Button variant="secondary" onclick={closeModal}>
-          {$t('system.confirm.keep')}
-        </Button>
-        <Button
-          variant={modalWhen === 'now' ? 'danger' : 'primary'}
-          loading={isExecutingAction}
-          onclick={executeLifecycleAction}
-        >
-          {$t('system.confirm.do', { act: activeModal, when: modalWhen })}
-        </Button>
-      </div>
-    </div>
-  </div>
-{/if}
+<ConfirmDialog
+  open={activeModal !== null}
+  title={$t('system.confirm.title', {
+    act: activeModal ?? '',
+    version: snapshot?.runtime.upgrade_available_version || '',
+  })}
+  consequences={[
+    $t('system.confirm.running_what', {
+      tasks: snapshot?.work.tasks_running || 0,
+      projects: snapshot?.work.active_projects_count || 0,
+    }),
+    activeModal === 'stop' ? $t('system.confirm.stop_note') : $t('system.confirm.restart_note'),
+  ]}
+  actionLabel={$t('system.confirm.do', { act: activeModal ?? '', when: modalWhen })}
+  cancelLabel={$t('system.confirm.keep')}
+  busy={isExecutingAction}
+  testid="lifecycle-confirm"
+  onConfirm={executeLifecycleAction}
+  onClose={closeModal}
+>
+  <RadioGroup
+    legend={$t('system.confirm.when')}
+    name="modalWhen"
+    value={modalWhen}
+    options={whenOptions}
+    onchange={(value) => {
+      modalWhen = value as 'drain' | 'now';
+    }}
+  />
+</ConfirmDialog>
 
 <style>
   .system-container {
@@ -1455,43 +1400,9 @@
     max-inline-size: 100%;
   }
 
-  .window-selector,
-  .group-selector {
-    display: inline-flex;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    background-color: var(--color-bg-surface);
-  }
-
-  .btn-toggle {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: all 0.15s;
-  }
-
-  .btn-toggle:not(:last-child) {
-    border-right: 1px solid var(--color-border);
-  }
-
-  .btn-toggle--active {
-    background-color: var(--color-primary);
-    color: var(--color-primary-text);
-    font-weight: 600;
-  }
-
-  .refresh-btn {
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-lg);
-    cursor: pointer;
-    color: var(--color-text-primary);
+  /* The project filter carries its own label through SelectField. */
+  .project-filter-field {
+    min-inline-size: 12rem;
   }
 
   .cleanup-banner {
@@ -1513,7 +1424,7 @@
     gap: var(--space-3);
   }
 
-  .cleanup-banner__badge {
+  .cleanup-banner__label {
     font-weight: 700;
     color: var(--color-primary);
   }
@@ -1605,130 +1516,12 @@
     border-radius: var(--radius-sm);
   }
 
-  .table-container {
-    overflow-x: auto;
-  }
-
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--text-sm);
-    text-align: left;
-  }
-
-  .data-table th,
-  .data-table td {
-    padding: var(--space-2) var(--space-3);
-    border-bottom: 1px solid var(--color-border-subtle);
-  }
-
-  .data-table th {
-    font-weight: 600;
-    color: var(--color-text-secondary);
-    background-color: var(--color-bg-subtle);
-  }
-
   .tags-row {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     justify-content: flex-end;
-  }
-
-  .status-tag {
-    display: inline-block;
-    padding: 0.15rem 0.5rem;
-    font-size: var(--text-xs);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  .status-tag--running {
-    background-color: var(--color-success-subtle);
-    color: var(--color-success-text);
-  }
-
-  .status-tag--waiting_for_you {
-    background-color: var(--color-warning-subtle);
-    color: var(--color-warning-text);
-  }
-
-  .worker-state {
-    display: inline-block;
-    padding: 0.1rem 0.4rem;
-    font-size: var(--text-xs);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-  }
-
-  .worker-state--busy {
-    background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
-  }
-
-  .worker-state--idle {
-    background-color: var(--color-bg-subtle);
-    color: var(--color-text-muted);
-  }
-
-  .badge {
-    padding: 0.2rem 0.5rem;
-    border-radius: var(--radius-full);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    background-color: var(--color-bg-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  .badge--warning {
-    background-color: var(--color-warning-subtle);
-    color: var(--color-warning-text);
-  }
-
-  .badge--danger {
-    background-color: var(--color-danger-subtle);
-    color: var(--color-danger-text);
-  }
-
-  .link-muted {
-    color: var(--color-primary);
-    font-size: var(--text-xs);
-    margin-left: var(--space-2);
-  }
-
-  .project-filter {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-sm);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-surface);
-    color: var(--color-text-primary);
-  }
-
-  .status-tag--link {
-    border: none;
-    cursor: pointer;
-    font-family: inherit;
-  }
-
-  .status-tag--link:hover {
-    text-decoration: underline;
-  }
-
-  .metric-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: var(--color-primary);
-    cursor: pointer;
-    text-align: right;
-  }
-
-  .metric-link:hover {
-    text-decoration: underline;
+    align-items: center;
   }
 
   .upgrade-panel {
@@ -1812,7 +1605,7 @@
     font-weight: 700;
   }
 
-  .modal-section-title {
+  .dialog-section-title {
     font-size: var(--text-sm);
     font-weight: 700;
     margin: var(--space-4) 0 var(--space-2) 0;
@@ -1856,70 +1649,6 @@
     padding: var(--space-2) var(--space-4);
     border-radius: var(--radius-md);
     border: 1px solid var(--color-border);
-  }
-
-  /* Modal */
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border-radius: var(--radius-lg);
-    max-width: 500px;
-    width: 100%;
-    padding: var(--space-6);
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-xl);
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: var(--space-4);
-  }
-
-  .modal-fieldset {
-    border: none;
-    padding: 0;
-    margin: var(--space-4) 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .modal-legend {
-    font-weight: 600;
-    margin-bottom: var(--space-2);
-  }
-
-  .radio-label {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-3);
-    cursor: pointer;
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-  }
-
-  .radio-content {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-3);
-    margin-top: var(--space-6);
   }
 
   @media (max-width: 768px) {

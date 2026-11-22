@@ -2,6 +2,18 @@ import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 import { expectNothingRedAtRest } from './helpers/acts.js';
 
+/**
+ * Opens the runtime card's act menu and chooses one of its lifecycle acts: a stop, a restart and
+ * an upgrade live in the `ActionBar`'s overflow, behind their confirmation.
+ *
+ * @param {import('@playwright/test').Page} page the page
+ * @param {string} name the accessible name of the entry
+ */
+async function chooseRuntimeAct(page, name) {
+  await page.getByTestId('action-bar-overflow').click();
+  await page.getByRole('menuitem', { name }).click();
+}
+
 test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to system scenario
@@ -65,25 +77,23 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   });
 
   test('toggles model time windows (Today, 7 days)', async ({ page }) => {
-    const todayBtn = page.getByRole('button', { name: 'Today' });
-    const weekBtn = page.getByRole('button', { name: '7 days' });
+    const todayBtn = page.getByRole('radio', { name: 'Today' });
+    const weekBtn = page.getByRole('radio', { name: '7 days' });
 
     await expect(todayBtn).toBeVisible();
     await expect(weekBtn).toBeVisible();
 
     // Switch to Today
     await todayBtn.click();
-    await expect(todayBtn).toHaveClass(/active/);
+    await expect(todayBtn).toBeChecked();
 
     // Switch to 7 days
     await weekBtn.click();
-    await expect(weekBtn).toHaveClass(/active/);
+    await expect(weekBtn).toBeChecked();
   });
 
   test('opens lifecycle confirmation modal and closes it', async ({ page }) => {
-    const stopBtn = page.getByRole('button', { name: /Stop…/i });
-    await expect(stopBtn).toBeVisible();
-    await stopBtn.click();
+    await chooseRuntimeAct(page, 'Stop…');
 
     // Confirmation modal should be visible
     const modal = page.getByRole('dialog');
@@ -152,15 +162,15 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
   });
 
   test('remembers the window, the grouping, and the project across a reload', async ({ page }) => {
-    await page.getByRole('button', { name: 'Today', exact: true }).click();
-    await page.getByRole('button', { name: 'Per role' }).click();
+    await page.getByRole('radio', { name: 'Today', exact: true }).click();
+    await page.getByRole('radio', { name: 'Per role' }).click();
     await page.getByTestId('system-project-filter').selectOption('pm-mcp-clients');
 
     await page.reload();
     await expect(page.getByTestId('system-view')).toBeVisible();
 
-    await expect(page.getByRole('button', { name: 'Today', exact: true })).toHaveClass(/active/);
-    await expect(page.getByRole('button', { name: 'Per role' })).toHaveClass(/active/);
+    await expect(page.getByRole('radio', { name: 'Today', exact: true })).toBeChecked();
+    await expect(page.getByRole('radio', { name: 'Per role' })).toBeChecked();
     await expect(page.getByTestId('system-project-filter')).toHaveValue('pm-mcp-clients');
   });
 
