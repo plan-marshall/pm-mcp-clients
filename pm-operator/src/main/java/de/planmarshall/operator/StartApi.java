@@ -364,16 +364,33 @@ final class StartApi {
          */
         StartActException(String linkId, HttpResponse response) {
             this.linkId = linkId;
-            var message = bodyMember(response, KEY_MESSAGE);
-            this.bodyMessage = message != null ? OutputSafety.stripControlSequences(message) : null;
             this.refusal = new OperatorRefusedException(KEY_ERROR, response);
+            this.bodyMessage = checkedBodyMessage(response, refusal);
             this.code = codeOf(response);
         }
 
         /**
+         * The body's message as the refusal's own parser read it: checked and capped, so a stack trace
+         * or an over-long text never reaches a screen. A body that names no message member, or whose
+         * message the parser rejected (an unreadable refusal, or a trace beside a code), has none.
+         *
+         * @param response the runtime's refusal
+         * @param refusal  the refusal parsed from the same response
+         * @return the checked message, or {@code null} when the screen takes the refusal's own text
+         */
+        private static @Nullable String checkedBodyMessage(HttpResponse response, OperatorRefusedException refusal) {
+            if (bodyMember(response, KEY_MESSAGE) == null) {
+                return null;
+            }
+            var checked = refusal.serverMessage();
+            return checked == null || checked.isBlank() ? null : checked;
+        }
+
+        /**
          * The refusal's one line as a screen shows it: the refused act's link id, then the message the
-         * body names, or else the catalogue's text of the refusal in the operator's locale (the title of
-         * its code, or what a body without one is), never the bare HTTP status.
+         * body names as the refusal's parser checked and capped it, or else the catalogue's text of the
+         * refusal in the operator's locale (the title of its code, of an unreadable body, or what a body
+         * without one is), never a stack trace and never the bare HTTP status.
          *
          * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"}), or {@code null} for the
          *               default locale
