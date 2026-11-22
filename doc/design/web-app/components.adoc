@@ -230,7 +230,7 @@ What lies above what is stated once, as tokens of `tokens.css`, and no component
 |`Dialog`, `ConfirmDialog`, the command palette
 |===
 
-The modals that are still drawn by hand on layers of their own (`50`, `60`, `110`) and `SideColumn` (`60`) take design tokens when they move onto `Dialog` and the template vocabulary.
+The modals that are still drawn by hand on layers of their own — `PlanSettingsModal`, `GitSourceIntakeModal` and `LessonSourceModal` (`50`), the views of the project explorer and the onboarding (`100`, `110`), and `SideColumn` (`60`) — take design tokens when they move onto `Dialog` and the template vocabulary.
 
 [#link]
 === Link

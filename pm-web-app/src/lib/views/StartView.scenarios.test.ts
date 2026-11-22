@@ -133,7 +133,9 @@ describe('start-sources: a plan from a description and from an issue of another 
 
     await fireEvent.click(screen.getByTestId('issue-submit'));
     expect(screen.getByTestId('grant-modal')).toBeInTheDocument();
-    expect(screen.getByTestId('grant-title')).toHaveTextContent('Read issues of forgejo/forgejo?');
+    expect(
+      screen.getByRole('dialog', { name: 'Read issues of forgejo/forgejo?' }),
+    ).toBeInTheDocument();
 
     await fireEvent.click(screen.getByTestId('grant-no'));
     expect(screen.getByTestId('issue-error')).toHaveTextContent('not granted');

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import LanListenerModal from './LanListenerModal.svelte';
 import { apiClient, type ConnectionStatus } from '../api/client';
 
@@ -43,6 +43,23 @@ describe('LanListenerModal', () => {
     expect(screen.getByTestId('lan-listener-notice')).toHaveTextContent(
       'The network access is off',
     );
+  });
+
+  it('is the design dialog and closes on Escape as its ghost act does', async () => {
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue(openStatus);
+    const onClose = vi.fn();
+
+    render(LanListenerModal, { props: { onClose, onChanged: () => {} } });
+
+    const dialog = await screen.findByRole('dialog', { name: 'Network access' });
+
+    expect(dialog).toBeInTheDocument();
+    const keep = within(dialog).getByTestId('lan-keep-button');
+    expect(keep.className).toContain('btn--ghost');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
   it('offers no turn-off action while the network listener is closed', async () => {
