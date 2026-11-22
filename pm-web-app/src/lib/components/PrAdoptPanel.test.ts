@@ -11,9 +11,17 @@ const OBSERVATION: PullRequestObservation = {
   branch: 'fix/cursor',
   state: 'open',
   writable: true,
-  changed_files: [{ path: 'pm-web-app/src/lib/api/client.ts', status: 'modified', additions: 3, deletions: 1 }],
+  changed_files: [
+    {
+      path: 'pm-web-app/src/lib/api/client.ts',
+      additions: 3,
+      deletions: 1,
+      untrusted: false,
+      operator_authored: true,
+    },
+  ],
   screening: 'clean',
-  rate_limit: { limited: false, remaining: 42 },
+  rate_limit: { limit: 5000, remaining: 42, limited: false },
 };
 
 describe('PrAdoptPanel', () => {
