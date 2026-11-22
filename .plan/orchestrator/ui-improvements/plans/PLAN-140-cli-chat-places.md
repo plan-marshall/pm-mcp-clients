@@ -92,23 +92,23 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 ## Claim Labels
 
 - OBSERVED: `AnswerCommand.java` offers no `h) chat` today (PLAN-124 removed the advertisement until the surface exists); `git grep -n chat -- AnswerCommand.java` finds one unrelated line — read at `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java has no chat mention at all on main (case-insensitive grep empty); no h) chat offered; 14-transcripts-decisions.adoc:17 :253 say not advertised
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java contains no chat at all; 14-transcripts-decisions.adoc:17,:253 say the key is not advertised (origin/main 7b60cec0)
 - OBSERVED: `ReviewDialogue` has a `CHAT` decision and the key `chat` at its prompt — read at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java:106,120,175,201`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue case CHAT :106 enum Decision :120 key chat via offer :181 text control.review.chat; CHAT opens WorkChatDialogue epic chat :107
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java case CHAT :106, enum Decision :120, key offered :181 (origin/main 7b60cec0)
 - OBSERVED: `StartDialogue` handles `h` with `openChat()` and runs `ChatDialogue` — read at `pm-operator/src/main/java/de/planmarshall/operator/StartDialogue.java:247,672-682`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartDialogue key h calls openChat() :298-300; openChat :842-858 runs new ChatDialogue(...).run(entryId api.openEntryChat) at :854
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartDialogue key h calls openChat() (:298-300), defined :842, runs new ChatDialogue :854 (origin/main 7b60cec0)
 - OBSERVED: `ChatDialogue` ends the chat on an empty line — read at `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java:58-91`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.run :86-87 an empty answer calls endChat(entryId); a refused end continues the loop
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.run :86-90 an empty answer calls endChat (origin/main 7b60cec0)
 - OBSERVED: the design says the decision chat's key is `operator.actions.key.chat` (`h`, `t`) and that without the surface it is not advertised — read at `doc/design/terminal-client/14-transcripts-decisions.adoc:17,195,253`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: 14-transcripts-decisions.adoc:195 key operator.actions.key.chat (h and German t); :17 and :253 not advertised without the surface
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: 14-transcripts-decisions.adoc:195 operator.actions.key.chat (h and t), :17, :253; operator.en/de.properties:527 (origin/main 7b60cec0)
 - HYPOTHESIS: the review chat's item scope is not sent by the current client (the web one is the same) — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java` § `case CHAT` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue:107 WorkChatDialogue.run(context out epic epicId false !prompt.asks()) sends epicId only and no item scope; web EpicView.svelte:474 getChat(epic:epicId) the same
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java:107 WorkChatDialogue.run(... epic, epicId ...) sends the epic id only; EpicView.svelte:607 getChat(epic:id) does the same (origin/main 7b60cec0)
 - HYPOTHESIS: `ActionMenus` and `ActionsMenu` already list a chat entry that runs `WorkChatDialogue` for plans and epics only — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionMenus chat entries :39 :129 :244 :264; chat runs WorkChatDialogue by kind and id only (ActionSupport:360 OperatorActions:101 WorkActionDialogue:307); ActionsMenu.java exists
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionMenus.java:128-129,:244,:264 offer control.plan.chat; ActionSupport.chat :350-363 takes kind plan or epic (origin/main 7b60cec0)
 - HYPOTHESIS: `StartApi` carries the entry's chat routes and needs the B1 route builders — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartApi.java` § chat (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartApi uses ChatRoutes.entry for open :133 turn :149 page :173 accept :197 end :211
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartApi uses ChatRoutes.entry for open :133, turn :149, page :173, accept :197, end :211; poll loop :157-160 ignores interrupt; no review or decomposition builder (origin/main 7b60cec0)
 - Verify-first clause: PLAN-123 (running) and PLAN-124 (landed) edit `AnswerCommand`; re-read the decision prompt at the then-current HEAD before scoping deliverable 1; the operator's answer to O10 is read before scoping deliverable 2.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause; PLAN-123 running state and the operator answer to O10 are not readable from source; AnswerCommand has no chat (PLAN-124 shape holds)
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-123 and PLAN-30 shipped (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -154,6 +154,11 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `7adb56c2` (D-R134)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActions.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 

@@ -61,17 +61,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-07)`, `doc/claude_review/ux/proposals.adoc#UX-P-05` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:53 UX-S-07; ux/proposals.adoc:247 UX-P-05; ux-plan-page.svg; ux/findings.adoc:79,85,93 UX-F-07/08/09
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:53 UX-S-07; proposals.adoc:247 UX-P-05; findings.adoc:79,85,93 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a line to the plan view's head in `doc/design/shared/plan-view.adoc` (`change so far   12 files · +340 −27 · 2 unplanned`, below the tokens line, `plan.change.size`, absent before the first capture) and a work list beside the plan in a wide window (`PLAN-83`). `PLAN-82` serves the size in the contract and the mock and this plan builds the line into the head (the former `PLAN-81`, superseded, had it): it renders only when the plan carries a size. Also `PLAN-39` (PR #274) wrapped `PlanView.svelte` at 390 px, and its `mobile.spec.js` asserts no horizontal scroll on the ten routes: the 390 px watch on `/plans/{id}` is to be confirmed here and retired.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-view.adoc:23,170 carry change so far / plan.change.size; mobile.spec.js:169-176 asserts no horizontal scroll at 390 px incl /plans/fix-relay; size contract shipped (client.ts:1008; #444)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan-view.adoc:23,170 carry the change-size line; mobile.spec.js:169-176 covers /plans/fix-relay at 390 px; size contract shipped (#444) (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): No stale surface: PlanView.svelte, NodeNarrative.svelte, PlanSettingsModal.svelte, plan-view.adoc and plan_view properties exist; plan.change.size already exists in plan_view.en.properties (line 48), so the head's size line catalogue key is present and not to be created again; PlanView.test.ts and plan-view.spec.js changed since the anchor.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView NodeNarrative PlanSettingsModal components and plan-view.adoc exist; plan.change.size at plan_view.en.properties:48 (plan.change.so_far :49)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: all named files exist; plan_view.en.properties:48 plan.change.size (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first instruction; no code fact
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
 - HYPOTHESIS: `PlanView.svelte` does not render `plan.change.size` though the key exists — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-api/src/main/resources/messages/plan_view.en.properties:48` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan.change.size rendered only at CompletionReportView.svelte:142; PlanView.svelte (1741 lines) has no change-size use
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte:1020-1033 renders the change so far line as a link to the Changes tab (PLAN-164 #477, #481) (origin/main 7b60cec0)
 - HYPOTHESIS: a `LINK` activity entry with no target renders as an empty row — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § `activity-entry` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:1093-1128 renders each entry with kind tag; non tool/changed/gap kinds (link; ActivityEntryKind.java:27) fall to else showing entry.content only; no empty-row filter
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: activity loop PlanView.svelte:1267-1306 sends link entries to the generic branch and renders entry.content; no empty-row filter (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -92,6 +92,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -121,6 +123,13 @@ widened now (a parked row is not in the disjointness gate population). When rest
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - The re-grounding's "new claims" were never added to Claim Labels.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claim 4 contradicted (`rescoped: yes`): `PlanView.svelte:1020-1033` renders the "change so far" line as a link to the Changes tab (PLAN-164 #477, #481); D6-1 is partly done (a `Tabs` strip with Process and Changes; `tab=changes` before a capture falls back, `:326`). Not done: the Intent tab (`PlanView:333` sends any other tab to process), `ObjectPage`, the head slots, the attention strip, in-page Back and path removal, the 720 px layout and compact head, the `link` activity row filter (`:1267-1306`).
+- PLAN-144 D3 removes `goBackToCaller` and the Back (`PlanView.svelte:592,858-863`); this plan's D1 drops the path: landing order matters. Parked behind PLAN-144 and PLAN-137.
 
 ## Hand-Off Command
 

@@ -76,11 +76,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:29-30 CLI-VD-S-03 and :50-51 CLI-VD-S-05 present
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:29-30,50-51; proposals.adoc P-01 :9, P-02 :64, P-05 :120 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/ has TuiScreenDriver; TuiLayout; TuiMenu and no Style.java; Glyphs.java or tests; transcript/ has CancelDialogueIT; SummaryLineIT; PseudoTerminal; PtySession
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/ has no Style.java, Glyphs.java, StyleTest, GlyphsTest or RawEscapeGuardTest; only raw ESC[ literals TuiKeyRegistry:124-125 (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; the spec names no hypothesis to check
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -129,6 +129,13 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `doc/design/shared/plan-overview.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CredentialsCommand.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/DecomposeCommand.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EpicDecompositionDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RefusalRenderer.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StartRenderer.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/ChoicePrompt.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -174,6 +181,13 @@ This section supersedes the spec text and earlier notes where they differ.
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - Already done: D4's cell attributes in `AnsiScreen` (PLAN-02, #232, 1864d8a3). The verify-first clause names a HYPOTHESIS that does not exist.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Stale body: **D4 (AnsiScreen cell attributes) is DONE**: `tui/AnsiScreen.java:50` `CellStyle(bold,dim,reverse,colour)` and `ScreenCaptureIT:158` writes `.attrs.txt` (PLAN-02 #232); drop it at outline. The design conflict `03-dialogues.adoc:320-322` ("line drawing keeps the terminal's line set") against the spec's "no byte above 0x7F" is still unresolved.
+- Declared surface understated: the glyph-literal files (`CredentialsCommand`, `DecomposeCommand`, `EpicDecompositionDialogue`, `RefusalRenderer`, `StartRenderer`, `WorkActionDialogue`, `dialogue/ChoicePrompt`) were added where each resolves to one file.
 
 ## Hand-Off Command
 

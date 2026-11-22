@@ -45,11 +45,11 @@ Run the design-system checks against the merged code and record the result. Ever
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/verification.adoc holds VD-V-01..VD-V-10 at lines 14-63 as listed; CC-V-06 and CC-V-07 exist in cross-cutting/verification.adoc:42,49
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/verification.adoc VD-V-01..10 :14-63; cross-cutting CC-V-06 :42, CC-V-07 :49 (origin/main 7b60cec0)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 - HYPOTHESIS: the vocabulary lint runs in the build and can be read as a count per view — confirm/refute at `pm-web-app/eslint.config.js` § `vocabulary` (verify-at-outline)
-  - verdict: contradicted | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: yes | evidence: pm-web-app/eslint.config.js has no vocabulary rule or per-view count (only recommended rules, security, console); vocabulary lint is PLAN-151 not landed | re-scoped by the spec section Re-Grounding 2026-11-14 (cleanup)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: the lint is pm-web-app/scripts/vocabulary-lint.mjs run by npm run lint (package.json:25), not eslint.config.js; PLAN-151 shipped (#495, hardened #507) (origin/main 7b60cec0)
 
 ## Expected Surface
 

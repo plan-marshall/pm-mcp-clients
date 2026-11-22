@@ -56,9 +56,9 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/verification.adoc holds UX-V-01..13 (:58-131), use-cases UC-V-04/06/07/08/10 (:47-83), cross-cutting CC-V-08 (:55); #targets anchor present
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/verification.adoc UX-V-01..13 :58-131; use-cases UC-V-04,06,07,08,10; CC-V-08 (origin/main 7b60cec0)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause: no code fact. Deps not all landed (e.g. PLAN-64 views/onboarding absent, routes/settings/machine still present)
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 

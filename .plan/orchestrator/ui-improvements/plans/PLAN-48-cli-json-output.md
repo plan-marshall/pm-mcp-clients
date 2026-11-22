@@ -53,11 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 CLI-UX-S-06; cli/ux/proposals.adoc:125-126 CLI-UX-P-07 present
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 S-06; proposals.adoc:125-126 P-07 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand.java:45 has --json so it exists; json test dir still absent; --json also on StatusCommand:57 PlansCommand:44 SystemCommand:70; plans --json delegates to status (PlansCommand:144)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand:45); --json on Status:58, Plans:44, System:70, Needs:45; fromMap no longer exists (NeedsOperatorKind.fromWireOrOther :89); needs becomes hardening (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause; no code fact
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -82,6 +82,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/overview/NeedsOperatorKind.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SystemCommandTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RefusalRenderer.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/FindCommand.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsOneCountTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OverviewCommandTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -122,6 +127,13 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 
 - Claim 1 contradicted: NeedsCommand exists with --json (NeedsCommand:45, PLAN-36 #391); json/ test dir still absent; plans --json still delegates to status (PlansCommand:93,130-133, pinned TuiCapabilityIT:355)
 - Already done: `needs`, `status` and `system --json` exist (#391); hardening and the rest are open. `01-commands.adoc` is listed twice in the surface; the verify-first clause names a HYPOTHESIS that does not exist.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claim 1 contradicted (`rescoped: yes`): `NeedsCommand` EXISTS with `--json` (`NeedsCommand:45`); `--json` is on status, plans, system and needs; `fromMap` no longer exists (`NeedsOperatorKind.fromWireOrOther :89`). **`needs` becomes hardening**; still missing: questions, reports, projects `--list`, epic, plan, find. `plans --json` still delegates to the status (`PlansCommand:93,130-133`). `03-dialogues.adoc:276` ("no machine-readable output") contradicts `15-overview.adoc:20`.
+- Depends on PLAN-42 (staged); PLAN-174 (running) touches `Refusal*`, `ReportsCommand`, `ProjectsCommand`, `EpicCommand`, `PlanCommand`. Open decision: schema as wire pass-through or client envelope.
 
 ## Hand-Off Command
 

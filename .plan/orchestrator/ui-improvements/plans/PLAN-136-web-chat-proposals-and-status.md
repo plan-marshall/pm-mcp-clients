@@ -132,21 +132,21 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 ## Claim Labels
 
 - OBSERVED: `components-chat.adoc:53` knows only "Refused for an older version"; the already-queued variant is only in `chat.adoc:107` — read at `doc/design/web-app/components-chat.adoc:53`; `doc/design/web-app/chat.adoc:107`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: components-chat.adoc:53 has only Refused for an older version; the already-queued variant (control.chat.already_queued) is only in chat.adoc:107
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: components-chat.adoc:53 has only Refused for an older version; control.chat.already_queued is in chat.adoc:107 (origin/main 7b60cec0)
 - OBSERVED: `chat.adoc` § `#notices` has no line for `control.chat.follow_up.opened` (it appears in `work-actions.adoc` § `#chat-ended`) — read at `doc/design/web-app/chat.adoc:96-109`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: chat.adoc has no control.chat.follow_up.opened (only follow_up.start :145); the line is in shared/work-actions.adoc:468
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: chat.adoc #notices has no control.chat.follow_up.opened; it is in work-actions.adoc:468 and work-actions-chat-texts.adoc:111 (origin/main 7b60cec0)
 - OBSERVED: `PlanView.svelte` listens for `plan.changed` and other names outside the catalogue — read at `pm-web-app/src/lib/views/PlanView.svelte:122-133`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: PlanView.svelte:124-135 no longer listens for plan.changed (absent from non-test web source); it listens activity.changed phase.changed task.off_track project.work_ended :128-131; plan.revision_queued is not listened
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView no longer listens to plan.changed (plan.change_captured :209); refresh list is refreshEvents.ts:37-44; plan.revision_queued only via intentEvents.ts:14; moved by #503 (origin/main 7b60cec0)
 - OBSERVED: no `--color-diff-removed` or `--color-diff-added` token exists — `git grep -n "color-diff" -- pm-web-app/src` is empty at `1cc0e10e`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep color-diff over pm-web-app/src and pm-web-e2e is empty on main; no --color-diff token in tokens.css
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: diff tokens exist (tokens.css:103-104,183-184,224-225,268-269), contrast pairs tokens.test.ts:89-90,239-246, PlanChanges.svelte:606,610; all from PLAN-164 #477 (744755b5): D1 token and contrast part is done (origin/main 7b60cec0)
 - HYPOTHESIS: the plan view's head renders through `WorkControlPanel` and `ActionBar` (PLAN-47), so the queued-revision line is a part of the head slot of `PlanView.svelte` — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § head and `pm-web-app/src/lib/components/WorkControlPanel.svelte` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView plan-header :658 holds WorkControlPanel :790 which renders ActionBar WorkControlPanel:827 :831; no ObjectPage in PlanView
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView plan-header :790-1037 contains WorkControlPanel :922 which renders ActionBar (:834,838); PlanView has no ObjectPage (origin/main 7b60cec0)
 - HYPOTHESIS: the overview row has a slot for a second line of text beside the state — confirm/refute at `pm-web-app/src/lib/views/OverviewView.svelte` § plan row (verify-at-outline)
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: Plan rows (OverviewView nested-plan-row :1117 and the without-epic work-card--plan block below it) hold title and badges only; no second-line text slot; hypothesis refuted
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: row rebuilt by PLAN-52 #459: OverviewView.svelte:1071-1110 plan-row__sub conditional second line; queued_revision absent from all web src (origin/main 7b60cec0)
 - HYPOTHESIS: a hold has a store or resource the status card can read without a view of its own — confirm/refute at `pm-web-app/src/lib/api/client.ts` § holds and `pm-web-app/src/lib/stores/runtime.ts` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: getPlanHolds client.ts:4552 reads /plans/{id}/holds; runtime.ts holds no hold store
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: getPlanHolds client.ts:4765 reads /plans/{id}/holds; no per-plan hold store exists (origin/main 7b60cec0)
 - Verify-first clause: re-read `chat.adoc` § `#proposal` and § `#notices` at the current HEAD before scoping; a notice added since is added here.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural re-read of chat.adoc #proposal and #notices; not settleable by reading
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -173,6 +173,12 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/stores/refreshEvents.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/components/PlanChanges.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -200,6 +206,13 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 
 - Claim 5 contradicted: Plan rows (OverviewView:1074-1107 nested, :1120-1157 without-epic) hold title and badges only; no second-line text slot exists today
 - Overview plan rows have no second-line slot (`OverviewView:1074-1157`).
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claims 2 and 3 contradicted (`rescoped: yes`). Claim 2: `PlanView` no longer listens to `plan.changed` (`plan.change_captured :209`); the process refresh list is `refreshEvents.ts:37-44` (all catalogue names); `plan.revision_queued` is read only via `intentEvents.ts:14`. Claim 3: **D1's token and contrast-test part is DONE**: diff tokens `tokens.css:103-104,183-184,224-225,268-269`, contrast pairs `tokens.test.ts:89-90,239-246`, `PlanChanges.svelte:606,610`, the colour exception `components-tags.adoc:321` (PLAN-164 #477).
+- Stale: D3's `open=` conditional and test ("without PLAN-143 no `open=` address is written": `open=` is parsed and written, `routes.ts:146,533`); D4's overview row (PLAN-52 rebuilt it, `OverviewView.svelte:1071-1110`). The `control.chat.*` catalogue is present in `control.{en,de}.properties`; no `ProposalCard`, `ChatStatusCard` or `queued_revision` on the web side. Blocked through PLAN-135 (staged).
 
 ## Hand-Off Command
 

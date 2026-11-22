@@ -101,19 +101,19 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 ## Claim Labels
 
 - OBSERVED: `PlanViewLevel`, `PlanViewFormatting`, `OverviewFormatting` exist in `planview/` and `overview/` and are edited by PLAN-123 (running) — read at `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewLevel.java`, `.../overview/OverviewFormatting.java`; the PLAN-123 surface in `queue-view.md`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel PlanViewFormatting (planview/) and OverviewFormatting ProjectWorkLevel (overview/) exist on main; PLAN-123 running state not readable
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel, PlanViewFormatting, OverviewFormatting, ProjectWorkLevel exist; PLAN-123 is shipped (origin/main 7b60cec0)
 - OBSERVED: the terminal has no chat that follows a stream and no `o`, `older` or `changes` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue.execute loops ask then client.chatTurn; no stream following and no o or older or changes handling
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue.java:173 client.chatTurn; no older/changes/o/knows/folded keys/stream-follow in operator main (origin/main 7b60cec0)
 - OBSERVED: events are pushed above the prompt by the console with `LineReader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole printAbove at :730 :872 (printAboveOrHold) with callers :745 :954-959; spec lines :652 :788 moved
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: reader.printAbove at PmConsole:747, printAboveOrHold :887-889 (origin/main 7b60cec0)
 - HYPOTHESIS: a dialogue can print a `–` line above its prompt through the same `LineReader` it asks with, without `PmConsole` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `reader()` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() :220 hands out the JLine LineReader the dialogue asks with (:125 :143 :160); printAbove is available on it without PmConsole
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() :220 returns the JLine LineReader; printAbove works only while a readLine is active (origin/main 7b60cec0)
 - HYPOTHESIS: the plan view and the overview row get `queued_revision` from the resources PLAN-132 extends, so no new route is read — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/ActivePlanSummary.java` after PLAN-132 (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActivePlanSummary.java:45-46 :68 and ProcessTree.java:45-46 :67 carry queued_revision; plan.revision_queued event EventName.java:134; no new route needed
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: queued_revision on ActivePlanSummary:45-46,68; ProcessTree:45-46,67; operator main does not use it (origin/main 7b60cec0)
 - HYPOTHESIS: pre-filling a line editor buffer for a starter is possible with `LineReader.readLine(prompt, null, buffer)` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.read :203 uses plain reader.readLine(); JLine 3 LineReader.readLine(prompt mask buffer) overload can pre-fill the buffer
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: JLine is 4.5.0 (pm-operator/pom.xml:16) not 3; the jar API cannot be settled by reading sources (origin/main 7b60cec0)
 - Verify-first clause: re-read the files above at the then-current HEAD (PLAN-123, 44 and 50 touch `planview/` and `overview/`); PLAN-138 and PLAN-134 must have landed.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Dependency clause: landing of PLAN-138 and PLAN-134 not settleable by reading; WorkChatDialogue is still the old chat
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-138 is staged so the precondition is not met (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -132,6 +132,14 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at `1cc0e10e`
 - OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at `1cc0e10e`
 - OBSERVED: `doc/design/terminal-client/22-texts-actions.adoc` — present at `1cc0e10e`
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StartApi.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/HoldDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiKeyRegistry.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 

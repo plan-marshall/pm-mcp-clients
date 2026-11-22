@@ -59,9 +59,9 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verification.adoc: CLI-VD-V-01..07, CLI-UX-V-01..07, CLI-CC-V-01..08 all present; analysis.adoc x3 and cli/README.adoc exist; verify-cli-presentation.adoc absent
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: CLI-VD-V-01..07, CLI-UX-V-01..07, CLI-CC-V-01..08 present in verification.adoc; verify-cli-presentation.adoc absent (origin/main 7b60cec0)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 
