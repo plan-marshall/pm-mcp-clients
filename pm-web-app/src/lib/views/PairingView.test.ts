@@ -174,6 +174,18 @@ describe('PairingView component', () => {
       expect(figure).toHaveClass('mascot-figure--entrance');
     });
 
+    it('does not load eagerly on a narrow screen where the stylesheet hides it', () => {
+      const originalWidth = window.innerWidth;
+      try {
+        window.innerWidth = 500;
+        render(PairingView);
+        const figure = within(screen.getByTestId('pairing-hero')).getByTestId('mascot-figure');
+        expect(figure).not.toHaveAttribute('loading', 'eager');
+      } finally {
+        window.innerWidth = originalWidth;
+      }
+    });
+
     it('keeps the figure decorative', () => {
       render(PairingView);
       const figure = within(screen.getByTestId('pairing-hero')).getByTestId('mascot-figure');

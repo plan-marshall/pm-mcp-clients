@@ -3,8 +3,8 @@
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import { formatTime } from '../display/format';
-  import { runtimeStore, initRuntime, RECONNECT_INTERVAL_MS } from '../stores/runtime';
-  import MascotFigure from '../components/MascotFigure.svelte';
+  import { runtimeStore, createReconnectLoop } from '../stores/runtime';
+  import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { heldFigure } from '../stores/heldFigure';
 
   /**
@@ -18,37 +18,20 @@
    * text, and the card takes the width.
    */
 
-  /** The figure's height beside the text, within the design's 160–200 px. */
-  const FIGURE_HEIGHT = 180;
-
   let isReconnecting = false;
-  let retry: ReturnType<typeof setInterval> | null = null;
-  let isMounted = true;
+  const loop = createReconnectLoop((reconnecting) => {
+    isReconnecting = reconnecting;
+  });
 
   onMount(() => {
-    isMounted = true;
-    retry = setInterval(() => void reconnect(), RECONNECT_INTERVAL_MS);
+    loop.start();
   });
 
   onDestroy(() => {
-    isMounted = false;
-    if (retry) {
-      clearInterval(retry);
-      retry = null;
-    }
+    loop.stop();
   });
 
   $: closedAt = $runtimeStore.listenerClosedAt ?? '';
-
-  async function reconnect(): Promise<void> {
-    if (isReconnecting || !isMounted) return;
-    isReconnecting = true;
-    try {
-      await initRuntime();
-    } finally {
-      isReconnecting = false;
-    }
-  }
 </script>
 
 <div class="listener-off" data-testid="listener-off-view" role="alert">
@@ -70,7 +53,7 @@
     <p class="listener-off__wait">{$t('web.entry.lan_off.wait')}</p>
 
     <div class="listener-off__actions">
-      <Button variant="primary" loading={isReconnecting} on:click={reconnect}>
+      <Button variant="primary" loading={isReconnecting} on:click={() => void loop.reconnect()}>
         {$t('web.offline.reconnecting')}
       </Button>
     </div>

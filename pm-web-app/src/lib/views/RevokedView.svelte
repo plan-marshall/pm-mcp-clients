@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
-  import MascotFigure from '../components/MascotFigure.svelte';
+  import MascotFigure, { FIGURE_HEIGHT } from '../components/MascotFigure.svelte';
   import { runtimeStore } from '../stores/runtime';
 
   /**
@@ -9,9 +9,6 @@
    * than the pairing page's hero and never above the text; this is the only surface of that pose.
    * Where the page is too narrow to hold both, the figure is hidden and the card takes the width.
    */
-
-  /** The figure's height beside the text, within the design's 160–200 px. */
-  const FIGURE_HEIGHT = 180;
 
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason ?? $runtimeStore.revokedReason ?? '';

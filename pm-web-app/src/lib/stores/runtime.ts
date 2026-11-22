@@ -307,6 +307,57 @@ export async function retryRuntime(): Promise<void> {
   }
 }
 
+/**
+ * A reconnect controller that manages periodic and manual retries while a view is mounted,
+ * ensuring only one reconnection attempt runs at a time and errors are safely caught.
+ *
+ * @param onStateChange optional callback notified when reconnecting state changes
+ * @returns controller with reconnect, start, and stop methods
+ */
+export function createReconnectLoop(onStateChange?: (reconnecting: boolean) => void) {
+  let isReconnecting = false;
+  let interval: ReturnType<typeof setInterval> | null = null;
+  let mounted = true;
+
+  async function reconnect(): Promise<void> {
+    if (isReconnecting || !mounted) return;
+    isReconnecting = true;
+    onStateChange?.(true);
+    try {
+      await retryRuntime();
+    } catch {
+      // Swallowed: retries continue on the interval or manual trigger
+    } finally {
+      isReconnecting = false;
+      if (mounted) {
+        onStateChange?.(false);
+      }
+    }
+  }
+
+  function start(): void {
+    mounted = true;
+    interval = setInterval(() => void reconnect(), RECONNECT_INTERVAL_MS);
+  }
+
+  function stop(): void {
+    mounted = false;
+    if (interval) {
+      clearInterval(interval);
+      interval = null;
+    }
+  }
+
+  return {
+    reconnect,
+    start,
+    stop,
+    get isReconnecting() {
+      return isReconnecting;
+    },
+  };
+}
+
 /** Where the person stood: the address and the route the store showed. */
 interface RouteMark {
   path: string;

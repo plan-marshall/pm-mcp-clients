@@ -131,7 +131,7 @@ describe('ListenerOffView', () => {
     });
 
     it('provides exactly one primary act for reconnecting', async () => {
-      const initSpy = vi.spyOn(runtimeModule, 'initRuntime').mockResolvedValue(undefined);
+      const retrySpy = vi.spyOn(runtimeModule, 'retryRuntime').mockResolvedValue(undefined);
       render(ListenerOffView);
       const view = screen.getByTestId('listener-off-view');
       const reconnectBtn = within(view).getByRole('button', {
@@ -139,7 +139,7 @@ describe('ListenerOffView', () => {
       });
       expect(reconnectBtn).toHaveClass('btn--primary');
       await fireEvent.click(reconnectBtn);
-      expect(initSpy).toHaveBeenCalled();
+      expect(retrySpy).toHaveBeenCalled();
     });
   });
 });

@@ -28,12 +28,14 @@
   export let onAct: () => void = () => {};
   /** The heading level of the title, so a view keeps its outline in order. */
   export let titleLevel: 2 | 3 | 4 | 5 | 6 = 3;
+  /** Test id for querying in tests. */
+  export let testid: string = 'empty-state';
 
   /** The bust's height on an empty state, within the design's 120–160 px. */
   const MASCOT_HEIGHT = 140;
 </script>
 
-<div class="empty-state" data-testid="empty-state">
+<div class="empty-state" data-testid={testid}>
   {#if mascot}
     <MascotFigure pose={mascot} crop="bust" height={MASCOT_HEIGHT} />
   {:else if icon}

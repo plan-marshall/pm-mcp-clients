@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { cleanup, render } from '@testing-library/svelte';
 import { UI_ICON_IDS, isUiIconId, uiIconUrl } from './uiIcons';
 import Icon from '../components/Icon.svelte';
+import { walk } from '../../test/textFiles';
 
 // The suite runs from `pm-web-app` under npm and the repository root under a direct call.
 const projectRoot = existsSync(join(process.cwd(), 'src/lib/icons/ui'))
@@ -14,23 +15,6 @@ const iconDirectory = join(projectRoot, 'src/lib/icons/ui');
 /** @param id an icon id @returns its delivered file name */
 function assetName(id: string): string {
   return `${id.replaceAll('.', '-')}.svg`;
-}
-
-/**
- * @param directory the directory to walk
- * @returns every file below it, recursively
- */
-function walk(directory: string): string[] {
-  const found: string[] = [];
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    const full = join(directory, entry.name);
-    if (entry.isDirectory()) {
-      found.push(...walk(full));
-    } else {
-      found.push(full);
-    }
-  }
-  return found;
 }
 
 describe('UI icon registry', () => {

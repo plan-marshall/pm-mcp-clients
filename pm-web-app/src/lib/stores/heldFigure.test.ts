@@ -80,16 +80,19 @@ describe('heldFigure', () => {
     expect(get(module.heldFigure)).toBe(objectUrl);
   });
 
-  it('stays empty after a fetch that failed, and does not try again', async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockRejectedValue(new TypeError('network_offline'));
+  it('retries when a previous fetch failed', async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError('network_offline'))
+      .mockImplementationOnce(async () => originResponse(true));
     vi.stubGlobal('fetch', fetchMock);
 
     await module.holdFigure();
-    await module.holdFigure();
-
     expect(get(module.heldFigure)).toBe('');
-    expect(createObjectURL).not.toHaveBeenCalled();
-    expect(fetchMock).toHaveBeenCalledOnce();
+
+    await module.holdFigure();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(get(module.heldFigure)).toBe(objectUrl);
   });
 
   it('stays empty after a fetch the origin answered with an error', async () => {

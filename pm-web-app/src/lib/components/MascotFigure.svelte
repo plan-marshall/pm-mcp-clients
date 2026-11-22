@@ -4,6 +4,12 @@
   const shownFigures = writable(0);
 
   /**
+   * The mascot figure height on entry/fallback pages (180 px, within 160–200 px).
+   */
+  export const ENTRY_FIGURE_HEIGHT = 180;
+  export const FIGURE_HEIGHT = 180;
+
+  /**
    * The number of mascot figures shown right now: drawn, and with a box on the page. A figure a
    * container query or a hidden ancestor sets to `display: none` keeps no box and does not count.
    * The rail-foot bear hides while the number is above zero, so a screen never shows two

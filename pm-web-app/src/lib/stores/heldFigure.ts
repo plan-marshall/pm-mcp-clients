@@ -33,9 +33,13 @@ export async function holdFigure(): Promise<void> {
   requested = true;
   try {
     const response = await fetch(mascotFiles('searching', 'full').src2x);
-    if (!response.ok) return;
+    if (!response.ok) {
+      requested = false;
+      return;
+    }
     held.set(URL.createObjectURL(await response.blob()));
   } catch {
+    requested = false;
     // The connection is gone or the file did not arrive: the states show without their figure.
   }
 }

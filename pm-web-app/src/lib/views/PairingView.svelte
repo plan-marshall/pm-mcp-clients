@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -19,6 +20,20 @@
   let isPairing = false;
   let errorMessage = '';
   let isCodeValid = false;
+  let isHeroVisible = true;
+
+  if (typeof window !== 'undefined') {
+    isHeroVisible = window.innerWidth > 800 && (window.innerHeight > 520 || window.innerHeight === 0);
+  }
+
+  onMount(() => {
+    const update = () => {
+      isHeroVisible = window.innerWidth > 800 && (window.innerHeight > 520 || window.innerHeight === 0);
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  });
 
   const cmdLocal = 'pm-operator web open --pair';
   const cmdRemote = 'pm-operator web pair';
@@ -145,7 +160,7 @@
       {/if}
     </div>
     <div class="pairing-page__hero" data-testid="pairing-hero">
-      <MascotFigure pose="welcome" height={HERO_HEIGHT} eager entrance />
+      <MascotFigure pose="welcome" height={HERO_HEIGHT} eager={isHeroVisible} entrance />
     </div>
   </div>
 </div>
