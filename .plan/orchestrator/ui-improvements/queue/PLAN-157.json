@@ -2,10 +2,10 @@
   "id": "PLAN-157",
   "slug": "web-views-entry-pages",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-157-web-views-entry-pages",
+  "pr": "535",
+  "landing": "landings/PLAN-157.md",
   "seq": 157
 }
