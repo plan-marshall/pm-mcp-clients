@@ -166,7 +166,8 @@ class RuntimeActDialogueTest {
             var thread = new Thread(() -> {
                 try {
                     answer.set(RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out),
-                                        new PrintWriter(err), Act.STOP, null, false, null, SNAPSHOT_BOUND));
+                                        new PrintWriter(err), new RuntimeActDialogue.Request(Act.STOP, null, false, null),
+                                        SNAPSHOT_BOUND));
                 } catch (IOException e) {
                     throw new IllegalStateException(e);
                 }

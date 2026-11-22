@@ -106,6 +106,7 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KEY_OUTPUT = "output";
     private static final String KEY_COUNT = "count";
     private static final String KEY_STATE_ROW = "state";
+    private static final String PHASE = "phase";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
 
@@ -239,7 +240,7 @@ public final class PlanCommand implements Callable<Integer> {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 ActionSupport.printWorkList(out, MessageCatalogue.format(context.locale(),
-                                    "operator.plan.running_title", Map.of()), "phase", list);
+                                    "operator.plan.running_title", Map.of()), PHASE, list);
             } else {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.plan.none_running", Map.of()));
@@ -493,6 +494,22 @@ public final class PlanCommand implements Callable<Integer> {
         out.flush();
     }
 
+    /**
+     * @param tree   the process tree
+     * @param locale the interface locale
+     * @return the pull request part of the tree's head line, empty when the plan has none
+     */
+    private static String pullRequestSuffix(ProcessTree tree, String locale) {
+        var number = tree.pullRequestNumber();
+        if (number == null) {
+            return "";
+        }
+        var url = tree.pullRequestUrl();
+        var urlPart = url != null ? " " + OutputSafety.stripControlSequences(url) : "";
+        return " · " + MessageCatalogue.format(locale, "operator.plan.tree.pull_request",
+                            Map.of("number", number)) + urlPart;
+    }
+
     private void printProcessTree(PrintWriter out, ProcessTree tree) {
         var projectStr = tree.project() != null ? OutputSafety.stripControlSequences(tree.project().projectId()) : "";
         var epicStr = tree.epic() != null ? OutputSafety.stripControlSequences(tree.epic().epicId()) : null;
@@ -508,11 +525,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         var locale = context.clientEnvironment().locale();
         var durationStr = tree.durationSeconds() > 0 ? " · " + Display.duration(locale, tree.durationSeconds()) : "";
-        var prStr = tree.pullRequestNumber() != null
-                            ? " · " + MessageCatalogue.format(locale, "operator.plan.tree.pull_request",
-                                                Map.of("number", tree.pullRequestNumber()))
-                                                + (tree.pullRequestUrl() != null ? " " + OutputSafety.stripControlSequences(tree.pullRequestUrl()) : "")
-                            : "";
+        var prStr = pullRequestSuffix(tree, locale);
         out.printf("%s · %s · %s%s%s%n",
                             planStr,
                             OutputSafety.stripControlSequences(tree.currentPhase()),
@@ -589,7 +602,7 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var info = String.join(" · ", infoParts);
 
-        var kindPrefix = "phase".equals(node.kind()) ? "phase " : ("sub_workflow".equals(node.kind()) ? "sub-workflow " : "");
+        var kindPrefix = PHASE.equals(node.kind()) ? "phase " : ("sub_workflow".equals(node.kind()) ? "sub-workflow " : "");
         var title = OutputSafety.stripControlSequences(node.title());
         if (title.startsWith("phase ") || title.startsWith("sub-workflow ")) {
             kindPrefix = "";
@@ -833,7 +846,7 @@ public final class PlanCommand implements Callable<Integer> {
                     out.println(GLYPH_CHECK + MessageCatalogue.format(
                                         context.clientEnvironment().locale(), "operator.actions.result.pausing",
                                         Map.of("plan", OutputSafety.stripControlSequences(planId),
-                                                            "point", PausePoint.AFTER_PHASE.value().equals(point) ? "phase" : "task")));
+                                                            "point", PausePoint.AFTER_PHASE.value().equals(point) ? PHASE : "task")));
                 }
                 out.flush();
                 return 0;
@@ -1195,7 +1208,7 @@ public final class PlanCommand implements Callable<Integer> {
             if (deliverables.isEmpty()) {
                 out.printf(FMT_14S, text(locale, "report.completion.deliverables"),
                                     MessageCatalogue.format(locale, "report.completion.deliverables_none",
-                                                        Map.of("phase", "refine")));
+                                                        Map.of(PHASE, "refine")));
             } else {
                 long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
                 out.printf(FMT_14S, text(locale, "report.completion.deliverables"),
