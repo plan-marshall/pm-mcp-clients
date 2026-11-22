@@ -2522,4 +2522,55 @@ describe('ReportsView component', () => {
       expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
     });
   });
+
+  describe('D2 vocabulary: head, filter, paging and states (PLAN-154 D2)', () => {
+    it('renders the head act and paging control as secondary buttons, unread count as text, and shared filter label with live count', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const markAll = screen.getByRole('button', { name: /Mark all shown read/i });
+      expect(markAll).toHaveClass('btn--secondary');
+
+      const unread = screen.getByTestId('unread-count');
+      expect(unread).toHaveTextContent('3 unread reports');
+
+      const search = screen.getByRole('search');
+      const input = within(search).getByRole('searchbox', { name: /Filter Reports/i });
+      expect(input).toBeInTheDocument();
+
+      await fireEvent.input(input, { target: { value: 'relay-hardening' } });
+      expect(screen.getByTestId('filter-results')).toHaveTextContent('1 match');
+
+      const showOlder = screen.getByRole('button', { name: /Show 5 older/i });
+      expect(showOlder).toHaveClass('btn--secondary');
+    });
+
+    it('renders Skeleton on initial load, EmptyState with icon on empty filter, and ErrorState on failure', async () => {
+      let resolveReports: ((page: ReportsPage) => void) | undefined;
+      vi.spyOn(apiClient, 'getReports').mockImplementationOnce(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            resolveReports = resolve;
+          }),
+      );
+
+      const { unmount } = render(ReportsView);
+      expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+
+      resolveReports?.(mockPage);
+      await screen.findByText('Ended: merged (#214)');
+
+      const filter = within(screen.getByRole('search')).getByRole('searchbox');
+      await fireEvent.input(filter, { target: { value: 'unmatched-query-xyz' } });
+      const filterEmpty = await screen.findByTestId('report-filter-empty');
+      expect(within(filterEmpty).getByRole('heading', { level: 2 })).toBeInTheDocument();
+      expect(filterEmpty.querySelector('.empty-state__mark [data-icon="act.search"]')).not.toBeNull();
+      expect(filterEmpty).toHaveTextContent('No loaded report matches the filter.');
+      unmount();
+
+      vi.spyOn(apiClient, 'getReports').mockRejectedValueOnce(new ClientError('timeout'));
+      render(ReportsView);
+      expect(await screen.findByTestId('error-state')).toBeInTheDocument();
+    });
+  });
 });

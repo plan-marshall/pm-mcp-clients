@@ -1145,9 +1145,13 @@
         titleLevel={2}
       />
     {:else if matchingItems.length === 0}
-      <div class="empty-state" data-testid="report-filter-empty">
-        <p class="empty-title">{$t('report.filter.no_matches')}</p>
-      </div>
+      <EmptyState
+        title={$t('common.filter.empty')}
+        message={$t('report.filter.no_matches')}
+        icon="act.search"
+        titleLevel={2}
+        testid="report-filter-empty"
+      />
     {:else}
       <!-- Grouped List -->
       <div class="reports-tree">
@@ -1496,20 +1500,6 @@
 
   .reports-error {
     margin-bottom: var(--space-3);
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: var(--space-10) var(--space-4);
-    background: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-  }
-
-  .empty-title {
-    color: var(--color-text-muted);
-    font-size: var(--text-base);
-    margin: 0;
   }
 
   .reports-tree {
