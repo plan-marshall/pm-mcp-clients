@@ -136,7 +136,7 @@ export class ScenarioMockFetch {
    * scenario itself (an unknown next state) rejects the returned promise, as `fetch` would.
    */
   readonly fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-    new Promise((resolve) => resolve(this.answer(input, init)));
+    new Promise<Response>((resolve) => resolve(this.answer(input, init)));
 
   private answer(input: RequestInfo | URL, init?: RequestInit): Response {
     const path = new URL(requestUrl(input), 'http://localhost').pathname;

@@ -247,7 +247,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
 
-    /* The literals below are read in more than one place; each keeps the exact wire or fixture spelling. */
+    /* The wire and fixture spellings the engine compares against are named once here, each keeping its exact spelling. */
     private static final String EVENT_TASK_ACTIVITY = "task.activity";
     private static final String KEY_TASK_ID = "task_id";
     private static final String PATH_PROJECT_ONBOARDINGS = "/api/v1/project-onboardings";
@@ -400,7 +400,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_EXPIRES_IN_DAYS = "expires_in_days";
     private static final String KEY_EXPIRED = "expired";
     private static final String PATH_PLANS = "/api/v1/plans";
-    private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_EPIC_TITLE = "epic_title";
     private static final String KEY_DISPLAY_NAME = "display_name";
@@ -676,7 +675,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String CONST_ALL_MODULES = "all 9";
     private static final DateTimeFormatter RECIPE_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
     private static final String PATH_WORKFLOWS = "/api/v1/workflows";
-    private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
     private static final String SEGMENT_SETUP = "/setup";
     private static final String METHOD_POST = "POST";
     private static final String KEY_STEP = "step";
@@ -2012,7 +2010,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (removed) {
                 broadcastEvent(DECISION_CLOSED, Map.of(
                         "id", decisionId,
-                        KEY_OUTCOME, OUTCOME_WITHDRAWN,
+                        CONST_OUTCOME, OUTCOME_WITHDRAWN,
                         KEY_REASON, "state_left"));
             }
         }
@@ -2350,7 +2348,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         var projectId = scopeOf(event, payload).projectId();
-        var outcome = stringMember(payload, KEY_OUTCOME);
+        var outcome = stringMember(payload, CONST_OUTCOME);
         var planId = stringMember(payload, KEY_PLAN_ID);
         if (planId != null) {
             startRegistry.endWork(EntryKind.PLAN, planId, projectId, outcome);
@@ -3696,8 +3694,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         String sub;
         if (path.startsWith(PATH_WORKFLOWS)) {
             sub = path.substring(PATH_WORKFLOWS.length());
-        } else if (path.startsWith(PATH_PROJECTS_PREFIX)) {
-            var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+        } else if (path.startsWith(PREFIX_PROJECTS)) {
+            var rest = path.substring(PREFIX_PROJECTS.length());
             var marker = rest.indexOf(SEGMENT_WORKFLOWS);
             if (marker <= 0) {
                 return false;
@@ -4839,17 +4837,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
         var path = request.path();
-        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+        if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
         if ("GET".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_FILES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var projectId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_PROJECT_FILES.length());
             handleProjectFiles(request, response, projectId, isWeb);
             return true;
         }
         if (METHOD_POST.equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var projectId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_PROJECT_ENTRIES.length());
             handleOpenEntry(request, response, projectId);
             return true;
@@ -6987,7 +6985,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         // A project's detail: its plans and its epics. The ended work of a project (.../ended) never
         // reaches here as a read (handleProjectOverviewRoutes serves it) and lists items, not plans.
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)
+        if (path.startsWith(PREFIX_PROJECTS) && !path.endsWith(SEGMENT_ENDED)
                 && (map.get(KEY_PLANS) instanceof List<?> || map.get(KEY_EPICS) instanceof List<?>)) {
             var copy = orderedMap(map);
             copy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(rowsOf(copy, KEY_PLANS))));
@@ -7112,7 +7110,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (projectId == null) {
             return Instant.MAX;
         }
-        var detail = Optional.ofNullable(activeRoute("GET", PATH_PROJECTS_PREFIX + projectId))
+        var detail = Optional.ofNullable(activeRoute("GET", PREFIX_PROJECTS + projectId))
                 .map(RouteDefinition::representation)
                 .map(JsonTree::asObject)
                 .orElse(null);
@@ -7474,7 +7472,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, KEY_KIND)), FindKind.PLAN);
         matches.add(new FindMatch(kind, id, requireText(title, id), project, null, null, true,
-                JsonTree.string(row, KEY_OUTCOME)));
+                JsonTree.string(row, CONST_OUTCOME)));
     }
 
     private static final String KEY_PAGES = "pages";
@@ -9749,30 +9747,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleEnrol(request, response, null);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROL.length());
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_ENROL)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_ENROL.length());
             handleEnrol(request, response, prjId);
             return true;
         }
-        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_DIGEST)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_STORES_DIGEST.length());
+        if ("GET".equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_STORES_DIGEST)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_STORES_DIGEST.length());
             handleStoreDigest(request, response, prjId);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_STORES_ACCEPT_EDIT.length());
             handleAcceptEdit(request, response, prjId);
             return true;
         }
-        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROLMENT_DIGEST)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROLMENT_DIGEST.length());
+        if ("GET".equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_ENROLMENT_DIGEST)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_ENROLMENT_DIGEST.length());
             handleEnrolmentDigest(response, prjId);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX)
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS)
                 && path.endsWith(SEGMENT_ENROLMENT_ACCEPT_EDIT)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var prjId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_ENROLMENT_ACCEPT_EDIT.length());
             handleEnrolmentAcceptEdit(request, response, prjId);
             return true;
@@ -9850,10 +9848,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private boolean refuseTamperedEnrolment(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+        if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
-        var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+        var rest = path.substring(PREFIX_PROJECTS.length());
         var slash = rest.indexOf('/');
         var projectId = slash < 0 ? rest : rest.substring(0, slash);
         synchronized (storeLock) {
@@ -10042,8 +10040,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleGetProjectsExplorer(response);
             return true;
         }
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             response.json(200, projectSetupState(prjId,
                     projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
@@ -10096,8 +10094,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleUnenrolProject(response, prjId);
             return true;
         }
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             handleSetupProject(request, response, prjId);
             return true;
@@ -10518,7 +10516,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         body.put("name", displayNameOf(projectId));
         body.put(KEY_PILOT, false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
+                PREFIX_PROJECTS + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
         return body;
     }
 
@@ -11680,7 +11678,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 answerReq.channel(), answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                KEY_OUTCOME, outcome,
+                CONST_OUTCOME, outcome,
                 KEY_REASON, reason
         ));
         response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, KEY_REASON, reason));
@@ -11720,7 +11718,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                KEY_OUTCOME, "answered",
+                CONST_OUTCOME, "answered",
                 KEY_ANSWER, chosen
         ));
         response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, KEY_ANSWER, chosen));
@@ -11824,7 +11822,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                KEY_OUTCOME, OUTCOME_WITHDRAWN,
+                CONST_OUTCOME, OUTCOME_WITHDRAWN,
                 KEY_REASON, "none_fits"
         ));
 
