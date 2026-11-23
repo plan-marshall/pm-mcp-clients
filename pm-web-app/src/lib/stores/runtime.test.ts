@@ -21,6 +21,7 @@ import {
   navigateTo,
   openAttention,
   openEpicDecomposition,
+  openProjectOnboarding,
   openRunningWork,
   openStartPage,
   pairBrowser,
@@ -1693,5 +1694,23 @@ describe('the decision announcer', () => {
 
     closeOpenObject();
     expect(get(runtimeStore).openObject).toBeNull();
+  });
+
+  it('opens project onboarding with a dedicated address and restores run on reload', () => {
+    openProjectOnboarding('ent-cui');
+    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
+    expect(get(runtimeStore).selectedOnboardingId).toBe('ent-cui');
+    expect(window.location.pathname).toBe('/projects/onboarding/ent-cui');
+
+    // Simulate reload at run's address
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('project-onboarding');
+    expect(get(runtimeStore).selectedOnboardingId).toBe('ent-cui');
+
+    // Address of a project called onboard still opens the project
+    window.history.pushState(null, '', '/projects/onboard');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('project');
+    expect(get(runtimeStore).selectedProjectId).toBe('onboard');
   });
 });

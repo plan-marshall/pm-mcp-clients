@@ -469,4 +469,205 @@ describe('ProjectOnboardingView component', () => {
     await waitFor(() => expect(screen.getByTestId('project-onboarding-view')).toBeInTheDocument());
     expect(screen.queryByTestId('project-back')).not.toBeInTheDocument();
   });
+
+  it('records identity of a being-added run through the entry link with the exact body', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+          links: {
+            set: {
+              href: '/api/v1/entries/ent-cui/links/set',
+              method: 'POST',
+            },
+          },
+        },
+      ],
+    });
+    const actEntrySpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+
+    const saveBtn = await screen.findByTestId('project-identity-save');
+    expect(saveBtn).not.toBeDisabled();
+
+    await fireEvent.click(saveBtn);
+
+    expect(actEntrySpy).toHaveBeenCalledWith('ent-cui', 'set', {
+      id: 'cui-parent',
+      name: 'cui-parent',
+      pilot: false,
+    });
+  });
+
+  it('shows the needs-terminal card at step 3 only, and clears after read carrying environment', async () => {
+    // At step 2, without build_environment, card should NOT show
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+        },
+      ],
+    });
+
+    const { unmount } = render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
+    expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
+    unmount();
+
+    // At step 3, without build_environment, card DOES show
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Enrolment',
+          step_number: 3,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+        },
+      ],
+    });
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+    expect(await screen.findByTestId('project-needs-terminal')).toBeInTheDocument();
+
+    // Mock explorer returning environment on next read
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Enrolment',
+          step_number: 3,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+          build_environment: {
+            captured_at: '2026-10-18T08:00:00Z',
+            source: 'terminal',
+            variables: {},
+          },
+        },
+      ],
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
+    });
+  });
+
+  it('hides the pilot checkbox when lifecycle_gate is false', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      step: 2,
+      state: 'project.identity',
+      summary: 'Identity',
+      checkout_path: '~/git/cui-parent',
+      lifecycle_gate: false,
+    });
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-identity-id')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('project-identity-pilot')).not.toBeInTheDocument();
+  });
+
+  it('keeps a run started from the checkout form selected through save identity, Check again, and Continue', async () => {
+    const step2Entry = {
+      checkout_path: '~/git/new-service',
+      current_step: 'Identity',
+      step_number: 2,
+      total_steps: 10,
+      continue_link: '/api/v1/entries/ent-new/continue',
+      abandon_link: '/api/v1/entries/ent-new/abandon',
+      links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
+    };
+    const step3Entry = {
+      checkout_path: '~/git/new-service',
+      current_step: 'Enrolment',
+      step_number: 3,
+      total_steps: 10,
+      continue_link: '/api/v1/entries/ent-new/continue',
+      abandon_link: '/api/v1/entries/ent-new/abandon',
+    };
+    const explorerSpy = vi
+      .spyOn(apiClient, 'getProjectExplorer')
+      .mockResolvedValueOnce({ ...EMPTY_EXPLORER, being_added: [step2Entry] })
+      .mockResolvedValue({ ...EMPTY_EXPLORER, being_added: [step3Entry] });
+    const actSpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+
+    render(ProjectOnboardingView, {});
+
+    await fireEvent.input(await screen.findByTestId('project-checkout-path'), {
+      target: { value: '~/git/new-service' },
+    });
+    await fireEvent.click(screen.getByTestId('project-checkout-start'));
+    await fireEvent.click(await screen.findByTestId('project-identity-save'));
+
+    await waitFor(() => expect(actSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(2));
+    // Now at step 3 with the needs-terminal card; Check again and Continue both retain the run.
+    await screen.findByTestId('project-needs-terminal');
+
+    await fireEvent.click(screen.getByTestId('project-needs-terminal-check'));
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(3));
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+    expect(screen.getByTestId('project-needs-terminal')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('project-continue'));
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(4));
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+    expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument();
+  });
+
+  it('offers the step acts of an enrolled project opened at the address of its run', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      all_projects: [{ project_id: 'pm-mcp-clients' } as never],
+    });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepProjectOnboarding')
+      .mockResolvedValue({ ...RUN, step: 4, state: 'project.operator' });
+
+    // The run's address names the run, not the project: no `projectId` reaches the view.
+    render(ProjectOnboardingView, { onboardingId: 'pm-mcp-clients' });
+
+    await fireEvent.click(await screen.findByTestId('project-step-link-enrol'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('pm-mcp-clients', 'enrol', {}));
+    expect(screen.getByTestId('project-chat-open')).not.toBeDisabled();
+  });
+
+  it('shows the error with its retry when the read of an enrolled run fails', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      all_projects: [{ project_id: 'pm-mcp-clients' } as never],
+    });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockRejectedValue(new Error('HTTP 500'));
+
+    render(ProjectOnboardingView, { onboardingId: 'pm-mcp-clients' });
+
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument());
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+  });
 });

@@ -2,10 +2,10 @@
   "id": "PLAN-181",
   "slug": "sonar-standing-debt-modules-part-3",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-181-sonar-standing-debt-modules-part-3",
+  "pr": "544",
+  "landing": "landings/PLAN-181.md",
   "seq": 181
 }

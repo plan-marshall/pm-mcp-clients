@@ -922,4 +922,118 @@ describe('the one project page', () => {
     expect(await within(setup).findByTestId('setup-release-btn')).toBeInTheDocument();
     expect(within(setup).getByTestId('setup-unenrol-btn')).toBeInTheDocument();
   });
+
+  it('shows the operator-item marker on a ready project with operator items and no setup word, and setup on a not-ready project', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...mockExplorer,
+      all_projects: [
+        {
+          project_id: 'ready-needs-operator',
+          display_name: 'Ready With Needs',
+          readiness: 'ready',
+          needs_operator_count: 2,
+          needs_operator_kind: 'decision',
+          active_plans_count: 1,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+        {
+          project_id: 'not-ready-project',
+          display_name: 'Not Ready Project',
+          readiness: 'setup_needs',
+          needs_operator_count: 1,
+          active_plans_count: 0,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+      ],
+    });
+
+    render(ProjectExplorerView);
+
+    const readyRow = await screen.findByTestId('project-row-ready-needs-operator');
+    expect(within(readyRow).getByText('! 2 · decision')).toBeVisible();
+    expect(within(readyRow).queryByText(/setup/i)).toBeNull();
+
+    const notReadyRow = await screen.findByTestId('project-row-not-ready-project');
+    expect(within(notReadyRow).getByText('! setup')).toBeVisible();
+  });
+
+  it('renders epic plan count without 0 epics, plan needs marker, and ended work outcome', async () => {
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: null,
+      }),
+    );
+
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        {
+          plan_id: 'plan-1',
+          title: 'Plan With Needs',
+          current_phase: 'execute',
+          phase_state: 'running',
+          needs_operator_count: 1,
+          needs_operator_kind: 'decision',
+        },
+      ],
+      epics: [
+        {
+          epic_id: 'epic-1',
+          title: 'Epic Title',
+          running_plans_count: 2,
+          staged_plans_count: 0,
+          plans: [],
+        },
+      ],
+      alongside_landings: [],
+    });
+
+    vi.spyOn(apiClient, 'getEndedWork').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      page: 1,
+      total_pages: 1,
+      has_newer: false,
+      has_older: false,
+      items: [
+        {
+          id: 'ended-plan-1',
+          kind: 'plan',
+          title: 'Finished Plan',
+          outcome: 'completed',
+          ended_at: '2026-10-15T10:00:00Z',
+        },
+      ],
+    });
+
+    render(ProjectExplorerView);
+
+    const workPanel = await screen.findByTestId('project-page-work');
+    // Epic row should say "2 plans", NOT "2 plans · 0 epics"
+    expect(within(workPanel).getByText('2 plans')).toBeVisible();
+    expect(within(workPanel).queryByText(/0 epics/)).toBeNull();
+
+    // Plan row should carry needs marker
+    expect(within(workPanel).getByText('! decision')).toBeVisible();
+
+    // Toggle ended work and verify outcome
+    await fireEvent.click(await screen.findByTestId('project-ended-toggle'));
+    const endedRows = await screen.findByTestId('project-ended-rows');
+    expect(within(endedRows).getByText('Finished Plan')).toBeVisible();
+    expect(within(endedRows).getByText('completed')).toBeVisible();
+  });
+
+  it('does not claim most used in the all-projects heading', async () => {
+    render(ProjectExplorerView);
+
+    const section = await screen.findByTestId('section-all-projects');
+    const heading = within(section).getByRole('heading', { level: 2 });
+    expect(heading.textContent).not.toContain('most used');
+  });
 });

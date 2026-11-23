@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CompletionReportView from './CompletionReportView.svelte';
 import { apiClient, type PlanCompletionReport } from '../api/client';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+function useCatalogue(locale: 'de' | 'en'): void {
+  currentLocale.set(locale);
+  messagesStore.set(loadMessages(locale));
+}
 
 describe('CompletionReportView component', () => {
   const mockReport: PlanCompletionReport = {
@@ -484,39 +491,125 @@ describe('CompletionReportView component', () => {
       expect(document.querySelectorAll('.section-badge')).toHaveLength(0);
     });
 
-    it('renders deliverables in done, not_done and dropped states with icon and word, and handles no deliverables yet', () => {
-      const mixed: PlanCompletionReport = {
+    it('renders deliverables in mock and engine states with catalogue words in English and German and neutral word for unknown state', () => {
+      const allStatesReport: PlanCompletionReport = {
         ...mockReport,
         deliverables: [
-          { name: 'cursor write order', state: 'done' },
-          { name: 'pending transport check', state: 'not_done' },
-          { name: 'legacy fallback removed', state: 'dropped' },
+          { name: 'task done', state: 'done' },
+          { name: 'task not started', state: 'not_started' },
+          { name: 'task failed', state: 'failed' },
+          { name: 'task open', state: 'open' },
+          { name: 'task infeasible', state: 'infeasible' },
+          { name: 'task deferred', state: 'deferred' },
+          { name: 'task removed', state: 'removed' },
+          { name: 'task unknown', state: 'something_weird' },
         ],
       };
-      const { unmount } = render(CompletionReportView, { planId: 'fix-relay', report: mixed });
 
-      const items = document.querySelectorAll('.deliverable-item');
-      expect(items).toHaveLength(3);
+      // English
+      useCatalogue('en');
+      const { unmount } = render(CompletionReportView, { planId: 'fix-relay', report: allStatesReport });
+      const itemsEn = document.querySelectorAll('.deliverable-item');
+      expect(itemsEn).toHaveLength(8);
 
-      expect(items[0].querySelector('[data-icon="state.check"]')).not.toBeNull();
-      expect(items[0]).toHaveTextContent('done');
-      expect(items[0]).toHaveTextContent('cursor write order');
+      expect(itemsEn[0].querySelector('[data-icon="state.check"]')).not.toBeNull();
+      expect(itemsEn[0].querySelector('.deliverable-state')).toHaveTextContent('done');
 
-      expect(items[1].querySelector('[data-icon="state.dot"]')).not.toBeNull();
-      expect(items[1]).toHaveTextContent('not done');
-      expect(items[1]).toHaveTextContent('pending transport check');
+      expect(itemsEn[1].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsEn[1].querySelector('.deliverable-state')).toHaveTextContent('not started');
 
-      expect(items[2].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
-      expect(items[2]).toHaveTextContent('dropped');
-      expect(items[2]).toHaveTextContent('legacy fallback removed');
+      expect(itemsEn[2].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsEn[2].querySelector('.deliverable-state')).toHaveTextContent('failed');
+
+      expect(itemsEn[3].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsEn[3].querySelector('.deliverable-state')).toHaveTextContent('open');
+
+      expect(itemsEn[4].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(itemsEn[4].querySelector('.deliverable-state')).toHaveTextContent('infeasible');
+
+      expect(itemsEn[5].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsEn[5].querySelector('.deliverable-state')).toHaveTextContent('deferred');
+
+      expect(itemsEn[6].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(itemsEn[6].querySelector('.deliverable-state')).toHaveTextContent('removed');
+
+      expect(itemsEn[7].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsEn[7].querySelector('.deliverable-state')).toHaveTextContent('unknown');
 
       unmount();
 
+      // German
+      useCatalogue('de');
+      const { unmount: unmountDe } = render(CompletionReportView, { planId: 'fix-relay', report: allStatesReport });
+      const itemsDe = document.querySelectorAll('.deliverable-item');
+      expect(itemsDe).toHaveLength(8);
+
+      expect(itemsDe[0].querySelector('[data-icon="state.check"]')).not.toBeNull();
+      expect(itemsDe[0].querySelector('.deliverable-state')).toHaveTextContent('fertig');
+
+      expect(itemsDe[1].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsDe[1].querySelector('.deliverable-state')).toHaveTextContent('nicht begonnen');
+
+      expect(itemsDe[2].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsDe[2].querySelector('.deliverable-state')).toHaveTextContent('fehlgeschlagen');
+
+      expect(itemsDe[3].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsDe[3].querySelector('.deliverable-state')).toHaveTextContent('offen');
+
+      expect(itemsDe[4].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(itemsDe[4].querySelector('.deliverable-state')).toHaveTextContent('nicht machbar');
+
+      expect(itemsDe[5].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsDe[5].querySelector('.deliverable-state')).toHaveTextContent('zurückgestellt');
+
+      expect(itemsDe[6].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(itemsDe[6].querySelector('.deliverable-state')).toHaveTextContent('entfernt');
+
+      expect(itemsDe[7].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(itemsDe[7].querySelector('.deliverable-state')).toHaveTextContent('unbekannt');
+
+      unmountDe();
+      useCatalogue('en');
+
+      // Empty deliverables names the phase from the report
       render(CompletionReportView, {
         planId: 'fix-relay',
-        report: { ...mockReport, deliverables: [] },
+        report: { ...mockReport, deliverables: [], phase: 'outline' },
       });
-      expect(screen.getByText('no deliverables yet: it ended in refine')).toBeInTheDocument();
+      expect(screen.getByText('no deliverables yet: it ended in outline')).toBeInTheDocument();
+    });
+
+    it('names no phase for empty deliverables when the report supplies none, and never guesses one from the token rows', () => {
+      useCatalogue('en');
+      const { phase: _phase, ...withoutPhase } = { ...mockReport, phase: 'outline' };
+      render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: {
+          ...withoutPhase,
+          deliverables: [],
+          token_usage: {
+            ...(mockReport.token_usage as NonNullable<PlanCompletionReport['token_usage']>),
+            by_phase: [
+              { name: 'refine', total: 10, input: 6, output: 4, unmeasured: 0, floor: false },
+              { name: 'outline', total: 10, input: 6, output: 4, unmeasured: 0, floor: false },
+            ],
+          },
+        } as PlanCompletionReport,
+      });
+      expect(screen.getByText('no deliverables yet')).toBeInTheDocument();
+      expect(screen.queryByText(/it ended in/)).not.toBeInTheDocument();
+    });
+
+    it('renders data.title in headline when present rather than repeating plan_id', () => {
+      useCatalogue('en');
+      const reportWithTitle: PlanCompletionReport = {
+        ...mockReport,
+        title: 'Custom Human Readable Title',
+        plan_id: 'plan-123',
+      };
+      render(CompletionReportView, { planId: 'plan-123', report: reportWithTitle });
+      const headline = document.querySelector('.report-header__headline .report-title');
+      expect(headline).toHaveTextContent('Custom Human Readable Title');
     });
   });
 
@@ -607,6 +700,60 @@ describe('CompletionReportView component', () => {
       expect(tokenKv).not.toBeNull();
       expect(tokenKv).toHaveTextContent('not measured');
       expect(tokenKv).not.toHaveTextContent('≥');
+    });
+
+    it('renders unmeasured reason wire code and waste classes through catalogue in English and German without raw codes', () => {
+      const reportWithWaste: PlanCompletionReport = {
+        ...mockReport,
+        token_usage: {
+          ...mockReport.token_usage!,
+          unmeasured_reason: 'terminated',
+          tasks_measured: 4,
+          tasks_total: 5,
+          waste_records: [
+            { waste_class: 'no_product', tokens: 18000, share_percent: 18, tasks_count: 2 },
+            { waste_class: 'retries', tokens: 21000, share_percent: 21, tasks_count: 1, cause_summary: 'retryable 1' },
+            { waste_class: 'remediation', tokens: 13000, share_percent: 13, tasks_count: 1, cause_summary: 'returned with findings 1' },
+          ],
+          total_waste_tokens: 52000,
+          waste_share_percent: 13,
+        },
+      };
+
+      // English
+      useCatalogue('en');
+      const { unmount } = render(CompletionReportView, { planId: 'fix-relay', report: reportWithWaste });
+      expect(document.querySelector('.tokens-section')).toHaveTextContent('their worker was terminated');
+      expect(document.querySelector('.waste-group')).toHaveTextContent('(13 % of measured)');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('produced nothing');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('retries');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('remediation');
+      unmount();
+
+      // German
+      useCatalogue('de');
+      const { unmount: unmountDe } = render(CompletionReportView, { planId: 'fix-relay', report: reportWithWaste });
+      expect(document.querySelector('.tokens-section')).toHaveTextContent('ihr Worker wurde beendet');
+      expect(document.querySelector('.waste-group')).toHaveTextContent('(13 % des Gemessenen)');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('ohne Ergebnis');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('Wiederholungen');
+      expect(document.querySelector('.waste-list')).toHaveTextContent('Nacharbeit');
+      unmountDe();
+
+      // Complete coverage (all tasks measured) -> waste_share has no "of measured"
+      useCatalogue('en');
+      const fullCoverageReport: PlanCompletionReport = {
+        ...reportWithWaste,
+        token_usage: {
+          ...reportWithWaste.token_usage!,
+          tasks_measured: 5,
+          tasks_total: 5,
+        },
+      };
+      const { unmount: unmountFull } = render(CompletionReportView, { planId: 'fix-relay', report: fullCoverageReport });
+      expect(document.querySelector('.waste-group')).toHaveTextContent('(13 %)');
+      expect(document.querySelector('.waste-group')).not.toHaveTextContent('of measured');
+      unmountFull();
     });
   });
 });

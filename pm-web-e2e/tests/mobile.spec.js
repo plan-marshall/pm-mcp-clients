@@ -183,7 +183,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       { path: '/system/cleanup', view: '[data-testid="cleanup-view"]' },
       { path: '/settings', view: '[data-testid="settings-view"]' },
       { path: '/settings?tab=setup', view: '[data-testid="settings-panel-setup"]' },
-      { path: '/projects/onboard', view: '[data-testid="project-onboarding-view"]' },
+      { path: '/projects/onboarding', view: '[data-testid="project-onboarding-view"]' },
     ];
 
     for (const route of routes) {
