@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
-  import { t, currentLocale } from '../i18n';
+  import { t, currentLocale, hasMessage } from '../i18n';
   import Button from '../components/Button.svelte';
   import Card from '../components/Card.svelte';
   import Chip from '../components/Chip.svelte';
@@ -103,7 +103,7 @@
   function getDeliverableIcon(state: string): 'state.check' | 'state.dot' | 'act.cancel' {
     const normalized = state?.toLowerCase().trim();
     if (normalized === 'done') return 'state.check';
-    if (normalized === 'dropped') return 'act.cancel';
+    if (normalized === 'removed' || normalized === 'infeasible') return 'act.cancel';
     return 'state.dot';
   }
 
@@ -236,12 +236,17 @@
         : `${formatSplit(usage.total, usage.input, usage.output, usage.is_floor, $currentLocale)}${
             data?.ran ? ` · ${data.ran}` : ''
           }`;
+    const unmeasuredReason = usage.unmeasured_reason
+      ? (hasMessage(`report.tokens.unmeasured_reason.${usage.unmeasured_reason}`)
+          ? $t(`report.tokens.unmeasured_reason.${usage.unmeasured_reason}`)
+          : usage.unmeasured_reason)
+      : 'none';
     const coverageValue =
       usage.tasks_total > usage.tasks_measured
         ? $t('common.tokens.coverage', {
             unmeasured: usage.tasks_total - usage.tasks_measured,
             total: usage.tasks_total,
-            reason: usage.unmeasured_reason || 'none',
+            reason: unmeasuredReason,
           })
         : $t('report.completion.tasks_measured', {
             count: usage.tasks_total,
@@ -344,7 +349,7 @@
       <div class="report-header__headline">
         <KindMark kind="plan" />
         <svelte:element this={`h${titleLevel}`} class="report-title" tabindex="-1"
-          >{data.plan_id}</svelte:element
+          >{data.title || data.plan_id}</svelte:element
         >
         <div class="report-header__actions">
           <Button
@@ -396,7 +401,7 @@
           {/if}
         </span>
         {#if !data.deliverables || data.deliverables.length === 0}
-          <p class="empty-text">{$t('report.completion.deliverables_none', { phase: 'refine' })}</p>
+          <p class="empty-text">{$t('report.completion.deliverables_none', { phase: data.phase || (data.token_usage?.by_phase?.length ? data.token_usage.by_phase[data.token_usage.by_phase.length - 1].name : 'refine') })}</p>
         {:else}
           <ul class="deliverables-list">
             {#each data.deliverables as d}
@@ -625,6 +630,7 @@
                     <span class="text-muted">
                       ({$t('report.completion.waste_share', {
                         percent: usage.waste_share_percent,
+                        coverage: usage.tasks_total > usage.tasks_measured ? 'partial' : 'all',
                       })})
                     </span>
                   {/if}
@@ -634,10 +640,14 @@
                 {#each usage.waste_records as w}
                   <li class="waste-item">
                     <span class="waste-class">
-                      {#if w.waste_class === 'no_product'}
+                      {#if hasMessage(`report.tokens.waste.${w.waste_class}`)}
+                        {$t(`report.tokens.waste.${w.waste_class}`)}
+                      {:else if hasMessage(`report.completion.waste.${w.waste_class}`)}
+                        {$t(`report.completion.waste.${w.waste_class}`)}
+                      {:else if w.waste_class === 'no_product'}
                         {$t('report.completion.produced_nothing')}
                       {:else}
-                        {w.waste_class}
+                        {$t('state.unknown')}
                       {/if}
                     </span>
                     <span class="waste-tokens mono"
@@ -770,7 +780,8 @@
   .deliverable-state {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    width: 60px;
+    width: 8.5rem;
+    flex-shrink: 0;
   }
 
   .replanning-item,

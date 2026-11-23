@@ -1099,6 +1099,7 @@ export interface PlanCompletionReport {
   change?: ChangeSizeRecord | null;
   change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
+  phase?: string;
   ended?: string;
   ran?: string;
 }
