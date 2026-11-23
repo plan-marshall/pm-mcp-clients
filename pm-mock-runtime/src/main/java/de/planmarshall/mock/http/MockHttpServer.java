@@ -54,13 +54,13 @@ public final class MockHttpServer implements AutoCloseable {
 
     private final ServerSocketChannel server;
     private final MockHttpHandler handler;
-    private final Path unixSocketPath;
+    private final @Nullable Path unixSocketPath;
     private final List<MockHttpRequest> requests = new CopyOnWriteArrayList<>();
     private final BlockingQueue<MockHttpRequest> arrivals = new LinkedBlockingQueue<>();
     private final Thread acceptor;
     private volatile boolean closed;
 
-    private MockHttpServer(ServerSocketChannel server, MockHttpHandler handler, Path unixSocketPath) {
+    private MockHttpServer(ServerSocketChannel server, MockHttpHandler handler, @Nullable Path unixSocketPath) {
         this.server = server;
         this.handler = handler;
         this.unixSocketPath = unixSocketPath;

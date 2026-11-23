@@ -34,6 +34,7 @@ import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
+import de.planmarshall.api.interaction.OperatorLink;
 import de.planmarshall.api.interaction.OperatorScopeKind;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
@@ -88,7 +89,7 @@ class OnboardingScenarioTest {
             assertEquals(entry.getKey(), state.stateId(), "state id of " + entry.getKey());
             assertEquals(OperatorScopeKind.MACHINE, state.scope().kind());
             assertEquals(entry.getValue().links().keySet(),
-                    state.links().stream().map(link -> link.id()).collect(Collectors.toSet()),
+                    state.links().stream().map(OperatorLink::id).collect(Collectors.toSet()),
                     "operator links of " + entry.getKey());
         }
     }
@@ -623,8 +624,8 @@ class OnboardingScenarioTest {
         }
 
         @Test
-        @DisplayName("holds a required consent answered no and goes on without an optional one")
-        void shouldRefuseEachConsent() throws Exception {
+        @DisplayName("holds a required harness, catalogue or store consent answered no until it is given")
+        void shouldRefuseEachSetupConsent() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_REFUSALS)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = Map.of("Authorization", "Bearer " + runtime.token());
@@ -640,6 +641,15 @@ class OnboardingScenarioTest {
                 runtime.goToState("store.consent");
                 assertEquals("store.consent", step(client, auth, "no").get("state"));
                 assertEquals("store.check", step(client, auth, "yes").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("holds a required provider consent answered no and goes on without an optional one")
+        void shouldRefuseEachConsent() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_REFUSALS)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
 
                 runtime.goToState("providers.consent");
                 assertEquals("providers.consent", step(client, auth, "no").get("state"));

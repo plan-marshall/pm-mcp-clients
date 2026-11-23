@@ -42,10 +42,10 @@ public final class MockEventStream implements AutoCloseable {
     /**
      * Sets the subscription scope before the response head is written.
      *
-     * @param value the scope key
+     * @param value the scope key; {@code null} or blank selects {@code machine}
      * @return this stream
      */
-    public MockEventStream scope(String value) {
+    public MockEventStream scope(@Nullable String value) {
         this.scope = value == null || value.isBlank() ? "machine" : value;
         return this;
     }
@@ -64,7 +64,7 @@ public final class MockEventStream implements AutoCloseable {
      * @param data  the event payload text
      * @throws IOException on connection error
      */
-    public synchronized void send(String event, String data) throws IOException {
+    public synchronized void send(@Nullable String event, String data) throws IOException {
         send(event, ++lastEventId, data);
     }
 
@@ -101,7 +101,7 @@ public final class MockEventStream implements AutoCloseable {
      * @param data  the event payload object
      * @throws IOException on connection error
      */
-    public synchronized void sendJson(String event, Object data) throws IOException {
+    public synchronized void sendJson(@Nullable String event, Object data) throws IOException {
         var json = data instanceof String s ? s : JsonTree.write(data);
         send(event, json);
     }
@@ -114,7 +114,7 @@ public final class MockEventStream implements AutoCloseable {
      * @param data  the event payload object
      * @throws IOException on connection error
      */
-    public synchronized void sendJson(String event, long id, Object data) throws IOException {
+    public synchronized void sendJson(@Nullable String event, long id, Object data) throws IOException {
         var json = data instanceof String s ? s : JsonTree.write(data);
         send(event, id, json);
     }

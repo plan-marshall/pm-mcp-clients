@@ -158,7 +158,7 @@ describe('CleanupView component', () => {
     });
 
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes.length).toBe(3);
+    expect(checkboxes).toHaveLength(3);
     expect(checkboxes[0]).toBeChecked();
 
     // Uncheck first item

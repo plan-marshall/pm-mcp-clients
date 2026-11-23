@@ -47,7 +47,7 @@ final class ProtocolData {
      */
     void recordInitialize(Map<String, Object> params) {
         if (params != null) {
-            record(JsonTree.string(params, "protocolVersion"), params.get("clientInfo"), params.get("capabilities"));
+            remember(JsonTree.string(params, "protocolVersion"), params.get("clientInfo"), params.get("capabilities"));
         }
     }
 
@@ -60,13 +60,13 @@ final class ProtocolData {
     Snapshot forRequest(Map<String, Object> params) {
         var meta = JsonTree.object(params, "_meta");
         if (meta != null) {
-            record(JsonTree.string(meta, META_PROTOCOL_VERSION), meta.get(META_CLIENT_INFO),
+            remember(JsonTree.string(meta, META_PROTOCOL_VERSION), meta.get(META_CLIENT_INFO),
                     meta.get(META_CLIENT_CAPABILITIES));
         }
         return recorded.get();
     }
 
-    private void record(String version, Object clientInfo, Object capabilities) {
+    private void remember(String version, Object clientInfo, Object capabilities) {
         var info = clientInfo != null ? JsonTree.writeAscii(clientInfo) : null;
         var caps = capabilities != null ? JsonTree.writeAscii(capabilities) : null;
         recorded.updateAndGet(current -> new Snapshot(version != null ? version : current.protocolVersion(),

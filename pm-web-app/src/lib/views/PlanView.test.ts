@@ -245,7 +245,7 @@ describe('PlanView component', () => {
     expect(screen.getByTestId('off-track-alert')).toHaveTextContent(/off track: repeating/);
 
     const entries = screen.getAllByTestId('activity-entry');
-    expect(entries.length).toBe(4);
+    expect(entries).toHaveLength(4);
     // A clock the runtime already formatted carries no date of its own, so its group opens the
     // day it was read.
     const days = screen.getAllByTestId('activity-day');

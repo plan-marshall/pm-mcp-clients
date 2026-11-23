@@ -137,7 +137,7 @@ public final class MockHttpResponse {
      * @return an open {@link MockEventStream}
      * @throws IOException on write error
      */
-    public MockEventStream events(int status, Consumer<MockEventStream> onCreated) throws IOException {
+    public MockEventStream events(int status, @Nullable Consumer<MockEventStream> onCreated) throws IOException {
         if (committed) {
             throw new IllegalStateException("Response already committed");
         }

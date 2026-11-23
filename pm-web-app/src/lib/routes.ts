@@ -432,62 +432,78 @@ export function routeForPath(pathname = '/'): AppRoute | null {
  * @returns its path, or `null` when the route has no path without a selection
  */
 export function pathForRoute(route: AppRoute, params: RouteParams = {}): string | null {
-  if (route === 'start') {
-    if (params.entryId) {
-      return `/entries/${encodeURIComponent(params.entryId)}`;
-    }
-    if (params.projectId) {
-      return `/projects/${encodeURIComponent(params.projectId)}/start`;
-    }
-    return '/start';
+  switch (route) {
+    case 'start':
+      return startPathOf(params);
+    case 'plan':
+      return withId(params.planId, (id) => `/plans/${id}`, null);
+    case 'task':
+      return params.planId && params.taskId
+        ? `/plans/${encodeURIComponent(params.planId)}/tasks/${encodeURIComponent(params.taskId)}`
+        : null;
+    case 'epic':
+      return withId(params.epicId, (id) => `/epics/${id}`, null);
+    case 'decomposition':
+      return withId(params.epicId, (id) => `/epics/${id}/decomposition`, '/decomposition');
+    case 'project':
+      return withId(params.projectId, (id) => `/projects/${id}`, null);
+    case 'decision':
+      return withId(params.decisionId, (id) => `/decisions/${id}`, null);
+    case 'report':
+      return withId(params.reportId, (id) => `/reports/${id}`, null);
+    // The three writers below are the old addresses this plan replaces. No caller passes them any
+    // more; they stay only so an address already in the bar keeps its path, and
+    // `replaceLegacyAddress` replaces them on open.
+    case 'reports':
+      return withId(params.reportPlanId, (id) => `/reports?plan=${id}`, fixedPath(route));
+    case 'projects':
+      return withId(params.explorerProjectId, (id) => `/projects?project=${id}`, fixedPath(route));
+    case 'decisions':
+      return withId(params.decisionId, (id) => `/decisions?decision=${id}`, fixedPath(route));
+    case 'designer':
+      // The selected project travels in the query, so a reload and a bookmark keep it.
+      return withId(params.projectId, (id) => `/designer?project=${id}`, '/designer');
+    case 'onboarding':
+      // The step travels in the query, so a reload and the browser's back keep it.
+      return params.onboardingStep ? `/onboarding?step=${params.onboardingStep}` : fixedPath(route);
+    default:
+      return fixedPath(route);
   }
-  if (route === 'plan') {
-    return params.planId ? `/plans/${encodeURIComponent(params.planId)}` : null;
+}
+
+/**
+ * @param params the start's project and entry
+ * @returns the start path: an entry's, a project's, or the bare start
+ */
+function startPathOf(params: RouteParams): string {
+  if (params.entryId) {
+    return `/entries/${encodeURIComponent(params.entryId)}`;
   }
-  if (route === 'task') {
-    return params.planId && params.taskId
-      ? `/plans/${encodeURIComponent(params.planId)}/tasks/${encodeURIComponent(params.taskId)}`
-      : null;
+  if (params.projectId) {
+    return `/projects/${encodeURIComponent(params.projectId)}/start`;
   }
-  if (route === 'epic') {
-    return params.epicId ? `/epics/${encodeURIComponent(params.epicId)}` : null;
-  }
-  if (route === 'decomposition') {
-    return params.epicId
-      ? `/epics/${encodeURIComponent(params.epicId)}/decomposition`
-      : '/decomposition';
-  }
-  if (route === 'project') {
-    return params.projectId ? `/projects/${encodeURIComponent(params.projectId)}` : null;
-  }
-  if (route === 'decision') {
-    return params.decisionId ? `/decisions/${encodeURIComponent(params.decisionId)}` : null;
-  }
-  if (route === 'report') {
-    return params.reportId ? `/reports/${encodeURIComponent(params.reportId)}` : null;
-  }
-  // The two writers below are the old addresses this plan replaces. No caller passes them any
-  // more; they stay only so an address already in the bar keeps its path, and
-  // `replaceLegacyAddress` replaces them on open.
-  if (route === 'reports' && params.reportPlanId) {
-    return `/reports?plan=${encodeURIComponent(params.reportPlanId)}`;
-  }
-  if (route === 'projects' && params.explorerProjectId) {
-    return `/projects?project=${encodeURIComponent(params.explorerProjectId)}`;
-  }
-  if (route === 'decisions' && params.decisionId) {
-    return `/decisions?decision=${encodeURIComponent(params.decisionId)}`;
-  }
-  if (route === 'designer') {
-    // The selected project travels in the query, so a reload and a bookmark keep it.
-    return params.projectId
-      ? `/designer?project=${encodeURIComponent(params.projectId)}`
-      : '/designer';
-  }
-  if (route === 'onboarding' && params.onboardingStep) {
-    // The step travels in the query, so a reload and the browser's back keep it.
-    return `/onboarding?step=${params.onboardingStep}`;
-  }
+  return '/start';
+}
+
+/**
+ * @param id the identifier the path needs, if the route was given one
+ * @param write writes the path from the encoded identifier
+ * @param fallback the path without an identifier
+ * @returns the written path, or the fallback when there is no identifier
+ */
+function withId(
+  id: string | undefined,
+  write: (encoded: string) => string,
+  fallback: string | null,
+): string | null {
+  return id ? write(encodeURIComponent(id)) : fallback;
+}
+
+/**
+ * @param route the route
+ * @returns the route's fixed path, or `null` when it has none
+ */
+function fixedPath(route: AppRoute): string | null {
   return FIXED_ROUTE_PATHS[route] ?? null;
 }
 

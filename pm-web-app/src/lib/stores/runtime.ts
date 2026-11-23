@@ -18,7 +18,6 @@ import {
   type AppRoute,
   type ObjectTab,
   type RouteParams,
-  type StartPath,
 } from '../routes';
 import {
   currentAddress,
@@ -44,7 +43,8 @@ import { isLoopbackSession } from '../utils/loopback';
 import { refreshesProjectView } from './refreshEvents';
 import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
-export type { AppRoute, RouteParams, StartPath };
+export type { AppRoute, RouteParams };
+export type { StartPath } from '../routes';
 
 /**
  * The state of the one event stream (UX-P-12).

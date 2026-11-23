@@ -259,7 +259,7 @@ class RelayTest {
                 } else if (body.contains("\"id\":2,")) {
                     try {
                         release.await(5, TimeUnit.SECONDS);
-                    } catch (InterruptedException e) {
+                    } catch (InterruptedException _) {
                         Thread.currentThread().interrupt();
                     }
                     response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":2,\"result\":{}}");
@@ -393,10 +393,11 @@ class RelayTest {
 
             send("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
 
-            var deadline = System.nanoTime() + WAIT.toNanos();
-            while (!err.text().contains("not running") && System.nanoTime() < deadline) {
-                Thread.sleep(10);
-            }
+            // Each diagnostic is one flushed line: wait on the lines until the refusal is among them.
+            String line;
+            do {
+                line = err.next(WAIT.toSeconds());
+            } while (line != null && !line.contains("not running"));
             assertTrue(err.text().contains("not running"));
             assertEquals("", out.text());
         }

@@ -213,12 +213,12 @@ final class NativeKernel implements Kernel {
      * @throws NativeCallException if the C library has no such symbol
      */
     MethodHandle handle(Fn fn) throws NativeCallException {
-        var handle = handles.get(fn);
+        // a symbol the C library lacks maps to null, which computeIfAbsent does not record
+        var handle = handles.computeIfAbsent(fn, function -> LINKER.defaultLookup().find(function.symbol)
+                .map(symbol -> LINKER.downcallHandle(symbol, function.descriptor, function.options))
+                .orElse(null));
         if (handle == null) {
-            var symbol = LINKER.defaultLookup().find(fn.symbol)
-                    .orElseThrow(() -> new NativeCallException(fn.symbol, 0, "symbol not found: " + fn.symbol));
-            handle = LINKER.downcallHandle(symbol, fn.descriptor, fn.options);
-            handles.put(fn, handle);
+            throw new NativeCallException(fn.symbol, 0, "symbol not found: " + fn.symbol);
         }
         return handle;
     }

@@ -197,9 +197,9 @@ class ControlScenarioTest {
         void overlapHold() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.holds")) {
                 var hold = holds(runtime, "relay-docs").getFirst();
-                var record = HoldRecord.fromMap(JsonTree.asObject(hold));
-                assertEquals("held", record.kind());
-                assertEquals(List.of("retry", "end_plan"), record.acts());
+                var holdRecord = HoldRecord.fromMap(JsonTree.asObject(hold));
+                assertEquals("held", holdRecord.kind());
+                assertEquals(List.of("retry", "end_plan"), holdRecord.acts());
 
                 var retry = resolve(runtime, "relay-docs", "H-0002", "retry");
                 assertEquals(Boolean.TRUE, retry.get("released"));

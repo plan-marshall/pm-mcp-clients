@@ -144,7 +144,7 @@ class PmExecIT {
     }
 
     @AfterAll
-    static void record() throws IOException {
+    static void writeResults() throws IOException {
         RESULTS.put("mode", mode());
         VerificationResults.write("gate3-pm-exec-" + Os.of(System.getProperty("os.name")).jsonName() + "-" + mode(), RESULTS,
                 pass);

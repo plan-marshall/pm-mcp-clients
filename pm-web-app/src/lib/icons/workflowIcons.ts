@@ -248,6 +248,20 @@ function remediationIconId(name: string): WorkflowIconId {
   return 'remediation.build';
 }
 
+/** @param key a `landing.` axis value @returns its landing icon */
+function landingIconId(key: string): WorkflowIconId {
+  if (key.includes('pull') || key.includes('pr')) return 'axis.landing.pr';
+  if (key.includes('main')) return 'axis.landing.main';
+  return 'axis.landing.files';
+}
+
+/** @param key an `ask.` axis value @returns its ask icon */
+function askIconId(key: string): WorkflowIconId {
+  if (key.includes('every')) return 'axis.ask.every';
+  if (key.includes('key')) return 'axis.ask.key';
+  return 'axis.ask.questions';
+}
+
 /**
  * Resolves a unit id to the icon the catalogue records for it.
  *
@@ -264,19 +278,11 @@ export function unitIconId(unitName: string | null | undefined): WorkflowIconId 
   if (exact) return exact;
   if (key.startsWith('phase-')) return phaseIconId(key);
   if (key.startsWith('remediation')) return remediationIconId(key);
-  if (key.startsWith('landing.')) {
-    if (key.includes('pull') || key.includes('pr')) return 'axis.landing.pr';
-    if (key.includes('main')) return 'axis.landing.main';
-    return 'axis.landing.files';
-  }
+  if (key.startsWith('landing.')) return landingIconId(key);
   if (key.startsWith('method.')) {
     return key.includes('test-first') ? 'axis.method.test-first' : 'axis.method.tests-after';
   }
-  if (key.startsWith('ask.')) {
-    if (key.includes('every')) return 'axis.ask.every';
-    if (key.includes('key')) return 'axis.ask.key';
-    return 'axis.ask.questions';
-  }
+  if (key.startsWith('ask.')) return askIconId(key);
   if (key.startsWith('entity')) return 'unit.entity';
   if (key.startsWith('source')) return 'unit.source';
   if (key.startsWith('git.land')) return 'unit.landing';
