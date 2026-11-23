@@ -211,7 +211,7 @@ class JsonTreeTest {
 
         @Test
         @DisplayName("is empty for an absent member, a null member, and a missing object")
-        void absent() throws Exception {
+        void absent() {
             var name = Generators.letterStrings(3, 12).next();
             var object = new LinkedHashMap<String, Object>();
             object.put(name, null);
