@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import Breadcrumb from './Breadcrumb.svelte';
 
 /**
@@ -147,5 +147,46 @@ describe('Breadcrumb', () => {
     });
 
     expect(screen.getAllByText('Plan')).toHaveLength(2);
+  });
+
+  it('draws each segment with its KindMark when kind is provided (PLAN-144 D2)', () => {
+    stubMediaQuery(false);
+    render(Breadcrumb, {
+      props: {
+        crumbs: [
+          { label: 'Running work', href: '/overview', kind: 'plan' },
+          { label: 'Relay Transport', href: '/overview?project=pm-mcp-clients', kind: 'project' },
+          { label: 'Relay Hardening', href: '/epics/relay-hardening', kind: 'epic' },
+          { label: 'Fix Relay', kind: 'plan' },
+        ],
+        label: LABEL,
+      },
+    });
+
+    const marks = Array.from(document.querySelectorAll('.kind-mark'));
+    expect(marks).toHaveLength(4);
+    expect(marks[0]).toHaveAttribute('data-kind', 'plan');
+    expect(marks[1]).toHaveAttribute('data-kind', 'project');
+    expect(marks[2]).toHaveAttribute('data-kind', 'epic');
+    expect(marks[3]).toHaveAttribute('data-kind', 'plan');
+  });
+
+  it('invokes onclick and prevents default navigation when segment is clicked', async () => {
+    stubMediaQuery(false);
+    const onclickSpy = vi.fn();
+    render(Breadcrumb, {
+      props: {
+        crumbs: [
+          { label: 'Running work', href: '/overview', kind: 'plan', onclick: onclickSpy },
+          { label: 'Fix Relay', kind: 'plan' },
+        ],
+        label: LABEL,
+      },
+    });
+
+    const link = screen.getByRole('link', { name: /Running work/i });
+    await fireEvent.click(link);
+
+    expect(onclickSpy).toHaveBeenCalled();
   });
 });

@@ -116,7 +116,7 @@ final class Relay {
         Object tree;
         try {
             tree = JsonTree.parse(line);
-        } catch (IOException e) {
+        } catch (IOException _) {
             // JSON-RPC 2.0 keeps the parse failure (-32700) apart from a valid request object (-32600)
             diagnostic("dropping a line that is no JSON");
             emit(error(null, PARSE_ERROR, "parse_error"));
@@ -224,7 +224,7 @@ final class Relay {
         Object tree;
         try {
             tree = JsonTree.parse(json);
-        } catch (IOException e) {
+        } catch (IOException _) {
             diagnostic("dropping a runtime message that is no JSON");
             return false;
         }

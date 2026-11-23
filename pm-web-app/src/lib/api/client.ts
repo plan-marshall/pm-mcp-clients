@@ -1308,7 +1308,8 @@ export interface SystemSnapshot {
 
 export interface CleanupItemEntry {
   id: string;
-  kind: 'plan' | 'epic' | 'logs' | 'report' | 'unenrolled' | string;
+  /** The item kind: `plan`, `epic`, `logs`, `report` or `unenrolled`; a later runtime may send more. */
+  kind: string;
   title: string;
   ended_at?: string;
   freed_bytes: number;
@@ -1325,7 +1326,8 @@ export interface CleanupKeptItem {
   item_id: string;
   kind: string;
   title: string;
-  why: 'ignore' | 'exclude' | string;
+  /** Why the item is kept: `ignore` or `exclude`; a later runtime may send more. */
+  why: string;
   kept_at: string;
   who: string;
 }
@@ -3885,6 +3887,11 @@ export class ApiClient {
     await this.request('POST', `/api/v1/reports/${encodeURIComponent(reportId)}/read`, {});
   }
 
+  public async getReport(reportId: string): Promise<ReportItem> {
+    const data = await this.request<ReportItem>('GET', `/api/v1/reports/${encodeURIComponent(reportId)}`);
+    return normaliseReportItem(data);
+  }
+
   public async markAllReportsRead(ids: string[]): Promise<{ marked_count: number }> {
     const body = { report_ids: ids };
     return this.request<{ marked_count: number }>('POST', '/api/v1/reports/read', body);
@@ -5060,6 +5067,35 @@ export class ApiClient {
       }, STREAM_RETRY_DELAY_MS);
     };
 
+    /** Drops the ended or failed reader and reconnects, unless the stream was stopped. */
+    const resumeAfterLoss = () => {
+      currentReader = undefined;
+      if (active && !internalController.signal.aborted) {
+        reconnect();
+      }
+    };
+
+    /**
+     * Hands every complete message to the callback.
+     *
+     * @param messages the complete messages of the buffer
+     * @returns `true` when a message revoked this device, which ends the stream
+     */
+    const dispatchMessages = (messages: string[]): boolean => {
+      for (const chunk of messages) {
+        const parsed = parseSseChunk(chunk);
+        if (!parsed) continue;
+
+        const revoked = handleSseMessage(parsed.eventType, parsed.eventData, onEvent, (reason) => {
+          this.clearAuth();
+          this.onRevokedCallback?.(reason);
+        });
+
+        if (revoked) return true;
+      }
+      return false;
+    };
+
     const connect = async () => {
       const secret = this.getSecret();
       if (!secret || !active || internalController.signal.aborted) return;
@@ -5104,10 +5140,7 @@ export class ApiClient {
         while (active && !internalController.signal.aborted) {
           const { done, value } = await reader.read();
           if (done) {
-            currentReader = undefined;
-            if (active && !internalController.signal.aborted) {
-              reconnect();
-            }
+            resumeAfterLoss();
             return;
           }
 
@@ -5118,32 +5151,14 @@ export class ApiClient {
           const parts = buffer.split(/(?:\r\n|\r|\n){2}/);
           buffer = parts.pop() || '';
 
-          for (const chunk of parts) {
-            const parsed = parseSseChunk(chunk);
-            if (!parsed) continue;
-
-            const revoked = handleSseMessage(
-              parsed.eventType,
-              parsed.eventData,
-              onEvent,
-              (reason) => {
-                this.clearAuth();
-                this.onRevokedCallback?.(reason);
-              },
-            );
-
-            if (revoked) {
-              abortAll();
-              onState?.('offline');
-              return;
-            }
+          if (dispatchMessages(parts)) {
+            abortAll();
+            onState?.('offline');
+            return;
           }
         }
       } catch {
-        currentReader = undefined;
-        if (active && !internalController.signal.aborted) {
-          reconnect();
-        }
+        resumeAfterLoss();
       } finally {
         clearTimeout(deadline);
         connecting = false;

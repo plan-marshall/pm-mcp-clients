@@ -10,6 +10,7 @@ import { actFailureReason, ClientError } from '../api/errors';
 import {
   adoptRouteFromLocation,
   checkUrlHashForCode,
+  closeOpenObject,
   createDecisionAnnouncer,
   DECISION_BURST_MS,
   deriveStepFromState,
@@ -26,6 +27,7 @@ import {
   pushRoute,
   RECONNECT_INTERVAL_MS,
   replaceDesignerProject,
+  replaceOpenObject,
   retryEventStream,
   retryRuntime,
   routeParamsOf,
@@ -1617,5 +1619,79 @@ describe('the decision announcer', () => {
 
     // Assert
     expect(shown).toEqual([]);
+  });
+
+  it('drives a removed object through the store and replaces the address with its parent', () => {
+    // Arrange: the operator is looking at a decision
+    window.history.pushState(null, '', '/decisions/dec-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('decision');
+    expect(get(runtimeStore).selectedDecisionId).toBe('dec-1');
+
+    // Act: the decision is closed/removed by a runtime event
+    handleRuntimeEvent('decision.closed', { decision: { id: 'dec-1', subject: 'Release waiver' } });
+
+    // Assert: the address fell back to the parent (/decisions) by replace
+    expect(window.location.pathname).toBe('/decisions');
+    expect(get(runtimeStore).currentRoute).toBe('decisions');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('Release waiver');
+
+    // And for a removed plan:
+    window.history.pushState(null, '', '/plans/pln-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('pln-1');
+
+    handleRuntimeEvent('plan.deleted', { plan_id: 'pln-1', title: 'Fix relay' });
+    expect(window.location.pathname).toBe('/overview');
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('Fix relay');
+
+    // And for a removed epic:
+    window.history.pushState(null, '', '/epics/ep-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('epic');
+    expect(get(runtimeStore).selectedEpicId).toBe('ep-1');
+
+    handleRuntimeEvent('epic.removed', { epic_id: 'ep-1', name: 'UI Overhaul' });
+    expect(window.location.pathname).toBe('/overview');
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('UI Overhaul');
+
+    // And for a removed report:
+    window.history.pushState(null, '', '/reports/rep-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('report');
+
+    handleRuntimeEvent('report.detail.deleted', { report_id: 'rep-1' });
+    expect(window.location.pathname).toBe('/reports');
+    expect(get(runtimeStore).currentRoute).toBe('reports');
+
+    // And for a removed task:
+    window.history.pushState(null, '', '/plans/pln-1/tasks/tsk-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('task');
+
+    handleRuntimeEvent('task.deleted', { task_id: 'tsk-1' });
+    expect(window.location.pathname).toBe('/plans/pln-1');
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+
+    // Deletion event for a non-matching ID or different route should not fall back:
+    window.history.pushState(null, '', '/plans/pln-2');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    handleRuntimeEvent('plan.deleted', { plan_id: 'pln-other' });
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    handleRuntimeEvent('decision.closed', { decision: { id: 'dec-other' } });
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+  });
+
+  it('manages openObject in runtimeStore via replaceOpenObject and closeOpenObject', () => {
+    runtimeStore.update((s) => ({ ...s, openObject: { kind: 'plan', id: 'pln-1' } }));
+    replaceOpenObject({ kind: 'decision', id: 'dec-2' });
+    expect(get(runtimeStore).openObject).toEqual({ kind: 'decision', id: 'dec-2' });
+
+    closeOpenObject();
+    expect(get(runtimeStore).openObject).toBeNull();
   });
 });

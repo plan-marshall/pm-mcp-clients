@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import path from 'node:path';
 import { flushSync } from 'svelte';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import NavRail from './NavRail.svelte';
 import MascotFigure from '../components/MascotFigure.svelte';
 import { mascotFiles } from '../assets/mascot/mascotFiles';
+import * as runtime from '../stores/runtime';
 import { runtimeStore } from '../stores/runtime';
 import { attentionStore } from '../stores/attention';
 import { currentLocale, messagesStore } from '../i18n';
@@ -65,6 +66,26 @@ describe('NavRail component', () => {
 
     expect(screen.getByTestId('nav-inbox-btn')).toHaveTextContent('What waits');
     expect(screen.queryByTestId('nav-inbox-btn-count')).not.toBeInTheDocument();
+  });
+
+  it('calls openAttention when What waits is clicked', async () => {
+    useCatalogue('en');
+    const attentionSpy = vi.spyOn(runtime, 'openAttention').mockImplementation(() => {});
+
+    renderRail(false);
+    await fireEvent.click(screen.getByTestId('nav-inbox-btn'));
+
+    expect(attentionSpy).toHaveBeenCalled();
+  });
+
+  it('calls openRunningWork when Running work is clicked', async () => {
+    useCatalogue('en');
+    const runningWorkSpy = vi.spyOn(runtime, 'openRunningWork').mockResolvedValue(undefined);
+
+    renderRail(false);
+    await fireEvent.click(screen.getByTestId('nav-overview-btn'));
+
+    expect(runningWorkSpy).toHaveBeenCalled();
   });
 
   it('renders Settings in English and Einstellungen in German for the machine settings rail button', () => {

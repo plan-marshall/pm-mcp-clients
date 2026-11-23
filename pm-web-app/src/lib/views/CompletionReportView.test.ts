@@ -366,26 +366,13 @@ describe('CompletionReportView component', () => {
     }
   });
 
-  it('returns focus to the invoking control when the report closes (D3)', async () => {
-    const invoking = document.createElement('button');
-    invoking.textContent = 'Show details';
-    document.body.appendChild(invoking);
-    invoking.focus();
-    const onClose = vi.fn();
+  it('does not render an in-page Back button (D3)', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
 
-    try {
-      render(CompletionReportView, { planId: 'fix-relay', report: mockReport, onClose });
+    const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+    await waitFor(() => expect(document.activeElement).toBe(title));
 
-      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
-      await waitFor(() => expect(document.activeElement).toBe(title));
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-
-      expect(onClose).toHaveBeenCalledOnce();
-      expect(document.activeElement).toBe(invoking);
-    } finally {
-      invoking.remove();
-    }
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
   });
 
   it('returns focus to the invoker when the report is destroyed without a Back click (D3)', async () => {
@@ -411,27 +398,22 @@ describe('CompletionReportView component', () => {
     }
   });
 
-  it('does not steal focus back when the report is destroyed after a Back click (D3)', async () => {
+  it('does not steal focus back when focus moved elsewhere before unmount (D3)', async () => {
     const invoking = document.createElement('button');
     invoking.textContent = 'Show details';
     const elsewhere = document.createElement('button');
     elsewhere.textContent = 'Elsewhere';
     document.body.append(invoking, elsewhere);
     invoking.focus();
-    const onClose = vi.fn();
 
     try {
       const { unmount } = render(CompletionReportView, {
         planId: 'fix-relay',
         report: mockReport,
-        onClose,
       });
 
       const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
       await waitFor(() => expect(document.activeElement).toBe(title));
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-      expect(document.activeElement).toBe(invoking);
 
       elsewhere.focus();
       unmount();

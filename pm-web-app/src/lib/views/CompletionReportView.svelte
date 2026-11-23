@@ -50,14 +50,6 @@
     heading?.focus();
   }
 
-  /**
-   * Returns focus to the invoking control before the report closes.
-   */
-  function closeReport(): void {
-    restoreFocusTo?.focus();
-    onClose?.();
-  }
-
   onMount(() => {
     restoreFocusTo = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     focusReportHeading();
@@ -311,14 +303,6 @@
 </script>
 
 <div class="completion-report" bind:this={rootEl}>
-  <div class="completion-report__nav">
-    {#if onClose}
-      <Button variant="ghost" size="sm" icon="act.back" onclick={closeReport}>
-        {$t('common.action.back')}
-      </Button>
-    {/if}
-  </div>
-
   {#if isLoading}
     <div class="completion-report__loading">
       <svelte:element

@@ -158,7 +158,7 @@ describe('CleanupView component', () => {
     });
 
     const checkboxes = screen.getAllByRole('checkbox');
-    expect(checkboxes.length).toBe(3);
+    expect(checkboxes).toHaveLength(3);
     expect(checkboxes[0]).toBeChecked();
 
     // Uncheck first item
@@ -204,10 +204,7 @@ describe('CleanupView component', () => {
 
     const deleteButton = screen.getByRole('button', { name: /^Delete/ });
     expect(deleteButton).toHaveAttribute('aria-disabled', 'true');
-    expect(deleteButton).toHaveAttribute(
-      'aria-describedby',
-      expect.stringContaining('btn-reason'),
-    );
+    expect(deleteButton).toHaveAttribute('aria-describedby', expect.stringContaining('btn-reason'));
     expect(
       screen.getByText('Nothing is checked; Ignore keeps everything listed.'),
     ).toBeInTheDocument();
@@ -358,5 +355,16 @@ describe('CleanupView component', () => {
     await fireEvent.click(releaseAllBtn);
 
     expect(releaseSpy).toHaveBeenCalledWith([], true);
+  });
+
+  it('does not render an in-page back button in the empty state (D3)', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(null as unknown as CleanupJob);
+    render(CleanupView);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Nothing is due/i })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /Back to System/i })).not.toBeInTheDocument();
   });
 });

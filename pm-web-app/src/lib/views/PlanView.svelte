@@ -7,6 +7,7 @@
   import Tabs, { type TabItem } from '../components/Tabs.svelte';
   import PlanChanges from '../components/PlanChanges.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkListColumn from '../components/WorkListColumn.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import {
@@ -26,7 +27,6 @@
     openEpicView,
     openProjectInExplorer,
     openCompletionReport,
-    goBack,
     navigateTo,
     selectObjectTab,
     selectPlanChangeFile,
@@ -54,7 +54,24 @@
   type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
 
   let planId = $derived($runtimeStore.selectedPlanId || '');
+  let lastLoadedPlanId: string | null = null;
+
+  $effect(() => {
+    const current = planId;
+    if (current && lastLoadedPlanId !== null && current !== lastLoadedPlanId) {
+      lastLoadedPlanId = current;
+      reportPhaseBreakdown = null;
+      reportRoleBreakdown = null;
+      isLoadingBreakdown = false;
+      showTokenBreakdown = false;
+      void loadPlanProcess(true);
+    } else if (current && lastLoadedPlanId === null) {
+      lastLoadedPlanId = current;
+    }
+  });
+
   let plan = $state<ProcessTree | null>(null);
+  const planProjectId = $derived(plan?.project?.project_id ?? $runtimeStore.selectedProjectId ?? '');
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
   let showTokenBreakdown = $state(false);
@@ -218,6 +235,7 @@
   });
 
   onDestroy(() => {
+    runtimeStore.update((s) => ({ ...s, currentProcessTree: null }));
     if (clockTimer !== null) {
       clearInterval(clockTimer);
       clockTimer = null;
@@ -245,14 +263,19 @@
     }
   });
 
+  let processLoadGeneration = 0;
   async function loadPlanProcess(initial = false) {
     if (!planId) return;
+    const currentId = planId;
+    const gen = ++processLoadGeneration;
     if (initial) isLoading = true;
     errorCode = null;
     try {
-      const res = await apiClient.getPlanProcess(planId);
+      const res = await apiClient.getPlanProcess(currentId);
+      if (gen !== processLoadGeneration) return;
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
+      runtimeStore.update((s) => ({ ...s, currentProcessTree: res }));
       if (previousPlanId !== null && previousPlanId !== res.plan_id) {
         // Another plan is open: the size the last capture announced belonged to the old one.
         changeFromEvent = null;
@@ -280,9 +303,12 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
+      if (gen !== processLoadGeneration) return;
       errorCode = errorCodeOf(err);
     } finally {
-      if (initial) isLoading = false;
+      if (gen === processLoadGeneration) {
+        isLoading = false;
+      }
     }
   }
 
@@ -583,18 +609,6 @@
     return split;
   }
 
-  /**
-   * Goes back to the view the plan was opened from.
-   *
-   * The caller's navigation stack names that view; a plan opened by a deep link or a reload has
-   * none, and falls back to Running Work.
-   */
-  function goBackToCaller() {
-    if (!goBack()) {
-      navigateTo('overview');
-    }
-  }
-
   function openEpic(epicId: string) {
     openEpicView(epicId);
   }
@@ -760,7 +774,11 @@
   }
 </script>
 
-<div class="plan-view" data-testid="plan-view">
+<div class="plan-view-layout" data-testid="plan-view-layout">
+  {#if planProjectId}
+    <WorkListColumn projectId={planProjectId} currentPlanId={planId} />
+  {/if}
+  <div class="plan-view" data-testid="plan-view">
   {#if isLoading}
     <div class="plan-view__loading" data-testid="plan-loading">
       <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
@@ -853,14 +871,6 @@
           >
             {$t('report.action.details')}
           </button>
-          <Button
-            variant="ghost"
-            onclick={goBackToCaller}
-            data-testid="back-btn"
-            data-advisory={$t('common.action.back.title')}
-          >
-            {$t('common.action.back')}
-          </Button>
         </div>
       </div>
 
@@ -1340,9 +1350,21 @@
     {/if}
   {/if}
 </div>
+</div>
 
 <style>
+  .plan-view-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    inline-size: 100%;
+    min-inline-size: 0;
+    min-height: 100%;
+  }
+
   .plan-view {
+    flex: 1 1 auto;
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     height: 100%;

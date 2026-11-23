@@ -45,6 +45,7 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.runtime.MockRuntimeEngine;
+import de.planmarshall.mock.scenario.EventDefinition;
 import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("DecisionsScenario (UC-PLN-2)")
@@ -295,7 +296,7 @@ class DecisionsScenarioTest {
         void announcesTheEvents() {
             var state = ScenarioLoader.load(StandardScenarios.RUNNING_WORK)
                     .state("decisions.answered-elsewhere");
-            var names = state.events().stream().map(event -> event.event()).toList();
+            var names = state.events().stream().map(EventDefinition::event).toList();
             assertEquals(List.of("decision.answered", "decision.closed"), names);
         }
     }

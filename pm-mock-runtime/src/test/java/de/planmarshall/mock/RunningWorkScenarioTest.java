@@ -183,9 +183,10 @@ class RunningWorkScenarioTest {
 
                 try (var exchange = client.open(HttpRequest.get("/api/v1/events")
                              .withHeader(AUTH_HEADER, auth))) {
+                    // The stream is registered before its response head is written, so once the head
+                    // reads as an event stream the broadcast below reaches it; no wait is needed.
                     assertTrue(exchange.isEventStream());
                     var sse = exchange.events();
-                    Thread.sleep(50);
 
                     var broadcastBody = JsonTree.write(Map.of(
                             "event", "task.off_track",

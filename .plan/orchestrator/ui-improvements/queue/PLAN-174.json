@@ -2,10 +2,10 @@
   "id": "PLAN-174",
   "slug": "cli-refusal-residue-second",
   "workstream": "WS-05",
-  "status": "running",
+  "status": "shipped",
   "lane": "plan-marshall",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "plan-174-cli-refusal-residue-second",
+  "pr": "533",
+  "landing": "landings/PLAN-174.md",
   "seq": 174
 }

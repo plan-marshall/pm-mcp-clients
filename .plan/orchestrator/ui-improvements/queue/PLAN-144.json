@@ -2,10 +2,10 @@
   "id": "PLAN-144",
   "slug": "web-shell-up-breadcrumb-and-work-list",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-144-web-shell-up-breadcrumb-and-work-list",
+  "pr": "542",
+  "landing": "landings/PLAN-144.md",
   "seq": 144
 }

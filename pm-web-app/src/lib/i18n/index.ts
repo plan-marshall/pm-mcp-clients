@@ -186,7 +186,7 @@ function resolveIcuPlural(result: string, params: Record<string, string | number
       replacement = branches['other'] ?? '';
     }
   }
-  replacement = replacement.replace(/#/g, String(count));
+  replacement = replacement.replaceAll('#', String(count));
   return result.slice(0, openBrace) + replacement + result.slice(closeBrace + 1);
 }
 

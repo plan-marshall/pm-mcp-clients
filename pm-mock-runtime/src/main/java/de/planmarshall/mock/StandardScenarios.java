@@ -443,7 +443,7 @@ public final class StandardScenarios {
      * The list is loaded from {@code scenarios/primary.txt}, the one file {@code start.sh} reads too,
      * so the Java catalog and the interactive menu cannot drift apart.
      */
-    public static final List<String> PRIMARY_SCENARIOS = loadPrimaryScenarios();
+    public static final List<String> PRIMARY_SCENARIOS = List.copyOf(loadPrimaryScenarios());
 
     /**
      * @return the primary scenario names in launcher order

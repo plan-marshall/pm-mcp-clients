@@ -336,7 +336,7 @@ final class DesignerRegistry {
     }
 
     private static WorkflowValidationResult rejected(String stage, List<WorkflowFinding> findings,
-            WorkflowValidationResult.Structure structure) {
+            WorkflowValidationResult.@Nullable Structure structure) {
         return new WorkflowValidationResult(false, stages(STAGE_NAMES.indexOf(stage)), findings,
                 structure, null);
     }

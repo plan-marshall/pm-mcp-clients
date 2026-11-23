@@ -535,9 +535,6 @@
         </p>
       {/if}
     </div>
-    <Button variant="secondary" on:click={() => navigateTo('projects')} data-testid="project-back">
-      {$t('common.action.back')}
-    </Button>
   </header>
 
   <!-- The step line scrolls sideways only while it is wider than its box; while it is, it takes

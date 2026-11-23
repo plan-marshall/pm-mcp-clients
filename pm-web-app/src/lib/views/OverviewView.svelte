@@ -217,6 +217,15 @@
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
   function syncFromAddress(address: RuntimeState): void {
+    const focus = address.overviewFocus;
+    if (focus === 'plans') {
+      viewMode = 'plan';
+      runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+    } else if (focus === 'epics') {
+      viewMode = 'epic';
+      runtimeStore.update((state) => ({ ...state, overviewFocus: null }));
+    }
+
     const storeGroup = address.lensGroup ?? null;
     if (storeGroup !== lastStoreGroup) {
       lastStoreGroup = storeGroup;
@@ -820,13 +829,6 @@
               </span>
             {/if}
           </div>
-          <Button
-            variant="secondary"
-            on:click={closeEndedWork}
-            data-advisory={$t('common.action.back.title')}
-          >
-            {$t('common.action.back')}
-          </Button>
         </div>
 
         {#if isLoadingEnded}

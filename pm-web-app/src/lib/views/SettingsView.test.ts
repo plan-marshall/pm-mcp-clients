@@ -471,7 +471,7 @@ describe('SettingsView component', () => {
     expect(reads[0]).toBeInstanceOf(AbortSignal);
   });
 
-  it('returns to the route the caller came from on Back', async () => {
+  it('does not render an in-page back button (D3)', async () => {
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,
@@ -493,10 +493,8 @@ describe('SettingsView component', () => {
 
     render(SettingsView);
 
-    await waitFor(() => expect(screen.getByTestId('settings-back-button')).toBeInTheDocument());
-    await fireEvent.click(screen.getByTestId('settings-back-button'));
-
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    await waitFor(() => expect(screen.getByTestId('settings-view')).toBeInTheDocument());
+    expect(screen.queryByTestId('settings-back-button')).not.toBeInTheDocument();
   });
 });
 

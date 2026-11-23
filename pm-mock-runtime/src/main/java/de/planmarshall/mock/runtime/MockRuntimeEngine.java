@@ -247,6 +247,43 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
 
+    /* The wire and fixture spellings the engine compares against are named once here, each keeping its exact spelling. */
+    private static final String EVENT_TASK_ACTIVITY = "task.activity";
+    private static final String KEY_TASK_ID = "task_id";
+    private static final String PATH_PROJECT_ONBOARDINGS = "/api/v1/project-onboardings";
+    private static final String PATH_SYSTEM = "/api/v1/system";
+    private static final String PATH_WEB = "/api/v1/web";
+    private static final String SEGMENT_DECISIONS_ROOT = "/decisions";
+    private static final String PATH_CONTROL_EPICS = "facts.runtime.control.epics.";
+    private static final String LESSON_OLD_STORE_FILE = "src/main/java/de/planmarshall/store/OldStore.java";
+    private static final String MESSAGE_NO_LESSON = "No lesson carries that id in ";
+    private static final String MESSAGE_NO_DECOMPOSITION = "No decomposition for epic: ";
+    private static final String WORKSTREAM_FIRST = "WS-1";
+    private static final String WORKSTREAM_NEW_WORK = "New work";
+    private static final String CONST_PM_API = "pm-api";
+    private static final String CONST_PM_RELAY = "pm-relay";
+    private static final String CONST_RELAY_DOCS = "relay-docs";
+    private static final String ACTION_CHAT = "chat";
+    private static final String ROLE_PLANNER = "planner";
+    private static final String ROLE_IMPLEMENTER = "implementer";
+    private static final String ROLE_REVIEWER = "reviewer";
+    private static final String MODEL_CODEX_GPT_5 = "codex:gpt-5";
+    private static final String MODEL_CLAUDE_OPUS_45 = "claude:opus-4.5";
+    private static final String MODEL_CLAUDE_SONNET_45 = "claude:sonnet-4.5";
+    private static final String QUERY_PROJECT_PREFIX = "project=";
+    private static final String KEY_DEVICE = "device";
+    private static final String KEY_DRAINING_BY = "draining_by";
+    private static final String KEY_CAN_WITHDRAW = "can_withdraw";
+    private static final String KEY_JSONRPC = "jsonrpc";
+    private static final String LINK_DELETE = "delete";
+    private static final String LINK_REMIND = "remind";
+    private static final String LINK_IGNORE = "ignore";
+    private static final String RUNTIME_VERSION = "0.10.0";
+    private static final String LIFECYCLE_UPGRADING = "upgrading";
+    private static final String KEY_KEPT_COUNT = "kept_count";
+    private static final String KEY_JOB_ID = "job_id";
+    private static final String EVENT_CLEANUP_DECIDED = "cleanup.decided";
+
     /** The cleanup item kinds the delete counts report separately. */
     private static final String CLEANUP_KIND_PLAN = "plan";
     private static final String CLEANUP_KIND_EPIC = "epic";
@@ -363,7 +400,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_EXPIRES_IN_DAYS = "expires_in_days";
     private static final String KEY_EXPIRED = "expired";
     private static final String PATH_PLANS = "/api/v1/plans";
-    private static final String KEY_OUTCOME = "outcome";
     private static final String KEY_PROJECT = "project";
     private static final String KEY_EPIC_TITLE = "epic_title";
     private static final String KEY_DISPLAY_NAME = "display_name";
@@ -439,7 +475,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String ERR_WEB_LISTENER_CONFLICT = "web_listener_conflict";
     private static final String FIELD_ENABLED = "enabled";
     private static final String FIELD_OVERLAP_MAX_FILES = "overlap_max_files";
-    private static final String FIELD_PAIRED_FROM = "paired_from";
     private static final String FIELD_ONBOARDED = "onboarded";
     private static final String CONST_LAN_HOST = "mbp-oliver.local";
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
@@ -640,7 +675,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String CONST_ALL_MODULES = "all 9";
     private static final DateTimeFormatter RECIPE_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
     private static final String PATH_WORKFLOWS = "/api/v1/workflows";
-    private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
     private static final String SEGMENT_SETUP = "/setup";
     private static final String METHOD_POST = "POST";
     private static final String KEY_STEP = "step";
@@ -1530,9 +1564,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 devicePairedBy.put(device.deviceId(), device.pairedBy());
             }
             return true;
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException e) {
+            // A malformed device fixture fails the state load, whichever way the reader refuses it.
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Malformed facts.runtime.devices in state '"
                     + fixtureState + "'", e);
         }
@@ -1579,7 +1613,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var runtime = stateRuntimeFixture(fixtureStateId.get());
         var web = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_WEB)) : null;
         if (web == null) {
-            var route = currentScenario.get().route("GET", "/api/v1/status");
+            var route = currentScenario.get().route("GET", PATH_STATUS);
             web = route != null ? JsonTree.object(JsonTree.asObject(route.representation()), FIXTURE_WEB) : null;
         }
         if (web == null) {
@@ -1976,7 +2010,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (removed) {
                 broadcastEvent(DECISION_CLOSED, Map.of(
                         "id", decisionId,
-                        KEY_OUTCOME, OUTCOME_WITHDRAWN,
+                        CONST_OUTCOME, OUTCOME_WITHDRAWN,
                         KEY_REASON, "state_left"));
             }
         }
@@ -2314,7 +2348,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return;
         }
         var projectId = scopeOf(event, payload).projectId();
-        var outcome = stringMember(payload, KEY_OUTCOME);
+        var outcome = stringMember(payload, CONST_OUTCOME);
         var planId = stringMember(payload, KEY_PLAN_ID);
         if (planId != null) {
             startRegistry.endWork(EntryKind.PLAN, planId, projectId, outcome);
@@ -2406,7 +2440,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return payload;
     }
 
-    private static Map<String, Object> payloadOf(Object data) {
+    private static Map<String, Object> payloadOf(@Nullable Object data) {
         var payload = new LinkedHashMap<String, Object>();
         if (data instanceof Map<?, ?> map) {
             map.forEach((key, value) -> payload.put(String.valueOf(key), value));
@@ -2417,8 +2451,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private long nextStreamId(String scope) {
-        var id = streamSequences.merge(scope, 1L, Long::sum);
-        return id;
+        return streamSequences.merge(scope, 1L, Long::sum);
     }
 
     /**
@@ -2440,7 +2473,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (planId != null) {
             return new EventScope(EventScopeKind.PLAN, planId, stringMember(payload, KEY_PROJECT_ID));
         }
-        var epicId = stringMember(payload, "epic_id");
+        var epicId = stringMember(payload, KEY_EPIC_ID);
         if (epicId != null) {
             return new EventScope(EventScopeKind.EPIC, epicId, stringMember(payload, KEY_PROJECT_ID));
         }
@@ -2544,8 +2577,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (event.startsWith("report.")) {
             targets.add(STREAM_REPORTS);
         }
-        if ("task.activity".equals(event) && scope.kind() == EventScopeKind.PLAN) {
-            var taskId = stringMember(payload, "task_id");
+        if (EVENT_TASK_ACTIVITY.equals(event) && scope.kind() == EventScopeKind.PLAN) {
+            var taskId = stringMember(payload, KEY_TASK_ID);
             if (taskId != null) {
                 targets.add(STREAM_ACTIVITY_PREFIX + scope.id() + ":" + taskId);
             }
@@ -2675,23 +2708,23 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             PATH_EPICS,
             "/api/v1/entries",
             PATH_PROJECTS,
-            "/api/v1/project-onboardings",
+            PATH_PROJECT_ONBOARDINGS,
             "/api/v1/explorer",
             "/api/v1/overview",
             MachineApiPaths.FIND,
             MachineApiPaths.NEEDS_OPERATOR,
-            "/api/v1/workflows",
+            PATH_WORKFLOWS,
             "/api/v1/decisions",
             "/api/v1/questions",
-            "/api/v1/system",
+            PATH_SYSTEM,
             "/api/v1/operator/runtime",
             "/api/v1/runtime",
-            "/api/v1/recipes",
+            PATH_RECIPES,
             "/api/v1/intake",
             "/api/v1/onboarding",
-            "/api/v1/web",
+            PATH_WEB,
             "/api/v1/status/",
-            "/api/v1/enrol",
+            PATH_ENROL,
             PATH_CREDENTIALS,
             "/api/v1/machine/decisions",
             "/api/v1/machine/settings",
@@ -2854,7 +2887,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return StandardScenarios.SYSTEM.equals(scenario.name())
                 || StandardScenarios.REPORTS_AND_SYSTEM.equals(scenario.name())
                 || StandardScenarios.FULLY_ONBOARDED.equals(scenario.name())
-                || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/api/v1/system"))
+                || scenario.routes().keySet().stream().anyMatch(route -> route.contains(PATH_SYSTEM))
                 || scenario.states().keySet().stream().anyMatch(state -> state.startsWith("system."));
     }
 
@@ -2867,8 +2900,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return StandardScenarios.DECISIONS.equals(scenario.name())
                 || StandardScenarios.RUNNING_WORK.equals(scenario.name())
                 || StandardScenarios.FULLY_ONBOARDED.equals(scenario.name())
-                || scenario.routes().keySet().stream().anyMatch(route -> route.contains("/decisions"))
-                || scenario.states().keySet().stream().anyMatch(state -> state.contains("decision"));
+                || scenario.routes().keySet().stream().anyMatch(route -> route.contains(SEGMENT_DECISIONS_ROOT))
+                || scenario.states().keySet().stream().anyMatch(state -> state.contains(CONST_DECISION));
     }
 
     private boolean isAuthorized(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -3526,7 +3559,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleConnectionStatus(response);
             return true;
         }
-        if ("/api/v1/web".equals(path)) {
+        if (PATH_WEB.equals(path)) {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
             resp.put(FIELD_LAN, lanListenerOn);
@@ -3565,7 +3598,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleRenameDevice(request, response, path);
             return true;
         }
-        if ("/api/v1/web".equals(path)) {
+        if (PATH_WEB.equals(path)) {
             handleUpdateWebConfig(request, response);
             return true;
         }
@@ -3661,8 +3694,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         String sub;
         if (path.startsWith(PATH_WORKFLOWS)) {
             sub = path.substring(PATH_WORKFLOWS.length());
-        } else if (path.startsWith(PATH_PROJECTS_PREFIX)) {
-            var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+        } else if (path.startsWith(PREFIX_PROJECTS)) {
+            var rest = path.substring(PREFIX_PROJECTS.length());
             var marker = rest.indexOf(SEGMENT_WORKFLOWS);
             if (marker <= 0) {
                 return false;
@@ -3739,7 +3772,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return false;
     }
 
-    private static boolean isValidUnitName(String unit) {
+    private static boolean isValidUnitName(@Nullable String unit) {
         return unit != null && UNIT_NAME.matcher(unit).matches() && !unit.contains("..");
     }
 
@@ -3902,18 +3935,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     Map<String, ArchiveCheck> archiveChecks) {
     }
 
-    private static ControlSeed readControlSeed(Map<String, Object> control) {
-        var planStates = new LinkedHashMap<String, String>();
-        var pausePoints = new LinkedHashMap<String, String>();
-        var planEpics = new LinkedHashMap<String, String>();
-        for (var plan : fixtureObjects(control, "plans", "facts.runtime.control.plans")) {
-            var planId = JsonTree.string(plan, "plan_id");
+    /** Reads each control plan's state, epic and pause point; a plan without plan_id fails the load. */
+    private static void readPlanControl(Map<String, Object> control, Map<String, String> planStates,
+            Map<String, String> pausePoints, Map<String, String> planEpics) {
+        for (var plan : fixtureObjects(control, KEY_PLANS, "facts.runtime.control.plans")) {
+            var planId = JsonTree.string(plan, KEY_PLAN_ID);
             if (planId == null || planId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.plans names a plan without plan_id");
             }
-            var state = JsonTree.string(plan, "state");
+            var state = JsonTree.string(plan, KEY_STATE);
             planStates.put(planId, state != null ? state : ACTIVITY_RUNNING);
-            var epicId = JsonTree.string(plan, "epic_id");
+            var epicId = JsonTree.string(plan, KEY_EPIC_ID);
             if (epicId != null) {
                 planEpics.put(planId, epicId);
             }
@@ -3922,6 +3954,53 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 pausePoints.put(planId, pausePoint);
             }
         }
+    }
+
+    /** Reads an epic's control resource and archive check, each when its fixture member is present. */
+    private static void readEpicResources(Map<String, Object> epic, String epicId, Map<String, EpicResource> epics,
+            Map<String, ArchiveCheck> archiveChecks) {
+        var resource = fixtureObject(epic, "resource",
+                PATH_CONTROL_EPICS + epicId + ".resource");
+        if (resource != null) {
+            epics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
+                    PATH_CONTROL_EPICS + epicId + ".resource"));
+        }
+        var archiveCheck = fixtureObject(epic, "archive_check",
+                PATH_CONTROL_EPICS + epicId + ".archive_check");
+        if (archiveCheck != null) {
+            archiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
+                    PATH_CONTROL_EPICS + epicId + ".archive_check"));
+        }
+    }
+
+    /** Reads an epic's reviews by register, when its fixture carries them; each must be an object. */
+    private static void readEpicReviews(Map<String, Object> epic, String epicId,
+            Map<String, ReviewResource> reviews) {
+        if (!epic.containsKey("reviews")) {
+            return;
+        }
+        var epicReviews = JsonTree.asObject(epic.get("reviews"));
+        if (epicReviews == null) {
+            throw new IllegalStateException(PATH_CONTROL_EPICS + epicId
+                    + ".reviews must be an object");
+        }
+        epicReviews.forEach((register, value) -> {
+            var map = JsonTree.asObject(value);
+            if (map == null) {
+                throw new IllegalStateException(PATH_CONTROL_EPICS + epicId
+                        + ".reviews." + register + " must be an object");
+            }
+            reviews.put(reviewKey(epicId, String.valueOf(register)),
+                    readFixture(() -> ReviewResource.fromMap(map),
+                            PATH_CONTROL_EPICS + epicId + ".reviews." + register));
+        });
+    }
+
+    private static ControlSeed readControlSeed(Map<String, Object> control) {
+        var planStates = new LinkedHashMap<String, String>();
+        var pausePoints = new LinkedHashMap<String, String>();
+        var planEpics = new LinkedHashMap<String, String>();
+        readPlanControl(control, planStates, pausePoints, planEpics);
 
         var epicStates = new LinkedHashMap<String, String>();
         var epicAuto = new LinkedHashMap<String, Boolean>();
@@ -3931,67 +4010,40 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var epics = new LinkedHashMap<String, EpicResource>();
         var archiveChecks = new LinkedHashMap<String, ArchiveCheck>();
         var reviews = new LinkedHashMap<String, ReviewResource>();
-        for (var epic : fixtureObjects(control, "epics", "facts.runtime.control.epics")) {
-            var epicId = JsonTree.string(epic, "epic_id");
+        for (var epic : fixtureObjects(control, KEY_EPICS, "facts.runtime.control.epics")) {
+            var epicId = JsonTree.string(epic, KEY_EPIC_ID);
             if (epicId == null || epicId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.epics names an epic without epic_id");
             }
-            var state = JsonTree.string(epic, "state");
+            var state = JsonTree.string(epic, KEY_STATE);
             epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
             epicScope.put(epicId, intMember(epic, "scope"));
             epicRunning.put(epicId, intMember(epic, ACTIVITY_RUNNING));
             epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
-            var resource = fixtureObject(epic, "resource",
-                    "facts.runtime.control.epics." + epicId + ".resource");
-            if (resource != null) {
-                epics.put(epicId, readFixture(() -> EpicResource.fromMap(resource),
-                        "facts.runtime.control.epics." + epicId + ".resource"));
-            }
-            var archiveCheck = fixtureObject(epic, "archive_check",
-                    "facts.runtime.control.epics." + epicId + ".archive_check");
-            if (archiveCheck != null) {
-                archiveChecks.put(epicId, readFixture(() -> ArchiveCheck.fromMap(archiveCheck),
-                        "facts.runtime.control.epics." + epicId + ".archive_check"));
-            }
-            if (epic.containsKey("reviews")) {
-                var epicReviews = JsonTree.asObject(epic.get("reviews"));
-                if (epicReviews == null) {
-                    throw new IllegalStateException("facts.runtime.control.epics." + epicId
-                            + ".reviews must be an object");
-                }
-                epicReviews.forEach((register, value) -> {
-                    var map = JsonTree.asObject(value);
-                    if (map == null) {
-                        throw new IllegalStateException("facts.runtime.control.epics." + epicId
-                                + ".reviews." + register + " must be an object");
-                    }
-                    reviews.put(reviewKey(epicId, String.valueOf(register)),
-                            readFixture(() -> ReviewResource.fromMap(map),
-                                    "facts.runtime.control.epics." + epicId + ".reviews." + register));
-                });
-            }
+            readEpicResources(epic, epicId, epics, archiveChecks);
+            readEpicReviews(epic, epicId, reviews);
         }
 
         var holds = new LinkedHashMap<String, HoldRecord>();
         for (var hold : fixtureObjects(control, "holds", "facts.runtime.control.holds")) {
-            var record = readFixture(() -> HoldRecord.fromMap(hold), "facts.runtime.control.holds");
-            holds.put(holdKey(record.subjectId(), record.holdId()), record);
+            var holdRecord = readFixture(() -> HoldRecord.fromMap(hold), "facts.runtime.control.holds");
+            holds.put(holdKey(holdRecord.subjectId(), holdRecord.holdId()), holdRecord);
         }
 
         var settingsRevisions = new LinkedHashMap<String, Integer>();
         var settings = new LinkedHashMap<String, Map<String, PlanSettingsValue>>();
         for (var entry : fixtureObjects(control, "settings", "facts.runtime.control.settings")) {
-            var planId = JsonTree.string(entry, "plan_id");
+            var planId = JsonTree.string(entry, KEY_PLAN_ID);
             if (planId == null || planId.isBlank()) {
                 throw new IllegalStateException("facts.runtime.control.settings names no plan_id");
             }
-            var record = readFixture(() -> PlanSettingsRecord.fromMap(entry),
+            var settingsRecord = readFixture(() -> PlanSettingsRecord.fromMap(entry),
                     "facts.runtime.control.settings." + planId);
-            settingsRevisions.put(planId, (int) record.revision());
+            settingsRevisions.put(planId, settingsRecord.revision());
             var values = new LinkedHashMap<String, PlanSettingsValue>();
-            record.values().forEach(value -> values.put(value.aspect(), value));
+            settingsRecord.values().forEach(value -> values.put(value.aspect(), value));
             settings.put(planId, values);
         }
 
@@ -4185,10 +4237,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                             "The lesson store is append-only; a retirement is a record, never a rewrite.",
                             Instant.parse("2026-10-13T09:12:00Z"), CONST_RELAY_AUTH_V2,
                             List.of("src/main/java/de/planmarshall/store/LessonStore.java",
-                                    "src/main/java/de/planmarshall/store/OldStore.java"),
+                                    LESSON_OLD_STORE_FILE),
                             List.of(new LessonPremiseEvidence(PremiseEvidenceKind.FILE,
-                                            "src/main/java/de/planmarshall/store/OldStore.java",
-                                            "src/main/java/de/planmarshall/store/OldStore.java", "a1b2c3d"),
+                                            LESSON_OLD_STORE_FILE,
+                                            LESSON_OLD_STORE_FILE, "a1b2c3d"),
                                     new LessonPremiseEvidence(PremiseEvidenceKind.SYMBOL,
                                             "de.planmarshall.store.OldStore#rewrite", null, "a1b2c3d")),
                             false, null, null, false),
@@ -4289,7 +4341,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var seed = findLesson(projectId, lessonId);
         if (seed == null) {
             response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
-                    KEY_MESSAGE, "No lesson carries that id in " + projectId));
+                    KEY_MESSAGE, MESSAGE_NO_LESSON + projectId));
             return;
         }
         var result = new LessonPremiseCheckResult(lessonId, premiseStatus(seed), seed.evidence(),
@@ -4318,7 +4370,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var index = indexOfLesson(seeds, lessonId);
             if (index < 0) {
                 response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
-                        KEY_MESSAGE, "No lesson carries that id in " + projectId));
+                        KEY_MESSAGE, MESSAGE_NO_LESSON + projectId));
                 return;
             }
             var seed = seeds.get(index);
@@ -4334,12 +4386,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 refuseClaim(response, lessonId, REASON_LESSON_PREMISE_BROKEN);
                 return;
             }
-            var planId = JsonTree.string(bodyMap, "plan_id");
+            var planId = JsonTree.string(bodyMap, KEY_PLAN_ID);
             if (planId == null || planId.isBlank()) {
                 planId = "lesson-" + lessonId;
             }
             seeds.set(index, seed.claimedBy(planId));
-            broadcastEvent(EVENT_LESSON_CLAIMED, Map.of(KEY_LESSON_ID, lessonId, "plan_id", planId,
+            broadcastEvent(EVENT_LESSON_CLAIMED, Map.of(KEY_LESSON_ID, lessonId, KEY_PLAN_ID, planId,
                     KEY_PROJECT_ID, projectId));
             response.json(200, new LessonClaimResult(lessonId, LessonClaimResult.STATUS_CLAIMED, planId).toMap());
         }
@@ -4356,7 +4408,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var index = indexOfLesson(seeds, lessonId);
             if (index < 0) {
                 response.json(404, Map.of(KEY_ERROR, ERR_TARGET_NOT_FOUND, KEY_LESSON_ID, lessonId,
-                        KEY_MESSAGE, "No lesson carries that id in " + projectId));
+                        KEY_MESSAGE, MESSAGE_NO_LESSON + projectId));
                 return;
             }
             var seed = seeds.get(index);
@@ -4420,8 +4472,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     List<String> symbolsCited,
     List<LessonPremiseEvidence> evidence,
     boolean premiseUnavailable,
-    String premiseCause,
-    String claimedBy,
+    @Nullable String premiseCause,
+    @Nullable String claimedBy,
     boolean retired
     ) {
 
@@ -4482,11 +4534,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return runtimeFixtureOf(scenario, scenario.start());
     }
 
-    private boolean handleDecompositionRoutes(MockHttpRequest request, MockHttpResponse response)
-            throws IOException {
-        var path = request.path();
+    /** A decomposition path cut into its project, its epic and its act (empty for the plain read). */
+    private record DecompositionPath(String projectId, String epicId, String action) {
+    }
+
+    /** Cuts a decomposition path; null when the path is no decomposition path of a project's epic. */
+    private static @Nullable DecompositionPath decompositionPathOf(String path) {
         if (!path.startsWith(PREFIX_PROJECTS)) {
-            return false;
+            return null;
         }
         var action = "";
         var base = path;
@@ -4500,17 +4555,27 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (action.isEmpty()) {
             if (!path.endsWith(PATH_DECOMPOSITION)) {
-                return false;
+                return null;
             }
             base = path.substring(0, path.length() - PATH_DECOMPOSITION.length());
         }
         var rest = base.substring(PREFIX_PROJECTS.length());
         var marker = rest.indexOf(SEGMENT_EPICS);
         if (marker < 0) {
+            return null;
+        }
+        return new DecompositionPath(rest.substring(0, marker), rest.substring(marker + SEGMENT_EPICS.length()),
+                action);
+    }
+
+    private boolean handleDecompositionRoutes(MockHttpRequest request, MockHttpResponse response)
+            throws IOException {
+        var decompositionPath = decompositionPathOf(request.path());
+        if (decompositionPath == null) {
             return false;
         }
-        var projectId = rest.substring(0, marker);
-        var epicId = rest.substring(marker + SEGMENT_EPICS.length());
+        var projectId = decompositionPath.projectId();
+        var epicId = decompositionPath.epicId();
         if (projectId.isBlank() || epicId.isBlank()) {
             response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, "No epic in the request"));
             return true;
@@ -4519,31 +4584,24 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "Unknown project: " + projectId));
             return true;
         }
+        return dispatchDecomposition(request, response, decompositionPath);
+    }
+
+    /** Runs the decomposition act the path names when the method fits it; false when it does not. */
+    private boolean dispatchDecomposition(MockHttpRequest request, MockHttpResponse response,
+            DecompositionPath decompositionPath) throws IOException {
+        var projectId = decompositionPath.projectId();
+        var epicId = decompositionPath.epicId();
+        var action = decompositionPath.action();
+        var expectedMethod = action.isEmpty() ? "GET" : METHOD_POST;
+        if (!expectedMethod.equals(request.method())) {
+            return false;
+        }
         switch (action) {
-            case "" -> {
-                if (!"GET".equals(request.method())) {
-                    return false;
-                }
-                handleGetDecomposition(response, projectId, epicId);
-            }
-            case "check" -> {
-                if (!METHOD_POST.equals(request.method())) {
-                    return false;
-                }
-                handleCheckDecomposition(response, projectId, epicId);
-            }
-            case "instruct" -> {
-                if (!METHOD_POST.equals(request.method())) {
-                    return false;
-                }
-                handleInstructDecomposition(request, response, projectId, epicId);
-            }
-            case "commit" -> {
-                if (!METHOD_POST.equals(request.method())) {
-                    return false;
-                }
-                handleCommitDecomposition(response, projectId, epicId);
-            }
+            case "" -> handleGetDecomposition(response, projectId, epicId);
+            case "check" -> handleCheckDecomposition(response, projectId, epicId);
+            case "instruct" -> handleInstructDecomposition(request, response, projectId, epicId);
+            case "commit" -> handleCommitDecomposition(response, projectId, epicId);
             default -> {
                 return false;
             }
@@ -4557,7 +4615,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var decomposition = decompositions.get(epicId);
             if (decomposition == null) {
                 response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
             // The cut is served with the findings of its current shape, so both clients show the
@@ -4574,7 +4632,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var current = decompositions.get(epicId);
             if (current == null) {
                 response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
             var findings = DecompositionValidator.validate(current.workstreams());
@@ -4583,7 +4641,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     findings);
             decompositions.put(epicId, updated);
             broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status", status.wireValue()));
+                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, status.wireValue()));
             response.json(200, updated.toMap());
         }
     }
@@ -4604,7 +4662,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var current = decompositions.get(epicId);
             if (current == null) {
                 response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
             EpicDecomposition updated;
@@ -4621,7 +4679,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             decompositions.put(epicId, updated);
             broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status", updated.status().wireValue()));
+                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, updated.status().wireValue()));
             response.json(200, updated.toMap());
         }
     }
@@ -4643,7 +4701,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static EpicDecomposition applyAdd(EpicDecomposition current, DecompositionInstructRequest instruct) {
         var workstreams = new ArrayList<WorkstreamRecord>(current.workstreams());
         if (workstreams.isEmpty()) {
-            workstreams.add(new WorkstreamRecord("WS-1", "New work", null, 1, List.of()));
+            workstreams.add(new WorkstreamRecord(WORKSTREAM_FIRST, WORKSTREAM_NEW_WORK, null, 1, List.of()));
         }
         var lastIndex = workstreams.size() - 1;
         var last = workstreams.get(lastIndex);
@@ -4671,7 +4729,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         String chosen = null;
         var lastIndex = -1;
-        for (var module : List.of("pm-api", "pm-relay", "pm-mcp-clients", "pm-mcp-core")) {
+        for (var module : List.of(CONST_PM_API, CONST_PM_RELAY, CONST_PM_MCP_CLIENTS, CONST_PM_MCP_CORE)) {
             var index = instruction.lastIndexOf(module);
             if (index > lastIndex) {
                 lastIndex = index;
@@ -4681,8 +4739,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return chosen == null ? List.of() : List.of(chosen + "/src/" + planId);
     }
 
-    private static String uniqueAddedPlanId(EpicDecomposition current, String instruction) {
-        var base = instruction != null && instruction.contains("docs") ? "relay-docs" : "relay-plan";
+    private static String uniqueAddedPlanId(EpicDecomposition current, @Nullable String instruction) {
+        var base = instruction != null && instruction.contains("docs") ? CONST_RELAY_DOCS : "relay-plan";
         var candidate = base;
         var suffix = 1;
         while (current.plan(candidate) != null) {
@@ -4709,14 +4767,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var current = decompositions.get(epicId);
             if (current == null) {
                 response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, "No decomposition for epic: " + epicId, KEY_PROJECT_ID, projectId));
+                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
                 return;
             }
             var findings = DecompositionValidator.validate(current.workstreams());
             if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
                 // Agree is not offered while a check fails (design "Starting Work", the decomposition)
                 response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_PROJECT_ID, projectId,
-                        "epic_id", epicId, FIELD_FINDINGS,
+                        KEY_EPIC_ID, epicId, FIELD_FINDINGS,
                         findings.stream().map(DecompositionCheckFinding::toMap).toList()));
                 return;
             }
@@ -4726,11 +4784,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             decompositions.put(epicId, committed);
             var launchable = committed.stagedPlanCount();
             broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "status",
+                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS,
                     DecompositionState.COMMIT.wireValue()));
             broadcastEvent(EVENT_EPIC_LAUNCHABLE, Map.of(KEY_EVENT, EVENT_EPIC_LAUNCHABLE,
-                    "epic_id", epicId, KEY_PROJECT_ID, projectId, "plans", launchablePlanIds(committed),
-                    "count", launchable));
+                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_PLANS, launchablePlanIds(committed),
+                    KEY_COUNT, launchable));
             response.json(200, new DecompositionCommitResult(DecompositionCommitResult.STATUS_COMMITTED,
                     revision, launchable).toMap());
         }
@@ -4779,17 +4837,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private boolean handleStartProjectRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
             throws IOException {
         var path = request.path();
-        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+        if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
         if ("GET".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_FILES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var projectId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_PROJECT_FILES.length());
             handleProjectFiles(request, response, projectId, isWeb);
             return true;
         }
         if (METHOD_POST.equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
-            var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var projectId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_PROJECT_ENTRIES.length());
             handleOpenEntry(request, response, projectId);
             return true;
@@ -5042,7 +5100,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return path.substring(PREFIX_PROJECTS.length(), path.length() - suffix.length());
     }
 
-    private boolean gateAllows(String projectId, MockHttpResponse response) throws IOException {
+    private boolean gateAllows(@Nullable String projectId, MockHttpResponse response) throws IOException {
         if (projectId == null || projectId.isBlank()) {
             response.json(404, Map.of(KEY_ERROR, ERR_PROJECT_NOT_ENROLLED, KEY_MESSAGE, "No project id in the request"));
             return false;
@@ -5080,12 +5138,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 new RecipeRef(CONST_COVERAGE, CONST_COVERAGE, "raise the test coverage of modules", CONST_DOMAIN, false,
                         List.of(
                                 new RecipeParameter(CONST_MODULES, CONST_ALL_MODULES,
-                                        List.of(CONST_ALL_MODULES, "pm-api", "pm-operator"), true, true, null),
+                                        List.of(CONST_ALL_MODULES, CONST_PM_API, "pm-operator"), true, true, null),
                                 new RecipeParameter("thoroughness", CONST_STANDARD,
                                         List.of("quick", CONST_STANDARD, "thorough"), true, true, null))),
-                new RecipeRef("audit", "audit", "audit the code against a request", "project", true,
+                new RecipeRef("audit", "audit", "audit the code against a request", KEY_PROJECT, true,
                         List.of(new RecipeParameter(CONST_MODULES, CONST_ALL_MODULES, List.of(CONST_ALL_MODULES), true, true, null))),
-                new RecipeRef("no-modules", "no-modules", "a recipe whose parameter has no option", "project",
+                new RecipeRef("no-modules", "no-modules", "a recipe whose parameter has no option", KEY_PROJECT,
                         false, List.of(new RecipeParameter(CONST_MODULES, null, List.of(), false, false,
                                 "none the recipe can work on"))));
     }
@@ -5141,7 +5199,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
         body.put("auto_start", parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
-        broadcastEvent(EVENT_EPIC_STARTED, Map.of("epic_id", id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
+        broadcastEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
         response.json(201, body);
     }
 
@@ -5481,14 +5539,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (!documents.isEmpty() && !documents.getFirst().isBlank()) {
             return fileName(documents.getFirst());
         }
-        return "New work";
+        return WORKSTREAM_NEW_WORK;
     }
 
     private static String firstLine(String text) {
         var trimmed = text.strip();
         int newline = trimmed.indexOf('\n');
         var line = newline >= 0 ? trimmed.substring(0, newline).strip() : trimmed;
-        return line.isBlank() ? "New work" : line;
+        return line.isBlank() ? WORKSTREAM_NEW_WORK : line;
     }
 
     private static String lastSegment(String reference) {
@@ -5553,7 +5611,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return subjectId + ":" + holdId;
     }
 
-    private static String controlSubjectId(String path, String prefix, String suffix) {
+    private static String controlSubjectId(String path, String prefix, @Nullable String suffix) {
         var sub = path.substring(prefix.length());
         if (suffix != null && sub.endsWith(suffix)) {
             sub = sub.substring(0, sub.length() - suffix.length());
@@ -5566,7 +5624,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var epicId = controlPlanEpics.get(planId);
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
-            case "pausing" -> {
+            case ACTIVITY_PAUSING -> {
                 actions.add(ActionAvailability.enabled(ACTION_START));
                 actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
@@ -5576,7 +5634,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
             }
-            case "ended" -> actions.add(ActionAvailability.enabled("chat"));
+            case STATE_ENDED -> actions.add(ActionAvailability.enabled(ACTION_CHAT));
             default -> {
                 actions.add(ActionAvailability.enabled(ACTION_PAUSE));
                 actions.add(ActionAvailability.enabled(ACTION_CANCEL));
@@ -5590,9 +5648,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void addChatAndSettings(String planId, List<ActionAvailability> actions) {
         if ("relay-metrics".equals(planId)) {
-            actions.add(ActionAvailability.disabled("chat", "no configuration of replan qualifies yet"));
+            actions.add(ActionAvailability.disabled(ACTION_CHAT, "no configuration of replan qualifies yet"));
         } else {
-            actions.add(ActionAvailability.enabled("chat"));
+            actions.add(ActionAvailability.enabled(ACTION_CHAT));
         }
         actions.add(ActionAvailability.enabled("settings"));
     }
@@ -5600,8 +5658,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private WorkActions buildEpicActions(String epicId) {
         var state = controlEpicStates.getOrDefault(epicId, ACTIVITY_RUNNING);
         var actions = new ArrayList<ActionAvailability>();
-        if ("ended".equals(state)) {
-            actions.add(ActionAvailability.enabled("chat"));
+        if (STATE_ENDED.equals(state)) {
+            actions.add(ActionAvailability.enabled(ACTION_CHAT));
         } else {
             actions.add(ActionAvailability.enabled(ACTION_NEXT));
             actions.add(ActionAvailability.enabled(ACTION_AUTO));
@@ -5609,13 +5667,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             actions.add(ActionAvailability.enabled("decompose"));
             actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
             actions.add(ActionAvailability.enabled("watches"));
-            actions.add(ActionAvailability.enabled("chat"));
-            if ("landing".equals(state)) {
+            actions.add(ActionAvailability.enabled(ACTION_CHAT));
+            if (KEY_LANDING.equals(state)) {
                 actions.add(ActionAvailability.disabled(ACTION_ARCHIVE, "the ledger is landing"));
             } else {
                 actions.add(ActionAvailability.enabled(ACTION_ARCHIVE));
             }
-            actions.add(ActionAvailability.enabled("cancel"));
+            actions.add(ActionAvailability.enabled(ACTION_CANCEL));
         }
         return new WorkActions(epicId, "epic", state, null, null, null, actions);
     }
@@ -5638,44 +5696,91 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
 
-        if (METHOD_POST.equals(method)) {
-            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            var sub = path.substring(prefix.length());
-            String subjectId = null;
-            String action = null;
-            var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
-            if (marker >= 0) {
-                subjectId = sub.substring(0, marker);
-                action = sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
-            } else {
-                var slash = sub.indexOf('/');
-                if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
-                    var candidate = sub.substring(slash + 1);
-                    var controlAction = (isPlan && PLAN_CONTROL_ACTIONS.contains(candidate))
-                            || (isEpic && EPIC_FLAT_ACTIONS.contains(candidate));
-                    if (controlAction) {
-                        subjectId = sub.substring(0, slash);
-                        action = candidate;
-                    }
-                }
-            }
-            if (subjectId != null && action != null && !action.contains("/")) {
-                if (isPlan) {
-                    handlePlanAction(request, response, subjectId, action);
-                } else {
-                    handleEpicAction(request, response, subjectId, action);
-                }
-                return true;
-            }
+        if (METHOD_POST.equals(method) && handleControlAction(request, response, isPlan)) {
+            return true;
         }
 
-        if (isPlan && "GET".equals(method) && path.endsWith(SEGMENT_HOLDS)) {
+        if (isPlan && handlePlanControlRoutes(request, response)) {
+            return true;
+        }
+
+        if ("GET".equals(method) && path.endsWith("/tokens")) {
+            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
+            handleGetTokens(response, controlSubjectId(path, prefix, "/tokens"));
+            return true;
+        }
+
+        return isEpic && handleEpicControlReads(request, response);
+    }
+
+    /**
+     * Answers a POST of a control act, at {@code /actions/<act>} or as a flat act the subject kind
+     * offers; false when the path names no act.
+     */
+    private boolean handleControlAction(MockHttpRequest request, MockHttpResponse response, boolean isPlan)
+            throws IOException {
+        var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
+        var sub = request.path().substring(prefix.length());
+        var action = controlActionOf(sub, isPlan);
+        if (action == null || action.contains("/")) {
+            return false;
+        }
+        var subjectId = controlSubjectOf(sub);
+        if (isPlan) {
+            handlePlanAction(request, response, subjectId, action);
+        } else {
+            handleEpicAction(request, response, subjectId, action);
+        }
+        return true;
+    }
+
+    /**
+     * The act of a control sub-path, either after {@code /actions/} or as a flat act of the subject
+     * kind.
+     *
+     * @param sub    the path below the subject kind's prefix
+     * @param isPlan whether the subject is a plan
+     * @return the act, or {@code null} when the path names none of that kind
+     */
+    private static @Nullable String controlActionOf(String sub, boolean isPlan) {
+        var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
+        if (marker >= 0) {
+            return sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
+        }
+        var slash = sub.indexOf('/');
+        if (slash <= 0 || sub.indexOf('/', slash + 1) >= 0) {
+            return null;
+        }
+        var candidate = sub.substring(slash + 1);
+        var flatActions = isPlan ? PLAN_CONTROL_ACTIONS : EPIC_FLAT_ACTIONS;
+        return flatActions.contains(candidate) ? candidate : null;
+    }
+
+    /**
+     * The subject of a control sub-path that {@link #controlActionOf} already accepted.
+     *
+     * @param sub the path below the subject kind's prefix
+     * @return the subject's id
+     */
+    private static String controlSubjectOf(String sub) {
+        var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
+        if (marker >= 0) {
+            return sub.substring(0, marker);
+        }
+        return sub.substring(0, sub.indexOf('/'));
+    }
+
+    /** Answers a plan's holds, the resolution of one hold and its settings; false for any other path. */
+    private boolean handlePlanControlRoutes(MockHttpRequest request, MockHttpResponse response)
+            throws IOException {
+        var path = request.path();
+        var method = request.method();
+        if ("GET".equals(method) && path.endsWith(SEGMENT_HOLDS)) {
             handleListHolds(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_HOLDS));
             return true;
         }
 
-        if (isPlan && METHOD_POST.equals(method) && path.contains(SEGMENT_HOLDS_PATH)
-                && path.endsWith("/resolve")) {
+        if (METHOD_POST.equals(method) && path.contains(SEGMENT_HOLDS_PATH) && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
             var subjectId = sub.substring(0, marker);
@@ -5685,7 +5790,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
 
-        if (isPlan && path.endsWith("/settings")) {
+        if (path.endsWith("/settings")) {
             var planId = controlSubjectId(path, PATH_PLANS_PREFIX, "/settings");
             if ("GET".equals(method)) {
                 handleGetPlanSettings(response, planId);
@@ -5696,52 +5801,52 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return true;
             }
         }
+        return false;
+    }
 
-        if ("GET".equals(method) && path.endsWith("/tokens")) {
-            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            handleGetTokens(response, controlSubjectId(path, prefix, "/tokens"));
-            return true;
+    /** Answers the GET reads of an epic: archive check, decomposition, review, resource; false otherwise. */
+    private boolean handleEpicControlReads(MockHttpRequest request, MockHttpResponse response)
+            throws IOException {
+        var path = request.path();
+        if (!"GET".equals(request.method())) {
+            return false;
         }
-
-        if ("GET".equals(method) && isEpic && path.endsWith("/archive-check")) {
+        if (path.endsWith("/archive-check")) {
             handleGetArchiveCheck(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/archive-check"));
             return true;
         }
 
-        if ("GET".equals(method) && isEpic && path.endsWith(SEGMENT_DECOMPOSITION)) {
+        if (path.endsWith(SEGMENT_DECOMPOSITION)) {
             handleGetControlDecomposition(response,
                     controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_DECOMPOSITION));
             return true;
         }
 
-        if ("GET".equals(method) && isEpic && path.endsWith("/review")) {
+        if (path.endsWith("/review")) {
             handleGetReview(request, response, controlSubjectId(path, PATH_EPICS_PREFIX, "/review"));
             return true;
         }
 
-        if ("GET".equals(method) && isEpic) {
-            var epicId = path.substring(PATH_EPICS_PREFIX.length());
-            if (!epicId.isEmpty() && !epicId.contains("/")) {
-                handleGetEpicResource(response, epicId);
-                return true;
-            }
+        var epicId = path.substring(PATH_EPICS_PREFIX.length());
+        if (!epicId.isEmpty() && !epicId.contains("/")) {
+            handleGetEpicResource(response, epicId);
+            return true;
         }
-
         return false;
     }
 
     private Map<String, Object> readBodyMap(MockHttpRequest request) {
         var body = request.body();
-        var parsed = body == null || body.length == 0 ? null : parseBody(body);
+        var parsed = body.length == 0 ? null : parseBody(body);
         return parsed != null ? parsed : new LinkedHashMap<>();
     }
 
     private @Nullable Map<String, Object> parseBody(byte[] body) {
         try {
             return JsonTree.asObject(JsonTree.parse(body));
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException _) {
+            // A body that is no JSON object reads as absent, whichever way the parser refuses it.
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException _) {
             return null;
         }
     }
@@ -5796,10 +5901,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             switch (action) {
                 case ACTION_PAUSE -> {
                     var point = actionRequest.point() != null ? actionRequest.point() : "task";
-                    controlPlanStates.put(planId, "pausing");
+                    controlPlanStates.put(planId, ACTIVITY_PAUSING);
                     controlPlanPausePoints.put(planId, point);
                     eventName = PlanControlEvent.EVENT_PAUSED;
-                    event = new PlanControlEvent(eventName, planId, "pausing", point, null).toMap();
+                    event = new PlanControlEvent(eventName, planId, ACTIVITY_PAUSING, point, null).toMap();
                 }
                 case ACTION_START -> {
                     controlPlanStates.put(planId, ACTIVITY_RUNNING);
@@ -5808,11 +5913,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     event = new PlanControlEvent(eventName, planId, ACTIVITY_RUNNING, null, null).toMap();
                 }
                 case ACTION_CANCEL, ACTION_ABANDON -> {
-                    controlPlanStates.put(planId, "ended");
+                    controlPlanStates.put(planId, STATE_ENDED);
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
                     eventName = PlanControlEvent.EVENT_CANCELLED;
-                    event = new PlanControlEvent(eventName, planId, "ended", null,
+                    event = new PlanControlEvent(eventName, planId, STATE_ENDED, null,
                             actionRequest.reason() != null ? actionRequest.reason()
                                     : "Cancelled by operator").toMap();
                 }
@@ -5858,12 +5963,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             switch (action) {
                 case ACTION_AUTO -> applyAuto(epicId, actionRequest);
                 case ACTION_COMMON_FILES -> {
-                    var value = actionRequest.extra().get("count");
+                    var value = actionRequest.extra().get(KEY_COUNT);
                     if (value instanceof Number number) {
                         controlEpicOverlap.put(epicId, number.intValue());
                     }
                 }
-                case ACTION_CANCEL -> controlEpicStates.put(epicId, "ended");
+                case ACTION_CANCEL -> controlEpicStates.put(epicId, STATE_ENDED);
                 default -> {
                     // next, decompose, findings, watches, archive, chat: the epic rests between its events
                 }
@@ -5924,49 +6029,73 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return;
             }
             var act = resolution.act();
-            var ending = ACTION_ABORT.equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
-            var released = ACTION_ACCEPT.equals(act) || ACTION_RETRY.equals(act) || "grant".equals(act)
-                    || "add_credential".equals(act) || "raise_budget".equals(act)
-                    || "give_up_removal".equals(act) || "recycle".equals(act);
-            if ("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act)) {
-                released = false;
-            }
-            if (ending) {
-                clearHoldsOf(planId).forEach(cleared -> published.add(
-                        () -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared)));
-                controlPlanStates.put(planId, STATE_ENDED);
-                controlPlanPausePoints.remove(planId);
-                var endReason = resolution.reason();
-                if (endReason == null) {
-                    endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
-                }
-                var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED,
-                        null, endReason).toMap();
-                published.add(() -> broadcastEvent(PlanControlEvent.EVENT_CANCELLED, cancelled));
-                result = new HoldResolutionResult(holdId, true, null, planId);
-            } else if (released) {
-                controlHolds.remove(holdKey(planId, holdId));
-                if ("held".equals(controlPlanStates.get(planId))) {
-                    controlPlanStates.put(planId, ACTIVITY_RUNNING);
-                }
-                var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, hold.holdId(),
-                        hold.subjectId(), hold.subjectKind(), null, null).toMap();
-                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared));
-                result = new HoldResolutionResult(holdId, true, null, planId);
+            if (isEndingHoldAct(act)) {
+                result = endPlanByHold(planId, holdId, act, resolution.reason(), published);
+            } else if (releasesHold(hold, act)) {
+                result = releaseHold(planId, holdId, hold, published);
             } else {
-                var updated = new HoldRecord(hold.holdId(), hold.subjectId(), hold.subjectKind(), hold.kind(),
-                        hold.cause(), hold.attempts() + 1, Instant.now(), hold.filePath(), hold.recordedSize(),
-                        hold.recordedDigest(), hold.currentSize(), hold.currentDigest(), hold.acts(),
-                        hold.pullRequestUrl());
-                controlHolds.put(holdKey(planId, holdId), updated);
-                var changed = new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED, updated.holdId(),
-                        updated.subjectId(), updated.subjectKind(), updated.kind(), updated.cause()).toMap();
-                published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CHANGED, changed));
-                result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
+                result = retryHold(planId, holdId, hold, published);
             }
         }
         published.forEach(Runnable::run);
         response.json(200, result.toMap());
+    }
+
+    /** True for an act that ends the plan the hold stops. */
+    private static boolean isEndingHoldAct(String act) {
+        return ACTION_ABORT.equals(act) || "end_plan".equals(act) || "cancel_epic".equals(act);
+    }
+
+    /** True for an act that releases the hold; a retry of an integrity pause only counts an attempt. */
+    private static boolean releasesHold(HoldRecord hold, String act) {
+        var released = ACTION_ACCEPT.equals(act) || ACTION_RETRY.equals(act) || "grant".equals(act)
+                || "add_credential".equals(act) || "raise_budget".equals(act)
+                || "give_up_removal".equals(act) || "recycle".equals(act);
+        return released && !("integrity_pause".equals(hold.kind()) && ACTION_RETRY.equals(act));
+    }
+
+    /** Ends the plan: clears its holds, then queues the cancellation; called under the control lock. */
+    private HoldResolutionResult endPlanByHold(String planId, String holdId, String act, @Nullable String reason,
+            List<Runnable> published) {
+        clearHoldsOf(planId).forEach(cleared -> published.add(
+                () -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared)));
+        controlPlanStates.put(planId, STATE_ENDED);
+        controlPlanPausePoints.remove(planId);
+        var endReason = reason;
+        if (endReason == null) {
+            endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
+        }
+        var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED,
+                null, endReason).toMap();
+        published.add(() -> broadcastEvent(PlanControlEvent.EVENT_CANCELLED, cancelled));
+        return new HoldResolutionResult(holdId, true, null, planId);
+    }
+
+    /** Releases the hold and resumes a held plan; called under the control lock. */
+    private HoldResolutionResult releaseHold(String planId, String holdId, HoldRecord hold,
+            List<Runnable> published) {
+        controlHolds.remove(holdKey(planId, holdId));
+        if ("held".equals(controlPlanStates.get(planId))) {
+            controlPlanStates.put(planId, ACTIVITY_RUNNING);
+        }
+        var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, hold.holdId(),
+                hold.subjectId(), hold.subjectKind(), null, null).toMap();
+        published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CLEARED, cleared));
+        return new HoldResolutionResult(holdId, true, null, planId);
+    }
+
+    /** Keeps the hold and counts one more attempt; called under the control lock. */
+    private HoldResolutionResult retryHold(String planId, String holdId, HoldRecord hold,
+            List<Runnable> published) {
+        var updated = new HoldRecord(hold.holdId(), hold.subjectId(), hold.subjectKind(), hold.kind(),
+                hold.cause(), hold.attempts() + 1, Instant.now(), hold.filePath(), hold.recordedSize(),
+                hold.recordedDigest(), hold.currentSize(), hold.currentDigest(), hold.acts(),
+                hold.pullRequestUrl());
+        controlHolds.put(holdKey(planId, holdId), updated);
+        var changed = new HoldChangedEvent(HoldChangedEvent.EVENT_CHANGED, updated.holdId(),
+                updated.subjectId(), updated.subjectKind(), updated.kind(), updated.cause()).toMap();
+        published.add(() -> broadcastEvent(HoldChangedEvent.EVENT_CHANGED, changed));
+        return new HoldResolutionResult(holdId, false, updated.cause(), planId);
     }
 
     /**
@@ -6003,15 +6132,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var update = PlanSettingsUpdateRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             var revision = controlSettingsRevisions.getOrDefault(planId, 1);
-            if ("ended".equals(controlPlanStates.get(planId))) {
-                response.json(409, PlanSettingsUpdateResult.tooLate("ended").toMap());
+            if (STATE_ENDED.equals(controlPlanStates.get(planId))) {
+                response.json(409, PlanSettingsUpdateResult.tooLate(STATE_ENDED).toMap());
                 return;
             }
             if (update.revision() != revision) {
                 response.json(409, PlanSettingsUpdateResult.conflict(revision, currentValue(planId, update.aspect())).toMap());
                 return;
             }
-            if ("landing".equals(update.aspect()) && "landing.main".equals(update.value())) {
+            if (KEY_LANDING.equals(update.aspect()) && "landing.main".equals(update.value())) {
                 // plan-settings.validate refuses a value the project does not allow; the catalogue's
                 // code for a request value the endpoint refuses is invalid_arguments (400).
                 response.json(ApiErrorCode.INVALID_ARGUMENTS.status(),
@@ -6124,7 +6253,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var cut = decompositions.get(epicId);
             if (cut == null) {
                 response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, "No decomposition for epic: " + epicId));
+                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId));
                 return;
             }
             response.json(200, toControlDecomposition(cut).toMap());
@@ -6204,10 +6333,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 ));
                 mockReports.add(new ReportItem(
                         "rep-0144",
-                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, "relay-docs"),
+                        new ReportFrom(CONST_PM_MCP_CLIENTS, CONST_RELAY_HARDENING, CONST_RELAY_DOCS),
                         ReportKind.EPIC_WAITS_OVERLAP,
                         "relay-docs waits: overlap with relay-auth-v2 (2 files)",
-                        Map.of("plan", "relay-docs", "other", CONST_RELAY_AUTH_V2, "files", 2),
+                        Map.of("plan", CONST_RELAY_DOCS, "other", CONST_RELAY_AUTH_V2, "files", 2),
                         null,
                         Instant.parse(CONST_TIME_11_21),
                         Instant.parse(CONST_TIME_11_21),
@@ -6231,7 +6360,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         new ReportFrom(CONST_PM_MCP_CORE, null, null),
                         ReportKind.PROJECT_ONBOARDED,
                         "pm-mcp-core is onboarded",
-                        Map.of("project", CONST_PM_MCP_CORE),
+                        Map.of(KEY_PROJECT, CONST_PM_MCP_CORE),
                         null,
                         Instant.parse("2026-10-15T18:40:00Z"),
                         Instant.parse("2026-10-15T18:40:00Z"),
@@ -6305,14 +6434,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 new TokenBreakdownItem("finalize", 37000, 33000, 4000, 0, false, null, null)
         );
         var fixRelayRole = List.of(
-                new TokenBreakdownItem("planner", 128000, 120000, 8000, 0, false, "claude:opus-5.5 · high", null),
-                new TokenBreakdownItem("implementer", 270000, 247000, 23000, 0, false, "claude:sonnet-5.5 · medium", null),
-                new TokenBreakdownItem("reviewer", 14000, 13000, 1000, 3, true, "codex:gpt-5 · low", null)
+                new TokenBreakdownItem(ROLE_PLANNER, 128000, 120000, 8000, 0, false, "claude:opus-5.5 · high", null),
+                new TokenBreakdownItem(ROLE_IMPLEMENTER, 270000, 247000, 23000, 0, false, "claude:sonnet-5.5 · medium", null),
+                new TokenBreakdownItem(ROLE_REVIEWER, 14000, 13000, 1000, 3, true, "codex:gpt-5 · low", null)
         );
         var fixRelayModel = List.of(
                 new TokenBreakdownItem("claude:opus-5.5", 128000, 120000, 8000, 0, false, null, null),
                 new TokenBreakdownItem("claude:sonnet-5.5", 270000, 247000, 23000, 0, false, null, null),
-                new TokenBreakdownItem("codex:gpt-5", 14000, 13000, 1000, 3, true, null, null)
+                new TokenBreakdownItem(MODEL_CODEX_GPT_5, 14000, 13000, 1000, 3, true, null, null)
         );
         var fixRelayWaste = List.of(
                 new TokenWasteRecord("no_product", 18000, 4, 2, "2 tasks"),
@@ -6560,8 +6689,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         boolean older = query.contains("older=true");
         String projectFilter = null;
         for (var part : query.split("&")) {
-            if (part.startsWith("project=")) {
-                projectFilter = part.substring("project=".length());
+            if (part.startsWith(QUERY_PROJECT_PREFIX)) {
+                projectFilter = part.substring(QUERY_PROJECT_PREFIX.length());
             }
         }
         if (".".equals(projectFilter)) {
@@ -6635,8 +6764,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         broadcastEvent("report.read", Map.of(
                 "report_id", reportId,
                 "read_at", Instant.now().toString(),
-                "channel", isWeb ? "web" : "cli",
-                "device", isWeb ? "iPad" : KEY_TERMINAL
+                KEY_CHANNEL, isWeb ? "web" : "cli",
+                KEY_DEVICE, isWeb ? "iPad" : KEY_TERMINAL
         ));
     }
 
@@ -6750,15 +6879,15 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         }
         applyStateRuntimeToStatus(copy);
-        copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
+        copy.put(KEY_LIFECYCLE_STATE, lifecycleState.name().toLowerCase());
         copy.put("listeners", listenerMaps());
         copy.put(KEY_NEEDS_OPERATOR, waitingCounts());
         synchronized (devicesLock) {
             copy.put("paired_devices_count", pairedDevices.size());
         }
         if (drainingBy != null) {
-            copy.put("draining_by", drainingBy);
-            copy.put("can_withdraw", canWithdrawStop);
+            copy.put(KEY_DRAINING_BY, drainingBy);
+            copy.put(KEY_CAN_WITHDRAW, canWithdrawStop);
         }
         if (lifecycleState == RuntimeLifecycleState.DRAINING) {
             // The live form names what it still runs: the count is the list's own length, so the
@@ -6877,7 +7006,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         // A project's detail: its plans and its epics. The ended work of a project (.../ended) never
         // reaches here as a read (handleProjectOverviewRoutes serves it) and lists items, not plans.
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)
+        if (path.startsWith(PREFIX_PROJECTS) && !path.endsWith(SEGMENT_ENDED)
                 && (map.get(KEY_PLANS) instanceof List<?> || map.get(KEY_EPICS) instanceof List<?>)) {
             var copy = orderedMap(map);
             copy.put(KEY_PLANS, withQueuedRevisions(orderedActiveWork(rowsOf(copy, KEY_PLANS))));
@@ -7002,7 +7131,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (projectId == null) {
             return Instant.MAX;
         }
-        var detail = Optional.ofNullable(activeRoute("GET", PATH_PROJECTS_PREFIX + projectId))
+        var detail = Optional.ofNullable(activeRoute("GET", PREFIX_PROJECTS + projectId))
                 .map(RouteDefinition::representation)
                 .map(JsonTree::asObject)
                 .orElse(null);
@@ -7045,29 +7174,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private boolean handleProjectOverviewRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        if ("GET".equals(request.method()) && path.startsWith("/api/v1/projects/")) {
+        if ("GET".equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
             var route = activeRoute("GET", path);
             if (route != null) {
-                if (path.endsWith("/ended")) {
-                    handleEndedPageQuery(route, Objects.requireNonNullElse(request.query(), "page=1"), response);
+                if (path.endsWith(SEGMENT_ENDED)) {
+                    var query = request.query();
+                    handleEndedPageQuery(route, query != null ? query : "page=1", response);
                     return true;
                 }
                 return false;
             }
-            if (path.endsWith("/ended")) {
-                var sub = path.substring("/api/v1/projects/".length());
-                var prj = sub.substring(0, sub.length() - "/ended".length());
+            if (path.endsWith(SEGMENT_ENDED)) {
+                var sub = path.substring(PREFIX_PROJECTS.length());
+                var prj = sub.substring(0, sub.length() - SEGMENT_ENDED.length());
                 response.json(200, Map.of(
                         KEY_PROJECT_ID, prj,
                         "page", 1,
                         "total_pages", 1,
                         "has_newer", false,
                         "has_older", false,
-                        "items", List.of()
+                        KEY_ITEMS, List.of()
                 ));
                 return true;
             }
-            var prj = path.substring("/api/v1/projects/".length());
+            var prj = path.substring(PREFIX_PROJECTS.length());
             if (!prj.contains("/")) {
                 response.json(200, Map.of(
                         KEY_PROJECT_ID, prj,
@@ -7363,7 +7493,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, KEY_KIND)), FindKind.PLAN);
         matches.add(new FindMatch(kind, id, requireText(title, id), project, null, null, true,
-                JsonTree.string(row, KEY_OUTCOME)));
+                JsonTree.string(row, CONST_OUTCOME)));
     }
 
     private static final String KEY_PAGES = "pages";
@@ -7453,6 +7583,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             response.json(route.status(), route.representation());
             return;
         }
+        int page = requestedPage(query);
+        var rep = route.representation();
+        if (rep instanceof Map<?, ?> map) {
+            response.json(route.status(), endedPageOf(map, page));
+            return;
+        }
+        response.json(route.status(), rep);
+    }
+
+    /** The page a query asks for: the last {@code page=} part wins, and one that is no number reads as 1. */
+    private static int requestedPage(String query) {
         int page = 1;
         for (var part : query.split("&")) {
             if (part.startsWith("page=")) {
@@ -7463,32 +7604,32 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 }
             }
         }
-        var rep = route.representation();
-        if (rep instanceof Map<?, ?> map) {
-            var copy = new LinkedHashMap<String, Object>();
-            for (var entry : map.entrySet()) {
-                copy.put(String.valueOf(entry.getKey()), entry.getValue());
-            }
-            var totalNum = JsonTree.number(JsonTree.asObject(map), "total_pages");
-            int total = totalNum != null ? totalNum.intValue() : 1;
-            copy.put("page", page);
-            copy.put("has_newer", page > 1);
-            copy.put("has_older", page < total);
-            if (map.get(KEY_PAGES) instanceof Map<?, ?> pagesMap) {
-                var pageItems = pagesMap.get(String.valueOf(page));
-                if (pageItems instanceof List<?> list) {
-                    copy.put("items", list);
-                } else if (page == 1 && map.get("items") instanceof List<?> list) {
-                    copy.put("items", list);
-                } else {
-                    copy.put("items", List.of());
-                }
-            }
-            copy.remove(KEY_PAGES);
-            response.json(route.status(), copy);
-            return;
+        return page;
+    }
+
+    /** The ended list's representation cut to one page: its items, its page flags, no page table. */
+    private static Map<String, Object> endedPageOf(Map<?, ?> map, int page) {
+        var copy = new LinkedHashMap<String, Object>();
+        for (var entry : map.entrySet()) {
+            copy.put(String.valueOf(entry.getKey()), entry.getValue());
         }
-        response.json(route.status(), rep);
+        var totalNum = JsonTree.number(JsonTree.asObject(map), "total_pages");
+        int total = totalNum != null ? totalNum.intValue() : 1;
+        copy.put("page", page);
+        copy.put("has_newer", page > 1);
+        copy.put("has_older", page < total);
+        if (map.get(KEY_PAGES) instanceof Map<?, ?> pagesMap) {
+            var pageItems = pagesMap.get(String.valueOf(page));
+            if (pageItems instanceof List<?> list) {
+                copy.put(KEY_ITEMS, list);
+            } else if (page == 1 && map.get(KEY_ITEMS) instanceof List<?> list) {
+                copy.put(KEY_ITEMS, list);
+            } else {
+                copy.put(KEY_ITEMS, List.of());
+            }
+        }
+        copy.remove(KEY_PAGES);
+        return copy;
     }
 
     private void handleMessages(MockHttpRequest request, MockHttpResponse response) throws IOException {
@@ -7552,7 +7693,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
         var method = request.header("Mcp-Method");
         if (method == null || method.isBlank()) {
-            method = JsonTree.string(message, "method");
+            method = JsonTree.string(message, KEY_METHOD);
         }
         var id = message.get("id");
         var params = JsonTree.object(message, KEY_PARAMS);
@@ -7581,10 +7722,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             case "tools/list" -> {
                 try (var events = response.events(200)) {
                     events.send(null, JsonTree.write(Map.of(
-                            "jsonrpc", "2.0",
-                            "method", "notifications/progress",
+                            KEY_JSONRPC, "2.0",
+                            KEY_METHOD, "notifications/progress",
                             KEY_PARAMS, Map.of("progress", 1, "total", 1))));
-                    events.send("message", JsonTree.write(jsonRpcResult(id, Map.of(
+                    events.send(KEY_MESSAGE, JsonTree.write(jsonRpcResult(id, Map.of(
                             "tools", List.of(Map.of(
                                     "name", "pm_wait",
                                     "inputSchema", Map.of("type", "object", "properties", Map.of())))))));
@@ -7595,19 +7736,19 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
     }
 
-    private static Map<String, Object> jsonRpcResult(Object id, Object result) {
+    private static Map<String, Object> jsonRpcResult(@Nullable Object id, Object result) {
         var body = new LinkedHashMap<String, Object>();
-        body.put("jsonrpc", "2.0");
+        body.put(KEY_JSONRPC, "2.0");
         body.put("id", id);
         body.put("result", result);
         return body;
     }
 
-    private static Map<String, Object> jsonRpcError(Object id, int code, String message) {
+    private static Map<String, Object> jsonRpcError(@Nullable Object id, int code, String message) {
         var body = new LinkedHashMap<String, Object>();
-        body.put("jsonrpc", "2.0");
+        body.put(KEY_JSONRPC, "2.0");
         body.put("id", id);
-        body.put("error", Map.of("code", code, "message", message));
+        body.put(KEY_ERROR, Map.of("code", code, KEY_MESSAGE, message));
         return body;
     }
 
@@ -7771,17 +7912,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         payload.put("tokens", 450);
         payload.put("timestamp", Instant.now().toString());
         if (taskId != null) {
-            payload.put("task_id", taskId);
+            payload.put(KEY_TASK_ID, taskId);
         }
         long id;
         String envelope;
         synchronized (eventLock) {
             id = nextStreamId(scope);
-            envelope = envelopeJson("task.activity", id,
+            envelope = envelopeJson(EVENT_TASK_ACTIVITY, id,
                     new EventScope(EventScopeKind.PLAN, planId, null), payload);
         }
         try {
-            stream.sendJson("task.activity", id, envelope);
+            stream.sendJson(EVENT_TASK_ACTIVITY, id, envelope);
         } catch (IOException _) {
             dropStream(stream);
         }
@@ -7793,7 +7934,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return {@code true} when the scenario declares an explicit activity route with no entries
      */
     boolean hasEmptyActivityRoute(String planId, String taskId) {
-        var route = activeRoute("GET", "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity");
+        var route = activeRoute("GET", PATH_PLANS_PREFIX + planId + "/tasks/" + taskId + "/activity");
         return route != null
                 && route.representation() instanceof Map<?, ?> representation
                 && representation.get("entries") instanceof List<?> entries
@@ -8064,7 +8205,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (payload == null) {
             return;
         }
-        var inner = JsonTree.object(payload, "decision");
+        var inner = JsonTree.object(payload, CONST_DECISION);
         if (inner == null) {
             inner = JsonTree.object(payload, "question");
         }
@@ -8410,7 +8551,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         map.put(KEY_STATUS, "remembered");
         map.put("remember", true);
         map.put("granted_at", grantedAt);
-        map.put("channel", channel);
+        map.put(KEY_CHANNEL, channel);
         return map;
     }
 
@@ -8791,7 +8932,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private boolean isStatusProviderReady() {
-        var route = currentScenario.get().route("GET", "/api/v1/status");
+        var route = currentScenario.get().route("GET", PATH_STATUS);
         if (route == null || !(route.representation() instanceof Map<?, ?> map)) {
             return false;
         }
@@ -8839,7 +8980,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var projects = new LinkedHashMap<String, String>();
         var route = currentScenario.get().route("GET", PATH_PLANS);
         if (route == null || !(route.representation() instanceof Map<?, ?> map)
-                || !(map.get("plans") instanceof List<?> plans)) {
+                || !(map.get(KEY_PLANS) instanceof List<?> plans)) {
             return projects;
         }
         for (var item : plans) {
@@ -8848,7 +8989,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 continue;
             }
             var id = JsonTree.string(plan, "id");
-            var project = JsonTree.string(plan, "project");
+            var project = JsonTree.string(plan, KEY_PROJECT);
             if (id != null && project != null) {
                 projects.put(id, project);
             }
@@ -9227,7 +9368,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
             var projectItems = List.of(
                     new CleanupProjectItem(CONST_PM_MCP_CLIENTS, 2, 1, 21, 3, 135266304L, clientsEntries),
-                    new CleanupProjectItem("pm-mcp-core", 10, 1, 19, 2, 681574400L, coreEntries),
+                    new CleanupProjectItem(CONST_PM_MCP_CORE, 10, 1, 19, 2, 681574400L, coreEntries),
                     new CleanupProjectItem(CONST_UNENROLLED, 0, 0, 0, 0, 1181116000L, unenrolledEntries)
             );
 
@@ -9236,9 +9377,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             );
 
             var links = Map.of(
-                    "delete", "/api/v1/system/cleanup/cln-0012/delete",
-                    "remind", "/api/v1/system/cleanup/cln-0012/remind",
-                    "ignore", "/api/v1/system/cleanup/cln-0012/ignore"
+                    LINK_DELETE, "/api/v1/system/cleanup/cln-0012/delete",
+                    LINK_REMIND, "/api/v1/system/cleanup/cln-0012/remind",
+                    LINK_IGNORE, "/api/v1/system/cleanup/cln-0012/ignore"
             );
 
             activeCleanupJob = new CleanupJob(
@@ -9281,7 +9422,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, KEY_LIFECYCLE_STATE));
         canWithdrawStop = Boolean.TRUE.equals(JsonTree.bool(facts, "can_withdraw_stop"));
-        drainingBy = JsonTree.string(facts, "draining_by");
+        drainingBy = JsonTree.string(facts, KEY_DRAINING_BY);
         drainThen = THEN_RESTART.equalsIgnoreCase(JsonTree.string(facts, KEY_THEN)) ? THEN_RESTART : THEN_EXIT;
         drainRemainingItems.set(drainItemNames(facts));
         var runtime = JsonTree.object(facts, FIXTURE_RUNTIME);
@@ -9627,30 +9768,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleEnrol(request, response, null);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROL.length());
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_ENROL)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_ENROL.length());
             handleEnrol(request, response, prjId);
             return true;
         }
-        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_DIGEST)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_STORES_DIGEST.length());
+        if ("GET".equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_STORES_DIGEST)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_STORES_DIGEST.length());
             handleStoreDigest(request, response, prjId);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_STORES_ACCEPT_EDIT.length());
             handleAcceptEdit(request, response, prjId);
             return true;
         }
-        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROLMENT_DIGEST)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROLMENT_DIGEST.length());
+        if ("GET".equals(method) && path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_ENROLMENT_DIGEST)) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - SEGMENT_ENROLMENT_DIGEST.length());
             handleEnrolmentDigest(response, prjId);
             return true;
         }
-        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX)
+        if (METHOD_POST.equals(method) && path.startsWith(PREFIX_PROJECTS)
                 && path.endsWith(SEGMENT_ENROLMENT_ACCEPT_EDIT)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+            var prjId = path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_ENROLMENT_ACCEPT_EDIT.length());
             handleEnrolmentAcceptEdit(request, response, prjId);
             return true;
@@ -9728,10 +9869,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private boolean refuseTamperedEnrolment(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var path = request.path();
-        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+        if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
-        var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+        var rest = path.substring(PREFIX_PROJECTS.length());
         var slash = rest.indexOf('/');
         var projectId = slash < 0 ? rest : rest.substring(0, slash);
         synchronized (storeLock) {
@@ -9920,26 +10061,26 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleGetProjectsExplorer(response);
             return true;
         }
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             response.json(200, projectSetupState(prjId,
                     projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
             return true;
         }
         if (declaresProjects()
-                && path.startsWith("/api/v1/projects/")
-                && !path.endsWith("/ended")
+                && path.startsWith(PREFIX_PROJECTS)
+                && !path.endsWith(SEGMENT_ENDED)
                 && !path.endsWith(SEGMENT_EVENTS)
                 && !path.endsWith(SEGMENT_PROJECT_FILES)
                 && !path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
-            var prjId = path.substring("/api/v1/projects/".length());
+            var prjId = path.substring(PREFIX_PROJECTS.length());
             if (!prjId.contains("/")) {
                 handleGetSingleProject(response, prjId);
                 return true;
             }
         }
-        if ("/api/v1/project-onboardings".equals(path)) {
+        if (PATH_PROJECT_ONBOARDINGS.equals(path)) {
             handleListProjectOnboardings(response);
             return true;
         }
@@ -9951,8 +10092,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleUpdateFavourites(request, response);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/favourite")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/favourite".length());
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith("/favourite")) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - "/favourite".length());
             handleToggleProjectFavourite(request, response, prjId);
             return true;
         }
@@ -9960,22 +10101,22 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private boolean handleProjectExplorerPost(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
-        if ("/api/v1/project-onboardings".equals(path) || PATH_PROJECTS.equals(path)) {
+        if (PATH_PROJECT_ONBOARDINGS.equals(path) || PATH_PROJECTS.equals(path)) {
             handleStartProjectOnboarding(request, response);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/release")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/release".length());
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith("/release")) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - "/release".length());
             handleReleaseProject(request, response, prjId);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/unenrol")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/unenrol".length());
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith("/unenrol")) {
+            var prjId = path.substring(PREFIX_PROJECTS.length(), path.length() - "/unenrol".length());
             handleUnenrolProject(response, prjId);
             return true;
         }
-        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+        if (path.startsWith(PREFIX_PROJECTS) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PREFIX_PROJECTS.length(),
                     path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             handleSetupProject(request, response, prjId);
             return true;
@@ -10034,8 +10175,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             for (var p : enrolledProjects) {
                 if (p.projectId().equals(projectId)) {
                     var map = new LinkedHashMap<String, Object>(p.toMap());
-                    map.put("plans", List.of());
-                    map.put("epics", List.of());
+                    map.put(KEY_PLANS, List.of());
+                    map.put(KEY_EPICS, List.of());
                     map.put("alongside_landings", List.of());
                     response.json(200, map);
                     return;
@@ -10162,7 +10303,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 beingAddedProjects.add(beingAdded);
             }
             lastBuildEnvironment = buildEnvironment;
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, FIXTURE_BEING_ADDED, path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",
                     "onboarding_id", "onb-" + id,
@@ -10396,7 +10537,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         body.put("name", displayNameOf(projectId));
         body.put(KEY_PILOT, false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
+                PREFIX_PROJECTS + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
         return body;
     }
 
@@ -10414,7 +10555,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var path = request.path();
         var method = request.method();
 
-        if ("GET".equals(method) && "/api/v1/system".equals(path)) {
+        if ("GET".equals(method) && PATH_SYSTEM.equals(path)) {
             handleGetSystem(request, response);
             return true;
         }
@@ -10422,11 +10563,23 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleGetReleaseNotes(request, response);
             return true;
         }
-        if (METHOD_POST.equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+        if (handleRuntimeLifecycleRoutes(request, response, isWeb)) {
+            return true;
+        }
+        return handleCleanupRoutes(request, response, isWeb);
+    }
+
+    /** Answers the stop and upgrade acts of the runtime; false when the request is none of them. */
+    private boolean handleRuntimeLifecycleRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
+        var method = request.method();
+        var isStop = "/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path);
+        if (METHOD_POST.equals(method) && isStop) {
             handlePostStopRuntime(request, response, isWeb);
             return true;
         }
-        if (METHOD_DELETE.equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+        if (METHOD_DELETE.equals(method) && isStop) {
             handleDeleteStopRuntime(response);
             return true;
         }
@@ -10442,6 +10595,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleCheckUpgradeRuntime(response);
             return true;
         }
+        return false;
+    }
+
+    /** Answers the cleanup reads and the decisions on a cleanup job; false when the request is none of them. */
+    private boolean handleCleanupRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb)
+            throws IOException {
+        var path = request.path();
+        var method = request.method();
         if ("GET".equals(method) && "/api/v1/system/cleanup".equals(path)) {
             handleGetCleanup(response);
             return true;
@@ -10497,8 +10658,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         for (var part : query.split("&")) {
             if (part.startsWith("window=")) {
                 window = SystemWindow.fromValue(part.substring("window=".length()));
-            } else if (part.startsWith("project=")) {
-                projectFilter = part.substring("project=".length());
+            } else if (part.startsWith(QUERY_PROJECT_PREFIX)) {
+                projectFilter = part.substring(QUERY_PROJECT_PREFIX.length());
             }
         }
         if (".".equals(projectFilter)) {
@@ -10523,7 +10684,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 2,
                 0,
                 null,
-                "0.10.0",
+                RUNTIME_VERSION,
                 "2026-10-16",
                 "today 08:14",
                 "/api/v1/system/release-notes?version=0.10.0",
@@ -10552,11 +10713,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
 
         var workers = List.of(
-                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
-                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
-                new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
-                new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, ITEM_TOKEN_USAGE),
-                new WorkerMetric("reviewer", CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
+                new WorkerMetric(ROLE_PLANNER, CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
+                new WorkerMetric(ROLE_IMPLEMENTER, CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, CONST_RELAY_DOCS),
+                new WorkerMetric(ROLE_IMPLEMENTER, "codex", "gpt-5", WorkerState.IDLE, null),
+                new WorkerMetric(ROLE_IMPLEMENTER, CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, ITEM_TOKEN_USAGE),
+                new WorkerMetric(ROLE_REVIEWER, CONST_CLAUDE, CONST_SONNET, WorkerState.IDLE, null)
         );
 
         var jobs = Map.<String, Object>of(
@@ -10568,19 +10729,19 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         List<ModelMetric> models;
         switch (window) {
             case TODAY -> models = List.of(
-                    new ModelMetric("claude:opus-4.5", "planner", 164, 7890000L, 7420000L, 470000L, 1, 3, false, 0),
-                    new ModelMetric("claude:sonnet-4.5", "implementer", 430, 13150000L, 11650000L, 1500000L, 0, 2, false, 0),
-                    new ModelMetric("codex:gpt-5", "implementer", 48, 0L, 0L, 0L, 3, 0, true, 48)
+                    new ModelMetric(MODEL_CLAUDE_OPUS_45, ROLE_PLANNER, 164, 7890000L, 7420000L, 470000L, 1, 3, false, 0),
+                    new ModelMetric(MODEL_CLAUDE_SONNET_45, ROLE_IMPLEMENTER, 430, 13150000L, 11650000L, 1500000L, 0, 2, false, 0),
+                    new ModelMetric(MODEL_CODEX_GPT_5, ROLE_IMPLEMENTER, 48, 0L, 0L, 0L, 3, 0, true, 48)
             );
             case SEVEN_DAYS -> models = List.of(
-                    new ModelMetric("claude:opus-4.5", "planner", 980, 48200000L, 45300000L, 2900000L, 4, 15, false, 0),
-                    new ModelMetric("claude:sonnet-4.5", "implementer", 2840, 86700000L, 76800000L, 9900000L, 2, 8, false, 0),
-                    new ModelMetric("codex:gpt-5", "implementer", 310, 0L, 0L, 0L, 12, 1, true, 310)
+                    new ModelMetric(MODEL_CLAUDE_OPUS_45, ROLE_PLANNER, 980, 48200000L, 45300000L, 2900000L, 4, 15, false, 0),
+                    new ModelMetric(MODEL_CLAUDE_SONNET_45, ROLE_IMPLEMENTER, 2840, 86700000L, 76800000L, 9900000L, 2, 8, false, 0),
+                    new ModelMetric(MODEL_CODEX_GPT_5, ROLE_IMPLEMENTER, 310, 0L, 0L, 0L, 12, 1, true, 310)
             );
             default -> models = List.of(
-                    new ModelMetric("claude:opus-4.5", "planner", 42, 2020000L, 1900000L, 120000L, 0, 1, false, 0),
-                    new ModelMetric("claude:sonnet-4.5", "implementer", 118, 3610000L, 3200000L, 410000L, 0, 0, false, 0),
-                    new ModelMetric("codex:gpt-5", "implementer", 12, 0L, 0L, 0L, 1, 0, true, 12)
+                    new ModelMetric(MODEL_CLAUDE_OPUS_45, ROLE_PLANNER, 42, 2020000L, 1900000L, 120000L, 0, 1, false, 0),
+                    new ModelMetric(MODEL_CLAUDE_SONNET_45, ROLE_IMPLEMENTER, 118, 3610000L, 3200000L, 410000L, 0, 0, false, 0),
+                    new ModelMetric(MODEL_CODEX_GPT_5, ROLE_IMPLEMENTER, 12, 0L, 0L, 0L, 1, 0, true, 12)
             );
         }
 
@@ -10589,7 +10750,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private void handleGetReleaseNotes(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String version = "0.10.0";
+        String version = RUNTIME_VERSION;
         var queryString = request.query();
         if (queryString != null) {
             for (var part : queryString.split("&")) {
@@ -10598,7 +10759,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 }
             }
         }
-        if ("0.10.0".equals(version) || version.isBlank()) {
+        if (RUNTIME_VERSION.equals(version) || version.isBlank()) {
             String notes = """
                     pm-mcpd 0.10.0 Release Notes
 
@@ -10615,28 +10776,38 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
     }
 
-    private void handlePostStopRuntime(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+    /** The when and then of a stop request, each defaulted when the body leaves it out. */
+    private record StopRequest(String when, String then) {
+    }
+
+    /** Reads a stop request's when and then; a missing, blank or refused member keeps drain and exit. */
+    private static StopRequest readStopRequest(MockHttpRequest request) {
         String when = "drain";
         String thenVal = "exit";
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
                 if (parsed != null) {
-                    var w = JsonTree.string(parsed, "when");
-                    if (w != null && !w.isBlank()) {
-                        when = w;
-                    }
-                    var t = JsonTree.string(parsed, "then");
-                    if (t != null && !t.isBlank()) {
-                        thenVal = t;
-                    }
+                    when = nonBlankOr(JsonTree.string(parsed, "when"), when);
+                    thenVal = nonBlankOr(JsonTree.string(parsed, "then"), thenVal);
                 }
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
-                // Ignore parse errors from body
+                // A body the parser refuses leaves the defaults in place.
             }
         }
+        return new StopRequest(when, thenVal);
+    }
+
+    private static String nonBlankOr(@Nullable String value, String fallback) {
+        return value != null && !value.isBlank() ? value : fallback;
+    }
+
+    private void handlePostStopRuntime(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
+        var stopRequest = readStopRequest(request);
+        var when = stopRequest.when();
+        var thenVal = stopRequest.then();
 
         // Only systemLock is taken here: the drain's steps live in drainTasks, so the stop never
         // takes the engine monitor while it holds systemLock (see systemLock's lock order).
@@ -10701,19 +10872,19 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var withdrawable = canWithdrawStop;
         broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                 KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
-                "draining_by", by,
+                KEY_DRAINING_BY, by,
                 KEY_REMAINING_ITEMS, drainItems,
                 KEY_REMAINING_WORK_COUNT, drainItems.size(),
-                "can_withdraw", withdrawable,
+                KEY_CAN_WITHDRAW, withdrawable,
                 KEY_DRAIN_GENERATION, generation
         ));
         response.json(200, Map.of(
                 KEY_STATUS, LIFECYCLE_DRAINING,
                 KEY_STATE, LIFECYCLE_DRAINING,
-                "draining_by", by,
+                KEY_DRAINING_BY, by,
                 KEY_REMAINING_ITEMS, drainItems,
                 KEY_REMAINING_WORK_COUNT, drainItems.size(),
-                "can_withdraw", withdrawable
+                KEY_CAN_WITHDRAW, withdrawable
         ));
         scheduleDrainShrink(drainItems.size());
     }
@@ -10799,10 +10970,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                     KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
-                    "draining_by", drainingBy != null ? drainingBy : ACTOR_CONSOLE,
+                    KEY_DRAINING_BY, drainingBy != null ? drainingBy : ACTOR_CONSOLE,
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
                     KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
-                    "can_withdraw", canWithdrawStop,
+                    KEY_CAN_WITHDRAW, canWithdrawStop,
                     KEY_DRAIN_GENERATION, generation
             ));
         }
@@ -10859,7 +11030,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", ACTIVITY_RUNNING
+                        KEY_LIFECYCLE_STATE, ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
@@ -10883,7 +11054,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private void handlePostUpgradeRuntime(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        String targetVersion = "0.10.0";
+        String targetVersion = RUNTIME_VERSION;
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
@@ -10894,21 +11065,21 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     }
                 }
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
-                // Ignore parse errors from body
+                // A body the parser refuses leaves the defaults in place.
             }
         }
         synchronized (systemLock) {
             lifecycleState = RuntimeLifecycleState.UPGRADING;
             broadcastEvent("runtime.upgrading", Map.of(
-                    "lifecycle_state", "upgrading",
+                    KEY_LIFECYCLE_STATE, LIFECYCLE_UPGRADING,
                     FIELD_VERSION, targetVersion,
                     "step", "preparing"
             ));
             response.json(200, Map.of(
-                    KEY_STATUS, "upgrading",
-                    KEY_STATE, "upgrading",
+                    KEY_STATUS, LIFECYCLE_UPGRADING,
+                    KEY_STATE, LIFECYCLE_UPGRADING,
                     FIELD_VERSION, targetVersion,
                     "step", "preparing"
             ));
@@ -10921,7 +11092,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 response.json(200, Map.of(
                         KEY_STATUS, OUTCOME_WITHDRAWN,
-                        "lifecycle_state", ACTIVITY_RUNNING
+                        KEY_LIFECYCLE_STATE, ACTIVITY_RUNNING
                 ));
             } else {
                 response.json(409, Map.of(
@@ -10934,7 +11105,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void handleCheckUpgradeRuntime(MockHttpResponse response) throws IOException {
         response.json(200, Map.of(
-                FIELD_VERSION, "0.10.0",
+                FIELD_VERSION, RUNTIME_VERSION,
                 "available", true,
                 "release_date", "2026-10-16",
                 "release_notes_url", "/api/v1/system/release-notes?version=0.10.0"
@@ -10949,7 +11120,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 var resp = new LinkedHashMap<String, Object>();
                 resp.put("open", false);
                 resp.put("next_check_at", SWEEP_TOMORROW);
-                resp.put("kept_count", keptItems.size());
+                resp.put(KEY_KEPT_COUNT, keptItems.size());
                 resp.put(FIXTURE_DURATIONS, cleanupDurations.toMap());
                 resp.put(FIXTURE_RESIDUE, cleanupResidues.stream().map(CleanupResidue::toMap).toList());
                 response.json(200, resp);
@@ -10978,67 +11149,22 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 var done = activeCleanupJob.summary();
                 response.json(200, Map.of(
                         KEY_STATUS, "deleted",
-                        "job_id", jobId,
-                        CONST_DECISION, "delete",
+                        KEY_JOB_ID, jobId,
+                        CONST_DECISION, LINK_DELETE,
                         FIELD_FREED_BYTES, done.freedBytes(),
-                        "kept_count", keptItems.size()
+                        KEY_KEPT_COUNT, keptItems.size()
                 ));
                 return;
             }
 
-            List<String> unchecked = List.of();
-            if (request.body().length > 0) {
-                try {
-                    var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-                    if (parsed != null && parsed.get("unchecked_ids") instanceof List<?> list) {
-                        unchecked = list.stream().map(String::valueOf).toList();
-                    }
-                }
-                /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                catch (IOException | RuntimeException _) {
-                    // Ignore parse errors from body
-                }
-            }
+            var unchecked = uncheckedCleanupIds(request);
+            keepUncheckedCleanupEntries(unchecked, isWeb);
 
-            for (var un : unchecked) {
-                var entry = cleanupEntry(un);
-                if (entry != null) {
-                    keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
-                            KEPT_EXCLUDE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
-                }
-            }
-
-            var decided = activeCleanupJob.summary();
-            var freedBytes = decided.freedBytes();
-            var deletedPlans = decided.plansCount();
-            var deletedEpics = decided.epicsCount();
-            var deletedLogs = decided.logsCount();
-            for (var projectItem : activeCleanupJob.projectItems()) {
-                for (var entry : projectItem.items()) {
-                    if (!unchecked.contains(entry.id())) {
-                        continue;
-                    }
-                    freedBytes -= entry.sizeBytes();
-                    deletedLogs -= entry.logsCount();
-                    if (CLEANUP_KIND_PLAN.equals(entry.kind())) {
-                        deletedPlans--;
-                    } else if (CLEANUP_KIND_EPIC.equals(entry.kind())) {
-                        deletedEpics--;
-                    }
-                }
-            }
-
-            var adjustedSummary = new CleanupSummary(
-                    deletedPlans,
-                    deletedEpics,
-                    deletedLogs,
-                    decided.reportsCount(),
-                    decided.projectsCount(),
-                    freedBytes,
-                    decided.keptForGoodCount(),
-                    decided.lastSweepAt(),
-                    decided.nextCheckAt()
-            );
+            var adjustedSummary = summaryWithoutUnchecked(activeCleanupJob, unchecked);
+            var freedBytes = adjustedSummary.freedBytes();
+            var deletedPlans = adjustedSummary.plansCount();
+            var deletedEpics = adjustedSummary.epicsCount();
+            var deletedLogs = adjustedSummary.logsCount();
 
             activeCleanupJob = new CleanupJob(
                     activeCleanupJob.jobId(),
@@ -11049,16 +11175,16 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     activeCleanupJob.links()
             );
 
-            broadcastEvent("cleanup.decided", Map.of(
-                    "job_id", jobId,
-                    CONST_DECISION, "delete",
+            broadcastEvent(EVENT_CLEANUP_DECIDED, Map.of(
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_DELETE,
                     "by", OPERATOR_FIELD,
-                    "channel", isWeb ? "web" : "cli",
-                    "device", isWeb ? "iPad" : KEY_TERMINAL,
+                    KEY_CHANNEL, isWeb ? "web" : "cli",
+                    KEY_DEVICE, isWeb ? "iPad" : KEY_TERMINAL,
                     FIELD_FREED_BYTES, freedBytes
             ));
             broadcastEvent("cleanup.done", Map.of(
-                    "job_id", jobId,
+                    KEY_JOB_ID, jobId,
                     FIELD_FREED_BYTES, freedBytes,
                     "deleted_plans", deletedPlans,
                     "deleted_epics", deletedEpics,
@@ -11067,12 +11193,75 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
             response.json(200, Map.of(
                     KEY_STATUS, "deleted",
-                    "job_id", jobId,
-                    CONST_DECISION, "delete",
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_DELETE,
                     FIELD_FREED_BYTES, freedBytes,
-                    "kept_count", keptItems.size()
+                    KEY_KEPT_COUNT, keptItems.size()
             ));
         }
+    }
+
+    /** Reads the ids the operator unchecked from a deletion body; a missing or refused body unchecks nothing. */
+    private static List<String> uncheckedCleanupIds(MockHttpRequest request) {
+        List<String> unchecked = List.of();
+        if (request.body().length > 0) {
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+                if (parsed != null && parsed.get("unchecked_ids") instanceof List<?> list) {
+                    unchecked = list.stream().map(String::valueOf).toList();
+                }
+            }
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+            catch (IOException | RuntimeException _) {
+                // A body the parser refuses leaves the defaults in place.
+            }
+        }
+        return unchecked;
+    }
+
+    /** Keeps every unchecked entry the cleanup knows, recorded as excluded today by the asking client. */
+    private void keepUncheckedCleanupEntries(List<String> unchecked, boolean isWeb) {
+        for (var un : unchecked) {
+            var entry = cleanupEntry(un);
+            if (entry != null) {
+                keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
+                        KEPT_EXCLUDE, "today", isWeb ? ACTOR_WEB_APP : ACTOR_CONSOLE));
+            }
+        }
+    }
+
+    /** The job's summary less the size, logs, plans and epics of every unchecked entry. */
+    private static CleanupSummary summaryWithoutUnchecked(CleanupJob job, List<String> unchecked) {
+        var decided = job.summary();
+        var freedBytes = decided.freedBytes();
+        var deletedPlans = decided.plansCount();
+        var deletedEpics = decided.epicsCount();
+        var deletedLogs = decided.logsCount();
+        for (var projectItem : job.projectItems()) {
+            for (var entry : projectItem.items()) {
+                if (!unchecked.contains(entry.id())) {
+                    continue;
+                }
+                freedBytes -= entry.sizeBytes();
+                deletedLogs -= entry.logsCount();
+                if (CLEANUP_KIND_PLAN.equals(entry.kind())) {
+                    deletedPlans--;
+                } else if (CLEANUP_KIND_EPIC.equals(entry.kind())) {
+                    deletedEpics--;
+                }
+            }
+        }
+        return new CleanupSummary(
+                deletedPlans,
+                deletedEpics,
+                deletedLogs,
+                decided.reportsCount(),
+                decided.projectsCount(),
+                freedBytes,
+                decided.keptForGoodCount(),
+                decided.lastSweepAt(),
+                decided.nextCheckAt()
+        );
     }
 
     private void handleRemindCleanupJob(MockHttpResponse response, String jobId, boolean isWeb) throws IOException {
@@ -11084,8 +11273,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (activeCleanupJob.state() == CleanupJobState.POSTPONED) {
                 response.json(200, Map.of(
                         KEY_STATUS, "postponed",
-                        "job_id", jobId,
-                        CONST_DECISION, "remind",
+                        KEY_JOB_ID, jobId,
+                        CONST_DECISION, LINK_REMIND,
                         KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
@@ -11101,18 +11290,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     activeCleanupJob.links()
             );
 
-            broadcastEvent("cleanup.decided", Map.of(
-                    "job_id", jobId,
-                    CONST_DECISION, "remind",
+            broadcastEvent(EVENT_CLEANUP_DECIDED, Map.of(
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_REMIND,
                     "by", OPERATOR_FIELD,
-                    "channel", isWeb ? "web" : "cli",
+                    KEY_CHANNEL, isWeb ? "web" : "cli",
                     KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
-                    "job_id", jobId,
-                    CONST_DECISION, "remind",
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_REMIND,
                     KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
@@ -11128,9 +11317,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
                 response.json(200, Map.of(
                         KEY_STATUS, "done",
-                        "job_id", jobId,
-                        CONST_DECISION, "ignore",
-                        "kept_count", keptItems.size()
+                        KEY_JOB_ID, jobId,
+                        CONST_DECISION, LINK_IGNORE,
+                        KEY_KEPT_COUNT, keptItems.size()
                 ));
                 return;
             }
@@ -11150,18 +11339,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     activeCleanupJob.links()
             );
 
-            broadcastEvent("cleanup.decided", Map.of(
-                    "job_id", jobId,
-                    CONST_DECISION, "ignore",
+            broadcastEvent(EVENT_CLEANUP_DECIDED, Map.of(
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_IGNORE,
                     "by", OPERATOR_FIELD,
-                    "channel", isWeb ? "web" : "cli"
+                    KEY_CHANNEL, isWeb ? "web" : "cli"
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "done",
-                    "job_id", jobId,
-                    CONST_DECISION, "ignore",
-                    "kept_count", keptItems.size()
+                    KEY_JOB_ID, jobId,
+                    CONST_DECISION, LINK_IGNORE,
+                    KEY_KEPT_COUNT, keptItems.size()
             ));
         }
     }
@@ -11204,9 +11393,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     }
                 }
             }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
-                // Ignore parse errors from body
+                // A body the parser refuses leaves the defaults in place.
             }
         }
         var updatedList = new ArrayList<Map<String, Object>>();
@@ -11300,13 +11489,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private static String extractProject(DecisionEnvelope entry) {
         var sub = entry.subject();
-        if (sub.contains("session-log") || sub.contains("pm-mcp-core")) {
-            return "pm-mcp-core";
+        if (sub.contains("session-log") || sub.contains(CONST_PM_MCP_CORE)) {
+            return CONST_PM_MCP_CORE;
         }
         if (sub.contains(CONST_PLAN_MARSHALL)) {
             return CONST_PLAN_MARSHALL;
         }
-        return "pm-mcp-clients";
+        return CONST_PM_MCP_CLIENTS;
     }
 
     private static String epicNotFound(String epicId) {
@@ -11326,8 +11515,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             handleListDecisions(request, response, null);
             return true;
         }
-        if ("GET".equals(method) && path.startsWith(PATH_PLANS_PREFIX) && path.endsWith("/decisions")) {
-            var plan = path.substring(PATH_PLANS_PREFIX.length(), path.length() - "/decisions".length());
+        if ("GET".equals(method) && path.startsWith(PATH_PLANS_PREFIX) && path.endsWith(SEGMENT_DECISIONS_ROOT)) {
+            var plan = path.substring(PATH_PLANS_PREFIX.length(), path.length() - SEGMENT_DECISIONS_ROOT.length());
             handleListDecisions(request, response, plan);
             return true;
         }
@@ -11374,7 +11563,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         switch (action) {
             case KEY_ANSWER, "answers" -> handleAnswerDecision(request, response, decisionId, isWeb);
             case "interpret" -> handleInterpretDecision(request, response, decisionId);
-            case "withdraw" -> handleWithdrawDecision(request, response, decisionId);
+            case "withdraw" -> handleWithdrawDecision(response, decisionId);
             default -> {
                 return false;
             }
@@ -11389,36 +11578,41 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         for (var part : query.split("&")) {
             if (part.startsWith("plan=")) {
                 planFilter = part.substring("plan=".length());
-            } else if (part.startsWith("project=")) {
-                projectFilter = part.substring("project=".length());
+            } else if (part.startsWith(QUERY_PROJECT_PREFIX)) {
+                projectFilter = part.substring(QUERY_PROJECT_PREFIX.length());
             }
         }
         if (".".equals(projectFilter)) {
-            projectFilter = "pm-mcp-clients";
+            projectFilter = CONST_PM_MCP_CLIENTS;
         }
 
         var list = new ArrayList<Map<String, Object>>();
         synchronized (decisionsLock) {
             for (var entry : openDecisions.values()) {
                 var itemPlan = extractPlan(entry);
-                if (planFilter != null && !planFilter.isBlank() && !planFilter.equals(itemPlan)) {
-                    continue;
-                }
-                if (projectFilter != null && !projectFilter.isBlank()) {
-                    var itemProject = extractProject(entry);
-                    if (!projectFilter.equals(itemProject)) {
-                        continue;
+                if (passesDecisionFilters(entry, itemPlan, planFilter, projectFilter)) {
+                    var map = new LinkedHashMap<String, Object>(entry.toMap());
+                    if (itemPlan != null) {
+                        map.put("plan", itemPlan);
                     }
+                    map.put(KEY_PROJECT, extractProject(entry));
+                    list.add(map);
                 }
-                var map = new LinkedHashMap<String, Object>(entry.toMap());
-                if (itemPlan != null) {
-                    map.put("plan", itemPlan);
-                }
-                map.put("project", extractProject(entry));
-                list.add(map);
             }
         }
         response.json(200, list);
+    }
+
+    /**
+     * @return whether an open decision passes the plan and project filters of a list request; a
+     *         blank or absent filter passes every decision
+     */
+    private boolean passesDecisionFilters(DecisionEnvelope entry, @Nullable String itemPlan,
+            @Nullable String planFilter, @Nullable String projectFilter) {
+        if (planFilter != null && !planFilter.isBlank() && !planFilter.equals(itemPlan)) {
+            return false;
+        }
+        return projectFilter == null || projectFilter.isBlank() || projectFilter.equals(extractProject(entry));
     }
 
     private void handleGetDecision(MockHttpResponse response, String decisionId) throws IOException {
@@ -11432,7 +11626,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (itemPlan != null) {
                 map.put("plan", itemPlan);
             }
-            map.put("project", extractProject(envelope));
+            map.put(KEY_PROJECT, extractProject(envelope));
             response.json(200, map);
         } else {
             response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, questionNotFound(decisionId)));
@@ -11505,10 +11699,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 answerReq.channel(), answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                "outcome", outcome,
-                "reason", reason
+                CONST_OUTCOME, outcome,
+                KEY_REASON, reason
         ));
-        response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, "reason", reason));
+        response.json(200, Map.of(KEY_STATUS, outcome, "id", decisionId, KEY_REASON, reason));
     }
 
     private void handleRegularDecisionAnswer(MockHttpResponse response, String decisionId, DecisionAnswerRequest answerReq) throws IOException {
@@ -11545,7 +11739,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 answerReq.device(), extractPlan(answered), answerReq.requestId()));
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                "outcome", "answered",
+                CONST_OUTCOME, "answered",
                 KEY_ANSWER, chosen
         ));
         response.json(200, Map.of(KEY_STATUS, "answered", "id", decisionId, KEY_ANSWER, chosen));
@@ -11567,10 +11761,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             payload.put(KEY_PLAN_ID, planId);
         }
         if (channel != null) {
-            payload.put("channel", channel);
+            payload.put(KEY_CHANNEL, channel);
         }
         if (device != null) {
-            payload.put("device", device);
+            payload.put(KEY_DEVICE, device);
         }
         if (requestId != null) {
             payload.put("request_id", requestId);
@@ -11608,7 +11802,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "Rebase onto main, provided release/0.9 stays as it is.", null,
                     List.of(DECISION_REBASE, "release/0.9")
             );
-        } else if (lower.contains("whatever") || lower.contains("reviewer") || lower.contains("unclear")) {
+        } else if (lower.contains("whatever") || lower.contains(ROLE_REVIEWER) || lower.contains("unclear")) {
             interp = new DecisionInterpretation(
                     InterpretationType.UNCLEAR, null, null, null,
                     "Which reviewer do you mean, and what would they do here: merge main into the branch, or something else?",
@@ -11637,7 +11831,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         response.json(200, interp.toMap());
     }
 
-    private void handleWithdrawDecision(MockHttpRequest request, MockHttpResponse response, String decisionId) throws IOException {
+    private void handleWithdrawDecision(MockHttpResponse response, String decisionId) throws IOException {
         DecisionEnvelope removed;
         synchronized (decisionsLock) {
             removed = openDecisions.remove(decisionId);
@@ -11649,8 +11843,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                "outcome", OUTCOME_WITHDRAWN,
-                "reason", "none_fits"
+                CONST_OUTCOME, OUTCOME_WITHDRAWN,
+                KEY_REASON, "none_fits"
         ));
 
         // When Q-007 is withdrawn, ask anew as Q-009 or replacement
@@ -11699,76 +11893,99 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
 
-        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. A plan the
-        // scenario serves either by its own route or by its plan-list entry exists; any other id is
-        // scope_not_found here too.
-        if (isPlanActivity) {
-            var parts = path.split("/");
-            if (parts.length >= 7 && "tasks".equals(parts[5])) {
-                var planId = parts[4];
-                if (!knowsPlan(planId)) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                            KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
-                    return true;
-                }
-                var taskId = parts[6];
-                var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
-                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
-                    var copy = new LinkedHashMap<String, Object>();
-                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
-                    copy.put("task_id", taskId);
-                    response.json(200, copy);
-                    return true;
-                }
-            }
+        if (isPlanActivity && answerPlanActivity(path, response)) {
+            return true;
         }
-
-        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. A plan the scenario serves
-        // by its own route is answered at step 1; a listed plan is answered from its summary entry
-        // when the template route is active; any other id is scope_not_found.
-        if (isPlanProcess) {
-            var sub = path.substring(PATH_PLANS_PREFIX.length());
-            var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
-            if (!planId.contains("/")) {
-                var summary = planSummary(planId);
-                if (summary == null) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                            KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
-                    return true;
-                }
-                var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
-                var template = defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> rep
-                        ? rep
-                        : null;
-                response.json(200, withPlanOverlay(planId, synthesizedPlan(template, planId, summary)));
-                return true;
-            }
+        if (isPlanProcess && answerPlanProcess(path, response)) {
+            return true;
         }
+        return isEpicProcess && answerEpicProcess(path, response);
+    }
 
-        // 5. Dynamic epic process route: /api/v1/epics/{epicId}/process. An epic the scenario serves
-        // by its own process route is answered at step 1; an epic the scenario knows is answered from
-        // the template route; any other id is scope_not_found, as the ApiErrorCode catalogue names it.
-        if (isEpicProcess) {
-            var sub = path.substring(PATH_EPICS_PREFIX.length());
-            var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
-            if (!epicId.contains("/")) {
-                if (!knowsEpic(epicId)) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                            KEY_MESSAGE, epicNotFound(epicId)));
-                    return true;
-                }
-                var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");
-                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
-                    var copy = new LinkedHashMap<String, Object>();
-                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
-                    copy.put("epic_id", epicId);
-                    copy.put(KEY_TITLE, epicId);
-                    response.json(200, copy);
-                    return true;
-                }
-            }
+    /**
+     * Answers the dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. A plan the
+     * scenario serves either by its own route or by its plan-list entry exists; any other id is
+     * scope_not_found here too.
+     *
+     * @return {@code true} when a response was written
+     */
+    private boolean answerPlanActivity(String path, MockHttpResponse response) throws IOException {
+        var parts = path.split("/");
+        if (parts.length < 7 || !"tasks".equals(parts[5])) {
+            return false;
         }
+        var planId = parts[4];
+        if (!knowsPlan(planId)) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+            return true;
+        }
+        var taskId = parts[6];
+        var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
+        if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
+            var copy = new LinkedHashMap<String, Object>();
+            repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
+            copy.put(KEY_TASK_ID, taskId);
+            response.json(200, copy);
+            return true;
+        }
+        return false;
+    }
 
+    /**
+     * Answers the dynamic plan process route: /api/v1/plans/{planId}/process. A plan the scenario
+     * serves by its own route is answered before; a listed plan is answered from its summary entry
+     * when the template route is active; any other id is scope_not_found.
+     *
+     * @return {@code true} when a response was written
+     */
+    private boolean answerPlanProcess(String path, MockHttpResponse response) throws IOException {
+        var sub = path.substring(PATH_PLANS_PREFIX.length());
+        var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
+        if (planId.contains("/")) {
+            return false;
+        }
+        var summary = planSummary(planId);
+        if (summary == null) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
+            return true;
+        }
+        var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
+        var template = defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> rep
+                ? rep
+                : null;
+        response.json(200, withPlanOverlay(planId, synthesizedPlan(template, planId, summary)));
+        return true;
+    }
+
+    /**
+     * Answers the dynamic epic process route: /api/v1/epics/{epicId}/process. An epic the scenario
+     * serves by its own process route is answered before; an epic the scenario knows is answered from
+     * the template route; any other id is scope_not_found, as the ApiErrorCode catalogue names it.
+     *
+     * @return {@code true} when a response was written
+     */
+    private boolean answerEpicProcess(String path, MockHttpResponse response) throws IOException {
+        var sub = path.substring(PATH_EPICS_PREFIX.length());
+        var epicId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
+        if (epicId.contains("/")) {
+            return false;
+        }
+        if (!knowsEpic(epicId)) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, epicNotFound(epicId)));
+            return true;
+        }
+        var defaultRoute = activeRoute("GET", "/api/v1/epics/relay-hardening/process");
+        if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
+            var copy = new LinkedHashMap<String, Object>();
+            repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
+            copy.put(KEY_EPIC_ID, epicId);
+            copy.put(KEY_TITLE, epicId);
+            response.json(200, copy);
+            return true;
+        }
         return false;
     }
 
@@ -11819,14 +12036,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var summary = new LinkedHashMap<String, Object>();
             summary.put("id", planId);
             summary.put(KEY_TITLE, started.title());
-            summary.put("project", started.projectId());
+            summary.put(KEY_PROJECT, started.projectId());
             summary.put(KEY_PHASE, PHASE_EXECUTE);
-            summary.put("state", ACTIVITY_RUNNING);
+            summary.put(KEY_STATE, ACTIVITY_RUNNING);
             return summary;
         }
         var listRoute = activeRoute("GET", PATH_PLANS);
         if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
-                && list.get("plans") instanceof List<?> plans) {
+                && list.get(KEY_PLANS) instanceof List<?> plans) {
             for (var element : plans) {
                 var plan = JsonTree.asObject(element);
                 if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
@@ -11875,11 +12092,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         summary.put("id", planId);
         summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
         if (projectId != null) {
-            summary.put("project", projectId);
+            summary.put(KEY_PROJECT, projectId);
         }
         summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
         summary.put(KEY_PHASE, PHASE_EXECUTE);
-        summary.put("state", planStateOf(row.status()));
+        summary.put(KEY_STATE, planStateOf(row.status()));
         return summary;
     }
 
@@ -11914,7 +12131,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var project = new LinkedHashMap<String, Object>();
         project.put(KEY_PROJECT_ID, projectId);
         project.put(KEY_DISPLAY_NAME, projectId);
-        project.put("link", "/api/v1/projects/" + projectId);
+        project.put("link", PREFIX_PROJECTS + projectId);
         return project;
     }
 
@@ -11934,13 +12151,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static Map<String, Object> synthesizedPlan(@Nullable Map<?, ?> template, String planId,
             Map<String, Object> summary) {
         var phase = summaryText(summary, KEY_PHASE, PHASE_EXECUTE);
-        var phaseState = summaryText(summary, "state", ACTIVITY_RUNNING);
+        var phaseState = summaryText(summary, KEY_STATE, ACTIVITY_RUNNING);
         var copy = new LinkedHashMap<String, Object>();
         copy.put(KEY_PLAN_ID, planId);
         copy.put(KEY_TITLE, summaryText(summary, KEY_TITLE, planId));
-        var projectId = summaryText(summary, "project", null);
+        var projectId = summaryText(summary, KEY_PROJECT, null);
         if (projectId != null) {
-            copy.put("project", planProjectRef(projectId));
+            copy.put(KEY_PROJECT, planProjectRef(projectId));
         }
         // A plan synthesized from its epic's row names that epic, so the view links back to it.
         if (summary.get("epic") instanceof Map<?, ?> epicRef) {
@@ -12012,7 +12229,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         phase.put(KEY_NODE_ID, nodeId);
         phase.put(KEY_TITLE, title);
         phase.put("kind", KEY_PHASE);
-        phase.put("state", state);
+        phase.put(KEY_STATE, state);
         phase.put("run_count", ran);
         phase.put("current_run", ran);
         phase.put("duration_seconds", 0);

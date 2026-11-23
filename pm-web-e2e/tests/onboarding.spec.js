@@ -264,7 +264,7 @@ test.describe('The one settings view', () => {
     await page.getByRole('button', { name: /Settings/i }).click();
     await expect(page.getByTestId('settings-view')).toBeVisible();
 
-    await page.getByTestId('settings-back-button').click();
+    await page.goBack();
     await expect(page).toHaveURL(/\/projects$/);
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
   });
