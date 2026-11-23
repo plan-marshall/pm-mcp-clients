@@ -267,7 +267,7 @@ describe('the mark of a load', () => {
   });
 
   it('closes and replaces open object on Address', () => {
-    const base: Address = { route: 'plan', planId: 'PLAN-1', open: { kind: 'task', id: 'TSK-1' } };
+    const base: Address = { route: 'plan', planId: 'PLAN-1', open: { kind: 'plan', id: 'PLAN-2' } };
     const closed = closeOpenObject(base);
     expect(closed.open).toBeUndefined();
     expect(closed.planId).toBe('PLAN-1');

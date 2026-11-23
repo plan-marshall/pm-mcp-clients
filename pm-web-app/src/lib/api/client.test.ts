@@ -274,7 +274,7 @@ describe('ApiClient', () => {
     expect(requestMethod).toBe('GET');
     expect(requestUrl).toContain('/api/v1/reports/rep-0142');
     expect(report.id).toBe('rep-0142');
-    expect(report.unread).toBe(true);
+    expect(report.title).toBe('Report 142');
   });
 
   it('handles stopRuntime and withdrawStop lifecycle methods', async () => {

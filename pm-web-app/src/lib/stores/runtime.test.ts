@@ -1687,9 +1687,9 @@ describe('the decision announcer', () => {
   });
 
   it('manages openObject in runtimeStore via replaceOpenObject and closeOpenObject', () => {
-    runtimeStore.update((s) => ({ ...s, openObject: { kind: 'task', id: 'tsk-1' } }));
-    replaceOpenObject({ kind: 'task', id: 'tsk-2' });
-    expect(get(runtimeStore).openObject).toEqual({ kind: 'task', id: 'tsk-2' });
+    runtimeStore.update((s) => ({ ...s, openObject: { kind: 'plan', id: 'pln-1' } }));
+    replaceOpenObject({ kind: 'decision', id: 'dec-2' });
+    expect(get(runtimeStore).openObject).toEqual({ kind: 'decision', id: 'dec-2' });
 
     closeOpenObject();
     expect(get(runtimeStore).openObject).toBeNull();
