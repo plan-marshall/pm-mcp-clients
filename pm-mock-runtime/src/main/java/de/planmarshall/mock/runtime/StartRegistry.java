@@ -224,8 +224,8 @@ final class StartRegistry {
      */
     private static final class StartEntry {
         private final String entryId;
-        private EntryKind kind;
-        private String projectId;
+        private final EntryKind kind;
+        private final String projectId;
         private String state;
         private @Nullable String title;
         private @Nullable String planId;
@@ -320,7 +320,10 @@ final class StartRegistry {
         }
     }
 
-    private static @Nullable Map<String, Object> runtimeFixtureOf(Scenario scenario, String stateId) {
+    private static @Nullable Map<String, Object> runtimeFixtureOf(Scenario scenario, @Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
         var state = scenario.state(stateId);
         if (state == null) {
             return null;

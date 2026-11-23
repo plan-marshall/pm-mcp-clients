@@ -36,6 +36,7 @@ import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicTokens;
+import de.planmarshall.api.control.EpicWorkstream;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.ReviewResource;
@@ -179,86 +180,57 @@ class FullyOnboardedScenarioTest {
         void everyDomainRouteAnswersAndDecodes() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
                 var endpoints = new ArrayList<Endpoint>();
-                endpoints.add(new Endpoint("/api/v1/status/connection",
-                        body -> ConnectionStatus.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/web/devices",
-                        body -> DeviceListResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/machine/settings",
-                        body -> MachineSettingsRecord.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/projects",
-                        body -> ProjectOverviewResponse.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/projects?all=true",
-                        body -> ProjectExplorer.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients",
-                        body -> ProjectDetailResponse.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/ended",
-                        body -> EndedWorkPage.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/status/connection", ConnectionStatus::fromJson));
+                endpoints.add(new Endpoint("/api/v1/web/devices", DeviceListResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/machine/settings", MachineSettingsRecord::fromJson));
+                endpoints.add(new Endpoint("/api/v1/projects", ProjectOverviewResponse::fromJson));
+                endpoints.add(new Endpoint("/api/v1/projects?all=true", ProjectExplorer::fromJson));
+                endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients", ProjectDetailResponse::fromJson));
+                endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/ended", EndedWorkPage::fromJson));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/files",
-                        body -> ConfinedFileListResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/overview",
-                        body -> ProjectOverviewResponse.fromJson(body)));
+                        ConfinedFileListResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/overview", ProjectOverviewResponse::fromJson));
                 endpoints.add(new Endpoint("/api/v1/plans", FullyOnboardedScenarioTest::assertPlans));
                 endpoints.add(new Endpoint("/api/v1/epics", FullyOnboardedScenarioTest::assertEpics));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/process",
-                        body -> ProcessTree.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/docs-typo/process",
-                        body -> ProcessTree.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/process", ProcessTree::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/docs-typo/process", ProcessTree::fromJson));
                 endpoints.add(new Endpoint("/api/v1/plans/fix-relay/tasks/TASK-003/activity",
-                        body -> TaskActivity.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/process",
-                        body -> EpicProcess.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/intent",
-                        body -> PlanIntentResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/outline",
-                        body -> OutlineResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/intent",
-                        body -> EpicIntentResource.fromJson(body)));
+                        TaskActivity::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/process", EpicProcess::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/intent", PlanIntentResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/outline", OutlineResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/intent", EpicIntentResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/metrics/oversize",
                         OverSizeDistributionsResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/decisions", FullyOnboardedScenarioTest::assertDecisions));
-                endpoints.add(new Endpoint("/api/v1/decisions/Q-007",
-                        body -> DecisionEnvelope.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/reports",
-                        body -> ReportsPage.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/reports/rep-0142",
-                        body -> ReportItem.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/completion",
-                        body -> PlanCompletionReport.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/system",
-                        body -> SystemSnapshot.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/system/cleanup",
-                        body -> CleanupJob.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/decisions/Q-007", DecisionEnvelope::fromJson));
+                endpoints.add(new Endpoint("/api/v1/reports", ReportsPage::fromJson));
+                endpoints.add(new Endpoint("/api/v1/reports/rep-0142", ReportItem::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/completion", PlanCompletionReport::fromJson));
+                endpoints.add(new Endpoint("/api/v1/system", SystemSnapshot::fromJson));
+                endpoints.add(new Endpoint("/api/v1/system/cleanup", CleanupJob::fromJson));
                 endpoints.add(new Endpoint("/api/v1/recipes", FullyOnboardedScenarioTest::assertRecipes));
                 endpoints.add(new Endpoint("/api/v1/workflows",
                         FullyOnboardedScenarioTest::assertWorkflowUnits));
-                endpoints.add(new Endpoint("/api/v1/workflows/catalogue",
-                        body -> WorkflowCatalogue.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/workflows/catalogue", WorkflowCatalogue::fromJson));
                 endpoints.add(new Endpoint("/api/v1/onboarding/state",
                         FullyOnboardedScenarioTest::assertJsonObject));
-                endpoints.add(new Endpoint("/api/v1/entries/ent-showroom",
-                        body -> StartStateResource.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/entries/ent-showroom", StartStateResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/sources/lessons",
                         FullyOnboardedScenarioTest::assertJsonObject));
                 endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/epics/relay-hardening/decomposition",
-                        body -> EpicDecomposition.fromJson(body)));
+                        EpicDecomposition::fromJson));
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/decomposition",
-                        body -> DecompositionResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/actions",
-                        body -> WorkActions.fromJson(body)));
+                        DecompositionResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/actions", WorkActions::fromJson));
                 endpoints.add(new Endpoint("/api/v1/plans/relay-cursor-order/holds",
                         FullyOnboardedScenarioTest::assertHolds));
-                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/settings",
-                        body -> PlanSettingsRecord.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/plans/relay-reconnect-backoff/tokens",
-                        body -> TokenFigure.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/tokens",
-                        body -> EpicTokens.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening",
-                        body -> EpicResource.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/archive-check",
-                        body -> ArchiveCheck.fromJson(body)));
-                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/review",
-                        body -> ReviewResource.fromJson(body)));
+                endpoints.add(new Endpoint("/api/v1/plans/fix-relay/settings", PlanSettingsRecord::fromJson));
+                endpoints.add(new Endpoint("/api/v1/plans/relay-reconnect-backoff/tokens", TokenFigure::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/tokens", EpicTokens::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening", EpicResource::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/archive-check", ArchiveCheck::fromJson));
+                endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/review", ReviewResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/plans/fix-relay/chat", ChatResource::fromJson));
 
                 for (var endpoint : endpoints) {
@@ -311,7 +283,7 @@ class FullyOnboardedScenarioTest {
                         get(runtime, "/api/v1/epics/relay-hardening").bodyText());
                 assertEquals(3, epic.workstreams().size());
                 assertEquals(List.of("WS-1", "WS-2", "WS-3"),
-                        epic.workstreams().stream().map(workstream -> workstream.id()).toList());
+                        epic.workstreams().stream().map(EpicWorkstream::id).toList());
                 assertTrue(epic.tokens().total().total() >= 1_240_000L);
             }
         }

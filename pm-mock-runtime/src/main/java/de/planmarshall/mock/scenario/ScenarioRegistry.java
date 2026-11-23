@@ -35,6 +35,12 @@ import org.jspecify.annotations.Nullable;
  */
 public final class ScenarioRegistry {
 
+    /** The primary state of Scenario 2 every running-work case alias points at. */
+    private static final String RUNNING_WORK_ACTIVE = "running-work#running_work.active";
+
+    /** The primary state of Scenario 3 every start case alias points at. */
+    private static final String PROJECTS_START_SOURCES = "projects-and-start#start.sources";
+
     /** Separates the scenario name from the state in the composite notation. */
     public static final char STATE_SEPARATOR = '#';
 
@@ -246,44 +252,44 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("operator-interaction", "onboarding#wait.choose");
 
             // Scenario 2: running work, process view, decisions, and control.
-            registry.registerLegacyAlias("plan-view", "running-work#running_work.active");
-            registry.registerLegacyAlias("intent-plan", "running-work#running_work.active");
-            registry.registerLegacyAlias("intent-outline", "running-work#running_work.active");
-            registry.registerLegacyAlias("intent-epic", "running-work#running_work.active");
-            registry.registerLegacyAlias("intent-oversize", "running-work#running_work.active");
-            registry.registerLegacyAlias("decisions", "running-work#running_work.active");
-            registry.registerLegacyAlias("decomposition", "running-work#running_work.active");
-            registry.registerLegacyAlias("control", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-pause", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-holds", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-settings", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-epic", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-decomposition", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-chat", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-review", "running-work#running_work.active");
-            registry.registerLegacyAlias("control-tokens", "running-work#running_work.active");
+            registry.registerLegacyAlias("plan-view", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("intent-plan", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("intent-outline", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("intent-epic", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("intent-oversize", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("decisions", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("decomposition", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-pause", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-holds", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-settings", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-epic", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-decomposition", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-chat", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-review", RUNNING_WORK_ACTIVE);
+            registry.registerLegacyAlias("control-tokens", RUNNING_WORK_ACTIVE);
 
             // Scenario 3: projects and start.
             registry.registerLegacyAlias("projects", "projects-and-start#projects.explorer");
             registry.registerLegacyAlias("enrolment", "projects-and-start#projects.explorer");
-            registry.registerLegacyAlias("git_sources", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("lesson_source", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-chat", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-documents", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-entry-continue", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-epic", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-epic-adopt", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-follow-up", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-issue-failed", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-lesson", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-local-changes", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-pull-request", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-rate-limited", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-recipe", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-refused", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-sources", "projects-and-start#start.sources");
-            registry.registerLegacyAlias("start-unscreened", "projects-and-start#start.sources");
+            registry.registerLegacyAlias("git_sources", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("lesson_source", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-chat", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-documents", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-entry-continue", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-epic", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-epic-adopt", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-follow-up", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-issue-failed", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-lesson", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-local-changes", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-pull-request", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-rate-limited", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-recipe", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-refused", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-sources", PROJECTS_START_SOURCES);
+            registry.registerLegacyAlias("start-unscreened", PROJECTS_START_SOURCES);
 
             // Scenario 4: reports and system.
             registry.registerLegacyAlias("reports", "reports-and-system#reports.unread");

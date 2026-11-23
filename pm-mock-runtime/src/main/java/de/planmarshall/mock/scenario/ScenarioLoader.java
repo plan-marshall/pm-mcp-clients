@@ -93,6 +93,9 @@ public class ScenarioLoader {
     /** The member of the scenario, and of a state's runtime fixture, that holds routes. */
     private static final String FIELD_ROUTES = "routes";
 
+    /** The member of an event and of an automatic transition that names its delay. */
+    private static final String FIELD_AFTER_MS = "after_ms";
+
     private static final Set<String> ROOT_FIELDS = Set.of(
             "format_version", "name", "description", "start", "pairing_code", FIELD_ROUTES, "states");
     private static final Set<String> STATE_FIELDS = Set.of(
@@ -100,8 +103,8 @@ public class ScenarioLoader {
     private static final Set<String> ROUTE_FIELDS = Set.of(FIELD_STATUS, FIELD_REPRESENTATION, "headers");
     private static final Set<String> LINK_FIELDS = Set.of(
             "method", "href", FIELD_STATUS, "next", "delay_ms", "error");
-    private static final Set<String> EVENT_FIELDS = Set.of("after_ms", "event", "data");
-    private static final Set<String> AUTO_FIELDS = Set.of("after_ms", "next");
+    private static final Set<String> EVENT_FIELDS = Set.of(FIELD_AFTER_MS, "event", "data");
+    private static final Set<String> AUTO_FIELDS = Set.of(FIELD_AFTER_MS, "next");
 
     /** The engine-only fixture object a state's facts may carry. */
     private static final String RUNTIME_FIXTURE = "runtime";
@@ -183,7 +186,7 @@ public class ScenarioLoader {
      * @param scenarioIdentifier scenario identifier for error reporting
      * @return the validated scenario
      */
-    public static Scenario load(String json, String scenarioIdentifier) {
+    public static Scenario load(String json, @Nullable String scenarioIdentifier) {
         Objects.requireNonNull(json, "json");
         var identifier = scenarioIdentifier == null || scenarioIdentifier.isBlank() ? "unnamed" : scenarioIdentifier;
 
@@ -1289,7 +1292,7 @@ public class ScenarioLoader {
             var eventMap = (Map<String, Object>) eventMapRaw;
             rejectUnknownFields(eventMap, EVENT_FIELDS, scenario, stateId, "events[" + i + "]");
 
-            var afterMs = asLong(eventMap.get("after_ms"), -1);
+            var afterMs = asLong(eventMap.get(FIELD_AFTER_MS), -1);
             if (afterMs < 0) {
                 throw new ScenarioValidationException(scenario, stateId, "events[" + i + "].after_ms",
                         "missing or negative after_ms");
@@ -1330,7 +1333,7 @@ public class ScenarioLoader {
         var autoMap = (Map<String, Object>) autoMapRaw;
         rejectUnknownFields(autoMap, AUTO_FIELDS, scenario, stateId, "auto");
 
-        var afterMs = asLong(autoMap.get("after_ms"), -1);
+        var afterMs = asLong(autoMap.get(FIELD_AFTER_MS), -1);
         if (afterMs < 0) {
             throw new ScenarioValidationException(scenario, stateId, "auto.after_ms", "missing or negative after_ms");
         }
@@ -1348,7 +1351,7 @@ public class ScenarioLoader {
      * the field.
      */
     private static void rejectUnknownFields(Map<String, Object> map, Set<String> allowed,
-            String scenario, String stateId, String path) {
+            String scenario, @Nullable String stateId, String path) {
         for (var key : map.keySet()) {
             if (!allowed.contains(key)) {
                 var field = path.isEmpty() ? key : path + "." + key;
@@ -1406,9 +1409,9 @@ public class ScenarioLoader {
                     // No closed codec is registered for this endpoint.
                 }
             }
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException e) {
+            // every codec refusal, checked or unchecked, is a validation error of the scenario
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IOException | RuntimeException e) {
             throw new ScenarioValidationException(scenario, null, "routes." + routeKey + "." + FIELD_REPRESENTATION,
                     "representation does not decode with the pm-api codec: " + e.getMessage());
         }

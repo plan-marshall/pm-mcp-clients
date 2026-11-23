@@ -46,6 +46,9 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
  */
 public final class MockRuntime implements AutoCloseable {
 
+    /** The owner-only mode of the runtime token and the web device secret. */
+    private static final String FILE_MODE = "rw-------";
+
     /**
      * The legacy case names of Scenario 3 mapped to their consolidated state. The registry's own
      * coarse alias table points every project/start alias at the scenario's primary state; a client
@@ -53,9 +56,6 @@ public final class MockRuntime implements AutoCloseable {
      * is owned by the Wave 3 finalization; this runtime seam is removed with the transitional
      * {@code startCase} fallback when that wave makes the mapping authoritative.
      */
-    /** The owner-only mode of the runtime token and the web device secret. */
-    private static final String FILE_MODE = "rw-------";
-
     private static final Map<String, String> LEGACY_CASE_STATES = Map.ofEntries(
             Map.entry(StandardScenarios.PROJECTS, "projects.explorer"),
             Map.entry(StandardScenarios.ENROLMENT, "enrol.scan"),
@@ -86,7 +86,7 @@ public final class MockRuntime implements AutoCloseable {
     private final boolean cleanupOnClose;
     private final MockRuntimeEngine engine;
     private final MockHttpServer unixServer;
-    private final MockHttpServer tcpServer;
+    private final @Nullable MockHttpServer tcpServer;
 
     private record RuntimeContext(
     Path base,
@@ -97,7 +97,7 @@ public final class MockRuntime implements AutoCloseable {
     boolean cleanupOnClose,
     MockRuntimeEngine engine,
     MockHttpServer unixServer,
-    MockHttpServer tcpServer) {
+    @Nullable MockHttpServer tcpServer) {
     }
 
     private MockRuntime(RuntimeContext ctx) {
@@ -206,7 +206,8 @@ public final class MockRuntime implements AutoCloseable {
         var deviceSecret = resolveDeviceSecret(config, paths);
 
         // 2. Load scenario
-        var registry = Objects.requireNonNullElseGet(config.getRegistry(), ScenarioRegistry::new);
+        var configuredRegistry = config.getRegistry();
+        var registry = configuredRegistry != null ? configuredRegistry : new ScenarioRegistry();
         registerLegacyCaseStates(registry);
         var initialScenario = config.getInitialScenario();
         if (initialScenario != null) {

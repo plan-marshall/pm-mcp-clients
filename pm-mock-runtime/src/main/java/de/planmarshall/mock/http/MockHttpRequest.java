@@ -71,7 +71,7 @@ long receivedNanos) {
      * @param name header name
      * @return header value, or {@code null}
      */
-    public String header(String name) {
+    public @Nullable String header(String name) {
         return headers.get(name.toLowerCase(Locale.ROOT));
     }
 
