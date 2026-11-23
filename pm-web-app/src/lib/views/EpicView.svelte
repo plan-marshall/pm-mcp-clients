@@ -308,7 +308,9 @@
     if (!epic) {
       errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
     }
-    if (initial) isLoading = false;
+    if (gen === epicLoadGeneration) {
+      isLoading = false;
+    }
   }
 
   function openPlan(pId: string) {

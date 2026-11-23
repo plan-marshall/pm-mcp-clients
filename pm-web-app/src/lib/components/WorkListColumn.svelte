@@ -31,10 +31,15 @@
   let isLoading = $state(false);
   let error = $state<string | null>(null);
   let loadGeneration = 0;
+  let loadedProjectId: string | null = null;
 
   async function loadDetail(): Promise<void> {
     const currentId = projectId;
     if (!currentId) return;
+    if (loadedProjectId !== currentId) {
+      detail = null;
+      loadedProjectId = currentId;
+    }
     const gen = ++loadGeneration;
     isLoading = detail === null;
     error = null;

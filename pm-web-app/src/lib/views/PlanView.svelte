@@ -306,7 +306,7 @@
       if (gen !== processLoadGeneration) return;
       errorCode = errorCodeOf(err);
     } finally {
-      if (gen === processLoadGeneration && initial) {
+      if (gen === processLoadGeneration) {
         isLoading = false;
       }
     }

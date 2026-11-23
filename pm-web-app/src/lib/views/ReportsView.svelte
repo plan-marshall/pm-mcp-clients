@@ -382,6 +382,7 @@
     const route = $runtimeStore.currentRoute;
     if (route !== 'reports' && route !== 'report') return;
     const routePlan = $runtimeStore.selectedReportDetailPlanId ?? null;
+    activeDetailReportId = $runtimeStore.selectedReportId ?? null;
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
     activeDetailPlanId = routePlan;
@@ -416,6 +417,7 @@
 
     if (requestedReportId && !requestedReport && hasOlder) {
       while (!requestedReport && hasOlder && isMounted) {
+        if ($runtimeStore.selectedReportId !== requestedReportId) return;
         const prevCount = items.length;
         await loadOlder();
         if (items.length <= prevCount) break;
@@ -424,9 +426,10 @@
     }
 
     if (requestedReportId && !requestedReport && isMounted) {
+      if ($runtimeStore.selectedReportId !== requestedReportId) return;
       try {
         const fetched = await apiClient.getReport(requestedReportId);
-        if (!isMounted) return;
+        if (!isMounted || $runtimeStore.selectedReportId !== requestedReportId) return;
         if (fetched) {
           requestedReport = fetched;
           if (!items.some((i) => i.id === fetched.id)) {
@@ -437,6 +440,8 @@
         // Not found
       }
     }
+
+    if (!isMounted || (requestedReportId && $runtimeStore.selectedReportId !== requestedReportId)) return;
 
     if (requestedReportId && !requestedReport) {
       unresolvableReportNotice = $t('operator.reports.not_found', { id: requestedReportId });
