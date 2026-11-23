@@ -205,7 +205,7 @@ public record StartReadyResource(
         if (planId == null) {
             throw new JsonFormatException("Missing required field for StartReadyResource: plan_id");
         }
-        var recipeMap = JsonTree.objectOrNull(map, FIELD_RECIPE, "StartReadyResource");
+        var recipeMap = JsonTree.optionalObject(map, FIELD_RECIPE, "StartReadyResource");
         var parameters = StartJson.readEach(StartJson.readObjects(map, FIELD_PARAMETERS),
                 RecipeParameter::fromMap);
         var originWire = JsonTree.string(map, FIELD_EPIC_AUTO_START_ORIGIN);
@@ -217,7 +217,7 @@ public record StartReadyResource(
         try {
             return new StartReadyResource(JsonTree.string(map, FIELD_TITLE), planId,
                     StartJson.bool(map, FIELD_ID_EDITABLE), StartJson.bool(map, FIELD_ID_FROM_TITLE),
-                    recipeMap != null ? RecipeRef.fromMap(recipeMap) : null, parameters,
+                    recipeMap.isPresent() ? RecipeRef.fromMap(recipeMap.get()) : null, parameters,
                     JsonTree.string(map, FIELD_LANDING), StartJson.bool(map, FIELD_LANDING_ASKED),
                     JsonTree.bool(map, FIELD_EPIC_AUTO_START), origin,
                     StartJson.optInteger(map, FIELD_PARALLELIZATION_SCOPE),

@@ -172,11 +172,11 @@ final class ChatJson {
      */
     static <T> T requireRecord(Map<String, Object> object, String key, ElementReader<T> reader, String type)
             throws IOException {
-        var member = JsonTree.objectOrNull(object, key, type);
-        if (member == null) {
+        var member = JsonTree.optionalObject(object, key, type);
+        if (member.isEmpty()) {
             throw new JsonFormatException("Missing " + key + " in " + type);
         }
-        return reader.read(member);
+        return reader.read(member.get());
     }
 
     /**
@@ -192,8 +192,8 @@ final class ChatJson {
      */
     static <T> @Nullable T optionalRecord(Map<String, Object> object, String key, ElementReader<T> reader,
                                           String type) throws IOException {
-        var member = JsonTree.objectOrNull(object, key, type);
-        return member != null ? reader.read(member) : null;
+        var member = JsonTree.optionalObject(object, key, type);
+        return member.isPresent() ? reader.read(member.get()) : null;
     }
 
     /**
@@ -237,8 +237,7 @@ final class ChatJson {
      * @throws IOException if the member is present and not an object
      */
     static Map<String, Object> readArgs(Map<String, Object> object, String key, String type) throws IOException {
-        var args = JsonTree.objectOrNull(object, key, type);
-        return args != null ? args : Map.of();
+        return JsonTree.optionalObject(object, key, type).orElse(Map.of());
     }
 
     /**

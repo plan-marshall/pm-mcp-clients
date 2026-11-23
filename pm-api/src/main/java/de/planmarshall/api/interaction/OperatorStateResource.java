@@ -244,15 +244,15 @@ public record OperatorStateResource(
         }
 
         OperatorProgress progress = null;
-        var progressMap = JsonTree.objectOrNull(map, FIELD_PROGRESS, RESOURCE_NAME);
-        if (progressMap != null) {
-            progress = OperatorProgress.fromMap(progressMap);
+        var progressMap = JsonTree.optionalObject(map, FIELD_PROGRESS, RESOURCE_NAME);
+        if (progressMap.isPresent()) {
+            progress = OperatorProgress.fromMap(progressMap.get());
         }
 
         OperatorText title = null;
-        var titleMap = JsonTree.objectOrNull(map, FIELD_TITLE, RESOURCE_NAME);
-        if (titleMap != null) {
-            title = OperatorText.fromMap(titleMap);
+        var titleMap = JsonTree.optionalObject(map, FIELD_TITLE, RESOURCE_NAME);
+        if (titleMap.isPresent()) {
+            title = OperatorText.fromMap(titleMap.get());
         }
 
         Long revision = null;
@@ -270,7 +270,7 @@ public record OperatorStateResource(
                     progress,
                     title,
                     textsFromArray(map.get(FIELD_TEXTS)),
-                    JsonTree.objectOrNull(map, FIELD_FACTS, RESOURCE_NAME),
+                    JsonTree.optionalObject(map, FIELD_FACTS, RESOURCE_NAME).orElse(Map.of()),
                     proposalFromArray(map.get(FIELD_PROPOSAL)),
                     OperatorItem.fromArray(map.get(FIELD_ITEMS)),
                     revision,

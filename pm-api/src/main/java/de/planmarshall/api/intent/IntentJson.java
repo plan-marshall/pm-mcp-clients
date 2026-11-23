@@ -231,7 +231,7 @@ final class IntentJson {
      */
     static @Nullable Map<String, Object> optionalObject(Map<String, Object> object, String key, String type)
             throws IOException {
-        return JsonTree.objectOrNull(object, key, type);
+        return JsonTree.optionalObject(object, key, type).orElse(null);
     }
 
     /**

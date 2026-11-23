@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.json;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -19,11 +20,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 @DisplayName("JsonTree")
 class JsonTreeTest {
@@ -183,6 +189,46 @@ class JsonTreeTest {
             assertNull(JsonTree.bool(map, "other"));
             assertNull(JsonTree.bool(map, "missingKey"));
             assertNull(JsonTree.bool(null, "boolTrue"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Optional object member")
+    @EnableGeneratorController
+    class OptionalObject {
+
+        @Test
+        @DisplayName("is empty for an absent member, a null member, and a missing object")
+        void absent() throws Exception {
+            var name = Generators.letterStrings(3, 12).next();
+            var object = new LinkedHashMap<String, Object>();
+            object.put(name, null);
+
+            assertAll("absent",
+                    () -> assertEquals(Optional.empty(), JsonTree.optionalObject(Map.of(), name, "T")),
+                    () -> assertEquals(Optional.empty(), JsonTree.optionalObject(object, name, "T")),
+                    () -> assertEquals(Optional.empty(), JsonTree.optionalObject(null, name, "T")));
+        }
+
+        @Test
+        @DisplayName("is the member's object where the member is a JSON object")
+        void present() throws Exception {
+            var name = Generators.letterStrings(3, 12).next();
+            var member = Map.<String, Object>of(Generators.letterStrings(3, 12).next(),
+                    Generators.letterStrings(1, 20).next());
+
+            assertEquals(Optional.of(member), JsonTree.optionalObject(Map.<String, Object>of(name, member), name, "T"));
+        }
+
+        @Test
+        @DisplayName("refuses a member that is present, not null, and no JSON object")
+        void wrongType() {
+            var name = Generators.letterStrings(3, 12).next();
+            var object = Map.<String, Object>of(name, Generators.letterStrings(1, 20).next());
+
+            var refused = assertThrows(JsonFormatException.class,
+                    () -> JsonTree.optionalObject(object, name, "Holder"));
+            assertEquals("Member " + name + " must be an object in Holder", refused.getMessage());
         }
     }
 }

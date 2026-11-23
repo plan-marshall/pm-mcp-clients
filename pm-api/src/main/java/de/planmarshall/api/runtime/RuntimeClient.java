@@ -30,7 +30,10 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
  */
 public final class RuntimeClient {
 
-    /** Path of the runtime status endpoint, the liveness round trip. */
+    /**
+     * Path of the runtime status endpoint, the liveness round trip.
+     */
+    @SuppressWarnings("java:S1075") // the daemon's documented wire path, fixed by the API contract, never configured
     public static final String STATUS_PATH = "/api/v1/status";
 
     private final UnixSocketHttpClient http;

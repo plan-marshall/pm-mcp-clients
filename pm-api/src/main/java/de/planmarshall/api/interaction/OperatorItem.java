@@ -96,7 +96,7 @@ public record OperatorItem(
             throw new JsonFormatException("Missing " + FIELD_ID + " in OperatorItem");
         }
         try {
-            return new OperatorItem(id, JsonTree.objectOrNull(map, FIELD_FACTS, "OperatorItem"),
+            return new OperatorItem(id, JsonTree.optionalObject(map, FIELD_FACTS, "OperatorItem").orElse(Map.of()),
                     OperatorLink.fromArray(map.get(FIELD_LINKS)));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid OperatorItem: " + e.getMessage(), e);

@@ -297,10 +297,10 @@ public record SourceResource(
             throw new JsonFormatException(
                     "Unknown " + FIELD_DISPOSITION + " in SourceResource: " + dispositionWire);
         }
-        var failureMap = JsonTree.objectOrNull(map, FIELD_FAILURE, "SourceResource");
+        var failureMap = JsonTree.optionalObject(map, FIELD_FAILURE, "SourceResource");
         try {
             return new SourceResource(sourceId, kind, reference, JsonTree.string(map, FIELD_TITLE), state,
-                    trust, verdict, failureMap != null ? SourceFailure.fromMap(failureMap) : null,
+                    trust, verdict, failureMap.isPresent() ? SourceFailure.fromMap(failureMap.get()) : null,
                     readSpans(map), disposition, JsonTree.string(map, FIELD_DISPOSITION_REASON),
                     readChangedFiles(map), JsonTree.string(map, FIELD_DIGEST));
         } catch (IllegalArgumentException e) {
