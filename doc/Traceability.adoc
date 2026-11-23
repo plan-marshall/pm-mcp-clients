@@ -119,7 +119,7 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WF-19[PM-WF-19]
 
-Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (`decision-log export`)
+Implementation: none in this repository
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
@@ -175,7 +175,7 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-SKILL-4[PM-SKILL-4]
 
-Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the harness bundle installer and its shim skill)
+Implementation: none in this repository
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
@@ -242,7 +242,7 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-CRED-2[PM-CRED-2]
 
-Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the store choice in the onboarding and `credentials migrate`)
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the store choice in the onboarding)
 
 Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
@@ -381,7 +381,7 @@ Verified by: the `native` profile of the build and the `*IT` tests of the three 
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-TECH-4[PM-TECH-4]
 
-Implementation: link:../pm-exec/src/main/java/de/planmarshall/exec/[`pm-exec`] (Landlock and Seatbelt), link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the terminal and its state directory)
+Implementation: link:../pm-exec/src/main/java/de/planmarshall/exec/[`pm-exec`] (Landlock), link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the terminal and its state directory)
 
 Verified by: link:../pm-exec/src/test/java/de/planmarshall/exec/[the tests of `pm-exec`], link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`]
 
