@@ -3885,6 +3885,11 @@ export class ApiClient {
     await this.request('POST', `/api/v1/reports/${encodeURIComponent(reportId)}/read`, {});
   }
 
+  public async getReport(reportId: string): Promise<ReportItem> {
+    const data = await this.request<ReportItem>('GET', `/api/v1/reports/${encodeURIComponent(reportId)}`);
+    return normaliseReportItem(data);
+  }
+
   public async markAllReportsRead(ids: string[]): Promise<{ marked_count: number }> {
     const body = { report_ids: ids };
     return this.request<{ marked_count: number }>('POST', '/api/v1/reports/read', body);

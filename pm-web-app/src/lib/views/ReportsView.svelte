@@ -15,7 +15,7 @@
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { pathForRoute } from '../routes';
-  import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
+  import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo, announceNavigation } from '../stores/runtime';
   import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
@@ -57,6 +57,7 @@
   let noticeFrom = $state('');
   let noticeSubject = $state('');
   let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  let unresolvableReportNotice = $state<string | null>(null);
   /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
   let clock = $state(Date.now());
   let clockTimer: ReturnType<typeof setInterval> | null = null;
@@ -404,12 +405,41 @@
     // list still opens it.
     if (!isMounted) return;
     const requestedReportId = $runtimeStore.selectedReportId;
-    const requestedReport = requestedReportId
+    let requestedReport = requestedReportId
       ? items.find((item) => item.id === requestedReportId)
       : undefined;
-    const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
-    if (plan) {
-      showDetail(plan);
+
+    if (requestedReportId && !requestedReport && hasOlder) {
+      while (!requestedReport && hasOlder && isMounted) {
+        await loadOlder();
+        requestedReport = items.find((item) => item.id === requestedReportId);
+      }
+    }
+
+    if (requestedReportId && !requestedReport) {
+      try {
+        const fetched = await apiClient.getReport(requestedReportId);
+        if (fetched) {
+          requestedReport = fetched;
+          if (!items.some((i) => i.id === fetched.id)) {
+            items = [...items, fetched];
+          }
+        }
+      } catch {
+        // Not found
+      }
+    }
+
+    if (requestedReportId && !requestedReport) {
+      unresolvableReportNotice = $t('operator.reports.not_found', { id: requestedReportId });
+      announceNavigation(unresolvableReportNotice);
+      writeAddress({ route: 'reports' }, 'replace');
+      runtimeStore.update((s) => ({ ...s, selectedReportId: null, currentRoute: 'reports' }));
+    } else {
+      const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
+      if (plan) {
+        showDetail(plan, requestedReport?.id);
+      }
     }
   });
 
@@ -745,7 +775,7 @@
    *
    * @param planId the plan whose completion report to show
    */
-  function showDetail(planId: string): void {
+  function showDetail(planId: string, reportId?: string): void {
     activeDetailPlanId = planId;
     // A row the previous detail read has no detail of its own any more; it goes unless its own read
     // request is still in flight, whose outcome decides whether it goes or comes back as unread.
@@ -758,15 +788,18 @@
     // The address of the report names the report, not the plan: the route and the report id are
     // kept in the store so the writer reproduces the same address, and the address is replaced
     // with it now that the row is known.
-    const report = items.find((item) => planIdOf(item) === planId);
+    const report = reportId
+      ? (items.find((item) => item.id === reportId) ?? items.find((item) => planIdOf(item) === planId))
+      : items.find((item) => planIdOf(item) === planId);
+    const effectiveReportId = reportId ?? report?.id ?? null;
     runtimeStore.update((s) => ({
       ...s,
       selectedReportDetailPlanId: planId,
-      selectedReportId: report?.id ?? null,
+      selectedReportId: effectiveReportId,
       currentRoute: 'report',
     }));
-    if (report?.id) {
-      writeAddress({ route: 'report', reportId: report.id }, 'replace');
+    if (effectiveReportId) {
+      writeAddress({ route: 'report', reportId: effectiveReportId }, 'replace');
     }
   }
 
@@ -888,7 +921,7 @@
       if (!planId) return;
       const link = item.detail_link || item.detail || '';
       if (item.kind === 'plan.ended' || link.includes('/completion')) {
-        showDetail(planId);
+        showDetail(planId, item.id);
       } else {
         navigateTo('plan', { planId });
       }
@@ -928,11 +961,11 @@
     if (!detailLink) return;
     const match = /plans\/([^/]+)\/completion/.exec(detailLink);
     if (match?.[1]) {
-      showDetail(match[1]);
+      showDetail(match[1], item.id);
       return;
     }
     if (item.from?.plan) {
-      showDetail(item.from.plan);
+      showDetail(item.from.plan, item.id);
     }
   }
 
@@ -1109,6 +1142,12 @@
         <Button variant="ghost" size="sm" onclick={retryFailedAction}>
           {$t('common.action.retry')}
         </Button>
+      </div>
+    {/if}
+
+    {#if unresolvableReportNotice}
+      <div class="error-line" role="alert" data-testid="unresolvable-report-notice">
+        <p>{unresolvableReportNotice}</p>
       </div>
     {/if}
 

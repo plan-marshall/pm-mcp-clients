@@ -1618,4 +1618,31 @@ describe('the decision announcer', () => {
     // Assert
     expect(shown).toEqual([]);
   });
+
+  it('drives a removed object through the store and replaces the address with its parent', () => {
+    // Arrange: the operator is looking at a decision
+    window.history.pushState(null, '', '/decisions/dec-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('decision');
+    expect(get(runtimeStore).selectedDecisionId).toBe('dec-1');
+
+    // Act: the decision is closed/removed by a runtime event
+    handleRuntimeEvent('decision.closed', { decision: { id: 'dec-1', subject: 'Release waiver' } });
+
+    // Assert: the address fell back to the parent (/decisions) by replace
+    expect(window.location.pathname).toBe('/decisions');
+    expect(get(runtimeStore).currentRoute).toBe('decisions');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('Release waiver');
+
+    // And for a removed plan:
+    window.history.pushState(null, '', '/plans/pln-1');
+    adoptRouteFromLocation();
+    expect(get(runtimeStore).currentRoute).toBe('plan');
+    expect(get(runtimeStore).selectedPlanId).toBe('pln-1');
+
+    handleRuntimeEvent('plan.deleted', { plan_id: 'pln-1', title: 'Fix relay' });
+    expect(window.location.pathname).toBe('/overview');
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('Fix relay');
+  });
 });

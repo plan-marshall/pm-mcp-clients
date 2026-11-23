@@ -352,4 +352,10 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await page.reload();
     await expect(page.locator('.reports-tree')).toBeVisible();
   });
+
+  test('deep link to a report beyond the first page opens its detail (D0)', async ({ page }) => {
+    await page.goto('/reports/rep-0120');
+    await expect(page.locator('.reports-view')).toBeVisible();
+    await expect(page.locator('.report-card--active')).toBeVisible();
+  });
 });

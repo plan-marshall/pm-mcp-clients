@@ -864,4 +864,49 @@ describe('OverviewView component', () => {
     );
     expect(screen.queryAllByTestId('ended-item')).toHaveLength(0);
   });
+
+  it('shows a second overview address changing the view', async () => {
+    render(OverviewView);
+    await waitFor(() => expect(screen.getAllByTestId('plan-card')).toHaveLength(3));
+
+    // Initially in plan view mode and running work (mode not ended)
+    expect(screen.getByRole('radio', { name: 'by plan' })).toBeChecked();
+    expect(screen.queryByTestId('ended-item')).toBeNull();
+
+    // Now a second overview address arrives: mode=ended, project=pm-mcp-clients
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'overview',
+      lensMode: 'ended',
+      lensProject: 'pm-mcp-clients',
+    }));
+
+    // Reactively updates view to ended work
+    await waitFor(() => expect(screen.getAllByTestId('ended-item')).toHaveLength(3));
+
+    // And another address switch: back to running work, grouped by epic
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'overview',
+      lensGroup: 'epic',
+      lensMode: null,
+      lensProject: 'pm-mcp-clients',
+    }));
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'by epic' })).toBeChecked());
+    await waitFor(() => expect(screen.queryByTestId('ended-item')).toBeNull());
+    await waitFor(() => expect(screen.getByTestId('epic-card')).toBeInTheDocument());
+
+    // And switch group to plan
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'overview',
+      lensGroup: 'plan',
+      lensMode: null,
+      lensProject: 'pm-mcp-clients',
+    }));
+
+    await waitFor(() => expect(screen.getByRole('radio', { name: 'by plan' })).toBeChecked());
+    await waitFor(() => expect(screen.queryByTestId('ended-item')).toBeNull());
+  });
 });

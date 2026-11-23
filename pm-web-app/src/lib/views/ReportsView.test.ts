@@ -2676,5 +2676,80 @@ describe('ReportsView component', () => {
         expect(document.activeElement).toBe(title);
       });
     });
+
+    it('opens a report outside the first page and keeps two reports of one plan apart', async () => {
+      const olderReport: ReportItem = {
+        id: 'rep-older-001',
+        from: { project: 'pm-mcp-clients', epic: 'relay-hardening', plan: 'fix-relay' },
+        kind: 'plan.ended',
+        subject: 'Older report of fix-relay',
+        created_at: '2026-10-14T11:20:00Z',
+        detail_link: '/api/v1/plans/fix-relay/completion',
+      };
+      const olderPage: ReportsPage = {
+        items: [olderReport],
+        unread_count: 0,
+        has_older: false,
+        older_count: 0,
+      };
+
+      vi.spyOn(apiClient, 'getReports').mockImplementation(async (older?: boolean) => {
+        if (older) return olderPage;
+        return mockPage;
+      });
+      vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+      window.history.replaceState(null, '', '/reports');
+      // Open specifically rep-older-001 which is beyond the first page
+      runtimeStore.update((s) => ({
+        ...s,
+        currentRoute: 'report',
+        selectedReportId: 'rep-older-001',
+      }));
+
+      render(ReportsView);
+
+      // The view loads older reports and opens detail for rep-older-001
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/reports/rep-older-001');
+      });
+      expect(get(runtimeStore).selectedReportId).toBe('rep-older-001');
+
+      // Now click rep-0142 (another report of the SAME plan fix-relay)
+      const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+      await fireEvent.click(within(card).getByTestId('report-details'));
+
+      // The selection switches to rep-0142, keeping them apart instead of rewriting to one
+      await waitFor(() => {
+        expect(get(runtimeStore).selectedReportId).toBe('rep-0142');
+      });
+      expect(window.location.pathname).toBe('/reports/rep-0142');
+    });
+
+    it('shows notice for an unresolvable report', async () => {
+      window.history.replaceState(null, '', '/reports/rep-non-existent');
+      vi.spyOn(apiClient, 'getReport').mockResolvedValue(null);
+      runtimeStore.update((s) => ({
+        ...s,
+        currentRoute: 'report',
+        selectedReportId: 'rep-non-existent',
+      }));
+
+      vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+        items: mockReports,
+        unread_count: 3,
+        has_older: false,
+        older_count: 0,
+      });
+
+      render(ReportsView);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('unresolvable-report-notice')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('unresolvable-report-notice')).toHaveTextContent(
+        'rep-non-existent is no report of this machine',
+      );
+    });
   });
 });

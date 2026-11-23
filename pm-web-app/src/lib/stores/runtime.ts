@@ -1009,6 +1009,24 @@ export function fallBackFromDeletedObject(name: string): boolean {
   return true;
 }
 
+/**
+ * Closes an in-place opened object by replacing the address without `open`.
+ */
+export function closeOpenObject(): void {
+  runtimeStore.update((s) => ({ ...s, openObject: null }));
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
+/**
+ * Replaces an in-place opened object with another one.
+ *
+ * @param open the new object identifier
+ */
+export function replaceOpenObject(open: NonNullable<Address['open']>): void {
+  runtimeStore.update((s) => ({ ...s, openObject: open }));
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
 function handleReportEvent(event: string, data: unknown): void {
   if (event === 'report.sent') {
@@ -1253,6 +1271,13 @@ function handleDecisionEvent(event: string, data: unknown): void {
     const closed = announcedDecisionOf(data);
     if (closed) {
       decisionAnnouncer.decisionClosed(closed.id);
+      const state = get(runtimeStore);
+      if (
+        state.currentRoute === 'decision' &&
+        (state.selectedDecisionId === closed.id || currentAddress()?.decisionId === closed.id)
+      ) {
+        fallBackFromDeletedObject(closed.subject || closed.id);
+      }
     }
     runtimeStore.update((s) => ({
       ...s,
@@ -1367,6 +1392,34 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     // The list of what waits is the shell's count and the start page's rows: it follows every
     // change the runtime announces, whoever resolved the item.
     void handleNeedsOperatorChanged();
+  } else if (event === 'plan.deleted' || event === 'plan.removed') {
+    const payload = (data || {}) as { plan_id?: string; name?: string; title?: string };
+    const planId = payload.plan_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'plan' && (state.selectedPlanId === planId || currentAddress()?.planId === planId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || planId || 'plan');
+    }
+  } else if (event === 'epic.deleted' || event === 'epic.removed') {
+    const payload = (data || {}) as { epic_id?: string; name?: string; title?: string };
+    const epicId = payload.epic_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'epic' && (state.selectedEpicId === epicId || currentAddress()?.epicId === epicId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || epicId || 'epic');
+    }
+  } else if (event === 'report.deleted' || event === 'report.detail.deleted') {
+    const payload = (data || {}) as { report_id?: string; name?: string; title?: string };
+    const reportId = payload.report_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'report' && (state.selectedReportId === reportId || currentAddress()?.reportId === reportId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || reportId || 'report');
+    }
+  } else if (event === 'task.deleted' || event === 'task.removed') {
+    const payload = (data || {}) as { task_id?: string; name?: string; title?: string };
+    const taskId = payload.task_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'task' && (state.selectedTaskId === taskId || currentAddress()?.taskId === taskId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || taskId || 'task');
+    }
   }
 }
 
