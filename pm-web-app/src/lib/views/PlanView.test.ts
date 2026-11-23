@@ -11,7 +11,7 @@ import {
 } from '../api/client';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { formatTime } from '../display/format';
-import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
+import { runtimeStore, openPlanView } from '../stores/runtime';
 import { PLAN_PROCESS_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -1616,12 +1616,10 @@ describe('PlanView’s Changes tab', () => {
     // Arrange: the activity's live stream carries the entry's own fields, not the fetched list's.
     runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
     let emit: ((event: string, data: unknown) => void) | null = null;
-    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
-      (_planId, _taskId, handler) => {
-        emit = handler;
-        return () => {};
-      },
-    );
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation((_planId, _taskId, handler) => {
+      emit = handler;
+      return () => {};
+    });
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
       task_id: 'TASK-003',
       role: 'implement',
@@ -1670,9 +1668,7 @@ describe('PlanView’s Changes tab', () => {
     await tick();
 
     // Assert
-    expect(window.location.search).toContain(
-      'file=pm-relay/src/main/java/Transport.java',
-    );
+    expect(window.location.search).toContain('file=pm-relay/src/main/java/Transport.java');
   });
 
   it('takes the size a capture announces and reads the list again', async () => {

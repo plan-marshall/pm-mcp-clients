@@ -127,7 +127,9 @@ describe('WorkListColumn component', () => {
   });
 
   it('renders error state and retries on failure (D4)', async () => {
-    const errorSpy = vi.spyOn(apiClient, 'getProjectDetail').mockRejectedValue(new Error('Network error'));
+    const errorSpy = vi
+      .spyOn(apiClient, 'getProjectDetail')
+      .mockRejectedValue(new Error('Network error'));
 
     render(WorkListColumn, { projectId: 'pm-mcp-clients' });
 
@@ -141,5 +143,30 @@ describe('WorkListColumn component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('work-list-items')).toBeInTheDocument();
     });
+  });
+
+  it('renders UpLink in the column head when a parent exists (D5)', async () => {
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(mockDetail);
+    runtime.openPlanView('fix-relay');
+    runtime.runtimeStore.update((s) => ({
+      ...s,
+      currentProcessTree: {
+        plan_id: 'fix-relay',
+        title: 'Fix Relay Transport',
+        project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients', link: '' },
+        epic: { epic_id: 'relay-hardening', title: 'Relay Hardening', link: '' },
+        root_node: { node_id: 'root', title: 'Root', state: 'running' },
+      },
+    }));
+
+    render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'fix-relay' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('up-link')).toBeInTheDocument();
+    });
+
+    const upLink = screen.getByTestId('up-link');
+    expect(upLink).toHaveTextContent('Relay Hardening');
+    expect(upLink).toHaveAttribute('href', '/epics/relay-hardening');
   });
 });

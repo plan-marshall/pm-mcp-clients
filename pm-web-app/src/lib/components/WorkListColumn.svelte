@@ -13,13 +13,10 @@
     type ActivePlanSummary,
     type ActiveEpicSummary,
   } from '../api/client';
-  import {
-    runtimeStore,
-    openPlanView,
-    openEpicView,
-    addressOfState,
-  } from '../stores/runtime';
+  import { runtimeStore, openPlanView, openEpicView, addressOfState } from '../stores/runtime';
   import { writeAddress } from '../navigation/history';
+  import UpLink from './UpLink.svelte';
+  import { upOf, buildChain } from '../navigation/chain';
 
   interface Props {
     projectId: string;
@@ -52,6 +49,20 @@
     }
   });
 
+  const upParent = $derived(
+    upOf(
+      buildChain($runtimeStore.currentRoute, {
+        plan: $runtimeStore.currentProcessTree,
+        epic: $runtimeStore.currentEpicResource,
+        planId: currentPlanId || $runtimeStore.selectedPlanId,
+        epicId: currentEpicId || $runtimeStore.selectedEpicId,
+        taskId: $runtimeStore.selectedTaskId,
+        projectId: projectId || $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
+        titleState: $runtimeStore,
+      }),
+    ),
+  );
+
   export interface WorkRowItem {
     id: string;
     kind: 'plan' | 'epic';
@@ -78,7 +89,9 @@
     }
   }
 
-  function epicTone(epic: ActiveEpicSummary): 'idle' | 'running' | 'success' | 'warning' | 'danger' {
+  function epicTone(
+    epic: ActiveEpicSummary,
+  ): 'idle' | 'running' | 'success' | 'warning' | 'danger' {
     return (epic.running_plans_count ?? 0) > 0 ? 'running' : 'idle';
   }
 
@@ -151,6 +164,11 @@
   aria-label={$t('overview.running.title')}
 >
   <header class="work-list-column__head">
+    {#if upParent && upParent.kind && upParent.address}
+      <div class="work-list-column__up">
+        <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
+      </div>
+    {/if}
     <h2 class="work-list-column__title">{$t('overview.running.title')}</h2>
   </header>
   {#if isLoading}
@@ -169,20 +187,13 @@
   {:else}
     <ul class="work-list-column__list" data-testid="work-list-items">
       {#each items as item (item.id)}
-        <li
-          class="work-list-column__item"
-          data-testid="work-item-{item.id}"
-        >
+        <li class="work-list-column__item" data-testid="work-item-{item.id}">
           <div
             class="work-list-column__row"
             role="presentation"
             onclick={(e) => onRowClick(e, item)}
           >
-            <RowLink
-              href={item.href}
-              title={item.title}
-              current={item.isCurrent}
-            >
+            <RowLink href={item.href} title={item.title} current={item.isCurrent}>
               {#snippet kind()}<KindMark kind={item.kind} wordHidden />{/snippet}
               {#snippet tags()}
                 <StatusLabel tone={item.statusTone} label={item.statusLabel} />
@@ -218,6 +229,10 @@
   .work-list-column__head {
     margin-block-end: var(--space-3);
     padding-inline: var(--space-2);
+  }
+
+  .work-list-column__up {
+    margin-block-end: var(--space-2);
   }
 
   .work-list-column__title {

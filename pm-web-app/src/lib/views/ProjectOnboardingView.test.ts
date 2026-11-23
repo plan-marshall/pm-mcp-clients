@@ -463,15 +463,7 @@ describe('ProjectOnboardingView component', () => {
   });
 
   it('does not render an in-page back button (D3)', async () => {
-    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
-      project_id: 'pm-mcp-clients',
-      harness: 'claude',
-      completed_steps: 0,
-      active_step: 1,
-      total_steps: 4,
-      status: 'pending',
-      steps: [],
-    } as any);
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
 
     render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
     await waitFor(() => expect(screen.getByTestId('project-onboarding-view')).toBeInTheDocument());

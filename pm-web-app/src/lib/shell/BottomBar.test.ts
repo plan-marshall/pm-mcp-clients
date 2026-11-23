@@ -27,7 +27,7 @@ function openRoute(route: AppRoute): void {
 }
 
 /** @returns the bar, rendered against the English catalogue */
-function renderBar(onChooseTheme: (choice: any) => void = () => {}) {
+function renderBar(onChooseTheme: (choice: string) => void = () => {}) {
   currentLocale.set('en');
   messagesStore.set(loadMessages('en'));
   return render(BottomBar, { props: { themeChoice: 'system', onChooseTheme } });
