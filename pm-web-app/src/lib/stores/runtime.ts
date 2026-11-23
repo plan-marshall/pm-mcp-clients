@@ -2094,18 +2094,16 @@ export function openEpicDecomposition(epicId: string, projectId: string): void {
  * @param projectId the project, once the run has reached its enrolment
  */
 export function openProjectOnboarding(
-  onboardingId?: string | null,
-  projectId?: string | null,
+  onboardingId: string | null = null,
+  projectId: string | null = null,
 ): void {
-  const effectiveOnboardingId = onboardingId ?? null;
-  const effectiveProjectId = projectId ?? null;
   runtimeStore.update((s) => ({
     ...s,
-    selectedOnboardingId: effectiveOnboardingId,
-    selectedProjectId: effectiveProjectId,
+    selectedOnboardingId: onboardingId,
+    selectedProjectId: projectId,
   }));
   pushRoute('project-onboarding');
-  const targetId = effectiveOnboardingId ?? effectiveProjectId ?? undefined;
+  const targetId = onboardingId ?? projectId ?? undefined;
   writeAddress(
     { route: 'project-onboarding', onboardingId: targetId },
     intentFor(currentAddress(), { route: 'project-onboarding', onboardingId: targetId }),

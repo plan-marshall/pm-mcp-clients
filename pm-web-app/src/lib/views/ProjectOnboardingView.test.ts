@@ -590,4 +590,69 @@ describe('ProjectOnboardingView component', () => {
 
     expect(screen.queryByTestId('project-identity-pilot')).not.toBeInTheDocument();
   });
+
+  it('keeps a run started from the checkout form on screen after its identity is saved', async () => {
+    const explorerSpy = vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/new-service',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-new/continue',
+          abandon_link: '/api/v1/entries/ent-new/abandon',
+          links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
+        },
+      ],
+    });
+    const actSpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+
+    render(ProjectOnboardingView, {});
+
+    await fireEvent.input(await screen.findByTestId('project-checkout-path'), {
+      target: { value: '~/git/new-service' },
+    });
+    await fireEvent.click(screen.getByTestId('project-checkout-start'));
+    await fireEvent.click(await screen.findByTestId('project-identity-save'));
+
+    await waitFor(() => expect(actSpy).toHaveBeenCalledTimes(1));
+    // The save reads the explorer again and selects the same run: the form that starts another run
+    // does not come back.
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+    expect(screen.getByTestId('project-identity-step')).toBeInTheDocument();
+  });
+
+  it('offers the step acts of an enrolled project opened at the address of its run', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      all_projects: [{ project_id: 'pm-mcp-clients' } as never],
+    });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepProjectOnboarding')
+      .mockResolvedValue({ ...RUN, step: 4, state: 'project.operator' });
+
+    // The run's address names the run, not the project: no `projectId` reaches the view.
+    render(ProjectOnboardingView, { onboardingId: 'pm-mcp-clients' });
+
+    await fireEvent.click(await screen.findByTestId('project-step-link-enrol'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('pm-mcp-clients', 'enrol', {}));
+    expect(screen.getByTestId('project-chat-open')).not.toBeDisabled();
+  });
+
+  it('shows the error with its retry when the read of an enrolled run fails', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      all_projects: [{ project_id: 'pm-mcp-clients' } as never],
+    });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockRejectedValue(new Error('HTTP 500'));
+
+    render(ProjectOnboardingView, { onboardingId: 'pm-mcp-clients' });
+
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-error')).toBeInTheDocument());
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+  });
 });

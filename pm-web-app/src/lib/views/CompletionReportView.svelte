@@ -401,7 +401,11 @@
           {/if}
         </span>
         {#if !data.deliverables || data.deliverables.length === 0}
-          <p class="empty-text">{$t('report.completion.deliverables_none', { phase: data.phase || (data.token_usage?.by_phase?.length ? data.token_usage.by_phase[data.token_usage.by_phase.length - 1].name : 'refine') })}</p>
+          <p class="empty-text">
+            {data.phase
+              ? $t('report.completion.deliverables_none', { phase: data.phase })
+              : $t('report.completion.deliverables_none_no_phase')}
+          </p>
         {:else}
           <ul class="deliverables-list">
             {#each data.deliverables as d}

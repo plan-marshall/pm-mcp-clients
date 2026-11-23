@@ -4,7 +4,7 @@
  * Every view has a canonical path: the pairing and entry pages (`/pair`, `/entry`), the
  * onboarding (`/onboarding`), the settings (`/settings`), the projects and one project page
  * (`/projects`, `/projects/{id}`), a
- * project's onboarding (`/projects/onboard`), the overview (`/overview`), the start page and the
+ * project's onboarding (`/projects/onboarding`, and `/projects/onboarding/{id}` for one run), the overview (`/overview`), the start page and the
  * list of what waits (`/`), a plan and an epic by
  * their id (`/plans/{id}`, `/epics/{id}`), a task of a plan (`/plans/{id}/tasks/{task}`), the
  * decisions and one decision (`/decisions`, `/decisions/{id}`), the reports and one report
@@ -745,8 +745,8 @@ export function canonicalAddress(url: string): string | null {
  * The address that replaces an old address of a moved view, when this address is one.
  *
  * Pre-1.0 there is no other compatibility: the caller replaces the address bar once, when the
- * address is opened. The onboarding addresses of the projects (`/projects/onboard`) belong to
- * another plan and are not replaced here.
+ * address is opened. `/projects/onboard` is not replaced: it is the page of a project whose id is
+ * `onboard`, and the onboarding runs live at `/projects/onboarding`.
  *
  * @param url a path with an optional query
  * @returns the replacement address, or `null` when the address is not one of the old ones

@@ -4,6 +4,7 @@
   import { formatTime } from '../display/format';
   import { displayState } from '../display';
   import { writeAddress } from '../navigation/history';
+  import { pathForRoute } from '../routes';
   import {
     navigateTo,
     openProjectOnboarding,
@@ -391,13 +392,20 @@
   }
 
   /**
+   * @param being the explorer's report of a being-added run
+   * @returns the id the run is addressed by: its entry id, or its checkout where it names none
+   */
+  function onboardingRunId(being: BeingAddedProject): string {
+    return (/\/entries\/([^/]+)\//.exec(being.continue_link ?? '')?.[1]) ?? being.checkout_path;
+  }
+
+  /**
    * Opens the run a being-added project waits at, on the project onboarding route.
    *
    * @param being the explorer's report of the run
    */
   function handleContinueOnboarding(being: BeingAddedProject) {
-    const id = (/\/entries\/([^/]+)\//.exec(being.continue_link ?? '')?.[1]) ?? being.checkout_path;
-    openProjectOnboarding(id);
+    openProjectOnboarding(onboardingRunId(being));
   }
 
   async function handleConfirmRelease() {
@@ -1142,7 +1150,12 @@
                         handleContinueOnboarding(being);
                       }}
                     >
-                      <RowLink href="/projects/onboard" title={being.checkout_path}>
+                      <RowLink
+                        href={pathForRoute('project-onboarding', {
+                          onboardingId: onboardingRunId(being),
+                        }) ?? '/projects/onboarding'}
+                        title={being.checkout_path}
+                      >
                       {#snippet tags()}
                         <span class="being-added-step text-sm">
                           {$t('project.adding.step', {

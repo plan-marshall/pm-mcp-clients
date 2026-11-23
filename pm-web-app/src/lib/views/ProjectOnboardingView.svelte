@@ -93,9 +93,14 @@
   let identityKey = $state('');
 
   const currentStep = $derived(stepOf(run));
+  /**
+   * The project the step actions address: the one the page was opened for, or — after a reload at
+   * the run's own address, which names the run and not the project — the one the loaded run reports.
+   */
+  const activeProjectId = $derived(projectId ?? run?.project_id ?? null);
   const isNewRun = $derived(!projectId && !run);
   const isComplete = $derived(run?.state === 'project.completed');
-  const chatOffered = $derived(Boolean(projectId) && run?.chat_available !== false);
+  const chatOffered = $derived(Boolean(activeProjectId) && run?.chat_available !== false);
   const chatReason = $derived(
     run?.chat_disabled_reason ? $t(run.chat_disabled_reason) : $t('project.chat.disabled.no_role'),
   );
@@ -115,7 +120,7 @@
   const needsTerminal = $derived(
     run !== null && currentStep === 3 && !run.build_environment?.captured_at,
   );
-  const canSave = $derived(Boolean(projectId || run?.links?.set));
+  const canSave = $derived(Boolean(activeProjectId || run?.links?.set));
 
   // A run that reaches the identity step — or a new run — proposes its values again, and keeps the
   // operator's edits while the step stays the one on screen.
@@ -204,7 +209,7 @@
       name: identity.name,
       pilot: identity.pilot,
     };
-    if (projectId) {
+    if (activeProjectId) {
       await applyStep('set', payload);
       return;
     }
@@ -214,7 +219,9 @@
       error = '';
       try {
         await apiClient.actEntry(entryId, 'set', payload);
-        await load();
+        // The reload selects the same being-added run this screen shows, by its checkout, so a run
+        // started from the checkout form (which has no `onboardingId`) stays on screen.
+        await load(run?.checkout_path ?? undefined);
       } catch (err: unknown) {
         error = actFailureText(err, $t('project.settings.update_failed'));
       } finally {
@@ -369,11 +376,9 @@
       (p) => p.project_id === wanted,
     );
     if (isEnrolled) {
-      try {
-        run = await apiClient.getProjectOnboarding(wanted);
-      } catch {
-        // Leave run as null
-      }
+      // A failed read reaches `load`'s catch, so it shows the error with its retry and never the
+      // form that starts another run.
+      run = await apiClient.getProjectOnboarding(wanted);
     }
   }
 
@@ -454,12 +459,12 @@
    * @param body the step's values
    */
   async function applyStep(step: string, body: Record<string, unknown> = {}): Promise<void> {
-    if (!projectId || isSubmitting) return;
+    if (!activeProjectId || isSubmitting) return;
     isSubmitting = true;
     error = '';
     conflict = null;
     try {
-      const result = await apiClient.stepProjectOnboarding(projectId, step, body);
+      const result = await apiClient.stepProjectOnboarding(activeProjectId, step, body);
       if (result.conflict) {
         // A step that sent fields replays them; a step the link itself answered replays the value
         // the runtime named as wanted.
@@ -492,7 +497,7 @@
   /** Keeps the other client's value and closes the card, without writing anything. */
   async function keepCurrentValue(): Promise<void> {
     conflict = null;
-    if (projectId) {
+    if (activeProjectId) {
       await load();
     }
   }
@@ -534,7 +539,7 @@
 
   /** Sends the operator's question to the setup's role. */
   async function sendChat(): Promise<void> {
-    if (!chatDraft.trim() || isChatting || !projectId) return;
+    if (!chatDraft.trim() || isChatting || !activeProjectId) return;
     isChatting = true;
     const text = chatDraft.trim();
     chatDraft = '';
@@ -856,7 +861,7 @@
         </div>
 
         <div class="state-card__actions">
-          {#if projectId}
+          {#if activeProjectId}
             {#each linkIds() as id}
               <Button
                 variant="secondary"
@@ -944,7 +949,7 @@
         <Button
           variant="primary"
           loading={isChatting}
-          disabled={!chatDraft.trim() || !projectId}
+          disabled={!chatDraft.trim() || !activeProjectId}
           on:click={sendChat}
           data-testid="project-chat-send"
         >

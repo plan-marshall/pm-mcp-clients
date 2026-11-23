@@ -579,6 +579,27 @@ describe('CompletionReportView component', () => {
       expect(screen.getByText('no deliverables yet: it ended in outline')).toBeInTheDocument();
     });
 
+    it('names no phase for empty deliverables when the report supplies none, and never guesses one from the token rows', () => {
+      useCatalogue('en');
+      const { phase: _phase, ...withoutPhase } = { ...mockReport, phase: 'outline' };
+      render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: {
+          ...withoutPhase,
+          deliverables: [],
+          token_usage: {
+            ...(mockReport.token_usage as NonNullable<PlanCompletionReport['token_usage']>),
+            by_phase: [
+              { name: 'refine', total: 10, input: 6, output: 4, unmeasured: 0, floor: false },
+              { name: 'outline', total: 10, input: 6, output: 4, unmeasured: 0, floor: false },
+            ],
+          },
+        } as PlanCompletionReport,
+      });
+      expect(screen.getByText('no deliverables yet')).toBeInTheDocument();
+      expect(screen.queryByText(/it ended in/)).not.toBeInTheDocument();
+    });
+
     it('renders data.title in headline when present rather than repeating plan_id', () => {
       useCatalogue('en');
       const reportWithTitle: PlanCompletionReport = {
