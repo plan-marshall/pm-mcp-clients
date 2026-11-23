@@ -655,6 +655,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
     private static final String SEGMENT_ACTIONS = "/actions";
+    private static final String SEGMENT_TOKENS = "/tokens";
     private static final String SEGMENT_HOLDS = "/holds";
     private static final String SEGMENT_HOLDS_PATH = "/holds/";
     private static final String SEGMENT_DECOMPOSITION = "/decomposition";
@@ -5687,12 +5688,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return false;
         }
 
-        if ("GET".equals(method) && path.endsWith(SEGMENT_ACTIONS)) {
-            if (isPlan) {
-                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_ACTIONS));
-            } else {
-                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_ACTIONS));
-            }
+        if ("GET".equals(method) && handleControlRead(response, path, isPlan)) {
             return true;
         }
 
@@ -5704,13 +5700,29 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
 
-        if ("GET".equals(method) && path.endsWith("/tokens")) {
-            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-            handleGetTokens(response, controlSubjectId(path, prefix, "/tokens"));
+        return isEpic && handleEpicControlReads(request, response);
+    }
+
+    /**
+     * Answers a plain read of a control subject: the subject's acts and its token figure.
+     *
+     * @return {@code true} when a response was written
+     */
+    private boolean handleControlRead(MockHttpResponse response, String path, boolean isPlan) throws IOException {
+        if (path.endsWith(SEGMENT_ACTIONS)) {
+            if (isPlan) {
+                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_ACTIONS));
+            } else {
+                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_ACTIONS));
+            }
             return true;
         }
-
-        return isEpic && handleEpicControlReads(request, response);
+        if (path.endsWith(SEGMENT_TOKENS)) {
+            var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
+            handleGetTokens(response, controlSubjectId(path, prefix, SEGMENT_TOKENS));
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -11879,17 +11891,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
 
         // 1. If static route is defined for this exact process path, return it directly
-        var route = activeRoute("GET", path);
-        if (route != null) {
-            if (isPlanProcess && route.representation() instanceof Map<?, ?> planRep) {
-                var sub = path.substring(PATH_PLANS_PREFIX.length());
-                var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
-                if (!planId.contains("/")) {
-                    response.json(route.status(), withPlanOverlay(planId, planRep));
-                    return true;
-                }
-            }
-            response.json(route.status(), route.representation());
+        if (answerStaticProcessRoute(path, response, isPlanProcess)) {
             return true;
         }
 
@@ -11900,6 +11902,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return true;
         }
         return isEpicProcess && answerEpicProcess(path, response);
+    }
+
+    /**
+     * Answers a process path a scenario serves by its own route, overlaying a plan's summary entry
+     * when the route is the plan's template.
+     *
+     * @return {@code true} when a response was written
+     */
+    private boolean answerStaticProcessRoute(String path, MockHttpResponse response, boolean isPlanProcess)
+            throws IOException {
+        var route = activeRoute("GET", path);
+        if (route == null) {
+            return false;
+        }
+        if (isPlanProcess && route.representation() instanceof Map<?, ?> planRep) {
+            var sub = path.substring(PATH_PLANS_PREFIX.length());
+            var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
+            if (!planId.contains("/")) {
+                response.json(route.status(), withPlanOverlay(planId, planRep));
+                return true;
+            }
+        }
+        response.json(route.status(), route.representation());
+        return true;
     }
 
     /**
