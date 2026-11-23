@@ -62,12 +62,19 @@ describe('the shell navigation model', () => {
   it('keeps the destination of a detail page selected', () => {
     expect(activeNavRoute('plan')).toBe('overview');
     expect(activeNavRoute('epic')).toBe('overview');
+    expect(activeNavRoute('task')).toBe('overview');
     expect(activeNavRoute('decomposition')).toBe('overview');
     expect(activeNavRoute('start')).toBe('overview');
     expect(activeNavRoute('inbox')).toBe('inbox');
+    expect(activeNavRoute('project')).toBe('projects');
+    expect(activeNavRoute('decision')).toBe('decisions');
+    expect(activeNavRoute('report')).toBe('reports');
+    expect(activeNavRoute('reports')).toBe('reports');
     expect(activeNavRoute('cleanup')).toBe('system');
     expect(activeNavRoute('project-onboarding')).toBe('projects');
-    expect(activeNavRoute('reports')).toBe('reports');
+    expect(activeNavRoute('settings')).toBe('settings');
+    expect(activeNavRoute('system')).toBe('system');
+    expect(activeNavRoute('designer')).toBe('designer');
   });
 
   it('places a route in its group, and a page outside the navigation in none', () => {

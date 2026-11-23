@@ -280,6 +280,10 @@ test.describe('The app shell on fully-onboarded', () => {
 
     // The reports moved into the More sheet, so More carries their unread count.
     await expect(page.getByTestId('bottom-more-count')).toHaveText('5');
+
+    // Opening More shows the destinations the sheet carries, including Reports.
+    await page.getByTestId('bottom-more').click();
+    await expect(page.getByTestId('sheet-reports')).toBeVisible();
   });
 });
 
