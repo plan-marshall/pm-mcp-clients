@@ -336,4 +336,52 @@ describe('Dialog', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
+
+  it('ignores Escape while composing with an IME (event.isComposing is true)', async () => {
+    const onClose = vi.fn();
+    render(Dialog, { props: { open: true, title: 'IME Dialog', onClose } });
+
+    await screen.findByRole('dialog', { name: 'IME Dialog' });
+
+    await fireEvent.keyDown(window, { key: 'Escape', isComposing: true });
+    expect(onClose).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(window, { key: 'Escape', isComposing: false });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('an Escape pressed inside the dialog when focus is outside the open menu still closes the dialog', async () => {
+    const onClose = vi.fn();
+    render(DialogWithMenuFixture, {
+      props: {
+        title: 'Dialog with menu',
+        menuLabel: 'Actions',
+        items: [
+          { id: 'first', label: 'First' },
+          { id: 'second', label: 'Second' },
+        ],
+        open: true,
+        onClose,
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Actions' });
+    await fireEvent.click(trigger);
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+
+    // Focus an element outside the menu (the trigger button)
+    trigger.focus();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('an owner that closes while the dialog is open does not leave the page at overflow: hidden', async () => {
+    const { unmount } = render(Dialog, { props: { open: true, title: 'Overflow Dialog' } });
+    expect(document.documentElement.style.overflow).toBe('hidden');
+
+    unmount();
+    expect(document.documentElement.style.overflow).toBe('');
+  });
 });
