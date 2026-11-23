@@ -154,6 +154,8 @@ export interface BeingAddedProject {
   total_steps: number;
   continue_link?: string | null;
   abandon_link?: string | null;
+  build_environment?: ProjectBuildEnvironment | null;
+  links?: Record<string, OnboardingLink | string>;
 }
 
 export interface ProjectExplorer {
@@ -232,6 +234,7 @@ export interface ProjectOnboardingState {
   detected_domains?: string[];
   discovered_modules?: string[];
   credentials_needed?: string[];
+  lifecycle_gate?: boolean;
   links?: Record<string, OnboardingLink | string>;
   /** What the state reports of its own, for a step without a screen here. */
   [key: string]: unknown;

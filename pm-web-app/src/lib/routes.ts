@@ -68,6 +68,8 @@ export interface RouteParams {
   explorerProjectId?: string;
   /** The onboarding step the screen opens at, carried in `/onboarding?step=…`. */
   onboardingStep?: number;
+  /** One project onboarding run, by its onboarding id or checkout path. */
+  onboardingId?: string;
 }
 
 /** The project and the entry a start path names. */
@@ -294,7 +296,7 @@ const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
   pair: '/pair',
   entry: '/entry',
   onboarding: '/onboarding',
-  'project-onboarding': '/projects/onboard',
+  'project-onboarding': '/projects/onboarding',
   settings: '/settings',
   projects: '/projects',
   overview: '/overview',
@@ -340,6 +342,7 @@ const PARAMETERIZED_PATHS: ReadonlyArray<{
   { pattern: /^\/plans\/([^/]+)\/tasks\/([^/]+)$/, route: 'task', names: ['planId', 'taskId'] },
   { pattern: /^\/epics\/([^/]+)$/, route: 'epic', names: ['epicId'] },
   { pattern: /^\/plans\/([^/]+)$/, route: 'plan', names: ['planId'] },
+  { pattern: /^\/projects\/onboarding\/([^/]+)$/, route: 'project-onboarding', names: ['onboardingId'] },
   { pattern: /^\/projects\/([^/]+)\/start$/, route: 'start', names: ['projectId'] },
   { pattern: /^\/projects\/([^/]+)$/, route: 'project', names: ['projectId'] },
   { pattern: /^\/entries\/([^/]+)$/, route: 'start', names: ['entryId'] },
@@ -466,6 +469,8 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
     case 'onboarding':
       // The step travels in the query, so a reload and the browser's back keep it.
       return params.onboardingStep ? `/onboarding?step=${params.onboardingStep}` : fixedPath(route);
+    case 'project-onboarding':
+      return withId(params.onboardingId, (id) => `/projects/onboarding/${id}`, fixedPath(route));
     default:
       return fixedPath(route);
   }
@@ -678,6 +683,7 @@ export function formatAddress(address: Address): string | null {
           taskId: address.taskId,
           reportId: address.reportId,
           onboardingStep: address.onboardingStep,
+          onboardingId: address.onboardingId,
           // A list route's decision travels in the path of its own route, never in the old query.
           decisionId: address.route === 'decision' ? address.decisionId : undefined,
         });

@@ -396,7 +396,8 @@
    * @param being the explorer's report of the run
    */
   function handleContinueOnboarding(being: BeingAddedProject) {
-    openProjectOnboarding(being.checkout_path);
+    const id = (/\/entries\/([^/]+)\//.exec(being.continue_link ?? '')?.[1]) ?? being.checkout_path;
+    openProjectOnboarding(id);
   }
 
   async function handleConfirmRelease() {

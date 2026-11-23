@@ -469,4 +469,106 @@ describe('ProjectOnboardingView component', () => {
     await waitFor(() => expect(screen.getByTestId('project-onboarding-view')).toBeInTheDocument());
     expect(screen.queryByTestId('project-back')).not.toBeInTheDocument();
   });
+
+  it('records identity of a being-added run through the entry link with the exact body', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+          links: {
+            set: {
+              href: '/api/v1/entries/ent-cui/links/set',
+              method: 'POST',
+            },
+          },
+        },
+      ],
+    });
+    const actEntrySpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+
+    const saveBtn = await screen.findByTestId('project-identity-save');
+    expect(saveBtn).not.toBeDisabled();
+
+    await fireEvent.click(saveBtn);
+
+    expect(actEntrySpy).toHaveBeenCalledWith('ent-cui', 'set', {
+      id: 'cui-parent',
+      name: 'cui-parent',
+      pilot: false,
+    });
+  });
+
+  it('shows the needs-terminal card at step 3 only, and clears after read carrying environment', async () => {
+    // At step 2, without build_environment, card should NOT show
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+        },
+      ],
+    });
+
+    const { unmount } = render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
+    expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
+    unmount();
+
+    // At step 3, without build_environment, card DOES show
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Enrolment',
+          step_number: 3,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+        },
+      ],
+    });
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+    expect(await screen.findByTestId('project-needs-terminal')).toBeInTheDocument();
+
+    // Mock explorer returning environment on next read
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/cui-parent',
+          current_step: 'Enrolment',
+          step_number: 3,
+          total_steps: 10,
+          continue_link: '/api/v1/entries/ent-cui/continue',
+          abandon_link: '/api/v1/entries/ent-cui/abandon',
+          build_environment: {
+            captured_at: '2026-10-18T08:00:00Z',
+            source: 'terminal',
+            variables: {},
+          },
+        },
+      ],
+    });
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
+    });
+  });
 });

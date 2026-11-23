@@ -113,8 +113,9 @@
    * the machine, which the terminal client captures (`project-onboarding.adoc#build-environment`).
    */
   const needsTerminal = $derived(
-    run !== null && currentStep <= 3 && !run.build_environment?.captured_at,
+    run !== null && currentStep === 3 && !run.build_environment?.captured_at,
   );
+  const canSave = $derived(Boolean(projectId || run?.links?.set));
 
   // A run that reaches the identity step — or a new run — proposes its values again, and keeps the
   // operator's edits while the step stays the one on screen.
@@ -198,12 +199,28 @@
 
   /** Records the identity and moves the run on. */
   async function saveIdentity(): Promise<void> {
-    if (!projectId) return;
-    await applyStep('set', {
+    const payload = {
       id: identity.id,
       name: identity.name,
       pilot: identity.pilot,
-    });
+    };
+    if (projectId) {
+      await applyStep('set', payload);
+      return;
+    }
+    const entryId = run?.onboarding_id || onboardingId;
+    if (entryId) {
+      isSubmitting = true;
+      error = '';
+      try {
+        await apiClient.actEntry(entryId, 'set', payload);
+        await load();
+      } catch (err: unknown) {
+        error = actFailureText(err, $t('project.settings.update_failed'));
+      } finally {
+        isSubmitting = false;
+      }
+    }
   }
 
   /**
@@ -346,6 +363,17 @@
     if (match) {
       run = runOfBeingAdded(match);
       checkoutDraft = match.checkout_path;
+      return;
+    }
+    const isEnrolled = [...explorer.all_projects, ...explorer.favourites, ...explorer.recent].some(
+      (p) => p.project_id === wanted,
+    );
+    if (isEnrolled) {
+      try {
+        run = await apiClient.getProjectOnboarding(wanted);
+      } catch {
+        // Leave run as null
+      }
     }
   }
 
@@ -354,7 +382,12 @@
    * @returns the id the entry addresses the run by
    */
   function entryOnboardingId(entry: BeingAddedProject): string {
-    const match = /\/entries\/([^/]+)\//.exec(entry.continue_link ?? '');
+    const linkStr =
+      entry.continue_link ??
+      (typeof entry.links?.set === 'string'
+        ? entry.links.set
+        : (entry.links?.set?.href ?? ''));
+    const match = /\/entries\/([^/]+)\//.exec(linkStr);
     if (match?.[1]) {
       try {
         return decodeURIComponent(match[1]);
@@ -370,6 +403,21 @@
    * @returns the run, in the shape the enrolled run reports
    */
   function runOfBeingAdded(entry: BeingAddedProject): ProjectOnboardingState {
+    const rawLinks: Record<string, any> = { ...(entry.links ?? {}) };
+    if (entry.continue_link && !rawLinks.continue) {
+      rawLinks.continue = entry.continue_link;
+    }
+    if (entry.abandon_link && !rawLinks.abandon) {
+      rawLinks.abandon = entry.abandon_link;
+    }
+    const links: Record<string, any> = {};
+    for (const [k, v] of Object.entries(rawLinks)) {
+      if (typeof v === 'string') {
+        links[k] = { href: v, method: 'POST' };
+      } else if (v && typeof v === 'object') {
+        links[k] = v;
+      }
+    }
     return {
       onboarding_id: entryOnboardingId(entry),
       checkout_path: entry.checkout_path,
@@ -378,6 +426,8 @@
       state: STEPS[entry.step_number - 1]?.state ?? 'project.checkout',
       summary: entry.current_step,
       chat_available: false,
+      build_environment: entry.build_environment ?? null,
+      links,
     };
   }
 
@@ -674,8 +724,8 @@
               <Button
                 variant="primary"
                 loading={isSubmitting}
-                disabled={!identity.id.trim() || !identity.name.trim() || !projectId}
-                disabledReason={!projectId ? $t('project.identity.enrol_in_terminal') : undefined}
+                disabled={!identity.id.trim() || !identity.name.trim() || !canSave}
+                disabledReason={!canSave ? $t('project.identity.enrol_in_terminal') : undefined}
                 on:click={saveIdentity}
                 data-testid="project-identity-save"
               >

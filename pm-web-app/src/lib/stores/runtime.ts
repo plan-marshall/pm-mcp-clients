@@ -1756,6 +1756,10 @@ export function adoptRouteFromLocation(): AppRoute | null {
           : null,
       // The onboarding keeps the step the address names, so a later store update cannot drop it.
       onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
+      selectedOnboardingId:
+        match.route === 'project-onboarding'
+          ? (match.onboardingId ?? s.selectedOnboardingId ?? null)
+          : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       selectedTaskId: match.taskId ?? null,
@@ -2093,12 +2097,19 @@ export function openProjectOnboarding(
   onboardingId?: string | null,
   projectId?: string | null,
 ): void {
+  const effectiveOnboardingId = onboardingId ?? null;
+  const effectiveProjectId = projectId ?? null;
   runtimeStore.update((s) => ({
     ...s,
-    selectedOnboardingId: onboardingId ?? null,
-    selectedProjectId: projectId ?? null,
+    selectedOnboardingId: effectiveOnboardingId,
+    selectedProjectId: effectiveProjectId,
   }));
   pushRoute('project-onboarding');
+  const targetId = effectiveOnboardingId ?? effectiveProjectId ?? undefined;
+  writeAddress(
+    { route: 'project-onboarding', onboardingId: targetId },
+    intentFor(currentAddress(), { route: 'project-onboarding', onboardingId: targetId }),
+  );
 }
 
 /**
