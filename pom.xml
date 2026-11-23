@@ -162,10 +162,10 @@
                                     </excludes>
                                     <!-- Beside jackson-core: Lombok, which is needed at compile time only, the
                                          JUnit stack of the tests with what it brings, the CUI test stack of the
-                                         tests, and Awaitility for the condition waits of the tests. The CUI test
-                                         artifacts and Awaitility are bound to test scope; the cui-java-tools they
-                                         bring and the Hamcrest of Awaitility stay unbound, because the rule cannot
-                                         tell the scope of a transitive dependency -->
+                                         tests, and Awaitility for the condition waits of the tests. The test
+                                         artifacts the rule can resolve are bound to test scope, so a compile-scoped
+                                         copy is refused; cui-java-tools stays unbound because the CUI test stack
+                                         brings it at compile scope -->
                                     <includes>
                                         <include>com.fasterxml.jackson.core:jackson-core</include>
                                         <include>org.projectlombok:lombok</include>
