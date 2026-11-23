@@ -493,10 +493,8 @@ describe('SettingsView component', () => {
 
     render(SettingsView);
 
-    await waitFor(() => expect(screen.getByTestId('settings-back-button')).toBeInTheDocument());
-    await fireEvent.click(screen.getByTestId('settings-back-button'));
-
-    expect(get(runtimeStore).currentRoute).toBe('projects');
+    await waitFor(() => expect(screen.getByTestId('settings-view')).toBeInTheDocument());
+    expect(screen.queryByTestId('settings-back-button')).not.toBeInTheDocument();
   });
 });
 

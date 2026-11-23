@@ -1072,7 +1072,8 @@ describe('ReportsView component', () => {
     // failure; the operator closes the detail meanwhile, so nothing is left to keep the row for.
     eventHandler?.('report.read', { report_id: 'rep-0142' });
     await tick();
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
@@ -1191,7 +1192,8 @@ describe('ReportsView component', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     // The single read is still in flight, so its row stays until that outcome is known.
     expect(document.querySelector('[data-report-id="rep-0142"]')).not.toBeNull();
 
@@ -1270,7 +1272,8 @@ describe('ReportsView component', () => {
     });
 
     // The operator closes the detail before the read request settles.
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     expect(document.querySelector('.completion-report')).toBeNull();
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
@@ -1300,7 +1303,8 @@ describe('ReportsView component', () => {
     await waitFor(() => {
       expect(document.querySelector('.report-title')).not.toBeNull();
     });
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     if (!resolveRead) throw new Error('the pending read request was never created');
@@ -2197,8 +2201,8 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     // Close detail
-    const backBtn = screen.getByRole('button', { name: /^Back$/i });
-    await fireEvent.click(backBtn);
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
 
     // Retained row is now flushed from list
     await waitFor(() => {

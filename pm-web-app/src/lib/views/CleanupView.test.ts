@@ -359,4 +359,15 @@ describe('CleanupView component', () => {
 
     expect(releaseSpy).toHaveBeenCalledWith([], true);
   });
+
+  it('does not render an in-page back button in the empty state (D3)', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(null as any);
+    render(CleanupView);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /Nothing is due/i })).toBeInTheDocument();
+    });
+
+    expect(screen.queryByRole('button', { name: /Back to System/i })).not.toBeInTheDocument();
+  });
 });

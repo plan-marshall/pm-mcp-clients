@@ -498,16 +498,13 @@ describe('PlanView component', () => {
     expect(prunedBox).toHaveTextContent('not in this plan: refine, outline (the land lane)');
   });
 
-  it('returns to the caller view from the back button', async () => {
-    navigateTo('overview');
+  it('does not render an in-page back button (D3)', async () => {
     openPlanView('fix-relay');
 
     render(PlanView);
 
     await screen.findByTestId('plan-title');
-    await fireEvent.click(screen.getByTestId('back-btn'));
-
-    expect(get(runtimeStore).currentRoute).toBe('overview');
+    expect(screen.queryByTestId('back-btn')).not.toBeInTheDocument();
   });
 
   it('opens the parent epic from the breadcrumb in one step', async () => {

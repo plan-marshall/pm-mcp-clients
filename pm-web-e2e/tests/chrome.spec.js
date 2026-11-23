@@ -87,10 +87,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     const jump = page.getByTestId('jump-btn');
     await expect(jump).toHaveAttribute('title', /position that runs now/);
     await expect(jump).not.toHaveAttribute('title', /^to where it is$/i);
-    await expect(page.getByTestId('back-btn')).toHaveAttribute(
-      'title',
-      /Return to the view you came from/,
-    );
+    await expect(page.getByTestId('back-btn')).toHaveCount(0);
   });
 
   test('keeps the chosen theme across a full load', async ({ page }) => {

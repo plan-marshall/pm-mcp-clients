@@ -510,8 +510,9 @@ describe('OverviewView component', () => {
     const newerBtn = screen.getByRole('button', { name: 'Newer' });
     expect(newerBtn).toBeDisabled();
 
-    // Back button
-    await fireEvent.click(screen.getByText('Back'));
+    // No in-page Back button (D3)
+    expect(screen.queryByText('Back')).not.toBeInTheDocument();
+    runtimeStore.update((s) => ({ ...s, lensMode: null }));
     await waitFor(() => {
       expect(screen.getByText('Console history of answers')).toBeInTheDocument();
     });
@@ -604,7 +605,6 @@ describe('OverviewView component', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: 'Older' }));
     await fireEvent.click(screen.getByTestId('ended-open-pln-relay-drops'));
-    await fireEvent.click(screen.getByText('Back'));
 
     const readKeys = getItemSpy.mock.calls.map(([key]) => key);
     const writtenKeys = setItemSpy.mock.calls.map(([key]) => key);

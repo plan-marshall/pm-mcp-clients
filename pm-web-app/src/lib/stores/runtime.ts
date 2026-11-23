@@ -1481,16 +1481,6 @@ export async function pairBrowser(code: string): Promise<void> {
   void loadAttention();
 }
 
-/**
- * One entry of the caller's navigation stack: where the operator was before the current view.
- */
-export interface NavigationEntry {
-  route: AppRoute;
-  params: RouteParams;
-}
-
-/** The routes the browser can return to by the caller's own back, newest last. */
-const navigationStack: NavigationEntry[] = [];
 
 /**
  * How many route applications this store has made. A call that awaits a read before it navigates
@@ -1665,36 +1655,9 @@ export function addressOfState(state: RuntimeState): Address {
  * @param params the identifiers it names, e.g. a plan's id
  */
 export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
-  const state = get(runtimeStore);
-  if (state.isInitialized) {
-    navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
-  }
   applyRoute(route, params);
   const next = addressOfState(get(runtimeStore));
   writeAddress(next, intentFor(currentAddress(), next));
-}
-
-/**
- * Returns to the route the caller came from.
- *
- * The browser's own history is the fallback when the caller's stack holds nothing (the view was
- * opened by a deep link or a reload).
- *
- * @returns `true` when a previous route was found
- */
-export function goBack(): boolean {
-  const previous = navigationStack.pop();
-  if (!previous) {
-    if (window.history.length > 1) {
-      window.history.back();
-      return true;
-    }
-    return false;
-  }
-  applyRoute(previous.route, previous.params);
-  // The current entry is replaced, so the browser's Back does not lead into a loop.
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-  return true;
 }
 
 /**

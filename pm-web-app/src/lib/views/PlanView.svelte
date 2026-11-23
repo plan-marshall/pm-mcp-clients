@@ -26,7 +26,6 @@
     openEpicView,
     openProjectInExplorer,
     openCompletionReport,
-    goBack,
     navigateTo,
     selectObjectTab,
     selectPlanChangeFile,
@@ -585,18 +584,6 @@
     return split;
   }
 
-  /**
-   * Goes back to the view the plan was opened from.
-   *
-   * The caller's navigation stack names that view; a plan opened by a deep link or a reload has
-   * none, and falls back to Running Work.
-   */
-  function goBackToCaller() {
-    if (!goBack()) {
-      navigateTo('overview');
-    }
-  }
-
   function openEpic(epicId: string) {
     openEpicView(epicId);
   }
@@ -855,14 +842,6 @@
           >
             {$t('report.action.details')}
           </button>
-          <Button
-            variant="ghost"
-            onclick={goBackToCaller}
-            data-testid="back-btn"
-            data-advisory={$t('common.action.back.title')}
-          >
-            {$t('common.action.back')}
-          </Button>
         </div>
       </div>
 

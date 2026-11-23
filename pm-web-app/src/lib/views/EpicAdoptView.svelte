@@ -11,7 +11,6 @@
   export let onAdopt: (epicId: string) => void = () => {};
   export let onNew: () => void = () => {};
   export let onRetry: () => void = () => {};
-  export let onBack: () => void = () => {};
   export let onAbandon: () => void = () => {};
 
   function reasonOf(problem: AdoptionFailure): string {
@@ -32,9 +31,6 @@
     <div class="epic-adopt__actions">
       <Button variant="ghost" data-testid="adopt-retry" disabled={busy} onclick={onRetry}>
         {$t('common.action.retry')}
-      </Button>
-      <Button variant="ghost" data-testid="adopt-back" disabled={busy} onclick={onBack}>
-        {$t('common.action.back')}
       </Button>
       <Button variant="ghost" data-testid="adopt-abandon" disabled={busy} onclick={onAbandon}>
         {$t('start.entry.abandon')}

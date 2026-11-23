@@ -829,13 +829,6 @@
               </span>
             {/if}
           </div>
-          <Button
-            variant="secondary"
-            on:click={closeEndedWork}
-            data-advisory={$t('common.action.back.title')}
-          >
-            {$t('common.action.back')}
-          </Button>
         </div>
 
         {#if isLoadingEnded}
