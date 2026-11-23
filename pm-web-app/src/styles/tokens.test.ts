@@ -41,12 +41,6 @@ const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
  * each mapped to the part or plan that removes it.
  */
 const ALLOWLISTED_Z_INDEX_FILES: Record<string, string> = {
-  [path.normalize('lib/components/FindingsReviewModal.svelte')]: 'the V parts',
-  [path.normalize('lib/components/HoldResolutionModal.svelte')]: 'the V parts',
-  [path.normalize('lib/components/ConfinedFilePicker.svelte')]: 'the V parts',
-  [path.normalize('lib/components/GrantModal.svelte')]: 'the V parts',
-  [path.normalize('lib/components/LanListenerModal.svelte')]: 'the V parts',
-  [path.normalize('lib/components/StartWorkModal.svelte')]: 'the V parts',
   [path.normalize('lib/components/PlanSettingsModal.svelte')]: 'PLAN-55',
   [path.normalize('lib/components/GitSourceIntakeModal.svelte')]: 'PLAN-53',
   [path.normalize('lib/components/LessonSourceModal.svelte')]: 'PLAN-53',

@@ -186,21 +186,64 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('action-pause')).toHaveCount(0, { timeout: 5000 });
   });
 
-  test('resolves the integrity pause of a held plan, and shows what still holds', async ({
+  test('resolves the integrity pause of a held plan through the design dialog, and shows what still holds', async ({
     page,
     request,
   }) => {
     await pairBrowser(page, request);
     await page.goto('/plans/relay-cursor-order');
 
-    await expect(page.getByTestId('hold-modal')).toBeVisible();
-    await expect(page.getByTestId('hold-title')).toContainText('integrity pause');
-    await expect(page.getByTestId('hold-file')).toContainText('references.json');
+    const dialog = page.getByRole('dialog', { name: /integrity pause/ });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByTestId('key-value-list')).toContainText('references.json');
+    await expect(page.getByTestId('hold-act-retry')).toHaveClass(/btn--secondary/);
+    await expect(page.getByTestId('hold-close-button')).toHaveClass(/btn--ghost/);
+
+    // An act that cannot be undone opens its own confirmation, with the reason as a TextField.
+    await page.getByTestId('hold-act-accept').click();
+    const confirm = page.getByRole('dialog', { name: 'Accept the change…' });
+    await expect(confirm).toBeVisible();
+    await confirm.getByRole('textbox', { name: 'Reason for this act' }).fill('the change is mine');
+    await confirm.getByRole('button', { name: 'Back' }).click();
 
     await page.getByTestId('hold-act-retry').click();
-    await expect(page.getByTestId('hold-still-held')).toContainText('Still held', {
-      timeout: 5000,
-    });
+    await expect(page.getByTestId('hold-still-held')).toContainText(
+      /Still held: .*references\.json changed outside the runtime/,
+      { timeout: 5000 },
+    );
+  });
+
+  test('shows a held item with its acts', async ({ page, request }) => {
+    await pairBrowser(page, request);
+
+    await page.goto('/plans/relay-docs');
+    const held = page.getByRole('dialog', { name: /holds: a held item/ });
+    await expect(held).toBeVisible();
+    await expect(page.getByTestId('hold-act-end_plan')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(held).toHaveCount(0);
+  });
+
+  test('Escape closes the hold dialog and gives the focus back to the act of the view', async ({
+    page,
+    request,
+  }) => {
+    await pairBrowser(page, request);
+    await page.goto('/plans/relay-cursor-order');
+    const dialog = page.getByRole('dialog', { name: /integrity pause/ });
+    await expect(dialog).toBeVisible();
+
+    // The view opens the hold itself while it loads; the operator's own act opens it again.
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    const opener = page.getByTestId('open-hold');
+    await opener.click();
+    await expect(dialog).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
   });
 
   test('offers a plan’s settings and reports a refused value', async ({ page, request }) => {
@@ -344,10 +387,11 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await page.getByTestId('open-findings-review').click();
 
     await expect(page.getByTestId('review-modal')).toBeVisible();
-    await expect(page.getByTestId('review-title')).toContainText('findings review');
+    await expect(page.getByRole('dialog', { name: /findings review/ })).toBeVisible();
     await expect(page.getByTestId('review-item-F-0004')).toContainText(
       'Reconnect loses the last event',
     );
+    await expect(page.getByTestId('review-item-F-0004')).toHaveClass(/btn--secondary/);
     await page.getByTestId('review-item-F-0005').click();
     await expect(page.getByTestId('review-untrusted')).toBeVisible();
   });

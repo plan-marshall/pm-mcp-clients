@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import BrandMark from '../components/BrandMark.svelte';
   import PairingQr from '../components/PairingQr.svelte';
   import MascotFigure from '../components/MascotFigure.svelte';
+  import CodeField from '../components/CodeField.svelte';
+  import Chip from '../components/Chip.svelte';
   import { pairBrowser, runtimeStore, navigateTo } from '../stores/runtime';
 
   /**
@@ -16,12 +19,40 @@
   let codeInput = '';
   let isPairing = false;
   let errorMessage = '';
-  let copiedCommand: string | null = null;
+  let isCodeValid = false;
+  let isHeroVisible = true;
+  let pairingFrame: HTMLElement | null = null;
+
+  function updateHeroVisibility(): void {
+    const width =
+      pairingFrame?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 0);
+    const height = typeof window !== 'undefined' ? window.innerHeight : 0;
+    isHeroVisible = width > 800 && (height > 520 || height === 0);
+  }
+
+  if (typeof window !== 'undefined') {
+    updateHeroVisibility();
+  }
+
+  onMount(() => {
+    updateHeroVisibility();
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateHeroVisibility())
+        : null;
+    if (pairingFrame && ro) {
+      ro.observe(pairingFrame);
+    }
+    window.addEventListener('resize', updateHeroVisibility);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', updateHeroVisibility);
+    };
+  });
 
   const cmdLocal = 'pm-operator web open --pair';
   const cmdRemote = 'pm-operator web pair';
 
-  $: isCodeValid = codeInput.replace(/[^A-Za-z0-9]/g, '').length >= 8;
   $: pairingUrl =
     typeof window !== 'undefined'
       ? `${window.location.origin}/pair#code=${codeInput.replace(/[^A-Za-z0-9]/g, '').toUpperCase()}`
@@ -64,24 +95,12 @@
     e.preventDefault();
     submitPairing(codeInput);
   }
-
-  async function copyToClipboard(text: string, id: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      copiedCommand = id;
-      setTimeout(() => {
-        copiedCommand = null;
-      }, 2000);
-    } catch {
-      // A refused clipboard leaves the text selectable.
-    }
-  }
 </script>
 
 <!-- The hero stands beside the card on a wide, tall page; the stylesheet hides it where the page is
      too narrow to hold both and below the free-height threshold, and switches the brand icon from
      28 px to 64 px with it. -->
-<div class="pairing-frame">
+<div class="pairing-frame" bind:this={pairingFrame}>
   <div class="pairing-page">
     <div class="pair-card" data-testid="pairing-view">
       {#if $runtimeStore.isRevoked}
@@ -114,28 +133,17 @@
           <p class="pair-card__intro">{$t('web.pair.page.intro')}</p>
         </div>
 
-        {#if errorMessage || $runtimeStore.pairingFailed}
-          <div class="alert alert--danger" role="alert" data-testid="pairing-error">
-            {errorMessage || $t('web.pair.page.invalid')}
-          </div>
-        {/if}
-
         <form class="pair-card__form" on:submit={handleManualSubmit}>
           <div class="form-group">
-            <label for="pairing-code" class="form-label">
-              {$t('web.pair.page.code')}
-            </label>
-            <input
+            <CodeField
               id="pairing-code"
-              type="text"
-              class="form-input mono"
-              placeholder={$t('web.pair.page.code_placeholder')}
-              maxlength="12"
-              autocomplete="off"
-              autocorrect="off"
-              autocapitalize="characters"
-              spellcheck="false"
+              label={$t('web.pair.page.code')}
               bind:value={codeInput}
+              bind:complete={isCodeValid}
+              error={errorMessage || ($runtimeStore.pairingFailed ? $t('web.pair.page.invalid') : null)}
+              disabled={isPairing}
+              placeholder={$t('web.pair.page.code_placeholder')}
+              testid="pairing-code"
             />
           </div>
 
@@ -143,25 +151,11 @@
             <p class="pair-card__help-title">{$t('web.pair.page.get_code')}</p>
             <div class="cmd-row">
               <span class="cmd-row__desc">{$t('web.pair.page.this_machine')}</span>
-              <code class="cmd-row__code">{cmdLocal}</code>
-              <Button
-                type="button"
-                variant="ghost"
-                on:click={() => copyToClipboard(cmdLocal, 'local')}
-              >
-                {copiedCommand === 'local' ? $t('web.common.copied') : $t('web.common.copy')}
-              </Button>
+              <Chip value={cmdLocal} />
             </div>
             <div class="cmd-row">
               <span class="cmd-row__desc">{$t('web.pair.page.other_computer')}</span>
-              <code class="cmd-row__code">{cmdRemote}</code>
-              <Button
-                type="button"
-                variant="ghost"
-                on:click={() => copyToClipboard(cmdRemote, 'remote')}
-              >
-                {copiedCommand === 'remote' ? $t('web.common.copied') : $t('web.common.copy')}
-              </Button>
+              <Chip value={cmdRemote} />
             </div>
           </div>
 
@@ -181,7 +175,7 @@
       {/if}
     </div>
     <div class="pairing-page__hero" data-testid="pairing-hero">
-      <MascotFigure pose="welcome" height={HERO_HEIGHT} eager entrance />
+      <MascotFigure pose="welcome" height={HERO_HEIGHT} eager={isHeroVisible} entrance />
     </div>
   </div>
 </div>
@@ -276,46 +270,12 @@
     color: var(--color-text-secondary);
   }
 
-  .alert {
-    margin: 0 var(--space-6) var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    font-size: var(--text-sm);
-  }
-
-  .alert--danger {
-    background-color: var(--color-danger-subtle);
-    border: 1px solid var(--color-danger-border);
-    color: var(--color-danger);
-  }
-
   .pair-card__form {
     padding: 0 var(--space-6) var(--space-6);
   }
 
   .form-group {
     margin-bottom: var(--space-6);
-  }
-
-  .form-label {
-    display: block;
-    font-size: var(--text-sm);
-    font-weight: 600;
-    margin-bottom: var(--space-2);
-    color: var(--color-text-primary);
-  }
-
-  .form-input {
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    font-family: var(--font-mono);
-    font-size: var(--text-3xl);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-app);
-    color: var(--color-text-primary);
   }
 
   .pair-card__help {
@@ -334,7 +294,7 @@
 
   .cmd-row {
     display: grid;
-    grid-template-columns: 10rem 1fr auto;
+    grid-template-columns: 10rem 1fr;
     align-items: center;
     gap: var(--space-3);
     margin-bottom: var(--space-2);
@@ -347,15 +307,6 @@
 
   .cmd-row__desc {
     color: var(--color-text-muted);
-  }
-
-  .cmd-row__code {
-    background-color: var(--color-bg-surface);
-    padding: var(--space-1) var(--space-2);
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-border-subtle);
-    overflow-x: auto;
-    white-space: nowrap;
   }
 
   .pair-card__qr {
@@ -458,7 +409,7 @@
     }
 
     .cmd-row {
-      grid-template-columns: 1fr auto;
+      grid-template-columns: 1fr;
     }
 
     .cmd-row__desc {

@@ -60,7 +60,6 @@
   --control-radius: var(--radius-md);
   --control-bg: var(--color-bg-surface);
   --control-border: var(--color-border-strong);
-  --state-slot-width: 8.5rem;
 
   /* VD-P-04 motion; the reduced-motion block below turns it off */
   --duration-fast: 120ms;
@@ -77,6 +76,9 @@
   --layer-menu: 30;
   --layer-toast: 90;
   --layer-dialog: 100;
+
+  /* The fixed slot a state takes in a list (components-tags.adoc § StatusLabel; not a control token) */
+  --state-slot-width: 8.5rem;
 
   /* VD-P-02 colour palette, light (the default) */
   --color-bg-app: #f7f7f5;

@@ -549,6 +549,7 @@
       <DataTable columns={tableColumns} rows={[]} label={$t('dev.table.label_empty')}>
         <svelte:fragment slot="empty">
           <EmptyState
+            testid="empty-state-table"
             icon="kind.plan"
             title={$t('dev.empty.title')}
             message={$t('dev.empty.message')}
@@ -561,6 +562,7 @@
       <h3 class="dev__section-title">{$t('dev.section.empty_states')}</h3>
       <div class="dev__grid">
         <EmptyState
+          testid="empty-state-calm"
           mascot="all-clear"
           title={$t('dev.empty.title')}
           message={$t('dev.empty.message')}
@@ -568,6 +570,7 @@
           onAct={() => {}}
         />
         <EmptyState
+          testid="empty-state-icon"
           icon="kind.lesson"
           title={$t('dev.empty.icon_title')}
           message={$t('dev.empty.icon_message')}

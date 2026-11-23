@@ -457,9 +457,9 @@ describe('EpicView component', () => {
 
     expect(review).toHaveBeenCalledWith('relay-hardening', 'findings');
     expect(await screen.findByTestId('review-modal')).toBeInTheDocument();
-    expect(screen.getByTestId('review-title')).toHaveTextContent(
-      'relay-hardening · findings review',
-    );
+    expect(
+      screen.getByRole('dialog', { name: 'relay-hardening · findings review' }),
+    ).toBeInTheDocument();
     // F-0003 is decided; the review opens on F-0004, the first item still open.
     expect(screen.getByTestId('review-statement')).toHaveTextContent(
       'Reconnect loses the last event',

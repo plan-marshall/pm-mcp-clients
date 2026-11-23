@@ -275,10 +275,9 @@ describe('/dev/components page fixture', () => {
     (theme) => {
       render(DevComponentsPage);
       const block = document.querySelector(`[data-theme="${theme}"]`);
-      // In page order: the data table's empty slot, the calm empty state, the icon empty state.
-      const [tableEmpty, calm, iconEmpty] = Array.from(
-        block?.querySelectorAll('[data-testid="empty-state"]') ?? [],
-      );
+      const tableEmpty = block?.querySelector('[data-testid="empty-state-table"]');
+      const calm = block?.querySelector('[data-testid="empty-state-calm"]');
+      const iconEmpty = block?.querySelector('[data-testid="empty-state-icon"]');
 
       expect(calm?.querySelector('[data-testid="mascot-figure"]')).toHaveAttribute(
         'data-pose',

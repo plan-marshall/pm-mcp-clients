@@ -222,6 +222,20 @@ class NeedsItemCommandsTest {
     }
 
     @Test
+    @DisplayName("handles a blank title gracefully by falling back to the display layer")
+    void subjectHandlesBlankTitle() {
+        var planId = Generators.letterStrings(4, 12).next();
+        var blankTitle = "   ";
+        var withBlank = item(NeedsOperatorKind.CONDITION, "/api/v1/plans/" + planId, null, null,
+                            new WorkLocation(planId, blankTitle), "plan");
+
+        var subject = OverviewFormatting.formatNeedsItemSubject(withBlank, "de");
+        assertEquals(Display.title("de", null, planId), subject,
+                            "a place with a blank title falls back to the display layer name");
+        assertFalse(subject.contains(planId), "the bare id reached the operator: " + subject);
+    }
+
+    @Test
     @DisplayName("renders what an item blocks in the operator's words, never the wire token")
     void blocksAreCatalogueWords() {
         assertEquals(Map.of("en", "blocks: plan", "de", "blockiert: Plan"),

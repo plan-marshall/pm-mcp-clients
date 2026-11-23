@@ -38,6 +38,7 @@ import {
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
 import { actFailureReason, errorCodeOf } from '../api/errors';
+import { isLoopbackSession } from '../utils/loopback';
 import { refreshesProjectView } from './refreshEvents';
 import { handleNeedsOperatorChanged, loadAttention } from './attention';
 
@@ -305,6 +306,60 @@ export async function retryRuntime(): Promise<void> {
   } finally {
     retryInFlight = false;
   }
+}
+
+/**
+ * A reconnect controller that manages periodic and manual retries while a view is mounted,
+ * ensuring only one reconnection attempt runs at a time and errors are safely caught.
+ *
+ * @param onStateChange optional callback notified when reconnecting state changes
+ * @returns controller with reconnect, start, and stop methods
+ */
+export function createReconnectLoop(
+  onStateChange?: (reconnecting: boolean) => void,
+  retryFn: () => Promise<void> = retryRuntime,
+) {
+  let isReconnecting = false;
+  let interval: ReturnType<typeof setInterval> | null = null;
+  let mounted = true;
+
+  async function reconnect(): Promise<void> {
+    if (isReconnecting || !mounted) return;
+    isReconnecting = true;
+    onStateChange?.(true);
+    try {
+      await retryFn();
+    } catch {
+      // Swallowed: retries continue on the interval or manual trigger
+    } finally {
+      isReconnecting = false;
+      if (mounted) {
+        onStateChange?.(false);
+      }
+    }
+  }
+
+  function start(): void {
+    mounted = true;
+    interval = setInterval(() => void reconnect(), RECONNECT_INTERVAL_MS);
+  }
+
+  function stop(): void {
+    mounted = false;
+    if (interval) {
+      clearInterval(interval);
+      interval = null;
+    }
+  }
+
+  return {
+    reconnect,
+    start,
+    stop,
+    get isReconnecting() {
+      return isReconnecting;
+    },
+  };
 }
 
 /** Where the person stood: the address and the route the store showed. */
@@ -891,8 +946,6 @@ export async function refreshDecisionsCount(): Promise<void> {
   }
 }
 
-const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
-
 /**
  * Records that the network listener this browser reached the machine over was closed.
  *
@@ -901,7 +954,7 @@ const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
  * that says why, with its pairing kept.
  */
 function markListenerClosed(): void {
-  const onLoopback = loopbackHosts.has(window.location.hostname);
+  const onLoopback = isLoopbackSession();
   const closedAt = new Date().toISOString();
   runtimeStore.update((s) => ({
     ...s,

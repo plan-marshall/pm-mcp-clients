@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import fs from 'node:fs';
+import path from 'node:path';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import FindingsReviewModal from './FindingsReviewModal.svelte';
 import type { ReviewResource } from '../api/client';
 
@@ -39,15 +41,54 @@ describe('FindingsReviewModal component', () => {
       props: { epicId: 'relay-hardening', register: 'findings', review, open: true },
     });
 
-    expect(screen.getByTestId('review-title')).toHaveTextContent(
-      'relay-hardening · findings review',
-    );
+    const dialog = screen.getByRole('dialog', { name: 'relay-hardening · findings review' });
+
+    expect(dialog).toHaveTextContent('2 of 3 decided');
     expect(screen.getByTestId('review-progress')).toHaveTextContent('2 of 3 decided');
     expect(screen.getByTestId('review-open-count')).toHaveTextContent('1 open');
     expect(screen.getByTestId('review-item-F-0004')).toHaveTextContent(
       'Reconnect loses the last event',
     );
     expect(screen.getByTestId('review-item-F-0005')).toHaveTextContent('kept');
+  });
+
+  it('holds the focus inside the dialog and walks its acts with Tab', async () => {
+    render(FindingsReviewModal, {
+      props: { epicId: 'relay-hardening', register: 'findings', review, open: true },
+    });
+    const dialog = screen.getByRole('dialog', { name: 'relay-hardening · findings review' });
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+
+    await fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  it('draws every item and every act through the design vocabulary', () => {
+    render(FindingsReviewModal, {
+      props: { epicId: 'relay-hardening', register: 'findings', review, open: true },
+    });
+
+    // The rows are Buttons, and the disposition beside the item is the state label of the design.
+    for (const id of ['F-0004', 'F-0005']) {
+      const row = screen.getByTestId(`review-item-${id}`);
+
+      expect(row.className).toContain('btn');
+      expect(row.querySelector('.status-label')).not.toBeNull();
+      expect(within(row).getByText(/open|kept/)).toBeInTheDocument();
+    }
+    // What still waits for the operator carries the attention tone.
+    expect(
+      screen.getByTestId('review-item-F-0004').querySelector('.status-label--attention'),
+    ).not.toBeNull();
+    // In a list the state takes the fixed slot, so the dots stand one under the other.
+    expect(screen.getByTestId('review-item-F-0004').querySelector('.status-label--fixed')).not.toBeNull();
+    expect(document.querySelectorAll('.btn--secondary').length).toBeGreaterThanOrEqual(5);
+    // One primary act: Finish.
+    const primaries = document.querySelectorAll('.btn--primary');
+    expect(primaries).toHaveLength(1);
+    expect(primaries[0]).toBe(screen.getByTestId('review-commit'));
   });
 
   it('opens on its first open item again after a parent closed it', async () => {
@@ -126,7 +167,6 @@ describe('FindingsReviewModal component', () => {
     expect(screen.getByTestId('review-statement')).toHaveTextContent(
       'Reconnect loses the last event',
     );
-    expect(screen.getByTestId('review-item-F-0004')).toHaveClass('selected');
     expect(screen.getByTestId('review-item-F-0004')).toHaveAttribute('aria-current', 'true');
   });
 
@@ -158,6 +198,14 @@ describe('FindingsReviewModal component', () => {
 
     expect(screen.getByTestId('review-untrusted')).toHaveTextContent('untrusted');
     expect(screen.getByTestId('review-rules')).toHaveTextContent('no rules named');
+  });
+
+  it('draws the selected row of the register in the brand colours', () => {
+    const content = fs.readFileSync(path.resolve(__dirname, './FindingsReviewModal.svelte'), 'utf-8');
+
+    expect(content).toMatch(
+      /\.review-modal__row :global\(\.btn\[aria-current='true'\]\)\s*\{[^}]*border-color:\s*var\(--color-brand\)/,
+    );
   });
 
   it('keeps an item as a finding or moves it to the watches', async () => {
@@ -232,6 +280,44 @@ describe('FindingsReviewModal component', () => {
     );
     expect(screen.getByTestId('review-read-back-accept')).toBeInTheDocument();
     expect(screen.getByTestId('review-read-back-discard')).toBeInTheDocument();
+  });
+
+  it('asks the planning role to draft the plan again only with the operator’s words', async () => {
+    const onPromote = vi.fn();
+    render(FindingsReviewModal, {
+      props: {
+        epicId: 'relay-hardening',
+        review: {
+          ...review,
+          drafted_plan: {
+            plan_id: 'relay-cursor-fix',
+            objective: 'fix the cursor order',
+            deliverables: ['the cursor order'],
+            surface: ['pm-relay/src'],
+            dependencies: [],
+          },
+        },
+        open: true,
+        onPromote,
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('review-item-F-0004'));
+    await fireEvent.click(screen.getByTestId('review-promote'));
+    expect(onPromote).toHaveBeenCalledWith('F-0004', undefined);
+    expect(await screen.findByTestId('review-drafted-plan')).toBeInTheDocument();
+
+    onPromote.mockClear();
+    // An empty redraft sends nothing: the act was disabled before the restyle and stays inert.
+    await fireEvent.click(screen.getByTestId('review-plan-redraft'));
+    expect(onPromote).not.toHaveBeenCalled();
+
+    await fireEvent.input(screen.getByTestId('review-plan-instruction'), {
+      target: { value: 'name the transport' },
+    });
+    await fireEvent.click(screen.getByTestId('review-plan-redraft'));
+
+    expect(onPromote).toHaveBeenCalledWith('F-0004', 'name the transport');
   });
 
   it('stages a drafted plan after a promotion', async () => {

@@ -38,6 +38,10 @@
 
 <script lang="ts">
   let { rendering = 'colour', size = 28, label }: BrandMarkProps = $props();
+
+  if (!(DELIVERED_SIZES[rendering] as readonly number[]).includes(size)) {
+    throw new Error(`BrandMark: size ${size} is not delivered for rendering '${rendering}'`);
+  }
 </script>
 
 <svg

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
+import { walk } from '../../test/textFiles';
 
 /**
  * The one client-level time limit (D5, UX-S-06): the client bounds every request at 15 s, so no
@@ -10,23 +11,6 @@ import path from 'node:path';
  */
 
 const SOURCE_DIR = path.resolve(__dirname, '../..');
-
-/**
- * @param directory the directory to walk
- * @returns every file below it, recursively
- */
-function walk(directory: string): string[] {
-  const found: string[] = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const full = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      found.push(...walk(full));
-    } else {
-      found.push(full);
-    }
-  }
-  return found;
-}
 
 const FIFTEEN_SECONDS = /\b15_?000\b|\b15\s*\*\s*1_?000\b|\b15e3\b/;
 

@@ -109,11 +109,11 @@ Not split: five deliverables; deliverable 5 is PLAN-158's residue the operator f
 - OBSERVED: `CompletionReportView.svelte` (989 lines) uses `Button`, `Icon`, `Spinner`, `StatusLabel`, has no raw tag, and carries 6 lines with tag-like class names — read at the file and by `git grep -cE 'class="[^"]*(badge|pill|chip|tag|state-dot|status)'`
   - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: CompletionReportView.svelte 1001 lines imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); has raw <a> at :207 and :233; 6 tag-like class lines (:272 :302 :323 :344 :353 :386)
 - OBSERVED: `routes.ts` knows `/reports` and `/reports?plan=` and no `/reports/{id}` — read at `pm-web-app/src/lib/routes.ts:312-315`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: routes.ts:313 has /reports/{id} pattern (builder :433); /reports?plan= is now a legacy read-once address (:438 :580) via PLAN-143 #446
+  - verdict: contradicted | checked_at: fe44e6a791cb9f4e7621c6845ada60e450c59aef | by: ui-improvements/analyze | rescoped: yes | evidence: routes.ts:341 has the /reports/{id} pattern (route report, builder :461); /reports?plan= is a legacy read-once address (:61,:157,:467,:612) since PLAN-143 #446; the spec exclusion of the RowLink row and aria-current stays (D2 scope), only its stated reason (no address) is stale
 - OBSERVED: `PLAN-129` (staged) rewrites the mark-all rollback and retention in `ReportsView.svelte`, and its D2 touches `CompletionReportView.svelte` (focus); `PLAN-131` (staged) places the mascot in `ReportsView` — read at both specs
   - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-129 (#406) and PLAN-131 (#422) landed; ReportsView.svelte:1142 already places mascot=all-clear; no longer staged
 - OBSERVED: `ReportsView.svelte:1171` passes `visibleLabel` and nine `size="small"` values that PLAN-149 removes — read by `git grep`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: ReportsView has no visibleLabel and no size=small (size=sm on 10 lines :1068-1373); PLAN-149 landed (#445)
+  - verdict: contradicted | checked_at: fe44e6a791cb9f4e7621c6845ada60e450c59aef | by: ui-improvements/analyze | rescoped: yes | evidence: ReportsView.svelte (1723 lines at main) has no visibleLabel (grep count 0) and ten size=sm lines, no size=small: PLAN-149 landed (#445), the premise of D1's removal sentence is already met; no work remains for it
 - HYPOTHESIS: the unread dot and the semibold subject are drawn by hand in `ReportsView` and move to a `StatusLabel` and a class of the row — confirm/refute at `ReportsView.svelte` § row markup (verify-at-outline)
   - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView.svelte:1272 hand-drawn span report-card__unread-dot and class report-card--unread :1265; no StatusLabel in the view
 - HYPOTHESIS: the Tokens section of `CompletionReportView` is already a table of its own — confirm/refute at `CompletionReportView.svelte` § tokens (verify-at-outline)
@@ -177,6 +177,16 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 - Claim 1 contradicted: CompletionReportView now 999 lines; imports Button Icon ErrorState Skeleton StatusLabel (no Spinner); 6 tag-like class lines still match
 - Claim 3 contradicted: PLAN-129 (#406 d1a9e63a) and PLAN-131 (#422) have landed; ReportsView.svelte:1054 already places mascot all-clear; no longer staged
 - `CompletionReportView` uses no `Spinner`. The mascot all-clear is already placed (`ReportsView.svelte:1054`; PLAN-129, PLAN-131 landed).
+
+## Re-Scope 2026-11-22 (analyze, at `fe44e6a7`)
+
+Verdicts persisted for claims 2 and 4 (`corpus set-verdict`, `contradicted`, `rescoped: yes`, by `ui-improvements/analyze`). Neither changes what the plan builds; both are stale premises:
+
+- Claim 2: `/reports/{id}` EXISTS (`routes.ts:341`, route `report`, builder `:461`) and `/reports?plan=` is a legacy read-once address (`:61,:157,:467,:612`; PLAN-143 #446). **The exclusion in "Not in this plan" stands**: the `RowLink` row and the `aria-current` selection of the Reports lens stay out of this plan (D2's column engine owns them); only the reason given ("they need the address") is outdated. A row built here must not hard-code a `/reports?plan=` link: take the address from the route builder.
+- Claim 4: `ReportsView.svelte` has no `visibleLabel` and no `size="small"` (ten `size="sm"` lines); PLAN-149 landed (#445). D1's sentence "the word beside the glyph is gone" is already true; nothing remains to remove.
+- Size and line drift: `ReportsView.svelte` is 1723 lines and `CompletionReportView.svelte` 996 at `fe44e6a7`; the 6 tag-like class lines of the completion report still match the scan. Deliverable 5's line numbers moved: `listEpoch` advances at `ReportsView.svelte:441,:458` (the guard at `:496-511`); `placeOutcomeUnknown` is declared at `ProcessDesigner.svelte:143` and reset at `:861`; `actFailureText` is `errors.ts` (`:90-92` still the code-or-fallback form: read it again before the change, the spec's premise that a wire code the catalogue lacks yields `error.unknown.fix` is to be re-verified at outline); `ReportsCommandTest.java` already draws part of its data from `Generators` (re-count the hand-written ones at outline).
+- Overlap: PLAN-174 (running, #533) declares `pm-api/src/main/resources/messages/reports.{de,en}.properties` and `ReportsCommandTest.java` as well: three shared files. This plan's deliverable 5 (the `ReportsCommandTest` change) and any catalogue edit in `reports.*.properties` rebase over PLAN-174's merge; sequence deliverable 5's Java part after PLAN-174 lands, or re-read the file at the head.
+- Landed since the spec was written and relevant to the browser check: PLAN-157 (#535) added `MascotFigure` loading rules and `EmptyState`'s `testid` prop; `theme-readability.spec.js` is shared with the running PLAN-156 (one file, not a block).
 
 ## Hand-Off Command
 

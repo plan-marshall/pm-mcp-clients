@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import path from 'node:path';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import PairingView from './PairingView.svelte';
@@ -52,28 +52,91 @@ describe('PairingView component', () => {
     );
   });
 
-  it('renders pairing page title and input', () => {
+  it('renders pairing page title and input with CodeField', () => {
     render(PairingView);
 
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Pair this browser');
-    expect(screen.getByLabelText(/code/i)).toBeInTheDocument();
+    const input = screen.getByLabelText(/code/i);
+    expect(input).toBeInTheDocument();
+    expect(input).toHaveClass('code-field__input');
   });
 
-  it('disables pairing button when code is less than 8 characters', () => {
-    render(PairingView);
-
-    const submitBtn = screen.getByRole('button', { name: /pair this browser/i });
-    expect(submitBtn).toBeDisabled();
-  });
-
-  it('enables pairing button when 8 valid code characters are entered', async () => {
+  it.each([
+    ['lowercase with dash', 'kxqb-mrtn'],
+    ['lowercase without dash', 'kxqbmrtn'],
+    ['uppercase with dash', 'KXQB-MRTN'],
+    ['uppercase without dash', 'KXQBMRTN'],
+  ])('accepts the code in %s and enables the pair button', async (_label, code) => {
     render(PairingView);
 
     const input = screen.getByLabelText(/code/i);
     const submitBtn = screen.getByRole('button', { name: /pair this browser/i });
 
-    await fireEvent.input(input, { target: { value: 'KXQB-MRTN' } });
+    expect(submitBtn).toBeDisabled();
+    await fireEvent.input(input, { target: { value: code } });
     expect(submitBtn).not.toBeDisabled();
+  });
+
+  it.each([
+    ['empty', ''],
+    ['4 characters', 'kxqb'],
+    ['7 characters', 'KXQB-MR'],
+  ])('disables pairing button below eight characters (%s)', async (_label, partialCode) => {
+    render(PairingView);
+
+    const input = screen.getByLabelText(/code/i);
+    const submitBtn = screen.getByRole('button', { name: /pair this browser/i });
+
+    if (partialCode) {
+      await fireEvent.input(input, { target: { value: partialCode } });
+    }
+    expect(submitBtn).toBeDisabled();
+  });
+
+  it('renders the line under the field for a failed code as FieldError', () => {
+    runtimeStore.update((s) => ({
+      ...s,
+      pairingFailed: true,
+    }));
+
+    const { container } = render(PairingView);
+
+    const input = screen.getByLabelText(/code/i);
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    const describedBy = input.getAttribute('aria-describedby') ?? '';
+    expect(describedBy).toContain('pairing-code-error');
+
+    const err = container.querySelector('.field-error');
+    expect(err).toBeInTheDocument();
+    expect(err).toHaveAttribute('id', 'pairing-code-error');
+    expect(err).toHaveTextContent('A code works once. Get a fresh one in a terminal of the machine.');
+
+    // No top-level alert banner should be rendered
+    expect(container.querySelector('.alert--danger')).toBeNull();
+  });
+
+  it('renders the two commands to get a code as Chips that copy on click', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, {
+      clipboard: { writeText },
+    });
+
+    const { container } = render(PairingView);
+
+    const chips = container.querySelectorAll('.chip');
+    expect(chips).toHaveLength(2);
+
+    const localChip = chips[0];
+    const remoteChip = chips[1];
+
+    expect(localChip).toHaveTextContent('pm-operator web open --pair');
+    expect(remoteChip).toHaveTextContent('pm-operator web pair');
+
+    await fireEvent.click(localChip);
+    expect(writeText).toHaveBeenCalledWith('pm-operator web open --pair');
+
+    await fireEvent.click(remoteChip);
+    expect(writeText).toHaveBeenCalledWith('pm-operator web pair');
   });
 
   it('displays revoked banner when device was revoked', () => {
@@ -109,6 +172,18 @@ describe('PairingView component', () => {
 
       expect(figure).toHaveAttribute('loading', 'eager');
       expect(figure).toHaveClass('mascot-figure--entrance');
+    });
+
+    it('does not load eagerly on a narrow screen where the stylesheet hides it', () => {
+      const originalWidth = window.innerWidth;
+      try {
+        window.innerWidth = 500;
+        render(PairingView);
+        const figure = within(screen.getByTestId('pairing-hero')).getByTestId('mascot-figure');
+        expect(figure).not.toHaveAttribute('loading', 'eager');
+      } finally {
+        window.innerWidth = originalWidth;
+      }
     });
 
     it('keeps the figure decorative', () => {
