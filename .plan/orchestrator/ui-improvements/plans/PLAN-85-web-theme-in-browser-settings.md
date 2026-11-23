@@ -36,6 +36,17 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings/browser` in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844; baseline and after snapshots plus screenshots kept in the plan's working area, re-taken after any later visual fix (the pull request lists them after the push; not a gate before it) (evidence order: `none`)
      - The design documents state the new placement and no document still says the control stands in the rail foot or the More sheet (a search for "rail foot" and "More sheet" with "theme" finds none) (evidence order: `none`)
 
+3. **The entry pages show what the wire sends (folded from the PLAN-157 landing, operator 2026-11-23)**
+   - What: the layer-3 findings of `landings/PLAN-157.md`, each re-read at `3ae8a305` and still open. The entry pages (`PairingView`, `RevokedView`, `ListenerOffView`) are not in the surface of deliverables 1 and 2 (option A took the controls off them); this deliverable adds them.
+     - `RevokedView` resolves its reason sentence from keys the wire never sends. The runtime ends the stream with `device_revoked` (with channel, device and time) or `device_expired`, and `RevokedInfo` (`runtime.ts:55-60`) carries `reason`, `revoked_by`, `revoked_at` and `details`, no channel; `resolveReason` (`RevokedView.svelte:25-75`) matches `device`, `terminal`, `others`, `self` and `idle`, so the table lines of `entry.adoc` § `#revoked` and their tests cover invented inputs and a real revocation never shows the terminal, others, self or idle line. Settle at outline which facts the wire carries (`runtime.ts:745-755`, `client.ts:5200-5208`); carry the channel in `RevokedInfo` if the wire has it, or amend the design table to the lines the wire can drive; derive every line from the real values; drop the `as unknown as Record<string, string>` reads and the unused `days: 30`.
+     - The `shellGone` guard is not pinned: `layout.test.ts:105-123` passes with `if (shellGone) return` (`+layout.svelte:257`) removed (the catalogue store is preset in `beforeEach`, and `initRuntime` never calls the probe the test asserts on). Write a test that fails without the guard.
+     - Read at outline and fix where small: the held-figure retry is unbounded (`stores/heldFigure.ts` with `+layout.svelte:312-318`, a refetch on every store update while the figure fails); `createReconnectLoop.start()` is not idempotent (`runtime.ts:343`, a second call overwrites `interval`); the revoked-by fallback line changed text in a "pure restyle"; the exact-8 `CodeField` against the old "at least eight" and what `pair` is sent (`client.ts:3128`, raw); the narrowed `data:image/webp` scan and its silent build-dir skip.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - `RevokedView.test.ts` is fed `device_revoked` and `device_expired` as the wire sends them and shows each line; a test fed with the old keys is gone. Evidence order: `test-first`.
+     - The `shellGone` test fails with the guard removed. Evidence order: `mutation-after`.
+
 ## Standing Constraints
 
 - ZERO Sonar findings (the operator, 2026-11-05): the pull request merges with 0 open new-code issues (SonarCloud project `plan-marshall_pm-mcp-clients`), read at the pull request head after the push (`unknown` for a failed read, never `0`); every open issue is fixed in a commit of THIS pull request, and a dismissal is made only on the operator's selection. State `sonar_open_new_issues=N` in the landing message. This is a merge gate, not a deliverable's Done-when.
@@ -69,6 +80,10 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
   - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js calls setTheme after pair() and before page.goto at :664,:745 and about 18 more places; nothing writes pm_theme; no dataset.theme assertion (origin/main 7b60cec0)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-60` (the one settings view), `PLAN-70` (light theme pass), `PLAN-16` (locale switch) and `PLAN-37` (accessibility baseline) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
   - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-60 landed (#457) (origin/main 7b60cec0)
+- OBSERVED: `RevokedView` resolves its reason from `device`, `terminal`, `others`, `self`, `idle`, `device_revoked` and `device_expired`, and the wire sends only the last two — read at `pm-web-app/src/lib/views/RevokedView.svelte:25-75` (3ae8a305) and `runtime.ts:55-60,745-755`
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: resolveReason branches device, terminal, others, self, idle plus device_revoked and device_expired (RevokedView.svelte at origin/main 3ae8a305); the wire's two values are the PLAN-157 landing's re-read (runtime.ts:745-755, client.ts:5200-5208)
+- OBSERVED: the `shellGone` guard stands at `+layout.svelte:257` and `layout.test.ts:105` is the only test that names it — read by `git grep -n shellGone -- pm-web-app/src`
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep shellGone finds +layout.svelte:247,249,257 and layout.test.ts:105 only (origin/main 3ae8a305); the revert behaviour of the test is the landing's reading, not re-run
 
 ## Expected Surface
 
@@ -88,6 +103,15 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 - OBSERVED: `pm-web-app/src/lib/routes.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/shell/BottomBar.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/RevokedView.svelte` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/views/RevokedView.test.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/views/ListenerOffView.svelte` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/stores/heldFigure.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `pm-web-app/src/routes/layout.test.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `doc/design/web-app/entry.adoc` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
 
 ## Dependencies and Sequencing
 
@@ -124,6 +148,10 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Claims 2 and 4 contradicted (`rescoped: yes`): `MachineSettingsView.svelte` no longer exists (PLAN-60 #457; `/settings/machine` redirects to `?tab=setup`, `routes.ts:728`); `+layout.svelte:354-361` renders `RevokedView`, `PairingView`, `ListenerOffView` and `OnboardingView` inside `AppShell` and the `BottomBar` frame fallback `:243` carries both controls: option A dropped this deliverable. The body still carries the pre-option-A Objective and D1/D2 text; the `ThemeChoice.svelte`/`LocaleSwitch.svelte` rows of the Write-Boundary are obsolete.
 - Open ambiguity: which `BottomBar` toggle goes (the More-sheet one, which `README.adoc:156` requires, or the frame-bar one, needed on the phone before pairing)? Both are asserted in `mobile.spec.js:159,240` (added to the surface). `README.adoc:485` documents `?tab=browser` and a `/settings/browser` redirect the code does not have (`routes.ts:730`: "browser arrives with PLAN-85"). Re-read `PairingView`, `RevokedView`, `ListenerOffView` at `fe44e6a7` (PLAN-157 #535).
+
+## Folded from the PLAN-157 landing 2026-11-23 (analyze, operator)
+
+The operator chose (decision 2, proposal 1) to fold the layer-3 findings of PLAN-157 (#535) into this plan as deliverable 3. **A correction of the proposal's premise:** the Expected Surface of this plan does NOT hold the entry views (option A of 2026-11-10 took them out; only the Write-Boundary list below still names them), so the fold widens the surface by the nine paths added above; the wire-value work of the entry pages is unrelated to the theme tab and can move to another plan on the operator's word. PLAN-85 was NOT re-grounded at this fold beyond the two new claims: its older claims (surface touched by PLAN-59, 156 and 157: `routes.ts`, `SettingsView.svelte`, `chrome.spec.js`, `runtime.ts`) are re-read before the emit, and the plan emits after PLAN-144 lands.
 
 ## Hand-Off Command
 
