@@ -121,7 +121,7 @@
 <Dialog open={open} title={$t('start.source.documents')} {onClose} testid="confined-file-picker">
   <div class="file-picker__roots">
     <Button
-      variant="secondary"
+      variant={root === 'checkout' ? 'primary' : 'secondary'}
       data-testid="picker-root-checkout"
       aria-pressed={root === 'checkout'}
       on:click={() => chooseRoot('checkout')}
@@ -129,7 +129,7 @@
       {$t('start.documents.root_checkout')}
     </Button>
     <Button
-      variant="secondary"
+      variant={root === 'home' ? 'primary' : 'secondary'}
       data-testid="picker-root-home"
       aria-pressed={root === 'home'}
       disabled={!loopback}

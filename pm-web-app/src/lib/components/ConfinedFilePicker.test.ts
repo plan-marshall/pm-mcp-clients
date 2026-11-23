@@ -71,12 +71,16 @@ describe('ConfinedFilePicker', () => {
     const checkout = await screen.findByTestId('picker-root-checkout');
     const home = screen.getByTestId('picker-root-home');
     expect(checkout).toHaveAttribute('aria-pressed', 'true');
+    expect(checkout.className).toContain('btn--primary');
+    expect(home.className).toContain('btn--secondary');
 
     await fireEvent.click(home);
 
     expect(list).toHaveBeenLastCalledWith('p-1', 'home', '');
     expect(home).toHaveAttribute('aria-pressed', 'true');
     expect(checkout).toHaveAttribute('aria-pressed', 'false');
+    expect(home.className).toContain('btn--primary');
+    expect(checkout.className).toContain('btn--secondary');
   });
 
   it('enters a directory and goes back up', async () => {

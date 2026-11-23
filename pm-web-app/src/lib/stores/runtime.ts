@@ -1756,6 +1756,10 @@ export function adoptRouteFromLocation(): AppRoute | null {
           : null,
       // The onboarding keeps the step the address names, so a later store update cannot drop it.
       onboardingStep: match.route === 'onboarding' ? requestedOnboardingStepFromUrl() : null,
+      selectedOnboardingId:
+        match.route === 'project-onboarding'
+          ? (match.onboardingId ?? s.selectedOnboardingId ?? null)
+          : null,
       selectedPlanId: match.planId ?? s.selectedPlanId ?? null,
       selectedEpicId: match.epicId ?? s.selectedEpicId ?? null,
       selectedTaskId: match.taskId ?? null,
@@ -2090,15 +2094,20 @@ export function openEpicDecomposition(epicId: string, projectId: string): void {
  * @param projectId the project, once the run has reached its enrolment
  */
 export function openProjectOnboarding(
-  onboardingId?: string | null,
-  projectId?: string | null,
+  onboardingId: string | null = null,
+  projectId: string | null = null,
 ): void {
   runtimeStore.update((s) => ({
     ...s,
-    selectedOnboardingId: onboardingId ?? null,
-    selectedProjectId: projectId ?? null,
+    selectedOnboardingId: onboardingId,
+    selectedProjectId: projectId,
   }));
   pushRoute('project-onboarding');
+  const targetId = onboardingId ?? projectId ?? undefined;
+  writeAddress(
+    { route: 'project-onboarding', onboardingId: targetId },
+    intentFor(currentAddress(), { route: 'project-onboarding', onboardingId: targetId }),
+  );
 }
 
 /**
