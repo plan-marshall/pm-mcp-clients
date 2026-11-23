@@ -43,6 +43,8 @@
     const current = epicId;
     if (current && lastLoadedEpicId !== null && current !== lastLoadedEpicId) {
       lastLoadedEpicId = current;
+      epic = null;
+      resource = null;
       review = null;
       reviewOpen = false;
       reviewNotice = '';

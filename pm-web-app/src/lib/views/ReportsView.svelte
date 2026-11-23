@@ -448,10 +448,25 @@
       announceNavigation(unresolvableReportNotice);
       writeAddress({ route: 'reports' }, 'replace');
       runtimeStore.update((s) => ({ ...s, selectedReportId: null, currentRoute: 'reports' }));
+    } else if (requestedReport) {
+      const kind = subjectKindOf(requestedReport);
+      if (kind === 'epic') {
+        const epicId = epicIdOf(requestedReport);
+        if (epicId) navigateTo('epic', { epicId });
+      } else {
+        const plan = planIdOf(requestedReport) || $runtimeStore.selectedReportDetailPlanId;
+        if (plan) {
+          if (opensCompletionDetail(requestedReport)) {
+            showDetail(plan, requestedReport.id);
+          } else {
+            navigateTo('plan', { planId: plan });
+          }
+        }
+      }
     } else {
-      const plan = requestedReport ? planIdOf(requestedReport) : $runtimeStore.selectedReportDetailPlanId;
+      const plan = $runtimeStore.selectedReportDetailPlanId;
       if (plan) {
-        showDetail(plan, requestedReport?.id);
+        showDetail(plan);
       }
     }
   });
