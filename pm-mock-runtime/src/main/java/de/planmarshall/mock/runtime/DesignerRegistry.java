@@ -66,9 +66,9 @@ final class DesignerRegistry {
     private static final String KEY_PROJECT_BLOCKS = "project_blocks";
     /** The API's root path; the routes and segments below are spelled from it. */
     private static final String PATH_API_ROOT = "/api/v1";
-    private static final String PATH_WORKFLOWS = PATH_API_ROOT + "/workflows";
     private static final String SEGMENT_CATALOGUE = "/catalogue";
     private static final String SEGMENT_WORKFLOWS = "/workflows";
+    private static final String PATH_WORKFLOWS = PATH_API_ROOT + SEGMENT_WORKFLOWS;
     private static final String PREFIX_PROJECTS = PATH_API_ROOT + "/projects/";
     private static final String KEYWORD_ENTRY = "entry";
     private static final String KEYWORD_EXIT = "exit";
