@@ -131,11 +131,15 @@ export class ScenarioMockFetch {
     this.state = this.file.start;
   }
 
-  /** A `fetch`-compatible function bound to this helper. */
-  readonly fetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const url =
-      typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
-    const path = new URL(url, 'http://localhost').pathname;
+  /**
+   * A `fetch`-compatible function bound to this helper. It answers at once; a refusal of the
+   * scenario itself (an unknown next state) rejects the returned promise, as `fetch` would.
+   */
+  readonly fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
+    new Promise((resolve) => resolve(this.answer(input, init)));
+
+  private answer(input: RequestInfo | URL, init?: RequestInit): Response {
+    const path = new URL(requestUrl(input), 'http://localhost').pathname;
     const method = (init?.method ?? 'GET').toUpperCase();
 
     const link = this.matchLink(method, path);
@@ -168,7 +172,7 @@ export class ScenarioMockFetch {
       },
       404,
     );
-  };
+  }
 
   private matchLink(method: string, path: string): ScenarioLink | undefined {
     return Object.values(this.current.links ?? {}).find(
@@ -193,6 +197,20 @@ export class ScenarioMockFetch {
  */
 export function scenarioFetch(name: ScenarioName, state?: string): ScenarioMockFetch {
   return new ScenarioMockFetch(scenario(name), state);
+}
+
+/**
+ * @param input the request target `fetch` was called with
+ * @returns the target's URL as a string
+ */
+function requestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.toString();
+  }
+  return input.url;
 }
 
 function json(body: unknown, status: number, headers: Record<string, string> = {}): Response {
