@@ -150,7 +150,7 @@ class OnDemandStartTest {
         // a lock held by this JVM shows as OverlappingFileLockException
         try (var channel = FileChannel.open(file, Set.of(StandardOpenOption.WRITE)); var lock = channel.tryLock()) {
             return lock != null;
-        } catch (OverlappingFileLockException | IOException e) {
+        } catch (OverlappingFileLockException | IOException _) {
             return false;
         }
     }

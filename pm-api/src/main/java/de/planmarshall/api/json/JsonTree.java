@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
@@ -267,19 +268,19 @@ public class JsonTree {
      * @param object the object, may be {@code null}
      * @param name   the member name
      * @param type   the type name for the refusal message
-     * @return the member as an immutable object map, or {@code null} when absent or {@code null}
+     * @return the member as an object map, empty when the object, or the member, is absent or {@code null}
      * @throws IOException if the member is present, non-null, and not a JSON object
      */
-    public static Map<String, Object> objectOrNull(Map<String, Object> object, String name, String type)
-            throws IOException {
-        if (object == null || !object.containsKey(name) || object.get(name) == null) {
-            return null;
+    public static Optional<Map<String, Object>> optionalObject(@Nullable Map<String, Object> object, String name,
+                                                               String type) throws IOException {
+        if (object == null || object.get(name) == null) {
+            return Optional.empty();
         }
         var member = asObject(object.get(name));
         if (member == null) {
             throw new JsonFormatException("Member " + name + " must be an object in " + type);
         }
-        return member;
+        return Optional.of(member);
     }
 
     /**

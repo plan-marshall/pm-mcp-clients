@@ -254,23 +254,21 @@ public record StartStateResource(
         Objects.requireNonNull(map, "map");
         StartJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
         var operator = OperatorStateResource.fromMap(operatorFields(map));
-        var start = JsonTree.objectOrNull(map, FIELD_START, TYPE);
-        if (start != null) {
-            StartJson.requireOnlyKnown(start, KNOWN_START_FIELDS, TYPE + ".start");
-        }
-        var startFields = start != null ? start : Map.<String, Object>of();
-        var entryMap = JsonTree.objectOrNull(startFields, FIELD_ENTRY, TYPE);
-        var readyMap = JsonTree.objectOrNull(startFields, FIELD_READY, TYPE);
-        var chatMap = JsonTree.objectOrNull(startFields, FIELD_CHAT, TYPE);
-        var refusalMap = JsonTree.objectOrNull(startFields, FIELD_REFUSAL, TYPE);
-        var failureMap = JsonTree.objectOrNull(startFields, FIELD_ADOPTION_FAILURE, TYPE);
+        var startFields = JsonTree.optionalObject(map, FIELD_START, TYPE).orElse(Map.of());
+        StartJson.requireOnlyKnown(startFields, KNOWN_START_FIELDS, TYPE + ".start");
+        var entryMap = JsonTree.optionalObject(startFields, FIELD_ENTRY, TYPE);
+        var readyMap = JsonTree.optionalObject(startFields, FIELD_READY, TYPE);
+        var chatMap = JsonTree.optionalObject(startFields, FIELD_CHAT, TYPE);
+        var refusalMap = JsonTree.optionalObject(startFields, FIELD_REFUSAL, TYPE);
+        var failureMap = JsonTree.optionalObject(startFields, FIELD_ADOPTION_FAILURE, TYPE);
         var recipes = StartJson.readEach(StartJson.readObjects(startFields, FIELD_RECIPES), RecipeRef::fromMap);
         try {
-            return new StartStateResource(operator, entryMap != null ? EntryResource.fromMap(entryMap) : null,
-                    readyMap != null ? StartReadyResource.fromMap(readyMap) : null,
-                    chatMap != null ? StartChatResource.fromMap(chatMap) : null,
-                    refusalMap != null ? StartRefusal.fromMap(refusalMap) : null,
-                    failureMap != null ? AdoptionFailure.fromMap(failureMap) : null, recipes);
+            return new StartStateResource(operator,
+                    entryMap.isPresent() ? EntryResource.fromMap(entryMap.get()) : null,
+                    readyMap.isPresent() ? StartReadyResource.fromMap(readyMap.get()) : null,
+                    chatMap.isPresent() ? StartChatResource.fromMap(chatMap.get()) : null,
+                    refusalMap.isPresent() ? StartRefusal.fromMap(refusalMap.get()) : null,
+                    failureMap.isPresent() ? AdoptionFailure.fromMap(failureMap.get()) : null, recipes);
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid StartStateResource: " + e.getMessage(), e);
         }

@@ -88,8 +88,8 @@ public record DecisionRecord(
         if (by == null) by = "operator";
         var channel = JsonTree.string(map, FIELD_CHANNEL);
         var device = JsonTree.string(map, FIELD_DEVICE);
-        var afterChatMap = JsonTree.objectOrNull(map, FIELD_AFTER_CHAT, TYPE);
-        var afterChat = afterChatMap != null ? ChatTurnPointer.fromMap(afterChatMap) : null;
+        var afterChatMap = JsonTree.optionalObject(map, FIELD_AFTER_CHAT, TYPE);
+        var afterChat = afterChatMap.isPresent() ? ChatTurnPointer.fromMap(afterChatMap.get()) : null;
         return new DecisionRecord(id, question, answer, by, channel, device, afterChat);
     }
 }

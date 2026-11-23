@@ -64,7 +64,7 @@ class SystemRecordsTest {
 
         @Test
         @DisplayName("should take the counts of a map built in memory, the absent ones as empty")
-        void shouldReadCountsOfAMapInMemory() throws Exception {
+        void shouldReadCountsOfAMapInMemory() {
             var queued = Generators.integers(0, 1000).next();
             var source = new WorkMetrics(Map.of("running", queued), null, queued, queued, queued, null);
 

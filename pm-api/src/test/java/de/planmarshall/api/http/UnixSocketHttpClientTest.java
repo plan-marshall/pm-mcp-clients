@@ -151,7 +151,7 @@ class UnixSocketHttpClientTest {
                         return;
                     }
                     stream.send(null, "a\nb");
-                } catch (InterruptedException e) {
+                } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
             });

@@ -43,6 +43,12 @@
             <artifactId>cui-test-juli-logger</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- The condition waits of the tests (never Thread.sleep); the version comes from the parent -->
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
     <build>
         <resources>

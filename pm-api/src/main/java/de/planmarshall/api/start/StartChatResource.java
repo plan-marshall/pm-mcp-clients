@@ -215,11 +215,11 @@ public record StartChatResource(
             throw new JsonFormatException(
                     "Unknown " + FIELD_TRANSCRIPT + " in StartChatResource: " + transcriptWire);
         }
-        var proposalMap = JsonTree.objectOrNull(map, FIELD_PROPOSAL, "StartChatResource");
+        var proposalMap = JsonTree.optionalObject(map, FIELD_PROPOSAL, "StartChatResource");
         try {
             return new StartChatResource(entryId, role, scope, StartJson.bool(map, FIELD_AVAILABLE),
                     JsonTree.string(map, FIELD_DISABLED_REASON_KEY), JsonTree.string(map, FIELD_CHAT_ID), state,
-                    readTurns(map), proposalMap != null ? ChatProposalResource.fromMap(proposalMap) : null,
+                    readTurns(map), proposalMap.isPresent() ? ChatProposalResource.fromMap(proposalMap.get()) : null,
                     transcript, JsonTree.string(map, FIELD_TRANSCRIPT_PATH));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid StartChatResource: " + e.getMessage(), e);

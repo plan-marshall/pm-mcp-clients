@@ -172,7 +172,8 @@ public record OperatorText(
             }
             requireOnlyKnown(map, KNOWN_KEY_FIELDS);
             try {
-                return new OperatorText(key, JsonTree.objectOrNull(map, FIELD_ARGS, "OperatorText"), null, null);
+                return new OperatorText(key, JsonTree.optionalObject(map, FIELD_ARGS, "OperatorText").orElse(Map.of()),
+                        null, null);
             } catch (IllegalArgumentException e) {
                 throw new JsonFormatException("Invalid OperatorText: " + e.getMessage(), e);
             }

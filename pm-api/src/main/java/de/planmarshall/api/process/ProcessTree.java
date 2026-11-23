@@ -176,8 +176,8 @@ public record ProcessTree(
         long durationSeconds = durNum != null ? durNum.longValue() : 0L;
 
         var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
-        var queuedRevisionMap = JsonTree.objectOrNull(map, QUEUED_REVISION, "ProcessTree");
-        var queuedRevision = queuedRevisionMap != null ? QueuedRevision.fromMap(queuedRevisionMap) : null;
+        var queuedRevisionMap = JsonTree.optionalObject(map, QUEUED_REVISION, "ProcessTree");
+        var queuedRevision = queuedRevisionMap.isPresent() ? QueuedRevision.fromMap(queuedRevisionMap.get()) : null;
 
         return new ProcessTree(
                 planId,

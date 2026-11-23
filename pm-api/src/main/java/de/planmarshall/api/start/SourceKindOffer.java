@@ -138,7 +138,7 @@ public record SourceKindOffer(
         if (reasonKey != null && !DottedIdentifier.messageKey(reasonKey)) {
             throw new JsonFormatException("Invalid " + FIELD_REASON_KEY + " in SourceKindOffer: " + reasonKey);
         }
-        var args = JsonTree.objectOrNull(map, FIELD_REASON_ARGS, "SourceKindOffer");
+        var args = JsonTree.optionalObject(map, FIELD_REASON_ARGS, "SourceKindOffer").orElse(Map.of());
         try {
             return new SourceKindOffer(kind, StartJson.bool(map, FIELD_AVAILABLE), reasonKey, args);
         } catch (IllegalArgumentException e) {

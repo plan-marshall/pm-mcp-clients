@@ -120,11 +120,11 @@ public record ConfinedFile(
             throw new JsonFormatException("Missing required fields for ConfinedFile: name, path");
         }
         var size = StartJson.optLong(map, FIELD_SIZE);
-        var refusalMap = JsonTree.objectOrNull(map, FIELD_REFUSAL, "ConfinedFile");
+        var refusalMap = JsonTree.optionalObject(map, FIELD_REFUSAL, "ConfinedFile");
         try {
             return new ConfinedFile(name, path, StartJson.bool(map, FIELD_DIRECTORY), size != null ? size : 0L,
                     StartJson.bool(map, FIELD_READABLE),
-                    refusalMap != null ? SourceFailure.fromMap(refusalMap) : null);
+                    refusalMap.isPresent() ? SourceFailure.fromMap(refusalMap.get()) : null);
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid ConfinedFile: " + e.getMessage(), e);
         }
