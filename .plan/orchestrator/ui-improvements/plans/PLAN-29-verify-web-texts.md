@@ -43,11 +43,11 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc holds CC-V-01..05 at lines 12-40 (file also has V-06..08); result file verify-web-texts.adoc absent in verification-results/
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc CC-V-01..05 :12-35 (origin/main 7b60cec0)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: process clause about dependency landing; PLAN-85 and the web wave are not decidable by reading this clause
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 - HYPOTHESIS: the text guard declares a view list that can be extended without changing the guard's rules — confirm/refute at `pm-web-e2e/tests/text-guard.spec.js` § `declared views` (verify-at-outline)
-  - verdict: corroborated | checked_at: dc811fb3 | by: ui-improvements/cleanup | rescoped: n/a | evidence: view list is DECLARED_VIEWS (23) at theme-readability.spec.js:31, rule-independent, baseline keyed by it (:1053); text-guard.spec.js has no declared-views section (location drift)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: DECLARED_VIEWS (23) at pm-web-e2e/tests/theme-readability.spec.js:31; location drifted from text-guard.spec.js (origin/main 7b60cec0)
 
 ## Expected Surface
 

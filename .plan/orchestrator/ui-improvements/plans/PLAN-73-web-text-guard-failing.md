@@ -61,11 +61,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-07`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09` — read at `doc/claude_review/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 CC-S-07; proposals.adoc:102-103 CC-P-09 The Text Guard present
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 S-07; proposals.adoc:102-103 P-09 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Baseline text-guard-baseline.json and textGuard.js still exist (CC-S-07 says delete the baseline); baseline is non-empty (e.g. EpicView de foreign-word paused, DecisionView de raw-enum ci_check) and was last touched by 9890d74b/5f9e60da; many views listed as touched changed since the anchor, so the amount of residue should be re-counted at outline.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: text-guard-baseline.json non-empty (EpicView de foreign-word paused; DecisionView de/en raw-enum ci_check; ProcessDesigner 17 entries; ProjectExplorer 4); textGuard.js and text-guard.spec.js exist in pm-web-e2e/tests
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: text-guard baseline is non-empty but smaller: only ProcessDesigner (17) and ProjectExplorerView (4) remain; EpicView and DecisionView are empty (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; no code fact
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -79,6 +79,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
+- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -103,6 +104,12 @@ row is not in the disjointness gate population). Its expected first failures, to
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - The text-guard baseline now has 23 views × 2 (`UnreachableView`, 6e8c29af), not 22.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claim 1 contradicted (`rescoped: yes`, same deliverable, smaller residue): the text-guard baseline is non-empty but only `ProcessDesigner` (de 9 + en 8) and `ProjectExplorerView` (2+2: `de.cuioss`, `github.com`) remain; `EpicView` and `DecisionView` are empty, so the cited examples are stale. `CompletionReportView` still has no `data-model-text`; `PlanView` has 4. Parked behind PLAN-70.
 
 ## Hand-Off Command
 

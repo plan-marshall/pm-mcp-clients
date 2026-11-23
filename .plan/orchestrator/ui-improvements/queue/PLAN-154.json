@@ -2,10 +2,10 @@
   "id": "PLAN-154",
   "slug": "web-views-reports-and-completion-report",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-154-web-views-reports-and-completion-report",
+  "pr": "539",
+  "landing": "landings/PLAN-154.md",
   "seq": 154
 }

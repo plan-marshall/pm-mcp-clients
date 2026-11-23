@@ -48,11 +48,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 CLI-VD-S-04; proposals.adoc:76 CLI-VD-P-03 and :112 P-04
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 S-04; proposals.adoc:76,112; findings.adoc:72 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: RowLayout absent in pm-operator; layout/ holds only OperatorLayout and package-info; system/ has SystemView SystemLevel SystemFormatting
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: no RowLayout anywhere; layout/ = OperatorLayout + package-info only; system/ has SystemView, SystemLevel, SystemFormatting (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -70,6 +70,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/tui/TuiLayoutTest.java` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/RowLayout.java` — absent at `dc811fb3`; created by this plan (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewFormatting.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -106,6 +107,12 @@ This section supersedes the spec text and earlier notes where they differ.
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - Already done: the system view's double "not measured" (#299). `RowLayout` belongs in `tui/` (absent).
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Stale: the Expected Surface names `layout/` (installation layout); `RowLayout` belongs in `tui/`. Repeats still present: `plan.leaf.task` `{status} · {outcome}` (`plan_view.en.properties:33`) and "{done} of {total} tasks done" (`:32`); the system view's double "not measured" is fixed (#299). Design conflict on the need/state column widths (`15-overview`) unresolved. Depends on PLAN-44 (staged).
 
 ## Hand-Off Command
 

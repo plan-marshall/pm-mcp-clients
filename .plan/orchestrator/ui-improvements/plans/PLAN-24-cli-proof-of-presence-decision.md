@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/cross-cutting/plan.adoc:58 CLI-CC-S-06 (3 steps); proposals.adoc:97 CLI-CC-P-05; doc/plans has no proof-of-presence file
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/cross-cutting/plan.adoc:58-59 S-06; proposals.adoc:97 P-05; doc/plans has no proof-of-presence file (origin/main 7b60cec0)
 - HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: later-improvements.adoc:17-25 L-1 deferred with unchecked boxes; 08-security.adoc:56,59,162 name it; no ADR dir or proof doc in plan-marshall-documentation; roadmap schedules no L-1 work
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: documentation origin/main ref (local): doc/later-improvements.adoc:17-26 L-1 deferred; requirements/08-security.adoc:57,60,164 (origin/main 7b60cec0)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Process clause; names no HYPOTHESIS
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 

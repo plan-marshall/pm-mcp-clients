@@ -46,11 +46,11 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc:12 CC-V-01; visual-design/verification.adoc VD-V-06..10 :41-63; ux/verification.adoc UX-V-13 :131 and #targets :8
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: CC-V-01 :12; VD-V-06..10 :41-63; UX-V-13 :131 (origin/main 7b60cec0)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): mobile.spec.js changed (PLAN-90 green e2e baseline); verify-web-final.adoc and visual.spec.js still absent (created by this plan, correct). Dependencies PLAN-72/73/74 not landed.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-web-final.adoc and pm-web-e2e/tests/visual.spec.js absent; mobile.spec.js present; no commit or landing for PLAN-72/73/74; no stylelint in package.json
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-web-final.adoc and tests/visual.spec.js absent; tests/mobile.spec.js present; PLAN-72/73/74 parked (origin/main 7b60cec0)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural verify-first clause; deps PLAN-72/73/74 not landed so checks would be not verified
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
 
 ## Expected Surface
 

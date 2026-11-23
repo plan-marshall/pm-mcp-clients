@@ -54,21 +54,21 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 ## Claim Labels
 
 - OBSERVED: the theme is stored in `localStorage` under `pm_theme` with `light`, `dark`, `system`, and `app.html` reads it in an inline script before the first paint — read at `pm-web-app/src/lib/theme.ts` and `pm-web-app/src/app.html` at HEAD 07104678
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 THEME_STORAGE_KEY pm_theme (read :57 write :76); app.html:20 inline localStorage.getItem('pm_theme') before paint
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 pm_theme (read :57, write :76); app.html:20 reads it in an inline script before first paint (origin/main 7b60cec0)
 - OBSERVED: the choice stands in the rail foot (`NavRail.svelte`, fieldset `theme-choice`) and, on a phone, in the More sheet (`BottomBar.svelte`); `+layout.svelte` holds `themeChoice` and calls `writeThemeChoice` — read at HEAD 07104678; `doc/design/web-app/README.adoc` § Light and Dark Themes (line 374) and the rail description (line 171) say so
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:166 language-toggle and fieldset theme-choice :174; BottomBar.svelte sheet :172-188; +layout.svelte:209 themeChoice and :285-287 writeThemeChoice; README.adoc:150,156,424
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:187-195 language toggle and theme-choice fieldset; BottomBar sheet :202-230; +layout.svelte:210,287-288; README.adoc:150,156,424 (origin/main 7b60cec0)
 - OBSERVED: `PairingView.svelte`, `RevokedView.svelte`, `SettingsView.svelte` (devices, `/settings`) and `MachineSettingsView.svelte` (`/settings/machine`) exist; `nav.ts` has a Settings destination — read at HEAD 07104678
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: PairingView RevokedView SettingsView MachineSettingsView exist; routes/settings/+page and settings/machine/+page present; shell/nav.ts:104-108 settings destination
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: MachineSettingsView.svelte no longer exists (PLAN-60 #457); /settings/machine redirects to ?tab=setup (routes.ts:728); option A already narrows the scope (origin/main 7b60cec0)
 - OBSERVED: the language choice is stored in local storage under `pm_locale` and is offered in the rail foot and the More sheet beside the theme — stays stored as it is; its control moves with the theme control
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:7 pm_locale; language toggle in NavRail.svelte:166 and BottomBar.svelte:172 (sheet) :215 (frame)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:8 pm_locale; language toggle in NavRail.svelte:187 and BottomBar sheet :202 and frame bar :245 (origin/main 7b60cec0)
 - HYPOTHESIS: `PairingView` and `RevokedView` render without the frame, so the control has to be mounted by the views themselves (`PLAN-39` kept the frame controls on such pages) — confirm/refute at the two views and `AppShell.svelte` (verify-at-outline)
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:328-394 renders RevokedView :376 PairingView :378 ListenerOffView :380 inside AppShell; BottomBar.svelte:205-239 fallback frame bar carries language and theme (frame-language-toggle :215)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:354-361 renders RevokedView, PairingView, ListenerOffView and OnboardingView inside AppShell; BottomBar frame fallback :243 carries both controls; option A dropped this deliverable (origin/main 7b60cec0)
 - HYPOTHESIS: `helpers/contrast.js` `setTheme` sets the theme through the page's control or storage, and other e2e specs click the rail's theme control — search `pm-web-e2e/tests` for the control's test ids and `pm_theme` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-17 setTheme sets only data-theme attribute; chrome.spec.js:103,110 and workspace.spec.js:74,77 click theme-dark/light; mobile.spec.js:160-162 sheet- and :241 frame- ids
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-17 setTheme sets only the data-theme attribute; chrome.spec.js:104-114 and workspace.spec.js:73-76 assert the theme after clicking the rail control (origin/main 7b60cec0)
 - OBSERVED (reported by the run of PLAN-80, not verified here): the contrast matrix of `theme-readability.spec.js` calls `setTheme` (`helpers/contrast.js`) before `page.goto`, and `app.html` re-derives `data-theme` from `localStorage.pm_theme`, which nothing writes — so the "dark" audit may run under the light theme. This plan changes where the choice is made and the helpers that set it: it makes `setTheme` set `pm_theme` in the page's origin before the app loads (or choose through the control on the pairing page) and asserts `document.documentElement.dataset.theme` equals the requested theme in every audited test, so no audit passes under the wrong theme.
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js calls setTheme before page.goto at :655/658 :735/737 :753 :766 :787 :808 :822 :844 :860; spec writes no pm_theme; no dataset.theme assertion in e2e
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js calls setTheme after pair() and before page.goto at :664,:745 and about 18 more places; nothing writes pm_theme; no dataset.theme assertion (origin/main 7b60cec0)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-60` (the one settings view), `PLAN-70` (light theme pass), `PLAN-16` (locale switch) and `PLAN-37` (accessibility baseline) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause; PLAN-60 not landed (routes/settings/machine still exists; no browser tab view)
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-60 landed (#457) (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -83,6 +83,11 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 - OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/settings.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD 1cc0e10e (routes row of the tab only)
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.scenarios.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/routes.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/shell/BottomBar.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -112,6 +117,13 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 
 - Claim 4 contradicted: +layout.svelte:309-374 renders RevokedView, PairingView, ListenerOffView, OnboardingView inside AppShell; BottomBar.svelte:205-239 fallback frame bar carries both controls
 - Claim 4 is refuted: `+layout.svelte:309-374` renders the entry pages inside `AppShell`, and `BottomBar.svelte:205-239`'s fallback bar carries both controls. Option A of 2026-11-10 conflicts with this spec's Write-Boundary list (old surface still listed): settle at outline.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claims 2 and 4 contradicted (`rescoped: yes`): `MachineSettingsView.svelte` no longer exists (PLAN-60 #457; `/settings/machine` redirects to `?tab=setup`, `routes.ts:728`); `+layout.svelte:354-361` renders `RevokedView`, `PairingView`, `ListenerOffView` and `OnboardingView` inside `AppShell` and the `BottomBar` frame fallback `:243` carries both controls: option A dropped this deliverable. The body still carries the pre-option-A Objective and D1/D2 text; the `ThemeChoice.svelte`/`LocaleSwitch.svelte` rows of the Write-Boundary are obsolete.
+- Open ambiguity: which `BottomBar` toggle goes (the More-sheet one, which `README.adoc:156` requires, or the frame-bar one, needed on the phone before pairing)? Both are asserted in `mobile.spec.js:159,240` (added to the surface). `README.adoc:485` documents `?tab=browser` and a `/settings/browser` redirect the code does not have (`routes.ts:730`: "browser arrives with PLAN-85"). Re-read `PairingView`, `RevokedView`, `ListenerOffView` at `fe44e6a7` (PLAN-157 #535).
 
 ## Hand-Off Command
 

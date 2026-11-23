@@ -159,31 +159,31 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 ## Claim Labels
 
 - OBSERVED: `ChatPanel.svelte` (324 lines) is used at `WorkControlPanel.svelte:1098,1116`, `DecisionView.svelte:1198`, `EpicView.svelte:973` and `StartView.svelte:1116` — read by `git grep -n ChatPanel -- pm-web-app/src`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatPanel.svelte is 324 lines; used at WorkControlPanel.svelte:1129,1147; DecisionView:1311; EpicView:983; StartView:1258 (lines drifted)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatPanel.svelte 324 lines, same five sites (WorkControlPanel:1136,1154; DecisionView:1850; EpicView:1048; StartView:878); lines drifted (origin/main 7b60cec0)
 - OBSERVED: `package.json` has no `dependencies` block and no `marked` — read at `pm-web-app/package.json`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/package.json has devDependencies only; no dependencies block; no marked (git grep empty in package.json and lock)
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/package.json has devDependencies only; no marked in package.json or the lock (origin/main 7b60cec0)
 - OBSERVED: `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` and `FormStatus` do not exist in `pm-web-app/src/lib/components/` — absence read by `git ls-files | grep` for each name at `1cc0e10e`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark Link ExternalLink PrChip Compose FormStatus all exist in pm-web-app/src/lib/components/ (PLAN-147 #420 dea405d8); RowLink too (#427)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark, Link, ExternalLink, PrChip, Compose, FormStatus (plus RowLink, WaitingMark, CountBadge) all exist in components/; the deliverables already assume them (origin/main 7b60cec0)
 - OBSERVED: `ObjectPage.svelte` has no side slot and `TriagePage.svelte` still has the slots `filters`, `list` and `detail` — read at `pm-web-app/src/lib/templates/ObjectPage.svelte`, `TriagePage.svelte`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: TriagePage.svelte (493 lines) is now the column engine: props levels/label/column/object/pinned/side/sideOpen/onHideSide/up; no filters/list/detail slots (PLAN-142 #442); ObjectPage has no side (true)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: ObjectPage has no side (ObjectPage.svelte:11) but TriagePage.svelte:57-80 takes levels,label,column,object,pinned,side,sideOpen,onHideSide,up; no filters/list/detail slots (origin/main 7b60cec0)
 - OBSERVED: D6 fixed the side column on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`, built by `PLAN-142`), none on `ObjectPage`, no side column in the chat plans, `480`/`400` measured on the container, the phone covering the bottom bar, and `open=` forms waiting for `PLAN-143` — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418`, `doc/design/web-app/chat.adoc:40,342` (`4a84f727`, D6 merged `8568b56e`)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: components.adoc:361,374,381; navigation.adoc:278-280; chat.adoc:40 state side/sideOpen/onHideSide on TriagePage+WizardPage and none on ObjectPage; PLAN-142 built them (#442; WizardPage.svelte:18-20); chat.adoc:342 still says waits
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: D6 text holds (components.adoc, navigation.adoc:274-286, chat.adoc:40); TriagePage:72-80 and WizardPage:15-22 carry side props; chat.adoc:342 still says waits for PLAN-142/143 (shipped) (origin/main 7b60cec0)
 - OBSERVED: `adoptRouteFromLocation` reads no `chat` or `turn` query parameter — read at `pm-web-app/src/lib/stores/runtime.ts:940-966`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: routes.ts:141-145 has chat (?chat=open) and turn (?turn=) address keys; applyChat :554; written :653; adoptRouteFromLocation now runtime.ts:1304 reads whole address (PLAN-143 #446)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: routes.ts:151-154 has chat and turn; applyChat :580, written :692; runtime.ts:635,1588,1720 carry chatOpen/chatTurn; adoptRouteFromLocation :1670 (PLAN-143 #446) (origin/main 7b60cec0)
 - OBSERVED: `client.ts` holds the chat types at `:1565` and `:1572`, the entry chat at `:2328-2362`, the ended chat at `:2393-2417`, the plan, epic and decision chat at `:3355-3477`, and one shared `/api/v1/events` connection at `:3671` — read at `pm-web-app/src/lib/api/client.ts`
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts ChatTurn :1569 ChatProposal :1576 normaliseChat :1658; entry chat :3123-3221; subject chat :4298-4335; decision chat :4471-4512; shared /api/v1/events :4698-4719
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatTurn client.ts:1691, ChatProposal :1698, normaliseChat :1780, entry chat :3292, ended :3390, subject :4511-4549, events :4919 (origin/main 7b60cec0)
 - OBSERVED: the web app listens for events outside the catalogue (`plan.changed`, `decision.created`) — read at `pm-web-app/src/lib/views/PlanView.svelte:124`, `DecisionView.svelte:322`
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: no | evidence: No plan.changed or decision.created listener now: PlanView.svelte:126-131 uses activity.changed/phase.changed/task.off_track/project.work_ended; DecisionView:405 decision.changed (EventName.java:199)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: no plan.changed or decision.created in non-test src; refreshEvents.ts:37-44 and epicEvents.ts hold catalogue names; intentEvents.test.ts:44-48 forbids plan.changed (origin/main 7b60cec0)
 - OBSERVED: there is no Mermaid or diagram renderer for model text in `pm-web-app` — `git grep -i mermaid -- pm-web-app/src pm-web-app/package.json` is empty
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep -i mermaid over pm-web-app/src and package.json at origin/main is empty
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: git grep -i mermaid over pm-web-app/src, package.json and lock at origin/main is empty (origin/main 7b60cec0)
 - HYPOTHESIS: `client.ts` can open a plan's, an epic's and a workspace's event stream like the entry's (`subscribeStream` at `:3736`) — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `subscribeStream` (verify-at-outline)
-  - verdict: corroborated | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: subscribeStream client.ts:4795 is path-generic; wrapped only for entry (:4763-4770) and task activity (:4620); mock MockRuntimeEngine.java:7648-7656 serves plan/epic/entry/workspace /events
+  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: subscribeStream client.ts:5008 is private; public wrappers only entry :4976, task activity :4833, machine stream :4919; a plan/epic wrapper is still to be added (origin/main 7b60cec0)
 - HYPOTHESIS: the plan's and the epic's routes sit on `TriagePage` at the then-current HEAD (`PLAN-144` deliverable 4), so their `Chat` has a `side` to go into — confirm/refute at the route host of `/plans/{id}` and `/epics/{id}` and `pm-web-app/src/lib/templates/TriagePage.svelte` § props (verify-at-outline; refuted → stop and loop back, no interim slot)
-  - verdict: contradicted | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: yes | evidence: Only ReportsView uses TriagePage (ReportsView.svelte:1029); no plan or epic route sits on it (PLAN-144 not landed); TriagePage itself now has side/sideOpen/onHideSide (#442)
+  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: PlanView.svelte (header :790-1037) uses no template; EpicView sits on ObjectPage (:664); plans/[id] and epics/[id] host the views directly; PLAN-144 is staged, so D5 has nothing to dock into (origin/main 7b60cec0)
 - HYPOTHESIS: `marked` adds no transitive package and no peer conflict with Vite 8 and Svelte 5 — confirm/refute at `pm-web-app/package-lock.json` after `npm install marked` in the worktree (verify-at-outline)
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Needs npm install in a worktree; package.json and lock hold no marked so transitive and peer impact cannot be read
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: needs npm install marked in a worktree; transitive and peer impact cannot be read (origin/main 7b60cec0)
 - Verify-first clause: the D1 foundation components (O1) and the column engine's side props (`PLAN-142`) are read at the current HEAD before scoping; if `KindMark`, `Link`, `ExternalLink`, `PrChip`, `Compose` still do not exist, the operator's answer to O1 decides what this plan builds; if `TriagePage` has no `side`, `sideOpen`, `onHideSide`, stop and loop back.
-  - verdict: unverifiable | checked_at: 71f84bb | by: ui-improvements/cleanup | rescoped: n/a | evidence: Procedural clause; note D1 components exist and TriagePage has side props (#442) but plan/epic routes are still not on TriagePage
+  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
 
 ## Expected Surface
 
@@ -211,6 +211,11 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/scripts/vocabulary-lint.mjs` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/scripts/vocabulary-baseline.json` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -266,6 +271,19 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
   (state and offered acts); a test drives the event and sees the re-read.
 - `client.test.ts` lost its chat rows in #432's rebase: check that the dedicated chat tests cover the EPIC and the REJECT variants of the
   subject chat routes, and add what is missing.
+
+## Re-Grounding 2026-11-22 (cleanup, at `7b60cec0`)
+
+Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
+
+- Claims 2, 3, 5, 7 and 10 contradicted (`rescoped: yes` each, with the corrections below; deliverables unchanged except D5).
+  - Claim 2: KindMark, Link, ExternalLink, PrChip, Compose, FormStatus (plus RowLink, WaitingMark, CountBadge) all exist in `components/`.
+  - Claim 3: `TriagePage.svelte:57-80` takes `levels,label,column,object,pinned,side,sideOpen,onHideSide,up`; no filters/list/detail slots. `ObjectPage` has no `side` (`:11`).
+  - Claim 5: `chat=open` and `turn=` parse and write in `routes.ts:151-154,580,692` and `runtime.ts:635,1588,1720` (PLAN-143 #446); D1's address bullet shrinks to wiring.
+  - Claim 7: no `plan.changed` or `decision.created` in non-test source; the lists are `refreshEvents.ts:37-44`/`epicEvents.ts`, and `intentEvents.test.ts:44-48` forbids `plan.changed`.
+  - Claim 10: `PlanView.svelte` (header `:790-1037`) uses no template; `EpicView` sits on `ObjectPage` (`:664`); `plans/[id]` and `epics/[id]` host the views directly. **D5 has nothing to dock into until PLAN-144 (staged) lands: the spec's own rule is stop and loop back.**
+- D2's done-when "eslint fails on `{@html}`" cannot hold: `eslint.config.js` has no Svelte parser or plugin, so `eslint .` never reads `.svelte` files. A new `eslint-plugin-svelte` is a dependency (the operator's decision); otherwise use a source-scan test (the only guard today is `MascotFigure.test.ts:191`).
+- `web.chat.*` and `web.voice.*` keys exist in no properties file; the plan adds them. D5 and PLAN-137 D4 split one block in `WorkControlPanel.svelte` (`{#if chatOpen}{#if ended}` at `:1134-1170`): two plans edit the same lines. Open residue: `Compose.svelte:64-79` passes `label=""`; `client.ts:4586` draws a new `randomUUID` per send; `chat.ended` is handled nowhere.
 
 ## Hand-Off Command
 

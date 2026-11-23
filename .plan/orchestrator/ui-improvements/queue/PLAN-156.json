@@ -2,10 +2,10 @@
   "id": "PLAN-156",
   "slug": "web-views-modals-and-pickers",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-156-web-views-modals-and-pickers",
+  "pr": "536",
+  "landing": "landings/PLAN-156.md",
   "seq": 156
 }
