@@ -5713,10 +5713,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return isEpic && handleEpicControlReads(request, response);
     }
 
-    /** A control path cut into its subject and its act. */
-    private record ControlAct(String subjectId, String action) {
-    }
-
     /**
      * Answers a POST of a control act, at {@code /actions/<act>} or as a flat act the subject kind
      * offers; false when the path names no act.
@@ -5724,29 +5720,32 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private boolean handleControlAction(MockHttpRequest request, MockHttpResponse response, boolean isPlan)
             throws IOException {
         var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-        var act = controlActOf(request.path().substring(prefix.length()), isPlan);
-        if (act == null || act.action().contains("/")) {
+        var sub = request.path().substring(prefix.length());
+        var action = controlActionOf(sub, isPlan);
+        if (action == null || action.contains("/")) {
             return false;
         }
+        var subjectId = controlSubjectOf(sub);
         if (isPlan) {
-            handlePlanAction(request, response, act.subjectId(), act.action());
+            handlePlanAction(request, response, subjectId, action);
         } else {
-            handleEpicAction(request, response, act.subjectId(), act.action());
+            handleEpicAction(request, response, subjectId, action);
         }
         return true;
     }
 
     /**
-     * Cuts the control sub-path into its subject and its act.
+     * The act of a control sub-path, either after {@code /actions/} or as a flat act of the subject
+     * kind.
      *
      * @param sub    the path below the subject kind's prefix
      * @param isPlan whether the subject is a plan
-     * @return the pair, or {@code null} when the path names no act of that kind
+     * @return the act, or {@code null} when the path names none of that kind
      */
-    private static @Nullable ControlAct controlActOf(String sub, boolean isPlan) {
+    private static @Nullable String controlActionOf(String sub, boolean isPlan) {
         var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
         if (marker >= 0) {
-            return new ControlAct(sub.substring(0, marker), sub.substring(marker + SEGMENT_ACTIONS.length() + 1));
+            return sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
         }
         var slash = sub.indexOf('/');
         if (slash <= 0 || sub.indexOf('/', slash + 1) >= 0) {
@@ -5754,7 +5753,21 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         var candidate = sub.substring(slash + 1);
         var flatActions = isPlan ? PLAN_CONTROL_ACTIONS : EPIC_FLAT_ACTIONS;
-        return flatActions.contains(candidate) ? new ControlAct(sub.substring(0, slash), candidate) : null;
+        return flatActions.contains(candidate) ? candidate : null;
+    }
+
+    /**
+     * The subject of a control sub-path that {@link #controlActionOf} already accepted.
+     *
+     * @param sub the path below the subject kind's prefix
+     * @return the subject's id
+     */
+    private static String controlSubjectOf(String sub) {
+        var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
+        if (marker >= 0) {
+            return sub.substring(0, marker);
+        }
+        return sub.substring(0, sub.indexOf('/'));
     }
 
     /** Answers a plan's holds, the resolution of one hold and its settings; false for any other path. */
