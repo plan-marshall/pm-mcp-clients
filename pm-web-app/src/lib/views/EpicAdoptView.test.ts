@@ -74,7 +74,10 @@ describe('EpicAdoptView', () => {
     });
 
     expect(screen.getByTestId('error-state')).toBeInTheDocument();
-    expect(screen.getByTestId('epic-adopt-failed')).toBeInTheDocument();
+    // The cause is the sentence, not the reason code: it names the epic and what is wrong with it.
+    expect(screen.getByTestId('epic-adopt-failed')).toHaveTextContent(
+      'relay-hardening cannot be adopted: its ledger is not valid',
+    );
 
     const retryBtn = screen.getByRole('button', { name: 'Try again' });
     expect(retryBtn).toHaveClass('btn--ghost');

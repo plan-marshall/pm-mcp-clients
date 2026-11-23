@@ -667,10 +667,6 @@
     background-color: var(--color-bg-subtle);
   }
 
-  .plan__tag--dropped {
-    background-color: var(--color-danger-subtle);
-  }
-
   .plan__label {
     color: var(--color-text-muted);
     font-size: var(--text-xs);

@@ -449,7 +449,9 @@ describe('EpicDecompositionView', () => {
     const modal = screen.getByTestId('instruct-modal');
     await vi.waitFor(() => expect(modal.contains(document.activeElement)).toBe(true));
 
+    // The first tab stop of the dialog is its own field: Tab moves the focus there, inside the dialog.
     await fireEvent.keyDown(window, { key: 'Tab' });
+    expect(screen.getByTestId('instruct-input')).toHaveFocus();
     expect(modal.contains(document.activeElement)).toBe(true);
 
     await fireEvent.keyDown(window, { key: 'Escape' });
