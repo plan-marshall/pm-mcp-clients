@@ -1428,7 +1428,7 @@ public final class PlanCommand implements Callable<Integer> {
                 var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), locale);
                 var unmeasuredItem = item.unmeasured() > 0
                                     ? "   " + MessageCatalogue.format(locale, "report.tokens.unmeasured",
-                                                        Map.of(KEY_COUNT, item.unmeasured()))
+                                    Map.of(KEY_COUNT, item.unmeasured()))
                                     : "";
                 var paddedName = padRight(ConsoleNotice.stripControlSequences(item.name()), nameWidth);
                 if (isRole) {

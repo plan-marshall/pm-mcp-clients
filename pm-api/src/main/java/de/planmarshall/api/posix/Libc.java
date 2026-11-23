@@ -89,7 +89,9 @@ final class Libc {
             throw e;
             // invokeExact declares Throwable; every Error is rethrown above
             // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (Throwable e) {
+        }
+        /*TODO: Catch specific not Throwable. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (Throwable e) {
             throw new NativeCallException("Downcall " + function + " failed", e);
         }
     }

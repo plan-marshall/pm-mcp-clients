@@ -399,7 +399,7 @@ class DecomposeCommandTest {
                             () -> assertTrue(refusal.contains("✗ 1 check fails"), refusal),
                             () -> assertFalse(output.contains("✗ 1 check fails"), output),
                             // a workstream row and a plan row of the tree, neither of which the finding's text carries
-                            () -> assertTrue(output.lines().anyMatch(line -> line.equals("  WS-2  Authentication")),
+                            () -> assertTrue(output.lines().anyMatch(line -> "  WS-2  Authentication".equals(line)),
                                                 output),
                             () -> assertTrue(output.lines().anyMatch(line -> line.startsWith("    1) relay-cursor-order")
                                                 && line.contains("pm-relay/src/cursor")), output));

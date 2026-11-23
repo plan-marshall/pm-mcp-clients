@@ -174,7 +174,7 @@ class ExitCodesTest {
      *                 {@code null} for the three lines of {@link RefusalRenderer}
      */
     record Row(String label, Setup setup, List<String> args,
-                        @Nullable Function<ExitCodesTest, List<String>> ownLines) {
+    @Nullable Function<ExitCodesTest, List<String>> ownLines) {
     }
 
     /**
@@ -654,7 +654,7 @@ class ExitCodesTest {
         @ParameterizedTest(name = "{0}")
         @MethodSource("de.planmarshall.operator.ExitCodesTest#successRows")
         @DisplayName("Every registered verb has a success that exits 0 with nothing on stderr")
-        void successExitsZero(String label, String verb, int index) throws IOException {
+        void successExitsZero(String label, String verb, int index) throws Exception {
             var row = row(verb, index, VerbCases::success);
 
             var code = run(verb, row);
@@ -689,7 +689,7 @@ class ExitCodesTest {
         @ParameterizedTest(name = "{0}")
         @MethodSource("de.planmarshall.operator.ExitCodesTest#refusalRows")
         @DisplayName("Every registered verb renders its refusal on stderr in three lines and exits 1")
-        void refusalRendersThreeLines(String label, String verb, int index) throws IOException {
+        void refusalRendersThreeLines(String label, String verb, int index) throws Exception {
             var row = row(verb, index, VerbCases::refusal);
 
             var code = run(verb, row);
@@ -734,7 +734,7 @@ class ExitCodesTest {
         @ParameterizedTest(name = "{0}")
         @MethodSource("de.planmarshall.operator.ExitCodesTest#usageRows")
         @DisplayName("Every registered verb exits 2 on an unknown option and names the option")
-        void unknownOptionExitsTwo(String label, String verb, int index) throws IOException {
+        void unknownOptionExitsTwo(String label, String verb, int index) throws Exception {
             var row = row(verb, index, VerbCases::usage);
 
             var code = run(verb, row);
@@ -758,8 +758,8 @@ class ExitCodesTest {
 
             assertEquals(3, code, streams());
             assertEquals(List.of(
-                                MessageCatalogue.format(locale(), "system.cleanup.kept.confirm_all", Map.of("count", 0)),
-                                MessageCatalogue.format(locale(), "operator.common.needs_choice", Map.of("option", "--yes"))),
+                                                    MessageCatalogue.format(locale(), "system.cleanup.kept.confirm_all", Map.of("count", 0)),
+                                                    MessageCatalogue.format(locale(), "operator.common.needs_choice", Map.of("option", "--yes"))),
                                 out.toString().lines().toList(), streams());
             assertEquals("", err.toString(), streams());
             assertNoAct();
@@ -844,7 +844,9 @@ class ExitCodesTest {
             var runner = Thread.ofPlatform().name("verb-under-test").start(() -> {
                 try {
                     code.set(verb.run());
-                } catch (RuntimeException failed) {
+                }
+                /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                catch (RuntimeException failed) {
                     failure.set(failed);
                 }
             });

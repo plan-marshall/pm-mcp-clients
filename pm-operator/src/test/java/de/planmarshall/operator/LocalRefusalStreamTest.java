@@ -154,17 +154,17 @@ class LocalRefusalStreamTest {
     static Stream<Arguments> planRefusals() {
         var plan = word();
         return Stream.of(
-                            Arguments.of("roles --plan ''", new String[] {"config", "roles", "--plan", " "}, PLAN_BLANK),
-                            Arguments.of("providers --plan ''", new String[] {"config", "providers", "--plan", " "},
+                            Arguments.of("roles --plan ''", new String[]{"config", "roles", "--plan", " "}, PLAN_BLANK),
+                            Arguments.of("providers --plan ''", new String[]{"config", "providers", "--plan", " "},
                                                 PLAN_BLANK),
                             Arguments.of("plan-defaults --plan ''",
-                                                new String[] {"config", "plan-defaults", "--plan", " "}, PLAN_BLANK),
+                                                new String[]{"config", "plan-defaults", "--plan", " "}, PLAN_BLANK),
                             Arguments.of("roles --plan --reset-all",
-                                                new String[] {"config", "roles", "--plan", plan, "--reset-all"}, PLAN_EXCLUSIVE),
+                                                new String[]{"config", "roles", "--plan", plan, "--reset-all"}, PLAN_EXCLUSIVE),
                             Arguments.of("providers --plan --verify",
-                                                new String[] {"config", "providers", "--plan", plan, "--verify"}, PLAN_EXCLUSIVE),
+                                                new String[]{"config", "providers", "--plan", plan, "--verify"}, PLAN_EXCLUSIVE),
                             Arguments.of("plan-defaults --plan --yes",
-                                                new String[] {"config", "plan-defaults", "--plan", plan, "--yes"}, PLAN_EXCLUSIVE));
+                                                new String[]{"config", "plan-defaults", "--plan", plan, "--yes"}, PLAN_EXCLUSIVE));
     }
 
     @ParameterizedTest(name = "config {0}")
