@@ -25,7 +25,7 @@ The documents are the specification; read them first: `doc/design/web-app/report
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
-   - `CompletionReportView.test.ts` is fed every state the mock scenarios send and the states settled from the engine, and shows each one's catalogue word in English and German and the neutral word for an unknown state; a test fed with `not_started` fails at `3ae8a305`. Evidence order: `test-first`.
+   - `CompletionReportView.test.ts` is fed every state the mock scenarios send and the states settled from the engine, and shows each one's catalogue word in English and German and the neutral word for an unknown state; a test fed with `not_started` fails at the plan's start HEAD. Evidence order: `test-first`.
    - The text-guard and the catalogue tests show no raw wire code in the tokens section. Evidence order: `none`.
 2. **The project explorer's needs marker says what it counts**
  - What:
@@ -54,7 +54,7 @@ The documents are the specification; read them first: `doc/design/web-app/report
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
  - Done when:
-   - `Dialog.test.ts`, `FindingsReviewModal.test.ts`, `HoldResolutionModal.test.ts`, `LanListenerModal.test.ts`, `ConfinedFilePicker.test.ts` and `loopback.test.ts`: each item above has a test that fails at `3ae8a305` for the new behaviour. Evidence order: `test-first`.
+   - `Dialog.test.ts`, `FindingsReviewModal.test.ts`, `HoldResolutionModal.test.ts`, `LanListenerModal.test.ts`, `ConfinedFilePicker.test.ts` and `loopback.test.ts`: each item above has a test that fails at the plan's start HEAD for the new behaviour. Evidence order: `test-first`.
    - The removed components and keys are absent (`git grep` empty) and the catalogue tests pass. Evidence order: `none`.
 5. **Browser evidence**
  - What: the evidence PLAN-156 and PLAN-59 owed, taken after the last visual fix: the grant question opened in a browser, the picker from `projects-and-start`, a phone baseline and phone after-shots of the four modals, and the project onboarding at steps ①–③ and the completion report with a not-done deliverable, in `en` and `de`, light and dark, at `1440 × 900` and `390 × 844`.
@@ -78,29 +78,29 @@ The documents are the specification; read them first: `doc/design/web-app/report
 ## Claim Labels
 
 - OBSERVED: the completion report maps deliverable states through `displayState('task', …)` with the keys `state.task.not_done` and `state.task.dropped`, and the mock sends `not_started` — read at `pm-web-app/src/lib/views/CompletionReportView.svelte:111-116,423`, `pm-api/src/main/resources/messages/common.en.properties:326-332`, `pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json:388,1169,1777`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: CompletionReportView.svelte:111-116,423 getDeliverableIcon knows done and dropped, displayState('task'); common.en.properties:326-332 has state.task.not_done and dropped; reports-and-system.json:388,1169,1777 send not_started (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: CompletionReportView.svelte:103-106,407 icon knows only done/dropped, displayState('task'); common.en.properties:328-329 not_done/dropped; mock sends not_started at reports-and-system.json:388,1169,1777,2311 (origin/main 3db842df)
 - HYPOTHESIS: the engine's deliverable and task states are `done`, `open`, `infeasible`, `deferred`, `removed` and none is `not_done` or `dropped` — confirm/refute at `pm-mcp-core` `doc/specification/phase-workflows/08-dynamic-re-planning.adoc` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: 08-dynamic-re-planning.adoc:48-50 names infeasible as a plan-task state; the full deliverable state set is read at outline (pm-mcp-core cd05e7ab)
+  - verdict: unverifiable | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: engine spec in pm-mcp-core, not readable from this repo; settled at outline
 - OBSERVED: the explorer renders `ReasonBadge reason="setup"` for any `needs_operator_count > 0` — read at `pm-web-app/src/lib/views/ProjectExplorerView.svelte:960-961,1277-1278`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectExplorerView.svelte:960-961 and 1277-1278 render ReasonBadge reason setup for needs_operator_count > 0 (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectExplorerView.svelte:932-933,1249-1250 ReasonBadge setup for needs_operator_count > 0; EnrolledProject.java:31 (origin/main 3db842df)
 - OBSERVED: `saveIdentity` returns without a `projectId` and Save is disabled for it — read at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte:201,680-681`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectOnboardingView.svelte:201 saveIdentity returns without projectId; :680-681 Save disabled with disabledReason enrol_in_terminal (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectOnboardingView.svelte:201 saveIdentity returns without projectId; Save disabled :677-678 (origin/main 3db842df)
 - OBSERVED: `needsTerminal` is true whenever `build_environment.captured_at` is absent at steps 1 to 3 — read at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte:112-118`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectOnboardingView.svelte:115-117 needsTerminal = run !== null && currentStep <= 3 && !run.build_environment?.captured_at (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProjectOnboardingView.svelte:115-117 needsTerminal unchanged (origin/main 3db842df)
 - OBSERVED: `openProjectOnboarding` pushes the route `project-onboarding`, whose path is `/projects/onboard` — read at `pm-web-app/src/lib/stores/runtime.ts:2033-2043` and `pm-web-app/src/lib/routes.ts:297`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: runtime.ts:2033-2043 openProjectOnboarding pushRoute('project-onboarding'); routes.ts:297 'project-onboarding': '/projects/onboard' (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: runtime.ts:2087-2101 openProjectOnboarding pushRoute project-onboarding; routes.ts:297 /projects/onboard; matchPath fixed paths before /projects/([^/]+) (origin/main 3db842df)
 - HYPOTHESIS: the real engine accepts `links.set` on a being-added run's entry before enrolment — confirm/refute at `pm-mcp-core` `doc/specification/state-catalogue/15-project-onboarding.adoc` and the engine's entry-link handling (verify-at-outline; a refusal stops deliverable 3's first item)
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: the engine spec (state-catalogue/15-project-onboarding.adoc) and the mock serve links.set; real-engine acceptance before enrolment is not shown by reading, settled at outline (pm-mcp-core cd05e7ab)
+  - verdict: unverifiable | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: real-engine acceptance of links.set before enrolment not shown by reading; mock serves it at MockRuntimeEngine.java:4930-4945,5001-5002
 - OBSERVED: `Dialog.svelte` does not read `isComposing`; only `Compose.svelte` does — read by `git grep -n isComposing -- pm-web-app/src/lib/components`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep isComposing over pm-web-app/src/lib finds Compose.svelte:161 and Compose tests only; Dialog.svelte:110 handles Escape without it (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: Dialog.svelte:106-123 Escape without isComposing; Compose.svelte:161 reads it; wording 'only Compose' loose (ModelsChoice.svelte:419, NumberField.svelte:192, RecipeReadyView.svelte:46, forms/index.ts:44,70) (origin/main 3db842df)
 - OBSERVED: `SourceIntakePanel.svelte` and `RecipeSelector.svelte` are imported by their own tests only — read by `git grep -ln "SourceIntakePanel\|RecipeSelector" -- pm-web-app/src`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep -ln SourceIntakePanel|RecipeSelector finds RecipeSelector.test.ts and SourceIntakePanel.test.ts only (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep SourceIntakePanel|RecipeSelector finds only the two .test.ts files (origin/main 3db842df)
 - OBSERVED: `LanListenerModal`'s turn-off button is `variant="secondary"` — read at `pm-web-app/src/lib/components/LanListenerModal.svelte:80`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: LanListenerModal.svelte:80 Button variant=secondary data-testid=lan-turn-off-button (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: LanListenerModal.svelte:80 variant=secondary (origin/main 3db842df)
 - OBSERVED: the client has the entry-link call `/api/v1/entries/{id}/links/{act}` — read at `pm-web-app/src/lib/api/client.ts:3281`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts:3281 builds /api/v1/entries/{id}/links/{act} (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts:3283 actEntry builds /api/v1/entries/{id}/links/{act} (origin/main 3db842df)
 - Verify-first clause: before each deliverable re-read the named files at the then-current HEAD; PLAN-144 (D0 and the Back removal), PLAN-154, 156 and 59 have landed or must have landed first, and PLAN-85 (staged) edits `routes.ts` and `SettingsView`. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; PLAN-154, 156, 59 shipped, PLAN-144 running
+  - verdict: unverifiable | checked_at: 3db842df57c89ed737c5503ef40a2da00b9c7bc9 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; PLAN-144 (#542), 154, 156, 59 and 181 (#544) have landed
 
 ## Expected Surface
 
@@ -142,6 +142,10 @@ The documents are the specification; read them first: `doc/design/web-app/report
 - OBSERVED: `pm-web-e2e/tests/reports.spec.js` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/grant-modal.spec.js` — absent at HEAD 3ae8a305; created by this plan
+- OBSERVED: `pm-web-app/src/lib/navigation/history.ts` — present at HEAD 3db842df (added 2026-11-23: `writeAddress`, the one history writer, for deliverable 3's run address)
+- OBSERVED: `pm-web-app/src/lib/shell/nav.ts` — present at HEAD 3db842df (added 2026-11-23: `:164` maps `project-onboarding` to `projects`)
+- OBSERVED: `pm-web-app/src/lib/shell/nav.test.ts` — present at HEAD 3db842df (added 2026-11-23: `:74`)
+- OBSERVED: `pm-web-app/src/lib/routeTitles.test.ts` — present at HEAD 3db842df (added 2026-11-23)
 
 ## Dependencies and Sequencing
 
@@ -160,3 +164,15 @@ Lane: `runbook`.
 ## Write-Boundary
 
 The session implementing this spec touches only its own repository source and tests. It creates and edits NO file under `.plan/orchestrator/` other than its own `inbox/{sender}-{seq}` message. The orchestrator owns every other ledger write. The session reports its outcome through its PR and its inbox message (`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary).
+
+## Re-Grounding 2026-11-23 (analyze, at `3db842df`)
+
+PLAN-144 (#542, `43f0e416`) and PLAN-181 (#544, `3db842df`) have landed, so the "after PLAN-144" precondition holds. All nine observed claims hold, none is contradicted, no deliverable is rescoped; claims 1 and 6 stay verify-at-outline (engine), claim 11 (verify-first) is procedural and satisfied. Moved lines: `CompletionReportView.svelte` `:103-106` and `:407`; `ProjectExplorerView.svelte` `:932-933` and `:1249-1250`; `ProjectOnboardingView.svelte` Save `:677-678` (`:201` and `:115-117` unchanged); `runtime.ts` `:2087-2101`; `client.ts` `:3283`; mock `links.set` `MockRuntimeEngine.java:4930-4945,5001-5002`. Every "fails at `3ae8a305`" reads "fails at the plan's start HEAD".
+
+PLAN-144 residue this plan must know (read at `3db842df`):
+
+- The in-page Back and `onClose` are gone from `CompletionReportView` and `project-back` is gone from `ProjectOnboardingView`: a run is left by the rail only. `CompletionReportView.test.ts:487-510` still feeds the invented `not_done` and `dropped` states and is replaced by deliverable 1; `CompletionReportView` keeps its own in-page crumb (`report-breadcrumb`, `:327-340`) beside the top bar's trail: deliverable 1 decides whether it stays.
+- `project-onboarding` has no entry in `navigation/chain.ts` (it handles `task`, `plan`, `epic`, `overview`) and no Up (`upOf` returns null for a non-lens route); the top bar shows the fallback "Projects" crumb plus `ROUTE_TITLES['project-onboarding']` (`routes.ts:258`). Deliverable 3's run address is written through `navigation/history.ts` `writeAddress` and `routes.ts` (fixed path `:297`, `matchPath`, `formatAddress`; a fixed path is matched before `/projects/([^/]+)`); `runtime.ts` must restore `selectedOnboardingId` from it (the router, `runtime.ts` ~1735-1775, does not). `routes.ts:742` says the `/projects/onboard` addresses "belong to another plan": this one. `pm-web-e2e/tests/projects.spec.js:116` asserts `toHaveURL(/\/projects\/onboard$/)` and changes with the route. Whether the run gets a chain entry and an Up target is deliverable 3's decision, stated in its landing.
+- PLAN-144 added the keys `project.explorer.plans_count`, `epics_count` and `needs_you` (`projects.*.properties:173-175`), with no importer found: deliverable 2 may reuse them (confirm at outline).
+- `Dialog.svelte:114-118` already keys the Escape yield to the focused element (`Dialog.test.ts:218,313`); deliverable 4 re-reads the "pinned only against removing it" wording at outline and adds the IME case. The claim "only `Compose.svelte` reads `isComposing`" was loose: `ModelsChoice.svelte:419`, `NumberField.svelte:192`, `RecipeReadyView.svelte:46` and `forms/index.ts:44,70` read it too, and `forms/index.ts` may offer a shared guard to reuse.
+- Four files added to the Expected Surface above: `navigation/history.ts`, `shell/nav.ts`, `shell/nav.test.ts`, `routeTitles.test.ts`.
