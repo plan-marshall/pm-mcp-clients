@@ -6039,11 +6039,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         for (var planId : epicPlanIds(epicId)) {
             if (STATE_ENDED.equals(controlPlanStates.get(planId)) || rowEnded(epicId, planId)) {
                 // A plan that already ended keeps the outcome it ended with and is not told again.
-                // Its row may still show it running after its own act, and the epic's read follows
-                // the plan, so the row takes the end it did not have.
-                if (hasRow(epicId, planId) && !rowEnded(epicId, planId)) {
-                    setRowStatus(epicId, planId, STATUS_CANCELLED);
-                }
                 continue;
             }
             controlPlanStates.put(planId, STATE_ENDED);
@@ -6079,24 +6074,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * @param epicId the epic
-     * @param planId one of its plans
-     * @return whether the epic lists that plan as a row
-     */
-    private boolean hasRow(String epicId, String planId) {
-        var resource = controlEpics.get(epicId);
-        if (resource == null) {
-            return false;
-        }
-        for (var row : epicRows(resource)) {
-            if (planId.equals(row.planId())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * Starts the epic's next launchable row in the queue's order, when a place is free, or answers why
      * no row starts, per staged row.
      *
@@ -6115,7 +6092,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var scope = controlEpicScope.getOrDefault(epicId, resource.scope());
         var place = countRunning(epicId, rows) < scope;
         if (launchable == null || !place) {
-            answer.put(FIELD_NOT_STARTED, notStartedRows(epicId, rows, place));
+            answer.put(FIELD_NOT_STARTED, notStartedRows(epicId, rows));
             return answer;
         }
         startEpicRow(epicId, launchable.planId(), published);
@@ -6165,12 +6142,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * @param epicId the epic
      * @param rows   the epic's rows
-     * @return how many of its plans run, as its rows show them
+     * @return how many of its plans run, a pausing or paused one counted as running, as the engine's
+     *         admission tests do
      */
     private int countRunning(String epicId, List<WorkRow> rows) {
         var running = 0;
         for (var row : rows) {
-            if (ACTIVITY_RUNNING.equals(rowStatusOf(epicId, row))) {
+            var status = rowStatusOf(epicId, row);
+            if (ACTIVITY_RUNNING.equals(status) || ACTIVITY_PAUSING.equals(status) || "paused".equals(status)) {
                 running++;
             }
         }
@@ -6180,10 +6159,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /**
      * @param epicId the epic
      * @param rows   the epic's rows
-     * @param place  whether a plan may start now
      * @return one entry per staged row, naming why it does not start
      */
-    private List<Map<String, Object>> notStartedRows(String epicId, List<WorkRow> rows, boolean place) {
+    private List<Map<String, Object>> notStartedRows(String epicId, List<WorkRow> rows) {
         var notStarted = new ArrayList<Map<String, Object>>();
         for (var row : rows) {
             if (!STATUS_STAGED.equals(rowStatusOf(epicId, row))) {
@@ -6191,7 +6169,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var entry = new LinkedHashMap<String, Object>();
             entry.put(KEY_PLAN_ID, row.planId());
-            if (!place && waitsForNothing(row)) {
+            if (waitsForNothing(row)) {
                 // The row could start if a place were free, so the place is what it waits for.
                 entry.put(FIELD_WAIT_REASON, EpicWaitReason.SCOPE.value());
             } else if (row.waits() != null) {
@@ -6200,7 +6178,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     entry.put(FIELD_WAIT_PLAN_ID, row.waitPlanId());
                 }
             } else {
-                entry.put(FIELD_WAIT_REASON, EpicWaitReason.NONE.value());
+                // The scenario's own word, which the closed set refuses: echoed, never read as "can start".
+                entry.put(FIELD_WAIT_REASON, row.waitReason());
             }
             notStarted.add(entry);
         }
@@ -6481,7 +6460,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var map = new LinkedHashMap<>(resource.toMap());
             map.put(KEY_STATE, controlEpicStates.getOrDefault(epicId, resource.state()));
-            map.put(ACTIVITY_RUNNING, countRunning(epicId, epicRows(resource)));
             map.put("workstreams", overlaidWorkstreams(epicId, resource));
             var overlap = controlEpicOverlap.get(epicId);
             if (overlap != null) {

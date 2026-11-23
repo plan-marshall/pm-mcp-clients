@@ -424,8 +424,6 @@ class ControlScenarioTest {
                 }
 
                 assertEquals("running", rowStatuses(epic(runtime, "relay-hardening")).get(3));
-                assertEquals(Integer.valueOf(2), epic(runtime, "relay-hardening").running(),
-                        "the epic's own read counts the row the act started");
 
                 var none = JsonTree.asObject(JsonTree.parse(
                         post(runtime, "/api/v1/epics/relay-hardening/actions/next", "{}").bodyText()));
