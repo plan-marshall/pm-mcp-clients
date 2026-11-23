@@ -8,6 +8,8 @@ import {
   type MachineSettingsUpdateResult,
   type ProjectOverviewResponse,
   type EventStreamState,
+  type ProcessTree,
+  type EpicResource,
 } from '../api/client';
 import {
   matchPath,
@@ -146,6 +148,10 @@ export interface RuntimeState {
   objectTab?: string | null;
   /** The object the address opens in place beside its caller. */
   openObject?: { kind: string; id: string } | null;
+  /** The process tree of the currently loaded plan, for the navigation chain and Up. */
+  currentProcessTree?: ProcessTree | null;
+  /** The resource of the currently loaded epic, for the navigation chain and Up. */
+  currentEpicResource?: EpicResource | null;
   /** The node of the plan's phase tree and the file of its changes, as the address names them. */
   phaseNode?: string | null;
   changeFile?: string | null;
@@ -221,6 +227,8 @@ const initialState: RuntimeState = {
   chatOpen: false,
   chatTurn: null,
   lens: null,
+  currentProcessTree: null,
+  currentEpicResource: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);

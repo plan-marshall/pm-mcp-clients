@@ -218,6 +218,7 @@
   });
 
   onDestroy(() => {
+    runtimeStore.update((s) => ({ ...s, currentProcessTree: null }));
     if (clockTimer !== null) {
       clearInterval(clockTimer);
       clockTimer = null;
@@ -253,6 +254,7 @@
       const res = await apiClient.getPlanProcess(planId);
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
+      runtimeStore.update((s) => ({ ...s, currentProcessTree: res }));
       if (previousPlanId !== null && previousPlanId !== res.plan_id) {
         // Another plan is open: the size the last capture announced belonged to the old one.
         changeFromEvent = null;

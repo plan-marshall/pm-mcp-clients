@@ -33,6 +33,9 @@
   import KindMark, { KIND_WORD_KEYS } from '../components/KindMark.svelte';
   import GapStrip from './GapStrip.svelte';
   import SideColumn from './SideColumn.svelte';
+  import UpLink from '../components/UpLink.svelte';
+  import { buildChain, upOf } from '../navigation/chain';
+  import { runtimeStore } from '../stores/runtime';
   import { t } from '../i18n';
   import { announceNavigation } from '../stores/runtime';
   import { MEASURE_FALLBACK, pageInset, windowFor, type ColumnWindow } from './columnWindow';
@@ -90,6 +93,21 @@
     onHideSide = () => {},
     up,
   }: Props = $props();
+
+  const upParent = $derived(
+    upOf(
+      buildChain($runtimeStore.currentRoute, {
+        plan: $runtimeStore.currentProcessTree,
+        epic: $runtimeStore.currentEpicResource,
+        planId: $runtimeStore.selectedPlanId,
+        epicId: $runtimeStore.selectedEpicId,
+        taskId: $runtimeStore.selectedTaskId,
+        projectId: $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
+        titleState: $runtimeStore,
+      }),
+      $runtimeStore.currentRoute,
+    ),
+  );
 
   /** The measuring frame: the template's own container. */
   let frame = $state<HTMLElement | null>(null);
@@ -508,8 +526,14 @@
         onanimationend={onAnimationEnd}
         style:inline-size={`${layout.columnWidths[entry.index - layout.start] ?? layout.objectWidth}px`}
       >
-        {#if up && entry.index === layout.start}
-          <div class="triage-page__up">{@render up()}</div>
+        {#if entry.index === layout.start}
+          {#if up}
+            <div class="triage-page__up">{@render up()}</div>
+          {:else if upParent}
+            <div class="triage-page__up">
+              <UpLink kind={upParent.kind!} title={upParent.title} address={upParent.address!} />
+            </div>
+          {/if}
         {/if}
 
         {#if carriesPinned(entry.index) && pinned !== null}

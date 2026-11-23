@@ -247,6 +247,7 @@
   });
 
   onDestroy(() => {
+    runtimeStore.update((s) => ({ ...s, currentEpicResource: null }));
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -267,6 +268,7 @@
     }
     if (epicResource.status === 'fulfilled') {
       resource = epicResource.value;
+      runtimeStore.update((s) => ({ ...s, currentEpicResource: epicResource.value }));
       // A read that answers clears the failure of one that was still in flight: the retry the
       // panel names would otherwise stay on offer beside content that is current.
       resourceErrorCode = null;

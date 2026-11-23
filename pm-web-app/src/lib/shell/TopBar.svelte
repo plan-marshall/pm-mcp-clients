@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { runtimeStore } from '../stores/runtime';
+  import { runtimeStore, openLensList, openAddress } from '../stores/runtime';
   import { openCommandPalette } from '../stores/searchIndex';
   import { apiClient, type ConnectionStatus } from '../api/client';
   import { t } from '../i18n';
-  import { pathOf } from './nav';
+  import { formatAddress } from '../routes';
+  import { buildChain } from '../navigation/chain';
   import { isLoopbackSession } from '../utils/loopback';
   import Breadcrumb, { type Crumb } from '../components/Breadcrumb.svelte';
   import Button from '../components/Button.svelte';
@@ -40,11 +41,38 @@
     return `${detail} · ${devices}`;
   });
 
-  const crumbs = $derived(
-    pathOf($runtimeStore.currentRoute, $runtimeStore).map((crumb): Crumb => ({
-      label: $t(crumb.key, crumb.args),
-      id: crumb.id,
-    })),
+  const chain = $derived(
+    buildChain($runtimeStore.currentRoute, {
+      plan: $runtimeStore.currentProcessTree,
+      epic: $runtimeStore.currentEpicResource,
+      planId: $runtimeStore.selectedPlanId,
+      epicId: $runtimeStore.selectedEpicId,
+      taskId: $runtimeStore.selectedTaskId,
+      projectId: $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
+      titleState: $runtimeStore,
+    }),
+  );
+
+  const crumbs = $derived<Crumb[]>(
+    chain.map((seg, idx): Crumb => {
+      const isLast = idx === chain.length - 1;
+      return {
+        label: seg.title,
+        id: seg.id,
+        kind: seg.kind,
+        href: !isLast && seg.address ? (formatAddress(seg.address) ?? undefined) : undefined,
+        onclick:
+          !isLast && seg.address
+            ? () => {
+                if (seg.address!.route === 'overview' && !seg.address!.project) {
+                  openLensList();
+                } else {
+                  openAddress(seg.address!);
+                }
+              }
+            : undefined,
+      };
+    }),
   );
 
   /**
