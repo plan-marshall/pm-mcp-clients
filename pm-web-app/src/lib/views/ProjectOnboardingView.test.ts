@@ -591,21 +591,28 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.queryByTestId('project-identity-pilot')).not.toBeInTheDocument();
   });
 
-  it('keeps a run started from the checkout form on screen after its identity is saved', async () => {
-    const explorerSpy = vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...EMPTY_EXPLORER,
-      being_added: [
-        {
-          checkout_path: '~/git/new-service',
-          current_step: 'Identity',
-          step_number: 2,
-          total_steps: 10,
-          continue_link: '/api/v1/entries/ent-new/continue',
-          abandon_link: '/api/v1/entries/ent-new/abandon',
-          links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
-        },
-      ],
-    });
+  it('keeps a run started from the checkout form selected through save identity, Check again, and Continue', async () => {
+    const step2Entry = {
+      checkout_path: '~/git/new-service',
+      current_step: 'Identity',
+      step_number: 2,
+      total_steps: 10,
+      continue_link: '/api/v1/entries/ent-new/continue',
+      abandon_link: '/api/v1/entries/ent-new/abandon',
+      links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
+    };
+    const step3Entry = {
+      checkout_path: '~/git/new-service',
+      current_step: 'Enrolment',
+      step_number: 3,
+      total_steps: 10,
+      continue_link: '/api/v1/entries/ent-new/continue',
+      abandon_link: '/api/v1/entries/ent-new/abandon',
+    };
+    const explorerSpy = vi
+      .spyOn(apiClient, 'getProjectExplorer')
+      .mockResolvedValueOnce({ ...EMPTY_EXPLORER, being_added: [step2Entry] })
+      .mockResolvedValue({ ...EMPTY_EXPLORER, being_added: [step3Entry] });
     const actSpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
 
     render(ProjectOnboardingView, {});
@@ -617,11 +624,19 @@ describe('ProjectOnboardingView component', () => {
     await fireEvent.click(await screen.findByTestId('project-identity-save'));
 
     await waitFor(() => expect(actSpy).toHaveBeenCalledTimes(1));
-    // The save reads the explorer again and selects the same run: the form that starts another run
-    // does not come back.
     await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(2));
+    // Now at step 3 with the needs-terminal card; Check again and Continue both retain the run.
+    await screen.findByTestId('project-needs-terminal');
+
+    await fireEvent.click(screen.getByTestId('project-needs-terminal-check'));
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(3));
     expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
-    expect(screen.getByTestId('project-identity-step')).toBeInTheDocument();
+    expect(screen.getByTestId('project-needs-terminal')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('project-continue'));
+    await waitFor(() => expect(explorerSpy).toHaveBeenCalledTimes(4));
+    expect(screen.queryByTestId('project-checkout-step')).not.toBeInTheDocument();
+    expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument();
   });
 
   it('offers the step acts of an enrolled project opened at the address of its run', async () => {

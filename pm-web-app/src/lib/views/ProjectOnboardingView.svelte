@@ -70,6 +70,8 @@
   let hasShownRun = $state(false);
   let run = $state<ProjectOnboardingState | null>(null);
   let beingAdded = $state<BeingAddedProject | null>(null);
+  /** The checkout path or entry id of a run started from the checkout form in this mount. */
+  let startedRunTarget = $state<string | null>(null);
   let checkoutDraft = $state('');
   let isStarting = $state(false);
   let isSubmitting = $state(false);
@@ -356,7 +358,7 @@
 
   /** Reads the explorer's being-added report, for the run this screen was opened at. */
   async function loadBeingAdded(startedPath?: string): Promise<void> {
-    const wanted = startedPath?.trim() || onboardingId?.trim();
+    const wanted = onboardingId?.trim() || startedPath?.trim() || startedRunTarget?.trim();
     if (!wanted) {
       // No selection is a new run: the screen asks for its checkout path.
       beingAdded = null;
@@ -368,6 +370,9 @@
     );
     beingAdded = match ?? null;
     if (match) {
+      if (!onboardingId?.trim()) {
+        startedRunTarget = match.checkout_path;
+      }
       run = runOfBeingAdded(match);
       checkoutDraft = match.checkout_path;
       return;
@@ -379,7 +384,9 @@
       // A failed read reaches `load`'s catch, so it shows the error with its retry and never the
       // form that starts another run.
       run = await apiClient.getProjectOnboarding(wanted);
+      return;
     }
+    startedRunTarget = null;
   }
 
   /**
@@ -442,8 +449,10 @@
     isStarting = true;
     error = '';
     try {
-      await apiClient.startProjectOnboarding(checkoutDraft.trim());
-      await load(checkoutDraft.trim());
+      const checkout = checkoutDraft.trim();
+      await apiClient.startProjectOnboarding(checkout);
+      startedRunTarget = checkout;
+      await load(checkout);
     } catch (err: unknown) {
       error = actFailureText(err, $t('project.adding.start_failed'));
     } finally {
