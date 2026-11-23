@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import ProjectOnboardingView from './ProjectOnboardingView.svelte';
 import { apiClient, type ProjectExplorer, type ProjectOnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
@@ -332,6 +332,46 @@ describe('ProjectOnboardingView component', () => {
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
     expect(abandonSpy).toHaveBeenCalledWith('/api/v1/entries/ent-cui/abandon');
+  });
+
+  it('replays the identity body when the save hits a conflict', async () => {
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepProjectOnboarding')
+      .mockResolvedValueOnce({
+        ...RUN,
+        step: 2,
+        state: 'project.identity',
+        conflict: true,
+        current_value: 'cui-parent',
+        wanted_value: 'cui-parent-checkout',
+      })
+      .mockResolvedValueOnce({ ...RUN, step: 3, state: 'project.enrolment' });
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      project_id: null,
+      step: 2,
+      state: 'project.identity',
+      summary: 'Identity',
+      checkout_path: '~/git/cui-parent',
+      links: { set: { href: '/api/v1/entries/ent-cui/step' } },
+    });
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    await fireEvent.input(await screen.findByTestId('project-identity-id'), {
+      target: { value: 'cui-parent-checkout' },
+    });
+    await fireEvent.click(screen.getByTestId('project-identity-save'));
+    const conflict = await screen.findByTestId('project-conflict');
+    await fireEvent.click(within(conflict).getByTestId('project-conflict-apply'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenLastCalledWith('pm-mcp-clients', 'set', {
+        id: 'cui-parent-checkout',
+        name: 'cui-parent',
+        pilot: false,
+      }),
+    );
   });
 
   it('starts a new run at the checkout path and shows the step it reaches', async () => {

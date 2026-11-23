@@ -60,6 +60,8 @@
     currentValue: string;
     wantedValue: string;
     step: string;
+    /** The body the refused step sent, so its retry replays the same fields. */
+    body: Record<string, unknown>;
   }
 
   let isLoading = $state(true);
@@ -71,6 +73,8 @@
   let checkoutDraft = $state('');
   let isStarting = $state(false);
   let isSubmitting = $state(false);
+  /** Whether a "Check again" is reading the state, so its own button carries the busy state. */
+  let isRefreshing = $state(false);
   let error = $state('');
   let conflict = $state<OnboardingConflict | null>(null);
   let chatOpen = $state(false);
@@ -287,6 +291,7 @@
     }
     loadError = null;
     error = '';
+    const wasBeingAdded = beingAdded !== null;
     beingAdded = null;
     try {
       if (projectId) {
@@ -301,12 +306,27 @@
         }
       } else {
         await loadBeingAdded(startedPath);
+        // The explorer no longer lists the run this page showed — the terminal enrolled or
+        // abandoned it — so the screen stops showing a step that no longer exists.
+        if (!beingAdded && wasBeingAdded) {
+          run = null;
+        }
       }
       hasShownRun = run !== null || beingAdded !== null;
     } catch (err: unknown) {
       loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
+    }
+  }
+
+  /** Reads the state again from the "Check again" of a step that waits on the terminal. */
+  async function checkAgain(): Promise<void> {
+    isRefreshing = true;
+    try {
+      await load();
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -391,10 +411,15 @@
     try {
       const result = await apiClient.stepProjectOnboarding(projectId, step, body);
       if (result.conflict) {
+        // A step that sent fields replays them; a step the link itself answered replays the value
+        // the runtime named as wanted.
+        const retryBody =
+          Object.keys(body).length > 0 ? body : { value: result.wanted_value ?? '' };
         conflict = {
           currentValue: result.current_value ?? '',
           wantedValue: result.wanted_value ?? String(body.value ?? ''),
           step,
+          body: retryBody,
         };
         return;
       }
@@ -409,10 +434,9 @@
   /** Applies the operator's own choice again, on the revision the other client left behind. */
   async function applyConflictAgain(): Promise<void> {
     if (!conflict) return;
-    const wanted = conflict.wantedValue;
-    const step = conflict.step;
+    const { step, body } = conflict;
     conflict = null;
-    await applyStep(step, { value: wanted });
+    await applyStep(step, body);
   }
 
   /** Keeps the other client's value and closes the card, without writing anything. */
@@ -685,8 +709,8 @@
             <p class="needs-terminal__line">{$t('project.needs_terminal.after')}</p>
             <Button
               variant="secondary"
-              loading={isLoading}
-              on:click={() => load()}
+              loading={isRefreshing}
+              on:click={checkAgain}
               data-testid="project-needs-terminal-check"
             >
               {$t('project.needs_terminal.check_again')}

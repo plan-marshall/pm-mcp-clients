@@ -459,7 +459,10 @@ describe('ProjectExplorerView component', () => {
     );
     await fireEvent.click(screen.getByTestId('star-btn-pm-mcp-clients'));
 
-    await waitFor(() => expect(screen.getByTestId('explorer-error')).toBeInTheDocument());
+    // The error stands beside the rows the operator already has.
+    await waitFor(() => expect(screen.getByTestId('explorer-refresh-error')).toBeInTheDocument());
+    expect(screen.getByTestId('project-row-pm-mcp-clients')).toBeInTheDocument();
+    expect(screen.getByTestId('section-favourites')).toBeInTheDocument();
   });
 
   it('opens the project page when the row is clicked', async () => {
@@ -470,6 +473,23 @@ describe('ProjectExplorerView component', () => {
 
     await waitFor(() => expect(get(runtimeStore).currentRoute).toBe('project'));
     expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+  });
+
+  it('reorders the favourites from the row’s own link', async () => {
+    render(ProjectExplorerView);
+
+    const favouriteRows = await screen.findByTestId('favourite-rows');
+    const rows = favouriteRows.querySelectorAll('[data-testid^="project-row-"]');
+    const link = rows[0].querySelector('.row-link__title') as HTMLElement;
+
+    await fireEvent.keyDown(link, { key: 'ArrowDown', altKey: true });
+
+    await waitFor(() =>
+      expect(apiClient.reorderFavouriteProjects).toHaveBeenCalledWith([
+        'pm-mcp-core',
+        'pm-mcp-clients',
+      ]),
+    );
   });
 
   it('ignores a reorder key without Alt and at the ends of the list', async () => {
@@ -701,15 +721,47 @@ describe('the one project page', () => {
     expect(conflict).toHaveTextContent('landing.pull-request');
     await fireEvent.click(within(conflict).getByTestId('project-conflict-apply'));
 
-    await waitFor(() => expect(apiClient.saveProjectSettings).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(apiClient.saveProjectSettings).toHaveBeenLastCalledWith(
+        'pm-mcp-clients',
+        'landing',
+        'landing.files',
+        9,
+      ),
+    );
+    expect(apiClient.saveProjectSettings).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the other client’s value and closes the card', async () => {
-    vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValueOnce({
+  it('keeps the other client’s value and closes the card without writing', async () => {
+    const save = vi.spyOn(apiClient, 'saveProjectSettings').mockResolvedValueOnce({
       applied: false,
       conflict: true,
       revision: 9,
       current_value: 'landing.pull-request',
+    });
+    vi.spyOn(apiClient, 'getProjectSettings').mockResolvedValueOnce({
+      project_id: 'pm-mcp-clients',
+      revision: 7,
+      values: [
+        {
+          aspect: 'landing',
+          value: 'landing.main',
+          origin: 'team',
+          choices: ['landing.main', 'landing.files'],
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'getProjectSettings').mockResolvedValueOnce({
+      project_id: 'pm-mcp-clients',
+      revision: 9,
+      values: [
+        {
+          aspect: 'landing',
+          value: 'landing.pull-request',
+          origin: 'team',
+          choices: ['landing.main', 'landing.pull-request'],
+        },
+      ],
     });
     runtimeStore.set(
       state({
@@ -721,7 +773,7 @@ describe('the one project page', () => {
 
     render(ProjectExplorerView);
 
-    const input = await screen.findByTestId('setting-input-landing');
+    const input = (await screen.findByTestId('setting-input-landing')) as HTMLInputElement;
     await fireEvent.change(input, { target: { value: 'landing.files' } });
     await fireEvent.click(screen.getByTestId('save-setting-landing'));
     const conflict = await screen.findByTestId('project-conflict');
@@ -731,6 +783,11 @@ describe('the one project page', () => {
     await waitFor(() =>
       expect(screen.queryByTestId('project-conflict')).not.toBeInTheDocument(),
     );
+    // The read shows the other client's value, and the keep wrote nothing.
+    await waitFor(() =>
+      expect(screen.getByTestId('setting-input-landing')).toHaveValue('landing.pull-request'),
+    );
+    expect(save).toHaveBeenCalledTimes(1);
   });
 
   it('says so when the setup values cannot be read', async () => {
@@ -749,10 +806,29 @@ describe('the one project page', () => {
     await waitFor(() => expect(within(setup).getByRole('button', { name: 'Try again' })).toBeVisible());
   });
 
-  it('says so when the setup steps and the over-size spread cannot be read', async () => {
+  it('says so when the setup steps cannot be read', async () => {
     vi.spyOn(apiClient, 'getProjectOnboarding').mockRejectedValue(
       new ClientError('network_offline'),
     );
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    const setup = await screen.findByTestId('project-page-setup');
+    // The steps' own error names itself: the values above it were read and stay.
+    await waitFor(() =>
+      expect(within(setup).getByText('The machine is not reachable')).toBeInTheDocument(),
+    );
+    expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
+  });
+
+  it('says so when the over-size spread cannot be read', async () => {
     vi.spyOn(apiClient, 'getOverSize').mockRejectedValue(new ClientError('network_offline'));
     runtimeStore.set(
       state({
@@ -766,8 +842,9 @@ describe('the one project page', () => {
 
     const setup = await screen.findByTestId('project-page-setup');
     await waitFor(() =>
-      expect(within(setup).getAllByRole('button', { name: 'Try again' }).length).toBeGreaterThan(0),
+      expect(within(setup).getByText('The machine is not reachable')).toBeInTheDocument(),
     );
+    expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
   });
 
   it('says so when the running work cannot be read', async () => {

@@ -94,6 +94,15 @@
   let isLoadingEnded = $state(false);
   let endedError = $state<string | null>(null);
   let showEnded = $state(false);
+  /** The ended work's page the page shows; the API's `has_older` carries it on. */
+  let endedPage = $state(1);
+  /**
+   * The generation of the page's reads: a response that belongs to a project the operator has left
+   * never lands under another project's heading.
+   */
+  let pageGeneration = 0;
+  /** Whether the operator asked for the ended work while opening the project from the list. */
+  let pendingEnded = false;
 
   let settings = $state<ProjectSettingsRecord | null>(null);
   let settingsLoading = $state(false);
@@ -101,8 +110,10 @@
   let settingsError = $state('');
   let settingsNotice = $state('');
   let settingsDrafts = $state<Record<string, string>>({});
-  let savingAspect = $state<string | null>(null);
+  let savingAspects = $state<string[]>([]);
   let settingsConflict = $state<ProjectSettingsConflict | null>(null);
+  /** A write that landed while the panel could not read its values again: a refresh failure only. */
+  let settingsRefreshError = $state<string | null>(null);
 
   let onboarding = $state<ProjectOnboardingState | null>(null);
   let isLoadingOnboarding = $state(false);
@@ -220,15 +231,27 @@
     const projectId = requestedProjectId;
     if (projectId === pageProjectId) return;
     pageProjectId = projectId;
+    // A newer project owns the page: every read and the operator's edits belong to it alone.
+    pageGeneration += 1;
     detail = null;
     endedWork = null;
     endedError = null;
-    showEnded = false;
+    endedPage = 1;
+    const wantedEnded = pendingEnded;
+    showEnded = wantedEnded;
+    pendingEnded = false;
     settings = null;
+    settingsConflict = null;
+    settingsError = '';
+    settingsNotice = '';
+    settingsRefreshError = null;
     onboarding = null;
     overSize = null;
     setupProjectId = null;
-    if (projectId) void loadProjectPage(projectId);
+    if (projectId) {
+      void loadProjectPage(projectId);
+      if (wantedEnded) void loadEndedWork(projectId, 1);
+    }
   });
 
   $effect(() => {
@@ -243,15 +266,19 @@
    * @param projectId the project
    */
   async function loadProjectPage(projectId: string): Promise<void> {
+    const generation = ++pageGeneration;
     isLoadingDetail = true;
     detailError = null;
     try {
-      detail = await apiClient.getProjectDetail(projectId);
+      const loaded = await apiClient.getProjectDetail(projectId);
+      if (generation !== pageGeneration) return;
+      detail = loaded;
     } catch (err: unknown) {
+      if (generation !== pageGeneration) return;
       detail = null;
       detailError = errorCodeOf(err);
     } finally {
-      isLoadingDetail = false;
+      if (generation === pageGeneration) isLoadingDetail = false;
     }
   }
 
@@ -261,15 +288,19 @@
    * @param projectId the project
    */
   async function loadOverSize(projectId: string): Promise<void> {
+    const generation = pageGeneration;
     isLoadingOverSize = true;
     overSizeError = null;
     try {
-      overSize = await apiClient.getOverSize(projectId);
+      const loaded = await apiClient.getOverSize(projectId);
+      if (generation !== pageGeneration) return;
+      overSize = loaded;
     } catch (err: unknown) {
+      if (generation !== pageGeneration) return;
       overSize = null;
       overSizeError = errorCodeOf(err);
     } finally {
-      isLoadingOverSize = false;
+      if (generation === pageGeneration) isLoadingOverSize = false;
     }
   }
 
@@ -280,14 +311,17 @@
    */
   async function loadSetup(projectId: string): Promise<void> {
     setupProjectId = projectId;
+    const generation = pageGeneration;
     void loadOverSize(projectId);
     settingsLoading = true;
     settingsLoadError = null;
     settingsError = '';
+    settingsRefreshError = null;
     onboardingError = null;
     isLoadingOnboarding = true;
     try {
       const loaded = await apiClient.getProjectSettings(projectId);
+      if (generation !== pageGeneration) return;
       settings = loaded;
       const drafts: Record<string, string> = {};
       for (const value of loaded.values) {
@@ -295,18 +329,22 @@
       }
       settingsDrafts = drafts;
     } catch (err: unknown) {
+      if (generation !== pageGeneration) return;
       settings = null;
       settingsLoadError = errorCodeOf(err);
     } finally {
-      settingsLoading = false;
+      if (generation === pageGeneration) settingsLoading = false;
     }
     try {
-      onboarding = await apiClient.getProjectOnboarding(projectId);
+      const loaded = await apiClient.getProjectOnboarding(projectId);
+      if (generation !== pageGeneration) return;
+      onboarding = loaded;
     } catch (err: unknown) {
+      if (generation !== pageGeneration) return;
       onboarding = null;
       onboardingError = errorCodeOf(err);
     } finally {
-      isLoadingOnboarding = false;
+      if (generation === pageGeneration) isLoadingOnboarding = false;
     }
   }
 
@@ -335,16 +373,27 @@
     }
   }
 
-  async function loadEndedWork(projectId: string): Promise<void> {
+  /**
+   * Loads one page of the project's ended work.
+   *
+   * @param projectId the project
+   * @param page the page to read, 1-based
+   */
+  async function loadEndedWork(projectId: string, page = 1): Promise<void> {
+    const generation = pageGeneration;
     isLoadingEnded = true;
     endedError = null;
     try {
-      endedWork = await apiClient.getEndedWork(projectId, 1);
+      const loaded = await apiClient.getEndedWork(projectId, page);
+      if (generation !== pageGeneration) return;
+      endedWork = loaded;
+      endedPage = page;
     } catch (err: unknown) {
+      if (generation !== pageGeneration) return;
       endedWork = null;
       endedError = errorCodeOf(err);
     } finally {
-      isLoadingEnded = false;
+      if (generation === pageGeneration) isLoadingEnded = false;
     }
   }
 
@@ -461,16 +510,18 @@
    */
   function handleFavouriteKeydown(event: KeyboardEvent, index: number): void {
     if (!event.altKey || !explorer) return;
-    // The route belongs to the row, not to the controls inside it: a key pressed in the favourite
-    // toggle, the Add-a-plan button or the row menu keeps its own meaning.
+    // The route belongs to the row: the title link is the row's keyboard focus, so the keys work
+    // there, while a key pressed in another control (the favourite toggle, Add a plan, the menu)
+    // keeps its own meaning.
     const target = event.target as HTMLElement | null;
-    if (target?.closest('button, a, input, select, textarea') !== null) return;
+    const control = target?.closest('button, a, input, select, textarea') as HTMLElement | null;
+    if (control !== null && !control.classList.contains('row-link__title')) return;
     const delta = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
     if (delta === 0) return;
-    const target_index = index + delta;
-    if (target_index < 0 || target_index >= explorer.favourites.length) return;
+    const neighbour = index + delta;
+    if (neighbour < 0 || neighbour >= explorer.favourites.length) return;
     event.preventDefault();
-    moveFavourite(index, target_index);
+    moveFavourite(index, neighbour);
   }
 
   /**
@@ -550,18 +601,18 @@
     wanted: string,
     revision: number,
   ): Promise<void> {
-    if (!requestedProjectId) return;
-    savingAspect = aspect;
+    const projectId = requestedProjectId;
+    if (!projectId) return;
+    const generation = pageGeneration;
+    savingAspects = [...savingAspects, aspect];
     settingsError = '';
     settingsNotice = '';
+    settingsRefreshError = null;
     settingsConflict = null;
     try {
-      const result = await apiClient.saveProjectSettings(
-        requestedProjectId,
-        aspect,
-        wanted,
-        revision,
-      );
+      const result = await apiClient.saveProjectSettings(projectId, aspect, wanted, revision);
+      // A write that lands after the operator left the project never touches the new project's panel.
+      if (generation !== pageGeneration) return;
       if (result.conflict) {
         settingsConflict = {
           aspect,
@@ -576,19 +627,24 @@
         return;
       }
       settingsNotice = $t('project.settings.saved');
-      if (settings) {
-        const refreshed = await apiClient.getProjectSettings(requestedProjectId);
+      // The write is done; only its own refresh may fail, and that failure is a read, not the write.
+      try {
+        const refreshed = await apiClient.getProjectSettings(projectId);
+        if (generation !== pageGeneration) return;
         settings = refreshed;
         const drafts: Record<string, string> = {};
         for (const value of refreshed.values) {
           drafts[value.aspect] = value.value ?? '';
         }
         settingsDrafts = drafts;
+      } catch {
+        if (generation !== pageGeneration) return;
+        settingsRefreshError = $t('project.settings.refresh_failed');
       }
     } catch {
-      settingsError = $t('project.settings.update_failed');
+      if (generation === pageGeneration) settingsError = $t('project.settings.update_failed');
     } finally {
-      savingAspect = null;
+      savingAspects = savingAspects.filter((busy) => busy !== aspect);
     }
   }
 
@@ -727,9 +783,15 @@
    * @param project the project
    */
   function openEnded(project: EnrolledProject): void {
-    openProjectTab(project.project_id, 'work');
+    if (requestedProjectId !== project.project_id) {
+      // The page's own effect opens the project; the intent that it shows the ended work travels
+      // with it, so the deferred reset cannot close the section the operator asked for.
+      pendingEnded = true;
+      openProjectTab(project.project_id, 'work');
+      return;
+    }
     showEnded = true;
-    void loadEndedWork(project.project_id);
+    void loadEndedWork(project.project_id, 1);
   }
 
   /**
@@ -994,7 +1056,7 @@
         <div class="explorer-loading" role="status">
           <Skeleton shape="card" rows={3} label={$t('project.explorer.loading')} />
         </div>
-      {:else if errorMessage !== null}
+      {:else if errorMessage !== null && !explorer}
         <div class="alert alert--danger" data-testid="explorer-error">
           <ErrorState
             code={errorMessage}
@@ -1005,6 +1067,19 @@
           />
         </div>
       {:else if explorer}
+        {#if errorMessage !== null}
+          <!-- A refresh that failed leaves the rows the operator already has; the error stands beside
+               them with its retry, never in place of the list. -->
+          <div class="alert alert--danger" role="alert" data-testid="explorer-refresh-error">
+            <ErrorState
+              code={errorMessage}
+              actionLabel={$t('common.action.retry')}
+              onAct={loadExplorer}
+              titleLevel={2}
+              announce={true}
+            />
+          </div>
+        {/if}
         {#if actionError}
           <div class="alert alert--danger" role="alert" data-testid="explorer-action-error">
             {actionError}
@@ -1335,6 +1410,19 @@
                         </li>
                       {/each}
                     </ul>
+                    {#if endedWork.has_older}
+                      <div class="project-page__ended-toggle">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          on:click={() =>
+                            requestedProjectId && loadEndedWork(requestedProjectId, endedPage + 1)}
+                          data-testid="project-ended-older"
+                        >
+                          {$t('project.page.ended_older')}
+                        </Button>
+                      </div>
+                    {/if}
                   {/if}
                 {/if}
               {/if}
@@ -1361,6 +1449,19 @@
               {/if}
               {#if settingsNotice}
                 <p class="notice-text" data-testid="setup-notice">{settingsNotice}</p>
+              {/if}
+              {#if settingsRefreshError}
+                <div class="alert alert--danger" role="alert" data-testid="setup-refresh-error">
+                  <span>{settingsRefreshError}</span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    on:click={() => requestedProjectId && loadSetup(requestedProjectId)}
+                    data-testid="setup-refresh-retry"
+                  >
+                    {$t('common.action.retry')}
+                  </Button>
+                </div>
               {/if}
 
               {#if settingsConflict}
@@ -1436,7 +1537,7 @@
                       {/if}
                       <Button
                         variant="secondary"
-                        loading={savingAspect === value.aspect}
+                        loading={savingAspects.includes(value.aspect)}
                         on:click={() => saveSetting(value)}
                         data-testid="save-setting-{value.aspect}"
                       >

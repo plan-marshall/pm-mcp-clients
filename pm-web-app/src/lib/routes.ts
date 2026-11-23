@@ -85,10 +85,10 @@ export type PlanTab = 'process' | 'intent' | 'changes';
 export type EpicTab = 'plans' | 'intent' | 'landings' | 'reviews' | 'events';
 
 /** The tabs of a project's object column; the first is the default and is never written. */
-export type ProjectTab = 'work' | 'setup';
+export const PROJECT_TABS = ['work', 'setup'] as const;
 
-/** Every tab of a project, first the default that an address omits. */
-export const PROJECT_TABS: ReadonlyArray<ProjectTab> = ['work', 'setup'];
+/** One tab of a project, derived from the list so the two can never drift. */
+export type ProjectTab = (typeof PROJECT_TABS)[number];
 
 /**
  * The tabs of the one settings view (`/settings?tab=…`); the first is the default. Unlike a
