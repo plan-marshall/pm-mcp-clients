@@ -135,8 +135,13 @@ export class ScenarioMockFetch {
    * A `fetch`-compatible function bound to this helper. It answers at once; a refusal of the
    * scenario itself (an unknown next state) rejects the returned promise, as `fetch` would.
    */
-  readonly fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> =>
-    new Promise<Response>((resolve) => resolve(this.answer(input, init)));
+  readonly fetch = (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    try {
+      return Promise.resolve(this.answer(input, init));
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  };
 
   private answer(input: RequestInfo | URL, init?: RequestInit): Response {
     const path = new URL(requestUrl(input), 'http://localhost').pathname;

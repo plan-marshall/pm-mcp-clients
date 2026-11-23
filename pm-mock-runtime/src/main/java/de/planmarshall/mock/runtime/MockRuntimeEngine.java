@@ -5713,6 +5713,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return isEpic && handleEpicControlReads(request, response);
     }
 
+    /** A control path cut into its subject and its act. */
+    private record ControlAct(String subjectId, String action) {
+    }
+
     /**
      * Answers a POST of a control act, at {@code /actions/<act>} or as a flat act the subject kind
      * offers; false when the path names no act.
@@ -5720,33 +5724,37 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private boolean handleControlAction(MockHttpRequest request, MockHttpResponse response, boolean isPlan)
             throws IOException {
         var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
-        var sub = request.path().substring(prefix.length());
-        String subjectId = null;
-        String action = null;
-        var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
-        if (marker >= 0) {
-            subjectId = sub.substring(0, marker);
-            action = sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
-        } else {
-            var slash = sub.indexOf('/');
-            if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
-                var candidate = sub.substring(slash + 1);
-                var flatActions = isPlan ? PLAN_CONTROL_ACTIONS : EPIC_FLAT_ACTIONS;
-                if (flatActions.contains(candidate)) {
-                    subjectId = sub.substring(0, slash);
-                    action = candidate;
-                }
-            }
-        }
-        if (subjectId == null || action == null || action.contains("/")) {
+        var act = controlActOf(request.path().substring(prefix.length()), isPlan);
+        if (act == null || act.action().contains("/")) {
             return false;
         }
         if (isPlan) {
-            handlePlanAction(request, response, subjectId, action);
+            handlePlanAction(request, response, act.subjectId(), act.action());
         } else {
-            handleEpicAction(request, response, subjectId, action);
+            handleEpicAction(request, response, act.subjectId(), act.action());
         }
         return true;
+    }
+
+    /**
+     * Cuts the control sub-path into its subject and its act.
+     *
+     * @param sub    the path below the subject kind's prefix
+     * @param isPlan whether the subject is a plan
+     * @return the pair, or {@code null} when the path names no act of that kind
+     */
+    private static @Nullable ControlAct controlActOf(String sub, boolean isPlan) {
+        var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
+        if (marker >= 0) {
+            return new ControlAct(sub.substring(0, marker), sub.substring(marker + SEGMENT_ACTIONS.length() + 1));
+        }
+        var slash = sub.indexOf('/');
+        if (slash <= 0 || sub.indexOf('/', slash + 1) >= 0) {
+            return null;
+        }
+        var candidate = sub.substring(slash + 1);
+        var flatActions = isPlan ? PLAN_CONTROL_ACTIONS : EPIC_FLAT_ACTIONS;
+        return flatActions.contains(candidate) ? new ControlAct(sub.substring(0, slash), candidate) : null;
     }
 
     /** Answers a plan's holds, the resolution of one hold and its settings; false for any other path. */
