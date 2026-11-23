@@ -877,6 +877,35 @@
   }
 
   /**
+   * @param project the enrolled project
+   * @returns the reason key for ReasonBadge
+   */
+  function projectNeedsReason(project: EnrolledProject): string {
+    if (project.readiness !== 'ready') return 'setup';
+    return project.needs_operator_kind || 'decision';
+  }
+
+  /**
+   * @param outcome the ended outcome or terminal reason
+   * @returns the status label tone
+   */
+  function outcomeTone(
+    outcome: string | null | undefined,
+  ): 'success' | 'neutral' | 'attention' | 'danger' {
+    const value = outcome?.toLowerCase();
+    if (value === 'merged' || value === 'completed') return 'success';
+    if (
+      value === 'cancelled' ||
+      value === 'failed' ||
+      value === 'aborted' ||
+      value === 'abandoned'
+    ) {
+      return 'danger';
+    }
+    return 'neutral';
+  }
+
+  /**
    * @param entries the distributions the runtime reports
    * @returns their rows as `role — multiple` text pairs
    */
@@ -930,7 +959,7 @@
       {#snippet tags()}
         <StatusLabel tone={readinessTone(project)} label={readinessWord(project)} fixed />
         {#if project.needs_operator_count > 0}
-          <ReasonBadge reason="setup" count={project.needs_operator_count} />
+          <ReasonBadge reason={projectNeedsReason(project)} count={project.needs_operator_count} />
         {/if}
         <span class="project-counts text-xs text-secondary">
           {$t('project.explorer.counts', {
@@ -1184,10 +1213,7 @@
           {#if explorer.all_projects.length > 0}
             <section class="explorer-section" data-testid="section-all-projects">
               <h2 class="section-title">
-                {$t('project.explorer.all')}
-                ({sortBy === 'name'
-                  ? $t('project.explorer.by_name')
-                  : $t('project.explorer.most_used')})
+                {$t('project.explorer.all')}{#if sortBy === 'name'} ({$t('project.explorer.by_name')}){/if}
               </h2>
               <ul class="project-rows">
                 {#each sortedAllProjects as project (project.project_id)}
@@ -1247,7 +1273,10 @@
               label={readinessWord(selectedProject)}
             />
             {#if selectedProject.needs_operator_count > 0}
-              <ReasonBadge reason="setup" count={selectedProject.needs_operator_count} />
+              <ReasonBadge
+                reason={projectNeedsReason(selectedProject)}
+                count={selectedProject.needs_operator_count}
+              />
             {/if}
             <Toggle
               pressed={selectedProject.is_favourite}
@@ -1305,12 +1334,14 @@
                         {#snippet kind()}<KindMark kind="epic" wordHidden />{/snippet}
                         {#snippet tags()}
                           {#if (epic.needs_operator_count ?? 0) > 0}
-                            <ReasonBadge reason="decision" count={epic.needs_operator_count ?? 1} />
+                            <ReasonBadge
+                              reason={epic.needs_operator_kind || 'decision'}
+                              count={epic.needs_operator_count ?? 1}
+                            />
                           {/if}
                           <span class="text-xs text-secondary"
-                            >{$t('project.explorer.counts', {
-                              plans: epic.running_plans_count,
-                              epics: 0,
+                            >{$t('project.explorer.plans_count', {
+                              count: epic.running_plans_count,
                             })}</span
                           >
                         {/snippet}
@@ -1326,6 +1357,12 @@
                             tone="running"
                             label={displayState('plan', plan.phase_state, $t)}
                           />
+                          {#if (plan.needs_operator_count ?? 0) > 0}
+                            <ReasonBadge
+                              reason={plan.needs_operator_kind || 'decision'}
+                              count={plan.needs_operator_count ?? 1}
+                            />
+                          {/if}
                         {/snippet}
                       </RowLink>
                     </li>
@@ -1377,7 +1414,20 @@
                             data-testid="project-ended-{item.id ?? item.item_id}"
                           >
                             <span class="ended-row__title">{item.title}</span>
-                            <span class="text-xs text-muted">{formatRelative(item.ended_at)}</span>
+                            <span class="ended-row__meta">
+                              {#if item.outcome}
+                                <StatusLabel
+                                  tone={outcomeTone(item.outcome)}
+                                  label={$t('overview.ended.outcome', { outcome: item.outcome })}
+                                />
+                              {:else if item.terminal_reason}
+                                <StatusLabel
+                                  tone={outcomeTone(item.terminal_reason)}
+                                  label={$t('overview.ended.epic_end', { end: item.terminal_reason })}
+                                />
+                              {/if}
+                              <span class="text-xs text-muted">{formatRelative(item.ended_at)}</span>
+                            </span>
                           </button>
                         </li>
                       {/each}
@@ -1912,6 +1962,12 @@
 
   .ended-row:hover {
     background-color: var(--color-bg-subtle);
+  }
+
+  .ended-row__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .field-input {

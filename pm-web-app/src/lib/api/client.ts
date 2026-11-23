@@ -138,6 +138,7 @@ export interface EnrolledProject {
   remote_url?: string | null;
   readiness: ProjectReadiness;
   setup_needs_summary?: string | null;
+  needs_operator_kind?: string | null;
   needs_operator_count: number;
   active_plans_count: number;
   active_epics_count: number;
