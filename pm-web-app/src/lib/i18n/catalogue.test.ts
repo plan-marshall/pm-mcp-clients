@@ -618,4 +618,17 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
     expect(en['common.tokens.total']).toBe('tokens {figure}');
     expect(en['common.tokens.millions']).toBe('{value} M');
   });
+
+  it('labels the remember answer every consent state offers', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    // The engine offers `yes`, `yes_remember` where the kind can be remembered, and `no` on every
+    // consent state (`14-machine-onboarding.adoc:178`, `19-…:105,201,251,283`,
+    // `15-project-onboarding.adoc:33,49`). `linkLabel` builds `onboard.link.{id}` from the id at
+    // run time, so only a named key keeps the raw id off the screen; the project onboarding draws
+    // every consent answer through that label (PLAN-59 D5c).
+    expect(en['onboard.link.yes_remember']).toBe("Yes, and don't ask again");
+    expect(de['onboard.link.yes_remember']).toBe('Ja, und nicht mehr fragen');
+  });
 });

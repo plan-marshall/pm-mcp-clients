@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { tick } from 'svelte';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import OnboardingView from './OnboardingView.svelte';
@@ -1539,6 +1540,99 @@ describe('catalogue.select recommendation and manual model entry (D8)', () => {
       within(opencodeGroup).getAllByTestId('model-toggle-opencode-qwen-coder-32b'),
     ).toHaveLength(1);
     expect(within(opencodeGroup).getByTestId('model-toggle-opencode-qwen-coder-32b')).toBeChecked();
+  });
+
+  it('offers a text field for a harness the scan listed when the select state omits harnesses[]', async () => {
+    arrange(
+      onboardingState({
+        state: 'harness.choose',
+        summary: 'Choose the harnesses to enrol',
+        harnesses: [
+          { harness_id: 'claude', name: 'Claude Code', found: true, supported: true },
+          { harness_id: 'opencode', name: 'OpenCode', found: true, supported: true },
+        ],
+        links: {
+          choose: { href: '/api/v1/onboarding/harness/confirm', next: 'harness.confirm' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+    expect(await screen.findByTestId('harness-choose-screen')).toBeInTheDocument();
+    expect(screen.getByText('OpenCode')).toBeInTheDocument();
+
+    // The step lands on `catalogue.select`: the state names no `harnesses[]` and carries no row at
+    // all for OpenCode, so only the scan the machine just listed can name that harness's group.
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [{ harness_id: 'claude', model_id: 'opus-5.5', source: 'probe' }],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    await tick();
+
+    const group = screen.getByRole('group', { name: 'OpenCode' });
+    const input = within(group).getByTestId('models-input-opencode') as HTMLInputElement;
+    expect(input).toBeVisible();
+  });
+
+  it('sends exactly the recorded rows for a changed selection', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [
+          {
+            harness_id: 'claude',
+            model_id: 'opus-5.5',
+            source: 'probe',
+            recommended: true,
+            tokens: 1200,
+          },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', recommended: true },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.record' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('model-toggle-claude-opus-5.5'));
+    await fireEvent.click(screen.getByTestId('models-record'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('set', {
+        models: [{ harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' }],
+      }),
+    );
+  });
+
+  it('sends an empty body when the selection is unchanged', async () => {
+    arrange(
+      onboardingState({
+        state: 'catalogue.select',
+        summary: 'Choose the models plans may use',
+        models: [
+          { harness_id: 'claude', model_id: 'opus-5.5', source: 'probe' },
+          { harness_id: 'claude', model_id: 'sonnet-5.5', source: 'probe' },
+        ],
+        links: { set: { href: '/api/v1/onboarding/catalogue/record', next: 'catalogue.record' } },
+      }),
+    );
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'catalogue.record' }));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByTestId('models-record'));
+
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set', {}));
   });
 
   it('renders no advice reason and reads no cannot-list flag: only the published shape speaks', () => {

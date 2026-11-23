@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   EPIC_TABS,
   PLAN_TABS,
+  PROJECT_TABS,
   ROUTE_TITLES,
   SETTINGS_TABS,
   canonicalAddress,
@@ -279,6 +280,18 @@ describe('the address model', () => {
         `/epics/relay-hardening?tab=${tab}`,
       );
     }
+  });
+
+  it('names the two tabs of the project page, the second one written', () => {
+    expect(PROJECT_TABS).toEqual(['work', 'setup']);
+    // The work tab is the default of the one project page and is never written.
+    expect(canonicalAddress('/projects/pm-mcp-clients?tab=work')).toBe('/projects/pm-mcp-clients');
+    expect(canonicalAddress('/projects/pm-mcp-clients?tab=setup')).toBe(
+      '/projects/pm-mcp-clients?tab=setup',
+    );
+    expect(canonicalAddress('/projects/pm-mcp-clients?tab=bogus')).toBe(
+      '/projects/pm-mcp-clients',
+    );
   });
 
   it('names every tab of the settings, and writes every one of them', () => {

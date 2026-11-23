@@ -6,6 +6,9 @@
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
+  import TextField from '../components/TextField.svelte';
+  import CheckField from '../components/CheckField.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
   import { apiClient } from '../api/client';
   import type {
@@ -57,6 +60,8 @@
     currentValue: string;
     wantedValue: string;
     step: string;
+    /** The body the refused step sent, so its retry replays the same fields. */
+    body: Record<string, unknown>;
   }
 
   let isLoading = $state(true);
@@ -68,12 +73,24 @@
   let checkoutDraft = $state('');
   let isStarting = $state(false);
   let isSubmitting = $state(false);
+  /** Whether a "Check again" is reading the state, so its own button carries the busy state. */
+  let isRefreshing = $state(false);
   let error = $state('');
   let conflict = $state<OnboardingConflict | null>(null);
   let chatOpen = $state(false);
   let chatDraft = $state('');
   let isChatting = $state(false);
   let confirmAbandon = $state(false);
+
+  /** The identity the operator edits on step 2, and the run it was proposed from. */
+  interface IdentityDraft {
+    id: string;
+    name: string;
+    pilot: boolean;
+  }
+
+  let identityDraft = $state<IdentityDraft | null>(null);
+  let identityKey = $state('');
 
   const currentStep = $derived(stepOf(run));
   const isNewRun = $derived(!projectId && !run);
@@ -83,6 +100,30 @@
     run?.chat_disabled_reason ? $t(run.chat_disabled_reason) : $t('project.chat.disabled.no_role'),
   );
   const stepRows = $derived(buildStepRows(run, currentStep));
+
+  /**
+   * The identity of the run, from the state where it publishes one and from the checkout otherwise
+   * (`15-project-onboarding.adoc:65`: the id proposed from the remote's name, the display name from
+   * its owner and name).
+   */
+  const identity = $derived(identityDraft ?? identityProposal(run));
+
+  /**
+   * Whether this step waits for something only the terminal can give it: the build environment of
+   * the machine, which the terminal client captures (`project-onboarding.adoc#build-environment`).
+   */
+  const needsTerminal = $derived(
+    run !== null && currentStep <= 3 && !run.build_environment?.captured_at,
+  );
+
+  // A run that reaches the identity step — or a new run — proposes its values again, and keeps the
+  // operator's edits while the step stays the one on screen.
+  $effect(() => {
+    const key = `${currentStep}|${run?.onboarding_id ?? ''}|${run?.checkout_path ?? ''}`;
+    if (key === identityKey) return;
+    identityKey = key;
+    identityDraft = identityProposal(run);
+  });
 
   onMount(() => {
     void load();
@@ -115,6 +156,55 @@
     void $t;
     measureStepLine();
   });
+
+  /**
+   * @param value the run, or `null` while none is loaded
+   * @returns the identity the operator starts from
+   */
+  function identityProposal(value: ProjectOnboardingState | null): IdentityDraft {
+    const publishedId = typeof value?.id === 'string' ? value.id : '';
+    const publishedName = typeof value?.name === 'string' ? value.name : '';
+    const derived = idFromCheckout(value?.checkout_path);
+    return {
+      id: publishedId || derived,
+      name: publishedName || derived,
+      pilot: value?.pilot === true,
+    };
+  }
+
+  /**
+   * @param checkoutPath the checkout of the run
+   * @returns an id the identifier grammar accepts, proposed from the checkout's own name
+   */
+  function idFromCheckout(checkoutPath?: string | null): string {
+    const name = (checkoutPath ?? '').split('/').filter(Boolean).pop() ?? '';
+    const folded = name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    if (!folded) return '';
+    return /^[a-z]/.test(folded) ? folded : `p-${folded}`;
+  }
+
+  /**
+   * Writes one field of the identity the operator edits.
+   *
+   * @param field the field changed
+   * @param value its new value
+   */
+  function setIdentityField(field: keyof IdentityDraft, value: string | boolean): void {
+    identityDraft = { ...identity, [field]: value } as IdentityDraft;
+  }
+
+  /** Records the identity and moves the run on. */
+  async function saveIdentity(): Promise<void> {
+    if (!projectId) return;
+    await applyStep('set', {
+      id: identity.id,
+      name: identity.name,
+      pilot: identity.pilot,
+    });
+  }
 
   /**
    * @param value the run, or `null` while none is loaded
@@ -194,10 +284,14 @@
    * @param startedPath the checkout a run was just started at, when the screen started one
    */
   async function load(startedPath?: string): Promise<void> {
-    isLoading = true;
+    // A check that reads the state again keeps the card on screen: only a first read shows the
+    // skeleton, so the button that started the check keeps its busy state.
+    if (!run) {
+      isLoading = true;
+    }
     loadError = null;
     error = '';
-    run = null;
+    const wasBeingAdded = beingAdded !== null;
     beingAdded = null;
     try {
       if (projectId) {
@@ -212,12 +306,27 @@
         }
       } else {
         await loadBeingAdded(startedPath);
+        // The explorer no longer lists the run this page showed — the terminal enrolled or
+        // abandoned it — so the screen stops showing a step that no longer exists.
+        if (!beingAdded && wasBeingAdded) {
+          run = null;
+        }
       }
       hasShownRun = run !== null || beingAdded !== null;
     } catch (err: unknown) {
       loadError = errorCodeOf(err);
     } finally {
       isLoading = false;
+    }
+  }
+
+  /** Reads the state again from the "Check again" of a step that waits on the terminal. */
+  async function checkAgain(): Promise<void> {
+    isRefreshing = true;
+    try {
+      await load();
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -302,10 +411,15 @@
     try {
       const result = await apiClient.stepProjectOnboarding(projectId, step, body);
       if (result.conflict) {
+        // A step that sent fields replays them; a step the link itself answered replays the value
+        // the runtime named as wanted.
+        const retryBody =
+          Object.keys(body).length > 0 ? body : { value: result.wanted_value ?? '' };
         conflict = {
           currentValue: result.current_value ?? '',
           wantedValue: result.wanted_value ?? String(body.value ?? ''),
           step,
+          body: retryBody,
         };
         return;
       }
@@ -320,10 +434,9 @@
   /** Applies the operator's own choice again, on the revision the other client left behind. */
   async function applyConflictAgain(): Promise<void> {
     if (!conflict) return;
-    const wanted = conflict.wantedValue;
-    const step = conflict.step;
+    const { step, body } = conflict;
     conflict = null;
-    await applyStep(step, { value: wanted });
+    await applyStep(step, body);
   }
 
   /** Keeps the other client's value and closes the card, without writing anything. */
@@ -531,7 +644,79 @@
           {/if}
         </div>
 
-        {#if currentStep <= 3}
+        {#if currentStep === 2}
+          <section class="identity" data-testid="project-identity-step">
+            <h3 class="identity__title">{$t('project.identity.title')}</h3>
+            <TextField
+              label={$t('project.identity.id')}
+              value={identity.id}
+              mono
+              autocomplete="off"
+              spellcheck={false}
+              hint={$t('project.identity.id_hint')}
+              testid="project-identity-id"
+              oninput={(event) =>
+                setIdentityField('id', (event.currentTarget as HTMLInputElement).value)}
+            />
+            <TextField
+              label={$t('project.identity.name')}
+              value={identity.name}
+              autocomplete="off"
+              testid="project-identity-name"
+              oninput={(event) =>
+                setIdentityField('name', (event.currentTarget as HTMLInputElement).value)}
+            />
+            <CheckField
+              label={$t('project.identity.pilot')}
+              description={$t('project.identity.pilot_hint')}
+              checked={identity.pilot}
+              testid="project-identity-pilot"
+              onchange={(checked) => setIdentityField('pilot', checked)}
+            />
+            <div class="identity__actions">
+              <Button
+                variant="primary"
+                loading={isSubmitting}
+                disabled={!identity.id.trim() || !identity.name.trim() || !projectId}
+                disabledReason={!projectId ? $t('project.identity.enrol_in_terminal') : undefined}
+                on:click={saveIdentity}
+                data-testid="project-identity-save"
+              >
+                {$t('project.identity.save')}
+              </Button>
+            </div>
+          </section>
+        {/if}
+
+        {#if needsTerminal}
+          <!-- A step that waits on the terminal says what is missing, the command that supplies it,
+               how the run goes on, and offers the check that reads the machine again before the
+               operator leaves the browser (PLAN-59 D3). -->
+          <section class="needs-terminal" data-testid="project-needs-terminal">
+            <h3 class="needs-terminal__title">
+              <Icon name="state.alert" size={16} />
+              {$t('project.needs_terminal.title')}
+            </h3>
+            <p class="needs-terminal__line">
+              {$t('project.needs_terminal.missing', {
+                what: $t('project.needs_terminal.what'),
+              })}
+            </p>
+            <p class="needs-terminal__command-label">{$t('project.needs_terminal.command')}</p>
+            <code class="needs-terminal__command mono" data-testid="project-needs-terminal-command"
+              >{run.build_environment?.command ?? 'pm-operator project add'}</code
+            >
+            <p class="needs-terminal__line">{$t('project.needs_terminal.after')}</p>
+            <Button
+              variant="secondary"
+              loading={isRefreshing}
+              on:click={checkAgain}
+              data-testid="project-needs-terminal-check"
+            >
+              {$t('project.needs_terminal.check_again')}
+            </Button>
+          </section>
+        {:else if currentStep <= 3}
           <section class="build-env" data-testid="project-build-environment">
             <h3 class="build-env__title">{$t('project.onboarding.build_env.title')}</h3>
             {#if run.build_environment?.captured_at}
@@ -644,7 +829,7 @@
             </Button>
             {#if beingAdded}
               <Button
-                variant="danger"
+                variant="secondary"
                 on:click={() => (confirmAbandon = true)}
                 data-testid="project-abandon"
               >
@@ -725,31 +910,81 @@
 {/if}
 
 {#if confirmAbandon && beingAdded}
-  <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="project-abandon-modal">
-    <div class="modal-card">
-      <h2 class="modal-title">
-        {$t('project.adding.abandon_title', { path: beingAdded.checkout_path })}
-      </h2>
-      <p class="modal-explain">
-        {$t('project.adding.abandon_confirm', { path: beingAdded.checkout_path })}
-      </p>
-      <div class="modal-actions">
-        <Button
-          variant="secondary"
-          on:click={() => (confirmAbandon = false)}
-          data-testid="project-abandon-cancel"
-        >
-          {$t('common.action.cancel')}
-        </Button>
-        <Button variant="danger" on:click={abandonRun} data-testid="project-abandon-confirm">
-          {$t('project.adding.abandon')}
-        </Button>
-      </div>
-    </div>
-  </div>
+  <ConfirmDialog
+    open={true}
+    title={$t('project.adding.abandon_title', { path: beingAdded.checkout_path })}
+    consequences={[$t('project.adding.abandon_confirm', { path: beingAdded.checkout_path })]}
+    actionLabel={$t('project.adding.abandon')}
+    cancelLabel={$t('common.action.cancel')}
+    busy={false}
+    testid="project-abandon-modal"
+    onConfirm={abandonRun}
+    onClose={() => (confirmAbandon = false)}
+  />
 {/if}
 
 <style>
+  .identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+  }
+
+  .identity__title {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .identity__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .needs-terminal {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-attention-subtle);
+  }
+
+  .needs-terminal__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--color-text-primary);
+    margin: 0;
+  }
+
+  .needs-terminal__line,
+  .needs-terminal__command-label {
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    margin: 0;
+  }
+
+  .needs-terminal__command {
+    display: block;
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
   .project-onboarding {
     min-height: 100vh;
     background-color: var(--color-bg-app);
@@ -1021,48 +1256,6 @@
     z-index: 100;
   }
 
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 110;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    max-width: 32rem;
-    width: 100%;
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
-  }
-
-  .modal-explain {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-    margin-bottom: var(--space-5);
-  }
-
-  .modal-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
   .chat-drawer {
     display: flex;
     flex-direction: column;
@@ -1159,11 +1352,6 @@
     .build-env__variable {
       grid-template-columns: 1fr;
       gap: 0;
-    }
-
-    .modal-actions {
-      flex-direction: column-reverse;
-      align-items: stretch;
     }
   }
 </style>

@@ -14,6 +14,7 @@ import { hasMessage, t } from '../i18n';
 export type StateKind =
   | 'plan'
   | 'epic'
+  | 'project'
   | 'task'
   | 'worker'
   | 'model'
