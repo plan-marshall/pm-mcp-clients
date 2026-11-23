@@ -241,13 +241,13 @@ class ExitCodesTest {
     private static Map<String, VerbCases> registry() {
         var all = List.of(
                             new Cases("status")
-                                                .success(ExitCodesTest::noRuntime)
+                                                .success(ExitCodesTest::noRuntime, "--json")
                                                 .refusal(),
                             new Cases("plans")
                                                 .success(ExitCodesTest::serveReads, "--json")
                                                 .refusal(),
                             new Cases("web")
-                                                .success(ExitCodesTest::noRuntime)
+                                                .success(ExitCodesTest::serveReads, "devices")
                                                 .refusal("devices"),
                             new Cases("runtime")
                                                 .success(ExitCodesTest::serveReads, "upgrade", "--notes")
@@ -268,13 +268,13 @@ class ExitCodesTest {
                                                                                         Map.of("key", test.id, "reason", test.refusalTitle()))),
                                                                     "status", ID),
                             new Cases("project")
-                                                .success(ExitCodesTest::noRuntime)
+                                                .success(ExitCodesTest::serveReads, "favourite", ID)
                                                 .refusal(ID),
                             new Cases("projects")
                                                 .success(ExitCodesTest::serveReads)
                                                 .refusal(),
                             new Cases("client")
-                                                .success(ExitCodesTest::noRuntime)
+                                                .success(ExitCodesTest::noRuntime, "status")
                                                 .refusal("status"),
                             new Cases("plan")
                                                 .success(ExitCodesTest::serveReads, "watches", ID)
@@ -291,7 +291,7 @@ class ExitCodesTest {
                                                 .success(ExitCodesTest::noRuntime)
                                                 .refusal("run", ID, "--project", ID, "--no-input"),
                             new Cases("lesson")
-                                                .success(ExitCodesTest::noRuntime)
+                                                .success(ExitCodesTest::serveReads, "check", ID, "--project", ID)
                                                 .refusal("check", ID),
                             new Cases("questions")
                                                 .success(ExitCodesTest::serveReads)
@@ -447,6 +447,8 @@ class ExitCodesTest {
                 response.send(200, null, "release notes");
             } else if (target.startsWith("/api/v1/harnesses/") && get) {
                 response.send(404, null, "");
+            } else if (target.endsWith("/premise-check")) {
+                response.json(200, "{\"lesson_id\":\"" + test.id + "\",\"status\":\"holds\"}");
             } else {
                 response.json(200, "{}");
             }
@@ -661,6 +663,11 @@ class ExitCodesTest {
 
             assertEquals(0, code, label + " did not exit 0." + streams());
             assertEquals(List.of(), errLinesAfterNotice(), label + " printed on stderr." + streams());
+            if (!row.args().isEmpty()) {
+                // A row that names an argument must reach the verb's work, never stop at its parent help.
+                assertFalse(out.toString().contains("Usage: pm-operator " + verb),
+                                    label + " printed the parent help instead of doing its work." + streams());
+            }
         }
 
         @Test

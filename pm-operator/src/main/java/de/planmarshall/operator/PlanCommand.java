@@ -106,6 +106,7 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KEY_INPUT = "input";
     private static final String KEY_OUTPUT = "output";
     private static final String KEY_COUNT = "count";
+    private static final String KEY_RUN = "run";
     private static final String KEY_STATE_ROW = "state";
     private static final String KEY_ASPECT = "aspect";
     /** The code with which the runtime refuses a submitted settings value itself. */
@@ -624,18 +625,33 @@ public final class PlanCommand implements Callable<Integer> {
     }
 
     /**
-     * @param kind the kind of a tree node
-     * @return the word that precedes the node's title: {@code "phase "} for a phase,
-     *         {@code "sub-workflow "} for a sub-workflow, nothing for any other kind
+     * @param kind   the kind of a tree node
+     * @param locale the interface locale
+     * @return the word that precedes the node's title: the phase word for a phase, the
+     *         sub-workflow word for a sub-workflow, nothing for any other kind
      */
-    private static String kindPrefix(@Nullable String kind) {
+    private static String kindPrefix(@Nullable String kind, String locale) {
         if (PHASE.equals(kind)) {
-            return "phase ";
+            return MessageCatalogue.format(locale, "operator.plan.tree.kind.phase", Map.of());
         }
         if ("sub_workflow".equals(kind)) {
-            return "sub-workflow ";
+            return MessageCatalogue.format(locale, "operator.plan.tree.kind.sub_workflow", Map.of());
         }
         return "";
+    }
+
+    /**
+     * @param title the node's title
+     * @param locale the interface locale
+     * @return {@code true} when the title already names its own kind, in the interface's word or in
+     *         the runtime's own English one
+     */
+    private static boolean titleNamesItsKind(String title, String locale) {
+        var phase = MessageCatalogue.format(locale, "operator.plan.tree.kind.phase", Map.of());
+        var subWorkflow = MessageCatalogue.format(locale, "operator.plan.tree.kind.sub_workflow", Map.of());
+        return title.startsWith("phase ") || title.startsWith("sub-workflow ")
+                            || (!phase.isBlank() && title.startsWith(phase))
+                            || (!subWorkflow.isBlank() && title.startsWith(subWorkflow));
     }
 
     private void renderNode(PrintWriter out, ProcessNode node, int level, int maxDepth) {
@@ -655,7 +671,10 @@ public final class PlanCommand implements Callable<Integer> {
 
         var locale = context.clientEnvironment().locale();
         var runStr = node.runCount() > 1 && stateEnum == NodeState.DONE ? " ×" + node.runCount() : "";
-        var currentRunStr = node.currentRun() > 1 && stateEnum == NodeState.RUNNING ? "run " + node.currentRun() : "";
+        var currentRunStr = node.currentRun() > 1 && stateEnum == NodeState.RUNNING
+                            ? MessageCatalogue.format(locale, "operator.plan.tree.run",
+                                                Map.of(KEY_RUN, node.currentRun()))
+                            : "";
         var durationStr = node.durationSeconds() > 0 ? Display.duration(locale, node.durationSeconds()) : "";
 
         var infoParts = new ArrayList<String>();
@@ -663,21 +682,23 @@ public final class PlanCommand implements Callable<Integer> {
         if (!durationStr.isEmpty()) infoParts.add(durationStr);
         if (!node.leafTasks().isEmpty()) {
             long doneCount = node.leafTasks().stream().filter(t -> "done".equalsIgnoreCase(t.status()) || "submitted".equalsIgnoreCase(t.status())).count();
-            infoParts.add(String.format("tasks: %d of %d done", doneCount, node.leafTasks().size()));
+            infoParts.add(MessageCatalogue.format(locale, "operator.plan.tree.tasks",
+                                Map.of("done", doneCount, KEY_TOTAL, node.leafTasks().size())));
         }
         if (node.waitsFor() != null && !node.waitsFor().isBlank()) {
-            infoParts.add("waits: " + OutputSafety.stripControlSequences(node.waitsFor()));
+            infoParts.add(MessageCatalogue.format(locale, "operator.plan.tree.waits",
+                                Map.of("target", OutputSafety.stripControlSequences(node.waitsFor()))));
         }
         var info = String.join(" · ", infoParts);
 
-        var kindPrefix = kindPrefix(node.kind());
+        var kindPrefix = kindPrefix(node.kind(), locale);
         var title = OutputSafety.stripControlSequences(node.title());
-        if (title.startsWith("phase ") || title.startsWith("sub-workflow ")) {
+        if (titleNamesItsKind(title, locale)) {
             kindPrefix = "";
         }
 
         var stateCol = String.format("%-9s", stateName + runStr);
-        var titleCol = kindPrefix + title;
+        var titleCol = kindPrefix.isEmpty() ? title : kindPrefix + " " + title;
 
         if (!info.isEmpty()) {
             out.printf("%s%s %s %-30s %s%n", indent, glyph, stateCol, titleCol, info);
@@ -696,7 +717,8 @@ public final class PlanCommand implements Callable<Integer> {
                     taskInfoParts.add(Display.duration(locale, task.durationSeconds()));
                 }
                 if (task.offTrack() != null) {
-                    taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
+                    taskInfoParts.add(MessageCatalogue.format(locale, "operator.plan.tree.off_track",
+                                        Map.of("signal", OutputSafety.stripControlSequences(task.offTrack().signal()))));
                 }
                 var taskInfo = String.join(" · ", taskInfoParts);
                 if (!taskInfo.isEmpty()) {
@@ -718,7 +740,7 @@ public final class PlanCommand implements Callable<Integer> {
                 jobInfoParts.add(Display.duration(locale, job.durationSeconds()));
             }
             if (job.waitsSlot()) {
-                jobInfoParts.add("waits slot");
+                jobInfoParts.add(MessageCatalogue.format(locale, "operator.plan.tree.waits_slot", Map.of()));
             }
             if (job.outcome() != null && !job.outcome().isBlank()) {
                 jobInfoParts.add(OutputSafety.stripControlSequences(job.outcome()));

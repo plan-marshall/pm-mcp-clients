@@ -327,8 +327,9 @@ public final class AcceptEditCommand implements Callable<Integer> {
             return EXIT_NEEDS_INPUT;
         }
         if (!confirm(context, locale)) {
-            out.println(MessageCatalogue.format(locale, "enrolment.accept.declined", Map.of()));
-            out.flush();
+            // The decline is a refusal of the act: its line goes to stderr (03-dialogues.adoc#refusals).
+            err.println(MessageCatalogue.format(locale, "enrolment.accept.declined", Map.of()));
+            err.flush();
             return PmOperator.EXIT_FAILURE;
         }
 

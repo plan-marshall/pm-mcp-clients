@@ -333,9 +333,10 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code, text),
-                            () -> assertTrue(text.contains(
-                                                "Changed meanwhile: it is now 30. Yours was not applied."), text),
-                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertTrue(err.toString().contains(
+                                                "Changed meanwhile: it is now 30. Yours was not applied."), err.toString()),
+                            () -> assertFalse(err.toString().contains("HTTP 409"), err.toString()),
+                            () -> assertFalse(text.contains("Changed meanwhile"), text),
                             () -> assertEquals(2, bodies.size(), bodies.toString()),
                             () -> assertTrue(bodies.get(1).contains("\"revision\":5"), bodies.get(1)));
     }
@@ -388,12 +389,14 @@ class ConfigCommandTest {
 
         int code = executeWithTyped("\n\n", "config", "set", key, "60");
         var text = out.toString();
+        var errors = err.toString();
 
         assertAll(
                             () -> assertEquals(0, code, text),
-                            () -> assertTrue(text.contains("Changed meanwhile: it is now 30. Yours was not applied."), text),
-                            () -> assertTrue(text.contains("Changed meanwhile: it is now 45. Yours was not applied."), text),
-                            () -> assertFalse(text.contains("HTTP 409"), text),
+                            () -> assertFalse(text.contains("Changed meanwhile"), text),
+                            () -> assertTrue(errors.contains("Changed meanwhile: it is now 30. Yours was not applied."), errors),
+                            () -> assertTrue(errors.contains("Changed meanwhile: it is now 45. Yours was not applied."), errors),
+                            () -> assertFalse(errors.contains("HTTP 409"), errors),
                             () -> assertEquals(3, bodies.size(), bodies.toString()),
                             () -> assertTrue(bodies.get(2).contains("\"revision\":6"), bodies.get(2)));
     }

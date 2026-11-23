@@ -732,17 +732,23 @@ public final class ConfigCommand implements Callable<Integer> {
         while (true) {
             var rendered = renderedValue(change.locale(), currentConflict);
             if (noInput) {
+                // The --no-input stop prints the state and the option that answers it on stdout,
+                // as `plan settings` does (01-commands.adoc#direct-verbs).
+                change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
+                                    Map.of(VALUE, rendered)));
                 change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.no_input",
                                     Map.of(VALUE, rendered)));
                 change.out().flush();
                 return WriteOutcome.NEEDS_INPUT;
             }
-            change.out().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
-                                Map.of(VALUE, rendered)));
+            // A change another client overtook is refused: its line goes to stderr, not stdout.
             change.out().flush();
+            change.err().println(MessageCatalogue.format(change.locale(), "common.conflict.changed",
+                                Map.of(VALUE, rendered)));
+            change.err().flush();
             if (!context.isInteractiveTerminal()) {
-                change.out().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
-                change.out().flush();
+                change.err().println(MessageCatalogue.format(change.locale(), NO_SETTING, Map.of()));
+                change.err().flush();
                 return WriteOutcome.NEEDS_INPUT;
             }
             if (!applyAgain(context, change.out(), change.locale())) {

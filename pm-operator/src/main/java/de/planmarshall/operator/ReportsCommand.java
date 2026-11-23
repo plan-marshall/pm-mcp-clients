@@ -280,15 +280,21 @@ public final class ReportsCommand implements Callable<Integer> {
                 // The runtime refused this id: every refusal names its cause on stderr, the ids
                 // that read fine are still marked, and the verb exits 1 (03-dialogues.adoc#refusals).
                 refused = true;
-                if (response.status() == 404) {
+                // A body that names its cause words the refusal, as `plan <id>` does; a bare 404 keeps
+                // the report's own line.
+                var refusal = new OperatorRefusedException("reports read", response);
+                if (response.status() == 404 && refusal.rawCode() == null) {
                     err.println(MessageCatalogue.format(locale, "operator.reports.not_found", Map.of("id", id)));
                     err.flush();
                 } else {
-                    RefusalRenderer.render(err, locale, new OperatorRefusedException("reports read", response));
+                    RefusalRenderer.render(err, locale, refusal);
                 }
             }
-            out.println(GLYPH_CHECK + MessageCatalogue.format(locale, KEY_READ_DONE, Map.of(KEY_COUNT, marked)));
-            out.flush();
+            if (marked > 0) {
+                // The success line names what was marked; with nothing marked there is no success.
+                out.println(GLYPH_CHECK + MessageCatalogue.format(locale, KEY_READ_DONE, Map.of(KEY_COUNT, marked)));
+                out.flush();
+            }
             return refused ? 1 : 0;
         }
     }
@@ -333,6 +339,11 @@ public final class ReportsCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
+                var refusal = new OperatorRefusedException("reports open", response);
+                if (refusal.rawCode() != null) {
+                    return PlanCommand.refuseRead(spec.commandLine().getErr(),
+                                        context.clientEnvironment().locale(), "reports open", response);
+                }
                 var err = spec.commandLine().getErr();
                 err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.reports.not_found", Map.of("id", reportId)));

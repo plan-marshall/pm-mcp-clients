@@ -363,6 +363,23 @@ class ReportsCommandTest {
     }
 
     @Test
+    @DisplayName("reports read prints no success line when every id is refused, and exits 1")
+    void reportsReadAllRefusedPrintsNoSuccessLine() throws Exception {
+        var firstId = "rep-" + Generators.integers(1000, 4999).next();
+        var secondId = "rep-" + Generators.integers(5000, 9999).next();
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = execute("reports", "read", firstId, secondId);
+
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertFalse(out.toString().contains("marked read"), out.toString()),
+                            () -> assertEquals(2, err.toString().lines()
+                                                .filter(line -> line.contains("is no report of this machine"))
+                                                .count(), err.toString()));
+    }
+
+    @Test
     @DisplayName("reports read in German names an unknown id in German on stderr and exits 1")
     void reportsReadUnknownIdInGerman() throws Exception {
         var id = "rep-" + Generators.integers(1000, 9999).next();

@@ -28,6 +28,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -1332,6 +1333,68 @@ class PlanCommandTest {
     @Nested
     @DisplayName("in German")
     class InGerman {
+
+        @Test
+        @DisplayName("the tree names every part in German, never in the runtime's English")
+        void treeIsGerman() throws Exception {
+            var planId = Generators.letterStrings(6, 12).next();
+            var phase = "setup" + Generators.letterStrings(3, 6).next().toLowerCase(Locale.ROOT);
+            var task = "TASK-" + Generators.integers(1, 99).next();
+            serve("/api/v1/plans/" + planId + "/process", """
+                                {"plan_id":"%s","current_phase":"execute","phase_state":"running",
+                                 "pull_request_number":214,
+                                 "nodes":[{"node_id":"execute","title":"%s","kind":"phase","state":"running",
+                                   "current_run":2,"waits_for":"drain","sub_nodes":[],
+                                   "leaf_tasks":[
+                                     {"task_id":"%s","role":"implement","harness":"claude","model":"sonnet",
+                                      "attempt":1,"status":"done"},
+                                     {"task_id":"%s-b","role":"implement","harness":"claude","model":"sonnet",
+                                      "attempt":1,"status":"executing",
+                                      "off_track":{"signal":"repeating","action":"show","value":5,"threshold":5}}],
+                                   "leaf_job":{"kind":"build","status":"queued","waits_slot":true}}]}
+                                """.formatted(planId, phase, task, task));
+
+            int code = executeWithLocale("de", "plan", planId, "--print");
+            var output = out.toString();
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(output.contains("Phase " + phase), output),
+                                () -> assertTrue(output.contains("Lauf 2"), output),
+                                () -> assertTrue(output.contains("Aufgaben: 1 von 2 fertig"), output),
+                                () -> assertTrue(output.contains("wartet: drain"), output),
+                                () -> assertTrue(output.contains("abseits: repeating"), output),
+                                () -> assertTrue(output.contains("wartet auf einen Slot"), output),
+                                () -> assertTrue(output.contains("Pull Request #214"), output),
+                                () -> assertFalse(output.contains("tasks:"), output),
+                                () -> assertFalse(output.contains("waits slot"), output));
+        }
+
+        @Test
+        @DisplayName("the list titles are German")
+        void listTitlesAreGerman() throws Exception {
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans".equals(request.target()) && "GET".equals(request.method())) {
+                    response.json(200, "[{\"id\":\"p-001\",\"phase\":\"execute\",\"title\":\"Implement CLI\"}]");
+                } else if ("/api/v1/epics".equals(request.target()) && "GET".equals(request.method())) {
+                    response.json(200, "[{\"id\":\"e-001\",\"title\":\"Epic\"}]");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var planCode = executeWithLocale("de", "plan");
+            var planText = out.toString();
+            out.getBuffer().setLength(0);
+            err.getBuffer().setLength(0);
+            var epicCode = executeWithLocale("de", "epic");
+
+            assertAll(
+                                () -> assertEquals(0, planCode, err.toString()),
+                                () -> assertTrue(planText.contains("Laufende Pl\u00e4ne:"), planText),
+                                () -> assertEquals(0, epicCode, err.toString()),
+                                () -> assertTrue(out.toString().contains("Epics:"), out.toString()));
+        }
 
         private final String planId = Generators.letterStrings(6, 12).next();
         private final String aspect = Generators.letterStrings(5, 10).next().toLowerCase();

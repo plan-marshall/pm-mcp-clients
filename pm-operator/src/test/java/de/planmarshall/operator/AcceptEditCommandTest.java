@@ -190,7 +190,8 @@ class AcceptEditCommandTest {
             assertEquals(1, executeInteractive("n\n", "accept-edit", "enrolment", project));
 
             assertAll(
-                                () -> assertTrue(out.toString().contains("nothing was sent"), out.toString()),
+                                () -> assertTrue(err.toString().contains("nothing was sent"), err.toString()),
+                                () -> assertFalse(out.toString().contains("nothing was sent"), out.toString()),
                                 () -> assertEquals(0, posts(server), "requests: " + server.requests()));
         }
 
@@ -202,7 +203,8 @@ class AcceptEditCommandTest {
             assertEquals(1, executeInteractive("", "accept-edit", "enrolment", project));
 
             assertAll(
-                                () -> assertTrue(out.toString().contains("nothing was sent"), out.toString()),
+                                () -> assertTrue(err.toString().contains("nothing was sent"), err.toString()),
+                                () -> assertFalse(out.toString().contains("nothing was sent"), out.toString()),
                                 () -> assertEquals(0, posts(server), "requests: " + server.requests()));
         }
 
