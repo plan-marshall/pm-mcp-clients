@@ -35,7 +35,12 @@
   import RowMenu from '../components/RowMenu.svelte';
   import WizardPage from '../templates/WizardPage.svelte';
   import { actFailureText, errorCodeOf } from '../api/errors';
-  import { remoteInfo, readForgeReference, type RemoteInfo } from '../start/sourceLabels';
+  import {
+    remoteInfo,
+    readForgeReference,
+    settledSource,
+    type RemoteInfo,
+  } from '../start/sourceLabels';
 
   export let projectId: string | null = null;
   export let entryId: string | null = null;
@@ -67,6 +72,13 @@
   let busy = false;
   /** The code of the failed load, which `ErrorState` resolves to its words. */
   let loadError: string | null = null;
+  /**
+   * Whether the failing read was the setup gate itself. The gate's own bound is what its sentence
+   * names, so a timeout of another read never borrows it.
+   */
+  let gateTimedOut = false;
+  /** The gate's request, aborted when the view is destroyed or read again. */
+  let gateRequest: AbortController | null = null;
   /** How many reads completed: a failure after a shown state is announced, a cold one is not. */
   let completedReads = 0;
   /** Whether the operator asked for the read again, whose own failure is announced in turn. */
@@ -149,6 +161,11 @@
   $: recipes = state?.recipes ?? [];
   $: currentProject = entry?.project_id ?? projectId ?? '';
   $: epic = (entry?.kind ?? kind) === 'epic';
+  /** The sources that still owe a state, which is why Continue is held back. */
+  $: waitingSources =
+    (entry?.sources.length ?? 0) === 0
+      ? 1
+      : (entry?.sources ?? []).filter((candidate) => !settledSource(candidate)).length;
   $: step = stepOf(
     projectId,
     entryId,
@@ -241,6 +258,9 @@
 
   onDestroy(() => {
     destroyed = true;
+    // A gate still in flight is cancelled: an entry opened after the operator left addresses no one.
+    gateRequest?.abort();
+    gateRequest = null;
     unsubscribeEntry?.();
     unsubscribeEntry = null;
   });
@@ -249,6 +269,7 @@
     const requestedEntryId = entryId;
     loading = true;
     loadError = null;
+    gateTimedOut = false;
     try {
       if (requestedEntryId) {
         const resource = await apiClient.getEntry(requestedEntryId);
@@ -263,10 +284,15 @@
       } else if (projectId) {
         // The opening call is the setup gate. It carries the gate's own bound beside the client's,
         // so a gate that never answers is the slow case, not a request held for the client's limit.
+        // The gate's request is also aborted on destroy and before it is asked again, so one gate at
+        // a time is in flight and a left view leaves none behind.
+        gateRequest?.abort();
+        const controller = new AbortController();
+        gateRequest = controller;
         const opened = await apiClient.openEntry(
           projectId,
           { kind },
-          AbortSignal.timeout(GATE_BOUND_MS),
+          AbortSignal.any([controller.signal, AbortSignal.timeout(GATE_BOUND_MS)]),
           GATE_BOUND_MS,
         );
         if (destroyed || generation !== entryGeneration) return;
@@ -284,6 +310,7 @@
     } catch (e) {
       if (generation === entryGeneration) {
         loadError = errorCodeOf(e);
+        gateTimedOut = requestedEntryId === null && projectId !== null && loadError === 'timeout';
       }
     } finally {
       if (generation === entryGeneration) {
@@ -750,8 +777,12 @@
     if (chat && chat.state !== 'chat.end' && chat.state !== 'chat.carried') {
       await endChat();
     }
-    await act('abandon');
-    navigateTo('projects');
+    // The route is left only once the entry is gone: a failed act names its failure on the step,
+    // and the operator stays where the entry still is.
+    const result = await act('abandon');
+    if (result) {
+      navigateTo('projects');
+    }
   }
 
   function follow(): void {
@@ -871,6 +902,9 @@
   function recipeUnavailable(recipe: RecipeRef): boolean {
     return recipe.parameters.some((parameter) => !parameter.available);
   }
+
+  /** The recipe the step's one primary act chooses: the first the project can run. */
+  $: primaryRecipeKey = recipes.find((candidate) => !recipeUnavailable(candidate))?.key ?? '';
 </script>
 
 {#snippet sidePane()}
@@ -951,9 +985,9 @@
       </div>
     {:else if step === 'error'}
       <div class="start-view__error" data-testid="start-error">
-        {#if loadError === 'timeout'}
-          <p class="start-view__gate" role="status" data-testid="start-gate-cause">
-            {$t('start.gate.slow')}
+        {#if loadError === 'timeout' && gateTimedOut}
+          <p class="start-view__gate" data-testid="start-gate-cause">
+            {$t('start.gate.slow', { seconds: GATE_BOUND_MS / 1000 })}
           </p>
         {/if}
         <ErrorState
@@ -1029,8 +1063,9 @@
                   </span>
                 {/if}
                 <Button
-                  variant="secondary"
+                  variant={recipe.key === primaryRecipeKey ? 'primary' : 'secondary'}
                   data-testid={`recipe-choose-${recipe.key}`}
+                  aria-label={`${$t('start.choose.recipe_act')} ${recipe.name}`}
                   disabled={busy || recipeUnavailable(recipe)}
                   on:click={() => void chooseRecipe(recipe)}
                 >
@@ -1072,6 +1107,7 @@
           readyTouched = true;
           readyId = value;
         }}
+        onSubmit={create}
       />
       {#if ready?.landing && ready.landing === 'landing.files'}
         <p class="start-view__hint" data-testid="ready-landing">
@@ -1395,8 +1431,8 @@
         step === 'parameters' ||
         step === 'ready'}
         <RowMenu
-          label={$t('start.entry.abandon')}
-          advisory={$t('start.entry.abandon')}
+          label={$t('web.common.more')}
+          advisory={$t('web.common.more.title')}
           items={[
             {
               id: 'abandon',
@@ -1436,6 +1472,7 @@
           variant="primary"
           data-testid="source-continue"
           disabled={busy || !(entry?.can_continue ?? false)}
+          disabledReason={$t('start.sources.waits', { count: waitingSources })}
           on:click={continueToReady}
         >
           {$t('start.sources.continue')}

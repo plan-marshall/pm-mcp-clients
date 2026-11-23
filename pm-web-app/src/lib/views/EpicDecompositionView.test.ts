@@ -248,6 +248,27 @@ describe('EpicDecompositionView', () => {
               dependencies: [],
               status: 'changed',
             },
+            {
+              plan_id: 'relay-locked',
+              title: 'relay-locked',
+              expected_surface: ['pm-relay/src/locked'],
+              dependencies: [],
+              status: 'locked',
+            },
+            {
+              plan_id: 'relay-dropped',
+              title: 'relay-dropped',
+              expected_surface: ['pm-relay/src/dropped'],
+              dependencies: [],
+              status: 'dropped',
+            },
+            {
+              plan_id: 'relay-committed',
+              title: 'relay-committed',
+              expected_surface: ['pm-relay/src/committed'],
+              dependencies: [],
+              status: 'committed',
+            },
           ],
         },
         {
@@ -292,23 +313,38 @@ describe('EpicDecompositionView', () => {
     expect(checkedPlan).toHaveTextContent('checked');
     expect(checkedPlan.querySelector('[data-icon="state.check"]')).toBeInTheDocument();
 
+    // A plan whose checks passed keeps "checked" even where it waits for another plan.
+    const waitingPlan = screen.getByTestId('plan-relay-token-rotation');
+    expect(waitingPlan.querySelector('.status-label--success')).toBeInTheDocument();
+    expect(waitingPlan).toHaveTextContent('checked');
+
     // Check failed plan: danger tone, "check failed" word with reason, error icon
     const failedPlan = screen.getByTestId('plan-relay-auth-v2');
     expect(failedPlan.querySelector('.status-label--danger')).toBeInTheDocument();
     expect(failedPlan).toHaveTextContent('check failed: surface overlaps relay-cursor-order (pm-api)');
     expect(failedPlan.querySelector('[data-icon="state.error"]')).toBeInTheDocument();
 
-    // Waiting plan: neutral tone, "waiting for another plan" word, clock icon
-    const waitingPlan = screen.getByTestId('plan-relay-token-rotation');
-    expect(waitingPlan.querySelector('.status-label--neutral')).toBeInTheDocument();
-    expect(waitingPlan).toHaveTextContent('waiting for another plan');
-    expect(waitingPlan.querySelector('[data-icon="state.clock"]')).toBeInTheDocument();
-
     // Edited plan: attention tone, "edited" word, edit icon
     const editedPlan = screen.getByTestId('plan-relay-reconnect-docs');
     expect(editedPlan.querySelector('.status-label--attention')).toBeInTheDocument();
     expect(editedPlan).toHaveTextContent('edited');
     expect(editedPlan.querySelector('[data-icon="act.edit"]')).toBeInTheDocument();
+
+    // A locked plan is not "checked": it names why the decomposition leaves it alone.
+    const lockedPlan = screen.getByTestId('plan-relay-locked');
+    expect(lockedPlan.querySelector('.status-label--neutral')).toBeInTheDocument();
+    expect(lockedPlan).toHaveTextContent('locked');
+    expect(lockedPlan.querySelector('[data-icon="state.lock"]')).toBeInTheDocument();
+
+    // A plan dropped on a later run says so instead of showing the success tone.
+    const droppedPlan = screen.getByTestId('plan-relay-dropped');
+    expect(droppedPlan.querySelector('.status-label--neutral')).toBeInTheDocument();
+    expect(droppedPlan).toHaveTextContent('dropped');
+
+    // A committed plan names its own state.
+    const committedPlan = screen.getByTestId('plan-relay-committed');
+    expect(committedPlan.querySelector('.status-label--success')).toBeInTheDocument();
+    expect(committedPlan).toHaveTextContent('committed');
   });
 
   it('uses Dialog for the instruct modal which closes on Escape', async () => {
@@ -327,15 +363,101 @@ describe('EpicDecompositionView', () => {
     expect(screen.queryByTestId('instruct-modal')).not.toBeInTheDocument();
   });
 
-  it('marks a plan dropped through the drop action', async () => {
-    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cut());
+  it('sends a dropped plan with the check and the commit, so the plan is not committed', async () => {
+    const passing = cut({ status: 'review', findings: [] });
+    const withoutDropped = cut({
+      status: 'review',
+      findings: [],
+      workstreams: [passing.workstreams[0]!],
+    });
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(passing);
+    const instruct = vi
+      .spyOn(apiClient, 'instructDecomposition')
+      .mockResolvedValue(withoutDropped);
+    const check = vi.spyOn(apiClient, 'checkDecomposition').mockResolvedValue(withoutDropped);
+    const commit = vi.spyOn(apiClient, 'commitDecomposition').mockResolvedValue({
+      status: 'committed',
+      ledger_revision: 4,
+      launchable_plan_count: 1,
+    });
 
     render(EpicDecompositionView);
     await screen.findByTestId('plan-drop-relay-auth-v2');
 
     await fireEvent.click(screen.getByTestId('plan-drop-relay-auth-v2'));
-
     expect(screen.getByTestId('plan-relay-auth-v2')).toHaveTextContent('dropped');
+
+    await fireEvent.click(screen.getByTestId('agree-commit'));
+
+    expect(instruct).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening', {
+      plan_id: null,
+      instruction: 'Drop the plan relay-auth-v2 from the cut.',
+      action: 'rewrite',
+    });
+    await vi.waitFor(() => expect(commit).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening'));
+    expect(check).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening');
+    expect(screen.queryByTestId('plan-relay-auth-v2')).toBeNull();
+  });
+
+  it('draws a failed instruct inside the dialog, not behind its backdrop', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cut());
+    vi.spyOn(apiClient, 'instructDecomposition').mockRejectedValue(new ClientError('timeout'));
+
+    render(EpicDecompositionView);
+    await screen.findByTestId('plan-edit-relay-auth-v2');
+    await fireEvent.click(screen.getByTestId('plan-edit-relay-auth-v2'));
+
+    const modal = screen.getByTestId('instruct-modal');
+    const input = within(modal).getByRole('textbox');
+    await fireEvent.input(input, { target: { value: 'the exchange belongs into pm-relay' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(await within(modal).findByTestId('instruct-error')).toHaveTextContent(
+      'if it keeps taking this long',
+    );
+    expect(screen.getByTestId('instruct-modal')).toBeInTheDocument();
+  });
+
+  it('ends the acts that open a dialog in the ellipsis, and names the send apart with its reason', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cut());
+
+    render(EpicDecompositionView);
+    await screen.findByTestId('add-plan');
+
+    expect(screen.getByTestId('add-plan').textContent?.trim()).toBe('Add a plan…');
+    expect(screen.getByTestId('draft-again').textContent?.trim()).toBe('Draft again…');
+    expect(screen.getByTestId('plan-edit-relay-auth-v2').textContent?.trim()).toBe('Edit…');
+
+    await fireEvent.click(screen.getByTestId('plan-edit-relay-auth-v2'));
+    const send = screen.getByTestId('instruct-submit');
+    expect(send).toHaveAccessibleName('Send the instruction');
+    expect(send).toHaveAttribute('aria-disabled', 'true');
+    const describedBy = send.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)).toHaveTextContent('Type what should change');
+  });
+
+  it('holds the focus in the dialog on open and through Tab, and gives it back on Escape', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cut());
+
+    render(EpicDecompositionView);
+    const edit = await screen.findByTestId('plan-edit-relay-auth-v2');
+    // A pointer press focuses the button, as a browser does; the dialog hands the focus back to it.
+    edit.focus();
+    await fireEvent.click(edit);
+
+    const modal = screen.getByTestId('instruct-modal');
+    await vi.waitFor(() => expect(modal.contains(document.activeElement)).toBe(true));
+
+    // The first tab stop of the dialog is its own field: Tab moves the focus there, inside the dialog.
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    expect(screen.getByTestId('instruct-input')).toHaveFocus();
+    expect(modal.contains(document.activeElement)).toBe(true);
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.queryByTestId('instruct-modal')).toBeNull();
+    await vi.waitFor(() => expect(edit).toHaveFocus());
   });
 
   it('renders check failure for dependency_cycle errors affecting a plan', async () => {

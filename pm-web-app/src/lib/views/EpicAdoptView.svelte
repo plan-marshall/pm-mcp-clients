@@ -39,13 +39,13 @@
   {:else}
     <h2 class="epic-adopt__title">{$t('start.sources.title', { kind: 'epic' })}</h2>
     <ul class="epic-adopt__list">
-      {#each epics as epic (epic.epic_id)}
+      {#each epics as epic, index (epic.epic_id)}
         <li class="epic-adopt__item" data-testid={`adoptable-${epic.epic_id}`}>
           <p class="epic-adopt__offer">
             {$t('start.epic.adopt.offer', { epic: epic.title, project: projectId })}
           </p>
           <Button
-            variant="primary"
+            variant={index === 0 ? 'primary' : 'secondary'}
             data-testid={`adopt-${epic.epic_id}`}
             disabled={busy}
             onclick={() => onAdopt(epic.epic_id)}

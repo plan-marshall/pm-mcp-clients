@@ -34,6 +34,8 @@
   let instructAction = $state<'edit' | 'add' | 'rewrite'>('edit');
   let instructPlanId = $state<string | null>(null);
   let instruction = $state('');
+  /** The code of a failed instruct submit, drawn inside the dialog the person is still in. */
+  let dialogError = $state('');
   let readBack = $state<{ before: EpicDecomposition; after: EpicDecomposition } | null>(null);
 
   let unsubscribeEvents: (() => void) | null = null;
@@ -98,7 +100,15 @@
   }
 
   function changeMarker(plan: StagedPlanRecord): string | null {
-    if (plan.status === 'staged' || plan.status === 'committed') return null;
+    // The dropped and locked states are the check state's own words: a second tag would repeat them.
+    if (
+      plan.status === 'staged' ||
+      plan.status === 'committed' ||
+      plan.status === 'locked' ||
+      plan.status === 'dropped'
+    ) {
+      return null;
+    }
     return $t('decomposition.change', { change: plan.status });
   }
 
@@ -110,12 +120,33 @@
 
   function checkStateOf(plan: StagedPlanRecord): PlanCheckState {
     const conflicts = conflictsFor(plan.plan_id);
+    if (droppedPlans.includes(plan.plan_id) || plan.status === 'dropped') {
+      return {
+        tone: 'neutral',
+        label: $t('decomposition.check.dropped'),
+        icon: 'state.dot',
+      };
+    }
     if (conflicts.length > 0) {
       const reason = conflicts.map((c) => c.message).join('; ');
       return {
         tone: 'danger',
         label: $t('decomposition.check.failed', { reason }),
         icon: 'state.error',
+      };
+    }
+    if (plan.status === 'locked') {
+      return {
+        tone: 'neutral',
+        label: $t('decomposition.check.locked'),
+        icon: 'state.lock',
+      };
+    }
+    if (plan.status === 'committed') {
+      return {
+        tone: 'success',
+        label: $t('decomposition.check.committed'),
+        icon: 'state.check',
       };
     }
     if (plan.status === 'changed') {
@@ -125,13 +156,8 @@
         icon: 'act.edit',
       };
     }
-    if (plan.dependencies.length > 0) {
-      return {
-        tone: 'neutral',
-        label: $t('decomposition.check.waiting'),
-        icon: 'state.clock',
-      };
-    }
+    // A plan whose checks passed is checked, whether or not another plan lands before it: a
+    // dependency is not a failed check.
     return {
       tone: 'success',
       label: $t('decomposition.check.checked'),
@@ -143,6 +169,7 @@
     instructPlanId = planId;
     instructAction = action;
     instruction = '';
+    dialogError = '';
     instructOpen = true;
   }
 
@@ -150,6 +177,7 @@
     if (!cut || instruction.trim().length === 0) return;
     busy = true;
     errorMessage = null;
+    dialogError = '';
     try {
       const request: DecompositionInstructRequest = {
         plan_id: instructPlanId,
@@ -160,7 +188,8 @@
       readBack = { before: cut, after };
       instructOpen = false;
     } catch (err: unknown) {
-      errorMessage = errorCodeOf(err);
+      // The person is still in the dialog, so its failure is drawn there, not behind its backdrop.
+      dialogError = errorCodeOf(err);
     } finally {
       busy = false;
     }
@@ -202,6 +231,21 @@
     busy = true;
     errorMessage = null;
     try {
+      // A plan marked for dropping leaves the cut before the check and the commit read it: the
+      // whole-cut rewrite is the one write verb that removes a plan before agreement, and its
+      // answer is the cut the check and the commit then see.
+      if (droppedPlans.length > 0) {
+        const instruction =
+          droppedPlans.length === 1
+            ? `Drop the plan ${droppedPlans[0]} from the cut.`
+            : `Drop the plans ${droppedPlans.join(', ')} from the cut.`;
+        cut = await apiClient.instructDecomposition(projectId, epicId, {
+          plan_id: null,
+          instruction,
+          action: 'rewrite',
+        });
+        droppedPlans = [];
+      }
       const checked = await apiClient.checkDecomposition(projectId, epicId);
       cut = checked;
       if (everyCheckPasses(checked)) {
@@ -364,17 +408,8 @@
                 </div>
                 <div class="plan__head">
                   <span class="plan__title">{plan.title}</span>
-                  {#if plan.status === 'locked'}
-                    <span class="plan__tag" data-testid="plan-locked"
-                      >{$t('decomposition.locked')}</span
-                    >
-                  {:else if changeMarker(plan)}
+                  {#if changeMarker(plan)}
                     <span class="plan__tag" data-testid="plan-change">{changeMarker(plan)}</span>
-                  {/if}
-                  {#if droppedPlans.includes(plan.plan_id)}
-                    <span class="plan__tag plan__tag--dropped"
-                      >{$t('decomposition.change', { change: 'dropped' })}</span
-                    >
                   {/if}
                 </div>
                 <div class="plan__surface" data-testid="plan-surface-{plan.plan_id}">
@@ -397,6 +432,7 @@
                     variant="secondary"
                     size="sm"
                     data-testid="plan-keep-{plan.plan_id}"
+                    disabled={busy}
                     onclick={() => keep(plan.plan_id)}
                   >
                     {$t('decomposition.keep')}
@@ -405,6 +441,7 @@
                     variant="secondary"
                     size="sm"
                     data-testid="plan-edit-{plan.plan_id}"
+                    disabled={busy}
                     onclick={() => openInstruct(plan.plan_id, 'edit')}
                   >
                     {$t('decomposition.edit')}
@@ -413,6 +450,7 @@
                     variant="secondary"
                     size="sm"
                     data-testid="plan-drop-{plan.plan_id}"
+                    disabled={busy}
                     onclick={() => drop(plan.plan_id)}
                   >
                     {$t('decomposition.drop')}
@@ -454,7 +492,7 @@
 
     <footer class="decomposition__footer">
       <Button variant="secondary" data-testid="add-plan" onclick={() => openInstruct(null, 'add')}>
-        + {$t('decomposition.add')}
+        {$t('decomposition.add')}
       </Button>
       <Button variant="secondary" data-testid="draft-again" onclick={() => openInstruct(null, 'rewrite')}>
         {$t('decomposition.draft_again')}
@@ -481,14 +519,20 @@
 
 <Dialog
   open={instructOpen}
-  title={$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.add') })}
+  title={$t('decomposition.instruct.title', { plan: instructPlanId ?? $t('decomposition.new_plan') })}
   onClose={() => (instructOpen = false)}
   testid="instruct-modal"
 >
+  {#if dialogError}
+    <div data-testid="instruct-error">
+      <ErrorState code={dialogError} titleLevel={3} />
+    </div>
+  {/if}
   <Compose
     bind:value={instruction}
     label={$t('decomposition.instruct.prompt')}
-    sendLabel={$t('decomposition.instruct.prompt')}
+    sendLabel={$t('decomposition.instruct.send')}
+    disabledReason={$t('decomposition.instruct.required')}
     inputTestid="instruct-input"
     submitTestid="instruct-submit"
     disabled={busy || instruction.trim().length === 0}
@@ -623,10 +667,6 @@
     background-color: var(--color-bg-subtle);
   }
 
-  .plan__tag--dropped {
-    background-color: var(--color-danger-subtle);
-  }
-
   .plan__label {
     color: var(--color-text-muted);
     font-size: var(--text-xs);
@@ -640,6 +680,7 @@
 
   .plan__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
     margin-top: var(--space-1);
   }
@@ -649,12 +690,6 @@
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-sm);
-  }
-
-  .plan__actions {
-    display: flex;
-    gap: var(--space-2);
-    margin-top: var(--space-1);
   }
 
   .read-back {

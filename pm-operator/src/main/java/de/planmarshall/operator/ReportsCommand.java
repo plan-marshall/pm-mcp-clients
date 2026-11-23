@@ -168,7 +168,7 @@ public final class ReportsCommand implements Callable<Integer> {
         var created = ConsoleNotice.stripControlSequences(item.created());
         var timeStr = item.isSentLater()
                             ? created + " · " + MessageCatalogue.format(locale, "report.list.sent_at",
-                                                Map.of("time", ConsoleNotice.stripControlSequences(item.sent())))
+                            Map.of("time", ConsoleNotice.stripControlSequences(item.sent())))
                             : created;
 
         out.printf("%s%-10s %-19s %-37s %s%n", indent, id, targetName, subject, timeStr);
