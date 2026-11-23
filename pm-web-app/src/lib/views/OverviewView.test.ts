@@ -901,7 +901,7 @@ describe('OverviewView component', () => {
     runtimeStore.update((s) => ({
       ...s,
       currentRoute: 'overview',
-      lensGroup: 'plan',
+      lensGroup: null,
       lensMode: null,
       lensProject: 'pm-mcp-clients',
     }));

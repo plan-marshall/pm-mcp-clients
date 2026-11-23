@@ -54,9 +54,19 @@ describe('TopBar component (PLAN-144 D2)', () => {
     phase_state: 'running',
     needs_operator: false,
     instance_version: 1,
-    tokens_so_far: { total_tokens: 100, cost_usd: 0.01, duration_ms: 1000 },
+    tokens_so_far: {
+      total: 100,
+      input: 80,
+      output: 20,
+      floor: false,
+      tasks_total: 1,
+      tasks_measured: 1,
+      none_yet: false,
+      not_measured: false,
+    },
     nodes: [],
     current_position_path: [],
+    duration_seconds: 10,
   };
 
   it('draws one breadcrumb: lens › project › epic › plan with KindMarks and titles', () => {

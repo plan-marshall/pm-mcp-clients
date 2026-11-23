@@ -37,9 +37,6 @@
   import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
-  const epicProjectId = $derived(
-    resource?.project_id ?? epic?.project ?? $runtimeStore.selectedProjectId ?? '',
-  );
   let lastLoadedEpicId: string | null = null;
 
   $effect(() => {
@@ -54,6 +51,9 @@
 
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
+  const epicProjectId = $derived(
+    resource?.project_id ?? epic?.project ?? $runtimeStore.selectedProjectId ?? '',
+  );
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
   /** The code of a failed epic-resource read: the page keeps the epic's head and says so. */

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import WorkListColumn from './WorkListColumn.svelte';
-import { apiClient, type ProjectDetailResponse } from '../api/client';
+import { apiClient, type ProjectDetailResponse, type ProcessTree } from '../api/client';
 import * as runtime from '../stores/runtime';
 import * as history from '../navigation/history';
 
@@ -93,7 +93,7 @@ describe('WorkListColumn component', () => {
   it('replaces the address when a sibling plan is clicked (D4)', async () => {
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(mockDetail);
     const openPlanSpy = vi.spyOn(runtime, 'openPlanView').mockImplementation(() => {});
-    const writeAddressSpy = vi.spyOn(history, 'writeAddress').mockImplementation(() => {});
+    const writeAddressSpy = vi.spyOn(history, 'writeAddress').mockImplementation(() => true);
 
     render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'fix-relay' });
 
@@ -111,7 +111,7 @@ describe('WorkListColumn component', () => {
   it('replaces the address when a sibling epic is clicked (D4)', async () => {
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(mockDetail);
     const openEpicSpy = vi.spyOn(runtime, 'openEpicView').mockImplementation(() => {});
-    const writeAddressSpy = vi.spyOn(history, 'writeAddress').mockImplementation(() => {});
+    const writeAddressSpy = vi.spyOn(history, 'writeAddress').mockImplementation(() => true);
 
     render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'fix-relay' });
 
@@ -155,8 +155,7 @@ describe('WorkListColumn component', () => {
         title: 'Fix Relay Transport',
         project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients', link: '' },
         epic: { epic_id: 'relay-hardening', title: 'Relay Hardening', link: '' },
-        root_node: { node_id: 'root', title: 'Root', state: 'running' },
-      },
+      } as unknown as ProcessTree,
     }));
 
     render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'fix-relay' });

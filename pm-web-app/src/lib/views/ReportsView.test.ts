@@ -2732,7 +2732,7 @@ describe('ReportsView component', () => {
 
     it('shows notice for an unresolvable report', async () => {
       window.history.replaceState(null, '', '/reports/rep-non-existent');
-      vi.spyOn(apiClient, 'getReport').mockResolvedValue(null);
+      vi.spyOn(apiClient, 'getReport').mockResolvedValue(null as unknown as ReportItem);
       runtimeStore.update((s) => ({
         ...s,
         currentRoute: 'report',

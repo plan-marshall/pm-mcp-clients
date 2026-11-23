@@ -170,7 +170,7 @@ export function buildChain(
 
   if (route === 'overview') {
     const projectId = facts.projectId;
-    const projectTitle = facts.projectDisplayName || projectId;
+    const projectTitle = facts.projectDisplayName || projectId || '';
 
     if (projectId) {
       return [

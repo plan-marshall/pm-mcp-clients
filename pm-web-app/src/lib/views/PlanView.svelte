@@ -54,7 +54,6 @@
   type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
 
   let planId = $derived($runtimeStore.selectedPlanId || '');
-  const planProjectId = $derived(plan?.project?.project_id ?? $runtimeStore.selectedProjectId ?? '');
   let lastLoadedPlanId: string | null = null;
 
   $effect(() => {
@@ -68,6 +67,7 @@
   });
 
   let plan = $state<ProcessTree | null>(null);
+  const planProjectId = $derived(plan?.project?.project_id ?? $runtimeStore.selectedProjectId ?? '');
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
   let showTokenBreakdown = $state(false);

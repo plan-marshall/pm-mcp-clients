@@ -70,29 +70,29 @@
     href: string;
     isCurrent: boolean;
     statusLabel: string;
-    statusTone: 'idle' | 'running' | 'success' | 'warning' | 'danger';
+    statusTone: 'neutral' | 'running' | 'attention' | 'danger' | 'success';
     tasksDone?: number;
     tasksTotal?: number;
   }
 
-  function planTone(state: string): 'idle' | 'running' | 'success' | 'warning' | 'danger' {
+  function planTone(state: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
     switch (state) {
       case 'running':
         return 'running';
       case 'paused':
       case 'pausing':
       case 'waiting':
-        return 'warning';
+        return 'attention';
       case 'staged':
       default:
-        return 'idle';
+        return 'neutral';
     }
   }
 
   function epicTone(
     epic: ActiveEpicSummary,
-  ): 'idle' | 'running' | 'success' | 'warning' | 'danger' {
-    return (epic.running_plans_count ?? 0) > 0 ? 'running' : 'idle';
+  ): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    return (epic.running_plans_count ?? 0) > 0 ? 'running' : 'neutral';
   }
 
   function toPlanItem(p: ActivePlanSummary): WorkRowItem {
