@@ -49,19 +49,19 @@ test.describe('Fully onboarded showroom', () => {
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
 
     await expect(
-      page.getByTestId('section-favourites').getByTestId('project-card-pm-mcp-clients'),
+      page.getByTestId('section-favourites').getByTestId('project-row-pm-mcp-clients'),
     ).toBeVisible();
     await expect(
-      page.getByTestId('section-favourites').getByTestId('project-card-pm-mcp-core'),
+      page.getByTestId('section-favourites').getByTestId('project-row-pm-mcp-core'),
     ).toBeVisible();
     await expect(
-      page.getByTestId('section-recent').getByTestId('project-card-plan-marshall'),
+      page.getByTestId('section-recent').getByTestId('project-row-plan-marshall'),
     ).toBeVisible();
     await expect(page.getByTestId('section-all-projects')).toBeVisible();
 
     // No fourth project is enrolled in the showroom.
-    await expect(page.getByTestId('project-card-API-Sheriff')).toHaveCount(0);
-    await expect(page.getByTestId('project-card-legacy-portal')).toHaveCount(0);
+    await expect(page.getByTestId('project-row-API-Sheriff')).toHaveCount(0);
+    await expect(page.getByTestId('project-row-legacy-portal')).toHaveCount(0);
   });
 
   test('opens the start entry with its sources and file tree', async ({ page }) => {

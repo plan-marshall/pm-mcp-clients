@@ -1516,6 +1516,9 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
   runtimeStore.update((s) => ({
     ...s,
     currentRoute: route,
+    // A tab belongs to the object it was chosen on: a route reached by a push starts without one,
+    // so a project never inherits the tab a settings page was left at.
+    objectTab: null,
     ...(route === 'start'
       ? {
           startProjectId: params.projectId ?? s.startProjectId ?? null,

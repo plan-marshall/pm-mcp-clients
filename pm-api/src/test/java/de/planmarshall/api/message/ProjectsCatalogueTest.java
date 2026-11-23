@@ -179,11 +179,13 @@ class ProjectsCatalogueTest {
     @Test
     @DisplayName("formats parameterized messages in English and German")
     void shouldFormatParameterizedMessages() {
-        var enSetupNeeds = MessageCatalogue.format("en", "project.state.setup_needs", Map.of("need", "credential sonar"));
-        assertEquals("setup needs: credential sonar", enSetupNeeds);
+        var enNotReady = MessageCatalogue.format("en", "project.action.disabled_not_ready",
+                Map.of("project", "plan-marshall", "need", "setup"));
+        assertEquals("plan-marshall is not ready: setup", enNotReady);
 
-        var deSetupNeeds = MessageCatalogue.format("de", "project.state.setup_needs", Map.of("need", "Zugang sonar"));
-        assertEquals("Einrichtung braucht: Zugang sonar", deSetupNeeds);
+        var deNotReady = MessageCatalogue.format("de", "project.action.disabled_not_ready",
+                Map.of("project", "plan-marshall", "need", "Einrichtung"));
+        assertEquals("plan-marshall ist nicht bereit: Einrichtung", deNotReady);
 
         var enStep = MessageCatalogue.format("en", "project.adding.step", Map.of("step", 2, "total", 10, "name", "Identity"));
         assertEquals("step 2 of 10: Identity", enStep);
