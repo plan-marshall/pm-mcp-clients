@@ -1,3 +1,13 @@
+<script module lang="ts">
+  /**
+   * The dialogs that are open, outermost first. Only the last one — the one on top — answers the
+   * keyboard: a dialog opened from another lies outside the outer panel (every dialog renders under
+   * its theme scope, not inside the caller), so an Esc or a Tab meant for the inner one would
+   * otherwise be taken by the outer one and move the focus out of the dialog on top.
+   */
+  const openPanels: HTMLElement[] = [];
+</script>
+
 <script lang="ts">
   import { onMount } from 'svelte';
   import { uniqueId } from '../utils/uniqueId';
@@ -50,6 +60,7 @@
    */
   function takeFocus(node: HTMLElement): { destroy: () => void } {
     panel = node;
+    openPanels.push(node);
     returnFocus = returnFocusElement ?? (document.activeElement as HTMLElement | null);
     // The page behind the backdrop must not scroll under the dialog; its own position survives.
     const root = document.documentElement;
@@ -57,12 +68,18 @@
     root.style.overflow = 'hidden';
     node.focus();
     queueMicrotask(() => {
-      if (panel === node) {
+      // A child that took the focus while mounting — an autofocused field — keeps it: the dialog
+      // box only takes it back when nothing inside the dialog holds it.
+      if (panel === node && !node.contains(document.activeElement)) {
         node.focus();
       }
     });
     return {
       destroy(): void {
+        const index = openPanels.indexOf(node);
+        if (index >= 0) {
+          openPanels.splice(index, 1);
+        }
         root.style.overflow = previousOverflow;
         returnFocus?.focus();
         returnFocus = null;
@@ -87,16 +104,17 @@
 
   /** @param event the key press anywhere while the dialog is open */
   function onKeydown(event: KeyboardEvent): void {
-    if (!open) {
+    if (!open || panel === undefined || openPanels[openPanels.length - 1] !== panel) {
       return;
     }
     if (event.key === 'Escape') {
       if (event.defaultPrevented) {
         return;
       }
-      const target = event.target;
-      const targetElement = target instanceof Element ? target : null;
-      if (panel?.querySelector('[role="menu"]') || targetElement?.closest('[role="menu"]')) {
+      // The Escape yields to the menu that holds the keyboard: that menu closes itself on this
+      // press. A menu that merely lies somewhere in the dialog is no reason to swallow the Escape.
+      const focused = document.activeElement instanceof Element ? document.activeElement : null;
+      if (focused?.closest('[role="menu"]')) {
         return;
       }
       // Captured before the page's own Escape handlers, so the dialog closes on its own.

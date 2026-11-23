@@ -4,6 +4,7 @@
   import { apiClient, type ConnectionStatus } from '../api/client';
   import { t } from '../i18n';
   import { pathOf } from './nav';
+  import { isLoopbackSession } from '../utils/loopback';
   import Breadcrumb, { type Crumb } from '../components/Breadcrumb.svelte';
   import Button from '../components/Button.svelte';
   import LiveIndicator from './LiveIndicator.svelte';
@@ -15,12 +16,10 @@
    * The path is the one trail the whole app draws; the pill stays neutral in both connection modes,
    * because a machine that is simply named never reads as a warning.
    */
-  const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
   const CONNECTION_HEARTBEAT_MS = 30_000;
 
   /** How this browser reaches the machine: the loopback listener, or the network one. */
-  const isLoopback =
-    typeof window !== 'undefined' && loopbackHosts.includes(window.location.hostname);
+  const isLoopback = isLoopbackSession();
   const connectionMode = isLoopback ? 'loopback' : 'lan';
 
   /** The connection of this browser to the machine: devices that can act, and the mode. */

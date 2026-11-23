@@ -2,7 +2,18 @@
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
   import type { HoldRecord, HoldResolutionResult } from '../api/client';
+  import Dialog from './Dialog.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
+  import Button from './Button.svelte';
+  import TextField from './TextField.svelte';
+  import KeyValueList, { type KeyValueItem } from './KeyValueList.svelte';
 
+  /**
+   * The dialogue of a hold (work-actions.adoc § #holds): its title, the cause and the facts the
+   * runtime reports, and the acts it offers. It is the design `Dialog`; the acts are secondary by
+   * the hierarchy and leaving without acting is its ghost act, and an act that cannot be undone
+   * opens the act's own `ConfirmDialog` with the operator's reason as a `TextField`.
+   */
   export let hold: HoldRecord | null = null;
   export let open = false;
   export let busy = false;
@@ -93,183 +104,124 @@
     reason = '';
     onClose();
   }
+
+  // A confirmation belongs to the opening it was asked in: a modal its owner closes, or a hold the
+  // runtime no longer reports, leaves no pending act behind.
+  $: if (!open || hold === null) {
+    confirming = null;
+    reason = '';
+  }
+
+  $: title = hold === null ? '' : $t('control.hold.title', { kind: hold.kind, name: hold.subject_id });
+
+  /** The figures of the hold, as the one list of figures: the cause, the attempts, the tampered file. */
+  $: facts = ((): KeyValueItem[] => {
+    if (hold === null) {
+      return [];
+    }
+    const items: KeyValueItem[] = [{ label: $t('control.hold.cause'), value: hold.cause }];
+    if (hold.last_tried_at) {
+      items.push({
+        label: '',
+        value: $t('control.hold.tried', {
+          count: hold.attempts,
+          time: formatTime(hold.last_tried_at, 'short', $currentLocale),
+        }),
+      });
+    }
+    if (hold.file_path) {
+      items.push(
+        { label: $t('control.hold.integrity.file'), value: hold.file_path },
+        {
+          label: '',
+          value: $t('control.hold.integrity.recorded', {
+            size: hold.recorded_size ?? 0,
+            digest: hold.recorded_digest ?? '',
+          }),
+        },
+        {
+          label: '',
+          value: $t('control.hold.integrity.current', {
+            size: hold.current_size ?? 0,
+            digest: hold.current_digest ?? '',
+          }),
+        },
+      );
+    }
+    return items;
+  })();
 </script>
 
-{#if open && hold}
-  <div class="hold-modal" data-testid="hold-modal" role="dialog" aria-modal="true">
-    <div class="hold-modal__panel">
-      <h2 class="hold-modal__title" data-testid="hold-title">
-        {$t('control.hold.title', { kind: hold.kind, name: hold.subject_id })}
-      </h2>
+{#if hold !== null}
+  <Dialog open={open} {title} onClose={close} testid="hold-modal">
+    {#if outcome}
+      <p
+        class="hold-modal__outcome"
+        data-testid={outcome.released ? 'hold-released' : 'hold-still-held'}
+        role="status"
+      >
+        {#if outcome.released}
+          {$t('control.hold.released', { subject: outcome.subject || hold.subject_id })}
+        {:else}
+          {$t('control.hold.still_held', { cause: outcome.cause || hold.cause })}
+        {/if}
+      </p>
+    {/if}
 
-      {#if outcome}
-        <p
-          class="hold-modal__outcome"
-          data-testid={outcome.released ? 'hold-released' : 'hold-still-held'}
-          role="status"
+    <KeyValueList items={facts} />
+
+    <div class="hold-modal__acts">
+      {#each hold.acts as act (act)}
+        <Button
+          variant="secondary"
+          data-testid={`hold-act-${act}`}
+          disabled={busy}
+          on:click={() => startAct(act)}
         >
-          {#if outcome.released}
-            {$t('control.hold.released', { subject: outcome.subject || hold.subject_id })}
-          {:else}
-            {$t('control.hold.still_held', { cause: outcome.cause || hold.cause })}
-          {/if}
-        </p>
-      {/if}
-
-      <dl class="hold-modal__facts">
-        <dt>{$t('control.hold.cause')}</dt>
-        <dd data-testid="hold-cause">{hold.cause}</dd>
-
-        {#if hold.last_tried_at}
-          <dt></dt>
-          <dd data-testid="hold-tried">
-            {$t('control.hold.tried', {
-              count: hold.attempts,
-              time: formatTime(hold.last_tried_at, 'short', $currentLocale),
-            })}
-          </dd>
-        {/if}
-
-        {#if hold.file_path}
-          <dt>{$t('control.hold.integrity.file')}</dt>
-          <dd data-testid="hold-file">{hold.file_path}</dd>
-          <dt></dt>
-          <dd data-testid="hold-recorded">
-            {$t('control.hold.integrity.recorded', {
-              size: hold.recorded_size ?? 0,
-              digest: hold.recorded_digest ?? '',
-            })}
-          </dd>
-          <dt></dt>
-          <dd data-testid="hold-current">
-            {$t('control.hold.integrity.current', {
-              size: hold.current_size ?? 0,
-              digest: hold.current_digest ?? '',
-            })}
-          </dd>
-        {/if}
-      </dl>
-
-      {#if confirming}
-        <div class="hold-modal__confirm" data-testid="hold-confirm">
-          <p class="hold-modal__explain">{explanation(confirming)}</p>
-          <label class="hold-modal__field">
-            {$t('control.hold.reason')}
-            <input type="text" data-testid="hold-reason" bind:value={reason} />
-          </label>
-          <div class="hold-modal__actions">
-            <button
-              type="button"
-              data-testid="hold-confirm-button"
-              on:click={confirmAct}
-              disabled={busy}
-            >
-              {actLabel(confirming)}
-            </button>
-            <button type="button" data-testid="hold-cancel-button" on:click={cancelConfirm}>
-              {$t('common.action.back')}
-            </button>
-          </div>
-        </div>
-      {:else}
-        <div class="hold-modal__actions">
-          {#each hold.acts as act (act)}
-            <button
-              type="button"
-              class="hold-modal__act"
-              data-testid={`hold-act-${act}`}
-              on:click={() => startAct(act)}
-              disabled={busy}
-            >
-              {actLabel(act)}
-            </button>
-          {/each}
-          <button type="button" data-testid="hold-close-button" on:click={close}>
-            {$t('common.action.close')}
-          </button>
-        </div>
-      {/if}
+          {actLabel(act)}
+        </Button>
+      {/each}
+      <Button variant="ghost" data-testid="hold-close-button" on:click={close}>
+        {$t('common.action.close')}
+      </Button>
     </div>
-  </div>
+  </Dialog>
+{/if}
+
+{#if confirming}
+  <ConfirmDialog
+    open={true}
+    title={actLabel(confirming)}
+    consequences={[explanation(confirming)]}
+    actionLabel={actLabel(confirming)}
+    cancelLabel={$t('common.action.back')}
+    {busy}
+    testid="hold-confirm"
+    onConfirm={confirmAct}
+    onClose={cancelConfirm}
+  >
+    <TextField
+      label={$t('control.hold.reason')}
+      testid="hold-reason"
+      bind:value={reason}
+      autocomplete="off"
+    />
+  </ConfirmDialog>
 {/if}
 
 <style>
-  .hold-modal {
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--color-overlay);
-    z-index: 50;
-  }
-
-  .hold-modal__panel {
-    max-width: 32rem;
-    width: 100%;
-    margin: var(--space-3);
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-    background-color: var(--color-bg-surface);
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-
   .hold-modal__outcome {
-    margin: var(--space-2) 0;
+    margin: 0;
     padding: var(--space-2);
-    border-left: 3px solid var(--color-primary);
+    border-left: 3px solid var(--color-brand);
     background-color: var(--color-bg-subtle);
     font-size: var(--text-sm);
   }
 
-  .hold-modal__facts {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: var(--space-1) var(--space-3);
-    margin: var(--space-3) 0;
-  }
-
-  .hold-modal__actions {
+  .hold-modal__acts {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-end;
     gap: var(--space-2);
-  }
-
-  .hold-modal__act,
-  .hold-modal__actions button {
-    min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-  }
-
-  .hold-modal__explain {
-    margin: 0 0 var(--space-2) 0;
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-  }
-
-  .hold-modal__field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    margin-bottom: var(--space-2);
-  }
-
-  .hold-modal__field input {
-    min-height: 44px;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  @media (max-width: 480px) {
-    .hold-modal__panel {
-      margin: 0;
-      border-radius: 0;
-      min-height: 100%;
-    }
   }
 </style>

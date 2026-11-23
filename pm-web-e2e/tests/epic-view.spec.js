@@ -209,7 +209,7 @@ test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
 
     await page.getByTestId('open-findings-review').click();
     await expect(page.getByTestId('review-modal')).toBeVisible();
-    await expect(page.getByTestId('review-title')).toContainText('findings review');
+    await expect(page.getByRole('dialog', { name: /findings review/ })).toBeVisible();
     // F-0004 is the first item that is still open, and the panel opens on it.
     await expect(page.getByTestId('review-statement')).toContainText(
       'Reconnect loses the last event',
@@ -219,7 +219,7 @@ test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
     await expect(page.getByTestId('review-modal')).toHaveCount(0);
 
     await page.getByTestId('open-watches-review').click();
-    await expect(page.getByTestId('review-title')).toContainText('watches review');
+    await expect(page.getByRole('dialog', { name: /watches review/ })).toBeVisible();
     await expect(page.getByTestId('review-item-W-0001')).toContainText(
       'The reconnect backoff grows without bound',
     );

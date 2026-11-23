@@ -1,10 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { tick } from 'svelte';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import Dialog from './Dialog.svelte';
 import DialogFixture from '../../test/fixtures/DialogFixture.svelte';
 import DialogWithMenuFixture from '../../test/fixtures/DialogWithMenuFixture.svelte';
+import DialogInThemeSectionFixture from '../../test/fixtures/DialogInThemeSectionFixture.svelte';
+import NestedDialogFixture from '../../test/fixtures/NestedDialogFixture.svelte';
+import DialogWithAutofocusFixture from '../../test/fixtures/DialogWithAutofocusFixture.svelte';
 
 /**
  * `Dialog` (VD-P-05, VD-S-03): radius 12 px, `--shadow-overlay`, the title in `--text-xl`, and the
@@ -198,6 +202,7 @@ describe('Dialog', () => {
     expect(style).toContain('z-index: var(--layer-dialog)');
     expect(style).toContain('border-radius: var(--radius-lg)');
     expect(style).toContain('box-shadow: var(--shadow-overlay)');
+    expect(style).toContain('background-color: var(--color-overlay)');
     expect(style).toContain('font-size: var(--text-xl)');
     expect(style).toContain('justify-content: flex-end');
   });
@@ -239,5 +244,96 @@ describe('Dialog', () => {
     await fireEvent.keyDown(window, { key: 'Escape' });
 
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('draws a dialog opened inside a themed section in that section, so it keeps the section’s theme', () => {
+    render(DialogInThemeSectionFixture, { props: { theme: 'dark' } });
+
+    const section = screen.getByTestId('theme-section');
+
+    expect(section).toContainElement(screen.getByRole('dialog'));
+  });
+
+  it('keeps Tab inside the dialog on top when one dialog opens another', async () => {
+    render(NestedDialogFixture, {
+      props: {
+        outerTitle: 'Outer',
+        innerTitle: 'Inner',
+        openInnerLabel: 'Open inner',
+        outerActLabel: 'Outer act',
+        innerFirstLabel: 'Inner first',
+        innerLastLabel: 'Inner last',
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    const inner = await screen.findByRole('dialog', { name: 'Inner' });
+    const first = within(inner).getByRole('button', { name: 'Inner first' });
+    const last = within(inner).getByRole('button', { name: 'Inner last' });
+
+    last.focus();
+    await fireEvent.keyDown(window, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('closes the dialog on top on Escape, and leaves the one below it open', async () => {
+    const onInnerClose = vi.fn();
+    const onOuterClose = vi.fn();
+    render(NestedDialogFixture, {
+      props: {
+        outerTitle: 'Outer',
+        innerTitle: 'Inner',
+        openInnerLabel: 'Open inner',
+        outerActLabel: 'Outer act',
+        innerFirstLabel: 'Inner first',
+        innerLastLabel: 'Inner last',
+        onInnerClose,
+        onOuterClose,
+      },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    await screen.findByRole('dialog', { name: 'Inner' });
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(onInnerClose).toHaveBeenCalledOnce();
+    expect(onOuterClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Outer' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Inner' })).not.toBeInTheDocument();
+  });
+
+  it('does not take the focus from a child that takes it as it mounts', async () => {
+    render(DialogWithAutofocusFixture, { props: { label: 'Name' } });
+    await tick();
+    const field = screen.getByRole('textbox', { name: 'Name' });
+
+    expect(document.activeElement).toBe(field);
+  });
+
+  it('an Escape pressed on a menu entry inside the dialog leaves the dialog open and closes the menu', async () => {
+    const onClose = vi.fn();
+    render(DialogWithMenuFixture, {
+      props: {
+        title: 'Dialog with menu',
+        menuLabel: 'Actions',
+        items: [
+          { id: 'first', label: 'First' },
+          { id: 'second', label: 'Second' },
+        ],
+        open: true,
+        onClose,
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Actions' });
+    await fireEvent.click(trigger);
+    const item = await screen.findByRole('menuitem', { name: 'First' });
+    item.focus();
+
+    await fireEvent.keyDown(item, { key: 'Escape' });
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 });

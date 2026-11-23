@@ -763,4 +763,30 @@ describe('RowMenu component', () => {
     expect(document.activeElement).toBe(trigger);
     expect(onDelete).toHaveBeenCalledOnce();
   });
+
+  it('returns the focus to its trigger after a menu opened without a click on it, where nothing else names the return', async () => {
+    const onDelete = vi.fn();
+    const { component } = render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: [{ id: 'delete', label: 'Delete item', destructive: true, onclick: onDelete }],
+      },
+    });
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    // A view opens the menu from its own act, so no click ever reached the trigger: the menu finds
+    // its trigger itself, and the confirmation hands the focus back to it.
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await component.openMenu();
+    const deleteItem = await screen.findByRole('menuitem', { name: 'Delete item' });
+    await fireEvent.click(deleteItem);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(trigger);
+  });
 });
