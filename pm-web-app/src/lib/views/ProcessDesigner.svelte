@@ -816,6 +816,7 @@
   async function compareForPlacement(): Promise<void> {
     landingError = '';
     placeDiff = null;
+    placeOutcomeUnknown = false;
     try {
       const targetUnits = await placementUnits();
       const baseline = baselineOf(targetUnits);

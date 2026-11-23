@@ -1,4 +1,5 @@
 import { displayError } from '../display';
+import { hasMessage } from '../i18n';
 
 /**
  * The closed set of error codes the web client raises itself.
@@ -85,8 +86,8 @@ export function errorCodeOf(value: unknown): string {
  * An act that fails carries either one of the client's own codes or a daemon refusal, and both name
  * a sentence in the catalogue; that sentence is what the operator reads, never the failure's own
  * message — which is the bare code for a {@link ClientError} and a technical string otherwise. Where
- * no code can be read, the act's own failure text stands in, so an unfamiliar failure still says
- * what failed without printing its message.
+ * no code can be read, or the catalogue carries no `.fix` entry for the code, the act's own failure
+ * text stands in, so an unfamiliar failure still says what failed without printing its message.
  *
  * @param value the failure the act caught
  * @param fallback the act's own failure text, resolved from the view's catalogue key
@@ -94,7 +95,13 @@ export function errorCodeOf(value: unknown): string {
  */
 export function actFailureText(value: unknown, fallback: string): string {
   const code = errorCodeOf(value);
-  return code.length > 0 ? displayError(code).fix : fallback;
+  if (code.length === 0) {
+    return fallback;
+  }
+  if (!hasMessage(`common.error.${code}.fix`) && !hasMessage(`error.${code}.fix`)) {
+    return fallback;
+  }
+  return displayError(code).fix;
 }
 
 /**

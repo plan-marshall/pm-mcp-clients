@@ -135,7 +135,7 @@ describe('CompletionReportView component', () => {
 
     expect(screen.getAllByText('fix-relay').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('merged')).toBeInTheDocument();
-    expect(screen.getByText('#214')).toBeInTheDocument();
+    expect(screen.getByText('PR #214')).toBeInTheDocument();
     expect(screen.getByText('the pull request #214 was merged into main')).toBeInTheDocument();
     expect(
       screen.getByText('2 h 40 min, 08:40 to 11:20 · paused 20 min by you'),
@@ -212,7 +212,7 @@ describe('CompletionReportView component', () => {
   it('renders tokens section with coverage, breakdown, and toggles raw components', async () => {
     render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
 
-    expect(screen.getByText('Tokens')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Tokens' })).toBeInTheDocument();
     expect(
       screen.getByText(/3 of 41 tasks not measured: their worker was terminated/),
     ).toBeInTheDocument();
@@ -441,5 +441,190 @@ describe('CompletionReportView component', () => {
       invoking.remove();
       elsewhere.remove();
     }
+  });
+
+  describe('D3 vocabulary: object head, Card/KeyValueList sections, and deliverable states (PLAN-154 D3)', () => {
+    it('renders the object head with KindMark(plan), title, Chip(plan_id), PrChip, StatusLabel, end time, plan view Link, and secondary Chat Button', () => {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+      const header = document.querySelector('.report-header') as HTMLElement;
+      expect(header).not.toBeNull();
+
+      const kindMark = header.querySelector('.kind-mark') as HTMLElement;
+      expect(kindMark).not.toBeNull();
+      expect(kindMark).toHaveAttribute('data-kind', 'plan');
+
+      expect(header.querySelector('.report-title')).toHaveTextContent('fix-relay');
+
+      const chip = header.querySelector('.chip') as HTMLElement;
+      expect(chip).not.toBeNull();
+      expect(chip).toHaveTextContent('fix-relay');
+
+      const prLink = header.querySelector('a.external-link.link--chip') as HTMLElement;
+      expect(prLink).not.toBeNull();
+      expect(prLink).toHaveTextContent('PR #214');
+      expect(prLink).toHaveAttribute(
+        'href',
+        'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+      );
+
+      const status = header.querySelector('.status-label--success') as HTMLElement;
+      expect(status).not.toBeNull();
+      expect(status).toHaveTextContent('merged');
+
+      expect(header.querySelector('.ended-time')).toHaveTextContent('today 11:20');
+
+      const planViewLink = screen.getByRole('link', { name: 'Its plan view' });
+      expect(planViewLink).toHaveAttribute('href', '/plans/fix-relay');
+
+      const chatBtn = screen.getByRole('button', { name: /Chat/i });
+      expect(chatBtn).toHaveClass('btn--secondary');
+    });
+
+    it('renders every section inside Cards without nested cards and puts summary rows in KeyValueList', () => {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+      const cards = screen.getAllByTestId('card');
+      expect(cards.length).toBeGreaterThanOrEqual(6);
+      expect(screen.queryByTestId('card-nested')).toBeNull();
+
+      const kvList = screen.getAllByTestId('key-value-list')[0];
+      expect(kvList).toHaveTextContent('Outcome');
+      expect(kvList).toHaveTextContent('the pull request #214 was merged into main');
+      expect(kvList).toHaveTextContent('Reason');
+      expect(kvList).toHaveTextContent('Ran');
+      expect(kvList).toHaveTextContent('2 h 40 min, 08:40 to 11:20 · paused 20 min by you');
+      expect(kvList).toHaveTextContent('Change');
+      expect(kvList).toHaveTextContent('12 files · +340 −27 · 2 unplanned');
+
+      // Decisions use Chip for decision id, own calls use StatusLabel for judgment
+      expect(document.querySelectorAll('.own-call-chip')).toHaveLength(0);
+      expect(document.querySelectorAll('.section-badge')).toHaveLength(0);
+    });
+
+    it('renders deliverables in done, not_done and dropped states with icon and word, and handles no deliverables yet', () => {
+      const mixed: PlanCompletionReport = {
+        ...mockReport,
+        deliverables: [
+          { name: 'cursor write order', state: 'done' },
+          { name: 'pending transport check', state: 'not_done' },
+          { name: 'legacy fallback removed', state: 'dropped' },
+        ],
+      };
+      const { unmount } = render(CompletionReportView, { planId: 'fix-relay', report: mixed });
+
+      const items = document.querySelectorAll('.deliverable-item');
+      expect(items).toHaveLength(3);
+
+      expect(items[0].querySelector('[data-icon="state.check"]')).not.toBeNull();
+      expect(items[0]).toHaveTextContent('done');
+      expect(items[0]).toHaveTextContent('cursor write order');
+
+      expect(items[1].querySelector('[data-icon="state.dot"]')).not.toBeNull();
+      expect(items[1]).toHaveTextContent('not done');
+      expect(items[1]).toHaveTextContent('pending transport check');
+
+      expect(items[2].querySelector('[data-icon="act.cancel"]')).not.toBeNull();
+      expect(items[2]).toHaveTextContent('dropped');
+      expect(items[2]).toHaveTextContent('legacy fallback removed');
+
+      unmount();
+
+      render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: { ...mockReport, deliverables: [] },
+      });
+      expect(screen.getByText('no deliverables yet: it ended in refine')).toBeInTheDocument();
+    });
+  });
+
+  describe('D4 vocabulary: tokens section with floor sign, not measured, coverage, DataTable/KeyValueList, and phase links (PLAN-154 D4)', () => {
+    it('renders total and coverage in KeyValueList, floor sign, unmeasured model count, DataTable for role/model, and phase Link to ended plan', () => {
+      const reportWithUnmeasured: PlanCompletionReport = {
+        ...mockReport,
+        token_usage: {
+          ...mockReport.token_usage!,
+          by_phase: [
+            ...mockReport.token_usage!.by_phase!,
+            {
+              name: 'execute',
+              total: 241000,
+              input: 222000,
+              output: 19000,
+              unmeasured: 3,
+              floor: true,
+            },
+          ],
+          by_model: [
+            ...mockReport.token_usage!.by_model!,
+            {
+              name: 'codex:gpt-5',
+              total: 14000,
+              input: 13000,
+              output: 1000,
+              unmeasured: 3,
+              floor: true,
+            },
+          ],
+        },
+      };
+
+      render(CompletionReportView, { planId: 'fix-relay', report: reportWithUnmeasured });
+
+      const tokensSection = document.querySelector('.tokens-section') as HTMLElement;
+      expect(tokensSection).not.toBeNull();
+
+      // Total & coverage rendered via KeyValueList with floor sign
+      const tokenKv = tokensSection.querySelector('[data-testid="key-value-list"]') as HTMLElement;
+      expect(tokenKv).not.toBeNull();
+      expect(tokenKv).toHaveTextContent('≥ 412 k');
+      expect(tokenKv).toHaveTextContent('3 of 41 tasks not measured: their worker was terminated');
+
+      // By phase lines are Links to the phase in the ended plan view
+      const refineLink = screen.getByRole('link', { name: 'refine' });
+      expect(refineLink).toHaveAttribute('href', '/plans/fix-relay?mode=ended&node=refine');
+      const executeLink = screen.getByRole('link', { name: 'execute' });
+      expect(executeLink).toHaveAttribute('href', '/plans/fix-relay?mode=ended&node=execute');
+
+      // By role and by model use DataTable with right-aligned numeric cells
+      const tables = tokensSection.querySelectorAll('[data-testid="data-table"]');
+      expect(tables.length).toBeGreaterThanOrEqual(2);
+      const numericCells = tokensSection.querySelectorAll('td[data-align="end"]');
+      expect(numericCells.length).toBeGreaterThan(0);
+
+      // Model with unmeasured tasks shows floor sign and unmeasured count
+      const modelTable = tables[1] as HTMLElement;
+      expect(modelTable).toHaveTextContent('codex:gpt-5');
+      expect(modelTable).toHaveTextContent('≥ 14 k');
+      expect(modelTable).toHaveTextContent('3 not measured');
+    });
+
+    it('renders "not measured" without 0 or floor sign when zero tasks were measured', () => {
+      const unmeasuredReport: PlanCompletionReport = {
+        ...mockReport,
+        token_usage: {
+          ...mockReport.token_usage!,
+          total: 0,
+          input: 0,
+          output: 0,
+          tasks_measured: 0,
+          tasks_total: 5,
+          is_floor: true,
+          by_phase: [],
+          by_role: [],
+          by_model: [],
+          waste_records: [],
+          total_waste_tokens: 0,
+        },
+      };
+
+      render(CompletionReportView, { planId: 'fix-relay', report: unmeasuredReport });
+
+      const tokensSection = document.querySelector('.tokens-section') as HTMLElement;
+      const tokenKv = tokensSection.querySelector('[data-testid="key-value-list"]') as HTMLElement;
+      expect(tokenKv).not.toBeNull();
+      expect(tokenKv).toHaveTextContent('not measured');
+      expect(tokenKv).not.toHaveTextContent('≥');
+    });
   });
 });

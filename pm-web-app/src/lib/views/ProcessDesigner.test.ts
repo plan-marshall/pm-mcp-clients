@@ -776,6 +776,35 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     expect(placeSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('resets placeOutcomeUnknown when a new comparison starts after a placement timeout (PLAN-154 D5)', async () => {
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockRejectedValueOnce(new ClientError('timeout'));
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(await screen.findByTestId('place-confirm'));
+
+    // Timeout sets placeOutcomeUnknown = true
+    const timeoutNotice = await screen.findByTestId('designer-place-failed');
+    expect(timeoutNotice).toHaveTextContent(/did not confirm/i);
+
+    // Close the placement dialog, reopen for a project target whose comparison fails
+    await fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    vi.spyOn(apiClient, 'getWorkflows').mockRejectedValueOnce(new Error('network_offline'));
+    await openPlacement();
+    await fireEvent.click(screen.getByRole('radio', { name: /pm-mcp-clients/i }));
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // Failed comparison must show the failure text, NOT the stale unconfirmed-placement text
+    const failedNotice = await screen.findByTestId('designer-place-failed');
+    expect(failedNotice).not.toHaveTextContent(/did not confirm/i);
+    expect(failedNotice).toHaveTextContent(/The landing failed/i);
+  });
+
   it('asks the browser to keep the page only while the draft changed', async () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));

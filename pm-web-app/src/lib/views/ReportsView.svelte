@@ -3,9 +3,10 @@
   import { t, currentLocale } from '../i18n';
   import { formatDay, formatTime as formatInstant } from '../display/format';
   import Button from '../components/Button.svelte';
-  import Icon from '../components/Icon.svelte';
-  import IconButton from '../components/IconButton.svelte';
+  import KindMark, { type Kind } from '../components/KindMark.svelte';
+  import Link from '../components/Link.svelte';
   import RowMenu from '../components/RowMenu.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import EmptyState from '../components/EmptyState.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -13,6 +14,7 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { actFailureText, errorCodeOf } from '../api/errors';
+  import { pathForRoute } from '../routes';
   import { runtimeStore, openProjectInExplorer, refreshReportsCount, navigateTo } from '../stores/runtime';
   import { writeAddress } from '../navigation/history';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
@@ -506,8 +508,8 @@
       const page: ReportsPage = await apiClient.getReports();
       // A newer read owns the list now: this answer is older than it, even though it arrived last.
       if (generation !== loadGeneration) return;
-      // An event changed the list while the read was in flight; its mutation is newer than this
-      // snapshot, so read again instead of putting the older list back.
+      // An event or a local mark-read mutation changed the list while the read was in flight; its
+      // mutation is newer than this snapshot, so read again instead of putting the older list back.
       if (epochAtStart !== listEpoch) {
         void loadReports();
         return;
@@ -557,6 +559,7 @@
    */
   async function retryListLoad(): Promise<void> {
     await loadReports();
+    await tick();
     const target =
       loadError !== null
         ? (loadErrorRegion?.querySelector<HTMLElement>('.error-state__title') ?? loadErrorRegion)
@@ -616,6 +619,7 @@
     if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
+      listEpoch++;
       // The read event and this response report the same read. Whichever arrives first counts it,
       // and the other finds the marker and leaves the unread count alone. A row already read beside
       // its detail was counted when it was read; marking it read again moves no count.
@@ -638,7 +642,7 @@
       // A read the runtime has already reported stays read, and a row another request still holds
       // keeps its marker: only a read nobody else holds and nobody reported returns to unread.
       const stillHeld = (pendingReadIds.get(item.id) ?? 0) > 0;
-      if (retain && !countedReadIds.has(item.id) && !stillHeld) {
+      if (retainedReadIds[item.id] && !countedReadIds.has(item.id) && !stillHeld) {
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
@@ -670,19 +674,20 @@
 
     // Pre-mark retention for the open report among shown items before the network request
     // so an early report.read event does not discard it while in flight.
-    const newlyRetainedIds: string[] = [];
+    let preMarkedRetention = false;
     if (activeDetailPlanId !== null) {
       for (const item of matchingItems) {
         if (planIdOf(item) === activeDetailPlanId && !retainedReadIds[item.id]) {
           retainedReadIds[item.id] = true;
-          newlyRetainedIds.push(item.id);
+          preMarkedRetention = true;
         }
       }
-      if (newlyRetainedIds.length > 0) {
+      if (preMarkedRetention) {
         retainedReadIds = { ...retainedReadIds };
       }
     }
 
+    let failed = false;
     try {
       await apiClient.markAllReportsRead(shownIds);
       // Count every shown read the view has not counted yet, the retained open row included. The
@@ -708,19 +713,25 @@
       // was already in flight now cannot make this act subtract the same read twice.
       await loadReports();
     } catch (err: unknown) {
-      // Roll back only the retention markers this request added, and keep the marker of a read the
-      // runtime has already reported: a counted read stays read even though this act failed (L3-2).
-      for (const id of newlyRetainedIds) {
-        if (countedReadIds.has(id)) continue;
-        delete retainedReadIds[id];
-      }
-      if (newlyRetainedIds.length > 0) {
-        retainedReadIds = { ...retainedReadIds };
-      }
+      failed = true;
       retryAction = markAllShownRead;
       actionError = actFailureText(err, $t('report.list.mark_all_failed'));
     } finally {
       for (const id of shownIds) releasePendingRead(id);
+      if (failed) {
+        // Clear any unconfirmed retention marker once the last hold on it settles on failure,
+        // keeping markers for reads already confirmed by the runtime or still held by another act.
+        let cleared = false;
+        for (const id of shownIds) {
+          if (retainedReadIds[id] && !countedReadIds.has(id) && !pendingReadIds.has(id)) {
+            delete retainedReadIds[id];
+            cleared = true;
+          }
+        }
+        if (cleared) {
+          retainedReadIds = { ...retainedReadIds };
+        }
+      }
       isMarkingAll = false;
       // A detail that closed while the act ran leaves no row to keep beside it: the outcome is
       // known now, so a retained row without an open detail goes.
@@ -787,21 +798,21 @@
   }
 
   /**
-   * Opens a part of the report's origin without reading the report.
-   *
-   * The path is the way to the subject's view; only the details action reads.
-   *
-   * @param part the part of the path the operator chose
-   * @param report the report whose path it is
+   * @param report a report
+   * @returns the kind of its subject, for the row's leading KindMark
    */
-  function openFromPart(part: 'project' | 'epic' | 'plan', report: ReportItem): void {
-    if (part === 'project' && report.from?.project) {
-      openProjectInExplorer(report.from.project);
-    } else if (part === 'epic' && report.from?.epic) {
-      navigateTo('epic', { epicId: report.from.epic });
-    } else if (part === 'plan' && report.from?.plan) {
-      navigateTo('plan', { planId: report.from.plan });
-    }
+  function kindMarkOf(report: ReportItem): Kind {
+    if (report.kind?.startsWith('system.')) return 'machine';
+    const kind = subjectKindOf(report);
+    if (kind === 'cleanup') return 'machine';
+    if (kind === 'project') return 'project';
+    if (kind === 'epic') return 'epic';
+    if (kind === 'decision') return 'decision';
+    if (kind === 'plan' || kind === 'plan_completed') return 'plan';
+    if (report.from?.plan) return 'plan';
+    if (report.from?.epic) return 'epic';
+    if (report.from?.project) return 'project';
+    return 'report';
   }
 
   /**
@@ -1143,31 +1154,23 @@
         titleLevel={2}
       />
     {:else if matchingItems.length === 0}
-      <div class="empty-state" data-testid="report-filter-empty">
-        <p class="empty-title">{$t('report.filter.no_matches')}</p>
-      </div>
+      <EmptyState
+        title={$t('common.filter.empty')}
+        message={$t('report.filter.no_matches')}
+        icon="act.search"
+        titleLevel={2}
+        testid="report-filter-empty"
+      />
     {:else}
       <!-- Grouped List -->
       <div class="reports-tree">
         {#each groupedReports as pGroup (pGroup.key)}
           <section class="project-section">
             <h2 class="project-header">
-              <span class="project-glyph" aria-hidden="true"
-                ><Icon name="state.dot" size={16} /></span
-              >
-              {#if pGroup.isMachine}
-                <span class="project-title">{$t('report.list.machine')}</span>
-              {:else}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={$t('report.from.open_project', { project: pGroup.key })}
-                  onclick={() =>
-                    openProjectInExplorer(pGroup.key)}
-                >
-                  {pGroup.key}
-                </Button>
-              {/if}
+              <KindMark kind={pGroup.isMachine ? 'machine' : 'project'} wordHidden />
+              <span class="project-title">
+                {pGroup.isMachine ? $t('report.list.machine') : pGroup.key}
+              </span>
             </h2>
 
             <div class="project-content">
@@ -1175,15 +1178,8 @@
               {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems] (epicName)}
                 <div class="epic-section">
                   <h3 class="epic-header">
-                    <span class="epic-glyph" aria-hidden="true">◇</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={$t('report.from.open_epic', { epic: epicName })}
-                      onclick={() => openFromPart('epic', epicItems[0])}
-                    >
-                      {epicName}
-                    </Button>
+                    <KindMark kind="epic" wordHidden />
+                    <span class="epic-title">{epicName}</span>
                   </h3>
                   <div class="items-list">
                     {#each epicItems as item (item.id)}
@@ -1268,54 +1264,66 @@
     data-unread={unread ? 'true' : 'false'}
   >
     <div class="report-card__header">
-      {#if unread}
-        <span class="report-card__unread-dot" aria-hidden="true"></span>
-        <span class="sr-only">{$t('report.state.unread')}</span>
-      {:else}
-        <span class="item-state text-muted" data-testid="report-read-state">
-          {$t('report.state.read')}
+      <span class="report-card__lead">
+        <KindMark kind={kindMarkOf(item)} wordHidden />
+        <span class="report-card__subject" class:report-card__subject--unread={unread}>
+          {item.subject}
         </span>
+      </span>
+      <div class="report-card__tail">
+        <span
+          class="report-card__read-state"
+          data-testid={unread ? 'report-unread-state' : 'report-read-state'}
+        >
+          <StatusLabel
+            tone={unread ? 'running' : 'neutral'}
+            label={unread ? $t('report.state.unread') : $t('report.state.read')}
+          />
+        </span>
+        <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
+        <div class="report-card__menu">
+          <RowMenu
+            icon="act.more"
+            size="sm"
+            data-testid="report-row-menu"
+            label={rowMenuLabel(item)}
+            advisory={$t('report.list.row_menu.title')}
+            items={[
+              {
+                id: 'mark-read',
+                label: $t('report.action.mark_read'),
+                title: $t('report.action.mark_read.title'),
+                onclick: () => chooseMarkRead(item),
+              },
+            ]}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div class="report-from mono">
+      {#if item.from?.project}
+        <Link
+          href={pathForRoute('project', { projectId: item.from.project }) ?? ''}
+          label={item.from.project}
+        />
+      {:else}
+        <span class="text-muted">{$t('report.list.machine')}</span>
       {/if}
-      <span class="report-from mono">
-        {#if item.from?.project}
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_project', { project: item.from.project })}
-            onclick={() => openFromPart('project', item)}
-          >
-            {item.from.project}
-          </Button>
-        {:else}
-          <span class="text-muted">{$t('report.list.machine')}</span>
-        {/if}
-        {#if item.from?.epic}
-          <span class="path-sep" aria-hidden="true">›</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
-            onclick={() => openFromPart('epic', item)}
-          >
-            {item.from.epic}
-          </Button>
-        {/if}
-        {#if item.from?.plan}
-          <span class="path-sep" aria-hidden="true">›</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
-            onclick={() => openFromPart('plan', item)}
-          >
-            {item.from.plan}
-          </Button>
-        {/if}
-      </span>
-      <span class="report-card__subject" class:report-card__subject--unread={unread}>
-        {item.subject}
-      </span>
-      <span class="item-time text-muted" title={reportMoment(item)}>{formatReportTime(item)}</span>
+      {#if item.from?.epic}
+        <span class="path-sep" aria-hidden="true">›</span>
+        <Link
+          href={pathForRoute('epic', { epicId: item.from.epic }) ?? ''}
+          label={item.from.epic}
+        />
+      {/if}
+      {#if item.from?.plan}
+        <span class="path-sep" aria-hidden="true">›</span>
+        <Link
+          href={pathForRoute('plan', { planId: item.from.plan }) ?? ''}
+          label={item.from.plan}
+        />
+      {/if}
     </div>
 
     {#if item.body || item.summary}
@@ -1340,8 +1348,8 @@
       {/if}
     {/if}
 
-    <div class="report-card__actions">
-      {#if hasDetail(item)}
+    {#if hasDetail(item)}
+      <div class="report-card__actions">
         <Button
           variant="secondary"
           size="sm"
@@ -1366,25 +1374,8 @@
             })}
           </span>
         {/if}
-      {/if}
-      <div class="report-card__menu">
-        <RowMenu
-          icon="act.more"
-          size="sm"
-          data-testid="report-row-menu"
-          label={rowMenuLabel(item)}
-          advisory={$t('report.list.row_menu.title')}
-          items={[
-            {
-              id: 'mark-read',
-              label: $t('report.action.mark_read'),
-              title: $t('report.action.mark_read.title'),
-              onclick: () => chooseMarkRead(item),
-            },
-          ]}
-        />
       </div>
-    </div>
+    {/if}
   </article>
 {/snippet}
 
@@ -1522,20 +1513,6 @@
     margin-bottom: var(--space-3);
   }
 
-  .empty-state {
-    text-align: center;
-    padding: var(--space-10) var(--space-4);
-    background: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-  }
-
-  .empty-title {
-    color: var(--color-text-muted);
-    font-size: var(--text-base);
-    margin: 0;
-  }
-
   .reports-tree {
     display: flex;
     flex-direction: column;
@@ -1557,10 +1534,6 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  .project-glyph {
-    color: var(--color-primary);
   }
 
   .project-content {
@@ -1586,10 +1559,6 @@
     gap: var(--space-2);
   }
 
-  .epic-glyph {
-    color: var(--color-text-muted);
-  }
-
   .items-list {
     display: flex;
     flex-direction: column;
@@ -1609,20 +1578,23 @@
 
   .report-card__header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
     font-size: var(--text-sm);
   }
 
-  /* The dot is the design system's mark of what is new; the bold subject carries the same word. */
-  .report-card__unread-dot {
-    inline-size: var(--space-2);
-    block-size: var(--space-2);
-    border-radius: var(--radius-full);
-    background-color: var(--color-primary);
-    flex: 0 0 auto;
-    align-self: center;
+  .report-card__tail {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .report-card__read-state {
+    display: inline-flex;
+    align-items: center;
   }
 
   .report-from {
@@ -1632,6 +1604,7 @@
     color: var(--color-text-secondary);
     font-size: var(--text-xs);
     flex-wrap: wrap;
+    padding-left: var(--space-4);
   }
 
   .path-sep {
@@ -1652,15 +1625,17 @@
     box-shadow: inset 3px 0 0 var(--color-primary);
   }
 
-  .item-state {
-    font-size: var(--text-xs);
-    font-style: italic;
+  .report-card__lead {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1 1 12rem;
+    min-inline-size: 0;
   }
 
   .report-card__subject {
     color: var(--color-text-primary);
-    flex: 1 1 auto;
-    min-inline-size: 12rem;
+    min-inline-size: 0;
   }
 
   .report-card__subject--unread {
@@ -1669,7 +1644,6 @@
 
   .item-time {
     font-size: var(--text-xs);
-    margin-left: auto;
   }
 
   .report-card__body {
@@ -1715,9 +1689,8 @@
       padding-left: 0;
     }
 
-    .item-time {
+    .report-card__tail {
       margin-left: 0;
-      width: 100%;
     }
   }
 </style>

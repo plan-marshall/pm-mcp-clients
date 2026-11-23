@@ -293,15 +293,16 @@ describe('ReportsView component', () => {
     expect(screen.queryAllByTestId('skeleton')).toHaveLength(0);
   });
 
-  it('marks unread rows with a dot and the bold subject', async () => {
+  it('marks unread rows with a StatusLabel dot and the bold subject', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
     const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
     expect(card).toHaveAttribute('data-unread', 'true');
-    expect(card.querySelector('.report-card__unread-dot')).not.toBeNull();
+    const status = within(card).getByTestId('report-unread-state');
+    expect(status.querySelector('.status-label--running .status-label__dot')).not.toBeNull();
     // The unread word is anchored to this row, not matched anywhere on the page.
-    expect(within(card).getByText('unread')).toBeInTheDocument();
+    expect(within(status).getByText('unread')).toBeInTheDocument();
     expect(
       screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
     ).toBe(true);
@@ -321,8 +322,10 @@ describe('ReportsView component', () => {
     });
     const active = document.querySelector('.report-card--active') as HTMLElement;
     expect(active).toHaveAttribute('data-unread', 'false');
-    expect(active.querySelector('.report-card__unread-dot')).toBeNull();
-    expect(within(active).getByTestId('report-read-state')).toHaveTextContent('read');
+    expect(within(active).queryByTestId('report-unread-state')).toBeNull();
+    const readState = within(active).getByTestId('report-read-state');
+    expect(readState.querySelector('.status-label--neutral')).not.toBeNull();
+    expect(readState).toHaveTextContent('read');
     expect(
       screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
     ).toBe(false);
@@ -485,30 +488,17 @@ describe('ReportsView component', () => {
     expect(apiClient.getReports).toHaveBeenCalledWith(true);
   });
 
-  it('navigates from each part of the from path without reading the report', async () => {
+  it('links each part of the from path to its route without reading the report', async () => {
     render(ReportsView);
 
-    const projectLink = await screen.findAllByRole('button', {
-      name: /Open the project pm-mcp-clients/i,
-    });
-    await fireEvent.click(projectLink[0]);
-    // A project link opens the one project page, not the old explorer query.
-    expect(get(runtimeStore).currentRoute).toBe('project');
-    expect(get(runtimeStore).selectedProjectId).toBe('pm-mcp-clients');
+    const projectLinks = await screen.findAllByRole('link', { name: 'pm-mcp-clients' });
+    expect(projectLinks[0]).toHaveAttribute('href', '/projects/pm-mcp-clients');
 
-    const epicLink = (
-      await screen.findAllByRole('button', {
-        name: /Open the epic relay-hardening/i,
-      })
-    )[0];
-    await fireEvent.click(epicLink);
-    expect(get(runtimeStore).currentRoute).toBe('epic');
-    expect(get(runtimeStore).selectedEpicId).toBe('relay-hardening');
+    const epicLinks = await screen.findAllByRole('link', { name: 'relay-hardening' });
+    expect(epicLinks[0]).toHaveAttribute('href', '/epics/relay-hardening');
 
-    const planLink = await screen.findByRole('button', { name: /Open the plan fix-relay/i });
-    await fireEvent.click(planLink);
-    expect(get(runtimeStore).currentRoute).toBe('plan');
-    expect(get(runtimeStore).selectedPlanId).toBe('fix-relay');
+    const planLink = await screen.findByRole('link', { name: 'fix-relay' });
+    expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
 
     expect(apiClient.markReportRead).not.toHaveBeenCalled();
   });
@@ -1754,15 +1744,13 @@ describe('ReportsView component', () => {
     render(ReportsView);
     await screen.findByText('Real project named __machine__ is onboarded');
 
-    const projectBtns = screen.getAllByRole('button', { name: /Open the project __machine__/i });
-    expect(projectBtns.length).toBeGreaterThan(0);
-    const projectBtn = projectBtns[0];
-    expect(projectBtn).toBeInTheDocument();
+    const projectHeading = screen.getByRole('heading', { level: 2, name: /__machine__/i });
+    expect(projectHeading).toBeInTheDocument();
 
-    expect(screen.getByText('This machine')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /This machine/i })).toBeInTheDocument();
 
     const machineSection = screen
-      .getByText('This machine')
+      .getByRole('heading', { level: 2, name: /This machine/i })
       .closest('.project-section') as HTMLElement;
     expect(within(machineSection).getByText('System cleanup due on machine')).toBeInTheDocument();
     expect(within(machineSection).getByText('Drain started')).toBeInTheDocument();
@@ -1770,7 +1758,7 @@ describe('ReportsView component', () => {
       within(machineSection).queryByText('Real project named __machine__ is onboarded'),
     ).toBeNull();
 
-    const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
+    const realProjectSection = projectHeading.closest('.project-section') as HTMLElement;
     expect(
       within(realProjectSection).getByText('Real project named __machine__ is onboarded'),
     ).toBeInTheDocument();
@@ -2460,6 +2448,233 @@ describe('ReportsView component', () => {
       expect(within(filterEmpty).queryByTestId('mascot-figure')).toBeNull();
       expect(screen.queryByTestId('mascot-figure')).toBeNull();
       expect(screen.queryByTestId('empty-state')).toBeNull();
+    });
+  });
+
+  describe('D1 vocabulary: row slot order, group heads, and path links (PLAN-154 D1)', () => {
+    it('places KindMark (wordHidden), subject, StatusLabel, relative time, and RowMenu last in each row', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      expect(card).not.toBeNull();
+
+      const header = card.querySelector('.report-card__header') as HTMLElement;
+      expect(header).not.toBeNull();
+
+      const kindMark = header.querySelector('.kind-mark') as HTMLElement;
+      const subject = header.querySelector('.report-card__subject') as HTMLElement;
+      const statusLabel = header.querySelector('.status-label') as HTMLElement;
+      const time = header.querySelector('.item-time') as HTMLElement;
+      const menuTrigger = within(header).getByRole('button', {
+        name: 'Report actions: Ended: merged (#214)',
+      });
+
+      expect(kindMark).not.toBeNull();
+      expect(kindMark).toHaveAttribute('data-kind', 'plan');
+      expect(kindMark.querySelector('.kind-mark__word')).toHaveClass('sr-only');
+      expect(statusLabel).not.toBeNull();
+      expect(statusLabel).toHaveTextContent('unread');
+      expect(subject).toHaveClass('report-card__subject--unread');
+
+      // Verify fixed slot order in document order: KindMark -> subject -> StatusLabel -> time -> RowMenu
+      expect(kindMark.compareDocumentPosition(subject) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(subject.compareDocumentPosition(statusLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(statusLabel.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(time.compareDocumentPosition(menuTrigger) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+      // Project-level report shows project KindMark
+      const projectCard = document.querySelector('[data-report-id="rep-0131"]') as HTMLElement;
+      expect(projectCard.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'project');
+    });
+
+    it('renders group heads as headings with KindMark, no count, no act button, and no raw glyphs', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const projectHeading = screen.getByRole('heading', { level: 2, name: /pm-mcp-clients/i });
+      expect(within(projectHeading).queryByRole('button')).toBeNull();
+      expect(projectHeading.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'project');
+      expect(projectHeading.textContent).not.toMatch(/\d/);
+
+      const epicHeading = screen.getByRole('heading', { level: 3, name: /relay-hardening/i });
+      expect(within(epicHeading).queryByRole('button')).toBeNull();
+      expect(epicHeading.querySelector('.kind-mark')).toHaveAttribute('data-kind', 'epic');
+      expect(epicHeading.textContent).not.toContain('◇');
+      expect(epicHeading.textContent).not.toMatch(/\d/);
+    });
+
+    it('renders the origin path project › epic › plan as Link anchors with real hrefs', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const card = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      const from = card.querySelector('.report-from') as HTMLElement;
+      expect(from).not.toBeNull();
+
+      const projectLink = within(from).getByRole('link', { name: 'pm-mcp-clients' });
+      expect(projectLink).toHaveAttribute('href', '/projects/pm-mcp-clients');
+
+      const epicLink = within(from).getByRole('link', { name: 'relay-hardening' });
+      expect(epicLink).toHaveAttribute('href', '/epics/relay-hardening');
+
+      const planLink = within(from).getByRole('link', { name: 'fix-relay' });
+      expect(planLink).toHaveAttribute('href', '/plans/fix-relay');
+    });
+  });
+
+  describe('D2 vocabulary: head, filter, paging and states (PLAN-154 D2)', () => {
+    it('renders the head act and paging control as secondary buttons, unread count as text, and shared filter label with live count', async () => {
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      const markAll = screen.getByRole('button', { name: /Mark all shown read/i });
+      expect(markAll).toHaveClass('btn--secondary');
+
+      const unread = screen.getByTestId('unread-count');
+      expect(unread).toHaveTextContent('3 unread reports');
+
+      const search = screen.getByRole('search');
+      const input = within(search).getByRole('searchbox', { name: /Filter Reports/i });
+      expect(input).toBeInTheDocument();
+
+      await fireEvent.input(input, { target: { value: 'relay-hardening' } });
+      expect(screen.getByTestId('filter-results')).toHaveTextContent('1 match');
+
+      const showOlder = screen.getByRole('button', { name: /Show 5 older/i });
+      expect(showOlder).toHaveClass('btn--secondary');
+    });
+
+    it('renders Skeleton on initial load, EmptyState with icon on empty filter, and ErrorState on failure', async () => {
+      let resolveReports: ((page: ReportsPage) => void) | undefined;
+      vi.spyOn(apiClient, 'getReports').mockImplementationOnce(
+        () =>
+          new Promise<ReportsPage>((resolve) => {
+            resolveReports = resolve;
+          }),
+      );
+
+      const { unmount } = render(ReportsView);
+      expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+
+      resolveReports?.(mockPage);
+      await screen.findByText('Ended: merged (#214)');
+
+      const filter = within(screen.getByRole('search')).getByRole('searchbox');
+      await fireEvent.input(filter, { target: { value: 'unmatched-query-xyz' } });
+      const filterEmpty = await screen.findByTestId('report-filter-empty');
+      expect(within(filterEmpty).getByRole('heading', { level: 2 })).toBeInTheDocument();
+      expect(filterEmpty.querySelector('.empty-state__mark [data-icon="act.search"]')).not.toBeNull();
+      expect(filterEmpty).toHaveTextContent('No loaded report matches the filter.');
+      unmount();
+
+      vi.spyOn(apiClient, 'getReports').mockRejectedValueOnce(new ClientError('timeout'));
+      render(ReportsView);
+      expect(await screen.findByTestId('error-state')).toBeInTheDocument();
+    });
+  });
+
+  describe('PLAN-158 residue in ReportsView (PLAN-154 D5)', () => {
+    it('advances listEpoch on a local markRead so an older in-flight reload does not restore the read row', async () => {
+      let resolveOlderReload: ((page: ReportsPage) => void) | undefined;
+      let calls = 0;
+      vi.spyOn(apiClient, 'getReports').mockImplementation(() => {
+        calls += 1;
+        if (calls === 1) return Promise.resolve(mockPage);
+        if (calls === 2) {
+          return new Promise<ReportsPage>((resolve) => {
+            resolveOlderReload = resolve;
+          });
+        }
+        return Promise.resolve({
+          items: mockReports.filter((r) => r.id !== 'rep-0142'),
+          unread_count: 2,
+          has_older: false,
+          older_count: 0,
+        });
+      });
+
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      // Trigger a reload that stays in flight while a single markRead succeeds
+      eventHandler?.('report.sent', {});
+      await waitFor(() => expect(resolveOlderReload).toBeDefined());
+
+      const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+      await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+      await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+      await waitFor(() => expect(screen.queryByText('Ended: merged (#214)')).toBeNull());
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+
+      // Now the stale reload answers with the pre-read snapshot; listEpoch must reject it and re-fetch
+      resolveOlderReload?.(mockPage);
+      await waitFor(() => expect(calls).toBe(3));
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    it('clears an unconfirmed retained marker when both markRead and markAllShownRead fail', async () => {
+      vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+      let rejectSingle: ((err: Error) => void) | undefined;
+      let rejectAll: ((err: Error) => void) | undefined;
+      vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+        () =>
+          new Promise<void>((_resolve, reject) => {
+            rejectSingle = reject;
+          }),
+      );
+      vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+        () =>
+          new Promise<{ marked_count: number }>((_resolve, reject) => {
+            rejectAll = reject;
+          }),
+      );
+
+      render(ReportsView);
+      await screen.findByText('Ended: merged (#214)');
+
+      // Opening detail starts a retained markRead
+      await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+      await waitFor(() => expect(rejectSingle).toBeDefined());
+
+      // While that markRead is in flight, markAllShownRead also holds the same row
+      await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+      await waitFor(() => expect(rejectAll).toBeDefined());
+
+      // First the single markRead fails (mark-all still holds the row)
+      rejectSingle?.(new Error('single failed'));
+      await tick();
+      await tick();
+
+      // Then markAllShownRead also fails: no hold remains and nothing was confirmed read
+      rejectAll?.(new Error('mark all failed'));
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
+      });
+
+      const active = document.querySelector('[data-report-id="rep-0142"]') as HTMLElement;
+      expect(active).not.toBeNull();
+      expect(active).toHaveAttribute('data-unread', 'true');
+      expect(within(active).queryByTestId('report-read-state')).toBeNull();
+    });
+
+    it('keeps focus on the error title when Retry fails again', async () => {
+      vi.spyOn(apiClient, 'getReports')
+        .mockRejectedValueOnce(new ClientError('timeout'))
+        .mockRejectedValueOnce(new ClientError('timeout'));
+
+      render(ReportsView);
+      await screen.findByTestId('error-state');
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => {
+        const title = document.querySelector('.error-state__title');
+        expect(title).not.toBeNull();
+        expect(document.activeElement).toBe(title);
+      });
     });
   });
 });

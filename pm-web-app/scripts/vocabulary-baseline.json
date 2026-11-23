@@ -15,9 +15,6 @@
     "button": 4,
     "outline: none": 1
   },
-  "src/lib/views/CompletionReportView.svelte": {
-    "a": 2
-  },
   "src/lib/views/DecisionView.svelte": {
     "button": 1
   },
