@@ -508,10 +508,19 @@ public final class EntryFlow {
      * @param runtime the runtime client
      * @param port    the web port
      * @return the issued pairing code and url
-     * @throws IOException on transport failure, or when the runtime issues no code
+     * @throws IOException on transport failure, or when the runtime issues no code; a refusal whose
+     *                     body names a code or a message is an {@link OperatorRefusedException}, so
+     *                     the screen shows the runtime's reason in the operator's locale
      */
     public PairingCode issuePairingCode(RuntimeClient runtime, int port) throws IOException {
         var response = runtime.send(HttpRequest.json("POST", "/api/v1/web/pairings", "{}"));
+        if (response.status() >= 400) {
+            var refusal = new OperatorRefusedException("web pair", response);
+            var message = refusal.serverMessage();
+            if (refusal.rawCode() != null || message != null && !message.isBlank()) {
+                throw refusal;
+            }
+        }
         if (response.status() == 200 || response.status() == 201) {
             var json = JsonTree.asObject(JsonTree.parse(response.body()));
             if (json != null && json.get("code") instanceof String code && !code.isBlank()) {
@@ -538,9 +547,11 @@ public final class EntryFlow {
         try {
             return issuePairingCode(runtime, port);
         } catch (IOException e) {
-            out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.console.code_failed",
-                                Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
-                                                    ? e.getMessage() : e.getClass().getSimpleName()))));
+            var locale = context.clientEnvironment().locale();
+            var reason = OperatorRefusedException.screenText(e, locale);
+            out.println(MessageCatalogue.format(locale, "operator.console.code_failed",
+                                Map.of("reason", TerminalSanitizer.sanitizeLine(reason.isEmpty()
+                                                    ? e.getClass().getSimpleName() : reason))));
             return null;
         }
     }

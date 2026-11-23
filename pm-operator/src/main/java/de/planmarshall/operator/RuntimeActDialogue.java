@@ -91,6 +91,17 @@ final class RuntimeActDialogue {
     record Refusal(String key, int exitCode) {
     }
 
+    /**
+     * What the verb asks the confirmation for.
+     *
+     * @param act      the act
+     * @param explicit the when an option named, or {@code null} for none
+     * @param noInput  whether the verb may ask nothing
+     * @param version  the version an upgrade goes to, or {@code null}
+     */
+    record Request(Act act, @Nullable When explicit, boolean noInput, @Nullable String version) {
+    }
+
     /** A stop the dialogue could not even ask, carrying the line and the exit code it owes. */
     private static final class StopRefusedException extends RuntimeException {
         private static final long serialVersionUID = 1L;
@@ -113,6 +124,7 @@ final class RuntimeActDialogue {
      *
      * @param context  the operator context
      * @param out      the verb's output
+     * @param err      the verb's error output, where a stop that is refused goes
      * @param act      the act
      * @param explicit the when an option named, or {@code null} for none
      * @param noInput  whether the verb may ask nothing
@@ -120,9 +132,9 @@ final class RuntimeActDialogue {
      * @return the when to send, or the exit code of a verb that stopped at the choice
      * @throws IOException when the confirmation cannot be drawn
      */
-    static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
-                        boolean noInput, @Nullable String version) throws IOException {
-        return confirm(context, out, act, explicit, noInput, version, SNAPSHOT_BOUND);
+    static Answer confirm(OperatorContext context, PrintWriter out, PrintWriter err, Act act,
+                        @Nullable When explicit, boolean noInput, @Nullable String version) throws IOException {
+        return confirm(context, out, err, new Request(act, explicit, noInput, version), SNAPSHOT_BOUND);
     }
 
     /**
@@ -130,25 +142,23 @@ final class RuntimeActDialogue {
      *
      * @param context       the operator context
      * @param out           the verb's output
-     * @param act           the act
-     * @param explicit      the when an option named, or {@code null} for none
-     * @param noInput       whether the verb may ask nothing
-     * @param version       the version an upgrade goes to, or {@code null}
+     * @param err           the verb's error output, where a stop that is refused goes
+     * @param request       the act, the when an option named, whether the verb may ask and the version
      * @param snapshotBound how long the confirmation waits for the runtime's snapshot
      * @return the when to send, or the exit code of a verb that stopped at the choice
      * @throws IOException when the confirmation cannot be drawn
      */
-    static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
-                        boolean noInput, @Nullable String version, Duration snapshotBound) throws IOException {
+    static Answer confirm(OperatorContext context, PrintWriter out, PrintWriter err, Request request,
+                        Duration snapshotBound) throws IOException {
+        var act = request.act();
+        var explicit = request.explicit();
         if (explicit != null) {
-            return new Answer(explicit, 0, version);
+            return new Answer(explicit, 0, request.version());
         }
         try {
-            return ask(context, out, act, version, noInput, snapshotBound);
+            return ask(context, out, act, request.version(), request.noInput(), snapshotBound);
         } catch (StopRefusedException refused) {
-            out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                refused.refusal.key(), Map.of()));
-            out.flush();
+            print(context, out, err, refused.refusal);
             return new Answer(null, refused.refusal.exitCode(), null);
         } catch (ChoicePrompt.KeepException _) {
             return new Answer(null, 0, null);
@@ -212,6 +222,22 @@ final class RuntimeActDialogue {
         return provenStopped(context)
                             ? new Refusal("operator.system.nothing_to_stop", 0)
                             : new Refusal("operator.system.not_answering", 1);
+    }
+
+    /**
+     * Prints the line of a stop that could not reach the runtime: a runtime that is not answering is
+     * the verb's refusal and goes to stderr, a runtime that does not run is an answer on stdout
+     * ({@code 03-dialogues.adoc#refusals}).
+     *
+     * @param context the operator context
+     * @param out     the verb's output
+     * @param err     the verb's error output
+     * @param refusal the line and the exit code it owes
+     */
+    static void print(OperatorContext context, PrintWriter out, PrintWriter err, Refusal refusal) {
+        var target = refusal.exitCode() == 0 ? out : err;
+        target.println(MessageCatalogue.format(context.clientEnvironment().locale(), refusal.key(), Map.of()));
+        target.flush();
     }
 
     /**

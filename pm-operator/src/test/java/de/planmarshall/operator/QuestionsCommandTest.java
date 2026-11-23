@@ -323,7 +323,8 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-999");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Question Q-999 not found."));
+        assertTrue(err.toString().contains("Question Q-999 not found."));
+        assertFalse(out.toString().contains("Question Q-999 not found."));
     }
 
     @Test
@@ -358,8 +359,9 @@ class QuestionsCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
-                                                out.toString()),
+                            () -> assertTrue(err.toString().contains("Q-007 could not be read, so it is not known whether it has parts;"),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("Q-007 could not be read"), out.toString()),
                             () -> assertFalse(out.toString().contains(title), out.toString()));
     }
 
@@ -539,7 +541,7 @@ class QuestionsCommandTest {
     }
 
     @Test
-    @DisplayName("an interactive answer whose terminal cannot be opened reports it and leaves with 1")
+    @DisplayName("an interactive answer whose terminal cannot be opened reports it on stderr and leaves with 1")
     void answerInteractiveTerminalFailure() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
@@ -571,7 +573,9 @@ class QuestionsCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Error reading interactive input: terminal is gone"),
+                            () -> assertTrue(err.toString().contains("Error reading interactive input: terminal is gone"),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("Error reading interactive input"),
                                                 out.toString()));
     }
 

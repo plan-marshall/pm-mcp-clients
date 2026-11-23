@@ -85,13 +85,12 @@ public final class ConfigCommand implements Callable<Integer> {
     private static final String CLEANUP = "cleanup";
     private static final String SHOW = "show";
     private static final String ROTATE = "rotate";
-    private static final String STATUS = "status";
     private static final String VALUE = "value";
     private static final String INDEX = "index";
     private static final String TITLE = "title";
     private static final String RANGE = "range";
     private static final String ASPECT = "aspect";
-    private static final String SETTINGS_FAILED = "operator.settings.list_failed";
+    private static final String REASON = "reason";
     private static final String CONFLICT = "conflict";
     private static final String ERROR = "error";
     private static final String SHOW_UNREADABLE = "operator.config.show.unreadable";
@@ -139,44 +138,27 @@ public final class ConfigCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
+        // A refused read throws its refusal, which the one handler of every verb renders with its
+        // cause on stderr.
         var settings = readSettingsQuiet();
-        List<Item> items;
-        try {
-            items = settings != null ? itemsOf(locale, settings, devicesItem(locale)) : itemsOfValues(locale);
-        } catch (ReadFailedException failure) {
-            out.println(failure.status() > 0
-                                ? MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of(STATUS, failure.status()))
-                                : MessageCatalogue.format(locale, SHOW_UNREADABLE, Map.of()));
-            out.flush();
-            return PmOperator.EXIT_FAILURE;
-        }
+        var items = settings != null ? itemsOf(locale, settings, devicesItem(locale)) : itemsOfValues(locale);
         printSettings(out, locale, settings, items);
         if (context.isInteractiveTerminal() && !items.isEmpty()) {
             out.flush();
-            openItem(out, items);
+            openItem(out, locale, items);
         }
         out.flush();
         return 0;
     }
 
-    /** A settings read the runtime refused: the status it answered with, or a body it could not read. */
-    private static final class ReadFailedException extends IOException {
-
-        private static final long serialVersionUID = 1L;
-        private final int status;
-
-        ReadFailedException(int status) {
-            super("HTTP " + status);
-            this.status = status;
-        }
-
-        int status() {
-            return status;
-        }
+    /**
+     * @param locale the operator's locale
+     * @return the refusal of a configuration body this client cannot read: a local refusal, since the
+     *         runtime answered and named nothing
+     */
+    private static OperatorRefusedException unreadable(String locale) {
+        return new OperatorRefusedException(MessageCatalogue.format(locale, SHOW_UNREADABLE, Map.of()));
     }
-
-    /** The marker {@link ReadFailedException} carries for a 200 body that is not a value list. */
-    private static final int UNREADABLE = -1;
 
     /**
      * One row of the settings overview: the group it belongs to, the label, the value, and the
@@ -193,20 +175,45 @@ public final class ConfigCommand implements Callable<Integer> {
     /** The widest label column: a longer label is shortened, so the value column stays narrow. */
     private static final int LABEL_COLUMN = 24;
 
+    /**
+     * Reads the machine settings, where a runtime that reports none is an answer, not a refusal.
+     *
+     * @return the settings, or {@code null} when the runtime serves no machine settings (404)
+     * @throws OperatorRefusedException when the runtime refuses the read, or answers with a body this
+     *                                  client cannot read
+     * @throws IOException              on transport failure
+     */
     @Nullable
     MachineSettingsRecord readSettingsQuiet() throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH));
         if (response.status() == 404) {
             return null;
         }
-        if (response.status() == 200) {
-            try {
-                return MachineSettingsRecord.fromJson(response.bodyText());
-            } catch (IOException _) {
-                throw new OperatorRefusedException(CONFIG_VERB, response);
-            }
+        return settingsOf(response);
+    }
+
+    /**
+     * Reads the machine settings an act needs: a runtime that serves none refuses the act with the
+     * refusal of its answer.
+     *
+     * @return the settings
+     * @throws OperatorRefusedException when the runtime refuses the read or serves no settings, or
+     *                                  answers with a body this client cannot read
+     * @throws IOException              on transport failure
+     */
+    MachineSettingsRecord readSettings() throws IOException {
+        return settingsOf(context.runtime(true).send(HttpRequest.get(MACHINE_SETTINGS_PATH)));
+    }
+
+    private MachineSettingsRecord settingsOf(HttpResponse response) throws IOException {
+        if (response.status() != 200) {
+            throw new OperatorRefusedException(CONFIG_VERB, response);
         }
-        throw new OperatorRefusedException(CONFIG_VERB, response);
+        try {
+            return MachineSettingsRecord.fromJson(response.bodyText());
+        } catch (IOException _) {
+            throw unreadable(context.clientEnvironment().locale());
+        }
     }
 
     /**
@@ -291,11 +298,11 @@ public final class ConfigCommand implements Callable<Integer> {
      *
      * @param locale the interface locale
      * @return the overview's rows
-     * @throws ReadFailedException when the runtime refuses the read
-     * @throws IOException         on transport failure
+     * @throws OperatorRefusedException when the runtime refuses the read
+     * @throws IOException              on transport failure
      */
     private List<Item> itemsOfValues(String locale) throws IOException {
-        var values = readValues();
+        var values = readValues(locale);
         var items = new ArrayList<Item>();
         for (var value : values) {
             items.add(new Item(null, TerminalSanitizer.sanitizeLine(value.key()), renderedValue(locale, value),
@@ -382,18 +389,21 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
+     * @param locale the operator's locale
      * @return the effective values the runtime serves through {@code GET /api/v1/config}
-     * @throws IOException when the runtime refuses the read or serves none
+     * @throws OperatorRefusedException when the runtime refuses the read or serves a body this client
+     *                                  cannot read
+     * @throws IOException              on transport failure
      */
-    private List<ConfigValueResource> readValues() throws IOException {
+    private List<ConfigValueResource> readValues(String locale) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(CONFIG_PATH));
         if (response.status() != 200) {
-            throw new ReadFailedException(response.status());
+            throw new OperatorRefusedException(CONFIG_VERB, response);
         }
         try {
             return parseValues(response.bodyText());
         } catch (IOException _) {
-            throw new ReadFailedException(UNREADABLE);
+            throw unreadable(locale);
         }
     }
 
@@ -542,11 +552,23 @@ public final class ConfigCommand implements Callable<Integer> {
     /**
      * Reads the number the prompt offers and runs the act it names. The prompt lists every number it
      * offers, so a number outside the list opens nothing.
+     *
+     * @throws OperatorRefusedException when the input ends before a number was typed: the verb then
+     *                                  fails with that cause on stderr instead of an empty line
      */
-    private void openItem(PrintWriter out, List<Item> items) throws IOException {
+    private void openItem(PrintWriter out, String locale, List<Item> items) throws IOException {
         try (var lease = context.openTerminal()) {
             var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-            var line = reader.readLine("");
+            String line;
+            try {
+                line = reader.readLine("");
+            } catch (EndOfFileException _) {
+                // the reader's own exception carries no message, so the refusal names the cause itself
+                out.println();
+                out.flush();
+                throw new OperatorRefusedException(
+                                    MessageCatalogue.format(locale, "operator.settings.input_ended", Map.of()));
+            }
             if (line == null || "q".equalsIgnoreCase(line.trim()) || line.isBlank()) {
                 return;
             }
@@ -571,6 +593,31 @@ public final class ConfigCommand implements Callable<Integer> {
 
     static String getOwningAspect(@Nullable String key) {
         return AspectOwnedKeys.owningAspect(key).orElse(CONFIG_VERB);
+    }
+
+    /**
+     * @param machine whether the machine level was named
+     * @param project the project level's id, or {@code null}
+     * @param plan    the plan level's id, or {@code null}
+     * @return whether the arguments name at most one level
+     */
+    private static boolean oneLevel(boolean machine, @Nullable String project, @Nullable String plan) {
+        int named = (machine ? 1 : 0) + (project != null ? 1 : 0) + (plan != null ? 1 : 0);
+        return named <= 1;
+    }
+
+    /**
+     * Prints a local refusal of a verb run as one shell command on stderr, where every refusal goes
+     * ({@code 03-dialogues.adoc#refusals}), so stdout carries none of it.
+     *
+     * @param err  the verb's error output
+     * @param line the refusal's text in the operator's locale
+     * @return the exit code of a refusal
+     */
+    static int refuse(PrintWriter err, String line) {
+        err.println(line);
+        err.flush();
+        return PmOperator.EXIT_FAILURE;
     }
 
     /**
@@ -624,13 +671,9 @@ public final class ConfigCommand implements Callable<Integer> {
                         @Nullable Object value, boolean noInput) throws IOException {
         long revision;
         try {
-            revision = revisionOf(context, change.readPath(), change.key());
-        } catch (ReadFailedException failure) {
-            change.err().println(failure.status() > 0
-                                ? MessageCatalogue.format(change.locale(), SETTINGS_FAILED,
-                                Map.of(STATUS, failure.status()))
-                                : MessageCatalogue.format(change.locale(), SHOW_UNREADABLE, Map.of()));
-            change.err().flush();
+            revision = revisionOf(change.locale(), context, change.readPath(), change.key());
+        } catch (OperatorRefusedException refusal) {
+            RefusalRenderer.render(change.err(), change.locale(), refusal);
             return WriteOutcome.FAILED;
         }
         var response = sendChange(context, deletion, change.writePath(), value, revision);
@@ -641,28 +684,31 @@ public final class ConfigCommand implements Callable<Integer> {
         }
         var conflict = response.status() == 409 ? conflictOf(response.bodyText()) : null;
         if (conflict == null) {
-            failed(change, response.status());
+            failed(change, new OperatorRefusedException(CONFIG_VERB, response));
             return WriteOutcome.FAILED;
         }
         return resolveConflict(context, change, deletion, value, noInput, conflict);
     }
 
     /**
+     * @param locale   the operator's locale
      * @param readPath the scoped collection the value is read from
      * @param key      the key whose revision is read
      * @return the revision the value was read with, {@code 0} when the runtime serves no such value
-     * @throws IOException when the read is refused or its body cannot be read
+     * @throws OperatorRefusedException when the read is refused or its body cannot be read
+     * @throws IOException              on transport failure
      */
-    private static long revisionOf(OperatorContext context, String readPath, String key) throws IOException {
+    private static long revisionOf(String locale, OperatorContext context, String readPath, String key)
+                        throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(readPath));
         if (response.status() != 200) {
-            throw new ReadFailedException(response.status());
+            throw new OperatorRefusedException(CONFIG_VERB, response);
         }
         List<ConfigValueResource> values;
         try {
             values = parseValues(response.bodyText());
         } catch (IOException _) {
-            throw new ReadFailedException(UNREADABLE);
+            throw unreadable(locale);
         }
         for (var value : values) {
             if (value.key().equals(key)) {
@@ -718,16 +764,24 @@ public final class ConfigCommand implements Callable<Integer> {
                     continue;
                 }
             }
-            failed(change, retry.status());
+            failed(change, new OperatorRefusedException(CONFIG_VERB, retry));
             return WriteOutcome.FAILED;
         }
     }
 
-    private static int failed(Change change, int status) {
+    /**
+     * Prints the change's own failure line on stderr, naming its key and the refusal's text in the
+     * operator's locale as the cause.
+     *
+     * @param change  the refused change
+     * @param refusal the refusal of the runtime's answer
+     * @return the exit code of a refusal
+     */
+    static int failed(Change change, OperatorRefusedException refusal) {
         change.err().println(MessageCatalogue.format(change.locale(), change.failedKey(),
-                            Map.of(KEY, change.key(), STATUS, status)));
+                            Map.of(KEY, change.key(), REASON, refusal.message(change.locale()))));
         change.err().flush();
-        return 1;
+        return refusal.exitCode();
     }
 
     /**
@@ -817,16 +871,12 @@ public final class ConfigCommand implements Callable<Integer> {
             try {
                 values = ConfigCommand.parseValues(response.bodyText());
             } catch (IOException _) {
-                out.println(MessageCatalogue.format(locale, SHOW_UNREADABLE, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                throw unreadable(locale);
             }
             var selected = ConfigCommand.select(values, key);
             if (selected.isEmpty()) {
-                out.println(MessageCatalogue.format(locale, "operator.config.show.unknown",
-                                    Map.of("key", Objects.toString(key, ""))));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                return refuse(spec.commandLine().getErr(), MessageCatalogue.format(locale,
+                                    "operator.config.show.unknown", Map.of("key", Objects.toString(key, ""))));
             }
             ConfigCommand.printValues(out, locale, selected);
             out.flush();
@@ -870,27 +920,20 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
             if (isAspectOwned(key)) {
-                var aspect = getOwningAspect(key);
-                var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
-                                    Map.of("key", key, ASPECT, aspect)));
-                err.flush();
-                return 1;
+                return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
+                                    Map.of("key", key, ASPECT, getOwningAspect(key))));
             }
-            if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (plan != null && plan.isBlank()) {
+                return blankPlan(context, err);
             }
-            if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (!oneLevel(machine, project, plan)) {
+                return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
             }
             var done = MessageCatalogue.format(locale, "operator.config.set_done",
                                 Map.of("key", key, VALUE, value));
-            var change = new Change(out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, err, locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.set_failed");
@@ -935,25 +978,19 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
             if (isAspectOwned(key)) {
-                var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format(locale, "operator.config.set_refused",
+                return refuse(err, MessageCatalogue.format(locale, "operator.config.set_refused",
                                     Map.of("key", key, ASPECT, getOwningAspect(key))));
-                err.flush();
-                return 1;
             }
-            if (project != null && plan != null) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (plan != null && plan.isBlank()) {
+                return blankPlan(context, err);
             }
-            if (machine && (project != null || plan != null)) {
-                out.println(MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+            if (!oneLevel(machine, project, plan)) {
+                return refuse(err, MessageCatalogue.format(locale, ONE_LEVEL, Map.of()));
             }
             var done = MessageCatalogue.format(locale, "operator.config.unset_done", Map.of("key", key));
-            var change = new Change(out, spec.commandLine().getErr(), locale,
+            var change = new Change(out, err, locale,
                                 OperatorUrlUtil.appendScope(CONFIG_PATH, project, plan),
                                 OperatorUrlUtil.appendScope(levelPath(), project, plan), key, done,
                                 "operator.config.unset_failed");
@@ -1112,10 +1149,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (defaults || set != null || reset != null || resetAll) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, "roles", false);
             }
@@ -1186,10 +1223,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (use != null || without != null || verify) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, PROVIDERS, false);
             }
@@ -1242,10 +1279,10 @@ public final class ConfigCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (plan != null) {
                 if (plan.isBlank()) {
-                    return blankPlan(context, out);
+                    return blankPlan(context, spec.commandLine().getErr());
                 }
                 if (landing != null || method != null || asking != null || posture != null || yes) {
-                    return exclusive(context, out);
+                    return exclusive(context, spec.commandLine().getErr());
                 }
                 return PlanSettingsDialogue.run(context, out, plan, PLAN_DEFAULTS, false);
             }
@@ -1282,12 +1319,7 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
-            var owner = new ConfigCommand(context);
-            var settings = owner.readSettingsQuiet();
-            if (settings == null) {
-                throw new OperatorRefusedException(
-                                    MessageCatalogue.format(locale, SETTINGS_FAILED, Map.of()));
-            }
+            var settings = new ConfigCommand(context).readSettings();
             var consents = settings.consents();
             if (consents.isEmpty()) {
                 out.println(MessageCatalogue.format(locale, "operator.consents.none", Map.of()));
@@ -1328,9 +1360,9 @@ public final class ConfigCommand implements Callable<Integer> {
                     return withdraw(out, locale, settings, consent);
                 }
             }
-            out.println(MessageCatalogue.format(locale, "operator.consents.none", Map.of()));
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            return refuse(spec.commandLine().getErr(),
+                                MessageCatalogue.format(locale, "operator.consents.none", Map.of()));
         }
 
         private int withdraw(PrintWriter out, String locale, MachineSettingsRecord settings, ConsentRecord consent)
@@ -1357,10 +1389,8 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, SETTINGS_FAILED,
-                                Map.of(STATUS, response.status())));
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            throw new OperatorRefusedException(CONFIG_VERB, response);
         }
 
         private boolean confirm(PrintWriter out, String locale) throws IOException {
@@ -1413,19 +1443,16 @@ public final class ConfigCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var locale = context.clientEnvironment().locale();
-            var owner = new ConfigCommand(context);
             MachineSettingsRecord settings;
             try {
-                settings = owner.readSettingsQuiet();
-            } catch (OperatorRefusedException _) {
-                out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
-            }
-            if (settings == null) {
-                out.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable", Map.of()));
-                out.flush();
-                return PmOperator.EXIT_FAILURE;
+                settings = new ConfigCommand(context).readSettings();
+            } catch (OperatorRefusedException refusal) {
+                // The line names what the refusal does not: the documents mode is a machine setting.
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "operator.config.documents_unavailable",
+                                    Map.of(REASON, refusal.message(locale))));
+                err.flush();
+                return refusal.exitCode();
             }
             var chosen = mode;
             printChoice(out, locale, settings.documentsMode());
@@ -1498,10 +1525,8 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            out.println(MessageCatalogue.format(locale, "operator.config.update_failed",
-                                Map.of(ASPECT, DOCUMENTS, STATUS, response.status())));
             out.flush();
-            return PmOperator.EXIT_FAILURE;
+            throw new OperatorRefusedException(CONFIG_VERB, response);
         }
 
         private boolean confirmRetry(String locale) throws IOException {
@@ -1510,20 +1535,20 @@ public final class ConfigCommand implements Callable<Integer> {
     }
 
     /**
-     * @param out the verb's output
-     * @return the exit code of a verb that combined {@code --plan} with other options
+     * @param err the verb's error output
+     * @return the exit code of a verb that named a blank {@code --plan}
      */
-    private static int blankPlan(OperatorContext context, PrintWriter out) {
-        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+    private static int blankPlan(OperatorContext context, PrintWriter err) {
+        return refuse(err, MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.actions.plan_blank", Map.of()));
-        out.flush();
-        return 1;
     }
 
-    private static int exclusive(OperatorContext context, PrintWriter out) {
-        out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+    /**
+     * @param err the verb's error output
+     * @return the exit code of a verb that combined {@code --plan} with other options
+     */
+    private static int exclusive(OperatorContext context, PrintWriter err) {
+        return refuse(err, MessageCatalogue.format(context.clientEnvironment().locale(),
                             "operator.actions.plan_option_exclusive", Map.of()));
-        out.flush();
-        return 1;
     }
 }

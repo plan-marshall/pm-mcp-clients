@@ -61,13 +61,18 @@ public final class RolesCommand implements Callable<Integer> {
 
     private static final String PATH_ROLES = "/api/v1/roles";
     private static final String QUERY_PROJECT = "?project=";
-    private static final String FIELD_STATUS = "status";
     private static final String FIELD_REASON = "reason";
     private static final String PARAM_HARNESS = "harness";
     private static final String PARAM_MODEL = "model";
     private static final String PARAM_EFFORT = "effort";
     private static final String RECORD_PATH = "record_path";
     private static final String KEY_NONE = "common.none";
+
+    /** The verb label a refusal of {@code roles show} names. */
+    private static final String VERB_SHOW = "roles show";
+
+    /** The verb label a refusal of {@code roles qualify} names. */
+    private static final String VERB_QUALIFY = "roles qualify";
     private static final Map<String, String> MEASUREMENT_LABELS = measurementLabels();
     private static final int LABEL_WIDTH = 16;
     private static final String PARAM_ROW = "  %-" + (LABEL_WIDTH + 8) + "s %s%n";
@@ -123,12 +128,7 @@ public final class RolesCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format(locale, "operator.roles.failed",
-                                    Map.of(FIELD_STATUS, response.status())));
-                err.flush();
-                return 1;
-            }
+            // A refused read throws its refusal, rendered with its cause on stderr.
             throw new OperatorRefusedException("roles list", response);
         }
 
@@ -233,11 +233,12 @@ public final class RolesCommand implements Callable<Integer> {
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
-                                                        FIELD_STATUS, response.status())));
+                                                        FIELD_REASON, new OperatorRefusedException(VERB_SHOW,
+                                                                            response).message(locale))));
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("roles show " + role, response);
+            throw new OperatorRefusedException(VERB_SHOW + " " + role, response);
         }
 
         private static void renderDetail(PrintWriter out, String locale, RoleDetailResource detail) {
@@ -333,7 +334,8 @@ public final class RolesCommand implements Callable<Integer> {
             }
             if (detailResponse.status() != 200) {
                 err.println(MessageCatalogue.format(locale, "operator.roles.qualify.failed",
-                                    Map.of("role", safeRole, FIELD_STATUS, detailResponse.status())));
+                                    Map.of("role", safeRole, FIELD_REASON, new OperatorRefusedException(
+                                                        VERB_QUALIFY, detailResponse).message(locale))));
                 err.flush();
                 return 1;
             }

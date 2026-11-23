@@ -34,6 +34,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.dialogue.StateDialogue;
 
@@ -316,14 +318,15 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project inspect not found returns 1")
+    @DisplayName("project inspect not found returns 1 with its line on stderr")
     void projectInspectNotFound() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
 
         int code = execute("project", "nonexistent");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Project nonexistent not found."))
+                            () -> assertTrue(err.toString().contains("Project nonexistent not found."), err.toString()),
+                            () -> assertFalse(out.toString().contains("not found"), out.toString())
         );
     }
 
@@ -363,8 +366,9 @@ class ProjectCommandTest {
         int code = executeGerman("project", projectId);
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("Projekt " + projectId + " nicht gefunden."),
-                                                out.toString())
+                            () -> assertTrue(err.toString().contains("Projekt " + projectId + " nicht gefunden."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("nicht gefunden"), out.toString())
         );
     }
 
@@ -581,8 +585,9 @@ class ProjectCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("✗ Another enrolment already names " + path),
-                                                out.toString()));
+                            () -> assertTrue(err.toString().contains("✗ Another enrolment already names " + path),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("Another enrolment"), out.toString()));
     }
 
     @Test
@@ -595,19 +600,25 @@ class ProjectCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("names a different checkout root"), out.toString()));
+                            () -> assertTrue(err.toString().contains("names a different checkout root"), err.toString()),
+                            () -> assertFalse(out.toString().contains("checkout root"), out.toString()));
     }
 
     @Test
-    @DisplayName("project add reports any other refusal with its status")
+    @DisplayName("project add reports any other refusal with its cause, never its HTTP status")
     void projectAddOtherRefusal() throws Exception {
+        var path = "/git/" + Generators.letterStrings(4, 12).next();
         fixture.start((request, response) -> response.json(400, "{\"error\":\"invalid_arguments\"}"));
 
-        int code = execute("project", "add", "/git/" + Generators.letterStrings(4, 12).next());
+        int code = execute("project", "add", path);
 
+        var cause = ErrorTexts.title("en", ApiErrorCode.fromWireOrNull("invalid_arguments"));
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(err.toString().contains("HTTP 400"), err.toString()));
+                            () -> assertTrue(err.toString().contains("Failed to enrol " + path + ": " + cause),
+                                                err.toString()),
+                            () -> assertFalse(err.toString().contains("HTTP"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Failed to enrol"), out.toString()));
     }
 
     @Test
@@ -1126,8 +1137,10 @@ class ProjectCommandTest {
         int code = execute("project", "add", "\u001B[31m/malicious/path\u001B[0m");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("/malicious/path"), out.toString()),
-                            () -> assertFalse(out.toString().contains("\u001B[31m"))
+                            () -> assertTrue(err.toString().contains("/malicious/path"), err.toString()),
+                            // neither the opening nor the closing sequence survives: no escape at all
+                            () -> assertFalse(err.toString().contains("\u001B"), err.toString()),
+                            () -> assertFalse(out.toString().contains("\u001B"), out.toString())
         );
     }
 }

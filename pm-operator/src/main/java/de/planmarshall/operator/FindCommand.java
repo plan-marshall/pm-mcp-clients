@@ -132,8 +132,9 @@ public final class FindCommand implements Callable<Integer> {
         if (query.isEmpty()) {
             // The runtime refuses an empty text and the client never sends one; the operator gave a
             // caller error, not a finished read (01-commands.adoc#exit-codes).
-            out.println(MessageCatalogue.format(locale, "overview.find.no_text", Map.of()));
-            out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, "overview.find.no_text", Map.of()));
+            err.flush();
             return 2;
         }
         return executeFind(context.runtime(true)::send, out, locale, query);

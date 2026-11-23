@@ -164,8 +164,11 @@ public final class AnswerCommand implements Callable<Integer> {
             return unreadable(out, locale);
         }
         if (qResponse.status() == 404) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
+            // An unknown decision is a failure of the one-shot verb: its line goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
+            err.flush();
             return 1;
         }
         var envelope = qResponse.status() == 200 ? identified(qResponse) : null;
@@ -529,13 +532,16 @@ public final class AnswerCommand implements Callable<Integer> {
 
     /**
      * Says that the decision could not be read, so that it is not known what it holds and nothing was
-     * sent.
+     * sent. A failed first read is a failure of the one-shot verb, so its line goes to stderr; whatever
+     * stdout already holds is flushed first so that the two streams keep their order.
      *
      * @return the exit code of a failed read
      */
     private int unreadable(PrintWriter out, String locale) {
-        out.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
         out.flush();
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(locale, "operator.decision.parts_unreadable", Map.of(ID_KEY, questionId)));
+        err.flush();
         return 1;
     }
 
@@ -633,9 +639,12 @@ public final class AnswerCommand implements Callable<Integer> {
             // An answer the runtime refused is the design's refusal, never an input error.
             throw refused;
         } catch (IOException e) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.input_error",
-                                Map.of("message", TerminalSanitizer.sanitizeLine(e.getMessage()))));
+            // A one-shot refusal names its cause on stderr, as not_found and parts_unreadable do.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, "operator.decision.input_error",
+                                Map.of("message", TerminalSanitizer.sanitizeLine(e.getMessage()))));
+            err.flush();
             return 1;
         }
     }

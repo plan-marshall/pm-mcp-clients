@@ -46,6 +46,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import picocli.CommandLine;
 
@@ -305,6 +306,33 @@ class WebDevicesCommandTest {
                             () -> assertTrue(output.contains("20. Mai"), output),
                             () -> assertTrue(output.contains("2. Juni"), output)
         );
+    }
+
+    @ParameterizedTest(name = "{1} in {0}")
+    @CsvSource(delimiter = '|', value = {
+                        "en | rename | rename requires <deviceId> <newLabel>",
+                        "de | rename | rename verlangt <deviceId> <newLabel>",
+                        "en | revoke | revoke requires <deviceId>, --others, or --all",
+                        "de | revoke | revoke verlangt <deviceId>, --others oder --all"})
+    @DisplayName("a rename or revoke missing its arguments is a usage error in the operator's language, on stderr with exit 2")
+    void usageRefusalInTheOperatorsLanguage(String language, String action, String text) throws Exception {
+        seedRuntimeRoutes(true);
+        var inStream = new ByteArrayInputStream(new byte[0]);
+        var terminal = new DumbTerminal(inStream, new ByteArrayOutputStream());
+        var clientEnv = new ClientEnvironment(language, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
+        var out = new StringWriter();
+        var err = new StringWriter();
+        var args = "rename".equals(action)
+                            ? new String[]{"web", "devices", action, Generators.letterStrings(4, 8).next()}
+                            : new String[]{"web", "devices", action};
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+
+        assertAll(
+                            () -> assertEquals(2, code, err.toString()),
+                            () -> assertTrue(err.toString().contains(text), err.toString()),
+                            () -> assertFalse(out.toString().contains(text), out.toString()));
     }
 
     @Test
@@ -631,9 +659,9 @@ class WebDevicesCommandTest {
         );
     }
 
-    @ParameterizedTest(name = "a refused {0} in the interactive list leaves with 1 and the refusal")
+    @ParameterizedTest(name = "a refused {0} in the interactive list leaves with 1 and the refusal on stderr")
     @MethodSource("refusedInteractiveActs")
-    @DisplayName("a refused act in the interactive list leaves with 1 and the refusal")
+    @DisplayName("a refused act in the interactive list leaves with 1 and its refusal on stderr, none of it on stdout")
     void aRefusedInteractiveActLeavesWithOne(String act, String refusedMethod, String typed, String refusal)
                         throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -657,28 +685,36 @@ class WebDevicesCommandTest {
 
         var context = createContext(typed);
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         int code = cmd.execute("-i");
 
+        // web devices --interactive runs as one shell command: its refusals go to stderr
+        // and stdout carries none of them (03-dialogues.adoc).
         var output = writer.toString();
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains(refusal), output)
+                            () -> assertTrue(failures.toString().contains(refusal), failures.toString()),
+                            () -> assertFalse(output.contains(refusal), output),
+                            () -> assertFalse(output.contains("runtime refused"), output)
         );
     }
+
+    /** The title line of the rendered refusal the fixture's {@code {"error":"refused"}} body reads as. */
+    private static final String REFUSED_LINE = "✗ The runtime refused: refused";
 
     /** The act, the method the runtime refuses, what the operator types, and the line the refusal names. */
     private static Stream<Arguments> refusedInteractiveActs() {
         return Stream.of(
                             // choose the one device, revoke it, and confirm the prompt
-                            Arguments.of("revoke", "DELETE", "1\nx\n\n", "Failed to revoke."),
+                            Arguments.of("revoke", "DELETE", "1\nx\n\n", REFUSED_LINE),
                             // choose device 1, rename with 'r', enter the new label
-                            Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n",
-                                                "Failed to rename device."),
+                            Arguments.of("rename", "PUT", "1\nr\nrenamed-device\n", REFUSED_LINE),
                             // choose listener-off 'n'
-                            Arguments.of("listener-off", "DELETE", "n\n", "Failed to turn listener off."));
+                            Arguments.of("listener-off", "DELETE", "n\n", REFUSED_LINE));
     }
 
     @Test
@@ -703,15 +739,18 @@ class WebDevicesCommandTest {
 
         var context = createContext("n\n");
         var writer = new StringWriter();
+        var failures = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
 
         int code = cmd.execute("-i");
 
-        var output = writer.toString();
+        var failed = "Failed to act on the device: the action did not complete.";
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
+                            () -> assertTrue(failures.toString().contains(failed), failures.toString()),
+                            () -> assertFalse(writer.toString().contains(failed), writer.toString())
         );
     }
 
@@ -801,13 +840,10 @@ class WebDevicesCommandTest {
     }
 
     @ParameterizedTest
-    @CsvSource({
-                        "rename, Failed to rename device.",
-                        "revoke, Failed to revoke.",
-                        "listener-off, Failed to turn listener off."
-    })
-    @DisplayName("a refused act on a device names the refusal and leaves with 1")
-    void aRefusedActLeavesWithOne(String action, String expectedOutput) throws Exception {
+    @ValueSource(strings = {"rename", "revoke", "listener-off"})
+    @DisplayName("a refused act on a device renders the refusal on stderr and leaves with 1")
+    void aRefusedActLeavesWithOne(String action) throws Exception {
+        var expectedOutput = REFUSED_LINE;
         seedRefusedRoutes();
         var deviceId = Generators.letterStrings(4, 8).next();
         var newLabel = Generators.letterStrings(4, 8).next();
@@ -832,6 +868,45 @@ class WebDevicesCommandTest {
                             () -> assertTrue(failures.toString().contains(expectedOutput), failures.toString()),
                             () -> assertFalse(output.contains(expectedOutput), output),
                             () -> assertFalse(output.contains("\u2713"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("a refused list of web devices --interactive in a terminal renders the refusal on stderr")
+    void aRefusedInteractiveListGoesToStderr() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        // only the device list is refused; any other request gets an answer that renders no refusal line
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(400, "{\"error\":\"refused\"}");
+            } else {
+                response.json(404, "{\"error\":\"not_this_route\"}");
+            }
+        });
+        var context = createContext("q\n");
+        var writer = new StringWriter();
+        var failures = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+        cmd.setErr(new PrintWriter(failures));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertTrue(context.isInteractiveTerminal(), "the case runs in a terminal"),
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(failures.toString().contains(REFUSED_LINE), failures.toString()),
+                            () -> assertFalse(output.contains(REFUSED_LINE), output),
+                            () -> assertTrue(server.requests().stream().anyMatch(request ->
+                                                                    "GET".equals(request.method())
+                                                                                        && "/api/v1/web/devices".equals(request.target())),
+                                                "the device list was asked for: " + server.requests().stream()
+                                                                    .map(request -> request.method() + " " + request.target()).toList())
         );
     }
 

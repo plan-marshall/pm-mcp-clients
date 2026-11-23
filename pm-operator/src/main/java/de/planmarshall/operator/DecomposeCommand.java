@@ -132,9 +132,12 @@ final class ReviewCommand implements Callable<Integer> {
             return 0;
         }
         if (!cut.everyCheckPasses()) {
-            out.println("✗ " + MessageCatalogue.format(locale, "decomposition.checks_fail",
-                                Map.of("count", cut.findings().size())));
+            // The tree above names each failing check; the refusal of the agreement goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println("✗ " + MessageCatalogue.format(locale, "decomposition.checks_fail",
+                                Map.of("count", cut.findings().size())));
+            err.flush();
             return 1;
         }
         // a commit the runtime refuses is its refusal, with the reason it gives
@@ -189,15 +192,16 @@ final class InstructCommand implements Callable<Integer> {
         context.gate().verify();
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
+        var err = spec.commandLine().getErr();
         if (instruction == null || instruction.isBlank()) {
-            out.println(MessageCatalogue.format(locale, "decomposition.instruct.instruction_required", Map.of()));
-            out.flush();
+            err.println(MessageCatalogue.format(locale, "decomposition.instruct.instruction_required", Map.of()));
+            err.flush();
             return 1;
         }
         var resolvedAction = parseAction(action);
         if (resolvedAction == InstructAction.EDIT && (plan == null || plan.isBlank())) {
-            out.println(MessageCatalogue.format(locale, "decomposition.instruct.plan_required", Map.of()));
-            out.flush();
+            err.println(MessageCatalogue.format(locale, "decomposition.instruct.plan_required", Map.of()));
+            err.flush();
             return 1;
         }
         var projectId = DecompositionSupport.project(context, project, epicId);
@@ -251,22 +255,13 @@ final class DecompositionSupport {
             return project;
         }
         var response = context.runtime(true).send(HttpRequest.get(PATH_EPICS + OperatorUrlUtil.encodePathSegment(epicId)));
-        if (response.status() == 404) {
-            // Only a refusal that says the entry is missing makes it a missing epic; a page or a
-            // route the runtime does not know is the refusal it is.
-            var refusal = new OperatorRefusedException("epic " + epicId, response);
-            if (refusal.code() == ApiErrorCode.SCOPE_NOT_FOUND) {
-                return null;
-            }
-            throw refusal;
-        }
-        if (response.status() != 200) {
-            throw new OperatorRefusedException("epic " + epicId, response);
+        if (!answered("epic " + epicId, response)) {
+            return null;
         }
         var projectId = JsonTree.string(JsonTree.asObject(JsonTree.parse(response.bodyText())), "project_id");
         if (projectId == null || projectId.isBlank()) {
-            throw new OperatorRefusedException("epic " + OutputSafety.stripControlSequences(epicId)
-                                + ": the runtime's epic names no project");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.locale(),
+                                "operator.decompose.epic_no_project", Map.of("epic", OutputSafety.stripControlSequences(epicId))));
         }
         return projectId;
     }
@@ -309,17 +304,29 @@ final class DecompositionSupport {
      */
     private static @Nullable EpicDecomposition decompositionOrNull(String verb, HttpResponse response)
                         throws IOException {
-        if (response.status() == 404) {
-            var refusal = new OperatorRefusedException(verb, response);
-            if (refusal.code() == ApiErrorCode.SCOPE_NOT_FOUND) {
-                return null;
-            }
-            throw refusal;
+        return answered(verb, response) ? EpicDecomposition.fromJson(response.bodyText()) : null;
+    }
+
+    /**
+     * Classifies the answer of a read of the epic or of its decomposition, the one way both reads
+     * take. The body decides, as for {@code plan <id>}: only a refusal whose code says the entry is
+     * missing makes it a missing epic, and a 404 that names no code (a route the runtime does not
+     * know, an empty body) or any other refusal is thrown as the refusal it is, rendered on stderr.
+     *
+     * @param verb     the verb the refusal names
+     * @param response the runtime's answer
+     * @return {@code true} for a 200, {@code false} when the runtime says the entry is missing
+     * @throws OperatorRefusedException for every other answer
+     */
+    private static boolean answered(String verb, HttpResponse response) throws OperatorRefusedException {
+        if (response.status() == 200) {
+            return true;
         }
-        if (response.status() != 200) {
-            throw new OperatorRefusedException(verb, response);
+        var refusal = new OperatorRefusedException(verb, response);
+        if (response.status() == 404 && refusal.code() == ApiErrorCode.SCOPE_NOT_FOUND) {
+            return false;
         }
-        return EpicDecomposition.fromJson(response.bodyText());
+        throw refusal;
     }
 
     /**

@@ -378,7 +378,7 @@ class DecomposeCommandTest {
     }
 
     @Test
-    @DisplayName("epic review --agree refuses a cut whose checks fail")
+    @DisplayName("epic review --agree refuses a cut whose checks fail on stderr, the tree on stdout")
     void reviewRefusesFailingCut() throws Exception {
         fixture.start((request, response) -> {
             if (answersEpic(request, response)) {
@@ -392,8 +392,17 @@ class DecomposeCommandTest {
         });
 
         var code = execute("epic", "review", "ep-001", "--agree");
-        assertEquals(1, code);
-        assertTrue(out.toString().contains("1 check fails"));
+        var output = out.toString();
+        var refusal = err.toString();
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(refusal.contains("✗ 1 check fails"), refusal),
+                            () -> assertFalse(output.contains("✗ 1 check fails"), output),
+                            // a workstream row and a plan row of the tree, neither of which the finding's text carries
+                            () -> assertTrue(output.lines().anyMatch(line -> line.equals("  WS-2  Authentication")),
+                                                output),
+                            () -> assertTrue(output.lines().anyMatch(line -> line.startsWith("    1) relay-cursor-order")
+                                                && line.contains("pm-relay/src/cursor")), output));
     }
 
     @Test
@@ -554,13 +563,23 @@ class DecomposeCommandTest {
     @DisplayName("epic instruct requires words, and a plan to edit")
     void instructRequiresWordsAndAPlan() {
         var noWords = execute("epic", "instruct", "ep-001", "--plan", "relay-auth-v2");
+        var noWordsOut = out.toString();
+        var noWordsErr = err.toString();
+        out.getBuffer().setLength(0);
+        err.getBuffer().setLength(0);
         var noPlan = execute("epic", "instruct", "ep-001", "--instruction", "words");
+        var noPlanOut = out.toString();
+        var noPlanErr = err.toString();
 
         assertAll(
                             () -> assertEquals(1, noWords),
-                            () -> assertTrue(out.toString().contains("What should change?"), out.toString()),
+                            () -> assertTrue(noWordsErr.contains("What should change?"), noWordsErr),
+                            () -> assertFalse(noWordsOut.contains("What should change?"), noWordsOut),
+                            () -> assertFalse(noWordsErr.contains("--plan is required"), noWordsErr),
                             () -> assertEquals(1, noPlan),
-                            () -> assertTrue(out.toString().contains("--plan is required"), out.toString())
+                            () -> assertTrue(noPlanErr.contains("--plan is required"), noPlanErr),
+                            () -> assertFalse(noPlanOut.contains("--plan is required"), noPlanOut),
+                            () -> assertFalse(noPlanErr.contains("What should change?"), noPlanErr)
         );
     }
 

@@ -11,13 +11,20 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Locale;
 
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +32,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
+@EnableGeneratorController
 @DisplayName("ClientCommand and DrainCommand")
 class ClientCommandTest {
 
@@ -53,6 +63,41 @@ class ClientCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    @Test
+    @DisplayName("a refused client status renders the refusal on stderr and exits 1")
+    void clientStatusRefusal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
+
+        int code = execute("client", "status");
+
+        var title = ErrorTexts.title("en", ApiErrorCode.INTERNAL_FAULT);
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("✗ " + title), err.toString()),
+                            () -> assertFalse(out.toString().contains(title), out.toString()),
+                            () -> assertFalse(err.toString().contains("Failed to query"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a German client install failure prints one grammatical sentence with its cause")
+    void germanClientInstallFailure() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(500, "{\"error\":\"internal_fault\"}"));
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "client", "install");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("Die Client-Bundles konnten nicht installiert werden: "
+                                                + ErrorTexts.title("de", ApiErrorCode.INTERNAL_FAULT)), err.toString()),
+                            () -> assertFalse(err.toString().contains("install werden"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Client-Bundles"), out.toString()));
     }
 
     @Test
@@ -134,6 +179,35 @@ class ClientCommandTest {
         int code = execute("client", "remove", "codex");
         assertEquals(0, code);
         assertTrue(out.toString().contains("✓ Client bundle removal completed"));
+    }
+
+    @ParameterizedTest(name = "a German client {0} prints its success line in German")
+    @CsvSource(delimiter = '|', value = {
+                        "install|201|✓ Die Client-Bundles wurden installiert|✓ Client bundle installation completed",
+                        "update|200|✓ Die Client-Bundles wurden aktualisiert|✓ Client bundle update completed",
+                        "remove|204|✓ Die Client-Bundles wurden entfernt|✓ Client bundle removal completed"})
+    @DisplayName("the success line of client install, update and remove comes from the catalogue in the operator's language")
+    void germanClientSuccessLine(String verb, int status, String german, String english) throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if (("/api/v1/client/" + verb).equals(request.target()) && "POST".equals(request.method())) {
+                response.send(status, null, "");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true);
+        var harness = Generators.letterStrings(4, 12).next().toLowerCase(Locale.ROOT);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "client", verb, harness);
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains(german), out.toString()),
+                            () -> assertFalse(out.toString().contains(english), out.toString()),
+                            () -> assertEquals("", err.toString()));
     }
 
     @Test

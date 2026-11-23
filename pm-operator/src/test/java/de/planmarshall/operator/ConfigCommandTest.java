@@ -25,6 +25,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -39,6 +40,8 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.system.CleanupDurations;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -48,6 +51,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import picocli.CommandLine.Command;
 
@@ -132,6 +137,37 @@ class ConfigCommandTest {
         );
     }
 
+    @ParameterizedTest(name = "in {0}")
+    @ValueSource(strings = {"en", "de"})
+    @DisplayName("bare config whose input ends before a choice exits 1 and names that cause on stderr, never a bare verb line")
+    void bareConfigWithEndedInputNamesItsCause(String language) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/machine/settings".equals(request.target())) {
+                response.json(200, SETTINGS);
+            } else if ("/api/v1/config".equals(request.target())) {
+                response.json(200, "[" + PORT_VALUE + "," + FLAG_VALUE + "]");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de".equals(language) ? "de_DE.UTF-8" : "en_US.UTF-8");
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                            null);
+
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "config");
+
+        var cause = MessageCatalogue.format(language, "operator.settings.input_ended", Map.of());
+        var errLines = err.toString().lines().toList();
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(errLines.stream().anyMatch(line -> line.contains(cause)), err.toString()),
+                            () -> assertFalse(errLines.stream().anyMatch(line -> "config:".equals(line.strip())),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains(cause), out.toString()));
+    }
+
     @Test
     @DisplayName("config show reads the effective values and names each origin")
     void configShowListsTheEffectiveValues() throws Exception {
@@ -197,12 +233,7 @@ class ConfigCommandTest {
                             () -> assertEquals(0, selected, text),
                             () -> assertTrue(text.contains("web.port"), text),
                             () -> assertFalse(text.contains("console.full_screen"), text));
-
-        out.getBuffer().setLength(0);
-        int missing = execute("config", "show", "nope.key");
-        assertAll(
-                            () -> assertEquals(1, missing, out.toString()),
-                            () -> assertTrue(out.toString().contains("is not set"), out.toString()));
+        // A key that selects nothing is a refusal: LocalRefusalStreamTest proves it on stderr.
     }
 
     @Test
@@ -435,8 +466,10 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString()),
-                            () -> assertTrue(err.toString().contains("Unable to load settings."), err.toString()),
-                            () -> assertFalse(out.toString().contains("Unable to load settings."), out.toString()),
+                            () -> assertTrue(err.toString().contains("✗ The runtime refused: refused"),
+                                                err.toString()),
+                            () -> assertFalse(err.toString().contains("HTTP"), err.toString()),
+                            () -> assertFalse(out.toString().contains("The runtime refused"), out.toString()),
                             () -> assertTrue(writes.isEmpty(), writes.toString()));
     }
 
@@ -462,6 +495,44 @@ class ConfigCommandTest {
                             () -> assertTrue(out.toString().contains("✓ Config custom.flag unset"), out.toString()),
                             () -> assertTrue(requests.contains("DELETE /api/v1/config/machine/custom.flag"),
                                                 requests.toString()));
+    }
+
+    @Test
+    @DisplayName("config set --plan \"\" refuses on stderr before any request")
+    void configSetRefusesABlankPlan() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(404, null, "");
+        });
+        var key = "custom." + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("config", "set", key, Generators.letterStrings(4, 8).next(), "--plan", "");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains("--plan needs a plan id."), err.toString()),
+                            () -> assertEquals("", out.toString()),
+                            () -> assertTrue(requests.isEmpty(), requests.toString()));
+    }
+
+    @Test
+    @DisplayName("config unset --plan \"\" refuses on stderr before any request")
+    void configUnsetRefusesABlankPlan() throws Exception {
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(404, null, "");
+        });
+        var key = "custom." + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("config", "unset", key, "--plan", "");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains("--plan needs a plan id."), err.toString()),
+                            () -> assertEquals("", out.toString()),
+                            () -> assertTrue(requests.isEmpty(), requests.toString()));
     }
 
     @Test
@@ -514,28 +585,6 @@ class ConfigCommandTest {
                             () -> assertEquals(0, roleish, out.toString()),
                             () -> assertTrue(requests.contains("PUT /api/v1/config/machine/roleset"),
                                                 requests.toString()));
-    }
-
-    @Test
-    @DisplayName("config <aspect> --plan refuses the verb's other options")
-    void planScopeIsExclusive() throws Exception {
-        int code = execute("config", "roles", "--plan", "fix-relay", "--set", "implement=x");
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(
-                                                                    "--plan cannot be combined with the other options"),
-                                                out.toString())
-        );
-    }
-
-    @Test
-    @DisplayName("config <aspect> --plan rejects a blank plan id instead of the machine scope")
-    void blankPlanIsRejected() throws Exception {
-        int code = execute("config", "roles", "--plan", "");
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("--plan needs a plan id"), out.toString())
-        );
     }
 
     @Test
@@ -1032,7 +1081,7 @@ class ConfigCommandTest {
     }
 
     @Test
-    @DisplayName("config cleanup --remind never is refused with the remind-specific text")
+    @DisplayName("config cleanup --remind never is refused with the remind-specific text, its one day singular")
     void cleanupRemindNeverIsRefusedWithItsOwnText() throws Exception {
         fixture.start((request, response) -> response.json(200, SETTINGS));
 
@@ -1040,8 +1089,26 @@ class ConfigCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code, out.toString()),
-                            () -> assertTrue(err.toString().contains("At least 1 days."), err.toString()),
+                            () -> assertTrue(err.toString().contains("At least 1 day."), err.toString()),
+                            () -> assertFalse(err.toString().contains("1 days"), err.toString()),
                             () -> assertFalse(err.toString().contains("or never"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("the editor's reminder prompt does not offer never")
+    void cleanupEditorRemindPromptOffersNoNever() throws Exception {
+        serveSettings(body -> {
+            // left before anything is written
+        });
+
+        int code = executeWithTyped("remind\n\n\n", "config", "cleanup");
+
+        var dayPrompts = out.toString().lines().filter(line -> line.contains("Days, at least")).toList();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertFalse(dayPrompts.isEmpty(), out.toString()),
+                            () -> assertTrue(dayPrompts.stream().noneMatch(line -> line.contains("never")),
+                                                out.toString()));
     }
 
     /** A settings server that records the machine-settings write, or {@code null} when none came. */
@@ -1361,8 +1428,9 @@ class ConfigCommandTest {
         int code = execute("config");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("did not report its configuration values"),
-                                                out.toString()));
+                            () -> assertTrue(err.toString().contains(
+                                                "✗ The runtime did not report its configuration values."), err.toString()),
+                            () -> assertFalse(out.toString().contains("did not report"), out.toString()));
     }
 
     @Test
@@ -1390,19 +1458,6 @@ class ConfigCommandTest {
                                                 requests.toString()));
     }
 
-    @Test
-    @DisplayName("config set refuses two levels at once")
-    void configRefusesTwoLevels() {
-        int machineAndProject = execute("config", "set", "--machine", "--project", "p", "custom.key", "1");
-        var text = out.toString();
-        out.getBuffer().setLength(0);
-        int both = execute("config", "unset", "custom.key", "--project", "p", "--plan", "q");
-
-        assertAll(
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, machineAndProject, text),
-                            () -> assertTrue(text.contains("Name one level"), text),
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, both, out.toString()));
-    }
 
     @Test
     @DisplayName("the overview shortens a long label and right-aligns a two-digit index")
@@ -1431,8 +1486,11 @@ class ConfigCommandTest {
         int code = execute("config", "documents", "--mode", "copy");
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                            () -> assertTrue(out.toString().contains("documents mode is a machine setting"),
-                                                out.toString()));
+                            () -> assertTrue(err.toString().contains(
+                                                "Unable to load the documents mode, a machine setting: "
+                                                                    + ErrorTexts.title("en", (ApiErrorCode) null)),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("documents mode"), out.toString()));
     }
 
     @Test

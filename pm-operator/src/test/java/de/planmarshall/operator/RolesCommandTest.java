@@ -467,7 +467,9 @@ class RolesCommandTest {
         assertEquals(1, execute("", "roles", "qualify", "implementer", "--yes"));
 
         assertAll(
-                            () -> assertTrue(err.toString().contains("Failed to qualify implementer."), err.toString()),
+                            () -> assertTrue(err.toString().contains(
+                                                "Failed to qualify implementer: The runtime refused: internal"), err.toString()),
+                            () -> assertFalse(err.toString().contains("HTTP"), err.toString()),
                             () -> assertEquals(0, posts.get())
         );
     }

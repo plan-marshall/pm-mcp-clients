@@ -304,10 +304,12 @@ public final class AcceptEditCommand implements Callable<Integer> {
             return PmOperator.EXIT_FAILURE;
         }
         if (digestResponse.status() != 200) {
+            // The line names the store; its cause is the refusal's own text, never the HTTP status.
+            var refusal = new OperatorRefusedException("accept-edit", digestResponse);
             err.println(MessageCatalogue.format(locale, "enrolment.accept.failed",
-                                Map.of("path", shown, "status", digestResponse.status())));
+                                Map.of("path", shown, "reason", refusal.message(locale))));
             err.flush();
-            return PmOperator.EXIT_FAILURE;
+            return refusal.exitCode();
         }
 
         var comparison = StoreDigestComparison.fromJson(digestResponse.bodyText());

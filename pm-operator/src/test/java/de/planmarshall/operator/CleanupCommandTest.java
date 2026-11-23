@@ -497,6 +497,31 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("the delete of the whole job asks the confirmation the PLAN-174 delete capture shows")
+    void deleteOfTheWholeJobAsksTheCapturedConfirmation() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("cleanup", "--delete", "--no-input");
+        var lines = out.toString().lines().map(String::strip).toList();
+        assertAll(
+                            () -> assertEquals(3, code, out.toString() + err),
+                            () -> assertTrue(lines.contains(
+                                                "Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?"),
+                                                out.toString()),
+                            () -> assertTrue(lines.contains("This frees 1.8 GB. It cannot be undone."), out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("cleanup --delete --yes deletes selected items")
     void cleanupDeleteConfirmed() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -539,7 +564,9 @@ class CleanupCommandTest {
         int code = execute("cleanup", "--delete", "--yes");
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains("The runtime is stopping; nothing new starts."))
+                            () -> assertTrue(err.toString().contains("The runtime is stopping; nothing new starts."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("The runtime is stopping"), out.toString())
         );
     }
 
@@ -618,7 +645,8 @@ class CleanupCommandTest {
 
             assertAll(
                                 () -> assertEquals(1, code),
-                                () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."), out.toString()),
+                                () -> assertTrue(err.toString().contains(unknown + " is no item of the open cleanup."), err.toString()),
+                                () -> assertFalse(out.toString().contains("is no item of the open cleanup"), out.toString()),
                                 () -> assertEquals(0, deletes.get())
             );
         }
@@ -1675,8 +1703,93 @@ class CleanupCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(
-                                                "This cleanup was decided in the web app (iPad): deleted."), out.toString())
+                            () -> assertTrue(err.toString().contains(
+                                                "This cleanup was decided in the web app (iPad): deleted."), err.toString()),
+                            () -> assertFalse(out.toString().contains("This cleanup was decided"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a delete refused in the console's dialogue goes to the error writer, not to stdout")
+    void dialogueDeleteRefusalGoesToTheErrorWriter() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        var who = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if (request.target().endsWith("/delete")) {
+                response.send(409, null, "{\"error\":\"cleanup_decided\",\"job_id\":\"cln-0007\","
+                                    + "\"decision\":\"ignore\",\"who\":\"" + who + "\"}");
+            } else {
+                response.json(200, JsonTree.write(job.toMap()));
+            }
+        });
+        var command = commandOver(new ArrayDeque<>(List.of("d\n", "y\n")), new ArrayDeque<>(), true);
+
+        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("This cleanup was decided in " + who + ": ignored."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("This cleanup was decided"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("a German item row names its end and its logs in German, never with the runtime's English word")
+    void germanItemRowNamesEndAndLogsInGerman() {
+        int day = Generators.integers(1, 28).next();
+        int logs = Generators.integers(2, 99).next();
+        var items = List.of(
+                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "ended " + day + " Sep", 1L, logs, 0, null),
+                            new CleanupItemEntry("docs-typo", "plan", "docs-typo", "merged", day + " Aug", 1L, 1, 0, null));
+        var project = new CleanupProjectItem("pm-mcp-clients", 2, 0, logs + 1, 0, 2L, items);
+        var summary = new CleanupSummary(2, 0, logs + 1, 0, 0, 2L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(project), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            new ClientEnvironment("de", false, List.of(), Map.of()));
+        var writer = new StringWriter();
+
+        new CleanupCommand(context).printJob(new PrintWriter(writer), job, Set.of());
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("beendet " + day + " Sep"), output),
+                            () -> assertTrue(output.contains("beendet " + day + " Aug"), output),
+                            () -> assertTrue(output.contains(logs + " Logs"), output),
+                            () -> assertTrue(output.contains("1 Log" + System.lineSeparator()), output),
+                            () -> assertFalse(output.contains("ended"), output),
+                            () -> assertFalse(output.contains(" logs"), output),
+                            () -> assertFalse(output.contains(" log" + System.lineSeparator()), output)
+        );
+    }
+
+    @ParameterizedTest(name = "a {0} preview of one of each kind reads ''{1}''")
+    @CsvSource(delimiter = '|', value = {
+                        "en|Delete 1 plan, 1 epic, 1 log, 1 read report, and 1 unenrolled project?",
+                        "de|1 Plan, 1 Epic, 1 Log, 1 gelesenen Bericht und 1 nicht mehr registriertes Projekt löschen?"})
+    @DisplayName("the delete preview names one of a kind in the singular")
+    void previewNamesOneInTheSingular(String locale, String expected) {
+        var preview = new CleanupCommand.DeletePreview(1, 1, 1, 1, 1, Generators.longs(1L, 1_000_000L).next());
+
+        var text = CleanupCommand.previewText(locale, preview, 0);
+
+        assertTrue(text.startsWith(expected + "\n"), text);
+    }
+
+    @Test
+    @DisplayName("the German delete preview names several of a kind in the plural, as the summary line does")
+    void germanPreviewNamesSeveralInThePlural() {
+        int plans = Generators.integers(2, 99).next();
+        int projects = Generators.integers(2, 9).next();
+        var preview = new CleanupCommand.DeletePreview(plans, 2, 3, 4, projects, Generators.longs(1L, 1_000_000L).next());
+
+        var text = CleanupCommand.previewText("de", preview, 0);
+
+        assertAll(
+                            () -> assertTrue(text.startsWith(plans + " Pläne, 2 Epics, 3 Logs, 4 gelesene Berichte und "
+                                                + projects + " nicht mehr registrierte Projekte löschen?\n"), text),
+                            () -> assertFalse(text.contains("abgemeldete"), text)
         );
     }
 
@@ -1702,7 +1815,9 @@ class CleanupCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(unknown + " is no item of the open cleanup."),
+                            () -> assertTrue(err.toString().contains(unknown + " is no item of the open cleanup."),
+                                                err.toString()),
+                            () -> assertFalse(out.toString().contains("is no item of the open cleanup"),
                                                 out.toString()),
                             () -> assertEquals(0, deletes.get(), "no delete was sent")
         );

@@ -33,6 +33,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.ActivityEntryKind;
@@ -105,6 +106,10 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KEY_OUTPUT = "output";
     private static final String KEY_COUNT = "count";
     private static final String KEY_STATE_ROW = "state";
+    private static final String KEY_ASPECT = "aspect";
+    /** The code with which the runtime refuses a submitted settings value itself. */
+    private static final String INVALID_VALUE = "invalid_value";
+    private static final String PHASE = "phase";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
 
@@ -152,6 +157,25 @@ public final class PlanCommand implements Callable<Integer> {
         this.context = Objects.requireNonNull(context, "context");
     }
 
+    /**
+     * Renders the refusal of a read of one plan or epic on stderr. The body decides what the refusal
+     * says: a code the runtime names keeps its own texts, and a 404 that names none is a route this
+     * runtime does not know, never a fixed "not found". Its callers are the 404 of {@code plan <id>}
+     * and of {@code plan <id> --activity} in this class and the 404 of {@code epic <id>} in
+     * {@link EpicCommand}; {@code epic decompose} reads its 404 in {@code DecompositionSupport}, not here.
+     *
+     * @param err      the verb's error output
+     * @param locale   the operator's locale
+     * @param verb     the verb that was attempted
+     * @param response the runtime's answer
+     * @return the exit code of a refusal
+     */
+    static int refuseRead(PrintWriter err, @Nullable String locale, String verb, HttpResponse response) {
+        var refusal = new OperatorRefusedException(verb, response);
+        RefusalRenderer.render(err, locale, refusal);
+        return refusal.exitCode();
+    }
+
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
@@ -183,8 +207,7 @@ public final class PlanCommand implements Callable<Integer> {
                     }
                 }
                 if (response.status() == 404) {
-                    RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
-                    return 1;
+                    return refuseRead(err, context.locale(), "plan", response);
                 }
                 throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
             }
@@ -210,8 +233,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(err, context.locale(), new OperatorRefusedException("plan", response));
-                return 1;
+                return refuseRead(err, context.locale(), "plan", response);
             }
             throw new OperatorRefusedException("plan " + planId, response);
         }
@@ -221,7 +243,8 @@ public final class PlanCommand implements Callable<Integer> {
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                ActionSupport.printWorkList(out, "Running Plans:", "phase", list);
+                ActionSupport.printWorkList(out, MessageCatalogue.format(context.locale(),
+                                    "operator.plan.running_title", Map.of()), PHASE, list);
             } else {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.plan.none_running", Map.of()));
@@ -392,7 +415,8 @@ public final class PlanCommand implements Callable<Integer> {
         out.printf("%s · %s%n", cleanPlan, cleanTask);
 
         var duration = Display.duration(locale, act.durationSeconds());
-        var tokensStr = TokenFormat.formatTokens(act.tokensSoFar(), false, locale) + " tokens";
+        var tokensStr = MessageCatalogue.format(locale, "report.completion.tokens_count",
+                            Map.of(KEY_TOKENS, TokenFormat.formatTokens(act.tokensSoFar(), false, locale)));
         out.println("  " + MessageCatalogue.format(locale, "operator.plan.activity.subheader", Map.of(
                             "role", OutputSafety.stripControlSequences(act.role()),
                             "harness", OutputSafety.stripControlSequences(act.harness()),
@@ -474,6 +498,22 @@ public final class PlanCommand implements Callable<Integer> {
         out.flush();
     }
 
+    /**
+     * @param tree   the process tree
+     * @param locale the interface locale
+     * @return the pull request part of the tree's head line, empty when the plan has none
+     */
+    private static String pullRequestSuffix(ProcessTree tree, String locale) {
+        var number = tree.pullRequestNumber();
+        if (number == null) {
+            return "";
+        }
+        var url = tree.pullRequestUrl();
+        var urlPart = url != null ? " " + OutputSafety.stripControlSequences(url) : "";
+        return " · " + MessageCatalogue.format(locale, "operator.plan.tree.pull_request",
+                            Map.of("number", number)) + urlPart;
+    }
+
     private void printProcessTree(PrintWriter out, ProcessTree tree) {
         var projectStr = tree.project() != null ? OutputSafety.stripControlSequences(tree.project().projectId()) : "";
         var epicStr = tree.epic() != null ? OutputSafety.stripControlSequences(tree.epic().epicId()) : null;
@@ -489,7 +529,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         var locale = context.clientEnvironment().locale();
         var durationStr = tree.durationSeconds() > 0 ? " · " + Display.duration(locale, tree.durationSeconds()) : "";
-        var prStr = tree.pullRequestNumber() != null ? " · pull request #" + tree.pullRequestNumber() + (tree.pullRequestUrl() != null ? " " + OutputSafety.stripControlSequences(tree.pullRequestUrl()) : "") : "";
+        var prStr = pullRequestSuffix(tree, locale);
         out.printf("%s · %s · %s%s%s%n",
                             planStr,
                             OutputSafety.stripControlSequences(tree.currentPhase()),
@@ -534,6 +574,21 @@ public final class PlanCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * @param kind the kind of a tree node
+     * @return the word that precedes the node's title: {@code "phase "} for a phase,
+     *         {@code "sub-workflow "} for a sub-workflow, nothing for any other kind
+     */
+    private static String kindPrefix(@Nullable String kind) {
+        if (PHASE.equals(kind)) {
+            return "phase ";
+        }
+        if ("sub_workflow".equals(kind)) {
+            return "sub-workflow ";
+        }
+        return "";
+    }
+
     private void renderNode(PrintWriter out, ProcessNode node, int level, int maxDepth) {
         var indent = "  ".repeat(level);
         var stateEnum = NodeState.fromValue(node.state());
@@ -566,7 +621,7 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var info = String.join(" · ", infoParts);
 
-        var kindPrefix = "phase".equals(node.kind()) ? "phase " : ("sub_workflow".equals(node.kind()) ? "sub-workflow " : "");
+        var kindPrefix = kindPrefix(node.kind());
         var title = OutputSafety.stripControlSequences(node.title());
         if (title.startsWith("phase ") || title.startsWith("sub-workflow ")) {
             kindPrefix = "";
@@ -656,22 +711,36 @@ public final class PlanCommand implements Callable<Integer> {
 
     /**
      * Parses {@code --depth <n>}: a positive number of levels. The value is validated at parse
-     * time, so an explicit {@code 0} is refused with the usage and never sent to the runtime.
+     * time, so an explicit {@code 0} is refused with the usage and never sent to the runtime. The
+     * command factory constructs it with the operator context, so the refusal is in the operator's
+     * locale.
      */
     static final class DepthConverter implements ITypeConverter<Integer> {
+
+        private final OperatorContext context;
+
+        /**
+         * @param context the operator context whose locale the refusal is written in
+         */
+        DepthConverter(OperatorContext context) {
+            this.context = context;
+        }
 
         @Override
         public Integer convert(String value) {
             try {
                 int depth = Integer.parseInt(value.trim());
                 if (depth < 1) {
-                    throw new TypeConversionException(
-                                        MessageCatalogue.get("operator.plan.depth_invalid"));
+                    throw new TypeConversionException(invalid());
                 }
                 return depth;
             } catch (NumberFormatException _) {
-                throw new TypeConversionException(MessageCatalogue.get("operator.plan.depth_invalid"));
+                throw new TypeConversionException(invalid());
             }
+        }
+
+        private String invalid() {
+            return MessageCatalogue.get(context.locale(), "operator.plan.depth_invalid");
         }
     }
 
@@ -736,7 +805,8 @@ public final class PlanCommand implements Callable<Integer> {
             answers.move = move;
             answers.noInput = noInput;
             answers.entryId = entryId;
-            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.PLAN, answers);
+            return StartDialogue.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(),
+                                EntryKind.PLAN, answers);
         }
     }
 
@@ -795,7 +865,7 @@ public final class PlanCommand implements Callable<Integer> {
                     out.println(GLYPH_CHECK + MessageCatalogue.format(
                                         context.clientEnvironment().locale(), "operator.actions.result.pausing",
                                         Map.of("plan", OutputSafety.stripControlSequences(planId),
-                                                            "point", PausePoint.AFTER_PHASE.value().equals(point) ? "phase" : "task")));
+                                                            "point", PausePoint.AFTER_PHASE.value().equals(point) ? PHASE : "task")));
                 }
                 out.flush();
                 return 0;
@@ -1006,7 +1076,6 @@ public final class PlanCommand implements Callable<Integer> {
 
         private static final String FMT_14S = "  %-14s %s%n";
         private static final String FMT_INDENT = "                 %s%n";
-        private static final String NOT_MEASURED = " not measured";
         private static final String KEY_STATE = "state";
 
         ReportCommand(OperatorContext context) {
@@ -1029,7 +1098,7 @@ public final class PlanCommand implements Callable<Integer> {
                     // Ignore unparseable 409 body
                 }
                 var err = spec.commandLine().getErr();
-                err.println(MessageCatalogue.format("operator.reports.not_ended",
+                err.println(MessageCatalogue.format(context.locale(), "operator.reports.not_ended",
                                     Map.of("plan", planId, KEY_STATE, state)));
                 err.flush();
                 return 1;
@@ -1144,7 +1213,9 @@ public final class PlanCommand implements Callable<Integer> {
             // (completion-report.adoc#layout): the pause is the operator's, never a name the
             // runtime wrote.
             var timeFmt = DateTimeFormatter.ofPattern("HH:mm").withZone(zone);
-            var paused = report.pausedSeconds() > 0 ? Display.duration(locale, report.pausedSeconds()) : "none";
+            var paused = report.pausedSeconds() > 0
+                                ? Display.duration(locale, report.pausedSeconds())
+                                : MessageCatalogue.format(locale, "common.none", Map.of());
             return MessageCatalogue.format(locale, "report.completion.ran_value", Map.of(
                                 KEY_DURATION, duration,
                                 "start", timeFmt.format(started),
@@ -1156,7 +1227,7 @@ public final class PlanCommand implements Callable<Integer> {
             if (deliverables.isEmpty()) {
                 out.printf(FMT_14S, text(locale, "report.completion.deliverables"),
                                     MessageCatalogue.format(locale, "report.completion.deliverables_none",
-                                                        Map.of("phase", "refine")));
+                                                        Map.of(PHASE, "refine")));
             } else {
                 long doneCount = deliverables.stream().filter(d -> "done".equalsIgnoreCase(d.state())).count();
                 out.printf(FMT_14S, text(locale, "report.completion.deliverables"),
@@ -1355,7 +1426,10 @@ public final class PlanCommand implements Callable<Integer> {
             out.println(header);
             for (var item : items) {
                 var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), locale);
-                var unmeasuredItem = item.unmeasured() > 0 ? ("   " + item.unmeasured() + NOT_MEASURED) : "";
+                var unmeasuredItem = item.unmeasured() > 0
+                                    ? "   " + MessageCatalogue.format(locale, "report.tokens.unmeasured",
+                                                        Map.of(KEY_COUNT, item.unmeasured()))
+                                    : "";
                 var paddedName = padRight(ConsoleNotice.stripControlSequences(item.name()), nameWidth);
                 if (isRole) {
                     var pin = formatPin(item);
@@ -1466,10 +1540,10 @@ public final class PlanCommand implements Callable<Integer> {
                 try {
                     var result = HoldResolutionResult.fromJson(response.bodyText());
                     if (result.released()) {
-                        out.println(MessageCatalogue.format("control.hold.released",
+                        out.println(MessageCatalogue.format(context.locale(), "control.hold.released",
                                             Map.of("subject", result.subject())));
                     } else {
-                        out.println(MessageCatalogue.format("control.hold.still_held",
+                        out.println(MessageCatalogue.format(context.locale(), "control.hold.still_held",
                                             Map.of("cause", result.cause() != null ? result.cause() : "")));
                     }
                     out.flush();
@@ -1533,9 +1607,10 @@ public final class PlanCommand implements Callable<Integer> {
             } else {
                 var eq = set.indexOf('=');
                 if (eq < 0) {
-                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                    var err = spec.commandLine().getErr();
+                    err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                         "operator.plan.settings.value_required", Map.of()));
-                    out.flush();
+                    err.flush();
                     return 1;
                 }
                 aspect = set.substring(0, eq).trim();
@@ -1555,9 +1630,11 @@ public final class PlanCommand implements Callable<Integer> {
 
         private int apply(PrintWriter out, PlanSettingsRecord settings, String aspect, @Nullable String value)
                             throws IOException {
-            var result = put(settings.revision(), aspect, value);
+            var locale = context.locale();
+            var outcome = put(settings.revision(), aspect, value);
+            var result = outcome.result();
             if (result.applied()) {
-                out.println(MessageCatalogue.format("control.settings.applies",
+                out.println(MessageCatalogue.format(locale, "control.settings.applies",
                                     Map.of("plan", planId, "version", result.revision())));
                 out.flush();
                 return 0;
@@ -1566,29 +1643,44 @@ public final class PlanCommand implements Callable<Integer> {
                 var current = result.currentValue() != null ? result.currentValue() : "";
                 if (yes) {
                     var again = put(result.revision(), aspect, value);
-                    if (again.applied()) {
-                        out.println(MessageCatalogue.format("control.settings.applies",
-                                            Map.of("plan", planId, "version", again.revision())));
+                    if (again.result().applied()) {
+                        out.println(MessageCatalogue.format(locale, "control.settings.applies",
+                                            Map.of("plan", planId, "version", again.result().revision())));
                         out.flush();
                         return 0;
                     }
-                    return refused(out, aspect, value);
+                    return refused(out, aspect, value, again.valueRefused());
                 }
-                out.println(MessageCatalogue.format("common.conflict.changed", Map.of(KEY_VALUE, current)));
                 if (noInput) {
-                    out.println(MessageCatalogue.format("common.conflict.no_input", Map.of(KEY_VALUE, current)));
+                    // The --no-input stop prints the state and the option that answers it on stdout.
+                    out.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(KEY_VALUE, current)));
+                    out.println(MessageCatalogue.format(locale, "common.conflict.no_input", Map.of(KEY_VALUE, current)));
                     out.flush();
                     return 3;
                 }
+                // A change another client overtook is refused: its line goes to stderr.
                 out.flush();
+                var err = spec.commandLine().getErr();
+                err.println(MessageCatalogue.format(locale, "common.conflict.changed", Map.of(KEY_VALUE, current)));
+                err.flush();
                 return 1;
             }
-            return refused(out, aspect, value);
+            return refused(out, aspect, value, outcome.valueRefused());
         }
 
-        private PlanSettingsUpdateResult put(int revision, String aspect, @Nullable String value) throws IOException {
+        /**
+         * The runtime's answer to one write of a setting.
+         *
+         * @param result       the write's result; a refusal is neither applied nor a conflict
+         * @param valueRefused whether the runtime refused the submitted value itself: status 422 with
+         *                     the code {@code invalid_value}
+         */
+        private record PutOutcome(PlanSettingsUpdateResult result, boolean valueRefused) {
+        }
+
+        private PutOutcome put(int revision, String aspect, @Nullable String value) throws IOException {
             var payload = new LinkedHashMap<String, Object>();
-            payload.put("aspect", aspect);
+            payload.put(KEY_ASPECT, aspect);
             if (value != null) {
                 payload.put(KEY_VALUE, value);
             } else {
@@ -1598,35 +1690,98 @@ public final class PlanCommand implements Callable<Integer> {
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings";
             var response = context.runtime(true).send(HttpRequest.json("PUT", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 409) {
-                return PlanSettingsUpdateResult.fromJson(response.bodyText());
+                return new PutOutcome(PlanSettingsUpdateResult.fromJson(response.bodyText()), false);
             }
-            return new PlanSettingsUpdateResult(false, false, revision, null, null);
+            // Only the runtime's own code says the value itself was refused; every other answer
+            // leaves the cause unknown.
+            var refusal = new OperatorRefusedException("plan settings " + planId, response);
+            var valueRefused = response.status() == 422 && INVALID_VALUE.equals(refusal.rawCode());
+            return new PutOutcome(new PlanSettingsUpdateResult(false, false, revision, null, null), valueRefused);
         }
 
-        private int refused(PrintWriter out, String aspect, @Nullable String value) throws IOException {
-            var response = context.runtime(true).send(
-                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
-            var reason = "the value does not fit";
-            if (response.status() == 200) {
-                var current = PlanSettingsRecord.fromJson(response.bodyText());
-                var entry = current.value(aspect);
-                if (entry != null && !entry.choices().isEmpty()) {
-                    reason = "it is not one of " + String.join(", ", entry.choices());
-                }
-            }
-            out.println(MessageCatalogue.format("control.settings.refused",
-                                Map.of(KEY_VALUE, value != null ? value : aspect, KEY_REASON, reason)));
+        private int refused(PrintWriter out, String aspect, @Nullable String value, boolean valueRefused) {
+            var line = refusalLine(aspect, value, valueRefused);
+            // A refused setting is a failure of the one-shot verb: its line goes to stderr.
             out.flush();
+            var err = spec.commandLine().getErr();
+            err.println(line);
+            err.flush();
             return 1;
         }
 
+        /**
+         * Words a refused change. A cause is named only where it is known. A removal gets the line
+         * {@code control.settings.refused_remove}, which names the setting and no cause. For a
+         * submitted value the settings are read again: a value outside the choices the runtime names
+         * for the setting is refused as "not one of" them. A value among the choices gets the line
+         * {@code control.settings.refused_set}, which names the setting and the value and no cause,
+         * since the refusal may have any other. Otherwise "the value does not fit" is named only when
+         * the runtime refused the value itself (status 422 with the code {@code invalid_value});
+         * every other refusal of a value — an unknown setting, a setting without choices, a re-read
+         * that fails, a refusal with another status or code — gets the same neutral
+         * {@code control.settings.refused_set} line.
+         *
+         * @param aspect       the setting
+         * @param value        the submitted value, {@code null} for a removal
+         * @param valueRefused whether the runtime answered the write with 422 {@code invalid_value}
+         * @return the refusal line in the operator's language
+         */
+        private String refusalLine(String aspect, @Nullable String value, boolean valueRefused) {
+            var locale = context.locale();
+            if (value == null) {
+                return MessageCatalogue.format(locale, "control.settings.refused_remove", Map.of(KEY_ASPECT, aspect));
+            }
+            var choices = rereadChoices(aspect);
+            var amongTheChoices = false;
+            if (!choices.isEmpty()) {
+                if (!choices.contains(value)) {
+                    var reason = MessageCatalogue.format(locale, "control.settings.refused.not_a_choice",
+                                        Map.of("choices", String.join(", ", choices)));
+                    return MessageCatalogue.format(locale, "control.settings.refused",
+                                        Map.of(KEY_VALUE, value, KEY_REASON, reason));
+                }
+                amongTheChoices = true;
+            }
+            if (valueRefused && !amongTheChoices) {
+                var reason = MessageCatalogue.format(locale, "control.settings.refused.does_not_fit", Map.of());
+                return MessageCatalogue.format(locale, "control.settings.refused",
+                                    Map.of(KEY_VALUE, value, KEY_REASON, reason));
+            }
+            return MessageCatalogue.format(locale, "control.settings.refused_set",
+                                Map.of(KEY_ASPECT, aspect, KEY_VALUE, value));
+        }
+
+        /**
+         * Reads the settings again to explain a refused value.
+         *
+         * @param aspect the setting
+         * @return the choices the runtime names for the setting; empty for a setting without choices,
+         *         an unknown setting, an answer other than 200, and a re-read that fails or answers a
+         *         body that is no settings record — the refusal then names no cause it cannot know
+         */
+        private List<String> rereadChoices(String aspect) {
+            try {
+                var response = context.runtime(true).send(
+                                    HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
+                if (response.status() != 200) {
+                    return List.of();
+                }
+                var entry = PlanSettingsRecord.fromJson(response.bodyText()).value(aspect);
+                return entry != null ? entry.choices() : List.of();
+            } catch (IOException _) {
+                // the re-read only explains the refusal; without it the refusal stands with the neutral line
+                return List.of();
+            }
+        }
+
         private void printSettings(PrintWriter out, PlanSettingsRecord settings) {
-            out.println(MessageCatalogue.format("control.settings.title", Map.of("plan", planId)));
+            var locale = context.locale();
+            out.println(MessageCatalogue.format(locale, "control.settings.title", Map.of("plan", planId)));
             for (var entry : settings.values()) {
                 out.printf("  %-18s %-28s %s%n",
                                     entry.aspect(),
                                     entry.value() != null ? OutputSafety.stripControlSequences(entry.value()) : "\u2014",
-                                    MessageCatalogue.format("control.settings.origin", Map.of("origin", entry.origin())));
+                                    MessageCatalogue.format(locale, "control.settings.origin", Map.of("origin", entry.origin())));
             }
             out.flush();
         }

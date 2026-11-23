@@ -34,6 +34,11 @@ import de.planmarshall.api.resource.ErrorTexts;
  * condition), a 404 that names no code on a route the runtime does not know, and a body that is no
  * refusal this client can read at all. The kind decides the three lines; a runtime's message is a
  * detail of the first two, never the whole screen.
+ * <p>
+ * The exception keeps its kind, code and server message and formats its text only when asked, in the
+ * locale it is asked for: a refusal shown on a screen always goes through {@link #message(String)} or
+ * {@link #screenText(IOException, String)} with the operator's locale, while {@link #getMessage()}
+ * stays the default-locale text for diagnostics only.
  */
 public class OperatorRefusedException extends IOException {
 
@@ -110,7 +115,6 @@ public class OperatorRefusedException extends IOException {
     private final @Nullable ApiErrorCode code;
     private final @Nullable String rawCode;
     private final @Nullable String serverMessage;
-    private final int exitCode;
     private final Kind kind;
     private final transient Map<String, String> arguments;
 
@@ -123,36 +127,25 @@ public class OperatorRefusedException extends IOException {
     }
 
     private OperatorRefusedException(String verb, HttpResponse response, ParsedRefusal parsed) {
-        super(defaultMessage(parsed.kind(), parsed.code(), parsed.serverMessage()));
         this.verb = verb;
         this.status = response.status();
         this.code = parsed.code();
         this.rawCode = parsed.rawCode();
         this.serverMessage = parsed.serverMessage();
-        this.exitCode = 1;
         this.kind = parsed.kind();
         this.arguments = parsed.arguments();
     }
 
     /**
-     * @param message the refusal text, as the operator gate renders it
+     * @param message the refusal text, as the operator gate renders it, already in the operator's
+     *                locale
      */
     public OperatorRefusedException(String message) {
-        this(message, 1);
-    }
-
-    /**
-     * @param message  the refusal text
-     * @param exitCode the process exit code
-     */
-    public OperatorRefusedException(String message, int exitCode) {
-        super(TerminalSanitizer.sanitizeLine(message).strip());
         this.verb = null;
         this.status = 0;
         this.code = null;
         this.rawCode = null;
         this.serverMessage = TerminalSanitizer.sanitizeLine(message).strip();
-        this.exitCode = exitCode;
         this.kind = Kind.LOCAL;
         this.arguments = Map.of();
     }
@@ -178,31 +171,66 @@ public class OperatorRefusedException extends IOException {
      * @param serverMessage the message
      */
     public OperatorRefusedException(@Nullable String verb, ApiErrorCode code, @Nullable String serverMessage) {
-        super(defaultMessage(Kind.RUNTIME, code, serverMessage));
         this.verb = verb;
         this.status = code.status();
         this.code = code;
         this.rawCode = code.wire();
         this.serverMessage = serverMessage != null ? TerminalSanitizer.sanitizeLine(serverMessage).strip() : null;
-        this.exitCode = 1;
         this.kind = Kind.RUNTIME;
         this.arguments = Map.of();
     }
 
-    private static String defaultMessage(Kind kind, @Nullable ApiErrorCode code, @Nullable String serverMessage) {
+    /**
+     * Formats the refusal's one-line text in a locale: the title of its code, the title of a missing
+     * route or of an unreadable body, the runtime's message behind the catalogue's prefix, or a local
+     * refusal's own text.
+     *
+     * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"}); {@code null} takes the
+     *               default locale
+     * @return the text a screen shows for this refusal, one line
+     */
+    public String message(@Nullable String locale) {
+        if (kind == Kind.LOCAL) {
+            return serverMessage != null ? serverMessage : "";
+        }
         if (code != null) {
-            return ErrorTexts.title(code);
+            return ErrorTexts.title(locale, code);
         }
-        if (kind == Kind.ROUTE_MISSING) {
-            return MessageCatalogue.format(null, "operator.refusal.route_missing.title", Map.of());
-        }
-        if (kind == Kind.UNREADABLE) {
-            return MessageCatalogue.format(null, "operator.refusal.unreadable.title", Map.of());
+        var area = kind.area();
+        if (area != null) {
+            return MessageCatalogue.format(locale, area + PART_TITLE, Map.of());
         }
         if (serverMessage != null && !serverMessage.isBlank()) {
-            return MessageCatalogue.format(null, PREFIX_KEY, Map.of()) + serverMessage;
+            return MessageCatalogue.format(locale, PREFIX_KEY, Map.of()) + serverMessage;
         }
-        return ErrorTexts.title((ApiErrorCode) null);
+        return ErrorTexts.title(locale, (ApiErrorCode) null);
+    }
+
+    /**
+     * The default-locale text of the refusal, for diagnostics only; a screen shows
+     * {@link #message(String)} in the operator's locale instead.
+     *
+     * @return the refusal's text in the default locale
+     */
+    @Override
+    public String getMessage() {
+        return message(null);
+    }
+
+    /**
+     * The text a screen shows for a failed request: the localised text of a refusal, or the message
+     * of any other I/O failure.
+     *
+     * @param failure the failure the request ended with
+     * @param locale  the operator's locale; {@code null} takes the default locale
+     * @return the text to show, never {@code null}
+     */
+    public static String screenText(IOException failure, @Nullable String locale) {
+        if (failure instanceof OperatorRefusedException refusal) {
+            return refusal.message(locale);
+        }
+        var text = failure.getMessage();
+        return text != null ? text : "";
     }
 
     private record ParsedRefusal(@Nullable ApiErrorCode code, @Nullable String rawCode,
@@ -233,27 +261,78 @@ public class OperatorRefusedException extends IOException {
         var shape = shapeOf(body);
 
         if (!extracted.parsedObject() && (shape == BodyShape.MARKUP || shape == BodyShape.TRACE)) {
-            // The heuristics only guard a body this client could not parse: a JSON refusal whose
-            // message happens to contain a tag or the word "Error:" is still a refusal.
-            return new ParsedRefusal(null, null, null, Map.of(), Kind.UNREADABLE);
+            // The markup test only guards a body this client could not parse: a JSON refusal whose
+            // message happens to contain a tag is still a refusal.
+            return unreadable();
+        }
+        if (parsedMessage != null && containsStackTrace(parsedMessage)) {
+            return withoutTraceMessage(parsedCode, extracted.arguments());
         }
         if (parsedCode == null && response.status() == 404 && !extracted.parsedObject()) {
             // A route the runtime does not own answers with no name at all; it is never "this entry
             // does not exist".
             return new ParsedRefusal(null, null, null, Map.of(), Kind.ROUTE_MISSING);
         }
-        if (parsedMessage == null && (parsedCode == null || ApiErrorCode.fromWireOrNull(parsedCode) == null)) {
-            // A body that is no JSON object is never the message in full: a plain sentence is
-            // capped, and a JSON object that names no message carries only its code.
-            if (shape == BodyShape.BLANK) {
-                parsedMessage = "";
-            } else if (body != null && !extracted.parsedObject() && !body.trim().startsWith("{")) {
-                parsedMessage = cap(body);
-            }
+        var message = parsedMessage != null ? parsedMessage : bodyAsMessage(body, extracted, shape);
+        // Every text the body carries is capped like a plain body, a parsed message and each
+        // argument alike.
+        var cappedMessage = message != null ? cap(message) : null;
+        return new ParsedRefusal(knownCode(parsedCode), parsedCode, cappedMessage, extracted.arguments(),
+                            Kind.RUNTIME);
+    }
+
+    /** @return the refusal of a body this client cannot read */
+    private static ParsedRefusal unreadable() {
+        return new ParsedRefusal(null, null, null, Map.of(), Kind.UNREADABLE);
+    }
+
+    /**
+     * A trace is recognised by its frames wherever it sits: wrapped in a JSON message it is still no
+     * text for the operator. A code this client knows keeps its own texts; without one the body is no
+     * refusal this client can read.
+     *
+     * @param parsedCode the code the body named, or {@code null}
+     * @param arguments  the arguments the body named
+     * @return the refusal without the message that held the trace
+     */
+    private static ParsedRefusal withoutTraceMessage(@Nullable String parsedCode, Map<String, String> arguments) {
+        var knownCode = knownCode(parsedCode);
+        if (knownCode == null) {
+            return unreadable();
         }
-        var resolvedCode = parsedCode != null ? ApiErrorCode.fromWireOrNull(parsedCode) : null;
-        var sanitizedMessage = parsedMessage != null ? TerminalSanitizer.sanitizeLine(parsedMessage).strip() : null;
-        return new ParsedRefusal(resolvedCode, parsedCode, sanitizedMessage, extracted.arguments(), Kind.RUNTIME);
+        return new ParsedRefusal(knownCode, parsedCode, null, arguments, Kind.RUNTIME);
+    }
+
+    /**
+     * @param parsedCode the code the body named, or {@code null}
+     * @return the code when this client knows it, otherwise {@code null}
+     */
+    private static @Nullable ApiErrorCode knownCode(@Nullable String parsedCode) {
+        return parsedCode != null ? ApiErrorCode.fromWireOrNull(parsedCode) : null;
+    }
+
+    /**
+     * A body that is no JSON object is never the message in full: a plain sentence is capped, and a
+     * JSON object that names no message carries only its code. A code this client knows keeps its
+     * own texts and takes no message from the body.
+     *
+     * @param body      the body the runtime answered with
+     * @param extracted the fields read from the body
+     * @param shape     the body's shape
+     * @return the message the body stands for, or {@code null} for none
+     */
+    private static @Nullable String bodyAsMessage(@Nullable String body, ExtractedFields extracted,
+                        BodyShape shape) {
+        if (knownCode(extracted.code()) != null) {
+            return null;
+        }
+        if (shape == BodyShape.BLANK) {
+            return "";
+        }
+        if (body != null && !extracted.parsedObject() && !body.trim().startsWith("{")) {
+            return body;
+        }
+        return null;
     }
 
     /**
@@ -268,20 +347,28 @@ public class OperatorRefusedException extends IOException {
         if (trimmed.startsWith("<") || trimmed.contains("</")) {
             return BodyShape.MARKUP;
         }
-        if (containsStackTrace(trimmed)) {
+        if (containsStackTrace(body)) {
             return BodyShape.TRACE;
         }
         return BodyShape.TEXT;
     }
 
+    /**
+     * Recognises a stack trace by its frames, never by a word: a line that holds a tab followed by
+     * {@code at }, or a line that starts with four spaces followed by {@code at }. A plain sentence
+     * such as "Error: select a configured provider." carries no frame and stays a sentence.
+     *
+     * <p>Each line is read without its terminal sequences, keeping its line boundary and its
+     * indentation: a frame wrapped in a colour sequence is still a frame, and the cap that later
+     * strips the sequences would otherwise keep its text.
+     *
+     * @param text the text to read
+     * @return whether the text carries a stack frame
+     */
     private static boolean containsStackTrace(String text) {
-        if (text.contains("\tat ") || text.contains("\n    at ")) {
-            return true;
-        }
-        for (var line : text.split("\n")) {
-            var stripped = line.strip();
-            if (stripped.endsWith("Exception") || stripped.contains("Exception:")
-                                || stripped.endsWith("Error") || stripped.contains("Error:")) {
+        for (var rawLine : text.split("\\R")) {
+            var line = TerminalSanitizer.sanitize(rawLine);
+            if (line.contains("\tat ") || line.startsWith("    at ")) {
                 return true;
             }
         }
@@ -352,9 +439,9 @@ public class OperatorRefusedException extends IOException {
             }
             var value = entry.getValue();
             if (value instanceof JsonNumber(String text)) {
-                arguments.put(key, text);
+                arguments.put(key, cap(text));
             } else if (value instanceof String || value instanceof Number || value instanceof Boolean) {
-                arguments.put(key, String.valueOf(value));
+                arguments.put(key, cap(String.valueOf(value)));
             }
         }
         return Map.copyOf(arguments);
@@ -396,10 +483,10 @@ public class OperatorRefusedException extends IOException {
     }
 
     /**
-     * @return the process exit code
+     * @return the process exit code of every refusal
      */
     public int exitCode() {
-        return exitCode;
+        return PmOperator.EXIT_FAILURE;
     }
 
     /**

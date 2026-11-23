@@ -33,6 +33,7 @@ import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
 import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.api.start.EntryOpenRequest;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -110,6 +111,67 @@ class StartApiTest {
         var refused = assertThrows(StartApi.StartActException.class,
                             () -> api.act("ent-1", "add_issue", Map.of()));
         assertTrue(refused.getMessage().contains("the source does not combine"), refused.getMessage());
+    }
+
+    @Test
+    @DisplayName("a refused act whose body message is a one-line sentence shows it as it is")
+    void actRefusedShowsAOneLineMessage() throws Exception {
+        var message = Generators.letterStrings(8, 40).next();
+        serve(failure(409, "{\"message\":\"" + message + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act(ENTRY, "add_issue", Map.of()));
+
+        assertEquals("add_issue: " + message, refused.message("en"));
+    }
+
+    @Test
+    @DisplayName("a refused act whose body message is a Java stack trace never prints a frame of it")
+    void actRefusedNeverPrintsAStackTrace() throws Exception {
+        var exception = "de.planmarshall." + Generators.letterStrings(4, 12).next() + "Exception";
+        var trace = exception + ": " + Generators.letterStrings(4, 12).next()
+                            + "\\n\\tat de.planmarshall.engine." + Generators.letterStrings(4, 12).next()
+                            + ".run(Engine.java:42)\\n\\tat java.base/java.lang.Thread.run(Thread.java:1583)";
+        serve(failure(500, "{\"message\":\"" + trace + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act(ENTRY, "add_issue", Map.of()));
+
+        var text = refused.message("en");
+        assertAll(
+                            () -> assertEquals("add_issue: The runtime's answer cannot be read as a refusal", text),
+                            () -> assertFalse(text.contains("at de."), text),
+                            () -> assertFalse(text.contains("Exception"), text));
+    }
+
+    @Test
+    @DisplayName("a chat refusal whose body message is a stack trace beside a known code shows the code's title")
+    void chatRefusedTraceBesideACodeShowsTheTitle() throws Exception {
+        var trace = "java.lang.IllegalStateException: " + Generators.letterStrings(4, 12).next()
+                            + "\\n\\tat de.planmarshall.engine.Chat.end(Chat.java:7)";
+        serve(failure(409, "{\"error\":\"act_not_available\",\"message\":\"" + trace + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class, () -> api.endEntryChat(ENTRY));
+
+        var text = refused.message("en");
+        assertAll(
+                            () -> assertEquals("chat: " + ErrorTexts.title("en", ApiErrorCode.ACT_NOT_AVAILABLE), text),
+                            () -> assertFalse(text.contains("at de."), text),
+                            () -> assertFalse(text.contains("Exception"), text));
+    }
+
+    @Test
+    @DisplayName("a refused act whose body message is over-long is capped as every refusal caps it")
+    void actRefusedCapsAnOverLongMessage() throws Exception {
+        var message = Generators.letterStrings(OperatorRefusedException.MAX_MESSAGE_LENGTH + 50,
+                            OperatorRefusedException.MAX_MESSAGE_LENGTH + 400).next();
+        serve(failure(409, "{\"message\":\"" + message + "\"}"));
+
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act(ENTRY, "add_issue", Map.of()));
+
+        assertEquals("add_issue: " + message.substring(0, OperatorRefusedException.MAX_MESSAGE_LENGTH) + "…",
+                            refused.message("en"));
     }
 
     @Test
@@ -260,14 +322,39 @@ class StartApiTest {
         assertTrue(api.projects().isEmpty());
     }
 
-    @ParameterizedTest(name = "a refusal with the body {0} names its status")
-    @ValueSource(strings = {"{}", "[]", "{\"message\":null}", "not json"})
-    @DisplayName("a refused act without a message names the status instead")
-    void refusalWithoutAMessageNamesTheStatus(String body) throws Exception {
+    @ParameterizedTest(name = "a refusal with the body {0} names the catalogue's refusal")
+    @ValueSource(strings = {"{}", "{\"message\":null}"})
+    @DisplayName("a refused act whose body names nothing says what the catalogue calls an unknown refusal")
+    void refusalWithoutAMessageNamesTheCatalogueText(String body) throws Exception {
         serve(failure(409, body));
         var refused = assertThrows(StartApi.StartActException.class,
                             () -> api.act("ent-1", "add_issue", Map.of()));
-        assertEquals("add_issue: HTTP 409", refused.getMessage());
+        assertEquals("add_issue: " + ErrorTexts.title("en", (ApiErrorCode) null), refused.getMessage());
+        assertFalse(refused.getMessage().contains("HTTP"), refused.getMessage());
+    }
+
+    @ParameterizedTest(name = "a refusal with the body {0} names the runtime's text")
+    @ValueSource(strings = {"[]", "not json"})
+    @DisplayName("a refused act whose body is a plain text shows it behind the catalogue's prefix")
+    void refusalWithAPlainBodyShowsItBehindThePrefix(String body) throws Exception {
+        serve(failure(409, body));
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act("ent-1", "add_issue", Map.of()));
+        assertEquals("add_issue: The runtime refused: " + body, refused.getMessage());
+    }
+
+    @Test
+    @DisplayName("a refused act shows the catalogue's text in the operator's locale, the default only for diagnostics")
+    void refusalTextTakesTheOperatorLocale() throws Exception {
+        var body = Generators.letterStrings(8, 24).next();
+        serve(failure(409, body));
+        var refused = assertThrows(StartApi.StartActException.class,
+                            () -> api.act("ent-1", "add_issue", Map.of()));
+        assertAll(
+                            () -> assertEquals("add_issue: Die Runtime hat die Anfrage abgelehnt: " + body,
+                                                refused.message("de")),
+                            () -> assertEquals("add_issue: The runtime refused: " + body, refused.message("en")),
+                            () -> assertEquals("add_issue: The runtime refused: " + body, refused.getMessage()));
     }
 
     @Test

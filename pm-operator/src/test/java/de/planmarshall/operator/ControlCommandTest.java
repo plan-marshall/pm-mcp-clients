@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -21,6 +22,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -32,6 +34,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * Controls a plan: resolves what holds it (UC-CTL-4) and changes its own settings (UC-CTL-5).
@@ -270,15 +274,164 @@ class ControlCommandTest {
                                 && "GET".equals(request.method())) {
                 response.json(200, settingsJson(plan, revision, landing()));
             } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
-                response.send(400, "application/json", "{\"error\":\"refused\",\"reason\":\"protected\"}");
+                // the refusal carries no reason of its own: the client names the one it reads back
+                response.send(400, "application/json", "{\"error\":\"refused\"}");
             } else {
                 response.send(404, null, "");
             }
         });
+        var value = "landing.zz" + Generators.letterStrings(4, 8).next().toLowerCase(Locale.ROOT);
 
-        int code = execute("plan", "settings", plan, "--set", "landing=landing.main");
-        assertEquals(1, code);
-        assertTrue(out.toString().contains("landing.main is refused:"));
+        int code = execute("plan", "settings", plan, "--set", "landing=" + value);
+        var refused = value + " is refused: it is not one of landing.pull-request, landing.main, landing.files";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            // the reason stands on the same line as the refused value
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(out.toString().contains(value + " is refused:"), out.toString())
+        );
+    }
+
+    /**
+     * Serves the landing setting and refuses every write with a server error, which names no cause.
+     *
+     * @param plan     the plan
+     * @param revision its settings revision
+     */
+    private void serveRefusingLanding(String plan, int revision) throws IOException {
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + plan + "/settings").equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, settingsJson(plan, revision, landing()));
+            } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
+                response.send(500, "application/json", "{\"error\":\"internal\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("plan settings refusing a value among the choices names no false cause, on stderr")
+    void settingsRefusedInChoicesNamesNoCause() throws Exception {
+        var plan = planId();
+        serveRefusingLanding(plan, Generators.integers(2, 90).next());
+        var choices = landing().choices();
+        var value = choices.get(Generators.integers(0, choices.size() - 1).next());
+
+        int code = execute("plan", "settings", plan, "--set", "landing=" + value);
+
+        var refused = "landing = " + value + " is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("not one of"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("plan settings --remove refused names the setting and no false cause, on stderr")
+    void settingsRemoveRefusedNamesNoCause() throws Exception {
+        var plan = planId();
+        serveRefusingLanding(plan, Generators.integers(2, 90).next());
+
+        int code = execute("plan", "settings", plan, "--remove", "landing");
+
+        var refused = "Removing the plan's own value of landing is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("not one of"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    /**
+     * Serves the given settings and refuses every write with the given answer.
+     *
+     * @param plan   the plan
+     * @param status the status of the refusal
+     * @param body   the body of the refusal
+     * @param values the plan's settings
+     */
+    private void serveRefusingWrite(String plan, int status, String body, PlanSettingsValue... values)
+                        throws IOException {
+        var revision = Generators.integers(2, 90).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + plan + "/settings").equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, settingsJson(plan, revision, values));
+            } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
+                response.send(status, "application/json", body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    /** @return a setting the runtime names no choices for, its aspect drawn so nothing pins one name */
+    private static PlanSettingsValue choiceless() {
+        return new PlanSettingsValue("note-" + Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT),
+                            Generators.letterStrings(3, 8).next(), "plan", List.of());
+    }
+
+    @Test
+    @DisplayName("plan settings refusing a value of an unknown setting names no cause, on stderr")
+    void settingsUnknownAspectRefusedNamesNoCause() throws Exception {
+        var plan = planId();
+        serveRefusingWrite(plan, 400, "{\"error\":\"refused\"}", landing());
+        // landing's aspect plus a dash and at least one letter: never the served aspect, for every seed
+        var aspect = landing().aspect() + "-" + Generators.letterStrings(1, 4).next().toLowerCase(Locale.ROOT);
+        var value = Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("plan", "settings", plan, "--set", aspect + "=" + value);
+
+        var refused = aspect + " = " + value + " is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("does not fit"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    @ParameterizedTest(name = "status {0}")
+    @ValueSource(ints = {403, 500})
+    @DisplayName("plan settings refusing a free-form value without a value code names no cause, on stderr")
+    void settingsChoicelessRefusedNamesNoCause(int status) throws Exception {
+        var plan = planId();
+        var setting = choiceless();
+        serveRefusingWrite(plan, status, "{\"error\":\"refused\"}", setting);
+        var value = Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("plan", "settings", plan, "--set", setting.aspect() + "=" + value);
+
+        var refused = setting.aspect() + " = " + value + " is refused; nothing changed.";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("does not fit"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("plan settings names a value that does not fit only on the runtime's invalid_value, on stderr")
+    void settingsInvalidValueNamesTheCause() throws Exception {
+        var plan = planId();
+        var setting = choiceless();
+        serveRefusingWrite(plan, 422, "{\"code\":\"invalid_value\"}", setting);
+        var value = Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("plan", "settings", plan, "--set", setting.aspect() + "=" + value);
+
+        var refused = value + " is refused: the value does not fit";
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
     }
 
     @Test

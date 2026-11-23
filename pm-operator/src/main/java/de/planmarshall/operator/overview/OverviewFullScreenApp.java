@@ -1048,7 +1048,7 @@ public final class OverviewFullScreenApp {
                     }
                 }
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
             }
         };
         var driver = activeDriver;
@@ -1139,7 +1139,7 @@ public final class OverviewFullScreenApp {
                 openProjectRowActions(selectedId);
             }
         } catch (IOException refused) {
-            statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+            statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
         }
     }
 
@@ -2114,7 +2114,7 @@ public final class OverviewFullScreenApp {
             var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             return response.status() >= 200 && response.status() < 300 || response.status() == 404;
         } catch (OperatorRefusedException e) {
-            statusMessage = e.getMessage();
+            statusMessage = OperatorRefusedException.screenText(e, locale);
             return false;
         } catch (IOException _) {
             return false;
@@ -2133,7 +2133,7 @@ public final class OverviewFullScreenApp {
                                 HttpRequest.json("POST", "/api/v1/reports/read", request.toJson()));
             return response.status() >= 200 && response.status() < 300;
         } catch (OperatorRefusedException e) {
-            statusMessage = e.getMessage();
+            statusMessage = OperatorRefusedException.screenText(e, locale);
             return false;
         } catch (IOException _) {
             return false;
@@ -2747,7 +2747,7 @@ public final class OverviewFullScreenApp {
                 try {
                     openProject(context.runtime(true), view.projectId(), false, null);
                 } catch (IOException refused) {
-                    statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                    statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
                 }
                 return;
             }
@@ -3170,7 +3170,7 @@ public final class OverviewFullScreenApp {
             try {
                 openProject(context.runtime(true), report.from().projectId(), false, null);
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
             }
         }
 
@@ -3189,7 +3189,7 @@ public final class OverviewFullScreenApp {
             try {
                 openProject(context.runtime(true), report.from().projectId(), true, epicId);
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
             }
         }
 
@@ -3539,7 +3539,7 @@ public final class OverviewFullScreenApp {
                     statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
                 }
             } catch (OperatorRefusedException e) {
-                statusMessage = e.getMessage();
+                statusMessage = OperatorRefusedException.screenText(e, locale);
             } catch (IOException _) {
                 statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
             }
@@ -3587,7 +3587,7 @@ public final class OverviewFullScreenApp {
                 }
             } catch (OperatorRefusedException e) {
                 revertFavourites(previous);
-                statusMessage = e.getMessage();
+                statusMessage = OperatorRefusedException.screenText(e, locale);
             } catch (IOException _) {
                 revertFavourites(previous);
             }
@@ -3653,7 +3653,7 @@ public final class OverviewFullScreenApp {
             try {
                 openProject(context.runtime(true), project.projectId(), false, null);
             } catch (IOException refused) {
-                statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
             }
         }
 
@@ -3736,7 +3736,7 @@ public final class OverviewFullScreenApp {
                     statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
                 }
             } catch (OperatorRefusedException e) {
-                statusMessage = e.getMessage();
+                statusMessage = OperatorRefusedException.screenText(e, locale);
             } catch (IOException _) {
                 statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
             }
@@ -3831,7 +3831,7 @@ public final class OverviewFullScreenApp {
                 try {
                     showExplorerRoot(context.runtime(true));
                 } catch (IOException refused) {
-                    statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
+                    statusMessage = OutputSafety.stripControlSequences(OperatorRefusedException.screenText(refused, locale));
                 }
                 return true;
             }

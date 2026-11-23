@@ -28,7 +28,6 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.process.EpicProcess;
-import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.epicview.EpicViewFormatting;
@@ -120,8 +119,8 @@ public final class EpicCommand implements Callable<Integer> {
                 return 0;
             }
             if (response.status() == 404) {
-                RefusalRenderer.render(spec.commandLine().getErr(), context.locale(), ApiErrorCode.SCOPE_NOT_FOUND);
-                return 1;
+                // The body decides what the 404 is, exactly as for plan <id>.
+                return PlanCommand.refuseRead(spec.commandLine().getErr(), context.locale(), "epic", response);
             }
             throw new OperatorRefusedException("epic " + epicId, response);
         }
@@ -131,7 +130,8 @@ public final class EpicCommand implements Callable<Integer> {
         if (response.status() == 200) {
             var parsed = JsonTree.parse(response.body());
             if (parsed instanceof List<?> list && !list.isEmpty()) {
-                ActionSupport.printWorkList(out, "Epics:", "state", list);
+                ActionSupport.printWorkList(out, MessageCatalogue.format(context.locale(),
+                                    "operator.epic.running_title", Map.of()), "state", list);
             } else {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.epic.none_running", Map.of()));
@@ -461,7 +461,8 @@ public final class EpicCommand implements Callable<Integer> {
             answers.noInput = noInput;
             answers.entryId = entryId;
             answers.instruction = instruction;
-            return StartDialogue.run(context, spec.commandLine().getOut(), EntryKind.EPIC, answers);
+            return StartDialogue.run(context, spec.commandLine().getOut(), spec.commandLine().getErr(),
+                                EntryKind.EPIC, answers);
         }
     }
 

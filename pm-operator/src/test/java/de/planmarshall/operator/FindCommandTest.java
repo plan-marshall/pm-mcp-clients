@@ -273,11 +273,13 @@ class FindCommandTest {
         void emptyTextIsRefused() throws Exception {
             try (var runtime = runningWork()) {
                 var out = new StringWriter();
+                var err = new StringWriter();
                 var code = PmOperator.execute(context(Map.of(MachinePaths.ENV_BASE, runtime.base().toString())),
-                                    new PrintWriter(out), new PrintWriter(new StringWriter()), "find");
+                                    new PrintWriter(out), new PrintWriter(err), "find");
                 assertAll(
-                                    () -> assertEquals(2, code, "an empty text is a caller error: " + out),
-                                    () -> assertTrue(out.toString().contains("Type a name to look for."), out.toString())
+                                    () -> assertEquals(2, code, "an empty text is a caller error: " + out + err),
+                                    () -> assertTrue(err.toString().contains("Type a name to look for."), err.toString()),
+                                    () -> assertFalse(out.toString().contains("Type a name to look for."), out.toString())
                 );
             }
         }

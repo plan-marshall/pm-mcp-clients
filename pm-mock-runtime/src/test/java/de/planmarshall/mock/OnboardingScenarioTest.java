@@ -17,8 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 
@@ -48,12 +50,18 @@ import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.onboarding.TokenUsageCoverage;
+import de.planmarshall.mock.runtime.MockTiming;
+import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioLoader;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("OnboardingScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @EnableGeneratorController
 class OnboardingScenarioTest {
+
+    private static final String STATE_VERIFY_PROVIDERS = "settings.verify-providers";
 
     @Test
     @DisplayName("loads the onboarding scenario and registers it among the standard scenarios")
@@ -669,6 +677,27 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("settings.verify-providers does not record an unready provider as verified")
+        void verifyProvidersKeepsUnreadyProviderUnverified() throws Exception {
+            var scenario = withUnreadyProviders(new ScenarioRegistry().resolve(StandardScenarios.ONBOARDING));
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(scenario).timing(MockTiming.ORDERED).build())) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                runtime.goToState(STATE_VERIFY_PROVIDERS);
+                assertEquals("providers.verified", step(client, auth, "yes").get("state"));
+
+                var config = client.send(HttpRequest.get("/api/v1/config")
+                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                assertEquals(200, config.status());
+                var body = new String(config.body(), StandardCharsets.UTF_8);
+                assertTrue(body.contains("github"), body);
+                assertFalse(body.contains("github (verified)"), body);
+            }
+        }
+
+        @Test
         @DisplayName("adds and verifies a harness the binary does not know, failing the usage stage")
         void shouldAddAnUnknownHarness() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING_UNKNOWN_HARNESS)) {
@@ -789,5 +818,26 @@ class OnboardingScenarioTest {
             throws Exception {
         return client.send(HttpRequest.json("POST", "/api/v1/onboarding/step", body)
                 .withHeader("Authorization", auth)).status();
+    }
+
+    /**
+     * Copies a scenario with the providers of its {@code settings.verify-providers} state declared
+     * not ready, so the check that state runs finds no ready provider.
+     *
+     * @param base the scenario to copy
+     * @return the copy with an unready provider list
+     */
+    private static Scenario withUnreadyProviders(Scenario base) {
+        var state = Objects.requireNonNull(base.state(STATE_VERIFY_PROVIDERS));
+        var representation = new LinkedHashMap<>(Objects.requireNonNull(JsonTree.asObject(state.representation())));
+        var facts = new LinkedHashMap<>(Objects.requireNonNull(
+                JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))));
+        facts.put("providers", List.of(Map.of("provider", "github", "ready", false)));
+        representation.put(OperatorStateResource.FIELD_FACTS, facts);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(STATE_VERIFY_PROVIDERS, new StateDefinition(representation, state.links(), state.events(),
+                state.auto(), state.chatFailures()));
+        return new Scenario(base.formatVersion(), base.name(), base.description(), base.start(), base.pairingCode(),
+                base.routes(), states);
     }
 }

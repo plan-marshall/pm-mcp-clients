@@ -65,11 +65,14 @@ public final class ProjectCommand implements Callable<Integer> {
     private static final String PROJECTS_API = "/api/v1/projects/";
     private static final String KEY_PROJECT_NOT_FOUND = "operator.project.not_found";
     private static final String PARAM_PROJECT = "project";
-    private static final String PARAM_STATUS = "status";
     private static final String PARAM_VALUE = "value";
+    private static final String PARAM_REASON = "reason";
     private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
+
+    /** The verb label a refusal of {@code project unenrol} names. */
+    private static final String VERB_UNENROL = "project unenrol";
 
     /** The catalogue key of the refusal a run that cannot close its entry reports. */
     private static final String KEY_CLOSE_FAILED = "project.add.close_failed";
@@ -112,9 +115,11 @@ public final class ProjectCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
 
         if (response.status() == 404) {
-            out.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
+            // A project the runtime does not know is a refusal of the verb: stderr, never stdout.
+            var err = spec.commandLine().getErr();
+            err.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
                                 Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
-            out.flush();
+            err.flush();
             return 1;
         }
 
@@ -338,24 +343,25 @@ public final class ProjectCommand implements Callable<Integer> {
 
         private @Nullable Integer checkResponse(HttpResponse response, String safePath, String locale,
                             PrintWriter out, PrintWriter err) throws IOException {
+            // Every refused enrolment is a failure of the one-shot verb: its line goes to stderr, with
+            // the refusal's own text as the cause, never the HTTP status.
+            out.flush();
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
-                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.root_conflict",
+                    err.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.root_conflict",
                                         Map.of("path", safePath)));
                 } else if (ERR_PROJECT_STORE_ROOT_MISMATCH.equals(reason)) {
-                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.store_root_mismatch",
+                    err.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.store_root_mismatch",
                                         Map.of("id", safePath)));
                 } else {
-                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
-                                        Map.of("path", safePath, PARAM_STATUS, response.status())));
+                    err.println(enrolFailed(locale, safePath, response));
                 }
-                out.flush();
+                err.flush();
                 return 1;
             }
             if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
-                                    Map.of("path", safePath, PARAM_STATUS, response.status())));
+                err.println(enrolFailed(locale, safePath, response));
                 err.flush();
                 return 1;
             }
@@ -363,6 +369,18 @@ public final class ProjectCommand implements Callable<Integer> {
                 throw new OperatorRefusedException("project add " + safePath, response);
             }
             return null;
+        }
+
+        /**
+         * @param locale   the interface locale
+         * @param safePath the checkout path, already sanitised
+         * @param response the refused answer
+         * @return the line naming the path and the refusal's text as its cause
+         */
+        private static String enrolFailed(String locale, String safePath, HttpResponse response) {
+            var refusal = new OperatorRefusedException("project add", response);
+            return MessageCatalogue.format(locale, "enrolment.enrol.failed",
+                                Map.of("path", safePath, PARAM_REASON, refusal.message(locale)));
         }
 
         private Started resolveSource(HttpResponse response) throws IOException {
@@ -496,7 +514,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 out.flush();
                 return 0;
             }
-            return 1;
+            throw new OperatorRefusedException("project favourite " + sanitizedId, response);
         }
     }
 
@@ -726,12 +744,13 @@ public final class ProjectCommand implements Callable<Integer> {
                                         Map.of("id", sanitizedId)));
                 } else {
                     err.println(MessageCatalogue.format(locale, "enrolment.unenrol.failed",
-                                        Map.of("id", sanitizedId, PARAM_STATUS, response.status())));
+                                        Map.of("id", sanitizedId, PARAM_REASON, new OperatorRefusedException(
+                                                            VERB_UNENROL, response).message(locale))));
                 }
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("project unenrol " + sanitizedId, response);
+            throw new OperatorRefusedException(VERB_UNENROL + " " + sanitizedId, response);
         }
 
         /**
@@ -761,7 +780,7 @@ public final class ProjectCommand implements Callable<Integer> {
     static String refusalReason(String body) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, "reason");
+            var reason = JsonTree.string(map, PARAM_REASON);
             if (reason == null) {
                 reason = JsonTree.string(map, "error");
             }

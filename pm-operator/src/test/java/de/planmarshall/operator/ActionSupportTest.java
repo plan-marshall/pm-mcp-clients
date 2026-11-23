@@ -202,7 +202,7 @@ class ActionSupportTest {
         var opts1 = terminationOptions("p-1", null, false, true);
         var code = ActionSupport.endWork(context, spec, "plan", opts1, ActionSupport.CANCEL);
         assertEquals(3, code);
-        assertTrue(out.toString().contains("Cancellation reason required (--reason)"));
+        assertTrue(out.toString().contains("Cancellation reason required (--reason)"), out.toString());
 
         out.getBuffer().setLength(0);
         var opts2 = terminationOptions("e-1", "", false, true);
@@ -331,14 +331,9 @@ class ActionSupportTest {
     }
 
     @Test
-    @DisplayName("printWorkList formats empty and populated lists")
+    @DisplayName("printWorkList prints the heading it is given and every item")
     void printWorkList() {
         var pw = new PrintWriter(out);
-        ActionSupport.printWorkList(pw, "Plans", "phase", List.of());
-        pw.flush();
-        assertTrue(out.toString().contains("No plans running."));
-
-        out.getBuffer().setLength(0);
         ActionSupport.printWorkList(pw, "Epics", "state", List.of(
                             Map.of("id", "epic-1", "state", "RUNNING", "title", "Refactor Auth"),
                             Map.of("id", "epic-2", "state", "PAUSED"),

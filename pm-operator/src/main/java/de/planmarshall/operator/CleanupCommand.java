@@ -82,8 +82,11 @@ public final class CleanupCommand implements Callable<Integer> {
     /** The catalogue key of the "no such item" refusal the three lookups share. */
     private static final String NOT_IN_JOB = "operator.cleanup.not_in_job";
 
-    /** The word an item's end carries in front of the runtime's date. */
-    private static final String ENDED_PREFIX = "ended ";
+    /**
+     * The word a runtime may already send in front of an item's end; it is dropped so the
+     * catalogue's own word is never doubled. It is read, never printed.
+     */
+    private static final String RUNTIME_ENDED_WORD = "ended ";
 
     /** The cleanup resource of the runtime's API. */
     private static final String CLEANUP_API = "/api/v1/system/cleanup";
@@ -562,7 +565,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the resource's object
      * @throws IOException on transport failure, or the runtime's refusal
      */
-    private static Map<String, Object> cleanupState(RuntimeClient runtime, String path, String verb)
+    private Map<String, Object> cleanupState(RuntimeClient runtime, String path, String verb)
                         throws IOException {
         var res = runtime.send(HttpRequest.get(path));
         if (res.status() != 200) {
@@ -570,7 +573,8 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var parsed = JsonTree.asObject(JsonTree.parse(res.bodyText()));
         if (parsed == null) {
-            throw new OperatorRefusedException(verb + ": the runtime's cleanup is no object");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.state_no_object", Map.of("verb", verb)));
         }
         return parsed;
     }
@@ -588,7 +592,8 @@ public final class CleanupCommand implements Callable<Integer> {
     private String nothingDue(Map<String, Object> state, String verb) throws OperatorRefusedException {
         var nextCheck = JsonTree.string(state, "next_check_at");
         if (nextCheck == null || nextCheck.isBlank()) {
-            throw new OperatorRefusedException(verb + ": the runtime's cleanup names no next check");
+            throw new OperatorRefusedException(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.state_no_next_check", Map.of("verb", verb)));
         }
         return MessageCatalogue.format(context.clientEnvironment().locale(), "system.cleanup.none",
                             Map.of("time", OutputSafety.stripControlSequences(nextCheck)));
@@ -599,7 +604,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (job == null) {
             return 0;
         }
-        var uncheckedIds = resolveExclude(out, job);
+        var uncheckedIds = resolveExclude(spec.commandLine().getErr(), job);
         if (uncheckedIds == null) {
             return 1;
         }
@@ -614,9 +619,9 @@ public final class CleanupCommand implements Callable<Integer> {
             // The consent prompt prints the preview itself, after it opened the reader: a
             // preview printed before JLine takes the terminal is erased by its first draw.
             return askDeleteConsent(out, preview, uncheckedIds.size())
-                                ? sendDelete(out, job, uncheckedIds, preview) : 0;
+                                ? sendDelete(out, spec.commandLine().getErr(), job, uncheckedIds, preview) : 0;
         }
-        return sendDelete(out, job, uncheckedIds, preview);
+        return sendDelete(out, spec.commandLine().getErr(), job, uncheckedIds, preview);
     }
 
     /**
@@ -640,13 +645,14 @@ public final class CleanupCommand implements Callable<Integer> {
     /**
      * Resolves every {@code --exclude} token to an item of the open job: a number as the job prints
      * it, an id, or {@code kind:id}. A token the job does not carry is reported
-     * ({@code operator.cleanup.not_in_job}) and stops the delete.
+     * ({@code operator.cleanup.not_in_job}) and stops the delete. The line is a refusal of the verb,
+     * so it goes to stderr and stdout carries none of it ({@code 03-dialogues.adoc#refusals}).
      *
-     * @param out the verb's writer
+     * @param err the verb's error writer
      * @param job the open cleanup job
      * @return the ids the delete leaves out, or {@code null} when a token names no item
      */
-    private @Nullable List<String> resolveExclude(PrintWriter out, CleanupJob job) {
+    private @Nullable List<String> resolveExclude(PrintWriter err, CleanupJob job) {
         if (exclude == null || exclude.isEmpty()) {
             return List.of();
         }
@@ -656,9 +662,9 @@ public final class CleanupCommand implements Callable<Integer> {
             var raw = OutputSafety.stripControlSequences(token);
             var item = findItem(items, raw);
             if (item == null) {
-                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     NOT_IN_JOB, Map.of("item", raw)));
-                out.flush();
+                err.flush();
                 return null;
             }
             if (!ids.contains(item.id())) {
@@ -886,7 +892,7 @@ public final class CleanupCommand implements Callable<Integer> {
         while (true) {
             var chosen = decisionPrompt(out).ask();
             var code = switch (Decision.of(chosen.key())) {
-                case DELETE -> deleteFromDialogue(out, job, leftOut);
+                case DELETE -> deleteFromDialogue(out, err, job, leftOut);
                 case REMIND -> executeRemind(out, job);
                 case IGNORE -> executeIgnore(out, job);
                 case LEAVE_OUT -> {
@@ -1067,17 +1073,20 @@ public final class CleanupCommand implements Callable<Integer> {
      */
     private int printItem(PrintWriter out, CleanupItemEntry item, Set<String> leftOut, boolean isUnenrolled,
                         int index) {
+        var locale = context.clientEnvironment().locale();
         var glyph = glyphForKind(item.kind());
         var title = titleText(item.title());
         var outcome = item.outcome() != null ? OutputSafety.stripControlSequences(item.outcome()) : "";
         var endedAt = item.endedAt();
-        var ended = endedAt != null ? endedText(endedAt) : "";
+        var ended = endedAt != null ? endedText(locale, endedAt) : "";
         var size = item.sizeBytes() > 0 ? SystemCommand.formatBytes(item.sizeBytes()) : "";
-        var logs = item.logsCount() > 0 ? item.logsCount() + (item.logsCount() == 1 ? " log" : " logs") : "";
+        var logs = item.logsCount() > 0
+                            ? MessageCatalogue.format(locale, "system.cleanup.details.logs",
+                            Map.of(COUNT_PARAM, item.logsCount()))
+                            : "";
         var note = item.keptUntil() != null ? OutputSafety.stripControlSequences(item.keptUntil()) : "";
         var mark = leftOut.contains(item.id())
-                            ? MessageCatalogue.format(context.clientEnvironment().locale(),
-                            "operator.cleanup.choose.kept_for_good", Map.of())
+                            ? MessageCatalogue.format(locale, "operator.cleanup.choose.kept_for_good", Map.of())
                             : "";
 
         var kind = CleanupKind.fromValue(item.kind());
@@ -1138,16 +1147,20 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     /**
-     * Names the end of an item without ever doubling the word: a runtime that already sends
-     * {@code ended 12 Sep} reads as it is, a bare date gets the word in front
-     * ({@code 26-cleanup.adoc#t-job}).
+     * Names the end of an item in the operator's language without ever doubling the word: the
+     * catalogue's {@code system.cleanup.details.ended} carries the word, and a runtime that already
+     * sends {@code ended 12 Sep} has its own word dropped first ({@code 26-cleanup.adoc#t-job}).
      *
+     * @param locale  the interface locale
      * @param endedAt the item's end as the runtime reports it
      * @return the rendered end
      */
-    static String endedText(String endedAt) {
+    static String endedText(String locale, String endedAt) {
         var text = OutputSafety.stripControlSequences(endedAt);
-        return text.regionMatches(true, 0, ENDED_PREFIX, 0, ENDED_PREFIX.length()) ? text : ENDED_PREFIX + text;
+        var time = text.regionMatches(true, 0, RUNTIME_ENDED_WORD, 0, RUNTIME_ENDED_WORD.length())
+                            ? text.substring(RUNTIME_ENDED_WORD.length())
+                            : text;
+        return MessageCatalogue.format(locale, "system.cleanup.details.ended", Map.of("time", time));
     }
 
     private ChoicePrompt decisionPrompt(PrintWriter out) {
@@ -1173,13 +1186,14 @@ public final class CleanupCommand implements Callable<Integer> {
                             .toList();
     }
 
-    private int deleteFromDialogue(PrintWriter out, CleanupJob job, Set<String> leftOut) throws IOException {
+    private int deleteFromDialogue(PrintWriter out, PrintWriter err, CleanupJob job, Set<String> leftOut)
+                        throws IOException {
         var uncheckedIds = new ArrayList<>(leftOut);
         var preview = deletePreview(job, uncheckedIds);
         if (!askDeleteConsent(out, preview, uncheckedIds.size())) {
             return ASK_AGAIN;
         }
-        return sendDelete(out, job, uncheckedIds, preview);
+        return sendDelete(out, err, job, uncheckedIds, preview);
     }
 
     /**
@@ -1215,12 +1229,13 @@ public final class CleanupCommand implements Callable<Integer> {
         return text + "\n" + MessageCatalogue.format(locale, "operator.cleanup.choose.delete_confirm", Map.of());
     }
 
-    private int sendDelete(PrintWriter out, CleanupJob job, List<String> uncheckedIds, DeletePreview preview) throws IOException {
+    private int sendDelete(PrintWriter out, PrintWriter err, CleanupJob job, List<String> uncheckedIds,
+                        DeletePreview preview) throws IOException {
         var deleteBody = JsonTree.write(Map.of("unchecked_ids", uncheckedIds));
         var res = context.runtime(true).send(
                             HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/delete").withBody(deleteBody));
         if (res.status() == 409) {
-            return deleteRefused(out, res.bodyText());
+            return deleteRefused(err, res.bodyText());
         }
         if (res.status() == 200) {
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.cleanup.deleted_summary",
@@ -1236,24 +1251,25 @@ public final class CleanupCommand implements Callable<Integer> {
     /**
      * Reports a delete the runtime refused with {@code 409}: a job another client already decided
      * prints the decision taken and who took it ({@code 26-cleanup.adoc#t-none}), and a runtime that
-     * is stopping says what it does with every new act.
+     * is stopping says what it does with every new act. Both are refusals, so they go to stderr and
+     * stdout carries none of them ({@code 03-dialogues.adoc#refusals}).
      *
-     * @param out  the verb's writer
+     * @param err  the verb's error writer
      * @param body the refusal's body
      * @return the exit code of the refusal
      */
-    private int deleteRefused(PrintWriter out, String body) {
+    private int deleteRefused(PrintWriter err, String body) {
         var decided = decidedElsewhere(body);
         if (decided != null) {
-            out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+            err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                 "system.cleanup.decided_elsewhere",
                                 Map.of("who", OutputSafety.stripControlSequences(decided.who()),
                                                     "decision", decided.decision())));
-            out.flush();
+            err.flush();
             return 1;
         }
-        out.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.cleanup.runtime_stopping"));
-        out.flush();
+        err.println(MessageCatalogue.get(context.clientEnvironment().locale(), "operator.cleanup.runtime_stopping"));
+        err.flush();
         return 1;
     }
 

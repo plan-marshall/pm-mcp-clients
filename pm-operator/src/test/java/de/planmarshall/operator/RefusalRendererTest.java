@@ -197,6 +197,40 @@ class RefusalRendererTest {
     }
 
     @Test
+    @DisplayName("a stack trace wrapped in a JSON message renders the three lines of an unreadable body")
+    void jsonWrappedTraceRendersAsUnreadable() {
+        var detail = Generators.letterStrings(4, 10).next();
+        var plainTrace = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
+                            ("java.lang.IllegalStateException: " + detail + "\n\tat a.b.C.d(C.java:1)")
+                                                .getBytes(StandardCharsets.UTF_8)));
+        var jsonTrace = new OperatorRefusedException("plan", new HttpResponse(500, "application/json",
+                            ("{\"message\":\"java.lang.IllegalStateException: " + detail + "\\n\\tat a.b.C.d(C.java:1)\"}")
+                                                .getBytes(StandardCharsets.UTF_8)));
+
+        var lines = RefusalRenderer.linesOf("en", jsonTrace);
+
+        assertEquals(RefusalRenderer.linesOf("en", plainTrace), lines);
+        for (var line : lines) {
+            assertFalse(line.contains(detail) || line.contains("IllegalStateException") || line.contains("C.java"), line);
+        }
+    }
+
+    @Test
+    @DisplayName("a plain body that starts with Error: renders as the runtime's sentence")
+    void plainErrorSentenceRendersAsTheMessage() {
+        var sentence = "Error: select a configured " + Generators.letterStrings(4, 10).next() + ".";
+        var ex = new OperatorRefusedException("plan", new HttpResponse(500, "text/plain",
+                            sentence.getBytes(StandardCharsets.UTF_8)));
+
+        var lines = RefusalRenderer.linesOf("en", ex);
+
+        assertEquals(List.of(
+                            "✗ The runtime refused: " + sentence,
+                            "The refusal carries a code this client does not know.",
+                            "→ Update the client and try again; if the refusal stays, look at the details."), lines);
+    }
+
+    @Test
     @DisplayName("a 404 that names no code on a route the runtime does not know is no missing entry")
     void codeLess404IsNoMissingEntry() {
         var ex = new OperatorRefusedException("runtime upgrade --notes",

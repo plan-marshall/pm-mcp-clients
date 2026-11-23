@@ -28,6 +28,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.jline.reader.LineReaderBuilder;
@@ -357,6 +358,70 @@ class PmConsoleTest {
                                                 "✗ Failed to issue a new pairing code: the runtime issued no code"), output),
                             () -> assertFalse(output.contains("New code"), output)
         );
+    }
+
+    @Test
+    @DisplayName("web pair refused by the runtime in German names the German refusal as its reason")
+    void webPairRefusedInGermanNamesTheGermanRefusal() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"label\":\"Firefox\",\"paired_by\":\"open\"}]");
+            } else if ("/api/v1/web/pairings".equals(request.target())) {
+                response.json(404, "{\"error\":\"scope_not_found\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var inStream = new ByteArrayInputStream("web pair\nexit\n".getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(inStream, outStream), null);
+
+        new PmConsole(context).run();
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(output.contains("Diesen Eintrag gibt es nicht"), output),
+                            () -> assertFalse(output.contains("This entry does not exist"), output));
+    }
+
+    @Test
+    @DisplayName("web qr in German shows the code's validity from the catalogue, never the English line")
+    void webQrInGermanShowsTheGermanValidity() throws Exception {
+        var code = Generators.letterStrings(8, 8).next().toUpperCase();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target())) {
+                response.json(200, "[{\"label\":\"Firefox\",\"paired_by\":\"open\"}]");
+            } else if ("/api/v1/web/pairings".equals(request.target())) {
+                response.json(201, "{\"code\":\"%s\",\"url\":\"http://127.0.0.1:7420/pair#code=%s\"}"
+                                    .formatted(code, code));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        var inStream = new ByteArrayInputStream("web pair\nweb qr\nexit\n".getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(inStream, outStream), null);
+
+        new PmConsole(context).run();
+
+        var output = outStream.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(output.contains("Code " + code + ", gültig bis "), output),
+                            () -> assertFalse(output.contains(", valid until "), output));
     }
 
     private OperatorContext consoleContext(String typed, ByteArrayOutputStream outStream) {

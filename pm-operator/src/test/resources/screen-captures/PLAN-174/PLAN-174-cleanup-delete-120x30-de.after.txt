@@ -1,0 +1,30 @@
+✓ Runtime läuft (pm-mcpd 0.9.1)
+✓ Web-App: http://127.0.0.1:7420   (gekoppelt: Firefox on mbp-oliver)
+▪ 7 ungelesene Berichte seit 2026-10-13T08:00:00Z · reports zeigt sie
+plans oder tui öffnet die Vollbild-Übersicht.
+pm [Einrichtung cui-parent 2/10] › cleanup
+Aufräumen cln-0012 · fällig seit 2 Sep
+Übersicht   12 Pläne · 2 Epics · 40 Logs · 5 gelesene Berichte · 1 nicht mehr registriertes Projekt
+          gibt 779 MB frei
+pm-mcp-clients
+    1) ▸ fix-relay          merged (#214)     beendet 12 Sep  84 MB   6 Logs
+    2) ▸ docs-typo          no change         beendet 11 Sep   2 MB    1 Log
+pm-mcp-core
+    3) ▸ token-usage        merged (#88)      beendet 9 Sep  120 MB  11 Logs
+Für immer behalten: 4 (cleanup --kept) · letzte Bereinigung today 03:00
+d) lösche…   r) in 3 Tagen wieder fragen   i) ignoriere   x) lass Einträge aus
+o) öffne   v) verlasse
+  › d
+12 Pläne, 2 Epics, 40 Logs, 5 gelesene Berichte und 1 nicht mehr registriertes Projekt löschen?
+Das gibt 779 MB frei. Es lässt sich nicht rückgängig machen.
+Branches, Pull Requests, das Remote, der Checkout und das Ledger eines Epics im
+  Repository bleiben.
+Löschen?
+Löschen? j) ja   n) nein, zurück   ?   ›
+
+
+
+
+
+
+

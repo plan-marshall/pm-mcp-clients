@@ -22,6 +22,10 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -30,6 +34,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("ReportsCommand")
 @EnableGeneratorController
@@ -60,6 +67,48 @@ class ReportsCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int executeWithLocale(String locale, String... args) {
+        var clientEnv = new ClientEnvironment(locale, false, List.of(), Map.of());
+        var context = new OperatorContext(fixture.environment(), tempDir, true, clientEnv, null, null);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    @Test
+    @DisplayName("reports in German names this machine, the project and the later sending in German")
+    void reportsListInGerman() throws Exception {
+        var systemId = "rep-" + Generators.integers(1000, 4999).next();
+        var projectId = "rep-" + Generators.integers(5000, 9999).next();
+        var project = Generators.letterStrings(6, 12).next().toLowerCase();
+        fixture.start((request, response) -> {
+            if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "items": [
+                                        {"id":"%s","from":{"project_id":"system"},"subject":"cleanup",
+                                         "created_at":"2020-03-02T10:00:00Z","sent_at":"2020-03-02T12:00:00Z"},
+                                        {"id":"%s","from":{"project_id":"%s"},"subject":"onboarded",
+                                         "created_at":"2020-03-02T10:00:00Z"}
+                                      ],
+                                      "unread_count": 2
+                                    }
+                                    """.formatted(systemId, projectId, project));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithLocale("de", "reports");
+        var output = out.toString();
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Diese Maschine"), output),
+                            () -> assertTrue(output.contains("gesendet "), output),
+                            () -> assertTrue(output.contains("Projekt"), output),
+                            () -> assertFalse(output.contains("This machine"), output),
+                            () -> assertFalse(output.contains(" sent "), output));
     }
 
     @Test
@@ -282,11 +331,12 @@ class ReportsCommandTest {
     }
 
     @Test
-    @DisplayName("reports read without IDs or --all prints hint and returns 1")
+    @DisplayName("reports read without IDs or --all prints its local refusal on stderr and returns 1")
     void reportsReadNoIds() {
         int code = execute("reports", "read");
         assertEquals(1, code);
-        assertTrue(out.toString().contains("Give the report ids, or --all."));
+        assertTrue(err.toString().contains("✗ Give the report ids, or --all."), err.toString());
+        assertFalse(out.toString().contains("Give the report ids"), out.toString());
     }
 
     @Test
@@ -305,9 +355,73 @@ class ReportsCommandTest {
         });
 
         int code = execute("reports", "read", presentId, missingId);
-        assertEquals(0, code);
-        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
+        var refused = missingId + " is no report of this machine; reports lists the unread ones.";
+        assertEquals(1, code, "a refused id makes the verb exit 1");
+        assertTrue(err.toString().contains(refused), err.toString());
+        assertFalse(out.toString().contains(refused), out.toString());
         assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString());
+    }
+
+    @Test
+    @DisplayName("reports read in German names an unknown id in German on stderr and exits 1")
+    void reportsReadUnknownIdInGerman() throws Exception {
+        var id = "rep-" + Generators.integers(1000, 9999).next();
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = executeWithLocale("de", "reports", "read", id);
+
+        var refused = id + " ist kein Bericht dieser Maschine; reports listet die ungelesenen.";
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(err.toString().contains(refused), err.toString()),
+                            () -> assertFalse(out.toString().contains(refused), out.toString()));
+    }
+
+    /** @return each refusal status, once with the refused id first and once with it last */
+    static Stream<Arguments> refusalOrders() {
+        return Stream.of(403, 409, 500)
+                            .flatMap(status -> Stream.of(Arguments.of(status, true), Arguments.of(status, false)));
+    }
+
+    @ParameterizedTest(name = "a {0} on one id, refused id first: {1}")
+    @MethodSource("refusalOrders")
+    @DisplayName("reports read names a refusal other than 404 with its cause on stderr, marks the others and exits 1")
+    void reportsReadOtherRefusal(int status, boolean refusedFirst) throws Exception {
+        var markedId = "rep-" + Generators.integers(1000, 4999).next();
+        var refusedId = "rep-" + Generators.integers(5000, 9999).next();
+        var cause = Generators.letterStrings(8, 16).next();
+        var markPath = "/api/v1/reports/" + markedId + "/read";
+        var refusedPath = "/api/v1/reports/" + refusedId + "/read";
+        var requests = new CopyOnWriteArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if (markPath.equals(request.target())) {
+                response.send(200, null, "");
+            } else if (refusedPath.equals(request.target())) {
+                response.json(status, "{\"error\":\"report_locked\",\"message\":\"%s\"}".formatted(cause));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = refusedFirst
+                            ? execute("reports", "read", refusedId, markedId)
+                            : execute("reports", "read", markedId, refusedId);
+
+        // the recovery is proven only if each POST is sent in the order the ids were named
+        var expectedPosts = refusedFirst
+                            ? List.of("POST " + refusedPath, "POST " + markPath)
+                            : List.of("POST " + markPath, "POST " + refusedPath);
+        var posts = requests.stream().filter(request -> request.startsWith("POST ")).toList();
+        assertAll(
+                            () -> assertEquals(1, code, err.toString()),
+                            () -> assertTrue(requests.contains("POST " + markPath), requests.toString()),
+                            () -> assertTrue(requests.contains("POST " + refusedPath), requests.toString()),
+                            () -> assertEquals(expectedPosts, posts, requests.toString()),
+                            () -> assertTrue(err.toString().contains("✗ "), err.toString()),
+                            () -> assertTrue(err.toString().contains(cause), err.toString()),
+                            () -> assertFalse(out.toString().contains(cause), out.toString()),
+                            () -> assertTrue(out.toString().contains("✓ 1 report marked read."), out.toString()));
     }
 
     @Test
@@ -361,7 +475,9 @@ class ReportsCommandTest {
 
         int code = execute("reports", "open", missingId);
         assertEquals(1, code);
-        assertTrue(out.toString().contains(missingId + " is no report of this machine; reports lists the unread ones."));
+        var line = missingId + " is no report of this machine; reports lists the unread ones.";
+        assertTrue(err.toString().contains(line), err.toString());
+        assertFalse(out.toString().contains(line), out.toString());
     }
 
     @Test

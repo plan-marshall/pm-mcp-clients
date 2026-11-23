@@ -152,7 +152,7 @@ public enum ApiErrorCode {
     /** The chosen keyring is locked and unlocking it needs the operator. */
     CREDENTIAL_STORE_LOCKED("credential_store_locked", 423),
 
-    /** An unexpected fault the runtime could not attribute to the request, with an audit id. */
+    /** An unexpected fault the runtime could not attribute to the request. */
     INTERNAL_FAULT("internal_fault", 500),
 
     /** The chosen credential store failed a read, a write, a delete, or a read-back. */

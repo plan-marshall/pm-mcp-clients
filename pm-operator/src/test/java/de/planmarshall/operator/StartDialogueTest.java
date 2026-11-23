@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -162,16 +163,25 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("a refused setup gate is shown with the action that fixes it")
+    @DisplayName("a refused setup gate is shown on stderr with the action that fixes it")
     void refusedEntry() throws Exception {
-        var outcome = runWithCode(StandardScenarios.START_REFUSED, null,
+        var outcome = runSplit(StandardScenarios.START_REFUSED,
                             "plan", "add", "--project", PROJECT, "--entry", "ent-3f9a2c41", "--no-input");
         assertAll(
-                            () -> assertEquals(1, outcome.code()),
-                            () -> assertTrue(outcome.rendered().contains("is not ready: credential sonar"),
-                                                outcome.rendered()),
-                            () -> assertTrue(outcome.rendered().contains("Continue the project's onboarding"),
-                                                outcome.rendered()));
+                            () -> assertEquals(1, outcome.code(), outcome.toString()),
+                            () -> assertRefusalOnStderr(outcome, "is not ready: credential sonar"),
+                            () -> assertRefusalOnStderr(outcome, "Continue the project's onboarding"));
+    }
+
+    @Test
+    @DisplayName("an act the runtime refuses ends recipe run on stderr with exit 1")
+    void refusedActOnStderr() throws Exception {
+        var recipe = "zz-" + Generators.letterStrings(6, 12).next().toLowerCase(Locale.ROOT);
+        var outcome = runSplit(StandardScenarios.START_SOURCES,
+                            "recipe", "run", recipe, "--project", PROJECT, "--no-input");
+        assertAll(
+                            () -> assertEquals(1, outcome.code(), outcome.toString()),
+                            () -> assertRefusalOnStderr(outcome, "choose:" + recipe));
     }
 
     @Test
@@ -554,14 +564,57 @@ class StartDialogueTest {
     }
 
     @Test
-    @DisplayName("copy and move together are refused before the entry opens")
+    @DisplayName("copy and move together are refused on stderr before the entry opens")
     void copyAndMoveConflict() throws Exception {
-        var outcome = runWithCode(StandardScenarios.START_SOURCES, null,
+        var outcome = runSplit(StandardScenarios.START_SOURCES,
                             "plan", "add", "--project", PROJECT, "--copy", "--move", "--no-input");
         assertAll(
-                            () -> assertEquals(1, outcome.code()),
-                            () -> assertTrue(outcome.rendered().contains("exclude each other"),
-                                                outcome.rendered()));
+                            () -> assertEquals(1, outcome.code(), outcome.toString()),
+                            () -> assertRefusalOnStderr(outcome, "exclude each other"));
+    }
+
+    @Test
+    @DisplayName("copy and move together are refused on stderr by epic add and recipe run as well")
+    void copyAndMoveConflictOfTheOtherVerbs() throws Exception {
+        var epic = runSplit(StandardScenarios.START_EPIC,
+                            "epic", "add", "--project", PROJECT, "--copy", "--move", "--no-input");
+        var recipe = runSplit(StandardScenarios.START_SOURCES,
+                            "recipe", "run", "code-review", "--project", PROJECT, "--copy", "--move", "--no-input");
+        assertAll(
+                            () -> assertEquals(1, epic.code(), epic.toString()),
+                            () -> assertRefusalOnStderr(epic, "exclude each other"),
+                            () -> assertEquals(1, recipe.code(), recipe.toString()),
+                            () -> assertRefusalOnStderr(recipe, "exclude each other"));
+    }
+
+    private static void assertRefusalOnStderr(Split outcome, String line) {
+        assertAll(
+                            () -> assertTrue(outcome.err().contains(line), outcome.toString()),
+                            () -> assertFalse(outcome.out().contains(line), outcome.toString()));
+    }
+
+    /**
+     * Runs a verb without input with its standard output on the driver's terminal and its standard
+     * error on a writer of its own, so a test can tell the stream a line went to.
+     */
+    private static Split runSplit(String scenario, String... args) throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario)
+                                 .timing(MockTiming.ORDERED).build());
+             var driver = TerminalTestDriver.create()) {
+            recordLiveRuntime(runtime);
+            var environment = new HashMap<>(runtime.environment());
+            environment.put(LANG, ENGLISH);
+            environment.put("USER", "operator");
+            driver.project(environment, runtime.base().getParent());
+            driver.endOfInput();
+            var err = new StringWriter();
+            var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), new PrintWriter(err), args);
+            return new Split(code, driver.render(), err.toString());
+        }
+    }
+
+    /** A verb's exit code with what it wrote to standard output and to standard error. */
+    private record Split(int code, String out, String err) {
     }
 
     static String run(String scenario, String input, String... args) throws Exception {
@@ -739,13 +792,41 @@ class StartDialogueTest {
                                 () -> assertEquals(1, occurrences(rendered, ENDED), rendered));
         }
 
+        @Test
+        @DisplayName("an end the runtime refuses without a message reads in the German operator's language")
+        void refusedEndReadsInGerman() throws Exception {
+            var body = Generators.letterStrings(8, 24).next();
+            var ends = new AtomicInteger();
+            transcript.addAll(texts(1));
+            fixture.start((request, response) -> {
+                if (request.target().endsWith(END) && ends.getAndIncrement() == 0) {
+                    response.json(503, body);
+                } else {
+                    response.json(200, pageOf(request.target(), CHAT_STATE_TURN, false));
+                }
+            });
+            var opened = ChatResource.fromJson(pageOf(ChatRoutes.entry(ENTRY).chat(), CHAT_STATE_TURN, false));
+
+            var rendered = chat(opened, new StartApi.ReplyWait(1, Duration.ZERO), "\n\n", "de");
+
+            assertAll(
+                                () -> assertTrue(rendered.contains("chat: Die Runtime hat die Anfrage abgelehnt: " + body),
+                                                    rendered),
+                                () -> assertFalse(rendered.contains("The runtime refused"), rendered));
+        }
+
         private String chat(ChatResource opened, StartApi.ReplyWait wait, String input) throws Exception {
+            return chat(opened, wait, input, "en");
+        }
+
+        private String chat(ChatResource opened, StartApi.ReplyWait wait, String input, String locale)
+                            throws Exception {
             try (var driver = TerminalTestDriver.create()) {
                 var environment = new HashMap<>(fixture.environment());
-                environment.put(LANG, ENGLISH);
+                environment.put(LANG, "en".equals(locale) ? ENGLISH : "de_DE.UTF-8");
                 driver.project(environment, fixture.base().getParent());
                 driver.type(input);
-                var prompt = new StartPrompt(driver.context(), driver.writer(), "en", false);
+                var prompt = new StartPrompt(driver.context(), driver.writer(), locale, false);
                 new ChatDialogue(new StartApi(driver.context(), wait), prompt, EntryKind.PLAN, PROJECT)
                                     .run(ENTRY, opened);
                 return driver.render();

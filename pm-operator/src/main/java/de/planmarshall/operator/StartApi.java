@@ -343,13 +343,19 @@ final class StartApi {
         }
     }
 
-    /** An act the runtime refused; the dialogue prints it and asks again. */
+    /**
+     * An act the runtime refused; the dialogue prints {@link #message(String)} in the operator's locale
+     * and asks again.
+     */
     static final class StartActException extends RuntimeException {
         private static final long serialVersionUID = 1L;
         private static final String KEY_MESSAGE = "message";
         /** The member of an error body that names its code. */
         private static final String KEY_ERROR = "error";
 
+        private final String linkId;
+        private final @Nullable String bodyMessage;
+        private final OperatorRefusedException refusal;
         private final @Nullable ApiErrorCode code;
 
         /**
@@ -357,8 +363,52 @@ final class StartApi {
          * @param response the runtime's refusal
          */
         StartActException(String linkId, HttpResponse response) {
-            super(linkId + ": " + messageOf(response));
+            this.linkId = linkId;
+            this.refusal = new OperatorRefusedException(KEY_ERROR, response);
+            this.bodyMessage = checkedBodyMessage(response, refusal);
             this.code = codeOf(response);
+        }
+
+        /**
+         * The body's message as the refusal's own parser read it: checked and capped, so a stack trace
+         * or an over-long text never reaches a screen. A body that names no message member, or whose
+         * message the parser rejected (an unreadable refusal, or a trace beside a code), has none.
+         *
+         * @param response the runtime's refusal
+         * @param refusal  the refusal parsed from the same response
+         * @return the checked message, or {@code null} when the screen takes the refusal's own text
+         */
+        private static @Nullable String checkedBodyMessage(HttpResponse response, OperatorRefusedException refusal) {
+            if (bodyMember(response, KEY_MESSAGE) == null) {
+                return null;
+            }
+            var checked = refusal.serverMessage();
+            return checked == null || checked.isBlank() ? null : checked;
+        }
+
+        /**
+         * The refusal's one line as a screen shows it: the refused act's link id, then the message the
+         * body names as the refusal's parser checked and capped it, or else the catalogue's text of the
+         * refusal in the operator's locale (the title of its code, of an unreadable body, or what a body
+         * without one is), never a stack trace and never the bare HTTP status.
+         *
+         * @param locale the operator's locale (e.g. {@code "en"} or {@code "de"}), or {@code null} for the
+         *               default locale
+         * @return the text a screen shows for this refusal
+         */
+        String message(@Nullable String locale) {
+            return linkId + ": " + (bodyMessage != null ? bodyMessage : refusal.message(locale));
+        }
+
+        /**
+         * The default-locale text of the refusal, for diagnostics only; a screen shows
+         * {@link #message(String)} in the operator's locale instead.
+         *
+         * @return the refusal's text in the default locale
+         */
+        @Override
+        public String getMessage() {
+            return message(null);
         }
 
         /**
@@ -367,11 +417,6 @@ final class StartApi {
         @Nullable
         ApiErrorCode code() {
             return code;
-        }
-
-        private static String messageOf(HttpResponse response) {
-            var message = bodyMember(response, KEY_MESSAGE);
-            return message != null ? OutputSafety.stripControlSequences(message) : "HTTP " + response.status();
         }
 
         private static @Nullable ApiErrorCode codeOf(HttpResponse response) {

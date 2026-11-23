@@ -25,7 +25,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.impl.DumbTerminal;
+import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.resource.ApiErrorCode;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -142,7 +145,10 @@ class CredentialsCommandTest {
         };
     }
 
-    private static String state(String stateId, boolean failed) {
+    /** The cause a failed check reports, or {@code null} for a check that names none. */
+    private @Nullable String failureCause = "401 Invalid token";
+
+    private String state(String stateId, boolean failed) {
         return switch (stateId) {
             case "store.reconfigure" -> "{\"state\":{\"state_id\":\"store.reconfigure\","
                                 + "\"kind\":\"operator_wait\"},"
@@ -162,7 +168,8 @@ class CredentialsCommandTest {
             case "providers.verified" -> failed
                                 ? "{\"state\":{\"state_id\":\"providers.verified\",\"kind\":\"operator_wait\"},"
                                 + "\"facts\":{\"summary\":\"The provider check is done\",\"current\":\"os\","
-                                + "\"failed\":true,\"cause\":\"401 Invalid token\"},"
+                                + "\"failed\":true" + (failureCause != null ? ",\"cause\":\"" + failureCause + "\"" : "")
+                                + "},"
                                 + "\"links\":[{\"id\":\"done\",\"preselected\":true}]}"
                                 : "{\"state\":{\"state_id\":\"providers.verified\",\"kind\":\"operator_wait\"},"
                                 + "\"facts\":{\"summary\":\"The provider check is done\",\"current\":\"os\","
@@ -173,6 +180,23 @@ class CredentialsCommandTest {
                                 + "\"links\":[{\"id\":\"reconfigure:credentials\",\"rel\":\"alt\","
                                 + "\"preselected\":true}]}";
         };
+    }
+
+    @Test
+    @DisplayName("a failed check that names no cause refuses on stderr with the catalogue's cause, never an empty one")
+    void failedCheckWithoutCauseNamesTheCatalogueCause() throws Exception {
+        failureCause = null;
+        verification(true);
+
+        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains(
+                                                "The check failed: the check named no cause. The hold stays."), err.toString()),
+                            () -> assertFalse(err.toString().contains("The check failed: . "), err.toString()),
+                            () -> assertFalse(out.toString().contains("The check failed"), out.toString())
+        );
     }
 
     @Test
@@ -211,16 +235,20 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("a failed provider check prints the failure and keeps the hold")
+    @DisplayName("a failed provider check prints the failure with its cause on stderr and keeps the hold")
     void rotateReportsAFailedCheck() throws Exception {
         verification(true);
 
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         var text = out.toString();
+        var refusal = err.toString();
 
-        assertEquals(1, code, text + " | " + err);
-        assertTrue(text.contains("The check failed: 401 Invalid token. The hold stays."), text);
-        assertTrue(text.contains("Token github stored"), text);
+        assertAll(
+                            () -> assertEquals(1, code, text + " | " + refusal),
+                            () -> assertTrue(refusal.contains("✗ The check failed: 401 Invalid token. The hold stays."),
+                                                refusal),
+                            () -> assertFalse(text.contains("The check failed"), text),
+                            () -> assertTrue(text.contains("Token github stored"), text));
     }
 
     @Test
@@ -262,12 +290,15 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("rotate of an unknown key names the set verb and exits non-zero")
+    @DisplayName("rotate of an unknown key names the set verb on stderr, nothing of it on stdout, and exits non-zero")
     void rotateUnknown() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
         var code = run(context(""), "credentials", "rotate", "github", "--yes");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("No entry github exists"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "No entry github exists; credentials set enters a new token."), err.toString()),
+                            () -> assertFalse(out.toString().contains("No entry github exists"), out.toString()));
     }
 
     @Test
@@ -300,12 +331,15 @@ class CredentialsCommandTest {
     }
 
     @Test
-    @DisplayName("status of a missing entry exits non-zero")
+    @DisplayName("status of a missing entry refuses on stderr, nothing of it on stdout, and exits non-zero")
     void statusMissing() throws Exception {
         fixture.start((request, response) -> response.send(404, null, ""));
         var code = run(context(""), "credentials", "status", "github");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("No entry github exists"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "No entry github exists; credentials set enters a new token."), err.toString()),
+                            () -> assertFalse(out.toString().contains("No entry github exists"), out.toString()));
     }
 
     @Test
@@ -323,18 +357,24 @@ class CredentialsCommandTest {
         fixture.start((request, response) -> response.send(500, null, ""));
         var code = run(context(""), "credentials", "remove", "github");
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(err.toString().contains("Failed to remove github."), err.toString());
-        assertFalse(out.toString().contains("Failed to remove github."), out.toString());
+        assertTrue(err.toString().contains("Failed to remove github: " + ErrorTexts.title("en", (ApiErrorCode) null)),
+                            err.toString());
+        assertFalse(out.toString().contains("Failed to remove github"), out.toString());
         assertFalse(err.toString().contains("HTTP"), err.toString());
     }
 
     @Test
-    @DisplayName("an empty secret stores nothing and exits non-zero")
+    @DisplayName("an empty secret stores nothing, refuses on stderr with the catalogue's cause, and exits non-zero")
     void emptySecret() throws Exception {
         present();
         var code = run(context("\n"), "credentials", "rotate", "github", "--yes");
-        assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(out.toString().contains("Failed to read the secret"), out.toString());
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "Failed to read the secret: no secret was typed"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Failed to read the secret"), out.toString()),
+                            () -> assertFalse(requests.contains("PUT /api/v1/credentials/github"),
+                                                requests.toString()));
     }
 
     @Test
@@ -358,9 +398,57 @@ class CredentialsCommandTest {
         });
         var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
         assertEquals(PmOperator.EXIT_FAILURE, code);
-        assertTrue(err.toString().contains("Failed to store github."), err.toString());
-        assertFalse(out.toString().contains("Failed to store github."), out.toString());
+        assertTrue(err.toString().contains("Failed to store github: " + ErrorTexts.title("en", (ApiErrorCode) null)),
+                            err.toString());
+        assertFalse(out.toString().contains("Failed to store github"), out.toString());
         assertFalse(err.toString().contains("HTTP"), err.toString());
+    }
+
+    /** Fails the read of the entry's status with a server error and records every request. */
+    private void failStatusRead() throws Exception {
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(500, null, "");
+        });
+    }
+
+    /**
+     * Asserts the refused status read: exit 1, the refusal on stderr and not the absent entry's,
+     * no header on stdout and no write of the entry.
+     *
+     * @param code the verb's exit code
+     */
+    private void assertStatusReadRefused(int code) {
+        var refusal = "Failed to read github: " + ErrorTexts.title("en", (ApiErrorCode) null);
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, out.toString() + err),
+                            () -> assertTrue(err.toString().contains(refusal), err.toString()),
+                            // the failed read is not taken for an absent entry
+                            () -> assertFalse(err.toString().contains("No entry github exists"), err.toString()),
+                            () -> assertFalse(out.toString().contains("github"), out.toString()),
+                            () -> assertTrue(requests.contains("GET /api/v1/credentials/github"), requests.toString()),
+                            () -> assertTrue(requests.stream().noneMatch(request -> request.startsWith("PUT ")),
+                                                requests.toString()));
+    }
+
+    @Test
+    @DisplayName("rotate stops when the entry's status cannot be read: exit 1, refusal on stderr, nothing stored")
+    void rotateStopsOnAFailedStatusRead() throws Exception {
+        failStatusRead();
+
+        var code = run(context("s3cret\n"), "credentials", "rotate", "github", "--yes");
+
+        assertStatusReadRefused(code);
+    }
+
+    @Test
+    @DisplayName("set stops when the entry's status cannot be read: exit 1, refusal on stderr, nothing stored")
+    void setStopsOnAFailedStatusRead() throws Exception {
+        failStatusRead();
+
+        var code = run(context("s3cret\n"), "credentials", "set", "github", "--yes");
+
+        assertStatusReadRefused(code);
     }
 
     @Test

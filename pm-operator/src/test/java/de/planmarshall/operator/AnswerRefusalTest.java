@@ -227,7 +227,7 @@ class AnswerRefusalTest {
     @ParameterizedTest(name = "a {0} on the first read of {1} is a failed read, not a decision")
     @CsvSource({"500, answer Q-001 --no-input", "503, answer Q-001 --no-input", "500, answer Q-001 1",
                         "502, answer Q-001 later"})
-    @DisplayName("a failed first read prints the unreadable line and exits 1, with no status on screen")
+    @DisplayName("a failed first read prints the unreadable line on stderr and exits 1, with no status on screen")
     void failedFirstReadIsUnreadable(int status, String command) throws Exception {
         var failure = text();
         var posted = new ArrayList<String>();
@@ -244,14 +244,15 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
+                            () -> assertTrue(err.toString().contains(UNREADABLE), err.toString()),
+                            () -> assertFalse(out.toString().contains(UNREADABLE), out.toString()),
                             () -> assertFalse((out.toString() + err).contains("HTTP " + status), out + " " + err),
                             () -> assertTrue(posted.isEmpty(), posted.toString()));
     }
 
     @ParameterizedTest(name = "a first read that never reaches an answer, for {0}")
     @ValueSource(strings = {"answer Q-001 --no-input", "answer Q-001 1", "answer Q-001 later"})
-    @DisplayName("a transport failure on the first read is as unreadable as a refused one: the line, exit 1, nothing sent")
+    @DisplayName("a transport failure on the first read is as unreadable as a refused one: the line on stderr, exit 1, nothing sent")
     void transportFailureOnTheFirstReadIsUnreadable(String command) throws Exception {
         var posted = new ArrayList<String>();
         fixture.start((request, response) -> {
@@ -267,7 +268,8 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, code, err.toString()),
-                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
+                            () -> assertTrue(err.toString().contains(UNREADABLE), err.toString()),
+                            () -> assertFalse(out.toString().contains(UNREADABLE), out.toString()),
                             () -> assertTrue(posted.isEmpty(), posted.toString()));
     }
 
@@ -277,7 +279,7 @@ class AnswerRefusalTest {
                         "another id | 1 | OTHER",
                         "a body without an id | --no-input | NOID",
                         "a body that is no JSON | 1 | NOJSON"})
-    @DisplayName("a first read that returns no decision of the id asked for prints the unreadable line and exits 1")
+    @DisplayName("a first read that returns no decision of the id asked for prints the unreadable line on stderr and exits 1")
     void mismatchedFirstReadIsUnreadable(String name, String argument, String kind) throws Exception {
         var other = "Q-" + Generators.integers(100, 999).next();
         var body = switch (kind) {
@@ -299,7 +301,8 @@ class AnswerRefusalTest {
 
         assertAll(
                             () -> assertEquals(1, code, name),
-                            () -> assertTrue(out.toString().contains(UNREADABLE), out.toString()),
+                            () -> assertTrue(err.toString().contains(UNREADABLE), err.toString()),
+                            () -> assertFalse(out.toString().contains(UNREADABLE), out.toString()),
                             () -> assertFalse(out.toString().contains(other + " for"), out.toString()),
                             () -> assertTrue(posted.isEmpty(), posted.toString()));
     }
@@ -444,6 +447,30 @@ class AnswerRefusalTest {
                                                                     "Answer the parts in order; one of them is still unanswered."),
                                                 out.toString()),
                             () -> assertEquals(2, posts.get(), "the answer is sent again after the part is asked again"));
+    }
+
+    @ParameterizedTest(name = "in {0}: {1}")
+    @CsvSource(delimiter = '|', value = {
+                        "en | Error reading interactive input: ",
+                        "de | Fehler beim Lesen der Eingabe: "})
+    @DisplayName("an input error of the dialogue is a refusal: its line on stderr, never on stdout, exit 1")
+    void interactiveInputErrorOnStderr(String language, String text) throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, planEnvelope());
+            } else if ("/api/v1/decisions/Q-001/answer".equals(request.target())) {
+                response.raw("this is no http response\r\n\r\n");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var exit = run(language, "1\n".getBytes(StandardCharsets.UTF_8), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, exit, err.toString()),
+                            () -> assertTrue(err.toString().contains(text), err.toString()),
+                            () -> assertFalse(out.toString().contains(text), out.toString()));
     }
 
     @ParameterizedTest(name = "{0} refused as {1} in German")

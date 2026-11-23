@@ -119,8 +119,10 @@ public final class ProjectSelector {
             return Outcome.stopping(FAILURE_CODE);
         }
         if (projects.isEmpty()) {
-            out.println(MessageCatalogue.format(locale, "project.explorer.empty", Map.of()));
-            out.flush();
+            // Nothing to choose stops the verb with a failure: its line goes to stderr like the
+            // selector's other refusals.
+            err.println(MessageCatalogue.format(locale, "project.explorer.empty", Map.of()));
+            err.flush();
             return Outcome.stopping(FAILURE_CODE);
         }
         printList(out, locale, projects);
@@ -226,14 +228,13 @@ public final class ProjectSelector {
         try {
             var response = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
             if (response.status() != 200) {
-                err.println(MessageCatalogue.format(locale, "operator.projects.select.load_failed",
-                                    Map.of("status", response.status())));
-                err.flush();
+                // The refusal of the projects read, with its cause, in the operator's locale.
+                RefusalRenderer.render(err, locale, new OperatorRefusedException("projects", response));
                 return null;
             }
             return order(ProjectExplorer.fromJson(response.bodyText()));
         } catch (IOException failure) {
-            err.println(OutputSafety.stripControlSequences(failure.getMessage()));
+            err.println(OutputSafety.stripControlSequences(OperatorRefusedException.screenText(failure, locale)));
             err.flush();
             return null;
         }

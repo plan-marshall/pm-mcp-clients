@@ -130,7 +130,8 @@ final class HoldDialogue {
                 result = client.resolveHold(planId, hold.holdId(), act, reason);
             } catch (IOException refused) {
                 prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.hold.refused",
-                                    Map.of("reason", OutputSafety.stripControlSequences(refused.getMessage()))));
+                                    Map.of("reason", OutputSafety.stripControlSequences(
+                                                        OperatorRefusedException.screenText(refused, prompt.locale())))));
                 return 1;
             }
             if (result.released()) {
