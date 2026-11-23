@@ -321,6 +321,17 @@ class ControlScenarioTest {
         }
 
         @Test
+        @DisplayName("serves a row that waits for the operator with the vocabulary's own spelling")
+        void waitingRowServesTheVocabularySpelling() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var process = ProcessTree.fromJson(
+                        get(runtime, "/api/v1/plans/relay-auth-v2/process").bodyText());
+
+                assertEquals(PlanActivity.WAITING_FOR_YOU.value(), process.phaseState());
+            }
+        }
+
+        @Test
         @DisplayName("disables archive while the ledger lands and switches automatic to a named value")
         void actionsAndAuto() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
@@ -413,6 +424,8 @@ class ControlScenarioTest {
                 }
 
                 assertEquals("running", rowStatuses(epic(runtime, "relay-hardening")).get(3));
+                assertEquals(Integer.valueOf(2), epic(runtime, "relay-hardening").running(),
+                        "the epic's own read counts the row the act started");
 
                 var none = JsonTree.asObject(JsonTree.parse(
                         post(runtime, "/api/v1/epics/relay-hardening/actions/next", "{}").bodyText()));
