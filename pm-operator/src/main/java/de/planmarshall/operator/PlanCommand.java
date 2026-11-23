@@ -1458,8 +1458,8 @@ public final class PlanCommand implements Callable<Integer> {
                                                         Map.of(KEY_TOKENS, wasteTotal)),
                                     MessageCatalogue.format(locale, "report.completion.waste_share",
                                                         Map.of("percent", usage.wasteSharePercent(),
-                                                                "coverage", usage.tasksTotal() > usage.tasksMeasured()
-                                                                        ? "partial" : "all")));
+                                                                            "coverage", usage.tasksTotal() > usage.tasksMeasured()
+                                                                                                ? "partial" : "all")));
                 for (var w : usage.wasteRecords()) {
                     var label = wasteLabel(locale, w.wasteClass());
                     var amount = TokenFormat.formatTokens(w.tokens(), false, locale);
