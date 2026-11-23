@@ -571,4 +571,23 @@ describe('ProjectOnboardingView component', () => {
       expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
     });
   });
+
+  it('hides the pilot checkbox when lifecycle_gate is false', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
+      ...RUN,
+      step: 2,
+      state: 'project.identity',
+      summary: 'Identity',
+      checkout_path: '~/git/cui-parent',
+      lifecycle_gate: false,
+    });
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-identity-id')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('project-identity-pilot')).not.toBeInTheDocument();
+  });
 });

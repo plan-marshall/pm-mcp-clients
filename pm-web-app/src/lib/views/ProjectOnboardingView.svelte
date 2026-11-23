@@ -109,7 +109,7 @@
   const identity = $derived(identityDraft ?? identityProposal(run));
 
   /**
-   * Whether this step waits for something only the terminal can give it: the build environment of
+   * Whether step 3 waits for something only the terminal can give it: the build environment of
    * the machine, which the terminal client captures (`project-onboarding.adoc#build-environment`).
    */
   const needsTerminal = $derived(
@@ -713,13 +713,15 @@
               oninput={(event) =>
                 setIdentityField('name', (event.currentTarget as HTMLInputElement).value)}
             />
-            <CheckField
-              label={$t('project.identity.pilot')}
-              description={$t('project.identity.pilot_hint')}
-              checked={identity.pilot}
-              testid="project-identity-pilot"
-              onchange={(checked) => setIdentityField('pilot', checked)}
-            />
+            {#if run?.lifecycle_gate !== false}
+              <CheckField
+                label={$t('project.identity.pilot')}
+                description={$t('project.identity.pilot_hint')}
+                checked={identity.pilot}
+                testid="project-identity-pilot"
+                onchange={(checked) => setIdentityField('pilot', checked)}
+              />
+            {/if}
             <div class="identity__actions">
               <Button
                 variant="primary"
