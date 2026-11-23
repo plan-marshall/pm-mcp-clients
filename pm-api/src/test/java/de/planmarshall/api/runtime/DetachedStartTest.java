@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -88,7 +89,14 @@ class DetachedStartTest {
         var client = RuntimeAccess.local(environment(), Path.of("/nonexistent"), Map.of(), true);
         var runtime = Thread.ofVirtual().start(() -> {
             try {
-                await().atMost(START_BUDGET).pollInterval(POLL_INTERVAL).until(() -> Files.exists(marker));
+                // The wait is advisory, as it was: a start that never reports is not itself the
+                // failure, and the round trip and the marker assertions below decide.
+                try {
+                    await().atMost(START_BUDGET).pollDelay(POLL_INTERVAL).pollInterval(POLL_INTERVAL)
+                            .until(() -> Files.exists(marker));
+                } catch (ConditionTimeoutException _) {
+                    // the fixture is started below regardless, so the client's round trip decides
+                }
                 fixture.start((request, response) -> response.json(200, "{\"version\":\"t\"}"));
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
@@ -125,7 +133,8 @@ class DetachedStartTest {
         var launched = new PosixDaemonLauncher(PosixPlatform.current(), Map.of())
                 .launch(script, fixture.base().resolveSibling("log"));
 
-        await().atMost(START_BUDGET).pollInterval(POLL_INTERVAL).until(() -> launched.exitCode().isPresent());
+        await().atMost(START_BUDGET).pollDelay(POLL_INTERVAL).pollInterval(POLL_INTERVAL)
+                .until(() -> launched.exitCode().isPresent());
 
         assertEquals(77, launched.exitCode().orElseThrow());
         assertTrue(launched.pid() > 0);

@@ -70,13 +70,17 @@ public final class StagedDaemon {
     /**
      * Waits until the staged runtime reported its start.
      *
+     * <p>Interruption surfaces as Awaitility's unchecked {@code ConditionInterruptedException},
+     * so the method declares no {@code InterruptedException} of its own.
+     *
      * @param timeout the maximum wait
      * @return {@code {pid, pgid}}, or {@code null} on timeout
      * @throws IOException on a read failure
      */
     public long[] awaitStart(Duration timeout) throws IOException {
         try {
-            await().atMost(timeout).pollInterval(POLL_INTERVAL).until(() -> Files.exists(marker));
+            await().atMost(timeout).pollDelay(POLL_INTERVAL).pollInterval(POLL_INTERVAL)
+                    .until(() -> Files.exists(marker));
         } catch (ConditionTimeoutException _) {
             return null;
         }
