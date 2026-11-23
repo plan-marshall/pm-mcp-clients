@@ -9,11 +9,14 @@
  */
 package de.planmarshall.api.testsupport;
 
+import static org.awaitility.Awaitility.await;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import org.awaitility.core.ConditionTimeoutException;
 
 /**
  * A staged {@code <PM_MCP_HOME>/bin/pm-mcpd} for on-demand start tests: a shell script that reports
@@ -21,6 +24,8 @@ import java.util.Map;
  * runtime and check the detachment.
  */
 public final class StagedDaemon {
+
+    private static final Duration POLL_INTERVAL = Duration.ofMillis(2);
 
     private final Path home;
     private final Path marker;
@@ -67,16 +72,13 @@ public final class StagedDaemon {
      *
      * @param timeout the maximum wait
      * @return {@code {pid, pgid}}, or {@code null} on timeout
-     * @throws IOException          on a read failure
-     * @throws InterruptedException if interrupted
+     * @throws IOException on a read failure
      */
-    public long[] awaitStart(Duration timeout) throws IOException, InterruptedException {
-        var deadline = System.nanoTime() + timeout.toNanos();
-        while (!Files.exists(marker)) {
-            if (System.nanoTime() > deadline) {
-                return null;
-            }
-            Thread.sleep(2);
+    public long[] awaitStart(Duration timeout) throws IOException {
+        try {
+            await().atMost(timeout).pollInterval(POLL_INTERVAL).until(() -> Files.exists(marker));
+        } catch (ConditionTimeoutException _) {
+            return null;
         }
         var parts = Files.readString(marker).strip().split(" ");
         pid = Long.parseLong(parts[0]);

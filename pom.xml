@@ -153,10 +153,11 @@
                                         <exclude>*</exclude>
                                     </excludes>
                                     <!-- Beside jackson-core: Lombok, which is needed at compile time only, the
-                                         JUnit stack of the tests with what it brings, and the CUI test stack of the
-                                         tests. The two CUI test artifacts are bound to test scope; the
-                                         cui-java-tools they bring stays unbound, because the rule cannot tell the
-                                         scope of a transitive dependency -->
+                                         JUnit stack of the tests with what it brings, the CUI test stack of the
+                                         tests, and Awaitility for the condition waits of the tests. The CUI test
+                                         artifacts and Awaitility are bound to test scope; the cui-java-tools they
+                                         bring and the Hamcrest of Awaitility stay unbound, because the rule cannot
+                                         tell the scope of a transitive dependency -->
                                     <includes>
                                         <include>com.fasterxml.jackson.core:jackson-core</include>
                                         <include>org.projectlombok:lombok</include>
@@ -168,6 +169,8 @@
                                         <include>de.cuioss.test:cui-test-generator:*:jar:test</include>
                                         <include>de.cuioss.test:cui-test-juli-logger:*:jar:test</include>
                                         <include>de.cuioss:cui-java-tools</include>
+                                        <include>org.awaitility:awaitility:*:jar:test</include>
+                                        <include>org.hamcrest:hamcrest</include>
                                     </includes>
                                     <message>pm-api depends on jackson-core only.</message>
                                 </bannedDependencies>
