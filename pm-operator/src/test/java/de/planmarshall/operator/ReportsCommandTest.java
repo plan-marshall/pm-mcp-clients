@@ -78,8 +78,8 @@ class ReportsCommandTest {
     @Test
     @DisplayName("reports in German names this machine, the project and the later sending in German")
     void reportsListInGerman() throws Exception {
-        var systemId = "rep-" + Generators.integers(1000, 9999).next();
-        var projectId = "rep-" + Generators.integers(1000, 9999).next();
+        var systemId = "rep-" + Generators.integers(1000, 4999).next();
+        var projectId = "rep-" + Generators.integers(5000, 9999).next();
         var project = Generators.letterStrings(6, 12).next().toLowerCase();
         fixture.start((request, response) -> {
             if ("/api/v1/reports".equals(request.target()) && "GET".equals(request.method())) {
@@ -387,9 +387,10 @@ class ReportsCommandTest {
     @MethodSource("refusalOrders")
     @DisplayName("reports read names a refusal other than 404 with its cause on stderr, marks the others and exits 1")
     void reportsReadOtherRefusal(int status, boolean refusedFirst) throws Exception {
-        var refusedId = "rep-" + Generators.integers(1000, 9999).next();
+        var markedId = "rep-" + Generators.integers(1000, 4999).next();
+        var refusedId = "rep-" + Generators.integers(5000, 9999).next();
         var cause = Generators.letterStrings(8, 16).next();
-        var markPath = "/api/v1/reports/rep-001/read";
+        var markPath = "/api/v1/reports/" + markedId + "/read";
         var refusedPath = "/api/v1/reports/" + refusedId + "/read";
         var requests = new CopyOnWriteArrayList<String>();
         fixture.start((request, response) -> {
@@ -404,8 +405,8 @@ class ReportsCommandTest {
         });
 
         int code = refusedFirst
-                            ? execute("reports", "read", refusedId, "rep-001")
-                            : execute("reports", "read", "rep-001", refusedId);
+                            ? execute("reports", "read", refusedId, markedId)
+                            : execute("reports", "read", markedId, refusedId);
 
         // the recovery is proven only if each POST is sent in the order the ids were named
         var expectedPosts = refusedFirst
