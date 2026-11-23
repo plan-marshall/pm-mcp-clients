@@ -36,8 +36,8 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 
 /**
  * The on-demand start end to end on the JVM: a staged {@code pm-mcpd} (a shell script reporting its
- * pid and process group) is started through FFM {@code posix_spawn}; the test brings up the fake
- * runtime when the script reports, and the client's request then succeeds.
+ * pid and process group) is started through FFM {@code posix_spawn}; the test waits a stated budget
+ * for the script to report and then brings the fake runtime up, and the client's request succeeds.
  */
 @DisplayName("Detached on-demand start (gate 8, JVM)")
 @EnabledOnOs({OS.MAC, OS.LINUX})

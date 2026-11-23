@@ -178,7 +178,7 @@
                                         <include>de.cuioss.test:cui-test-juli-logger:*:jar:test</include>
                                         <include>de.cuioss:cui-java-tools</include>
                                         <include>org.awaitility:awaitility:*:jar:test</include>
-                                        <include>org.hamcrest:hamcrest</include>
+                                        <include>org.hamcrest:hamcrest:*:jar:test</include>
                                     </includes>
                                     <message>pm-api depends on jackson-core only.</message>
                                 </bannedDependencies>
