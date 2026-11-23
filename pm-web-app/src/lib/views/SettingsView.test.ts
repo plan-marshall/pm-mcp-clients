@@ -471,7 +471,7 @@ describe('SettingsView component', () => {
     expect(reads[0]).toBeInstanceOf(AbortSignal);
   });
 
-  it('returns to the route the caller came from on Back', async () => {
+  it('does not render an in-page back button (D3)', async () => {
     runtimeStore.set(
       makeRuntimeState({
         isInitialized: true,

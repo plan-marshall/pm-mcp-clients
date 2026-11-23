@@ -127,16 +127,9 @@
     const plans = detail.plans ?? [];
     const epics = detail.epics ?? [];
 
-    const runningPlans = plans.filter((p) => p.phase_state === 'running');
-    const runningEpics = epics.filter((e) => (e.running_plans_count ?? 0) > 0);
-    const otherPlans = plans.filter((p) => p.phase_state !== 'running');
-    const otherEpics = epics.filter((e) => (e.running_plans_count ?? 0) <= 0);
-
     return [
-      ...runningPlans.map(toPlanItem),
-      ...runningEpics.map(toEpicItem),
-      ...otherPlans.map(toPlanItem),
-      ...otherEpics.map(toEpicItem),
+      ...plans.map(toPlanItem),
+      ...epics.map(toEpicItem),
     ];
   });
 

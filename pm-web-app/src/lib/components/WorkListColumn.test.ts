@@ -58,7 +58,7 @@ describe('WorkListColumn component', () => {
     expect(screen.getByTestId('work-list-loading')).toBeInTheDocument();
   });
 
-  it('renders plans and epics with running work first, KindMark, status, and progress pill (D4)', async () => {
+  it('renders plans and epics in the order served, KindMark, status, and progress pill (D4)', async () => {
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(mockDetail);
 
     render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'fix-relay' });
@@ -70,17 +70,16 @@ describe('WorkListColumn component', () => {
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(4);
 
-    // Running work should come first: running plan and running epic
-    expect(items[0]).toHaveTextContent('Fix Relay Transport');
-    expect(items[1]).toHaveTextContent('Relay Hardening');
-    // Then remainder: staged plan and staged epic
-    expect(items[2]).toHaveTextContent('Staged Plan');
-    expect(items[3]).toHaveTextContent('Staged Epic');
+    // List appears in the order the runtime served (PLAN-82) and never sorted again
+    expect(items[0]).toHaveTextContent('Staged Plan');
+    expect(items[1]).toHaveTextContent('Fix Relay Transport');
+    expect(items[2]).toHaveTextContent('Staged Epic');
+    expect(items[3]).toHaveTextContent('Relay Hardening');
 
-    // Fix Relay Transport has progress pill
+    // Progress pills in order
     const progressPills = screen.getAllByTestId('plan-progress');
-    expect(progressPills[0]).toHaveTextContent('2/3');
-    expect(progressPills[1]).toHaveTextContent('0/2');
+    expect(progressPills[0]).toHaveTextContent('0/2');
+    expect(progressPills[1]).toHaveTextContent('2/3');
 
     // Selected row has aria-current="page"
     const currentLink = screen.getByRole('link', { name: /Fix Relay Transport/i });
