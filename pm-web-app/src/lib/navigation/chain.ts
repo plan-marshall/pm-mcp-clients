@@ -243,7 +243,7 @@ export function upOf(chain: ChainSegment[], route?: AppRoute): ChainSegment | nu
     return null;
   }
   const parent = chain.at(-2);
-  if (!parent || !parent.address) {
+  if (!parent?.address) {
     return null;
   }
   return parent;
