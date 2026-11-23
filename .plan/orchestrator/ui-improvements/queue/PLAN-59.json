@@ -2,10 +2,10 @@
   "id": "PLAN-59",
   "slug": "web-projects-and-onboarding",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-59-web-projects-and-onboarding",
+  "pr": "538",
+  "landing": "landings/PLAN-59.md",
   "seq": 59
 }
