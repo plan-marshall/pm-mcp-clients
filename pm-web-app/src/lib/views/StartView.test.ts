@@ -7,7 +7,7 @@ import { ClientError } from '../api/errors';
 import { runtimeStore } from '../stores/runtime';
 import { ENTRY_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
-import { PROJECT, entry, representation, source, sources } from './startFixtures';
+import { PROJECT, RECIPES, entry, offersFor, representation, source, sources } from './startFixtures';
 
 /**
  * The start view's two patterns: the error block of a failed read with its act, the skeletons of a
@@ -114,7 +114,7 @@ describe('StartView', () => {
     const rendered = render(StartView, { projectId: PROJECT, kind: 'plan' });
     await screen.findByTestId('source-list');
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Abandon' }));
+    await fireEvent.click(screen.getByRole('button', { name: 'More' }));
     await fireEvent.click(await screen.findByTestId('action-abandon'));
     expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
 
@@ -345,6 +345,124 @@ describe('StartView', () => {
       await vi.waitFor(() =>
         expect(screen.queryByTestId('plan-drop-relay-cursor-order')).toBeNull(),
       );
+    });
+  });
+
+  describe('the gate sentence and the abandon act (D0)', () => {
+    it("names the gate's own bound only when the gate itself timed out", async () => {
+      vi.spyOn(apiClient, 'openEntry').mockRejectedValue(new ClientError('timeout'));
+      vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+
+      const cause = await screen.findByTestId('start-gate-cause');
+      expect(cause.textContent?.trim()).toBe("The project's setup did not answer within 20 seconds.");
+      // One live region for one event: the error block announces, the sentence beside it does not.
+      expect(
+        screen.getByTestId('start-error').querySelectorAll('[role="status"], [role="alert"]'),
+      ).toHaveLength(1);
+    });
+
+    it('keeps the gate sentence off a timeout of the resume read', async () => {
+      vi.spyOn(apiClient, 'getEntry').mockRejectedValue(new ClientError('timeout'));
+      vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+
+      render(StartView, { entryId: 'ent-3f9a2c41' });
+
+      expect(await screen.findByTestId('start-error')).toBeInTheDocument();
+      expect(screen.queryByTestId('start-gate-cause')).toBeNull();
+      expect(
+        screen.getByTestId('start-error').querySelectorAll('[role="status"], [role="alert"]'),
+      ).toHaveLength(1);
+    });
+
+    it('aborts the gate request when the view is destroyed', async () => {
+      let signal: AbortSignal | undefined;
+      let asked = false;
+      vi.spyOn(apiClient, 'openEntry').mockImplementation((_project, _request, passed) => {
+        asked = true;
+        signal = passed ?? undefined;
+        return new Promise(() => {});
+      });
+      vi.spyOn(apiClient, 'subscribeEntryEvents').mockReturnValue(() => {});
+
+      const rendered = render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('start-loading');
+      expect(asked).toBe(true);
+
+      rendered.unmount();
+
+      expect(signal?.aborted).toBe(true);
+    });
+
+    it('keeps the route and names the failure when the abandon act fails', async () => {
+      arrangeOpen();
+      runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: 'ent-3f9a2c41' }));
+      vi.spyOn(apiClient, 'actEntry').mockRejectedValue(new ClientError('timeout'));
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
+      await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+      await fireEvent.click(await screen.findByTestId('action-abandon'));
+      const dialog = await screen.findByTestId('confirm-dialog');
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Abandon' }));
+
+      expect(await screen.findByTestId('start-action-error')).toHaveTextContent(
+        'if it keeps taking this long',
+      );
+      expect(get(runtimeStore).currentRoute).toBe('start');
+    });
+
+    it('abandons the entry and goes to the projects when the act answers', async () => {
+      arrangeOpen();
+      runtimeStore.set(makeRuntimeState({ currentRoute: 'start', startEntryId: 'ent-3f9a2c41' }));
+      const act = vi.spyOn(apiClient, 'actEntry').mockResolvedValue(sources());
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
+      await fireEvent.click(screen.getByRole('button', { name: 'More' }));
+      await fireEvent.click(await screen.findByTestId('action-abandon'));
+      const dialog = await screen.findByTestId('confirm-dialog');
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Abandon' }));
+
+      expect(act).toHaveBeenCalledWith('ent-3f9a2c41', 'abandon', {});
+      await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('projects'));
+    });
+
+    it('names the overflow trigger away from its one item', async () => {
+      arrangeOpen();
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
+
+      const trigger = screen.getByRole('button', { name: 'More' });
+      expect(trigger).not.toHaveAccessibleName('Abandon');
+      await fireEvent.click(trigger);
+      expect(await screen.findByTestId('action-abandon')).toHaveAccessibleName('Abandon');
+    });
+
+    it('names every recipe row act with its recipe', async () => {
+      arrangeOpen(representation({ entry: entry({ state: 'start.recipe' }), recipes: RECIPES }));
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('recipe-code-review');
+
+      expect(
+        screen.getByRole('button', { name: 'Choose a recipe code-review' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Choose a recipe no-modules' }),
+      ).toBeInTheDocument();
+    });
+
+    it('names why Continue cannot run yet', async () => {
+      arrangeOpen(sources({ can_continue: false, kind_offers: offersFor('plan') }));
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
+
+      const continued = screen.getByTestId('source-continue');
+      expect(continued).toHaveAttribute('aria-disabled', 'true');
+      const describedBy = continued.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy!)).toHaveTextContent('waits for 1 source');
     });
   });
 

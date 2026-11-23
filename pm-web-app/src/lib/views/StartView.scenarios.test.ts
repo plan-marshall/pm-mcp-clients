@@ -89,7 +89,7 @@ describe('start-sources: a plan from a description and from an issue of another 
 
     await screen.findByTestId('source-list');
     expect(screen.getByTestId('sources-title')).toHaveTextContent('What does the plan start from?');
-    expect(screen.getByTestId('source-continue')).toBeDisabled();
+    expect(screen.getByTestId('source-continue')).toHaveAttribute('aria-disabled', 'true');
 
     await fireEvent.input(screen.getByTestId('description-input'), {
       target: { value: 'Add a Codeberg provider for issues' },
