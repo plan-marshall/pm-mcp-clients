@@ -70,8 +70,9 @@ public final class StagedDaemon {
     /**
      * Waits until the staged runtime reported its start.
      *
-     * <p>Interruption surfaces as Awaitility's unchecked {@code ConditionInterruptedException},
-     * so the method declares no {@code InterruptedException} of its own.
+     * <p>An interruption does not end the wait. Awaitility keeps waiting until the marker appears or
+     * the timeout expires, then restores the thread's interrupt flag, so the method declares no
+     * {@code InterruptedException} of its own.
      *
      * @param timeout the maximum wait
      * @return {@code {pid, pgid}}, or {@code null} on timeout

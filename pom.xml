@@ -162,10 +162,12 @@
                                     </excludes>
                                     <!-- Beside jackson-core: Lombok, which is needed at compile time only, the
                                          JUnit stack of the tests with what it brings, the CUI test stack of the
-                                         tests, and Awaitility for the condition waits of the tests. The test
-                                         artifacts the rule can resolve are bound to test scope, so a compile-scoped
-                                         copy is refused; cui-java-tools stays unbound because the CUI test stack
-                                         brings it at compile scope -->
+                                         tests, and Awaitility for the condition waits of the tests. The entries
+                                         that name *:jar:test (the CUI test artifacts, Awaitility and the
+                                         Hamcrest it brings) refuse a compile-scoped copy of those coordinates;
+                                         the JUnit, JSpecify, Lombok and cui-java-tools entries are
+                                         unrestricted, because their coordinates are admitted whatever scope
+                                         the classpath resolves for them -->
                                     <includes>
                                         <include>com.fasterxml.jackson.core:jackson-core</include>
                                         <include>org.projectlombok:lombok</include>
