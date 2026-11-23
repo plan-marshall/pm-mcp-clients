@@ -255,8 +255,8 @@ test.describe('The app shell on fully-onboarded', () => {
     await expect(topBar).toContainText('Cleanup');
 
     await page.goto('/plans/fix-relay');
-    await expect(topBar).toContainText('Work');
-    await expect(topBar).toContainText('fix-relay');
+    await expect(topBar).toContainText('Running work');
+    await expect(topBar).toContainText('Fix Relay Transport');
   });
 
   test('shows the bottom bar on the phone, with What waits first', async ({ page }) => {

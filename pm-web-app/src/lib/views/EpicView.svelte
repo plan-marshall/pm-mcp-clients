@@ -43,6 +43,11 @@
     const current = epicId;
     if (current && lastLoadedEpicId !== null && current !== lastLoadedEpicId) {
       lastLoadedEpicId = current;
+      review = null;
+      reviewOpen = false;
+      reviewNotice = '';
+      reviewChat = null;
+      reviewChatOpen = false;
       void loadEpic(true);
     } else if (current && lastLoadedEpicId === null) {
       lastLoadedEpicId = current;
@@ -270,15 +275,19 @@
     }
   });
 
+  let epicLoadGeneration = 0;
   async function loadEpic(initial = false) {
     if (!epicId) return;
+    const currentId = epicId;
+    const gen = ++epicLoadGeneration;
     if (initial) isLoading = true;
     errorCode = null;
     resourceErrorCode = null;
     const [process, epicResource] = await Promise.allSettled([
-      apiClient.getEpicProcess(epicId),
-      apiClient.getEpicResource(epicId),
+      apiClient.getEpicProcess(currentId),
+      apiClient.getEpicResource(currentId),
     ]);
+    if (gen !== epicLoadGeneration) return;
     if (process.status === 'fulfilled') {
       epic = process.value;
     }

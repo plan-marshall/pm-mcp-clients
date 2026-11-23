@@ -1377,6 +1377,46 @@ const LIFECYCLE_EVENTS = new Set([
   'runtime.stopping',
 ]);
 
+function handleDeletionEvent(event: string, data: unknown): boolean {
+  if (event === 'plan.deleted' || event === 'plan.removed') {
+    const payload = (data || {}) as { plan_id?: string; name?: string; title?: string };
+    const planId = payload.plan_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'plan' && (state.selectedPlanId === planId || currentAddress()?.planId === planId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || planId || 'plan');
+    }
+    return true;
+  }
+  if (event === 'epic.deleted' || event === 'epic.removed') {
+    const payload = (data || {}) as { epic_id?: string; name?: string; title?: string };
+    const epicId = payload.epic_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'epic' && (state.selectedEpicId === epicId || currentAddress()?.epicId === epicId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || epicId || 'epic');
+    }
+    return true;
+  }
+  if (event === 'report.deleted' || event === 'report.detail.deleted') {
+    const payload = (data || {}) as { report_id?: string; name?: string; title?: string };
+    const reportId = payload.report_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'report' && (state.selectedReportId === reportId || currentAddress()?.reportId === reportId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || reportId || 'report');
+    }
+    return true;
+  }
+  if (event === 'task.deleted' || event === 'task.removed') {
+    const payload = (data || {}) as { task_id?: string; name?: string; title?: string };
+    const taskId = payload.task_id;
+    const state = get(runtimeStore);
+    if (state.currentRoute === 'task' && (state.selectedTaskId === taskId || currentAddress()?.taskId === taskId)) {
+      fallBackFromDeletedObject(payload.title || payload.name || taskId || 'task');
+    }
+    return true;
+  }
+  return false;
+}
+
 export function handleRuntimeEvent(event: string, data: unknown): void {
   if (event === 'stream.closed') {
     if ((data as { reason?: string })?.reason === 'listener_closed') {
@@ -1400,34 +1440,8 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     // The list of what waits is the shell's count and the start page's rows: it follows every
     // change the runtime announces, whoever resolved the item.
     void handleNeedsOperatorChanged();
-  } else if (event === 'plan.deleted' || event === 'plan.removed') {
-    const payload = (data || {}) as { plan_id?: string; name?: string; title?: string };
-    const planId = payload.plan_id;
-    const state = get(runtimeStore);
-    if (state.currentRoute === 'plan' && (state.selectedPlanId === planId || currentAddress()?.planId === planId)) {
-      fallBackFromDeletedObject(payload.title || payload.name || planId || 'plan');
-    }
-  } else if (event === 'epic.deleted' || event === 'epic.removed') {
-    const payload = (data || {}) as { epic_id?: string; name?: string; title?: string };
-    const epicId = payload.epic_id;
-    const state = get(runtimeStore);
-    if (state.currentRoute === 'epic' && (state.selectedEpicId === epicId || currentAddress()?.epicId === epicId)) {
-      fallBackFromDeletedObject(payload.title || payload.name || epicId || 'epic');
-    }
-  } else if (event === 'report.deleted' || event === 'report.detail.deleted') {
-    const payload = (data || {}) as { report_id?: string; name?: string; title?: string };
-    const reportId = payload.report_id;
-    const state = get(runtimeStore);
-    if (state.currentRoute === 'report' && (state.selectedReportId === reportId || currentAddress()?.reportId === reportId)) {
-      fallBackFromDeletedObject(payload.title || payload.name || reportId || 'report');
-    }
-  } else if (event === 'task.deleted' || event === 'task.removed') {
-    const payload = (data || {}) as { task_id?: string; name?: string; title?: string };
-    const taskId = payload.task_id;
-    const state = get(runtimeStore);
-    if (state.currentRoute === 'task' && (state.selectedTaskId === taskId || currentAddress()?.taskId === taskId)) {
-      fallBackFromDeletedObject(payload.title || payload.name || taskId || 'task');
-    }
+  } else if (handleDeletionEvent(event, data)) {
+    // Deletion handled above
   }
 }
 

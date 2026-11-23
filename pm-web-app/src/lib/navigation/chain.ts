@@ -31,6 +31,174 @@ export interface ChainFacts {
   titleState?: TitleState;
 }
 
+type Translator = (key: string, args?: Record<string, string | number>) => string;
+
+function buildTaskChain(facts: ChainFacts, translate: Translator): ChainSegment[] {
+  const plan = facts.plan;
+  const planId = facts.planId || plan?.plan_id || '';
+  const planTitle = plan?.title || planId;
+  const projectId = facts.projectId || plan?.project?.project_id || '';
+  const projectTitle = facts.projectDisplayName || plan?.project?.display_name || projectId;
+  const epic = plan?.epic;
+
+  const segments: ChainSegment[] = [
+    {
+      kind: 'plan',
+      title: translate('overview.running.title'),
+      address: { route: 'overview' },
+    },
+  ];
+
+  if (projectId) {
+    segments.push({
+      kind: 'project',
+      title: projectTitle,
+      address: { route: 'overview', project: projectId },
+    });
+  }
+
+  if (epic) {
+    segments.push({
+      kind: 'epic',
+      title: epic.title || epic.epic_id,
+      address: { route: 'epic', epicId: epic.epic_id },
+    });
+  }
+
+  if (planId) {
+    segments.push({
+      kind: 'plan',
+      title: planTitle,
+      address: { route: 'plan', planId },
+      id: true,
+    });
+  }
+
+  segments.push({
+    kind: 'plan',
+    title: facts.taskTitle || facts.taskId || translate('state.node_kind.tasks') || 'Task',
+    id: true,
+  });
+
+  return segments;
+}
+
+function buildPlanChain(facts: ChainFacts, translate: Translator): ChainSegment[] {
+  const plan = facts.plan;
+  const planId = facts.planId || plan?.plan_id || '';
+  const planTitle = plan?.title || planId;
+  const projectId = facts.projectId || plan?.project?.project_id || '';
+  const projectTitle = facts.projectDisplayName || plan?.project?.display_name || projectId;
+  const epic = plan?.epic;
+
+  const segments: ChainSegment[] = [
+    {
+      kind: 'plan',
+      title: translate('overview.running.title'),
+      address: { route: 'overview' },
+    },
+  ];
+
+  if (projectId) {
+    segments.push({
+      kind: 'project',
+      title: projectTitle,
+      address: { route: 'overview', project: projectId },
+    });
+  }
+
+  if (epic) {
+    segments.push({
+      kind: 'epic',
+      title: epic.title || epic.epic_id,
+      address: { route: 'epic', epicId: epic.epic_id },
+    });
+  }
+
+  segments.push({
+    kind: 'plan',
+    title: planTitle,
+    id: true,
+  });
+
+  return segments;
+}
+
+function buildEpicChain(facts: ChainFacts, translate: Translator): ChainSegment[] {
+  const epic = facts.epic;
+  const epicId = facts.epicId || epic?.epic_id || '';
+  const epicTitle = epic?.display_name || epicId;
+  const projectId = facts.projectId || epic?.project_id || '';
+  const projectTitle = facts.projectDisplayName || projectId;
+
+  const segments: ChainSegment[] = [
+    {
+      kind: 'plan',
+      title: translate('overview.running.title'),
+      address: { route: 'overview' },
+    },
+  ];
+
+  if (projectId) {
+    segments.push({
+      kind: 'project',
+      title: projectTitle,
+      address: { route: 'overview', project: projectId },
+    });
+  }
+
+  segments.push({
+    kind: 'epic',
+    title: epicTitle,
+    id: true,
+  });
+
+  return segments;
+}
+
+function buildOverviewChain(facts: ChainFacts, translate: Translator): ChainSegment[] {
+  const projectId = facts.projectId;
+  const projectTitle = facts.projectDisplayName || projectId || '';
+
+  if (projectId) {
+    return [
+      {
+        kind: 'plan',
+        title: translate('overview.running.title'),
+        address: { route: 'overview' },
+      },
+      {
+        kind: 'project',
+        title: projectTitle,
+        id: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      kind: 'plan',
+      title: translate('overview.running.title'),
+    },
+  ];
+}
+
+function buildFallbackChain(
+  route: AppRoute,
+  facts: ChainFacts,
+  translate: Translator,
+): ChainSegment[] {
+  const rawCrumbs = pathOf(route, facts.titleState ?? {});
+  return rawCrumbs.map((crumb, idx) => ({
+    title: translate(crumb.key, crumb.args),
+    id: crumb.id,
+    address:
+      idx < rawCrumbs.length - 1 && route === 'cleanup' && crumb.key === 'system.view.title'
+        ? { route: 'system' }
+        : undefined,
+  }));
+}
+
 /**
  * Gives the levels of a route, from the lens down (project, epic, plan, task), each with kind,
  * title and address (PLAN-144 D2).
@@ -43,168 +211,20 @@ export interface ChainFacts {
 export function buildChain(
   route: AppRoute,
   facts: ChainFacts = {},
-  translate: (key: string, args?: Record<string, string | number>) => string = get(t),
+  translate: Translator = get(t),
 ): ChainSegment[] {
-  if (route === 'task') {
-    const plan = facts.plan;
-    const planId = plan?.plan_id || facts.planId || '';
-    const planTitle = plan?.title || planId;
-    const projectId = plan?.project?.project_id || facts.projectId || '';
-    const projectTitle = plan?.project?.display_name || projectId;
-    const epic = plan?.epic;
-
-    const segments: ChainSegment[] = [
-      {
-        kind: 'plan',
-        title: translate('overview.running.title'),
-        address: { route: 'overview' },
-      },
-    ];
-
-    if (projectId) {
-      segments.push({
-        kind: 'project',
-        title: projectTitle,
-        address: { route: 'overview', project: projectId },
-      });
-    }
-
-    if (epic) {
-      segments.push({
-        kind: 'epic',
-        title: epic.title || epic.epic_id,
-        address: { route: 'epic', epicId: epic.epic_id },
-      });
-    }
-
-    if (planId) {
-      segments.push({
-        kind: 'plan',
-        title: planTitle,
-        address: { route: 'plan', planId },
-        id: true,
-      });
-    }
-
-    segments.push({
-      kind: 'plan',
-      title: facts.taskTitle || facts.taskId || 'Task',
-      id: true,
-    });
-
-    return segments;
+  switch (route) {
+    case 'task':
+      return buildTaskChain(facts, translate);
+    case 'plan':
+      return buildPlanChain(facts, translate);
+    case 'epic':
+      return buildEpicChain(facts, translate);
+    case 'overview':
+      return buildOverviewChain(facts, translate);
+    default:
+      return buildFallbackChain(route, facts, translate);
   }
-
-  if (route === 'plan') {
-    const plan = facts.plan;
-    const planId = plan?.plan_id || facts.planId || '';
-    const planTitle = plan?.title || planId;
-    const projectId = plan?.project?.project_id || facts.projectId || '';
-    const projectTitle = plan?.project?.display_name || projectId;
-    const epic = plan?.epic;
-
-    const segments: ChainSegment[] = [
-      {
-        kind: 'plan',
-        title: translate('overview.running.title'),
-        address: { route: 'overview' },
-      },
-    ];
-
-    if (projectId) {
-      segments.push({
-        kind: 'project',
-        title: projectTitle,
-        address: { route: 'overview', project: projectId },
-      });
-    }
-
-    if (epic) {
-      segments.push({
-        kind: 'epic',
-        title: epic.title || epic.epic_id,
-        address: { route: 'epic', epicId: epic.epic_id },
-      });
-    }
-
-    segments.push({
-      kind: 'plan',
-      title: planTitle,
-      id: true,
-    });
-
-    return segments;
-  }
-
-  if (route === 'epic') {
-    const epic = facts.epic;
-    const epicId = epic?.epic_id || facts.epicId || '';
-    const epicTitle = epic?.display_name || epicId;
-    const projectId = epic?.project_id || facts.projectId || '';
-    const projectTitle = facts.projectDisplayName || projectId;
-
-    const segments: ChainSegment[] = [
-      {
-        kind: 'plan',
-        title: translate('overview.running.title'),
-        address: { route: 'overview' },
-      },
-    ];
-
-    if (projectId) {
-      segments.push({
-        kind: 'project',
-        title: projectTitle,
-        address: { route: 'overview', project: projectId },
-      });
-    }
-
-    segments.push({
-      kind: 'epic',
-      title: epicTitle,
-      id: true,
-    });
-
-    return segments;
-  }
-
-  if (route === 'overview') {
-    const projectId = facts.projectId;
-    const projectTitle = facts.projectDisplayName || projectId || '';
-
-    if (projectId) {
-      return [
-        {
-          kind: 'plan',
-          title: translate('overview.running.title'),
-          address: { route: 'overview' },
-        },
-        {
-          kind: 'project',
-          title: projectTitle,
-          id: true,
-        },
-      ];
-    }
-
-    return [
-      {
-        kind: 'plan',
-        title: translate('overview.running.title'),
-      },
-    ];
-  }
-
-  // Outside the lenses: fallback to group and title
-  const rawCrumbs = pathOf(route, facts.titleState ?? {});
-  return rawCrumbs.map((crumb, idx) => ({
-    title: translate(crumb.key, crumb.args),
-    id: crumb.id,
-    address:
-      idx < rawCrumbs.length - 1 && route === 'cleanup' && crumb.key === 'system.view.title'
-        ? { route: 'system' }
-        : undefined,
-  }));
 }
 
 /**
@@ -222,8 +242,8 @@ export function upOf(chain: ChainSegment[], route?: AppRoute): ChainSegment | nu
   if (chain.length < 2) {
     return null;
   }
-  const parent = chain[chain.length - 2];
-  if (!parent.address) {
+  const parent = chain.at(-2);
+  if (!parent || !parent.address) {
     return null;
   }
   return parent;

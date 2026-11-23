@@ -42,15 +42,19 @@
   });
 
   const chain = $derived(
-    buildChain($runtimeStore.currentRoute, {
-      plan: $runtimeStore.currentProcessTree,
-      epic: $runtimeStore.currentEpicResource,
-      planId: $runtimeStore.selectedPlanId,
-      epicId: $runtimeStore.selectedEpicId,
-      taskId: $runtimeStore.selectedTaskId,
-      projectId: $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
-      titleState: $runtimeStore,
-    }),
+    buildChain(
+      $runtimeStore.currentRoute,
+      {
+        plan: $runtimeStore.currentProcessTree,
+        epic: $runtimeStore.currentEpicResource,
+        planId: $runtimeStore.selectedPlanId,
+        epicId: $runtimeStore.selectedEpicId,
+        taskId: $runtimeStore.selectedTaskId,
+        projectId: $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
+        titleState: $runtimeStore,
+      },
+      $t,
+    ),
   );
 
   const crumbs = $derived<Crumb[]>(

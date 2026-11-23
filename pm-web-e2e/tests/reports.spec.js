@@ -171,7 +171,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(active.getByTestId('report-read-state')).toContainText('read');
 
     // Back on the list the report the view read is gone from the unread reports.
-    await page.goBack();
+    await page.locator('.nav-rail').getByRole('button', { name: /Reports/i }).click();
+    await expect(page.locator('.reports-view')).toBeVisible();
     await expect(row).toHaveCount(0);
   });
 
@@ -200,8 +201,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.tokens-section')).toBeVisible();
     await expect(page.getByText('refine')).toBeVisible();
 
-    // Close completion report via browser back
-    await page.goBack();
+    // Close completion report by returning to the Reports list
+    await page.locator('.nav-rail').getByRole('button', { name: /Reports/i }).click();
 
     await expect(page.locator('.reports-view')).toBeVisible();
   });

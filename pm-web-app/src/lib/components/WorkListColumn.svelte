@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { get } from 'svelte/store';
   import { t } from '../i18n';
   import KindMark from './KindMark.svelte';
@@ -29,37 +30,52 @@
   let detail = $state<ProjectDetailResponse | null>(null);
   let isLoading = $state(false);
   let error = $state<string | null>(null);
+  let loadGeneration = 0;
 
   async function loadDetail(): Promise<void> {
-    if (!projectId) return;
+    const currentId = projectId;
+    if (!currentId) return;
+    const gen = ++loadGeneration;
     isLoading = detail === null;
     error = null;
     try {
-      detail = await apiClient.getProjectDetail(projectId);
+      const res = await apiClient.getProjectDetail(currentId);
+      if (gen !== loadGeneration) return;
+      detail = res;
     } catch (err: unknown) {
+      if (gen !== loadGeneration) return;
       error = err instanceof Error ? err.message : 'failed';
     } finally {
-      isLoading = false;
+      if (gen === loadGeneration) {
+        isLoading = false;
+      }
     }
   }
 
   $effect(() => {
-    if (projectId) {
-      void loadDetail();
+    const id = projectId;
+    if (id) {
+      untrack(() => {
+        void loadDetail();
+      });
     }
   });
 
   const upParent = $derived(
     upOf(
-      buildChain($runtimeStore.currentRoute, {
-        plan: $runtimeStore.currentProcessTree,
-        epic: $runtimeStore.currentEpicResource,
-        planId: currentPlanId || $runtimeStore.selectedPlanId,
-        epicId: currentEpicId || $runtimeStore.selectedEpicId,
-        taskId: $runtimeStore.selectedTaskId,
-        projectId: projectId || $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
-        titleState: $runtimeStore,
-      }),
+      buildChain(
+        $runtimeStore.currentRoute,
+        {
+          plan: $runtimeStore.currentProcessTree,
+          epic: $runtimeStore.currentEpicResource,
+          planId: currentPlanId || $runtimeStore.selectedPlanId,
+          epicId: currentEpicId || $runtimeStore.selectedEpicId,
+          taskId: $runtimeStore.selectedTaskId,
+          projectId: projectId || $runtimeStore.selectedProjectId || $runtimeStore.lensProject,
+          titleState: $runtimeStore,
+        },
+        $t,
+      ),
     ),
   );
 

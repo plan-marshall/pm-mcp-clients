@@ -63,6 +63,7 @@
   let clockTimer: ReturnType<typeof setInterval> | null = null;
 
   let activeDetailPlanId = $state<string | null>(null);
+  let activeDetailReportId = $state<string | null>(null);
   let syncedRouteReportPlan: string | null | undefined;
 
   /** The filter query; it runs over the loaded reports only. */
@@ -363,6 +364,7 @@
   function closeDetail(): void {
     flushRetainedReads();
     activeDetailPlanId = null;
+    activeDetailReportId = null;
     syncedRouteReportPlan = null;
     runtimeStore.update((s) => ({
       ...s,
@@ -383,7 +385,10 @@
     if (routePlan === syncedRouteReportPlan) return;
     syncedRouteReportPlan = routePlan;
     activeDetailPlanId = routePlan;
-    if (routePlan === null) flushRetainedReads();
+    if (routePlan === null) {
+      activeDetailReportId = null;
+      flushRetainedReads();
+    }
   });
 
   onMount(async () => {
@@ -411,14 +416,17 @@
 
     if (requestedReportId && !requestedReport && hasOlder) {
       while (!requestedReport && hasOlder && isMounted) {
+        const prevCount = items.length;
         await loadOlder();
+        if (items.length <= prevCount) break;
         requestedReport = items.find((item) => item.id === requestedReportId);
       }
     }
 
-    if (requestedReportId && !requestedReport) {
+    if (requestedReportId && !requestedReport && isMounted) {
       try {
         const fetched = await apiClient.getReport(requestedReportId);
+        if (!isMounted) return;
         if (fetched) {
           requestedReport = fetched;
           if (!items.some((i) => i.id === fetched.id)) {
@@ -792,6 +800,7 @@
       ? (items.find((item) => item.id === reportId) ?? items.find((item) => planIdOf(item) === planId))
       : items.find((item) => planIdOf(item) === planId);
     const effectiveReportId = reportId ?? report?.id ?? null;
+    activeDetailReportId = effectiveReportId;
     runtimeStore.update((s) => ({
       ...s,
       selectedReportDetailPlanId: planId,
@@ -1291,7 +1300,9 @@
 {/snippet}
 
 {#snippet reportCard(item: ReportItem)}
-  {@const isActive = activeDetailPlanId !== null && activeDetailPlanId === planIdOf(item)}
+  {@const isActive =
+    activeDetailPlanId !== null &&
+    (activeDetailReportId ? item.id === activeDetailReportId : activeDetailPlanId === planIdOf(item))}
   {@const unread = isUnread(item)}
   <article
     class="report-card"

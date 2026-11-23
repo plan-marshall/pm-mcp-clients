@@ -60,6 +60,10 @@
     const current = planId;
     if (current && lastLoadedPlanId !== null && current !== lastLoadedPlanId) {
       lastLoadedPlanId = current;
+      reportPhaseBreakdown = null;
+      reportRoleBreakdown = null;
+      isLoadingBreakdown = false;
+      showTokenBreakdown = false;
       void loadPlanProcess(true);
     } else if (current && lastLoadedPlanId === null) {
       lastLoadedPlanId = current;
@@ -259,12 +263,16 @@
     }
   });
 
+  let processLoadGeneration = 0;
   async function loadPlanProcess(initial = false) {
     if (!planId) return;
+    const currentId = planId;
+    const gen = ++processLoadGeneration;
     if (initial) isLoading = true;
     errorCode = null;
     try {
-      const res = await apiClient.getPlanProcess(planId);
+      const res = await apiClient.getPlanProcess(currentId);
+      if (gen !== processLoadGeneration) return;
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
       runtimeStore.update((s) => ({ ...s, currentProcessTree: res }));
@@ -295,9 +303,12 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
+      if (gen !== processLoadGeneration) return;
       errorCode = errorCodeOf(err);
     } finally {
-      if (initial) isLoading = false;
+      if (gen === processLoadGeneration && initial) {
+        isLoading = false;
+      }
     }
   }
 
