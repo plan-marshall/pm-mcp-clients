@@ -87,10 +87,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     const jump = page.getByTestId('jump-btn');
     await expect(jump).toHaveAttribute('title', /position that runs now/);
     await expect(jump).not.toHaveAttribute('title', /^to where it is$/i);
-    await expect(page.getByTestId('back-btn')).toHaveAttribute(
-      'title',
-      /Return to the view you came from/,
-    );
+    await expect(page.getByTestId('back-btn')).toHaveCount(0);
   });
 
   test('keeps the chosen theme across a full load', async ({ page }) => {
@@ -258,8 +255,8 @@ test.describe('The app shell on fully-onboarded', () => {
     await expect(topBar).toContainText('Cleanup');
 
     await page.goto('/plans/fix-relay');
-    await expect(topBar).toContainText('Work');
-    await expect(topBar).toContainText('fix-relay');
+    await expect(topBar).toContainText('Running work');
+    await expect(topBar).toContainText('Fix Relay Transport');
   });
 
   test('shows the bottom bar on the phone, with What waits first', async ({ page }) => {
@@ -280,6 +277,10 @@ test.describe('The app shell on fully-onboarded', () => {
 
     // The reports moved into the More sheet, so More carries their unread count.
     await expect(page.getByTestId('bottom-more-count')).toHaveText('5');
+
+    // Opening More shows the destinations the sheet carries, including Reports.
+    await page.getByTestId('bottom-more').click();
+    await expect(page.getByTestId('sheet-reports')).toBeVisible();
   });
 });
 

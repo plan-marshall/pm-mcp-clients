@@ -274,10 +274,6 @@
 
   let erroredPlans = $derived(new Set(errorFindings.flatMap((finding) => finding.affected_plans)));
 
-  function backToEpic() {
-    navigateTo('epic');
-  }
-
   function countPlans(value: EpicDecomposition): number {
     return value.workstreams.reduce((sum, workstream) => sum + workstream.staged_plans.length, 0);
   }
@@ -320,9 +316,6 @@
       </h1>
       <div class="decomposition__head-actions">
         <span class="badge" data-testid="decomposition-status">{cut.status}</span>
-        <Button variant="ghost" onclick={backToEpic} data-testid="decomposition-back">
-          {$t('common.action.back')}
-        </Button>
       </div>
     </header>
 

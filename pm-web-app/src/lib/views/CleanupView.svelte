@@ -430,9 +430,6 @@
     {#if !job || allItems.length === 0}
       <div class="empty-state card">
         <h2>{$t('system.cleanup.none', { time: 'tomorrow 03:00' })}</h2>
-        <Button variant="secondary" onclick={() => navigateTo('system')}>
-          {$t('system.cleanup.back_to_system')}
-        </Button>
       </div>
     {:else}
       <!-- Summary Card -->

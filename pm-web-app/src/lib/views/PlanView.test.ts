@@ -11,7 +11,7 @@ import {
 } from '../api/client';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { formatTime } from '../display/format';
-import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
+import { runtimeStore, openPlanView } from '../stores/runtime';
 import { PLAN_PROCESS_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -165,6 +165,22 @@ describe('PlanView component', () => {
     );
 
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(mockPlan);
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          current_phase: 'execute',
+          phase_state: 'running',
+          tasks_done: 2,
+          tasks_total: 3,
+        },
+      ],
+      epics: [],
+      alongside_landings: [],
+    });
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue(mockActivity);
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
@@ -498,16 +514,20 @@ describe('PlanView component', () => {
     expect(prunedBox).toHaveTextContent('not in this plan: refine, outline (the land lane)');
   });
 
-  it('returns to the caller view from the back button', async () => {
-    navigateTo('overview');
+  it('does not render an in-page back button (D3)', async () => {
     openPlanView('fix-relay');
 
     render(PlanView);
 
     await screen.findByTestId('plan-title');
-    await fireEvent.click(screen.getByTestId('back-btn'));
+    expect(screen.queryByTestId('back-btn')).not.toBeInTheDocument();
+  });
 
-    expect(get(runtimeStore).currentRoute).toBe('overview');
+  it('renders WorkListColumn beside the plan on wide viewports (D4)', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    expect(screen.getByTestId('work-list-column')).toBeInTheDocument();
   });
 
   it('opens the parent epic from the breadcrumb in one step', async () => {
@@ -1596,12 +1616,10 @@ describe('PlanView’s Changes tab', () => {
     // Arrange: the activity's live stream carries the entry's own fields, not the fetched list's.
     runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
     let emit: ((event: string, data: unknown) => void) | null = null;
-    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
-      (_planId, _taskId, handler) => {
-        emit = handler;
-        return () => {};
-      },
-    );
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation((_planId, _taskId, handler) => {
+      emit = handler;
+      return () => {};
+    });
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
       task_id: 'TASK-003',
       role: 'implement',
@@ -1650,9 +1668,7 @@ describe('PlanView’s Changes tab', () => {
     await tick();
 
     // Assert
-    expect(window.location.search).toContain(
-      'file=pm-relay/src/main/java/Transport.java',
-    );
+    expect(window.location.search).toContain('file=pm-relay/src/main/java/Transport.java');
   });
 
   it('takes the size a capture announces and reads the list again', async () => {

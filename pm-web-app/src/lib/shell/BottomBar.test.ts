@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, fireEvent } from '@testing-library/svelte';
 import BottomBar from './BottomBar.svelte';
+import * as runtime from '../stores/runtime';
 import { runtimeStore } from '../stores/runtime';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -26,15 +27,26 @@ function openRoute(route: AppRoute): void {
 }
 
 /** @returns the bar, rendered against the English catalogue */
-function renderBar() {
+function renderBar(onChooseTheme: (choice: string) => void = () => {}) {
   currentLocale.set('en');
   messagesStore.set(loadMessages('en'));
-  return render(BottomBar, { props: { themeChoice: 'system', onChooseTheme: () => {} } });
+  return render(BottomBar, { props: { themeChoice: 'system', onChooseTheme } });
 }
 
 describe('BottomBar component', () => {
   beforeEach(() => {
     runtimeStore.update((state) => ({ ...state, unreadReportsCount: 0 }));
+  });
+
+  it('renders the bar items: What waits, Running work, Decisions, and More', () => {
+    openRoute('overview');
+
+    const { getByTestId } = renderBar();
+
+    expect(getByTestId('bottom-needs')).toBeInTheDocument();
+    expect(getByTestId('bottom-running')).toBeInTheDocument();
+    expect(getByTestId('bottom-decisions')).toBeInTheDocument();
+    expect(getByTestId('bottom-more')).toBeInTheDocument();
   });
 
   it('keeps the destination of its own route selected', () => {
@@ -63,5 +75,40 @@ describe('BottomBar component', () => {
     const { getByTestId } = renderBar();
 
     expect(getByTestId('bottom-more-count')).toHaveTextContent('5');
+  });
+
+  it('shows theme and language controls in the More sheet', async () => {
+    openRoute('overview');
+    const onChooseTheme = vi.fn();
+    const { getByTestId } = renderBar(onChooseTheme);
+
+    await fireEvent.click(getByTestId('bottom-more'));
+
+    expect(getByTestId('sheet-group-frame')).toBeInTheDocument();
+    expect(getByTestId('sheet-language-toggle')).toBeInTheDocument();
+    expect(getByTestId('sheet-theme-light')).toBeInTheDocument();
+    expect(getByTestId('sheet-theme-dark')).toBeInTheDocument();
+    expect(getByTestId('sheet-theme-system')).toBeInTheDocument();
+    expect(getByTestId('sheet-reports')).toBeInTheDocument();
+  });
+
+  it('calls openAttention when What waits is clicked', async () => {
+    openRoute('overview');
+    const attentionSpy = vi.spyOn(runtime, 'openAttention').mockImplementation(() => {});
+
+    const { getByTestId } = renderBar();
+    await fireEvent.click(getByTestId('bottom-needs'));
+
+    expect(attentionSpy).toHaveBeenCalled();
+  });
+
+  it('calls openRunningWork when Running work is clicked', async () => {
+    openRoute('inbox');
+    const runningWorkSpy = vi.spyOn(runtime, 'openRunningWork').mockResolvedValue(undefined);
+
+    const { getByTestId } = renderBar();
+    await fireEvent.click(getByTestId('bottom-running'));
+
+    expect(runningWorkSpy).toHaveBeenCalled();
   });
 });

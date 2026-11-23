@@ -362,4 +362,13 @@ describe('EpicDecompositionView', () => {
     );
     expect(card.querySelector('[data-icon="state.error"]')).toBeInTheDocument();
   });
+
+  it('does not render an in-page back button (D3)', async () => {
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cut());
+
+    render(EpicDecompositionView);
+    await screen.findByTestId('decomposition-title');
+
+    expect(screen.queryByTestId('decomposition-back')).not.toBeInTheDocument();
+  });
 });

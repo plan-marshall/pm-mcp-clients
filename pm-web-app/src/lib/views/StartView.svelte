@@ -1166,7 +1166,6 @@
         onAdopt={(epicId) => void adoptEpic(epicId)}
         onNew={() => void act('new')}
         onRetry={() => void act('retry')}
-        onBack={() => void act('back')}
         onAbandon={() => (abandonOpen = true)}
       />
     {:else}

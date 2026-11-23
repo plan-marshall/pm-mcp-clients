@@ -6,6 +6,7 @@
   import { errorCodeOf, actFailureText } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkListColumn from '../components/WorkListColumn.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import Chip from '../components/Chip.svelte';
@@ -36,8 +37,31 @@
   import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
+  let lastLoadedEpicId: string | null = null;
+
+  $effect(() => {
+    const current = epicId;
+    if (current && lastLoadedEpicId !== null && current !== lastLoadedEpicId) {
+      lastLoadedEpicId = current;
+      epic = null;
+      resource = null;
+      runtimeStore.update((s) => ({ ...s, currentEpicResource: null }));
+      review = null;
+      reviewOpen = false;
+      reviewNotice = '';
+      reviewChat = null;
+      reviewChatOpen = false;
+      void loadEpic(true);
+    } else if (current && lastLoadedEpicId === null) {
+      lastLoadedEpicId = current;
+    }
+  });
+
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
+  const epicProjectId = $derived(
+    resource?.project_id ?? epic?.project ?? $runtimeStore.selectedProjectId ?? '',
+  );
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
   /** The code of a failed epic-resource read: the page keeps the epic's head and says so. */
@@ -247,26 +271,32 @@
   });
 
   onDestroy(() => {
+    runtimeStore.update((s) => ({ ...s, currentEpicResource: null }));
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
     }
   });
 
+  let epicLoadGeneration = 0;
   async function loadEpic(initial = false) {
     if (!epicId) return;
+    const currentId = epicId;
+    const gen = ++epicLoadGeneration;
     if (initial) isLoading = true;
     errorCode = null;
     resourceErrorCode = null;
     const [process, epicResource] = await Promise.allSettled([
-      apiClient.getEpicProcess(epicId),
-      apiClient.getEpicResource(epicId),
+      apiClient.getEpicProcess(currentId),
+      apiClient.getEpicResource(currentId),
     ]);
+    if (gen !== epicLoadGeneration) return;
     if (process.status === 'fulfilled') {
       epic = process.value;
     }
     if (epicResource.status === 'fulfilled') {
       resource = epicResource.value;
+      runtimeStore.update((s) => ({ ...s, currentEpicResource: epicResource.value }));
       // A read that answers clears the failure of one that was still in flight: the retry the
       // panel names would otherwise stay on offer beside content that is current.
       resourceErrorCode = null;
@@ -281,7 +311,9 @@
     if (!epic) {
       errorCode = errorCodeOf(process.status === 'rejected' ? process.reason : '');
     }
-    if (initial) isLoading = false;
+    if (gen === epicLoadGeneration) {
+      isLoading = false;
+    }
   }
 
   function openPlan(pId: string) {
@@ -645,7 +677,11 @@
   }
 </script>
 
-<div class="epic-view" data-testid="epic-view">
+<div class="epic-view-layout" data-testid="epic-view-layout">
+  {#if epicProjectId}
+    <WorkListColumn projectId={epicProjectId} currentEpicId={epicId} />
+  {/if}
+  <div class="epic-view" data-testid="epic-view">
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
@@ -926,6 +962,7 @@
     {/if}
   {/if}
 </div>
+</div>
 
 {#snippet plans(withTitle: boolean)}
   <section class="plans-section" data-testid="epic-workstreams">
@@ -1063,7 +1100,18 @@
 {/if}
 
 <style>
+  .epic-view-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    inline-size: 100%;
+    min-inline-size: 0;
+    min-height: 100%;
+  }
+
   .epic-view {
+    flex: 1 1 auto;
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     height: 100%;

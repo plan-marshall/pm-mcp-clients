@@ -8,6 +8,8 @@ import {
   type MachineSettingsUpdateResult,
   type ProjectOverviewResponse,
   type EventStreamState,
+  type ProcessTree,
+  type EpicResource,
 } from '../api/client';
 import {
   matchPath,
@@ -146,6 +148,10 @@ export interface RuntimeState {
   objectTab?: string | null;
   /** The object the address opens in place beside its caller. */
   openObject?: { kind: string; id: string } | null;
+  /** The process tree of the currently loaded plan, for the navigation chain and Up. */
+  currentProcessTree?: ProcessTree | null;
+  /** The resource of the currently loaded epic, for the navigation chain and Up. */
+  currentEpicResource?: EpicResource | null;
   /** The node of the plan's phase tree and the file of its changes, as the address names them. */
   phaseNode?: string | null;
   changeFile?: string | null;
@@ -221,6 +227,8 @@ const initialState: RuntimeState = {
   chatOpen: false,
   chatTurn: null,
   lens: null,
+  currentProcessTree: null,
+  currentEpicResource: null,
 };
 
 export const runtimeStore = writable<RuntimeState>(initialState);
@@ -1009,6 +1017,24 @@ export function fallBackFromDeletedObject(name: string): boolean {
   return true;
 }
 
+/**
+ * Closes an in-place opened object by replacing the address without `open`.
+ */
+export function closeOpenObject(): void {
+  runtimeStore.update((s) => ({ ...s, openObject: null }));
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
+/**
+ * Replaces an in-place opened object with another one.
+ *
+ * @param open the new object identifier
+ */
+export function replaceOpenObject(open: NonNullable<Address['open']>): void {
+  runtimeStore.update((s) => ({ ...s, openObject: open }));
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
 function handleReportEvent(event: string, data: unknown): void {
   if (event === 'report.sent') {
@@ -1253,6 +1279,13 @@ function handleDecisionEvent(event: string, data: unknown): void {
     const closed = announcedDecisionOf(data);
     if (closed) {
       decisionAnnouncer.decisionClosed(closed.id);
+      const state = get(runtimeStore);
+      if (
+        state.currentRoute === 'decision' &&
+        (state.selectedDecisionId === closed.id || currentAddress()?.decisionId === closed.id)
+      ) {
+        fallBackFromDeletedObject(closed.subject || closed.id);
+      }
     }
     runtimeStore.update((s) => ({
       ...s,
@@ -1344,6 +1377,67 @@ const LIFECYCLE_EVENTS = new Set([
   'runtime.stopping',
 ]);
 
+interface DeletionSpec {
+  events: string[];
+  route: AppRoute;
+  getId: (p: Record<string, string | undefined>) => string | undefined;
+  getSelectedId: (s: RuntimeState) => string | null | undefined;
+  getAddressId: (a: Address | null) => string | undefined;
+  fallbackKind: string;
+}
+
+const DELETION_SPECS: DeletionSpec[] = [
+  {
+    events: ['plan.deleted', 'plan.removed'],
+    route: 'plan',
+    getId: (p) => p.plan_id,
+    getSelectedId: (s) => s.selectedPlanId,
+    getAddressId: (a) => a?.planId,
+    fallbackKind: 'plan',
+  },
+  {
+    events: ['epic.deleted', 'epic.removed'],
+    route: 'epic',
+    getId: (p) => p.epic_id,
+    getSelectedId: (s) => s.selectedEpicId,
+    getAddressId: (a) => a?.epicId,
+    fallbackKind: 'epic',
+  },
+  {
+    events: ['report.deleted', 'report.detail.deleted'],
+    route: 'report',
+    getId: (p) => p.report_id,
+    getSelectedId: (s) => s.selectedReportId,
+    getAddressId: (a) => a?.reportId,
+    fallbackKind: 'report',
+  },
+  {
+    events: ['task.deleted', 'task.removed'],
+    route: 'task',
+    getId: (p) => p.task_id,
+    getSelectedId: (s) => s.selectedTaskId,
+    getAddressId: (a) => a?.taskId,
+    fallbackKind: 'task',
+  },
+];
+
+function handleDeletionEvent(event: string, data: unknown): boolean {
+  for (const spec of DELETION_SPECS) {
+    if (!spec.events.includes(event)) continue;
+    const payload = (data || {}) as Record<string, string | undefined>;
+    const targetId = spec.getId(payload);
+    const state = get(runtimeStore);
+    const matchesTarget =
+      Boolean(targetId) &&
+      (spec.getSelectedId(state) === targetId || spec.getAddressId(currentAddress()) === targetId);
+    if (state.currentRoute === spec.route && matchesTarget) {
+      fallBackFromDeletedObject(payload.title || payload.name || targetId || spec.fallbackKind);
+    }
+    return true;
+  }
+  return false;
+}
+
 export function handleRuntimeEvent(event: string, data: unknown): void {
   if (event === 'stream.closed') {
     if ((data as { reason?: string })?.reason === 'listener_closed') {
@@ -1367,6 +1461,8 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     // The list of what waits is the shell's count and the start page's rows: it follows every
     // change the runtime announces, whoever resolved the item.
     void handleNeedsOperatorChanged();
+  } else if (handleDeletionEvent(event, data)) {
+    // Deletion handled above
   }
 }
 
@@ -1420,16 +1516,6 @@ export async function pairBrowser(code: string): Promise<void> {
   void loadAttention();
 }
 
-/**
- * One entry of the caller's navigation stack: where the operator was before the current view.
- */
-export interface NavigationEntry {
-  route: AppRoute;
-  params: RouteParams;
-}
-
-/** The routes the browser can return to by the caller's own back, newest last. */
-const navigationStack: NavigationEntry[] = [];
 
 /**
  * How many route applications this store has made. A call that awaits a read before it navigates
@@ -1604,36 +1690,9 @@ export function addressOfState(state: RuntimeState): Address {
  * @param params the identifiers it names, e.g. a plan's id
  */
 export function pushRoute(route: AppRoute, params: RouteParams = {}): void {
-  const state = get(runtimeStore);
-  if (state.isInitialized) {
-    navigationStack.push({ route: state.currentRoute, params: routeParamsOf(state) });
-  }
   applyRoute(route, params);
   const next = addressOfState(get(runtimeStore));
   writeAddress(next, intentFor(currentAddress(), next));
-}
-
-/**
- * Returns to the route the caller came from.
- *
- * The browser's own history is the fallback when the caller's stack holds nothing (the view was
- * opened by a deep link or a reload).
- *
- * @returns `true` when a previous route was found
- */
-export function goBack(): boolean {
-  const previous = navigationStack.pop();
-  if (!previous) {
-    if (window.history.length > 1) {
-      window.history.back();
-      return true;
-    }
-    return false;
-  }
-  applyRoute(previous.route, previous.params);
-  // The current entry is replaced, so the browser's Back does not lead into a loop.
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-  return true;
 }
 
 /**

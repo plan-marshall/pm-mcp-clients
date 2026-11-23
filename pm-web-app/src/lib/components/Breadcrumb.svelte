@@ -1,4 +1,6 @@
 <script module lang="ts">
+  import type { Kind } from './KindMark.svelte';
+
   /** One segment of the trail: what it says and where it leads, when it leads anywhere. */
   export interface Crumb {
     /** The visible segment, from the view's catalogue key or a formatted id. */
@@ -10,12 +12,17 @@
      * a sentence a person reads is never cut, however long it is.
      */
     id?: boolean;
+    /** The kind of the object, for the KindMark. */
+    kind?: Kind;
+    /** An optional action when the segment is clicked (e.g. pushState). */
+    onclick?: () => void;
   }
 </script>
 
 <script lang="ts">
   import { onMount } from 'svelte';
   import { shortenMiddle } from '../utils/shortenMiddle';
+  import KindMark from './KindMark.svelte';
 
   /**
    * The trail to the page a person stands on (VD-P-05, VD-S-03): links in
@@ -65,7 +72,7 @@
   });
 </script>
 
-<nav class="breadcrumb" aria-label={label}>
+<nav class="breadcrumb" data-testid="breadcrumb" aria-label={label}>
   <ol class="breadcrumb__list">
     {#each rows as row}
       <li class="breadcrumb__item">
@@ -75,17 +82,21 @@
             class="breadcrumb__link"
             href={row.href}
             aria-label={row.shortened ? row.label : undefined}
-          >
-            {row.shown}
-          </a>
+            onclick={(e) => {
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              if (row.onclick) {
+                e.preventDefault();
+                row.onclick();
+              }
+            }}
+          >{#if row.kind}<KindMark kind={row.kind} wordHidden />{/if}{row.shown}</a>
         {:else if row.shortened}
           <span class="breadcrumb__current" aria-current={row.current ? 'page' : undefined}>
-            <span aria-hidden="true">{row.shown}</span>
-            <span class="sr-only">{row.label}</span>
+            {#if row.kind}<KindMark kind={row.kind} wordHidden />{/if}<span aria-hidden="true">{row.shown}</span><span class="sr-only">{row.label}</span>
           </span>
         {:else}
           <span class="breadcrumb__current" aria-current={row.current ? 'page' : undefined}>
-            {row.label}
+            {#if row.kind}<KindMark kind={row.kind} wordHidden />{/if}{row.label}
           </span>
         {/if}
       </li>
@@ -117,6 +128,13 @@
   .breadcrumb__item + .breadcrumb__item::before {
     content: '/';
     color: var(--color-text-muted);
+  }
+
+  .breadcrumb__link,
+  .breadcrumb__current {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
   }
 
   .breadcrumb__link {

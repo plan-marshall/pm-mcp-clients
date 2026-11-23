@@ -806,4 +806,55 @@ describe('the side column of the chat', () => {
     expect(first.querySelector('.triage-page__up')).not.toBeNull();
     expect(first).toHaveTextContent('Up');
   });
+
+  it('renders UpLink in running work with its accessible name and pushing parent (PLAN-144 D2)', async () => {
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'plan',
+      selectedPlanId: 'fix-relay',
+      currentProcessTree: {
+        plan_id: 'fix-relay',
+        title: 'Fix Relay Transport',
+        project: { project_id: 'pm-mcp-clients', display_name: 'Relay Transport' },
+        epic: { epic_id: 'relay-hardening', title: 'Relay Hardening' },
+        current_phase: 'execute',
+        phase_state: 'running',
+        needs_operator: false,
+        instance_version: 1,
+        tokens_so_far: {
+          total: 100,
+          input: 80,
+          output: 20,
+          floor: false,
+          tasks_total: 1,
+          tasks_measured: 1,
+          none_yet: false,
+          not_measured: false,
+        },
+        nodes: [],
+        current_position_path: [],
+        duration_seconds: 10,
+      },
+    }));
+
+    await renderSide(1216, false, () => {}, false);
+
+    const upLink = screen.getByTestId('up-link');
+    expect(upLink).toBeInTheDocument();
+    expect(upLink).toHaveAttribute('aria-label', 'Up to epic Relay Hardening');
+    expect(upLink).toHaveTextContent('Relay Hardening');
+  });
+
+  it('renders no Up outside running work (e.g. on reports or cleanup)', async () => {
+    runtimeStore.update((s) => ({
+      ...s,
+      currentRoute: 'reports',
+      currentProcessTree: null,
+      currentEpicResource: null,
+    }));
+
+    await renderSide(1216, false, () => {}, false);
+
+    expect(screen.queryByTestId('up-link')).toBeNull();
+  });
 });

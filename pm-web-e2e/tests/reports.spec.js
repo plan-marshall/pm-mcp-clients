@@ -171,7 +171,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(active.getByTestId('report-read-state')).toContainText('read');
 
     // Back on the list the report the view read is gone from the unread reports.
-    await page.getByRole('button', { name: /^Back$/ }).click();
+    await page.locator('.nav-rail').getByRole('button', { name: /Reports/i }).click();
+    await expect(page.locator('.reports-view')).toBeVisible();
     await expect(row).toHaveCount(0);
   });
 
@@ -200,10 +201,8 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.tokens-section')).toBeVisible();
     await expect(page.getByText('refine')).toBeVisible();
 
-    // Close completion report
-    const backBtn = page.getByRole('button', { name: /Back/i });
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    // Close completion report by returning to the Reports list
+    await page.locator('.nav-rail').getByRole('button', { name: /Reports/i }).click();
 
     await expect(page.locator('.reports-view')).toBeVisible();
   });
@@ -351,5 +350,11 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
 
     await page.reload();
     await expect(page.locator('.reports-tree')).toBeVisible();
+  });
+
+  test('deep link to a report beyond the first page opens its detail (D0)', async ({ page }) => {
+    await page.goto('/reports/rep-0120');
+    await expect(page.locator('.reports-view')).toBeVisible();
+    await expect(page.locator('.report-card--active')).toBeVisible();
   });
 });

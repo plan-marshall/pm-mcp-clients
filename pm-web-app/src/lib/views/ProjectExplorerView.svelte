@@ -129,9 +129,6 @@
   /** The project the page's own reads belong to, so a re-render does not read them again. */
   let pageProjectId = $state<string | null>(null);
 
-  /** The filter the last `?project=` focus set, so a popstate can clear only that one. */
-  let focusedFilter: string | null = null;
-
   const requestedProjectId = $derived(
     $runtimeStore.currentRoute === 'project' ? ($runtimeStore.selectedProjectId ?? null) : null,
   );
@@ -184,32 +181,8 @@
     }
   }
 
-  /**
-   * Focuses the project a caller opened the explorer for: a row of another view names the project,
-   * and the list narrows to it while the page stays the one the address names.
-   */
-  function focusRequestedProject(): void {
-    if (!explorer) return;
-    const requested = new URLSearchParams(window.location.search).get('project');
-    if (!requested) {
-      if (focusedFilter !== null && filter === focusedFilter) {
-        filter = '';
-      }
-      focusedFilter = null;
-      return;
-    }
-    const project = listProjects.find((p) => p.project_id === requested);
-    if (project) {
-      filter = project.display_name;
-      focusedFilter = project.display_name;
-    }
-  }
-
   onMount(() => {
-    void loadExplorer().then(focusRequestedProject);
-
-    const onPopstate = () => focusRequestedProject();
-    window.addEventListener('popstate', onPopstate);
+    void loadExplorer();
 
     const unsubscribeEvents = apiClient.subscribeEvents((event) => {
       if (refreshesProjectView(event)) {
@@ -219,7 +192,6 @@
     });
 
     return () => {
-      window.removeEventListener('popstate', onPopstate);
       unsubscribeEvents();
     };
   });

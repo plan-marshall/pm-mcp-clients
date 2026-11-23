@@ -32,9 +32,8 @@ describe('EpicAdoptView', () => {
     expect(onNew).toHaveBeenCalled();
   });
 
-  it('renders a failed adoption under ErrorState with cause and ghost Try again / Back buttons', async () => {
+  it('renders a failed adoption under ErrorState with cause and ghost Try again / Abandon buttons (D3)', async () => {
     const onRetry = vi.fn();
-    const onBack = vi.fn();
     const onAbandon = vi.fn();
 
     render(EpicAdoptView, {
@@ -46,7 +45,6 @@ describe('EpicAdoptView', () => {
         },
         projectId: 'pm-mcp-clients',
         onRetry,
-        onBack,
         onAbandon,
       },
     });
@@ -59,10 +57,7 @@ describe('EpicAdoptView', () => {
     await fireEvent.click(retryBtn);
     expect(onRetry).toHaveBeenCalled();
 
-    const backBtn = screen.getByRole('button', { name: 'Back' });
-    expect(backBtn).toHaveClass('btn--ghost');
-    await fireEvent.click(backBtn);
-    expect(onBack).toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: 'Back' })).not.toBeInTheDocument();
 
     const abandonBtn = screen.getByRole('button', { name: 'Abandon' });
     expect(abandonBtn).toHaveClass('btn--ghost');

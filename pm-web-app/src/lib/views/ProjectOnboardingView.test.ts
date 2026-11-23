@@ -461,4 +461,12 @@ describe('ProjectOnboardingView component', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(read.mock.calls.length).toBeGreaterThanOrEqual(2));
   });
+
+  it('does not render an in-page back button (D3)', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
+
+    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-view')).toBeInTheDocument());
+    expect(screen.queryByTestId('project-back')).not.toBeInTheDocument();
+  });
 });

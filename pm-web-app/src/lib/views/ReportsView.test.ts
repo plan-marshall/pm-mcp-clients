@@ -1072,7 +1072,8 @@ describe('ReportsView component', () => {
     // failure; the operator closes the detail meanwhile, so nothing is left to keep the row for.
     eventHandler?.('report.read', { report_id: 'rep-0142' });
     await tick();
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
 
     rejectMarkAll(new Error('mark all failed'));
     await waitFor(() => {
@@ -1191,7 +1192,8 @@ describe('ReportsView component', () => {
       expect(screen.getByRole('alert')).toHaveTextContent('Failed to mark all reports read');
     });
 
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     // The single read is still in flight, so its row stays until that outcome is known.
     expect(document.querySelector('[data-report-id="rep-0142"]')).not.toBeNull();
 
@@ -1270,7 +1272,8 @@ describe('ReportsView component', () => {
     });
 
     // The operator closes the detail before the read request settles.
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     expect(document.querySelector('.completion-report')).toBeNull();
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
@@ -1300,7 +1303,8 @@ describe('ReportsView component', () => {
     await waitFor(() => {
       expect(document.querySelector('.report-title')).not.toBeNull();
     });
-    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     if (!resolveRead) throw new Error('the pending read request was never created');
@@ -2197,8 +2201,8 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     // Close detail
-    const backBtn = screen.getByRole('button', { name: /^Back$/i });
-    await fireEvent.click(backBtn);
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: null, selectedReportId: null }));
+    await tick();
 
     // Retained row is now flushed from list
     await waitFor(() => {
@@ -2675,6 +2679,81 @@ describe('ReportsView component', () => {
         expect(title).not.toBeNull();
         expect(document.activeElement).toBe(title);
       });
+    });
+
+    it('opens a report outside the first page and keeps two reports of one plan apart', async () => {
+      const olderReport: ReportItem = {
+        id: 'rep-older-001',
+        from: { project: 'pm-mcp-clients', epic: 'relay-hardening', plan: 'fix-relay' },
+        kind: 'plan.ended',
+        subject: 'Older report of fix-relay',
+        created_at: '2026-10-14T11:20:00Z',
+        detail_link: '/api/v1/plans/fix-relay/completion',
+      };
+      const olderPage: ReportsPage = {
+        items: [olderReport],
+        unread_count: 0,
+        has_older: false,
+        older_count: 0,
+      };
+
+      vi.spyOn(apiClient, 'getReports').mockImplementation(async (older?: boolean) => {
+        if (older) return olderPage;
+        return mockPage;
+      });
+      vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+      window.history.replaceState(null, '', '/reports');
+      // Open specifically rep-older-001 which is beyond the first page
+      runtimeStore.update((s) => ({
+        ...s,
+        currentRoute: 'report',
+        selectedReportId: 'rep-older-001',
+      }));
+
+      render(ReportsView);
+
+      // The view loads older reports and opens detail for rep-older-001
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/reports/rep-older-001');
+      });
+      expect(get(runtimeStore).selectedReportId).toBe('rep-older-001');
+
+      // Now click rep-0142 (another report of the SAME plan fix-relay)
+      const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+      await fireEvent.click(within(card).getByTestId('report-details'));
+
+      // The selection switches to rep-0142, keeping them apart instead of rewriting to one
+      await waitFor(() => {
+        expect(get(runtimeStore).selectedReportId).toBe('rep-0142');
+      });
+      expect(window.location.pathname).toBe('/reports/rep-0142');
+    });
+
+    it('shows notice for an unresolvable report', async () => {
+      window.history.replaceState(null, '', '/reports/rep-non-existent');
+      vi.spyOn(apiClient, 'getReport').mockResolvedValue(null as unknown as ReportItem);
+      runtimeStore.update((s) => ({
+        ...s,
+        currentRoute: 'report',
+        selectedReportId: 'rep-non-existent',
+      }));
+
+      vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+        items: mockReports,
+        unread_count: 3,
+        has_older: false,
+        older_count: 0,
+      });
+
+      render(ReportsView);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('unresolvable-report-notice')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('unresolvable-report-notice')).toHaveTextContent(
+        'rep-non-existent is no report of this machine',
+      );
     });
   });
 });

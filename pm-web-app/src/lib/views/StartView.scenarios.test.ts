@@ -742,7 +742,7 @@ describe('start-epic-adopt: adopting an epic and its failure', () => {
       '.marshall/epics/storage-migration/epic.json cannot be read',
     );
     expect(screen.getByTestId('adopt-retry')).toBeInTheDocument();
-    expect(screen.getByTestId('adopt-back')).toBeInTheDocument();
+    expect(screen.queryByTestId('adopt-back')).not.toBeInTheDocument();
     expect(screen.getByTestId('adopt-abandon')).toBeInTheDocument();
 
     // Abandon asks first, as it does at the sources step: the failure route is not an exemption.

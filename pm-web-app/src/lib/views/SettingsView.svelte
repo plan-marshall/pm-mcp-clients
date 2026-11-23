@@ -28,7 +28,6 @@
   import {
     runtimeStore,
     navigateTo,
-    goBack,
     selectObjectTab,
     loadMachineSettings,
     updateMachineSetting,
@@ -1057,17 +1056,6 @@
         data-testid="open-designer-btn"
       >
         {$t('designer.view.title')}
-      </Button>
-      <Button
-        variant="secondary"
-        on:click={() => {
-          if (!goBack()) {
-            navigateTo('projects');
-          }
-        }}
-        data-testid="settings-back-button"
-      >
-        {$t('common.action.back')}
       </Button>
     </div>
   </div>
