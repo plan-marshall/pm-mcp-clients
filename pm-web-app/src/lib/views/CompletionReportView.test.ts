@@ -574,7 +574,7 @@ describe('CompletionReportView component', () => {
       // Empty deliverables names the phase from the report
       render(CompletionReportView, {
         planId: 'fix-relay',
-        report: { ...mockReport, deliverables: [], phase: 'outline' } as any,
+        report: { ...mockReport, deliverables: [], phase: 'outline' },
       });
       expect(screen.getByText('no deliverables yet: it ended in outline')).toBeInTheDocument();
     });
