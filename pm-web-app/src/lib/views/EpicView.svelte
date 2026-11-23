@@ -45,6 +45,7 @@
       lastLoadedEpicId = current;
       epic = null;
       resource = null;
+      runtimeStore.update((s) => ({ ...s, currentEpicResource: null }));
       review = null;
       reviewOpen = false;
       reviewNotice = '';

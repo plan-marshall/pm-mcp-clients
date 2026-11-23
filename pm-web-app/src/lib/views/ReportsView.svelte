@@ -449,19 +449,16 @@
       writeAddress({ route: 'reports' }, 'replace');
       runtimeStore.update((s) => ({ ...s, selectedReportId: null, currentRoute: 'reports' }));
     } else if (requestedReport) {
-      const kind = subjectKindOf(requestedReport);
-      if (kind === 'epic') {
-        const epicId = epicIdOf(requestedReport);
-        if (epicId) navigateTo('epic', { epicId });
+      if (requestedReport.subject_deleted) {
+        unresolvableReportNotice = $t('report.detail.deleted_by_cleanup', {
+          item: subjectLabelOf(requestedReport),
+          date: reportDay(requestedReport),
+        });
+        announceNavigation(unresolvableReportNotice);
+        writeAddress({ route: 'reports' }, 'replace');
+        runtimeStore.update((s) => ({ ...s, selectedReportId: null, currentRoute: 'reports' }));
       } else {
-        const plan = planIdOf(requestedReport) || $runtimeStore.selectedReportDetailPlanId;
-        if (plan) {
-          if (opensCompletionDetail(requestedReport)) {
-            showDetail(plan, requestedReport.id);
-          } else {
-            navigateTo('plan', { planId: plan });
-          }
-        }
+        void openDetail(requestedReport);
       }
     } else {
       const plan = $runtimeStore.selectedReportDetailPlanId;
