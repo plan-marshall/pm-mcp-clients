@@ -20,11 +20,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,6 +66,8 @@ import picocli.CommandLine;
 class PmMcpProcessIT {
 
     private static final Duration WAIT = Duration.ofSeconds(10);
+    /** How long a kill of the relay's group is given to reach a daemon that had stayed in it. */
+    private static final Duration KILL_PROPAGATION = Duration.ofMillis(200);
     private static final String INITIALIZE = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":"
             + "{\"protocolVersion\":\"2025-11-25\",\"clientInfo\":{\"name\":\"it\",\"version\":\"1\"},\"capabilities\":{}}}";
     private static final String INITIALIZE_RESULT = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"protocolVersion\":\"2025-11-25\"}}";
@@ -125,8 +127,11 @@ class PmMcpProcessIT {
                 case "tools/list" -> {
                     try (var events = response.events(200)) {
                         events.send(null, "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/progress\",\"params\":{\"progress\":1}}");
-                        events.send("message", "{\"jsonrpc\":\"2.0\",\n \"id\":2,\n \"result\":{\"tools\":[{\"name\":\"pm_wait\","
-                                + "\"inputSchema\":{\"type\":\"object\",\"properties\":{\"role\":{}}}}]}}");
+                        events.send("message", """
+                                {"jsonrpc":"2.0",
+                                 "id":2,
+                                 "result":{"tools":[{"name":"pm_wait",\
+                                "inputSchema":{"type":"object","properties":{"role":{}}}}]}}""");
                     }
                 }
                 default -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":null,\"result\":{}}");
@@ -195,7 +200,7 @@ class PmMcpProcessIT {
                 assertEquals(0, process.awaitExit(WAIT));
             }
         }
-        Collections.sort(samples);
+        samples.sort(null);
         var median = samples.get(samples.size() / 2);
         var pass = median <= BUDGET_MS * 1000;
         var values = new LinkedHashMap<String, Object>();
@@ -230,7 +235,9 @@ class PmMcpProcessIT {
 
             process.process().destroyForcibly();
             process.awaitExit(WAIT);
-            Thread.sleep(200);
+            // A kill that reached the daemon would end it: wait on that exit, bounded, not a fixed pause.
+            ProcessHandle.of(started[0]).ifPresent(daemon -> daemon.onExit()
+                    .completeOnTimeout(daemon, KILL_PROPAGATION.toMillis(), TimeUnit.MILLISECONDS).join());
 
             try {
                 assertEquals(started[0], started[1], "pm-mcpd leads its own process group (setsid)");

@@ -24,9 +24,13 @@ import picocli.CommandLine.Command;
  * The host-facing command line {@code pm-mcp}: the verbs a host configuration, a worker's composed
  * MCP configuration, or an entry command runs.
  */
-@Command(name = "pm-mcp", mixinStandardHelpOptions = true, versionProvider = PmMcp.Version.class,
-        description = "Host-facing command line of PM-MCP.", subcommands = ServeCommand.class)
 public final class PmMcp {
+
+    /** The root command; its verbs are the subcommands. */
+    @Command(name = "pm-mcp", mixinStandardHelpOptions = true, versionProvider = PmMcp.Version.class,
+            description = "Host-facing command line of PM-MCP.", subcommands = ServeCommand.class)
+    static final class Root {
+    }
 
     /** Supplies the release version to {@code --version}. */
     static final class Version implements CommandLine.IVersionProvider {
@@ -60,7 +64,7 @@ public final class PmMcp {
      * @return the exit code
      */
     static int execute(CliContext context, PrintWriter out, PrintWriter err, String... args) {
-        var commandLine = new CommandLine(new PmMcp(), new Factory(context));
+        var commandLine = new CommandLine(new Root(), new Factory(context));
         commandLine.setOut(out);
         commandLine.setErr(err);
         var code = commandLine.execute(args);
@@ -76,8 +80,8 @@ public final class PmMcp {
             if (type == ServeCommand.class) {
                 return type.cast(new ServeCommand(context));
             }
-            if (type == PmMcp.class) {
-                return type.cast(new PmMcp());
+            if (type == Root.class) {
+                return type.cast(new Root());
             }
             return CommandLine.defaultFactory().create(type);
         }
