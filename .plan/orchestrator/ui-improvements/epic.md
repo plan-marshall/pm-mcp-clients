@@ -671,9 +671,10 @@ plan spec names the plan, proposal and finding documents it comes from.
 - **decision 3 answered 2026-11-23 (the operator: "1").** Carried out as proposed: the residue plan the operator decided on 2026-11-18 (an exception to the fold-as-D0 rule) is staged now: **PLAN-179** `web-intent-panels-and-epic-residue` (WS-03, row `staged`, runbook, 4 deliverables: the epic view follows its epic, the intent panels refresh by what moved, the over-size read fails closed and the chart is mounted, the tests that could not fail with browser evidence; ports 21790/21791; after PLAN-144 and PLAN-176). Sites re-read at `3ae8a305`; PLAN-58 L3-2 found already fixed by PLAN-59; claims stamped (3 unverifiable for the outline: the event subject, the TS reader's absent-buckets branch, the verify-first clause). The OTHER folds of the 2026-11-18 entries (PLAN-53 to PLAN-177, PLAN-60 to PLAN-85, PLAN-51 and PLAN-52 to PLAN-136, PLAN-166 and PLAN-142 to PLAN-135, PLAN-163 to PLAN-42) are NOT written now: each is named, as a D0 clause, at that plan's emit, against the code as it is then. **Miss recorded:** PLAN-144 was emitted on 2026-11-23 without naming the PLAN-52 (`OverviewView`) and PLAN-60 (`SettingsView`) folds; the spec of a running plan is not edited, so those residues roll to PLAN-136 and PLAN-85. Surfaces with no staged owner stay open: PLAN-49 (`InboxView`, the attention store), PLAN-64 (the onboarding registry), PLAN-152 (the i18n store, filter labels), the unowned PLAN-149 items and the `RowMenu` minors.
 - **decision 4 answered 2026-11-23 (the operator: "1").** The unlanded PLAN-175 scope is staged as two runbook plans (WS-04, 4 deliverables each): **PLAN-180** (`pm-api` part 2, 20 surface paths; no shared file with a running plan) and **PLAN-181** (`pm-mock-runtime`, `pm-relay`, `pm-exec`, `pm-web-app`, 32 paths; it shares `OnboardingScenarioTest.java` with #533, one file, and five `pm-web-app` files with PLAN-144, an overlap that is the operator's decision at emit). The operator approved Awaitility (test scope) in the same word; it is named in PLAN-180 only. Both specs: lint 0, skills declared, claims stamped by `ui-improvements/analyze` (the Sonar counts are `unverifiable` until the run reads them). The backup branch was NOT pushed (the operator's word did not say yes to the push; it is offered again). **PLAN-180 emitted** (disjoint from PLAN-174 and PLAN-144, prep-ready, skills declared) as a runbook-lane command, row `launched`; the overlap of PLAN-181 with PLAN-144 (five `pm-web-app` files: `client.ts`, `routes.ts`, `runtime.ts`, `CleanupView.test.ts`, `PlanView.test.ts`) was put to the operator, who chose "Emit now, web-app deliverable last": **PLAN-181 emitted** as a runbook-lane command, row `launched`; its `pm-web-app` deliverable starts last and is rebased on `main` before each push (the spec says so).
 - **decision 5 answered 2026-11-23 (the operator: "5: 1"), with "Both are running" (PLAN-180 and PLAN-181 rows `running`; N=4 full with PLAN-174 and PLAN-144).** Proposal 1: (a) **PLAN-182** `web-onboarding-contract-cut-back-residue` is staged (WS-03, runbook, 4 deliverables: the seven reconfigure-result states, `harness.none` against the catalogue, the roles-review and onboarding minors, design lines and browser evidence; ports 21820/21821; after PLAN-174, PLAN-181 and PLAN-176); the scope was re-read at `3ae8a305` and is smaller than 2026-11-18's (PLAN-169 and PLAN-59 closed the two majors of the third landing, `StoreScreen` and the dead keys); (b) the `request_id` and quorum-channel work package is written as a brief (`briefs/engine-request-id-work-package.md`), not as a queue row: an engine design session of the operator in `pm-mcp-core`, then a `plan-marshall-mcp` plan, then a client plan of this epic when the engine merges. The brief lists what the operator decides (the field's name, an absent id, the quorum channel). Specs validate (lint 0, skills declared, 28 surface paths); claims stamped, two unverifiable for the outline.
-- **decision 6 answered 2026-11-23 (the operator: "1").** Proposal 1: the chat contract (O10 + PLAN-161) and the chat proposal contract (PLAN-134) are one engine brief, `briefs/engine-chat-contract-work-package.md` (Part A addresses, Part B proposal states and line keys, Part C the clients plan after both merge), for the operator's direct session in `pm-mcp-core`; nothing is staged or queued. The clients plan (provisionally PLAN-183) is staged when Parts A and B are merged. The re-read found the premise of 2026-11-13 partly met: the daemon specification names the chat addresses of the subjects, `ChatRoutes` has their builders, only the draft's and the review's chats are unnamed.
+- **decision 6 answered 2026-11-23 (the operator: "1").** Proposal 1: the chat contract (O10 + PLAN-161) and the chat proposal contract (PLAN-134) are one engine brief, `briefs/engine-chat-contract-work-package.md` (Part A addresses, Part B proposal states and line keys, Part C the clients plan after both merge), for the operator's direct session in `pm-mcp-core`; nothing is staged or queued. The clients plan (no number yet) is staged when Parts A and B are merged. The re-read found the premise of 2026-11-13 partly met: the daemon specification names the chat addresses of the subjects, `ChatRoutes` has their builders, only the draft's and the review's chats are unnamed.
 - **decision 7 answered 2026-11-23 (the operator: "1").** Proposal 1: the non-goals minimum follows the engine: a plan intent record may carry none (the light lane), in both readers (`PlanIntentResource.java:454-458`, `client.ts:2819`) and the panel (a catalogue line instead of an empty list); the design line `intent-and-outline.adoc:104` says "at least one on the deep lane"; the epic intent keeps its minimum. Carrier: **PLAN-179 deliverable 5** (staged, 5 deliverables now; 3 claims added, stamped at `3ae8a305`, one unverifiable for the outline: the engine's empty-list write). This reverses the operator's 2026-11-12 "at least one" for the plan record, on the operator's word.
 - **decision 8 answered 2026-11-23 (the operator: "1").** Proposal 1: (a) the web lane keeps `opencode` / `deepseek-v4.1-flash/high`; the recheck watch of 2026-11-15 is closed (no other model ran comparable work, so the samples cannot attribute anything to the model; the landing analysis is the gate); the operator may name another model at any time and the next emit carries it; (b) the unknown `total_tokens` / `plugin_version` (and, on `antigravity`, `model` / `effort`) are one defect owned by plan-marshall (the 2026-10-27 Open Defect); later INCOMPLETE landings of that kind carry one pointer line.
+- **decision 9 answered 2026-11-23 (the operator: "1").** Proposal 1, the triage of 27 leftover entries: (A) 8 closed with their reasons (E093, E095, E097, E108, E115, E018, E085, E086); five landing narratives (E042, E060, E061, E062, E065) carry their own SHIPPED/DECIDED markers and are relocated or not by decision 10; (B) 8 kept with a named owner (E017, E081, E096, E101, E069, E082, E110, E036); (C) three orphans carried: E104 and E109 are **PLAN-183** `pm-api-and-mock-hygiene-residue` (WS-01, runbook, 2 deliverables, after PLAN-181; 7 claims stamped at `fcf87728`, 3 unverifiable for the outline), E088 is a D0 clause of PLAN-179 deliverable 2 at its emit; (D) E027, E068, E103 stay recorded with their owners outside this repository (no sibling epic in the store to route to). The chat clients plan has no number yet (it took none; `PLAN-183` is the hygiene plan).
 
 ## Open Defects
 
@@ -802,7 +803,9 @@ plan spec names the plan, proposal and finding documents it comes from.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
   → DECIDED 2026-11-15 (handle-open, operator chose proposal 1 of 3 at the orchestrator's confidence 70; the entry STAYS OPEN, narrowed). The `RowMenu` half is fixed on `origin/main`: `.row-menu__item:focus` has `outline: none`, only `:focus-visible` draws the ring, pinned by `RowMenu.test.ts:273-281` (PLAN-105, #348). The `ActMenu` half remains: its items carry both classes (`ActMenu.svelte:204`), `.act-menu__item:focus` sets `box-shadow: var(--focus-ring)` (`:341-344`) and `focusFirst()` focuses the first item on every open (`:51-55`), pinned by `ActMenu.test.ts:489-493`. Chosen: change `.act-menu__item:focus` to `:focus-visible` and update that test, in the residue plan after PLAN-150 lands, together with the duplicated `.act-menu*`/`.row-menu__*` CSS cleanup. Nothing staged; PLAN-150's spec lists that CSS under "Not in D0" and is not edited from here. The leaf's proposal to fold it into PLAN-150 D0 was dropped for that reason. Browser behaviour after a mouse open is unrun (static read).
 - 2026-11-05 — Two LOW defects of PLAN-101 (`landings/PLAN-101.md` 5, 6) have no staged plan touching their files: `check-build-output.mjs` `deriveDevMarkers`/`devPageRoute` guards only the first dev page below the prefix and the plugin's `DEV_PAGE_IMPORT` regex (`devRouteExclusion.ts`) hard-codes `src/routes/dev/`; the block-comment strip of `strictPortIsBound` (`guard-ports.js` 94-96) has no test case. Re-check at the next plan that touches the build check or the port guard.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT, owner: the next plan that touches the build check or the port guard (`check-build-output.mjs`, `guard-ports.js`); none staged names them.
 - 2026-11-05 — `ActionSupportTest.leaveBackPreservesNonInterruptExitCodes` (PLAN-103 N5) duplicates `theLeaveBackMapping`; the chat sites' non-interrupt exit codes are not covered. Not routed.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): one duplicated test (`ActionSupportTest`, PLAN-103 N5), minor, never routed: accepted as residue.
 - 2026-11-05 — `pm-api` `Libc.java:91` and `ScenarioLoader.java:566` hold `/*TODO: Catch specific…*/` markers; `MockRuntimeEngine` seven more (PLAN-95/97 area). Not routed.
 - 2026-10-27 — Incomplete landing facts: `rb-02-cli-pty-dialogue-harness-001.md` (PLAN-02) reports
   `missing_keys` `total_tokens` and `plugin_version` (both `unknown` on opencode). It was reconciled as far
@@ -921,6 +924,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   threads, unanswered items) in the question. Owner: plan-marshall (runbook lane `review-gate`, `sonar-facts`). Fifth recurrence of the
   false-count defect (PLAN-159, 32, 126, 160, 128).
 
+  → KEPT 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): owner plan-marshall (the lane's `review-gate`, `sonar-facts`): no sibling epic exists in this store to route to (`corpus epics`: one epic), so it stays recorded here for the operator to carry.
 - `unknown` review-gate keys pass the merge (PLAN-131, #422, 2026-11-13): finalize wrote `unresolved_review_threads`,
   `review_body_findings_total/handled` as `unknown` and merged with 8 of 10 threads unreplied and unresolved (all fixed in code; the
   reply-and-resolve step never ran after the last fix round). The ruleset does not require thread resolution. The orchestrator replied and
@@ -947,7 +951,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   the same gap); (3) the decision envelope's subject id for every scope (today plan/project only; epic, entry and machine only as free text),
   so the decision chat can be addressed. Today the web shows `control.chat.follow_up.opened` with no way there and the decision chat says
   "no chat" (operator decisions in #429).
-  → DECIDED 2026-11-23 (the operator, decision 6 proposal 1; see Decisions): written as Part A of `briefs/engine-chat-contract-work-package.md` (the draft's and the review's chat addresses, the decision envelope's subject id, the follow-up's entry); the clients plan (provisionally PLAN-183) is staged only when the engine part is merged. Re-read 2026-11-23: the daemon specification now addresses a chat below a plan, epic, entry, decision (not machine) and ended work, and `ChatRoutes` already has those builders; only the draft's and the review's chats are unnamed.
+  → DECIDED 2026-11-23 (the operator, decision 6 proposal 1; see Decisions): written as Part A of `briefs/engine-chat-contract-work-package.md` (the draft's and the review's chat addresses, the decision envelope's subject id, the follow-up's entry); the clients plan (no number yet) is staged only when the engine part is merged. Re-read 2026-11-23: the daemon specification now addresses a chat below a plan, epic, entry, decision (not machine) and ended work, and `ChatRoutes` already has those builders; only the draft's and the review's chats are unnamed.
 - **Open Item — the chat proposal contract (PLAN-134 landing), 2026-11-14 (operator):** a cross-repo edit in **pm-mcp-core**
   `doc/specification/state-catalogue.adoc`, to be made before `PLAN-140` D-R134 items 5–6. It carries two decisions:
   - (1) **REFUSED stays rejectable.** § `chat-proposal-states` promises reject only for `conflict`; a proposal refused by a check
@@ -1005,6 +1009,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   `PlanCommand.printActivity` loses both models of a `model_differs` entry; the file route's refusals differ from the list route's; no pin for
   `PlanChangeCapturedEvent.toMap`; the scheduled-event path is unvalidated. Two lane claims were wrong: the CodeRabbit inline-5 reason (an AsciiDoc reader is no new
   dependency: `ChatTextsCatalogueTest` already reads the design documents) and the `fromMap` residue (the `IOException` path is the real one).
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT (decided 2026-11-15): folded into PLAN-163 D0 and PLAN-164 D0; closes when they land.
 - **The review gate disagrees with the lane on #443 and #444 alike (2026-11-15).** `runbook_lane review-gate` answers `review_body_findings_handled: 0`, `merge_allowed: false`,
   `body_findings_undisposed` for both, with every thread resolved and ten `finding:` lines in each progress file (the #442 reading recorded only the total, 18, so it is no sample). Which store the gate reads is
   unsettled; if it reads a findings store the runbook lane never writes, the gate cannot pass for this lane and the merge went through on the lane's own
@@ -1161,12 +1166,14 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 > ↪ Relocated to `settled.md` § "Landing watches 2026-10-31 to 2026-11-10" — 22 landed-plan watch entries (PLAN-82 … PLAN-45); their landing files carry the record and their open items were routed at the time (cleanup 2026-11-14, operator).
 
+  → KEPT 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): owners `pm-mcp-parent` (the recipe's `@CsvSource` rewrite) and plan-marshall-documentation (run `-Pcoverage` and `-Pintegration-tests` separately): outside this repository; recorded here, no sibling epic to route to.
 - PLAN-127 (#426, `98cea294`, 2026-11-13): (1) the D5 terminal check (`ScreenCaptureIT -Dpm.screens=PLAN-127`, needs at 120 × 30 and
   80 × 24, en/de) was never run or read (`work.log:3660` "still owed"); the functional review's operator-override close hid it. Owner: the
   operator or PLAN-33 (verifies the answer verb). (2) The startup-notice baseline counts per kind (`NeedsOperatorNotices.java:224-241`); a
   replaced item of the same kind goes unannounced. The real fix needs item identities in `status` from the runtime (runtime epic; the #416
   reply promised "should be raised", nothing was filed). PLAN-50 seeds from every page meanwhile.
 
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT, owners: (1) the terminal check of PLAN-127 D5 is read by the CLI chain's first plan that renders the needs notices; (2) item identities in `status` are the runtime's (a finding for the daemon, nothing filed).
 - PLAN-33 (running, verification) filed three findings 2026-11-10 (`rb-33-verify-cli-acts-001`…`003`, at `0913d6f3`,
   drained as observed, archived): (1) `CLI-UC-V-06` — `onboard --auto --yes` has no verb (exit 2); the automatic
   onboarding is the entry dialogue's first choice since PLAN-22, so the CHECK's wording is outdated (route: the review
@@ -1313,11 +1320,13 @@ plan spec names the plan, proposal and finding documents it comes from.
    → CLOSED 2026-11-18 (handle-open, orchestrator, confidence 93 > threshold 90): the clients' write path exists: `client.ts:1428` types `cleanup_durations: Record<string, number>` and `SettingsView.svelte:814` sends the key `'cleanup_durations'` (the record's `cleanup_durations` is a per-category map, `MachineSettingsRecord.java:74`; `MachineSettingsUpdateRequest.java` names the key). Whether the real daemon accepts it stays under the "open outside this repository" entry (item (3)).
 - Two node-kind message families (PLAN-09 residue, 2026-10-31): `state.node_kind.*` beside `plan.node.kind.*`; both are used
   and nothing keeps them in step. — check at PLAN-55 and PLAN-62, which touch the plan tree.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT, owner: PLAN-62 (staged; touches the plan tree).
 - German glossary (PLAN-86 residue, 2026-10-31): the 42 German error texts use *Gate, Store, Terminal, Setup, Listener, Log*
   and *Audit-Kennung*, none of them an entry of the glossary in `doc/design/shared/texts-and-languages.adoc`, which says a
   new domain word is added there before it is used. The same words already run through dozens of German texts. — the
   operator decides: add the words to the glossary (binds every plan's German texts) or reword the texts.
   → DECIDED 2026-11-15 (handle-open, operator chose proposal 1 of 4 at the orchestrator's confidence 55; the entry STAYS OPEN until the text change lands). Re-read on `origin/main`: `texts-and-languages.adoc:38-78` still lacks all six words and line 78 says a new domain word is added there before it is used; the German catalogues (`pm-api/src/main/resources/messages/*.de.properties`) use them on about 109 lines (Terminal 45, Listener 25, Setup 16, Store 9, Log 7, Gate 5, Audit-Kennung 2). Chosen: add **Terminal, Listener, Setup, Store and Gate** to the glossary with their German articles (the operator or the change's author supplies them; the orchestrator suggests das Terminal, der Listener, das Setup, der Store, das Gate), and **reword Log and Audit-Kennung** in their 9 lines (e.g. "Protokoll"). Follow-up named, nothing staged: one mechanical doc-and-text change; by the memory rule a trivial change goes directly, in its own worktree and PR with `skip-bot-review`, never a staged lane plan, unless it grows past that. It binds every plan's German texts, so a plan staged or running that adds German texts should be told once the glossary lands.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT (decided 2026-11-15): stays open until the German glossary change lands.
 - Coverage gap of the logging test (PLAN-77 residue, 2026-10-31): the `MOCK-201` close-failure record of
   `MockRuntimeExtension` is asserted through a package-private helper, because no production path reaches that catch
   (`MockRuntime` is final and `close()` catches every `IOException`). — accept it as is, or ask for a production seam;
@@ -1339,10 +1348,12 @@ plan spec names the plan, proposal and finding documents it comes from.
   hand-written equality; none found) and a sanitizer (no production code needs one). Each is a new dependency or plugin.
   — decide when a plan needs one; none is added by PLAN-77 to PLAN-80. `stylelint` is approved for PLAN-72 (its spec
   says so): the plan that adds it also applies the `css` and `lint-config` expectations of PLAN-80 to it.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): the standards that need a new dependency (stylelint, dependency-cruiser, jspecify, `cui-test-value-objects`, a sanitizer) are covered by the standing rule `CLAUDE.md` § Dependencies (ask first); stylelint's approval stays in PLAN-72's spec (parked).
 - New specs and re-grounded specs must name the CUI skills and carry the standards Standing Constraint: Java deliverables
   `pm-dev-java:javadoc`, `pm-dev-java:java-null-safety`, `pm-dev-java-cui:cui-testing`, `pm-dev-java-cui:cui-logging`;
   web deliverables `pm-dev-frontend:javascript-security`. Specs not adapted: PLAN-24, 74 (documents only), the
   plan-marshall-lane verify plans (no Skills lines), PLAN-14, 20, 22, 39 (running) and the shipped ones.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): the skills clause for new and re-grounded specs is machine-checked: `corpus spec-skills` reports the declaration and the emit verdict at every emit.
 - The CUI test standards are applied to inputs; the expected value of a contract (catalogue text, wire name, golden
   capture) stays literal. That is the orchestrator's reading of `cui-testing` ("no manual test data"), not the skill's
   text, and PLAN-78 and PLAN-79 report any class where it does not hold. — the operator may overrule it at emit.
@@ -1360,6 +1371,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   `api/client.test.ts`). No web plan owns the move; PLAN-09, 43, 45, 51, 52, 54, 57 and 58 name some of those files.
   — decide at the next web view plan to be emitted: fold it into one (PLAN-09 first) or stage a web plan. PLAN-39
   shipped 2026-10-30 and changed `stores/runtime.ts` and `api/client.ts` (stream state) without reading the table.
+  → FOLD 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): a D0 clause of **PLAN-179** deliverable 2 (the intent panels refresh by what moved), written at that plan's emit by the fold rule of 2026-11-18, widening its surface by the event-name files: `stores/runtime.ts`, `views/epicEvents.ts`, `OverviewView.svelte`, `DecisionView.svelte`, `ReportsView.svelte`, `api/client.test.ts`. Re-read at `fcf87728`: `EventKind` has 0 users in `pm-web-app/src`.
 - `landing.failed` is accepted as an event name in the PLAN-13 tests but no `EventName` member carries it; the runtime
   sends `hold.opened` with kind `landing_failed` (PLAN-13 residue). — check where a later spec names it.
   → CLOSED 2026-11-22 (handle-open, orchestrator, confidence 90 > threshold 80; see Decisions): `EventKind.java:37-39` documents that no `EventName` member carries `landing.failed` and why the name is kept (the constant is at `:88`): deliberate, nothing to fix.
@@ -1402,6 +1414,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   recurs, give each opencode session its own Playwright MCP profile or output directory, or run only one
   browser-checking plan at a time. PLAN-03 (2026-10-28) ran its 48-pass browser matrix with an isolated
   Playwright MCP profile and reports no interference; one profile per session looks sufficient.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): the Playwright MCP browser: one profile per session sufficed (PLAN-03's 48-pass matrix); no recurrence recorded since; reopen if two browser-checking plans collide again.
 - The Sonar credential cannot transition an issue (HTTP 400, PLAN-12). The Sonar clause of every spec
   allows a dismissal "transmitted through the plan-less transition verb", which can't be transmitted
   today, so any finding that is dismissed rather than fixed blocks its merge. — fix the token's
@@ -1424,11 +1437,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   answered "fixed"). The file keeps reappearing in the main checkout; which run writes it is not established.
   PLAN-10's landing (2026-10-29) is silent on it and shows its browser snapshots taken through the Playwright MCP
   server (after the operator repaired the output directory), so the PLAN-10 part of this watch is closed.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): `test-results/` is gone from the main checkout (re-read) and PLAN-10, 15 and 19 shipped; the lane's rule (browser checks through the Playwright MCP, never a hand-run Playwright from the main checkout) stands in its standing constraints.
 - `/plans/{id}` scrolls horizontally at 390 px (498 px measured; PLAN-12 residue, older than the epic).
   — check that PLAN-55 (`web-plan-page`) covers it before emitting it.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT, owner: PLAN-55 (parked); checked at its re-grounding.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
   or at the PLAN-29 verification (`CC-V-04`).
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): tab titles come from a catalogue key through the layout (`routes/+layout.svelte:303-309`, the title waits for the catalogue and carries the attention count): the shell has its title path; PLAN-09 shipped.
 - The e2e suite on `main` has a failing case before any epic change: the `CleanupView` contrast check in
   light at narrow width (seen in PLAN-04's base run at `65973291`). PLAN-01 saw the same case for
   `SystemView`, failing on `origin/main` and green on re-run, so it may be flaky rather than failing.
@@ -1472,6 +1488,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   migrated, and `Toast` has no host or store, so whichever plan raises the first toast must own it. — PLAN-39 (shipped
   2026-10-30) gave `Dialog` its first caller, the phone's More sheet; the rest is unchanged. Check at PLAN-43 and the
   view plans that name a modal; stage a host if none does.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT, re-read: `Card`, `Tabs` and `Dialog` have callers now; `KeyValueList`, `Breadcrumb`, `Toast` and `AttentionStrip` still have none. `Breadcrumb` comes with PLAN-144; whichever plan raises the first toast owns the host.
 - A run edited the main checkout (PLAN-31, 2026-10-29): `common.{de,en}.properties` were first changed there,
   reverted by hand and redone in the worktree; the main checkout was clean afterwards. The merged diff is right. —
   second report of a lane writing outside its worktree (PLAN-10's `test-results/` was the first, different cause);
@@ -1484,11 +1501,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   `plan-marshall-documentation` with `gh`, because the lane's `ci` surface cannot target another checkout. The
   operator authorized both steps. — expect it again whenever a spec's deliverable writes to the sibling; the lane
   has no way to do it without a rule bend.
+  → KEPT 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): owner plan-marshall (the lane's `ci` surface cannot target another checkout): recorded here, no sibling epic to route to.
 - `EpicProcessPlan` documents `phase_state` as `running/staged/planned/done` (`EpicProcessPlan.java:26`),
   but the scenarios serve `staged`/`ended` and `PlanActivity.parse("done")` throws (PLAN-06 residue).
   — fix in PLAN-34 (`cli-display-layer`), the next plan on the `pm-api` display contract; check before
   emitting it.
   → DECIDED 2026-11-15 (handle-open, operator chose proposal 2 of 3 at the orchestrator's confidence 25; the entry STAYS OPEN, owner changed). The named owner PLAN-34 shipped (#371) without fixing it, so it is no longer the owner. Re-read on `origin/main`: `EpicProcessPlan.java:26` still documents `("running", "staged", "planned", "done")`; `PlanActivity` has `running`, `pausing`, `paused`, `waiting_for_you`, `held`, `staged`, `ended`, and `PlanActivity.parse("done")` throws. Chosen: the fix goes into **the next plan that edits the `pm-api` process contract**. Orchestrator check, so the choice is not mistaken for a taker: no staged plan edits `EpicProcessPlan` today. PLAN-62 (`web-plan-phase-workflows`, staged) is the nearest, its spec lists "the plan detail record is `EpicProcessPlan` or a record beside it" as a HYPOTHESIS to confirm at outline (`api/process/`); PLAN-144 only reads `ProcessTree` and PLAN-44 only `NodeState`. If PLAN-62's outline confirms it edits that record, the Javadoc line goes in with it; if no plan edits the record when the emit queue drains, the orchestrator should surface this entry again as a trivial direct change. Before striking `done`: `MockRuntimeEngine.java:476,11451,11526` uses `STATE_DONE = "done"` and it was not read whether that is the plan's `phase_state` or a phase node's state. Nothing staged; no spec edited.
+  → STAGED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): **PLAN-183** `pm-api-and-mock-hygiene-residue` deliverable 1 (the closed `PlanActivity` vocabulary in `EpicProcessPlan`; the mock's `STATE_DONE` sites read first). After PLAN-181.
 - Four lifecycle states are invisible in `pm-web-app` (PLAN-03 residue): `system.running`, `system.stopped`,
   `system.restarting` and `system.force-stop` change the API resource but no rendered view, because the app
   shows the lifecycle only as the draining banner. PLAN-11, PLAN-17 and PLAN-26 name `system.*` states but are
@@ -1513,15 +1532,18 @@ plan spec names the plan, proposal and finding documents it comes from.
   where a spec reads the mock plan detail or the drain status: PLAN-20, 47, 52, 55. PLAN-39 (2026-10-30) fixed one more
   case at the operator's word: a plan listed only inside an epic's rows now resolves (`planListedByAnEpic`), takes its
   state from the row (`shipped`/`merged`/`landed` read as `done`) and names its epic.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): the mock residue was accepted and not fixed; PLAN-20, 47 and 52 shipped; a spec that reads the mock plan detail or the drain status checks it at its own outline.
 - Mock epic-action routes (PLAN-10 residue, 2026-10-29): `/api/v1/epics/{id}/actions/cancel` ignores `with_plans`
   and `/api/v1/epics/{id}/actions/next` is a no-op. The run fixed the other false successes (`common_files`,
   `with_plans`, `archive`, `next` as CodeRabbit found them) and left these two untouched. No staged plan owns
   them. — decide with PLAN-11 (`mock-cli-fixes`) at its emit whether to add them to its deliverable 2.
+  → STAGED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): **PLAN-183** deliverable 2 (the mock's epic `cancel` with `with_plans` and `next`; re-read at `fcf87728`: `cancel` ignores `withPlans`, `next` falls to the default branch). After PLAN-181.
 - Per-point pause consequence (PLAN-10 residue, 2026-10-29): the cancel/pause dialogue cannot show what each
   pause point costs, because the actions resource carries no per-point data; the spec clause was accepted as
   not met. — an operator decision: add the data to the daemon contract (another repository) or drop the clause
   from the design. Check whether PLAN-20 (`cli-actions-by-state`) repeats the clause.
   → DECIDED 2026-11-15 (handle-open, operator chose proposal 1 of 3 at the orchestrator's confidence 60; the entry STAYS OPEN until the design text changes). Re-read on `origin/main`: `doc/design/shared/work-actions.adoc:60-75` (`#pause`) still shows per-plan consequences for each point ("2 tasks are withdrawn and 1 job is stopped", "implement · 4 min, build · 2 min", "3 of 7 tasks left"); no contract in `pm-api/.../control` carries that data; `PausePoint.java:14-19` already states each point's meaning in one sentence; PLAN-20 (shipped, #273) does not repeat the clause (its landing record has no mention). Chosen: **drop the per-plan figures and keep a fixed one-line meaning per point** (Now withdraws what runs and it runs again on start; after the current task lets the task finish and starts nothing new; after the current phase runs the phase to its end). Only the design changes (`work-actions.adoc:60-75` and its texts); no other repository is touched. Follow-up named, nothing staged: one design-document change. Not checked: what the pause dialogues of the web app and the terminal show today, so the clients' texts may need the same change.
+  → 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): KEPT (decided 2026-11-15): stays open until the design text of `#pause` changes.
 - Browser regression clause on terminal-only plans (PLAN-10 residue): PLAN-10 D2 asked for web views "that render
   the changed catalogue areas (control)" but changed only `operator.*` texts, so the clause was not met. The
   same generated clause is in PLAN-05 (shipped), 17, 21, 22, 23, 26, 34 and 36. — covered by the terminal-check
@@ -1566,6 +1588,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   failed on Sonar ("Organization is not allowed to access data from non main branches") and passed on re-run
   of the same head. — re-check at the next landing; if the authentication failure recurs, find why the CLI
   session lapses.
+  → CLOSED 2026-11-23 (the operator, decision 9 proposal 1; see Decisions): transient provider failures: no recurrence since 2026-10-28 and the three landings of 2026-11-23 read cleanly; reopen on a recurrence of `Not authenticated`.
 - PLAN-15's 80-column footer clause was written wider than the design: `? more` appears only where a cell had
   to be left out, so the overview and the activity (whole footer fits) do not end with it. — PLAN-56
   (`verify-cli-interaction`, `CLI-UX-V-02`) takes the design, not the clause, as its criterion; check the clause

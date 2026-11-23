@@ -52,4 +52,4 @@ The operator decided on 2026-11-23 (handle-open, decision 6, proposal 1) to sett
 
 - The `Open Defects` entries "the chat contract gaps (O10 + PLAN-161)" and "the chat proposal contract (PLAN-134 landing)" stay open and carry this brief; they close when step 6 is merged and the Part C plan ships.
 - No staged plan is changed by this brief. PLAN-137 (parked), PLAN-138 and PLAN-140 (behind PLAN-42 and PLAN-44) keep their chat deliverables as they are and are re-grounded when Part A and B are merged.
-- A clients plan (provisionally PLAN-183) is staged after step 6, not before: staging it now would make its claims about unconfirmed addresses.
+- A clients plan (no number yet) is staged after step 6, not before: staging it now would make its claims about unconfirmed addresses.
