@@ -179,10 +179,9 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await newerBtn.click();
     await expect(page.getByText(/page 1 of 3/i)).toBeVisible();
 
-    // Click Back to return to running work view
-    const backBtn = page.getByRole('button', { name: /Back/i });
-    await expect(backBtn).toBeVisible();
-    await backBtn.click();
+    // A page carries no Back act of its own: the rail's overview item returns to the running work,
+    // and the running view lists its plan cards again.
+    await page.getByTestId('nav-overview-btn').click();
 
     // Verify back on main running work view: some plan card is there, whichever the runtime serves.
     await expect(page.locator('.plan-card').first()).toBeVisible();

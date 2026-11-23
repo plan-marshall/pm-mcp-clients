@@ -680,6 +680,7 @@
 
   .plan__actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
     margin-top: var(--space-1);
   }
@@ -689,12 +690,6 @@
     align-items: center;
     gap: var(--space-2);
     font-size: var(--text-sm);
-  }
-
-  .plan__actions {
-    display: flex;
-    gap: var(--space-2);
-    margin-top: var(--space-1);
   }
 
   .read-back {
