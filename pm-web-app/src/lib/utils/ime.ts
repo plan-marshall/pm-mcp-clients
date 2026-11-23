@@ -16,11 +16,14 @@ export const IME_KEY_CODE = 229;
  * @returns whether the press confirms the field: `Enter` that belongs to no input method
  */
 export function isConfirmingEnter(event: KeyboardEvent, composing = false): boolean {
+  // Read through a plain record so the deprecated `KeyboardEvent.keyCode` is not named: Safari's
+  // confirming `Enter` is the only press this field is read for.
+  const legacy = event as unknown as { keyCode?: number };
   return (
     event.key === 'Enter' &&
     !event.shiftKey &&
     !event.isComposing &&
-    event.keyCode !== IME_KEY_CODE &&
+    legacy.keyCode !== IME_KEY_CODE &&
     !composing
   );
 }

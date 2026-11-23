@@ -845,7 +845,7 @@ class ExitCodesTest {
                 try {
                     code.set(verb.run());
                 }
-                /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
                 catch (RuntimeException failed) {
                     failure.set(failed);
                 }
