@@ -16,6 +16,8 @@ the first visible column, the caller stack and the in-page Backs are removed, th
 work · Decisions · More with Reports inside More, and a plan and an epic open beside the list of their siblings. Theme and
 language stay in the rail foot and the More sheet (the operator, 2026-11-10; README option A).
 
+Deliverable 0 folds in the remainder of PLAN-143 on the operator's word of 2026-11-23 (the fix plan Q7 is not staged as a plan of its own): the unwired deleted-object fall-back and three views that do not follow the address scheme.
+
 ## Deliverables
 
 The documents are the specification; read them first: `doc/design/web-app/navigation.adoc` (#lenses, #levels, #up, #kinds,
@@ -24,6 +26,18 @@ The documents are the specification; read them first: `doc/design/web-app/naviga
 (#up :169-176, #url :216-219). D6 merged (#403, `8568b56e`) and settled Q6 (Up, the lens segment and What waits's address); the
 deliverables below state its rulings.
 
+0. **The remainder of PLAN-143 (folded in, operator 2026-11-23)**
+ - What: four gaps of the address scheme that PLAN-143's landing left (`landings/PLAN-143.md`: D2, D4, L3-2, L3-3), each re-read at `3ae8a305` and still open; the scheme itself stays PLAN-143's.
+   - **The deleted-object fall-back is wired.** `fallBackFromDeletedObject` (`runtime.ts:1003`) has no production caller. Call it where the runtime learns that the object an address names no longer exists (a plan, an epic, a decision, a report dropped from the served data), so the address falls back to the object's parent by a replace and the Back button does not return to the dead address. Settle the exact trigger against `history.ts` and PLAN-143's push-and-replace rule at outline.
+   - **`OverviewView` follows the address, not only its mount.** The lens fields (group, scope, Ended Work, the focus) are read in `onMount` only (`OverviewView.svelte:283`), so a Running work click while Ended Work is open, or Back and Forward between two overview addresses, changes the bar and not the view. Read them from the store reactively.
+   - **`ReportsView` opens a report outside the first page.** `/reports/{id}` is looked up in the first loaded page only (`ReportsView.svelte:400-413`, `items.find`), the view stays on the list without a notice, and `showDetail` picks the first row of a plan, so a second report of one plan is rewritten to the first report's id. Resolve a report that is not in the loaded page (by its id, or by loading on), keep every report of a plan addressable, and say so when a requested report cannot be opened. The old `/reports?plan=` link (`routes.ts`) and the list-to-detail replace (Back leaves Reports) are read at outline and settled with it.
+   - **`ProjectExplorerView` drops its `?project=` reader.** Since PLAN-59 (#538) `/projects/{id}` is the project's address and `/projects?project=` is rewritten (`routes.test.ts:341`); `focusRequestedProject`, `focusedFilter`, the `window.location.search` read (`ProjectExplorerView.svelte:193`) and the popstate listener are unreachable and untested. Remove them.
+   - Not in this deliverable, re-read and settled: `switchTab` has callers (`runtime.ts:1972,1993`); the start address without a place is the What waits list and a bare `/overview` keeps the overview (`rememberedPlace.ts:198-212`, PLAN-49) — PLAN-143's L3-1 is fixed. HYPOTHESIS: closing or replacing an `open=` object is still missing (PLAN-143 D2, no function does it) — confirm/refute at `navigation/history.ts` and `runtime.ts` (verify-at-outline); if it is missing, add it to this deliverable.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+ - Done when:
+   - `runtime.test.ts` drives a removed object through the store and shows the address replaced by its parent's; `OverviewView.test.ts` shows a second overview address changing the view; `ReportsView.test.ts` opens a report outside the first page, keeps two reports of one plan apart and shows the notice for an unresolvable one; `git grep -n "window.location.search" -- pm-web-app/src/lib/views/ProjectExplorerView.svelte` is empty and `focusRequestedProject` is gone. Evidence order: `test-first`.
+   - `navigation.spec.js` or `reports.spec.js` shows the deep link of a report beyond the first page. Evidence order: `test-first`.
 1. **The rail's lens from the route, and the phone's bar**
  - What:
    - `activeNavRoute` in `shell/nav.ts` returns the lens of the route by the kinds table of `navigation.adoc#lenses` (a
@@ -131,31 +145,31 @@ deliverables below state its rulings.
 ## Claim Labels
 
 - OBSERVED: `activeNavRoute` maps plan, epic, decomposition and start onto the overview, the cleanup onto the system, the machine settings onto the settings, the project onboarding onto the projects; `BOTTOM_IDS` is `running`, `decisions`, `reports`; `pathOf` builds a group › title trail from static keys — read at `pm-web-app/src/lib/shell/nav.ts:120,136-205`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: BOTTOM_IDS is now needs, running, decisions (nav.ts); activeNavRoute mapping holds; D1 bar work largely on main (#461 PLAN-49, #459 PLAN-52) (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: yes | evidence: BOTTOM_IDS is needs, running, decisions; activeNavRoute mapping holds; D1 bar work largely on main (#461, #459); nav.ts unchanged since 7b60cec0 (origin/main 3ae8a305)
 - OBSERVED: `RAIL_GROUPS` has no What waits entry and no `needs` route exists — read at `pm-web-app/src/lib/shell/nav.ts:42-112`, `pm-web-app/src/lib/routes.ts:20-39`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: RAIL_GROUPS has a needs item (route inbox, What waits, count attention) first; inbox route exists in routes.ts; PLAN-49 shipped (#461) (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: yes | evidence: RAIL_GROUPS has a needs item (route inbox, What waits) first; inbox route exists; PLAN-49 shipped (#461); nav.ts unchanged since 7b60cec0 (origin/main 3ae8a305)
 - OBSERVED: `BottomBar` holds Running, Decisions, Reports and More, and its sheet carries the language and theme controls — read at `pm-web-app/src/lib/shell/BottomBar.svelte:1-60`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: BottomBar.svelte BOTTOM_ITEMS = needs, running, decisions, then More; More carries unread reports count; sheet keeps language toggle (:202) and theme choice; frame bar duplicates both (:245) (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: yes | evidence: BottomBar BOTTOM_ITEMS needs, running, decisions then More; Reports in More with its count; sheet keeps language and theme; BottomBar.svelte unchanged since 7b60cec0 (origin/main 3ae8a305)
 - OBSERVED: `TopBar` builds its crumbs from `pathOf` and draws `Breadcrumb` with no `KindMark` and no `href` — read at `pm-web-app/src/lib/shell/TopBar.svelte:29,42-48`; `Breadcrumb.svelte` (`Crumb` has `label`, `href`, `id`)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: TopBar.svelte builds crumbs from pathOf with label and id only; no KindMark, no href; Breadcrumb Crumb has label, href, id (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: TopBar builds crumbs from pathOf, label and id only, no KindMark, no href; the only change since 7b60cec0 is the loopback helper (PLAN-156) (origin/main 3ae8a305)
 - OBSERVED: `goBack` is called by `EpicView.svelte:171`, `PlanView.svelte:457`, `SettingsView.svelte:345`; the Back controls are at `EpicView.svelte:554`, `PlanView.svelte:712`, `OverviewView.svelte:645`, `SettingsView.svelte:351`, `MachineSettingsView.svelte:385,648`, `CompletionReportView.svelte:146`, `ProjectOnboardingView.svelte:421`, `EpicAdoptView.svelte:34`, `EpicDecompositionView.svelte:269`, `CleanupView.svelte:333` (in-place `preview.back` at :382)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: EpicView Back gone (#456); MachineSettingsView deleted (#457); goBack callers only PlanView:593 and SettingsView:1066; the list of Back controls shrinks, the work is the same (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: yes | evidence: goBack callers PlanView:593 and SettingsView:1064; remaining in-page Backs Overview:828, Plan:862, Settings:1070,1671, CompletionReport:317, ProjectOnboarding:539, EpicAdopt:37, Decomposition:324, Cleanup:434; the list shrinks, the work is the same (origin/main 3ae8a305)
 - OBSERVED: `ProcessTree` carries `project` and `epic` references — read at `pm-api/src/main/java/de/planmarshall/api/process/ProcessTree.java:44-60`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProcessTree.java record: ProcessProjectRef project and nullable ProcessEpicRef epic (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: ProcessTree record has ProcessProjectRef project and nullable ProcessEpicRef epic; pm-api unchanged in that file (origin/main 3ae8a305)
 - OBSERVED: `KindMark`, `Link`, `RowLink` do not exist under `pm-web-app/src/lib/components/` — read by `git ls-files pm-web-app/src/lib/components`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: KindMark, Link and RowLink exist in components/ (#420, #427); the dependency line already names them; TopBar still does not use them (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: yes | evidence: KindMark, Link and RowLink exist in components/ (#420, #427); TopBar still does not use them (origin/main 3ae8a305)
 - OBSERVED: the language and theme controls stand in the rail foot and the More sheet by README option A — read at `doc/design/web-app/README.adoc:147,153,431`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:150 (rail foot) and :156 (More sheet) carry language and theme; NavRail.svelte:187-195 and BottomBar.svelte:202-230 match (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: README.adoc rail foot and More sheet carry language and theme (lines shifted by +2 with PLAN-156); NavRail and BottomBar match (origin/main 3ae8a305)
 - HYPOTHESIS: a project's plans and epics, in the order served, are readable from the data `getProjectDetail` already returns, so the work list needs no new endpoint — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getProjectDetail` (:2730) and `ProjectDetailResponse` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts:326 ProjectDetailResponse has plans and epics; ActiveEpicSummary.plans nests ActivePlanSummary with epic_id (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts ProjectDetailResponse has plans and epics; client.ts unchanged since 7b60cec0 (origin/main 3ae8a305)
 - HYPOTHESIS: an epic's project is known from `getEpicResource` — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `getEpicResource` (:3171) and `EpicResource` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: client.ts:704 EpicResource has project_id; getEpicResource :4258 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts EpicResource has project_id; getEpicResource present; unchanged (origin/main 3ae8a305)
 - HYPOTHESIS: no view other than the ten named renders an in-page Back — confirm/refute by `git grep -n "common.actions.back\|web.common.back\|web.settings.back" -- pm-web-app/src/lib/views` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: remaining in-page Backs are the named views plus StartView (:1101); keys are common.action.back (singular); web.common.back no longer exists (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: remaining in-page Backs are the named views plus StartView (:1387) and OnboardingView's wizard onBack (:290); key is common.action.back (origin/main 3ae8a305)
 - OBSERVED: D6 settled Up and the lens segment (the lens's own list with nothing selected, pushed with the app's mark, a reload keeps it unfilled) and What waits's address `/?lens=waits` — read at `doc/design/web-app/navigation.adoc:171-172,216-219`, `doc/design/web-app/README.adoc:445-449`, `doc/design/web-app/needs-and-find.adoc:26` (`4a84f727`, D6 merged `8568b56e`)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: navigation.adoc:169 #up, :216-219; README.adoc:445; needs-and-find.adoc:26 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: navigation.adoc #up and #url, README.adoc, needs-and-find.adoc unchanged in substance (origin/main 3ae8a305)
 - Verify-first clause: re-read `navigation.adoc#up` and `#url`, PLAN-142's `up` slot and PLAN-143's unfilled-lens and Running-work functions at the then-current HEAD. If PLAN-49 has landed, add What waits to the bar and the rail in deliverable 1; if PLAN-130 has not, stop and loop back.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-49, 130, 143 shipped (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural; PLAN-49, 130, 143 shipped; PLAN-59, 154, 156 shipped (origin/main 3ae8a305)
 
 ## Expected Surface
 
@@ -216,10 +230,17 @@ deliverables below state its rulings.
 - OBSERVED: `pm-web-app/src/lib/templates/TriagePage.test.ts` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
 - OBSERVED: `pm-web-app/src/lib/templates/SideColumn.svelte` — present at `0b9402ec` (folded by the analyze of 2026-11-15)
 - OBSERVED: `pm-web-app/src/lib/views/EpicAdoptView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/ReportsView.svelte` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/views/ReportsView.test.ts` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.test.ts` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/navigation/history.ts` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
+- OBSERVED: `pm-web-e2e/tests/reports.spec.js` — present at HEAD 3ae8a305 (folded D0, 2026-11-23)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-142` (the `up` slot, the engine), `PLAN-143` (the address scheme and the history writer); the D1 foundation part with `KindMark`, `RowLink` and `Link`; `PLAN-130` landed (`NavRail.svelte`, `chrome.spec.js`); the D6 documents (Q6) — merged (#403, `8568b56e`), satisfied.
+- Depends on: `PLAN-142` (the `up` slot, the engine), `PLAN-143` (the address scheme and the history writer; its remainder is deliverable 0); the D1 foundation part with `KindMark`, `RowLink` and `Link`; `PLAN-130` landed (`NavRail.svelte`, `chrome.spec.js`); the D6 documents (Q6) — merged (#403, `8568b56e`), satisfied.
 - Overlaps with:
   - `PLAN-49` (parked): `shell/nav.ts`, `NavRail.svelte`, `BottomBar.svelte`, `routes.ts`, `+layout.svelte`, `chrome.spec.js`. This plan lands first; PLAN-49 D3 then adds only What waits, its count, the tab title and the tab icon.
   - `PLAN-130` (staged): `NavRail.svelte`, `chrome.spec.js`. It lands first.
@@ -246,6 +267,15 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 - Claims 0, 1, 2, 4 and 6 contradicted (`rescoped: yes`): **D1 is mostly DONE** (What waits first in the bar and rail, `nav.ts` `BOTTOM_IDS`, `RAIL_GROUPS` `needs`/`inbox`; Reports moved into More with its count: PLAN-49 #461, PLAN-52 #459; `BottomBar.test.ts` EXISTS, so it is extended, not created); **D3 partly** (EpicView Back gone #456, `MachineSettingsView` deleted #457: its row and test leave the surface; `goBack` callers are only `PlanView:593` and `SettingsView:1066`, the Back controls that remain are `Overview:828`, `Plan:862`, `Settings:1072,1673`, `CompletionReport:150`, `ProjectOnboarding:426`, `EpicAdopt:37`, `Decomposition:324`, `Cleanup:434`); KindMark, Link and RowLink already exist (#420, #427) and are the dependency line's.
 - NOT done: D2 (no `chain.ts`, no `UpLink`, no `web.nav.up` key, nothing fills `TriagePage`'s `up`, `TopBar` draws no KindMark), D4 (no `WorkListColumn`; PlanView and EpicView are not on TriagePage), D5. The folded shell-height item is open (`AppShell` `min-block-size: 100vh`, `TriagePage:579`); the modal boundary (`inert`/`aria-modal`) is absent. The Back-key names are `common.action.back` (singular).
 - The PLAN-143 fix plan (uncalled `fallBackFromDeletedObject`, `ProjectExplorerView.svelte:87` reading `location.search`) is still undecided and sequenced against this plan.
+
+## Re-Grounding 2026-11-23 (analyze, at `3ae8a305`)
+
+The three landings of 2026-11-23 (PLAN-59 #538, PLAN-154 #539, PLAN-156 #536) touched this spec's surface (`TopBar.svelte` only by the shared loopback helper, `runtime.ts`, `SettingsView.svelte`, `ProjectOnboardingView.svelte`, `CompletionReportView.svelte`, `chrome.spec.js`, `common.*`, the README); the shell files (`nav.ts`, `NavRail`, `BottomBar`, `Breadcrumb`), `client.ts` and `navigation.adoc` did not move since `7b60cec0`. Verdicts re-stamped per claim at `3ae8a305` (`corpus set-verdict`, by `ui-improvements/analyze`):
+
+- Claims 0, 1, 2, 4, 6 stay contradicted with their `rescoped: yes` corrections; claim 4's lists are refreshed: `goBack` callers are `PlanView.svelte:593` and `SettingsView.svelte:1064`; the in-page Back controls that remain are `OverviewView:828`, `PlanView:862`, `SettingsView:1070,1671`, `CompletionReportView:317`, `ProjectOnboardingView:539`, `EpicAdoptView:37`, `EpicDecompositionView:324`, `CleanupView:434` (the key is `common.action.back`, and `system.cleanup.back_to_system`); `StartView` and `OnboardingView` keep their own wizard `goBack`, which stays. `MachineSettingsView` is deleted.
+- Claim 3 holds: `TopBar` still builds its crumbs from `pathOf`, with no `KindMark` and no `href`.
+- Deliverable 0 is new: the PLAN-143 fix plan Q7 was decided on 2026-11-23 as a fold into this plan; its premises were re-read at `3ae8a305` (see D0; two of the old premises are stale and said so there).
+- Sequencing: PLAN-59 (which edits `routes.ts` and `runtime.ts`) has landed, so this plan no longer waits for it; PLAN-174 (CLI) is disjoint (0 shared paths by `corpus surfaces`).
 
 ## Hand-Off Command
 
