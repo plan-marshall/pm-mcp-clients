@@ -184,7 +184,7 @@ public record OperatorLink(
                 && !(map.get(FIELD_PRESELECTED) instanceof Boolean)) {
             throw new JsonFormatException("Invalid " + FIELD_PRESELECTED + " in OperatorLink");
         }
-        var params = JsonTree.objectOrNull(map, FIELD_PARAMS, "OperatorLink");
+        var params = JsonTree.optionalObject(map, FIELD_PARAMS, "OperatorLink").orElse(Map.of());
         var preselected = Boolean.TRUE.equals(map.get(FIELD_PRESELECTED));
         var confirm = JsonTree.string(map, FIELD_CONFIRM);
         if (confirm != null && !OperatorText.matchesMessageKeyGrammar(confirm)) {

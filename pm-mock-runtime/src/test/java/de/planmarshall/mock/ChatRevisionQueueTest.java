@@ -454,8 +454,8 @@ class ChatRevisionQueueTest {
 
     private static QueuedRevision queuedRevision(MockRuntime runtime) throws Exception {
         var plan = process(runtime);
-        var queued = JsonTree.objectOrNull(plan, QUEUED_REVISION, "plan");
-        return queued == null ? null : QueuedRevision.fromMap(queued);
+        var queued = JsonTree.optionalObject(plan, QUEUED_REVISION, "plan");
+        return queued.isEmpty() ? null : QueuedRevision.fromMap(queued.get());
     }
 
     private static int version(MockRuntime runtime) throws Exception {

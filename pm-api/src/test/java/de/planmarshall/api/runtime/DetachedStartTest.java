@@ -9,16 +9,19 @@
  */
 package de.planmarshall.api.runtime;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,12 +36,15 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 
 /**
  * The on-demand start end to end on the JVM: a staged {@code pm-mcpd} (a shell script reporting its
- * pid and process group) is started through FFM {@code posix_spawn}; the test brings up the fake
- * runtime when the script reports, and the client's request then succeeds.
+ * pid and process group) is started through FFM {@code posix_spawn}; the test waits a stated budget
+ * for the script to report and then brings the fake runtime up, and the client's request succeeds.
  */
 @DisplayName("Detached on-demand start (gate 8, JVM)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class DetachedStartTest {
+
+    private static final Duration START_BUDGET = Duration.ofSeconds(5);
+    private static final Duration POLL_INTERVAL = Duration.ofMillis(5);
 
     private RuntimeFixture fixture;
     private Path home;
@@ -83,13 +89,17 @@ class DetachedStartTest {
         var client = RuntimeAccess.local(environment(), Path.of("/nonexistent"), Map.of(), true);
         var runtime = Thread.ofVirtual().start(() -> {
             try {
-                var deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-                while (!Files.exists(marker) && System.nanoTime() < deadline) {
-                    Thread.sleep(5);
+                // The wait is advisory, as it was: a start that never reports is not itself the
+                // failure, and the round trip and the marker assertions below decide.
+                try {
+                    await().atMost(START_BUDGET).pollDelay(POLL_INTERVAL).pollInterval(POLL_INTERVAL)
+                            .until(() -> Files.exists(marker));
+                } catch (ConditionTimeoutException _) {
+                    // the fixture is started below regardless, so the client's round trip decides
                 }
                 fixture.start((request, response) -> response.json(200, "{\"version\":\"t\"}"));
-            } catch (IOException | InterruptedException e) {
-                Thread.currentThread().interrupt();
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
             }
         });
 
@@ -123,10 +133,8 @@ class DetachedStartTest {
         var launched = new PosixDaemonLauncher(PosixPlatform.current(), Map.of())
                 .launch(script, fixture.base().resolveSibling("log"));
 
-        var deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-        while (launched.exitCode().isEmpty() && System.nanoTime() < deadline) {
-            Thread.sleep(5);
-        }
+        await().atMost(START_BUDGET).pollDelay(POLL_INTERVAL).pollInterval(POLL_INTERVAL)
+                .until(() -> launched.exitCode().isPresent());
 
         assertEquals(77, launched.exitCode().orElseThrow());
         assertTrue(launched.pid() > 0);

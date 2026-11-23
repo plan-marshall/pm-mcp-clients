@@ -44,11 +44,15 @@ public record EpicProcess(
         @Nullable ProcessTokens tokensSoFar,
         boolean reviewReady
 ) {
+    /** Wire key of the project member. */
     private static final String PROJECT_KEY = "project";
+
+    /** The project name a document that carries no project member is rendered with. */
+    private static final String DEFAULT_PROJECT = "project";
 
     public EpicProcess {
         Objects.requireNonNull(epicId, "epicId");
-        project = project != null ? project : PROJECT_KEY;
+        project = project != null ? project : DEFAULT_PROJECT;
         title = title != null ? title : epicId;
         state = state != null ? state : "running";
         runningPlans = runningPlans != null ? List.copyOf(runningPlans) : List.of();

@@ -151,7 +151,7 @@ public final class CliProcess implements AutoCloseable {
                     line.write(b);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // the process ended
         }
     }
@@ -165,7 +165,7 @@ public final class CliProcess implements AutoCloseable {
                     target.write(buffer, 0, n);
                 }
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // the process ended
         }
     }

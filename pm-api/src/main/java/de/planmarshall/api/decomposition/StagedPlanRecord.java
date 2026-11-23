@@ -136,8 +136,8 @@ public record StagedPlanRecord(
         if (planId == null || title == null) {
             throw new JsonFormatException("Missing required fields for StagedPlanRecord: plan_id or title");
         }
-        var originMap = JsonTree.objectOrNull(map, FIELD_ORIGIN, "StagedPlanRecord");
-        var origin = originMap != null ? ChatOrigin.fromMap(originMap) : null;
+        var originMap = JsonTree.optionalObject(map, FIELD_ORIGIN, "StagedPlanRecord");
+        var origin = originMap.isPresent() ? ChatOrigin.fromMap(originMap.get()) : null;
         return new StagedPlanRecord(planId, title, JsonTree.string(map, FIELD_OBJECTIVE),
                 readStrings(map.get(FIELD_EXPECTED_SURFACE)), readStrings(map.get(FIELD_DEPENDENCIES)),
                 JsonTree.string(map, FIELD_STATUS), origin);

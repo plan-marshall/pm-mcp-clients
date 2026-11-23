@@ -340,8 +340,8 @@ class OverviewRecordsTest {
     }
 
     @Test
-    @DisplayName("round-trip serializes overview SSE events")
-    void overviewEvents() throws Exception {
+    @DisplayName("round-trip serializes the project work changed SSE event")
+    void projectWorkChangedEvent() throws Exception {
         var projectId = Generators.nonBlankStrings().next();
         var activePlansCount = Generators.integers(0, 100).next();
         var activeEpicsCount = Generators.integers(0, 100).next();
@@ -355,7 +355,11 @@ class OverviewRecordsTest {
         assertEquals(activePlansCount, parsedPChanged.activePlansCount());
         assertEquals(activeEpicsCount, parsedPChanged.activeEpicsCount());
         assertEquals(needsOperatorCount, parsedPChanged.needsOperatorCount());
+    }
 
+    @Test
+    @DisplayName("round-trip serializes the phase and activity changed SSE events")
+    void phaseAndActivityChangedEvents() throws Exception {
         var phaseEnteredAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var planId = Generators.nonBlankStrings().next();
         var phChanged = new PhaseChangedEvent(planId, "outline", "execute", phaseEnteredAt);
@@ -372,7 +376,13 @@ class OverviewRecordsTest {
         assertEquals(planId, parsedActChanged.planId());
         assertEquals("pausing", parsedActChanged.activity());
         assertEquals("task", parsedActChanged.point());
+    }
 
+    @Test
+    @DisplayName("round-trip serializes the needs-operator changed and task off-track SSE events")
+    void needsOperatorAndOffTrackEvents() throws Exception {
+        var projectId = Generators.nonBlankStrings().next();
+        var planId = Generators.nonBlankStrings().next();
         var needsCount = Generators.integers(0, 100).next();
         var needsChanged = new NeedsOperatorChangedEvent(projectId, planId, null, "decision", needsCount, null);
         assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
@@ -491,7 +501,11 @@ class OverviewRecordsTest {
         assertThrows(NullPointerException.class, () -> new ProjectDetailResponse(null, "D", null, null, null));
         assertThrows(NullPointerException.class, () -> new EndedWorkPage(null, null, 1, 1, false, false));
         assertThrows(NullPointerException.class, () -> new EndedWorkItem(null, "plan", "T", "merged", null, null, null, null, null));
+    }
 
+    @Test
+    @DisplayName("refuses resources that are no object or lack their required fields")
+    void resourceReadingErrors() {
         assertThrows(JsonFormatException.class, () -> ProjectSummary.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> ProjectSummary.fromMap(Map.of()));
         assertThrows(JsonFormatException.class, () -> ProjectSummary.parseList("{}"));
@@ -507,7 +521,11 @@ class OverviewRecordsTest {
         assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromMap(Map.of()));
         assertThrows(JsonFormatException.class, () -> EndedWorkItem.fromMap(Map.of("id", "item-1")));
         assertThrows(JsonFormatException.class, () -> AlongsideLanding.fromJson("[]"));
+    }
 
+    @Test
+    @DisplayName("refuses SSE events that are no object or lack their required fields")
+    void eventReadingErrors() {
         assertThrows(JsonFormatException.class, () -> ProjectWorkChangedEvent.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> ProjectWorkChangedEvent.fromMap(Map.of()));
         assertThrows(JsonFormatException.class, () -> PhaseChangedEvent.fromJson("[]"));

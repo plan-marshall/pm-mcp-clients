@@ -72,8 +72,8 @@ public record ReplanningRecord(String trigger, String time, String change, @Null
         if (time == null) time = "";
         var change = JsonTree.string(map, FIELD_CHANGE);
         if (change == null) change = "";
-        var chatMap = JsonTree.objectOrNull(map, FIELD_CHAT, TYPE);
-        var chat = chatMap != null ? ChatTurnPointer.fromMap(chatMap) : null;
+        var chatMap = JsonTree.optionalObject(map, FIELD_CHAT, TYPE);
+        var chat = chatMap.isPresent() ? ChatTurnPointer.fromMap(chatMap.get()) : null;
         return new ReplanningRecord(trigger, time, change, chat);
     }
 }

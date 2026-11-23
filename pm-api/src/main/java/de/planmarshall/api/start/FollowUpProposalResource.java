@@ -175,11 +175,11 @@ public record FollowUpProposalResource(
             throw new JsonFormatException("Unknown " + FIELD_SCOPE + " in FollowUpProposalResource: "
                     + JsonTree.string(map, FIELD_SCOPE));
         }
-        var proposalMap = JsonTree.objectOrNull(map, FIELD_PROPOSAL, "FollowUpProposalResource");
+        var proposalMap = JsonTree.optionalObject(map, FIELD_PROPOSAL, "FollowUpProposalResource");
         try {
             return new FollowUpProposalResource(subjectId, subjectKind, role, scope,
                     StartJson.bool(map, FIELD_AVAILABLE), JsonTree.string(map, FIELD_DISABLED_REASON_KEY),
-                    proposalMap != null ? ChatProposalResource.fromMap(proposalMap) : null);
+                    proposalMap.isPresent() ? ChatProposalResource.fromMap(proposalMap.get()) : null);
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid FollowUpProposalResource: " + e.getMessage(), e);
         }

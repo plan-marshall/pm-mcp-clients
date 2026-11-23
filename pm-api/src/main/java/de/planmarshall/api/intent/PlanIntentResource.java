@@ -597,7 +597,7 @@ public record PlanIntentResource(
     public static PlanIntentResource fromMap(Map<String, Object> map) throws IOException {
         Objects.requireNonNull(map, "map");
         IntentJson.requireOnlyKnown(map, KNOWN_FIELDS, TYPE);
-        var builderMap = JsonTree.objectOrNull(map, FIELD_BUILDER_CHECK, TYPE);
+        var builderMap = JsonTree.optionalObject(map, FIELD_BUILDER_CHECK, TYPE);
         try {
             return new PlanIntentResource(
                     IntentJson.requireText(map, FIELD_PLAN_ID, TYPE),
@@ -608,7 +608,7 @@ public record PlanIntentResource(
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DECISIONS), Decision::fromMap),
                     IntentJson.readStrings(map, FIELD_OPEN_QUESTIONS),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DEFERRED), DeferredItem::fromMap),
-                    builderMap != null ? BuilderCheckResource.fromMap(builderMap) : null);
+                    builderMap.isPresent() ? BuilderCheckResource.fromMap(builderMap.get()) : null);
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
         }

@@ -195,16 +195,16 @@ public record EntryResource(
             throw new JsonFormatException(
                     "Unknown " + FIELD_STATE + " in EntryResource: " + JsonTree.string(map, FIELD_STATE));
         }
-        var recipeMap = JsonTree.objectOrNull(map, FIELD_RECIPE, TYPE);
-        var failureMap = JsonTree.objectOrNull(map, FIELD_ADOPTION_FAILURE, TYPE);
+        var recipeMap = JsonTree.optionalObject(map, FIELD_RECIPE, TYPE);
+        var failureMap = JsonTree.optionalObject(map, FIELD_ADOPTION_FAILURE, TYPE);
         try {
             return new EntryResource(entryId, kind, projectId, state, JsonTree.string(map, FIELD_TITLE),
                     JsonTree.string(map, FIELD_PLAN_ID), readSources(map), readOffers(map),
                     StartJson.bool(map, FIELD_CAN_CONTINUE),
                     StartJson.bool(map, FIELD_CHAT_AVAILABLE), JsonTree.string(map, FIELD_CHAT_DISABLED_REASON),
-                    recipeMap != null ? RecipeRef.fromMap(recipeMap) : null,
+                    recipeMap.isPresent() ? RecipeRef.fromMap(recipeMap.get()) : null,
                     readAdoptable(map),
-                    failureMap != null ? AdoptionFailure.fromMap(failureMap) : null);
+                    failureMap.isPresent() ? AdoptionFailure.fromMap(failureMap.get()) : null);
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid EntryResource: " + e.getMessage(), e);
         }

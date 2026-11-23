@@ -76,6 +76,14 @@
                 <artifactId>pm-web-app</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- The approved version, pinned here so a parent bump cannot move it. The parent manages
+                 the same artifact; the version waits of the tests are the only use. -->
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>4.3.0</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -153,10 +161,13 @@
                                         <exclude>*</exclude>
                                     </excludes>
                                     <!-- Beside jackson-core: Lombok, which is needed at compile time only, the
-                                         JUnit stack of the tests with what it brings, and the CUI test stack of the
-                                         tests. The two CUI test artifacts are bound to test scope; the
-                                         cui-java-tools they bring stays unbound, because the rule cannot tell the
-                                         scope of a transitive dependency -->
+                                         JUnit stack of the tests with what it brings, the CUI test stack of the
+                                         tests, and Awaitility for the condition waits of the tests. The entries
+                                         that name *:jar:test (the CUI test artifacts, Awaitility and the
+                                         Hamcrest it brings) refuse a compile-scoped copy of those coordinates;
+                                         the JUnit, JSpecify, Lombok and cui-java-tools entries are
+                                         unrestricted, because their coordinates are admitted whatever scope
+                                         the classpath resolves for them -->
                                     <includes>
                                         <include>com.fasterxml.jackson.core:jackson-core</include>
                                         <include>org.projectlombok:lombok</include>
@@ -168,6 +179,8 @@
                                         <include>de.cuioss.test:cui-test-generator:*:jar:test</include>
                                         <include>de.cuioss.test:cui-test-juli-logger:*:jar:test</include>
                                         <include>de.cuioss:cui-java-tools</include>
+                                        <include>org.awaitility:awaitility:*:jar:test</include>
+                                        <include>org.hamcrest:hamcrest:*:jar:test</include>
                                     </includes>
                                     <message>pm-api depends on jackson-core only.</message>
                                 </bannedDependencies>
