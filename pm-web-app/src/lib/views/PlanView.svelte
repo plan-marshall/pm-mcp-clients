@@ -7,6 +7,7 @@
   import Tabs, { type TabItem } from '../components/Tabs.svelte';
   import PlanChanges from '../components/PlanChanges.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkListColumn from '../components/WorkListColumn.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import {
@@ -53,6 +54,19 @@
   type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
 
   let planId = $derived($runtimeStore.selectedPlanId || '');
+  const planProjectId = $derived(plan?.project?.project_id ?? $runtimeStore.selectedProjectId ?? '');
+  let lastLoadedPlanId: string | null = null;
+
+  $effect(() => {
+    const current = planId;
+    if (current && lastLoadedPlanId !== null && current !== lastLoadedPlanId) {
+      lastLoadedPlanId = current;
+      void loadPlanProcess(true);
+    } else if (current && lastLoadedPlanId === null) {
+      lastLoadedPlanId = current;
+    }
+  });
+
   let plan = $state<ProcessTree | null>(null);
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
@@ -749,7 +763,11 @@
   }
 </script>
 
-<div class="plan-view" data-testid="plan-view">
+<div class="plan-view-layout" data-testid="plan-view-layout">
+  {#if planProjectId}
+    <WorkListColumn projectId={planProjectId} currentPlanId={planId} />
+  {/if}
+  <div class="plan-view" data-testid="plan-view">
   {#if isLoading}
     <div class="plan-view__loading" data-testid="plan-loading">
       <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
@@ -1321,9 +1339,21 @@
     {/if}
   {/if}
 </div>
+</div>
 
 <style>
+  .plan-view-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    inline-size: 100%;
+    min-inline-size: 0;
+    min-height: 100%;
+  }
+
   .plan-view {
+    flex: 1 1 auto;
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     height: 100%;

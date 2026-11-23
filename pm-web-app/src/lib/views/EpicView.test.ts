@@ -213,6 +213,21 @@ describe('EpicView component', () => {
     );
 
     vi.spyOn(apiClient, 'getEpicProcess').mockResolvedValue(mockEpic);
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [],
+      epics: [
+        {
+          epic_id: 'relay-hardening',
+          title: 'Relay Hardening',
+          running_plans_count: 1,
+          staged_plans_count: 2,
+          plans: [],
+        },
+      ],
+      alongside_landings: [],
+    });
     vi.spyOn(apiClient, 'getEpicResource').mockRejectedValue(new Error('no resource'));
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     vi.spyOn(apiClient, 'getEpicIntent').mockResolvedValue({
@@ -281,6 +296,7 @@ describe('EpicView component', () => {
     // The head draws no path: the top bar's breadcrumb is the only one (`navigation.adoc#up`).
     expect(screen.queryByTestId('epic-breadcrumb')).not.toBeInTheDocument();
     expect(screen.queryByTestId('back-btn')).not.toBeInTheDocument();
+    expect(screen.getByTestId('work-list-column')).toBeInTheDocument();
 
     expect(screen.getByTestId('epic-state')).toHaveTextContent('running');
     expect(screen.getByTestId('review-ready-badge')).toHaveTextContent(

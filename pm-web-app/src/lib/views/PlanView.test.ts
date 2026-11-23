@@ -165,6 +165,22 @@ describe('PlanView component', () => {
     );
 
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(mockPlan);
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        {
+          plan_id: 'fix-relay',
+          title: 'Fix Relay Transport',
+          current_phase: 'execute',
+          phase_state: 'running',
+          tasks_done: 2,
+          tasks_total: 3,
+        },
+      ],
+      epics: [],
+      alongside_landings: [],
+    });
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue(mockActivity);
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
@@ -505,6 +521,13 @@ describe('PlanView component', () => {
 
     await screen.findByTestId('plan-title');
     expect(screen.queryByTestId('back-btn')).not.toBeInTheDocument();
+  });
+
+  it('renders WorkListColumn beside the plan on wide viewports (D4)', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    expect(screen.getByTestId('work-list-column')).toBeInTheDocument();
   });
 
   it('opens the parent epic from the breadcrumb in one step', async () => {

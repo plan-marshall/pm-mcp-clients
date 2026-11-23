@@ -6,6 +6,7 @@
   import { errorCodeOf, actFailureText } from '../api/errors';
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkListColumn from '../components/WorkListColumn.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import Chip from '../components/Chip.svelte';
@@ -36,6 +37,21 @@
   import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
+  const epicProjectId = $derived(
+    resource?.project_id ?? epic?.project ?? $runtimeStore.selectedProjectId ?? '',
+  );
+  let lastLoadedEpicId: string | null = null;
+
+  $effect(() => {
+    const current = epicId;
+    if (current && lastLoadedEpicId !== null && current !== lastLoadedEpicId) {
+      lastLoadedEpicId = current;
+      void loadEpic(true);
+    } else if (current && lastLoadedEpicId === null) {
+      lastLoadedEpicId = current;
+    }
+  });
+
   let epic = $state<EpicProcess | null>(null);
   let resource = $state<EpicResource | null>(null);
   let isLoading = $state(true);
@@ -647,7 +663,11 @@
   }
 </script>
 
-<div class="epic-view" data-testid="epic-view">
+<div class="epic-view-layout" data-testid="epic-view-layout">
+  {#if epicProjectId}
+    <WorkListColumn projectId={epicProjectId} currentEpicId={epicId} />
+  {/if}
+  <div class="epic-view" data-testid="epic-view">
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
@@ -928,6 +948,7 @@
     {/if}
   {/if}
 </div>
+</div>
 
 {#snippet plans(withTitle: boolean)}
   <section class="plans-section" data-testid="epic-workstreams">
@@ -1065,7 +1086,18 @@
 {/if}
 
 <style>
+  .epic-view-layout {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    inline-size: 100%;
+    min-inline-size: 0;
+    min-height: 100%;
+  }
+
   .epic-view {
+    flex: 1 1 auto;
+    min-inline-size: 0;
     display: flex;
     flex-direction: column;
     height: 100%;
