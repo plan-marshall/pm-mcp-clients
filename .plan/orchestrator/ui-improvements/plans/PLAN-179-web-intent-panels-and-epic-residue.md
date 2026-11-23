@@ -50,12 +50,23 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 4. **The tests that could not fail, and browser evidence**
  - What:
    - PLAN-145's tests that cannot fail: `OutlinePanel.test.ts:321-343` "keeps the newer outline when two reads answer out of order" (the read that resolves last is the first, so nothing is announced with or without the guard), the absence assertions `PlanIntentPanel.test.ts:283` `/vote/i` and `BuilderCheckList.test.ts:116,134-135`, the unproved "keeps an expanded reason open across a refresh", the unsubscribe on destroy and the non-404 rethrow of `readRecord`; run each against the production line removed and record the failing run; the e2e `intent.spec.js` never triggers a live refresh, an absent record or `not_run`: add those cases. The dev fixture renders once per theme and duplicates `data-testid`s (`routes/dev/components/+page.svelte:815-826`, the spec works around it with `.first()`/`.nth()`): one fixture per id.
-   - Browser check (Playwright MCP) of the epic view switched in place, the intent panels with a live refresh, an absent record and `not_run`, and the setup tab's chart, in `en` and `de`, light and dark, at `1440 × 900` and `390 × 844`, after the last visual commit.
+   - Browser check (Playwright MCP) of the epic view switched in place, the intent panels with a live refresh, an absent record, `not_run` and a record with no non-goals, and the setup tab's chart, in `en` and `de`, light and dark, at `1440 × 900` and `390 × 844`, after the last visual commit.
  - Persona: plan-marshall:persona-module-tester
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
  - Done when:
    - Each rewritten or added test is shown to fail with the production line it names reverted, the failing run cited; the full `-Pe2e` run at the head is green and cited. Evidence order: `mutation-after`.
    - The browser check is taken after the last visual commit and its files are named `{plan}-{target}-{before|after}`. Evidence order: `none`.
+5. **A plan's intent record may carry no non-goals (the light lane)**
+ - What:
+   - The engine's intent record bounds `non_goals` at 0 to 20 and requires one only on the deep lane, through the server's check 7 on `submit:refine`; the light envelope's record may carry none (`pm-mcp-core` `doc/specification/phase-workflows/01-planning-phases-1-2.adoc:463,480`, `intent-record-v1.schema.json:29`, `IntentRecord.java:37`). The record carries no lane, so the client cannot tell a light record from a deep one, and both readers refuse the whole record when the list is empty: `PlanIntentResource` throws `non_goals must not be empty` (`PlanIntentResource.java:454-458`, read back at `:607`) and the TypeScript reader requires a non-empty array (`client.ts:2819`, `recordRequiredObjects` at `:2715-2721`). Decided by the operator on 2026-11-23 (decision 7, proposal 1), reversing the "at least one" of 2026-11-12 (PLAN-159): the client follows the engine's lane rule.
+   - Accept an empty `non_goals` list (and an absent member, if the engine omits an empty list: settle at outline) on the plan intent record in both readers; keep the id and text rules for every item present. The plan panel shows the "Non-goals" section with a catalogue line ("none stated" / "keine genannt") when the list is empty, in place of an empty `<ul>` (`PlanIntentPanel.svelte:301-303`); the key is added to the design's texts table (`intent-and-outline-texts.adoc:65`) and to `intent.en.properties` and `intent.de.properties`.
+   - The EPIC intent keeps its minimum of one (`model-work/08-epic-coordination.adoc:182`, `EpicIntentResource.java:150`, `client.ts:2945`): not touched. The engine's `EpicIntent.java:45` bounds it 0 to 30, looser than its own specification: a finding for the engine, reported in the pull request and the landing message, not decided here.
+   - The design line becomes "at least one on the deep lane; the light lane's record may carry none, and the section then says so" (`doc/design/shared/intent-and-outline.adoc:104`); the other design files naming the minimum (`doc/design/README.adoc`, `starting-work.adoc`, `epic-view.adoc`) are read at outline and aligned where they name the PLAN rule, not the epic's.
+   - The mock serves a light-lane record without non-goals (a scenario record: settle which at outline from `IntentScenarioTest.java`), so the browser check has one.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+ - Done when:
+   - `IntentContractTest.java` (Generators, `@EnableGeneratorController`): an empty list round-trips and parses on a plan intent record, the test at `:912-920` that pins the refusal is rewritten, and the epic intent's refusal (`:311`) stays; `client.test.ts` reads a plan record with `non_goals: []`; `PlanIntentPanel.test.ts` shows the "none stated" line and no empty list; each fails with its production line reverted. Evidence order: `test-first`.
 
 ## Standing Constraints
 
@@ -90,6 +101,12 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
   - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts has malformedRecord throws (:2527-2621) for the TS readers; getOverSize's own absent-buckets branch is read at outline
 - Verify-first clause: before each deliverable re-read the named files at the then-current HEAD; PLAN-144 (D0 and the Back removal), PLAN-176 (`ProjectExplorerView`), PLAN-85, 135 and 136 (`EpicView`, `routes.ts`) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
   - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; PLAN-144 running, PLAN-176 staged
+- OBSERVED: both readers refuse a plan intent record whose `non_goals` is empty — read at `pm-api/src/main/java/de/planmarshall/api/intent/PlanIntentResource.java:454-458` and `pm-web-app/src/lib/api/client.ts:2715-2721,2819`
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: PlanIntentResource.java:454-458 throws 'non_goals must not be empty'; client.ts:2819 recordRequiredObjects -> recordNonEmptyArray (:2715-2721); IntentContractTest.java:912-920 pins the refusal (origin/main 3ae8a305)
+- OBSERVED: the engine bounds `non_goals` at 0 to 20 and requires one on the deep lane only — read at `../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc:463,480` and `pm-core/src/main/java/de/planmarshall/core/store/IntentRecord.java:37`
+  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: phase-workflows/01-planning-phases-1-2.adoc:463 '0 to 20 ... at least one on the deep lane, none required on the light lane', :480 check 7; IntentRecord.java:37 same; intent-record-v1.schema.json:29 (pm-mcp-core cd05e7ab)
+- HYPOTHESIS: the engine writes an empty `non_goals` list as `[]` and not as an absent member, and the mock has a scenario record that can carry none — confirm/refute at `IntentCodec` in `pm-mcp-core` and `pm-mock-runtime/src/test/java/de/planmarshall/mock/IntentScenarioTest.java` (verify-at-outline; if the member is omitted, accept the absent member too)
+  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: IntentCodec's empty-list write and IntentScenarioTest's scenario content not read here; settled at outline
 
 ## Expected Surface
 
@@ -123,6 +140,12 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 - OBSERVED: `pm-api/src/main/resources/messages/intent.de.properties` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/epic-view.spec.js` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/intent.spec.js` — present at HEAD 3ae8a305
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/PlanIntentResource.java` — present at HEAD 3ae8a305
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/intent/IntentContractTest.java` — present at HEAD 3ae8a305
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/IntentScenarioTest.java` — present at HEAD 3ae8a305
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at HEAD 3ae8a305
+- OBSERVED: `doc/design/shared/intent-and-outline.adoc` — present at HEAD 3ae8a305
+- OBSERVED: `doc/design/shared/intent-and-outline-texts.adoc` — present at HEAD 3ae8a305
 
 ## Dependencies and Sequencing
 
