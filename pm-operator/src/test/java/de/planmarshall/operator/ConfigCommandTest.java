@@ -701,6 +701,25 @@ class ConfigCommandTest {
     }
 
     @Test
+    @DisplayName("a config aspect renders the refusal of the initial state read")
+    void configAspectReportsARefusedStateRead() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var requests = new ArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.send(409, null, "{\"error\":\"onboarding_incomplete\"}");
+        });
+
+        int code = execute("config", "language", "--interface", "de");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString() + err),
+                            () -> assertTrue(requests.contains("GET /api/v1/onboarding/state"), requests.toString()),
+                            () -> assertTrue(err.toString().contains("A setup step is still missing"), err.toString()),
+                            () -> assertFalse(out.toString().contains("A setup step is still missing"), out.toString()));
+    }
+
+    @Test
     @DisplayName("a config aspect carries its consent and answers a consent state with yes")
     void configHarnessesRunsTheAspect() throws Exception {
         var steps = new ArrayList<String>();

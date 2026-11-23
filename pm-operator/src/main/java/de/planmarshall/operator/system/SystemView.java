@@ -656,8 +656,10 @@ public final class SystemView {
                                                 "tasks", snapshot.work().tasksRunning(),
                                                 "jobs", usedSlots(snapshot.jobs()),
                                                 "workers", snapshot.workers().size()));
-        // The counts are one ICU message, so a zero group leaves its separator behind.
+        // The counts are one ICU message, so a zero group leaves its separator behind, the leading
+        // one included.
         var separator = DOT.strip();
+        what = what.strip();
         while (what.startsWith(separator)) {
             what = what.substring(separator.length()).strip();
         }

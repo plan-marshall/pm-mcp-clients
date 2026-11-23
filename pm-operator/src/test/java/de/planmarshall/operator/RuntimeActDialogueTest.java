@@ -42,6 +42,7 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.RuntimeActDialogue.Act;
 import de.planmarshall.operator.RuntimeActDialogue.Answer;
 import de.planmarshall.operator.RuntimeActDialogue.When;
+import de.planmarshall.operator.system.SystemView;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -107,6 +108,23 @@ class RuntimeActDialogueTest {
             return RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out), new PrintWriter(err),
                                 act, null, noInput, version);
         }
+    }
+
+    @Test
+    @DisplayName("the confirmation's counts read in the singular and with a zero group, in both languages")
+    void runningNowSingularAndZero() throws Exception {
+        var one = SystemSnapshot.fromJson(snapshotJson(1, 1, 1, 0, 0, 1));
+        var zero = SystemSnapshot.fromJson(snapshotJson(0, 1, 1, 0, 0, 1));
+
+        assertAll(
+                            () -> assertEquals("1 plan \u00b7 1 epic \u00b7 1 task \u00b7 1 job \u00b7 1 worker",
+                                                SystemView.runningNow(ENGLISH, one)),
+                            () -> assertEquals("1 epic \u00b7 1 task \u00b7 1 job \u00b7 1 worker",
+                                                SystemView.runningNow(ENGLISH, zero)),
+                            () -> assertEquals("1 Plan \u00b7 1 Epic \u00b7 1 Task \u00b7 1 Job \u00b7 1 Worker",
+                                                SystemView.runningNow("de_DE.UTF-8", one)),
+                            () -> assertEquals("1 Epic \u00b7 1 Task \u00b7 1 Job \u00b7 1 Worker",
+                                                SystemView.runningNow("de_DE.UTF-8", zero)));
     }
 
     @Test
