@@ -263,4 +263,16 @@ describe('the mark of a load', () => {
 
     expect(openedFromOutside()).toBe(false);
   });
+
+  it('closes and replaces open object on Address', async () => {
+    const { closeOpenObject, replaceOpenObject } = await import('./history');
+    const base = { route: 'plan', planId: 'PLAN-1', open: { kind: 'task', id: 'TSK-1' } } as const;
+    const closed = closeOpenObject(base as any);
+    expect(closed.open).toBeUndefined();
+    expect(closed.planId).toBe('PLAN-1');
+
+    const replaced = replaceOpenObject(base as any, { kind: 'decision', id: 'DEC-2' });
+    expect(replaced.open).toEqual({ kind: 'decision', id: 'DEC-2' });
+    expect(replaced.planId).toBe('PLAN-1');
+  });
 });

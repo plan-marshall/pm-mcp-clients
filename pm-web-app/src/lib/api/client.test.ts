@@ -251,6 +251,32 @@ describe('ApiClient', () => {
     expect(result.marked_count).toBe(2);
   });
 
+  it('fetches and normalises a single report item via getReport', async () => {
+    let requestUrl = '';
+    let requestMethod = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      requestUrl = url;
+      requestMethod = init?.method || '';
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          id: 'rep-0142',
+          title: 'Report 142',
+          summary: 'Report summary',
+          created: '2026-11-23T10:00:00Z',
+          unread: true,
+        }),
+      });
+    });
+
+    const report = await client.getReport('rep-0142');
+    expect(requestMethod).toBe('GET');
+    expect(requestUrl).toContain('/api/v1/reports/rep-0142');
+    expect(report.id).toBe('rep-0142');
+    expect(report.unread).toBe(true);
+  });
+
   it('handles stopRuntime and withdrawStop lifecycle methods', async () => {
     let stopBody: unknown = null;
     let stopMethod = '';
