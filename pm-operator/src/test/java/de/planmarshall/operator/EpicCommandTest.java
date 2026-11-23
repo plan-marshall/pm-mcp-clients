@@ -114,14 +114,14 @@ class EpicCommandTest {
     }
 
     @Test
-    @DisplayName("epic <id> names a plan's done and planned phase states, never unknown")
-    void epicProcessNamesDoneAndPlanned() throws Exception {
+    @DisplayName("epic <id> names a plan's activity states, never unknown")
+    void epicProcessNamesPlanActivityStates() throws Exception {
         var epicId = Generators.letterStrings(6, 12).next();
         var body = "{\"epic_id\":\"" + epicId + "\",\"project\":\"pm-mcp-clients\",\"state\":\"running\","
                             + "\"running_plans\":[{\"plan_id\":\"fix-relay\",\"title\":\"Fix the relay\","
-                            + "\"current_phase\":\"execute\",\"phase_state\":\"done\"}],"
+                            + "\"current_phase\":\"execute\",\"phase_state\":\"ended\"}],"
                             + "\"staged_plans\":[{\"plan_id\":\"relay-docs\",\"title\":\"Docs\","
-                            + "\"current_phase\":\"plan\",\"phase_state\":\"planned\"}]}";
+                            + "\"current_phase\":\"plan\",\"phase_state\":\"staged\"}]}";
         serveEpicProcess(epicId, body);
 
         int code = execute("epic", epicId);
@@ -129,8 +129,8 @@ class EpicCommandTest {
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(output.contains("Fix the relay"), output),
-                            () -> assertTrue(output.contains("execute \u00b7 done"), output),
-                            () -> assertTrue(output.contains("plan \u00b7 planned"), output),
+                            () -> assertTrue(output.contains("execute \u00b7 ended"), output),
+                            () -> assertTrue(output.contains("plan \u00b7 staged"), output),
                             () -> assertFalse(output.contains("\u00b7 unknown"), output)
         );
     }
