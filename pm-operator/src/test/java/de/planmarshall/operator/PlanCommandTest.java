@@ -1001,17 +1001,21 @@ class PlanCommandTest {
                                     () -> assertEquals(0, code, err.toString()),
                                     () -> assertTrue(text.contains("fix-relay \u203a changes \u00b7 at 9f3c2ab"
                                                         + " \u00b7 12 files \u00b7 +340 \u221227 \u00b7 2 unplanned"), text),
-                                    () -> assertTrue(text.contains("A  pm-api/\u2026/changes/PlanChangeFile.java"),
-                                                        text),
+                                    () -> assertTrue(text.contains("A  pm-api/src/main/java/de/planmarshall/api/changes"
+                                                        + "/PlanChangeFile.java"), text),
                                     () -> assertTrue(text.contains("+54"), text),
-                                    () -> assertTrue(text.contains("R  \u2026/PlanChangesContractTest.java"
-                                                        + " \u2190 \u2026/overview/\u2026"), text),
+                                    () -> assertTrue(text.contains("R  pm-api/src/test/java/de/planmarshall/api/changes"
+                                                        + "/PlanChangesContractTest.java"), text),
+                                    () -> assertTrue(text.contains("\u2190 pm-api/src/test/java/de/planmarshall/api"
+                                                        + "/overview/PlanChangesContractTest.java"), text),
                                     () -> assertTrue(text.contains("binary"), text),
                                     () -> assertEquals(2, text.lines()
-                                                                            .filter(line -> line.startsWith("  ") && line.contains("unplanned"))
-                                                                            .count(),
+                                                                                    .filter(line -> line.length() > 1
+                                                                                                        && "AMDRB".indexOf(line.charAt(0)) >= 0
+                                                                                                        && line.contains("unplanned"))
+                                                                                    .count(),
                                                         "the two files beyond the plan's footprint are marked"),
-                                    () -> assertTrue(text.contains("doc/\u2026/shared/plan-changes.svg"), text));
+                                    () -> assertTrue(text.contains("doc/design/shared/plan-changes.svg"), text));
             }
         }
 
@@ -1025,7 +1029,7 @@ class PlanCommandTest {
 
                 assertAll(
                                     () -> assertEquals(0, code, err.toString()),
-                                    () -> assertTrue(text.contains("\u2212export const tabs = [];"), text),
+                                    () -> assertTrue(text.contains("-export const tabs = [];"), text),
                                     () -> assertTrue(text.contains("+export const tabs = ['changes'];"), text),
                                     () -> assertTrue(text.contains("+// the plan's changes, read from the runtime"),
                                                         text),
@@ -1055,18 +1059,29 @@ class PlanCommandTest {
         }
 
         @Test
-        @DisplayName("unavailable prints its text, and an unknown plan is not found")
+        @DisplayName("unavailable refuses on stderr with exit 1, and not_captured is a state on stdout")
         void printsUnavailableAndUnknown() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
                 var unavailable = executeOn(runtime, "plan", "docs-typo", "--changes");
-                var unavailableText = out.toString();
+                var unavailableOut = out.toString();
+                var unavailableErr = err.toString();
                 out.getBuffer().setLength(0);
+                err.getBuffer().setLength(0);
+                var notCaptured = executeOn(runtime, "plan", "drop-legacy-api", "--changes");
+                var notCapturedOut = out.toString();
+                out.getBuffer().setLength(0);
+                err.getBuffer().setLength(0);
                 var unknown = executeOn(runtime, "plan", "not-a-plan", "--changes");
 
                 assertAll(
-                                    () -> assertEquals(0, unavailable, err.toString()),
-                                    () -> assertTrue(unavailableText.contains(
-                                                        "The changes are no longer in the repository"), unavailableText),
+                                    () -> assertEquals(1, unavailable, out.toString() + err),
+                                    () -> assertTrue(unavailableErr.contains(
+                                                        "The changes are no longer in the repository"), unavailableErr),
+                                    () -> assertFalse(unavailableOut.contains(
+                                                        "The changes are no longer in the repository"), unavailableOut),
+                                    () -> assertEquals(0, notCaptured, err.toString()),
+                                    () -> assertTrue(notCapturedOut.contains("No changes captured yet"),
+                                                        notCapturedOut),
                                     () -> assertEquals(1, unknown, err.toString()),
                                     () -> assertTrue(err.toString().contains("\u2717 This entry does not exist"), err.toString()),
                                     () -> assertTrue(err.toString().contains(
@@ -1154,6 +1169,145 @@ class PlanCommandTest {
                                 () -> assertTrue(out.toString().contains("B  doc/relay.png"), out.toString()),
                                 () -> assertTrue(out.toString().contains("binary"), out.toString()),
                                 () -> assertFalse(out.toString().contains("No such file"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("the path the list prints is the one --file accepts")
+        void printedPathFeedsTheFile() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var listCode = executeOn(runtime, "plan", "fix-relay", "--changes");
+                var listText = out.toString();
+                var printed = printedPathOf(listText, "plan-changes.ts");
+                out.getBuffer().setLength(0);
+                err.getBuffer().setLength(0);
+
+                int fileCode = executeOn(runtime, "plan", "fix-relay", "--changes", "--file", printed);
+
+                assertAll(
+                                    () -> assertEquals(0, listCode, listText),
+                                    () -> assertTrue(printed.split("/").length >= 4,
+                                                        "a path of four or more segments: " + printed),
+                                    () -> assertEquals(0, fileCode, err.toString()),
+                                    () -> assertTrue(out.toString().contains("@@"), out.toString()),
+                                    () -> assertFalse(out.toString().contains("No such file"), out.toString()));
+            }
+        }
+
+        /**
+         * @param text the list the one-shot printed
+         * @param name the file's last segment
+         * @return the path the printed row carries, as the operator would copy it
+         */
+        private static String printedPathOf(String text, String name) {
+            return text.lines()
+                                .filter(line -> line.contains(name))
+                                .findFirst()
+                                .map(line -> {
+                                    var rest = line.strip().substring(1).strip();
+                                    var counts = rest.indexOf("  +");
+                                    return counts > 0 ? rest.substring(0, counts).strip() : rest;
+                                })
+                                .orElseThrow(() -> new AssertionError("no row names " + name + ": " + text));
+        }
+
+        @Test
+        @DisplayName("the piped hunks keep their tabs and carry one ASCII marker, so they feed patch")
+        void printsPipedHunksWithTabsAndOneMarker() throws Exception {
+            var list = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c2ab41d7e\","
+                                + "\"base_ref\":\"main\",\"files\":[{\"path\":\"a/B.java\",\"status\":\"modified\","
+                                + "\"added\":1,\"removed\":1,\"binary\":false,\"unplanned\":false}]}";
+            var file = "{\"path\":\"a/B.java\",\"hunks\":[{\"old_start\":1,\"old_len\":1,\"new_start\":1,"
+                                + "\"new_len\":1,\"lines\":[{\"kind\":\"removed\",\"text\":\"\\tconst x = 1;\"},"
+                                + "{\"kind\":\"added\",\"text\":\"\\tconst x = 2;\"}]}],\"binary\":false,"
+                                + "\"truncated\":false}";
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans/fix-relay/changes".equals(request.target())) {
+                    response.json(200, list);
+                } else if (request.target().startsWith("/api/v1/plans/fix-relay/changes/file?")) {
+                    response.json(200, file);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            int code = execute("plan", "fix-relay", "--changes", "--file", "a/B.java");
+            var lines = out.toString().lines().toList();
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(lines.stream().anyMatch(line -> line.equals("-\tconst x = 1;")),
+                                                    out.toString()),
+                                () -> assertTrue(lines.stream().anyMatch(line -> line.equals("+\tconst x = 2;")),
+                                                    out.toString()),
+                                () -> assertFalse(lines.stream().anyMatch(line -> line.startsWith("  ")),
+                                                    "no indent before a hunk line: " + out));
+        }
+
+        @Test
+        @DisplayName("a captured list with no files prints its text, in both languages")
+        void printsTheEmptyList() throws Exception {
+            var list = "{\"plan_id\":\"fix-relay\",\"state\":\"captured\",\"head\":\"9f3c2ab41d7e\","
+                                + "\"base_ref\":\"main\",\"files\":[]}";
+            fixture.start((request, response) -> {
+                if ("/api/v1/plans/fix-relay/changes".equals(request.target())) {
+                    response.json(200, list);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var enCode = execute("plan", "fix-relay", "--changes");
+            var enText = out.toString();
+            out.getBuffer().setLength(0);
+            err.getBuffer().setLength(0);
+            var deCode = executeWithLocale("de", "plan", "fix-relay", "--changes");
+            var deText = out.toString();
+
+            assertAll(
+                                () -> assertEquals(0, enCode, err.toString()),
+                                () -> assertTrue(enText.contains("No files changed"), enText),
+                                () -> assertEquals(0, deCode, ""),
+                                () -> assertTrue(deText.contains("Keine Dateien ge\u00e4ndert"), deText));
+        }
+
+        @Test
+        @DisplayName("a blank --file is refused on stderr, as a blank --plan is")
+        void refusesABlankFile() throws Exception {
+            var requests = new ArrayList<String>();
+            fixture.start((request, response) -> {
+                requests.add(request.method() + " " + request.target());
+                response.send(404, null, "");
+            });
+
+            int code = execute("plan", "fix-relay", "--changes", "--file", "");
+
+            assertAll(
+                                () -> assertEquals(1, code, out.toString() + err),
+                                () -> assertTrue(err.toString().contains("--file needs a path."), err.toString()),
+                                () -> assertEquals("", out.toString()),
+                                () -> assertTrue(requests.isEmpty(), requests.toString()));
+        }
+
+        @Test
+        @DisplayName("--changes with another mode is refused on stderr, never silently won")
+        void refusesConflictingModes() throws Exception {
+            var requests = new ArrayList<String>();
+            fixture.start((request, response) -> {
+                requests.add(request.method() + " " + request.target());
+                response.send(404, null, "");
+            });
+
+            int tokens = execute("plan", "fix-relay", "--changes", "--tokens");
+            var tokensErr = err.toString();
+            out.getBuffer().setLength(0);
+            err.getBuffer().setLength(0);
+            int activity = execute("plan", "fix-relay", "--changes", "--activity", "TASK-1");
+
+            assertAll(
+                                () -> assertEquals(1, tokens, out.toString()),
+                                () -> assertTrue(tokensErr.contains("--changes cannot be combined"), tokensErr),
+                                () -> assertEquals(1, activity, out.toString()),
+                                () -> assertTrue(requests.isEmpty(), requests.toString()));
         }
 
         /**

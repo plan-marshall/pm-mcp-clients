@@ -26,6 +26,7 @@ import de.planmarshall.api.changes.PlanChangesNotCaptured;
 import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ChangeSize;
+import de.planmarshall.operator.OutputSafety;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiRow;
 
@@ -47,12 +48,15 @@ public final class ChangesLevel {
     private static final String HUNK_PREFIX = "changes:hunk:";
     private static final String LINE_PREFIX = "changes:line:";
     private static final String TRUNCATED_ROW_ID = "changes:truncated";
+    private static final String EMPTY_ROW_ID = "changes:none";
     private static final String HUNK_HEADER = "@@ -";
     private static final String HUNK_MARKER = " @@";
     private static final String RANGE = ",";
     private static final String REMOVED = "\u2212";
     private static final String ADDED = "+";
     private static final String CONTEXT = " ";
+    /** The marker of a printed removed line: an ASCII {@code -}, so that the output feeds patch. */
+    private static final String PIPED_REMOVED = "-";
     private static final String MARK_ADDED = "A";
     private static final String MARK_MODIFIED = "M";
     private static final String MARK_DELETED = "D";
@@ -115,15 +119,14 @@ public final class ChangesLevel {
      * @return the list, a file's hunks below its row when it was opened, or the refusal's text
      */
     public List<TuiRow> rows(String locale) {
-        if (answer instanceof PlanChangesNotCaptured) {
-            return List.of(TuiRow.leaf(REFUSAL_ROW_ID,
-                                MessageCatalogue.format(locale, "plan.changes.not_captured", Map.of())));
-        }
-        if (answer instanceof PlanChangesUnavailable) {
-            return List.of(TuiRow.leaf(REFUSAL_ROW_ID,
-                                MessageCatalogue.format(locale, "plan.changes.unavailable", Map.of())));
+        var state = stateRows(locale);
+        if (state != null) {
+            return state;
         }
         var captured = (PlanChangesCaptured) answer;
+        if (captured.files().isEmpty()) {
+            return List.of(emptyRow(locale));
+        }
         var rows = new ArrayList<TuiRow>();
         for (var file : captured.files()) {
             rows.add(fileRow(file, locale));
@@ -132,6 +135,50 @@ public final class ChangesLevel {
             }
         }
         return List.copyOf(rows);
+    }
+
+    /**
+     * The list as {@code plan <id> --changes} prints it: each file's full, sanitised path, so that
+     * the path a reader copies is the one {@code --file} accepts
+     * ({@code doc/design/terminal-client/16-plan-view.adoc#changes}).
+     *
+     * @param locale the interface locale
+     * @return the list in its printed form, or the refusal's text
+     */
+    public List<TuiRow> printableRows(String locale) {
+        var state = stateRows(locale);
+        if (state != null) {
+            return state;
+        }
+        var captured = (PlanChangesCaptured) answer;
+        if (captured.files().isEmpty()) {
+            return List.of(emptyRow(locale));
+        }
+        var rows = new ArrayList<TuiRow>();
+        for (var file : captured.files()) {
+            rows.add(printableFileRow(file, locale));
+        }
+        return List.copyOf(rows);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the state text of a refusal, or {@code null} when the answer holds a capture
+     */
+    private @Nullable List<TuiRow> stateRows(String locale) {
+        if (answer instanceof PlanChangesNotCaptured) {
+            return List.of(TuiRow.leaf(REFUSAL_ROW_ID,
+                                MessageCatalogue.format(locale, "plan.changes.not_captured", Map.of())));
+        }
+        if (answer instanceof PlanChangesUnavailable) {
+            return List.of(TuiRow.leaf(REFUSAL_ROW_ID,
+                                MessageCatalogue.format(locale, "plan.changes.unavailable", Map.of())));
+        }
+        return null;
+    }
+
+    private static TuiRow emptyRow(String locale) {
+        return TuiRow.leaf(EMPTY_ROW_ID, MessageCatalogue.format(locale, "plan.changes.none", Map.of()));
     }
 
     /**
@@ -183,6 +230,19 @@ public final class ChangesLevel {
     }
 
     /**
+     * @param path   the file's path
+     * @param locale the interface locale
+     * @return the printed row the list serves for the path, or {@code null} when it names none
+     */
+    public @Nullable TuiRow printableFileRowOf(String path, String locale) {
+        if (!(answer instanceof PlanChangesCaptured captured)) {
+            return null;
+        }
+        var row = rowOf(captured, path);
+        return row != null ? printableFileRow(row, locale) : null;
+    }
+
+    /**
      * @param rowId the selected row, or {@code null}
      * @return the path of the file the row names, or {@code null} when the row is no file that
      *         holds hunks
@@ -200,14 +260,21 @@ public final class ChangesLevel {
     }
 
     /**
-     * Shows a file's hunks below its row. A file the list does not name is ignored: the level shows
-     * only what its own list holds.
+     * Shows a file's hunks below its row, while the list it was read against is still the one this
+     * level holds. A capture that landed between the read and this call replaces the list, so the
+     * older read is dropped rather than shown under the new rows
+     * ({@code doc/design/terminal-client/16-plan-view.adoc#changes}).
      *
-     * @param file the file the runtime answered
-     * @return {@code true} when the file belongs to the list and is now the open one
+     * @param file              the file the runtime answered
+     * @param answerReadAgainst the list that was held when the read started
+     * @return {@code true} when the list is unchanged, names the file, and the file is now the open one
      */
-    public boolean showFile(PlanChangeFile file) {
+    public boolean showFile(PlanChangeFile file, PlanChangesAnswer answerReadAgainst) {
         Objects.requireNonNull(file, "file");
+        Objects.requireNonNull(answerReadAgainst, "answerReadAgainst");
+        if (answer != answerReadAgainst) {
+            return false;
+        }
         if (!(answer instanceof PlanChangesCaptured captured)) {
             return false;
         }
@@ -278,6 +345,27 @@ public final class ChangesLevel {
     }
 
     /**
+     * The section the scrollback prints for one file in its printed form: the file's full path and
+     * its hunks with their own text, one ASCII marker and no indent, so that the output feeds
+     * {@code patch} ({@code plan <id> --changes --file <path>}).
+     *
+     * @param locale the interface locale
+     * @return the open file's row and hunks in their printed form, or an empty list when none is open
+     */
+    public List<TuiRow> openFilePrintableRows(String locale) {
+        if (openPath == null || openFile == null || !(answer instanceof PlanChangesCaptured captured)) {
+            return List.of();
+        }
+        var rows = new ArrayList<TuiRow>();
+        captured.files().stream()
+                            .filter(file -> file.path().equals(openPath))
+                            .findFirst()
+                            .ifPresent(file -> rows.add(printableFileRow(file, locale)));
+        appendPrintableHunkRows(rows, openFile, locale);
+        return List.copyOf(rows);
+    }
+
+    /**
      * @param locale the interface locale
      * @return the list's title: {@code changes · at <head> · <size>}, without the size when the
      *         plan carries none
@@ -305,6 +393,43 @@ public final class ChangesLevel {
 
     private String sizeText(String locale) {
         return size != null ? MessageCatalogue.format(locale, "plan.change.size", size.toMap()) : "";
+    }
+
+    /**
+     * The printed form of a file's row: its full, sanitised path in the column, so that the path a
+     * reader copies is the one {@code --file} accepts. A rename names the full path it came from
+     * after the counts, so that the leading path stays the one the file route takes.
+     *
+     * @param file   the changed file
+     * @param locale the interface locale
+     * @return the row as the one-shot prints it
+     */
+    private TuiRow printableFileRow(PlanChangedFile file, String locale) {
+        var line = new StringBuilder();
+        line.append(mark(file)).append(MARK_SEPARATOR);
+        line.append(inColumn(TuiLayout.sanitizeCell(file.path()))).append(COUNT_SEPARATOR);
+        appendCounts(line, file, locale);
+        var renamedFrom = file.renamedFrom();
+        if (renamedFrom != null) {
+            line.append(MARK_SEPARATOR).append(ARROW).append(TuiLayout.sanitizeCell(renamedFrom));
+        }
+        var text = line.toString();
+        return file.binary() ? TuiRow.leaf(FILE_PREFIX + file.path(), text)
+                            : TuiRow.openable(FILE_PREFIX + file.path(), text, null);
+    }
+
+    private void appendCounts(StringBuilder line, PlanChangedFile file, String locale) {
+        if (file.binary()) {
+            line.append(MessageCatalogue.format(locale, "plan.changes.binary", Map.of()));
+            return;
+        }
+        line.append(ADDED).append(file.added());
+        if (file.removed() > 0) {
+            line.append(' ').append(REMOVED).append(file.removed());
+        }
+        if (file.unplanned()) {
+            line.append(MARK_SEPARATOR).append(MessageCatalogue.format(locale, "plan.changes.unplanned", Map.of()));
+        }
     }
 
     private TuiRow fileRow(PlanChangedFile file, String locale) {
@@ -413,6 +538,40 @@ public final class ChangesLevel {
             rows.add(TuiRow.leaf(TRUNCATED_ROW_ID, MessageCatalogue.format(locale, "plan.changes.truncated",
                                 Map.of("lines", file.linesOmitted()))));
         }
+    }
+
+    private void appendPrintableHunkRows(List<TuiRow> rows, PlanChangeFile file, String locale) {
+        int hunkIndex = 0;
+        for (var hunk : file.hunks()) {
+            rows.add(TuiRow.leaf(HUNK_PREFIX + hunkIndex, hunkHeader(hunk)));
+            int lineIndex = 0;
+            for (var line : hunk.lines()) {
+                rows.add(TuiRow.leaf(LINE_PREFIX + hunkIndex + ":" + lineIndex++,
+                                    printableMarker(line.kind()) + pipedText(line.text())));
+            }
+            hunkIndex++;
+        }
+        if (file.truncated()) {
+            rows.add(TuiRow.leaf(TRUNCATED_ROW_ID, MessageCatalogue.format(locale, "plan.changes.truncated",
+                                Map.of("lines", file.linesOmitted()))));
+        }
+    }
+
+    /**
+     * @param text the line the runtime answered
+     * @return the line's original text, its control sequences removed and its tabs kept, so that the
+     *         printed hunk can be piped
+     */
+    private static String pipedText(String text) {
+        return OutputSafety.stripControlSequences(text);
+    }
+
+    private static String printableMarker(PlanChangeLineKind kind) {
+        return switch (kind) {
+            case ADDED -> ADDED;
+            case REMOVED -> PIPED_REMOVED;
+            case CONTEXT -> CONTEXT;
+        };
     }
 
     private static String hunkHeader(PlanChangeHunk hunk) {

@@ -72,6 +72,33 @@ class ChangesLevelTest {
     }
 
     @Nested
+    @DisplayName("The key-driven open")
+    class TheKeyDrivenOpen {
+
+        @Test
+        @DisplayName("a capture between the file read and showFile keeps the older hunks out")
+        void aCaptureOvertakesTheRead() throws Exception {
+            var level = level();
+            var answerReadAgainst = level.answer();
+            var stale = PlanChangeFile.fromJson(FILE);
+
+            // The capture lands after the file read was started, before the key applies it.
+            level.update(PlanChangesAnswer.fromJson(LIST), PlanChangeSizes.Probe.NOT_LANDED);
+
+            var applied = level.showFile(stale, answerReadAgainst);
+            var openPath = level.openFilePath();
+            var rows = text(level);
+            var appliedByTheCurrentList = level.showFile(stale, level.answer());
+
+            assertAll(
+                                () -> assertFalse(applied, "the older read is not applied"),
+                                () -> assertNull(openPath, "no file is open on a stale read"),
+                                () -> assertFalse(rows.contains("@@"), "no hunks of a stale read: " + rows),
+                                () -> assertTrue(appliedByTheCurrentList, "the list that is current accepts it"));
+        }
+    }
+
+    @Nested
     @DisplayName("The list")
     class TheList {
 
@@ -144,7 +171,7 @@ class ChangesLevelTest {
         void hunks() throws Exception {
             var level = level();
 
-            assertTrue(level.showFile(PlanChangeFile.fromJson(FILE)));
+            assertTrue(level.showFile(PlanChangeFile.fromJson(FILE), level.answer()));
             var text = text(level);
 
             assertAll(
@@ -161,7 +188,7 @@ class ChangesLevelTest {
         void truncated() throws Exception {
             var level = level();
 
-            assertTrue(level.showFile(PlanChangeFile.fromJson(CUT_FILE)));
+            assertTrue(level.showFile(PlanChangeFile.fromJson(CUT_FILE), level.answer()));
             var text = text(level);
 
             assertAll(
@@ -173,7 +200,7 @@ class ChangesLevelTest {
         @DisplayName("closing the file leaves the list")
         void closes() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
 
             assertAll(
                                 () -> assertTrue(level.closeFile()),
@@ -188,7 +215,7 @@ class ChangesLevelTest {
             var elsewhere = FILE.replace("relay/Frame.java", "relay/Nowhere.java");
 
             assertAll(
-                                () -> assertFalse(level.showFile(PlanChangeFile.fromJson(elsewhere))),
+                                () -> assertFalse(level.showFile(PlanChangeFile.fromJson(elsewhere), level.answer())),
                                 () -> assertEquals(4, level.rows("en").size()));
         }
 
@@ -196,7 +223,7 @@ class ChangesLevelTest {
         @DisplayName("the scrollback section is the file's row and its hunks, never the whole list")
         void openFileRows() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
 
             var rows = level.openFileRows("en");
 
@@ -246,7 +273,7 @@ class ChangesLevelTest {
         @DisplayName("a new capture keeps an open file whose row did not change, and names the new head and figures")
         void keepsAnUnchangedRow() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
             var fresh = LIST.replace("\"head\":\"9f3c2ab41d7e\"", "\"head\":\"a1b2c3d4e5f6\"");
             var figures = new ChangeSize(4, 150, 15, 1);
 
@@ -266,7 +293,7 @@ class ChangesLevelTest {
         @DisplayName("a new capture whose row changed asks for the file again")
         void asksForAChangedRow() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
             var fresh = LIST.replace("\"status\":\"renamed\",\"added\":3,\"removed\":3",
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
 
@@ -282,7 +309,7 @@ class ChangesLevelTest {
         @DisplayName("a read that did not land is asked for again on the next capture")
         void retriesAFailedRead() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
             var changed = LIST.replace("\"status\":\"renamed\",\"added\":3,\"removed\":3",
                                 "\"status\":\"renamed\",\"added\":5,\"removed\":3");
             assertTrue(level.update(PlanChangesAnswer.fromJson(changed), PlanChangeSizes.Probe.NOT_LANDED));
@@ -367,7 +394,7 @@ class ChangesLevelTest {
         @DisplayName("a control sequence and a bidi override in a line are stripped, and its indent stays")
         void inALine() throws Exception {
             var level = level();
-            level.showFile(PlanChangeFile.fromJson(FILE));
+            level.showFile(PlanChangeFile.fromJson(FILE), level.answer());
 
             var text = text(level);
 

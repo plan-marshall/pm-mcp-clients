@@ -1904,7 +1904,7 @@ public final class OverviewFullScreenApp {
             synchronized (this) {
                 // The capture and the operator's own choice must both still be the ones asked about.
                 if (changes.answer() == fresh && openPath.equals(changes.openFilePath())) {
-                    changes.showFile(content);
+                    changes.showFile(content, fresh);
                 }
             }
         } catch (IOException | IllegalArgumentException _) {
@@ -2823,6 +2823,7 @@ public final class OverviewFullScreenApp {
             if (path == null) {
                 return;
             }
+            var answerReadAgainst = changes.answer();
             try {
                 var response = context.runtime(true)
                                     .send(HttpRequest.get(PlanChangesRoutes.plan(changes.planId()).file(path)));
@@ -2837,7 +2838,9 @@ public final class OverviewFullScreenApp {
                     return;
                 }
                 synchronized (OverviewFullScreenApp.this) {
-                    if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()))) {
+                    // The list the read was started against must still be the one this level holds:
+                    // a capture that landed meanwhile makes the older read stale.
+                    if (changes.showFile(PlanChangeFile.fromJson(response.bodyText()), answerReadAgainst)) {
                         stack.refresh(changes.rows(locale));
                     }
                 }

@@ -27,6 +27,7 @@ import de.planmarshall.api.changes.PlanChangeFile;
 import de.planmarshall.api.changes.PlanChangesAnswer;
 import de.planmarshall.api.changes.PlanChangesCaptured;
 import de.planmarshall.api.changes.PlanChangesRoutes;
+import de.planmarshall.api.changes.PlanChangesUnavailable;
 import de.planmarshall.api.control.HoldResolutionResult;
 import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -176,10 +177,51 @@ public final class PlanCommand implements Callable<Integer> {
         return refusal.exitCode();
     }
 
+    /**
+     * @return the flag {@code --changes} cannot be combined with, or {@code null} when the verb
+     *         combines nothing
+     */
+    private @Nullable String conflictingChangesFlag() {
+        if (!changes) {
+            return null;
+        }
+        if (activity != null) {
+            return "--activity";
+        }
+        if (tokens) {
+            return "--tokens";
+        }
+        if (components) {
+            return "--components";
+        }
+        return watch ? "--watch" : null;
+    }
+
+    /**
+     * Prints a local refusal of a verb run as one shell command on stderr, where every refusal goes
+     * ({@code 03-dialogues.adoc#refusals}), so stdout carries none of it.
+     *
+     * @param err  the verb's error output
+     * @param line the refusal's text in the operator's locale
+     * @return the exit code of a refusal
+     */
+    private static int refuse(PrintWriter err, String line) {
+        err.println(line);
+        err.flush();
+        return PmOperator.EXIT_FAILURE;
+    }
+
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         var err = spec.commandLine().getErr();
+        var locale = context.clientEnvironment().locale();
+        if (conflictingChangesFlag() != null) {
+            return refuse(err, MessageCatalogue.format(locale, "operator.plan.changes.conflict", Map.of()));
+        }
+        if (changesFile != null && changesFile.isBlank()) {
+            return refuse(err, MessageCatalogue.format(locale, "operator.plan.changes.file_blank", Map.of()));
+        }
         var fullScreen = runFullScreen(out);
         if (fullScreen != null) {
             return fullScreen;
@@ -334,14 +376,19 @@ public final class PlanCommand implements Callable<Integer> {
             throw new OperatorRefusedException("plan changes " + planId, response);
         }
         var answer = PlanChangesAnswer.fromJson(response.bodyText());
+        if (answer instanceof PlanChangesUnavailable) {
+            // A state the runtime reports is a refusal of the request: exit 1, the text on stderr.
+            return refuse(spec.commandLine().getErr(),
+                                MessageCatalogue.format(locale, "plan.changes.unavailable", Map.of()));
+        }
         var level = new ChangesLevel(planId, answer, PlanChangeSizes.sizeOf(runtime, planId));
         out.println(level.breadcrumb(locale));
-        if (changesFile == null || changesFile.isBlank() || !(answer instanceof PlanChangesCaptured captured)) {
+        if (changesFile == null || !(answer instanceof PlanChangesCaptured captured)) {
             // The whole list, or the refusal's own text: a plan without a capture holds no file.
-            printRows(out, level.rows(locale));
+            printRows(out, level.printableRows(locale));
             return 0;
         }
-        return printOneFile(out, runtime, planId, locale, level, captured);
+        return printOneFile(out, runtime, planId, locale, level, captured, level.answer());
     }
 
     /**
@@ -358,8 +405,9 @@ public final class PlanCommand implements Callable<Integer> {
      * @throws IOException when the runtime cannot be read
      */
     private int printOneFile(PrintWriter out, RuntimeClient runtime, String planId, String locale,
-                        ChangesLevel level, PlanChangesCaptured captured) throws IOException {
-        var binaryRow = level.fileRowOf(changesFile, locale);
+                        ChangesLevel level, PlanChangesCaptured captured, PlanChangesAnswer answerReadAgainst)
+                        throws IOException {
+        var binaryRow = level.printableFileRowOf(changesFile, locale);
         if (binaryRow != null && isBinary(captured, changesFile)) {
             // A binary file answers no lines: its row is the whole answer.
             printRows(out, List.of(binaryRow));
@@ -372,11 +420,11 @@ public final class PlanCommand implements Callable<Integer> {
         if (fileResponse.status() != 200) {
             throw new OperatorRefusedException("plan changes " + planId + " " + changesFile, fileResponse);
         }
-        if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()))) {
+        if (!level.showFile(PlanChangeFile.fromJson(fileResponse.bodyText()), answerReadAgainst)) {
             // The list moved between the two reads: the file it answered is no longer one of its rows.
             return noSuchFile(locale);
         }
-        printRows(out, level.openFileRows(locale));
+        printRows(out, level.openFilePrintableRows(locale));
         return 0;
     }
 
@@ -390,7 +438,8 @@ public final class PlanCommand implements Callable<Integer> {
 
     private static void printRows(PrintWriter out, List<TuiRow> rows) {
         for (var row : rows) {
-            out.println("  " + row.line());
+            // The printed form carries no indent: a piped hunk line begins with its own marker.
+            out.println(row.line());
         }
         out.flush();
     }

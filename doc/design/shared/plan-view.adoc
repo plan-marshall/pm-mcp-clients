@@ -275,6 +275,10 @@ Keys of the area `plan`, shared by both clients.
 |No such file in the plan's changes: {path}
 |Keine solche Datei in den Änderungen des Plans: {path}
 
+|`plan.changes.none`
+|No files changed
+|Keine Dateien geändert
+
 |`plan.activity.model_differs`
 |answered by {served} instead of {launched}
 |beantwortet von {served} statt {launched}

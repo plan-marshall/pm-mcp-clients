@@ -111,7 +111,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 [#changes]
 === The Changes
 
-`d` opens the plan's changes as a level of the view, in the form of link:../shared/plan-view.adoc#changes[Plan View, The Changes]; `Enter` on a file opens its hunks below it, `Esc` closes them. `plan <plan_id> --changes` prints the list into the scrollback and `--changes --file <path>` one file's hunks, so that the operator can pipe them; both print after the control sequences are removed (xref:04-console.adoc#output-safety[Output Safety]). Removed and added lines take the terminal's colours only where it has them, and keep their `−` and `+` everywhere, so that the diff reads without colour.
+`d` opens the plan's changes as a level of the view, in the form of link:../shared/plan-view.adoc#changes[Plan View, The Changes]; `Enter` on a file opens its hunks below it, `Esc` closes them. `plan <plan_id> --changes` prints the list into the scrollback with each file's full, sanitised path, so that the path it prints is the one `--changes --file <path>` accepts, and that verb prints one file's hunks with their own text — tabs kept, control sequences removed — and one marker character (`-`, `+` or a space), so that the output feeds `patch`; the full-screen row keeps its abbreviated path. Removed and added lines take the terminal's colours only where it has them, and keep their `−` and `+` everywhere, so that the diff reads without colour.
 
 [#full-screen-keys]
 === Keys
@@ -163,6 +163,8 @@ The keys of the overview hold here too (xref:15-overview.adoc#full-screen-keys[K
 === Live
 
 The tree follows the plan's events; the selection stays on its node. When the plan changes its composition, the view reads the process again and prints `The plan changed: replan` in the header for a moment; when the plan ends, the header says so and the tree stays as it ended.
+
+The changes level follows its own capture: a read that lands while the level is open replaces the list together with its head, an open file's hunks are read again when its row changed, and a file read that a capture overtook is dropped rather than shown under the rows of the newer list.
 
 [#ended]
 === An Ended Plan
