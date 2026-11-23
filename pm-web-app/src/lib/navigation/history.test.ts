@@ -5,11 +5,13 @@ import {
   APP_MARK,
   addressOf,
   carriesAppMark,
+  closeOpenObject,
   currentAddress,
   intentFor,
   levelOf,
   lensOf,
   parentOf,
+  replaceOpenObject,
   switchTab,
   writeAddress,
 } from './history';
@@ -264,14 +266,13 @@ describe('the mark of a load', () => {
     expect(openedFromOutside()).toBe(false);
   });
 
-  it('closes and replaces open object on Address', async () => {
-    const { closeOpenObject, replaceOpenObject } = await import('./history');
-    const base = { route: 'plan', planId: 'PLAN-1', open: { kind: 'task', id: 'TSK-1' } } as const;
-    const closed = closeOpenObject(base as any);
+  it('closes and replaces open object on Address', () => {
+    const base: Address = { route: 'plan', planId: 'PLAN-1', open: { kind: 'task', id: 'TSK-1' } };
+    const closed = closeOpenObject(base);
     expect(closed.open).toBeUndefined();
     expect(closed.planId).toBe('PLAN-1');
 
-    const replaced = replaceOpenObject(base as any, { kind: 'decision', id: 'DEC-2' });
+    const replaced = replaceOpenObject(base, { kind: 'decision', id: 'DEC-2' });
     expect(replaced.open).toEqual({ kind: 'decision', id: 'DEC-2' });
     expect(replaced.planId).toBe('PLAN-1');
   });
