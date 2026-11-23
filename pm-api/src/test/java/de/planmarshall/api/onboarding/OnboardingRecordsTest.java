@@ -415,10 +415,12 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("fails closed on an inconsistent summary and an unknown wire value")
         void shouldFailClosed() {
-            assertThrows(IllegalArgumentException.class, () -> new HarnessUsageReport(
-                    TokenUsageCoverage.COMPLETE, Map.of(UsageFigure.INPUT, UsageFigureStatus.NOT_REPORTED)));
-            assertThrows(IllegalArgumentException.class, () -> new HarnessUsageReport(
-                    TokenUsageCoverage.PARTIAL, Map.of(UsageFigure.INPUT, UsageFigureStatus.REPORTED)));
+            var inputNotReported = Map.of(UsageFigure.INPUT, UsageFigureStatus.NOT_REPORTED);
+            var inputReported = Map.of(UsageFigure.INPUT, UsageFigureStatus.REPORTED);
+            assertThrows(IllegalArgumentException.class,
+                    () -> new HarnessUsageReport(TokenUsageCoverage.COMPLETE, inputNotReported));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new HarnessUsageReport(TokenUsageCoverage.PARTIAL, inputReported));
             assertThrows(IOException.class, () -> HarnessUsageReport.fromJson(
                     "{\"coverage\":\"complete\",\"figures\":{\"colour\":\"reported\"}}"));
             assertThrows(IOException.class, () -> HarnessUsageReport.fromJson(
@@ -524,9 +526,10 @@ class OnboardingRecordsTest {
             assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
                     "claude", "Claude Code", null, null, true, true, true,
                     TokenUsageCoverage.COMPLETE, List.of(), true, usage));
+            var cacheReadMissing = List.of("cache_read");
             assertThrows(IllegalArgumentException.class, () -> new HarnessScanResult(
                     "claude", "Claude Code", null, null, true, true, true,
-                    TokenUsageCoverage.PARTIAL, List.of("cache_read"), true, usage));
+                    TokenUsageCoverage.PARTIAL, cacheReadMissing, true, usage));
         }
     }
 

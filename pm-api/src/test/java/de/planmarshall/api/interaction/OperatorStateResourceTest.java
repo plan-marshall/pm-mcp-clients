@@ -217,22 +217,23 @@ class OperatorStateResourceTest {
                 () -> OperatorStateResource.fromJson(
                         "{\"scope\":{\"kind\":\"machine\"},\"state\":{\"state_id\":\"onboarding\"},"
                                 + "\"progress\":{\"done\":4,\"of\":3},\"links\":[]}"));
+        var machine = new OperatorScope(OperatorScopeKind.MACHINE, null, null, null);
+        List<OperatorText> noTexts = List.of();
+        Map<String, Object> noFacts = Map.of();
+        List<OperatorProposal> noProposal = List.of();
+        List<OperatorItem> noItems = List.of();
+        List<OperatorLink> noLinks = List.of();
         // two links of the same id, the item link included, are refused
+        var sameIdLinks = List.of(
+                new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/api/v1/x", Map.of(), false, null),
+                new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/api/v1/y", Map.of(), false, null));
         assertThrows(IllegalArgumentException.class,
-                () -> new OperatorStateResource(
-                        new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
-                        "onboarding", null, null, null, null, null,
-                        List.of(), Map.of(), List.of(), List.of(), null,
-                        List.of(new OperatorLink("yes", OperatorLinkRelation.NEXT, "POST", "/api/v1/x",
-                                        Map.of(), false, null),
-                                new OperatorLink("yes", OperatorLinkRelation.ALT, "POST", "/api/v1/y",
-                                        Map.of(), false, null))));
+                () -> new OperatorStateResource(machine, "onboarding", null, null, null, null, null,
+                        noTexts, noFacts, noProposal, noItems, null, sameIdLinks));
         // a level a state does not write (the default or a derived one) is refused
         assertThrows(IllegalArgumentException.class,
-                () -> new OperatorStateResource(
-                        new OperatorScope(OperatorScopeKind.MACHINE, null, null, null),
-                        "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
-                        List.of(), Map.of(), List.of(), List.of(), null, List.of()));
+                () -> new OperatorStateResource(machine, "onboarding", null, null, ConfigOrigin.DEFAULT, null, null,
+                        noTexts, noFacts, noProposal, noItems, null, noLinks));
     }
 
     @Test

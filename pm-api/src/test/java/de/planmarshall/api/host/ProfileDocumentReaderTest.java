@@ -128,7 +128,7 @@ class ProfileDocumentReaderTest {
         return new URLClassLoader(new URL[]{archive.toUri().toURL()}, null);
     }
 
-    private static Path profilesDirectory() throws IOException {
+    private static Path profilesDirectory() {
         var source = HostDetection.class.getProtectionDomain().getCodeSource().getLocation();
         try {
             return Path.of(source.toURI()).resolve("profiles");
@@ -326,7 +326,8 @@ class ProfileDocumentReaderTest {
         @Test
         @DisplayName("refuses trailing content after a valid document")
         void refusesTrailingContent() {
-            assertThrows(IllegalStateException.class, () -> parse(document("fixture", 1) + " {}"));
+            var trailing = document("fixture", 1) + " {}";
+            assertThrows(IllegalStateException.class, () -> parse(trailing));
         }
 
         @Test
@@ -343,7 +344,8 @@ class ProfileDocumentReaderTest {
         @Test
         @DisplayName("refuses a client id outside the canonical form")
         void refusesNonCanonicalClientId() {
-            assertThrows(IllegalStateException.class, () -> parse(document("Fixture", 1)));
+            var nonCanonical = document("Fixture", 1);
+            assertThrows(IllegalStateException.class, () -> parse(nonCanonical));
         }
 
         @Test

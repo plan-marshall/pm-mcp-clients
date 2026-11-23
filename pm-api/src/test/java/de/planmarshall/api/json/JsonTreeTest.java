@@ -120,14 +120,13 @@ class JsonTreeTest {
         void number() {
             assertEquals(42L, new JsonNumber("42").longValue());
             assertEquals("42", JsonNumber.of(42).toString());
-            assertThrows(NumberFormatException.class, () -> new JsonNumber("1.5").longValue());
+            var fraction = new JsonNumber("1.5");
+            assertThrows(NumberFormatException.class, fraction::longValue);
             assertEquals(new JsonNumber("1"), JsonNumber.of(1));
             assertNotEquals(new JsonNumber("1"), JsonNumber.of(2));
         }
 
-        @Test
-        @DisplayName("number and integer extract values with conversions and fallbacks")
-        void numbersAndIntegers() {
+        private static Map<String, Object> numericMembers() {
             var map = new LinkedHashMap<String, Object>();
             map.put("int", 42);
             map.put("long", 100L);
@@ -140,6 +139,13 @@ class JsonTreeTest {
             map.put("strInvalid", "not_a_number");
             map.put("nullVal", null);
             map.put("bool", true);
+            return map;
+        }
+
+        @Test
+        @DisplayName("number and integer extract values with conversions")
+        void numbersAndIntegers() {
+            var map = numericMembers();
 
             assertEquals(42, JsonTree.number(map, "int"));
             assertEquals(42, JsonTree.integer(map, "int"));
@@ -157,6 +163,12 @@ class JsonTreeTest {
             assertEquals(999, JsonTree.integer(map, "strLong"));
             assertEquals(45.67, JsonTree.number(map, "strDouble"));
             assertEquals(45, JsonTree.integer(map, "strDouble"));
+        }
+
+        @Test
+        @DisplayName("number and integer fall back to null for what is no number")
+        void numbersAndIntegersFallBack() {
+            var map = numericMembers();
 
             assertNull(JsonTree.number(map, "strInvalid"));
             assertNull(JsonTree.integer(map, "strInvalid"));

@@ -260,7 +260,7 @@ public final class FakeRuntimeServer implements AutoCloseable {
             try {
                 var channel = server.accept();
                 Thread.ofVirtual().start(() -> serve(channel));
-            } catch (IOException e) {
+            } catch (IOException _) {
                 return;
             }
         }
@@ -281,7 +281,7 @@ public final class FakeRuntimeServer implements AutoCloseable {
             if (!response.committed) {
                 response.send(500, null, "");
             }
-        } catch (IOException e) {
+        } catch (IOException _) {
             // the client closed the connection
         }
     }

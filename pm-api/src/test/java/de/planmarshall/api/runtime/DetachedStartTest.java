@@ -88,7 +88,7 @@ class DetachedStartTest {
                     Thread.sleep(5);
                 }
                 fixture.start((request, response) -> response.json(200, "{\"version\":\"t\"}"));
-            } catch (IOException | InterruptedException e) {
+            } catch (IOException | InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
         });

@@ -371,22 +371,22 @@ class DecisionRecordsTest {
                 false, null, null, null, null, null);
 
         var opened = new DecisionOpenedEvent(env);
-        assertEquals(DecisionOpenedEvent.EVENT_NAME, "decision.opened");
+        assertEquals("decision.opened", DecisionOpenedEvent.EVENT_NAME);
         var openedParsed = DecisionOpenedEvent.fromJson(opened.toJson());
         assertEquals("Q-001", openedParsed.decision().id());
 
         var changed = new DecisionChangedEvent(env, changeSummary);
-        assertEquals(DecisionChangedEvent.EVENT_NAME, "decision.changed");
+        assertEquals("decision.changed", DecisionChangedEvent.EVENT_NAME);
         var changedParsed = DecisionChangedEvent.fromJson(changed.toJson());
         assertEquals(changeSummary, changedParsed.changeSummary());
 
         var answered = new DecisionAnsweredEvent("Q-001", answer, "cli", "mbp-oliver", null);
-        assertEquals(DecisionAnsweredEvent.EVENT_NAME, "decision.answered");
+        assertEquals("decision.answered", DecisionAnsweredEvent.EVENT_NAME);
         var answeredParsed = DecisionAnsweredEvent.fromJson(answered.toJson());
         assertEquals(answer, answeredParsed.answer());
 
         var closed = new DecisionClosedEvent("Q-001", "answered", null);
-        assertEquals(DecisionClosedEvent.EVENT_NAME, "decision.closed");
+        assertEquals("decision.closed", DecisionClosedEvent.EVENT_NAME);
         var closedParsed = DecisionClosedEvent.fromJson(closed.toJson());
         assertEquals("answered", closedParsed.outcome());
     }

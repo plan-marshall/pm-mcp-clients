@@ -512,20 +512,16 @@ class ProcessTreeTest {
     }
 
     @Test
-    @DisplayName("should serialize and deserialize all process SSE events")
-    void shouldRoundTripProcessEvents() throws Exception {
+    @DisplayName("should serialize and deserialize the state and sub-workflow SSE events")
+    void shouldRoundTripStateAndSubworkflowEvents() throws Exception {
         var planId = Generators.nonBlankStrings().next();
-        var taskId = Generators.nonBlankStrings().next();
         var run = Generators.integers(0, 100).next();
         var leftSeconds = (long) Generators.integers(0, 100_000).next();
         var returnedSeconds = (long) Generators.integers(0, 100_000).next();
-        var instanceVersion = Generators.integers(0, 100).next();
-        var activityContent = Generators.nonBlankStrings().next();
-        var changedTotal = (long) Generators.integers(0, 1_000_000).next();
 
         // StateEnteredEvent
         var entered = new StateEnteredEvent(planId, "execute", run, "2026-10-17T10:00:00Z");
-        assertEquals(StateEnteredEvent.EVENT_NAME, "state.entered");
+        assertEquals("state.entered", StateEnteredEvent.EVENT_NAME);
         var parsedEntered = StateEnteredEvent.fromJson(entered.toJson());
         assertEquals(planId, parsedEntered.planId());
         assertEquals("execute", parsedEntered.nodeId());
@@ -533,56 +529,73 @@ class ProcessTreeTest {
 
         // StateLeftEvent
         var left = new StateLeftEvent(planId, "execute", "done", 1, leftSeconds);
-        assertEquals(StateLeftEvent.EVENT_NAME, "state.left");
+        assertEquals("state.left", StateLeftEvent.EVENT_NAME);
         var parsedLeft = StateLeftEvent.fromJson(left.toJson());
         assertEquals("done", parsedLeft.state());
         assertEquals(leftSeconds, parsedLeft.durationSeconds());
 
         // SubworkflowCalledEvent
         var called = new SubworkflowCalledEvent(planId, "execute", "land", "2026-10-17T10:02:00Z");
-        assertEquals(SubworkflowCalledEvent.EVENT_NAME, "subworkflow.called");
+        assertEquals("subworkflow.called", SubworkflowCalledEvent.EVENT_NAME);
         var parsedCalled = SubworkflowCalledEvent.fromJson(called.toJson());
         assertEquals("land", parsedCalled.subworkflowId());
 
         // SubworkflowReturnedEvent
         var returned = new SubworkflowReturnedEvent(planId, "execute", "land", "done", returnedSeconds);
-        assertEquals(SubworkflowReturnedEvent.EVENT_NAME, "subworkflow.returned");
+        assertEquals("subworkflow.returned", SubworkflowReturnedEvent.EVENT_NAME);
         var parsedReturned = SubworkflowReturnedEvent.fromJson(returned.toJson());
         assertEquals("done", parsedReturned.state());
         assertEquals(returnedSeconds, parsedReturned.durationSeconds());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize the step, instance and activity SSE events")
+    void shouldRoundTripStepInstanceAndActivityEvents() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
+        var instanceVersion = Generators.integers(0, 100).next();
+        var activityContent = Generators.nonBlankStrings().next();
 
         // StepOpenedEvent & StepClosedEvent
         var stepOpened = new StepOpenedEvent(planId, "build", "2026-10-17T10:05:00Z");
-        assertEquals(StepOpenedEvent.EVENT_NAME, "step.opened");
+        assertEquals("step.opened", StepOpenedEvent.EVENT_NAME);
         assertEquals("build", StepOpenedEvent.fromJson(stepOpened.toJson()).stepId());
 
         var stepClosed = new StepClosedEvent(planId, "build", "success", 45L);
-        assertEquals(StepClosedEvent.EVENT_NAME, "step.closed");
+        assertEquals("step.closed", StepClosedEvent.EVENT_NAME);
         assertEquals("success", StepClosedEvent.fromJson(stepClosed.toJson()).outcome());
 
         // InstanceChangedEvent
         var instChanged = new InstanceChangedEvent(planId, instanceVersion, "waiver granted");
-        assertEquals(InstanceChangedEvent.EVENT_NAME, "instance.changed");
+        assertEquals("instance.changed", InstanceChangedEvent.EVENT_NAME);
         assertEquals(instanceVersion, InstanceChangedEvent.fromJson(instChanged.toJson()).instanceVersion());
 
         // ActivityEvent
         var actEntry = new ActivityEntry("14:02:11", "text", null, null, false, activityContent, null, List.of(),
                 List.of(), null, null);
         var actEvent = new ActivityEvent(planId, taskId, actEntry);
-        assertEquals(ActivityEvent.EVENT_NAME, "activity");
+        assertEquals("activity", ActivityEvent.EVENT_NAME);
         var parsedActEvent = ActivityEvent.fromJson(actEvent.toJson());
         assertEquals(taskId, parsedActEvent.taskId());
         assertEquals(activityContent, parsedActEvent.entry().content());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize the tokens and task off-track SSE events")
+    void shouldRoundTripTokensAndOffTrackEvents() throws Exception {
+        var planId = Generators.nonBlankStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
+        var changedTotal = (long) Generators.integers(0, 1_000_000).next();
 
         // TokensChangedEvent
         var tokTokens = new ProcessTokens(changedTotal, 80L, 20L, false, 1, 1, false, false);
         var tokEvent = new TokensChangedEvent(planId, tokTokens);
-        assertEquals(TokensChangedEvent.EVENT_NAME, "tokens.changed");
+        assertEquals("tokens.changed", TokensChangedEvent.EVENT_NAME);
         assertEquals(changedTotal, TokensChangedEvent.fromJson(tokEvent.toJson()).tokens().total());
 
         // TaskOffTrackEvent
         var offEvent = new TaskOffTrackEvent(planId, taskId, "repeating", "show", true);
-        assertEquals(TaskOffTrackEvent.EVENT_NAME, "task.off_track");
+        assertEquals("task.off_track", TaskOffTrackEvent.EVENT_NAME);
         var parsedOffEvent = TaskOffTrackEvent.fromJson(offEvent.toJson());
         assertEquals("repeating", parsedOffEvent.signal());
         assertEquals("show", parsedOffEvent.action());
@@ -610,7 +623,11 @@ class ProcessTreeTest {
         assertEquals(PruneReason.LANE_CHOICE, PruneReason.fromValue("lane_choice"));
         assertEquals(PruneReason.UNNEEDED_STEP, PruneReason.fromValue("unneeded_step"));
         assertEquals(PruneReason.NOT_IN_PLAN, PruneReason.fromValue("not_in_plan"));
+    }
 
+    @Test
+    @DisplayName("should verify the task, job, off-track and activity enumerations")
+    void shouldVerifyTaskAndActivityEnumerations() {
         assertEquals(TaskStatus.RUNNING, TaskStatus.fromValue("running"));
         assertEquals(TaskStatus.DONE, TaskStatus.fromValue("done"));
 

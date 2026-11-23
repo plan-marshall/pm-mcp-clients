@@ -198,17 +198,19 @@ class EventEnvelopeTest {
     @Test
     @DisplayName("the constructors reject invalid values")
     void constructorsRejectInvalidValues() {
+        var runtimeScope = new EventScope(EventScopeKind.RUNTIME, null, null);
+        Map<String, Object> noPayload = Map.of();
         assertThrows(IllegalArgumentException.class,
-                () -> new EventEnvelope(EventName.RESET, -1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null), Map.of()));
+                () -> new EventEnvelope(EventName.RESET, -1L, AT, runtimeScope, noPayload));
         assertThrows(IllegalArgumentException.class,
                 () -> new EventScope(EventScopeKind.PLAN, null, null));
         // a kind that carries no identifier refuses one
         assertThrows(IllegalArgumentException.class,
                 () -> new EventScope(EventScopeKind.MACHINE, "m", null));
         // a payload never carries the envelope's own members
+        Map<String, Object> ownMember = Map.of(EventEnvelope.FIELD_EVENT, "reset");
         assertThrows(IllegalArgumentException.class,
-                () -> new EventEnvelope(EventName.RESET, 1L, AT, new EventScope(EventScopeKind.RUNTIME, null, null),
-                        Map.of(EventEnvelope.FIELD_EVENT, "reset")));
+                () -> new EventEnvelope(EventName.RESET, 1L, AT, runtimeScope, ownMember));
     }
 
     private static EventEnvelope readStreaming(String json) throws IOException {

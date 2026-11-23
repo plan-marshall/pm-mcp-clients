@@ -48,11 +48,11 @@ class RuntimeRecordTest {
         var start = self.info().startInstant().orElseThrow();
         Files.writeString(file, "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\",\"version\":\"1.0\"}");
 
-        var record = RuntimeRecord.read(file).orElseThrow();
+        var runtimeRecord = RuntimeRecord.read(file).orElseThrow();
 
-        assertEquals(self.pid(), record.pid());
-        assertEquals("1.0", record.version());
-        assertTrue(record.processAlive());
+        assertEquals(self.pid(), runtimeRecord.pid());
+        assertEquals("1.0", runtimeRecord.version());
+        assertTrue(runtimeRecord.processAlive());
     }
 
     @Test
