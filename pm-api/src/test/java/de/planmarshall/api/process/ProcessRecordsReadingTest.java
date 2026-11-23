@@ -259,6 +259,9 @@ class ProcessRecordsReadingTest {
                 var plan = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", activity.value()));
                 assertEquals(activity.value(), plan.phaseState(), activity.value());
             }
+            var shouting = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", "ENDED"));
+            assertEquals(PlanActivity.ENDED.value(), shouting.phaseState(),
+                    "a member read by name still carries its canonical wire value");
         }
     }
 

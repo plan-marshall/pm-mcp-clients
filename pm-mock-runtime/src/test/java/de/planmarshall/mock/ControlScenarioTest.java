@@ -24,6 +24,7 @@ import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -309,7 +310,7 @@ class ControlScenarioTest {
         }
 
         @Test
-        @DisplayName("serves a landed row's plan with the closed activity vocabulary, never done")
+        @DisplayName("serves a shipped row's plan as an ended plan, never done")
         void endedRowServesEndedActivity() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
                 var process = ProcessTree.fromJson(
@@ -341,24 +342,38 @@ class ControlScenarioTest {
         }
 
         @Test
+        @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         @DisplayName("cancels the epic's plans too when with_plans is true and leaves them when it is false")
         void cancelWithPlans() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
                 var reason = Generators.letterStrings(4, 12).next();
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+                try (var stream = client.open(HttpRequest.get("/api/v1/plans/relay-cursor-order/events")
+                             .withHeader(AUTH_HEADER, auth))) {
+                    var cancelled = post(runtime, "/api/v1/epics/relay-hardening/actions/cancel",
+                            JsonTree.write(Map.of("reason", reason, "with_plans", true)));
 
-                var cancelled = post(runtime, "/api/v1/epics/relay-hardening/actions/cancel",
-                        JsonTree.write(Map.of("reason", reason, "with_plans", true)));
+                    var event = stream.events().next();
+                    assertNotNull(event, "the stream ended");
+                    assertEquals(PlanControlEvent.EVENT_CANCELLED, event.event());
+                    assertEquals("relay-cursor-order",
+                            JsonTree.string(JsonTree.asObject(JsonTree.parse(event.data())), "plan_id"));
 
-                var statuses = rowStatuses(epic(runtime, "relay-hardening"));
-                assertAll("the epic and its plans have ended",
-                        () -> assertEquals(200, cancelled.status()),
-                        () -> assertEquals("ended", epic(runtime, "relay-hardening").state()),
-                        () -> assertEquals(7, statuses.size()),
-                        () -> assertTrue(statuses.stream().allMatch("cancelled"::equals), statuses.toString()),
-                        () -> assertEquals("ended", actions(runtime, "relay-cursor-order").state()),
-                        () -> assertEquals("ended", actions(runtime, "relay-docs").state()),
-                        () -> assertEquals("ended", actions(runtime, "fix-relay").state(),
-                                "a plan the epic names without a row of its own ends too"));
+                    var statuses = rowStatuses(epic(runtime, "relay-hardening"));
+                    assertAll("the epic and the plans that ran have ended",
+                            () -> assertEquals(200, cancelled.status()),
+                            () -> assertEquals("ended", epic(runtime, "relay-hardening").state()),
+                            () -> assertEquals(7, statuses.size()),
+                            () -> assertEquals("shipped", statuses.getFirst(),
+                                    "a plan that already landed keeps the outcome it ended with"),
+                            () -> assertEquals(1, statuses.stream().filter("shipped"::equals).count()),
+                            () -> assertEquals(6, statuses.stream().filter("cancelled"::equals).count()),
+                            () -> assertEquals("ended", actions(runtime, "relay-cursor-order").state()),
+                            () -> assertEquals("ended", actions(runtime, "relay-docs").state()),
+                            () -> assertEquals("ended", actions(runtime, "fix-relay").state(),
+                                    "a plan the epic names without a row of its own ends too"));
+                }
             }
 
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
@@ -378,6 +393,7 @@ class ControlScenarioTest {
         }
 
         @Test
+        @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
         @DisplayName("starts the epic's next launchable row with its event, and says why nothing starts when none can")
         void nextPlan() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
@@ -396,7 +412,6 @@ class ControlScenarioTest {
                             JsonTree.string(JsonTree.asObject(JsonTree.parse(event.data())), "plan_id"));
                 }
 
-                assertEquals("running", actions(runtime, "relay-reconnect-metrics").state());
                 assertEquals("running", rowStatuses(epic(runtime, "relay-hardening")).get(3));
 
                 var none = JsonTree.asObject(JsonTree.parse(

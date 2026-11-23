@@ -61,17 +61,18 @@ public record EpicProcessPlan(
      * Reads the plan's activity state as the closed set of {@link PlanActivity} declares it.
      *
      * @param wire the member as the wire carries it, or {@code null}
-     * @return the member unchanged, or {@code null} when it is absent or blank
+     * @return the member's canonical wire value, or {@code null} when it is absent or blank
      * @throws JsonFormatException if the value is no member of the closed set
      */
     private static @Nullable String readPhaseState(@Nullable String wire) throws JsonFormatException {
         if (wire == null || wire.isBlank()) {
             return null;
         }
-        if (PlanActivity.fromValue(wire) == null) {
+        var activity = PlanActivity.fromValue(wire);
+        if (activity == null) {
             throw new JsonFormatException("Unknown phase_state in EpicProcessPlan: " + wire);
         }
-        return wire;
+        return activity.value();
     }
 
     public Map<String, Object> toMap() {
