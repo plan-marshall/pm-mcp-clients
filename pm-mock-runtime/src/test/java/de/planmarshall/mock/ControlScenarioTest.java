@@ -50,7 +50,9 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.PlanActivity;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.mock.runtime.MockTiming;
 
@@ -301,6 +303,17 @@ class ControlScenarioTest {
 
                 assertEquals(200, response.status());
                 assertEquals("relay-docs-epic", EpicProcess.fromJson(response.bodyText()).epicId());
+            }
+        }
+
+        @Test
+        @DisplayName("serves a landed row's plan with the closed activity vocabulary, never done")
+        void endedRowServesEndedActivity() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                var process = ProcessTree.fromJson(
+                        get(runtime, "/api/v1/plans/relay-reconnect-backoff/process").bodyText());
+
+                assertEquals(PlanActivity.ENDED.value(), process.phaseState());
             }
         }
 

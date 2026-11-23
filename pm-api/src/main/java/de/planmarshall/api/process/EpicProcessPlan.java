@@ -13,9 +13,11 @@ import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.PlanActivity;
 
 /**
  * Summary of a running or staged plan within an epic process (UC-PLN-5).
@@ -23,7 +25,9 @@ import de.planmarshall.api.json.JsonTree;
  * @param planId       plan identifier
  * @param title        plan title
  * @param currentPhase phase name (or planned start phase)
- * @param phaseState   activity state ("running", "staged", "planned", "done")
+ * @param phaseState   the plan's activity state, one wire value of the closed {@link PlanActivity} set:
+ *                     {@code running}, {@code pausing}, {@code paused}, {@code waiting_for_you},
+ *                     {@code held}, {@code staged}, or {@code ended}
  * @param tasksDone    number of completed tasks
  * @param tasksTotal   total planned tasks
  * @param running      {@code true} if actively executing, {@code false} if staged
@@ -53,6 +57,23 @@ public record EpicProcessPlan(
         return running ? STATE_RUNNING : STATE_STAGED;
     }
 
+    /**
+     * Reads the plan's activity state as the closed set of {@link PlanActivity} declares it.
+     *
+     * @param wire the member as the wire carries it, or {@code null}
+     * @return the member unchanged, or {@code null} when it is absent or blank
+     * @throws JsonFormatException if the value is no member of the closed set
+     */
+    private static @Nullable String readPhaseState(@Nullable String wire) throws JsonFormatException {
+        if (wire == null || wire.isBlank()) {
+            return null;
+        }
+        if (PlanActivity.fromValue(wire) == null) {
+            throw new JsonFormatException("Unknown phase_state in EpicProcessPlan: " + wire);
+        }
+        return wire;
+    }
+
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
         map.put("plan_id", planId);
@@ -76,7 +97,8 @@ public record EpicProcessPlan(
         }
         var title = JsonTree.string(map, "title");
         var currentPhase = JsonTree.string(map, "current_phase");
-        var phaseState = JsonTree.string(map, "phase_state");
+        var phaseStateWire = JsonTree.string(map, "phase_state");
+        var phaseState = readPhaseState(phaseStateWire);
         var doneNum = JsonTree.number(map, "tasks_done");
         int tasksDone = doneNum != null ? doneNum.intValue() : 0;
         var totNum = JsonTree.number(map, "tasks_total");

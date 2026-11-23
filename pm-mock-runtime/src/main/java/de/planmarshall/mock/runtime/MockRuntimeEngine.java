@@ -12128,11 +12128,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     /**
      * @param status the row's status as the epic lists it
-     * @return the plan state the view understands
+     * @return the plan's activity state, one wire value of the closed {@code PlanActivity} set
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "shipped", STATE_MERGED, "landed" -> STATE_DONE;
+            case "shipped", STATE_MERGED, "landed" -> STATE_ENDED;
             default -> status;
         };
     }
@@ -12211,7 +12211,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get(KEY_NODES) instanceof List<?> nodes)) {
-            var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
+            var state = planEnded(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -12232,6 +12232,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "phase " + currentPhase));
         }
         return result;
+    }
+
+    /**
+     * @param phaseState the plan's activity state
+     * @return whether the plan has ended, so its phases are all done
+     */
+    private static boolean planEnded(String phaseState) {
+        return STATE_DONE.equals(phaseState) || STATE_ENDED.equals(phaseState);
     }
 
     /**
@@ -12286,7 +12294,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return the node's state: done before the current phase, the current phase's own, planned after
      */
     private static String phaseNodeState(int index, int current, String phaseState) {
-        if (STATE_DONE.equals(phaseState)) {
+        if (planEnded(phaseState)) {
             return STATE_DONE;
         }
         if (current >= 0 && index < current) {
