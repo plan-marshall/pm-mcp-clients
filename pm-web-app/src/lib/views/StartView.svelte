@@ -902,6 +902,9 @@
   function recipeUnavailable(recipe: RecipeRef): boolean {
     return recipe.parameters.some((parameter) => !parameter.available);
   }
+
+  /** The recipe the step's one primary act chooses: the first the project can run. */
+  $: primaryRecipeKey = recipes.find((candidate) => !recipeUnavailable(candidate))?.key ?? '';
 </script>
 
 {#snippet sidePane()}
@@ -1060,7 +1063,7 @@
                   </span>
                 {/if}
                 <Button
-                  variant="secondary"
+                  variant={recipe.key === primaryRecipeKey ? 'primary' : 'secondary'}
                   data-testid={`recipe-choose-${recipe.key}`}
                   aria-label={`${$t('start.choose.recipe_act')} ${recipe.name}`}
                   disabled={busy || recipeUnavailable(recipe)}
@@ -1104,6 +1107,7 @@
           readyTouched = true;
           readyId = value;
         }}
+        onSubmit={create}
       />
       {#if ready?.landing && ready.landing === 'landing.files'}
         <p class="start-view__hint" data-testid="ready-landing">

@@ -466,6 +466,123 @@ describe('StartView', () => {
     });
   });
 
+  describe('the recipe and ready steps (D1)', () => {
+    it('offers one primary act on the recipe step, and it chooses the recipe', async () => {
+      arrangeOpen(
+        representation({ entry: entry({ state: 'start.recipe' }), recipes: RECIPES }),
+      );
+      const act = vi
+        .spyOn(apiClient, 'actEntry')
+        .mockResolvedValue(
+          representation({ entry: entry({ state: 'recipe.parameters' }), recipes: RECIPES }),
+        );
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+
+      const step = await screen.findByTestId('start-recipe');
+      const primaries = step.querySelectorAll('.btn--primary');
+      expect(primaries).toHaveLength(1);
+      const primary = within(step).getByRole('button', { name: 'Choose a recipe code-review' });
+      expect(primary).toHaveClass('btn--primary');
+
+      await fireEvent.click(primary);
+
+      expect(act).toHaveBeenCalledWith('ent-3f9a2c41', 'choose:code-review', {});
+    });
+
+    it('starts the recipe by the one primary act of the ready step', async () => {
+      arrangeOpen(
+        representation({
+          entry: entry({ state: 'start.ready', recipe: RECIPES[0] }),
+          ready: {
+            title: 'A code review',
+            plan_id: 'recipe-code-review-2026-10-19-14-05-00',
+            id_editable: false,
+            id_from_title: false,
+            recipe: RECIPES[0],
+            parameters: [{ ...RECIPES[0].parameters[0], value: 'deep' }],
+            landing: 'landing.pull-request',
+            landing_asked: false,
+          },
+        }),
+      );
+      const act = vi
+        .spyOn(apiClient, 'actEntry')
+        .mockResolvedValue(representation({ entry: entry({ state: 'start.ready' }) }));
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+
+      await screen.findByTestId('recipe-ready');
+      expect(document.querySelectorAll('.btn--primary')).toHaveLength(1);
+      const primary = screen.getByTestId('ready-start');
+      expect(primary).toHaveClass('btn--primary');
+
+      await fireEvent.click(primary);
+
+      expect(act).toHaveBeenCalledWith('ent-3f9a2c41', 'create', { title: 'A code review' });
+    });
+
+    it('starts the recipe by Enter in the ready step, and never on an IME confirm', async () => {
+      arrangeOpen(
+        representation({
+          entry: entry({ state: 'start.ready' }),
+          ready: {
+            title: 'Add a Codeberg provider for issues',
+            plan_id: 'codeberg-provider-issues',
+            id_editable: false,
+            id_from_title: false,
+            parameters: [],
+            landing: 'landing.pull-request',
+            landing_asked: false,
+          },
+        }),
+      );
+      const act = vi
+        .spyOn(apiClient, 'actEntry')
+        .mockResolvedValue(representation({ entry: entry({ state: 'start.ready' }) }));
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+
+      const title = await screen.findByTestId('ready-title');
+      await fireEvent.keyDown(title, { key: 'Enter', isComposing: true });
+      await fireEvent.keyDown(title, { key: 'Enter', keyCode: 229 });
+      expect(act).not.toHaveBeenCalled();
+
+      await fireEvent.keyDown(title, { key: 'Enter' });
+
+      expect(act).toHaveBeenCalledWith('ent-3f9a2c41', 'create', {
+        title: 'Add a Codeberg provider for issues',
+      });
+    });
+
+    it('shows a parameter without options as its reason, with no field', async () => {
+      const recipe = {
+        key: 'free',
+        name: 'free',
+        description: 'A recipe the project offers',
+        origin: 'project',
+        takes_request: false,
+        parameters: [
+          { name: 'target', options: [], proposed: false, available: true },
+        ],
+      };
+      arrangeOpen(
+        representation({
+          entry: entry({ state: 'recipe.parameters', recipe, sources: [] }),
+        }),
+      );
+      vi.spyOn(apiClient, 'actEntry').mockResolvedValue(representation());
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+
+      const step = await screen.findByTestId('recipe-ready');
+      expect(within(step).getByTestId('no-option-target')).toHaveTextContent(
+        'target: none the recipe can work on; the recipe cannot run',
+      );
+      expect(within(step).queryByTestId('parameter-target')).toBeNull();
+    });
+  });
+
   describe('the setup gate', () => {
     it("opens the machine's onboarding when the machine is not onboarded", async () => {
       arrangeOpen(

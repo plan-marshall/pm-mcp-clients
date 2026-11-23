@@ -32,6 +32,30 @@ describe('EpicAdoptView', () => {
     expect(onNew).toHaveBeenCalled();
   });
 
+  it('shows one primary for the step with two adoptable epics', async () => {
+    const onAdopt = vi.fn();
+
+    render(EpicAdoptView, {
+      props: {
+        epics: [
+          { epic_id: 'relay-hardening', title: 'relay-hardening' },
+          { epic_id: 'storage-migration', title: 'storage-migration' },
+        ],
+        projectId: 'pm-mcp-clients',
+        onAdopt,
+      },
+    });
+
+    expect(screen.getByTestId('epic-adopt').querySelectorAll('.btn--primary')).toHaveLength(1);
+    const first = screen.getByRole('button', { name: 'Adopt relay-hardening' });
+    expect(first).toHaveClass('btn--primary');
+    const second = screen.getByRole('button', { name: 'Adopt storage-migration' });
+    expect(second).toHaveClass('btn--secondary');
+
+    await fireEvent.click(second);
+    expect(onAdopt).toHaveBeenCalledWith('storage-migration');
+  });
+
   it('renders a failed adoption under ErrorState with cause and ghost Try again / Abandon buttons (D3)', async () => {
     const onRetry = vi.fn();
     const onAbandon = vi.fn();
