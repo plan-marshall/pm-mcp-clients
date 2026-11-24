@@ -21,6 +21,32 @@ export interface FormKeyboard {
 }
 
 /**
+ * Finds the control of the first invalid field: the element that carries the field key as its
+ * name, its id or its test id, the first in document order.
+ *
+ * A field key is the operator's data, not a CSS identifier: `2fa`, `a.b` and `a"b` are ordinary
+ * keys. A selector built from them unescaped either throws (`a"b`, and `2fa` as an id) before the
+ * error is shown, or silently matches another element (`#a.b` is the id `a` with the class `b`).
+ * The lookup compares the attributes themselves, so no key can break it and no escaping is needed.
+ *
+ * @param key the field's key
+ * @returns the control, or null when nothing carries the key
+ */
+function controlForKey(key: string): HTMLElement | null {
+  const candidates = document.querySelectorAll<HTMLElement>('[name], [id], [data-testid]');
+  for (const candidate of candidates) {
+    if (
+      candidate.getAttribute('name') === key ||
+      candidate.id === key ||
+      candidate.dataset.testid === key
+    ) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+/**
  * Keyboard listeners for a one-line form: Enter submits.
  *
  * The Enter that confirms an IME composition only ends the composition, and an Enter on a checkbox
@@ -317,10 +343,7 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
     if (firstInvalid) {
       if (typeof document !== 'undefined') {
-        const el = document.querySelector<HTMLElement>(
-          `[name="${firstInvalid}"], #${firstInvalid}, [data-testid="${firstInvalid}"]`,
-        );
-        el?.focus();
+        controlForKey(firstInvalid)?.focus();
       }
       publish();
       return false;

@@ -514,7 +514,7 @@ public final class PlanCommand implements Callable<Integer> {
                             : "operator.plan.activity.off_track_plain";
         var args = bounded
                             ? Map.<String, Object>of("signal", sig, KEY_VALUE, offTrack.value(),
-                                                "threshold", offTrack.threshold(), "action", action)
+                            "threshold", offTrack.threshold(), "action", action)
                             : Map.<String, Object>of("signal", sig, "action", action);
         out.println("  " + MessageCatalogue.format(locale, key, args));
     }

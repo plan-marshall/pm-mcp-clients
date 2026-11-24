@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CleanupView from './CleanupView.svelte';
 import { runtimeStore } from '../stores/runtime';
@@ -6,6 +6,16 @@ import { get } from 'svelte/store';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type CleanupJob, type CleanupKeptItem } from '../api/client';
 import { ClientError } from '../api/errors';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
+
+/**
+ * @param locale the language the catalogue is loaded in
+ */
+function useCatalogue(locale: 'de' | 'en'): void {
+  currentLocale.set(locale);
+  messagesStore.set(loadMessages(locale));
+}
 
 describe('CleanupView component', () => {
   const mockJob: CleanupJob = {
@@ -114,6 +124,10 @@ describe('CleanupView component', () => {
       }),
     );
     vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    useCatalogue('en');
   });
 
   it('draws the error pattern when the cleanup job cannot be read', async () => {
@@ -355,6 +369,37 @@ describe('CleanupView component', () => {
     await fireEvent.click(releaseAllBtn);
 
     expect(releaseSpy).toHaveBeenCalledWith([], true);
+  });
+
+  it('names what a German delete removed from the catalogue, not an English items literal', async () => {
+    useCatalogue('de');
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+    vi.spyOn(apiClient, 'executeCleanup').mockResolvedValue({
+      status: 'deleted',
+      freed_bytes: 1825361100,
+    });
+
+    render(CleanupView);
+
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+    await fireEvent.click(screen.getByRole('button', { name: /^Lösche 1 Plan/i }));
+    await fireEvent.click(screen.getByRole('button', { name: 'Lösche' }));
+
+    const notice = await screen.findByRole('status');
+    expect(notice).toHaveTextContent('1 Plan · 1 Log · 1 ausgetragenes Projekt gelöscht');
+    expect(notice).not.toHaveTextContent('items');
+  });
+
+  it('offers the way back to the system view, which the delete flow came from', async () => {
+    vi.spyOn(apiClient, 'getCleanupJob').mockResolvedValue(mockJob);
+    vi.spyOn(apiClient, 'getKeptCleanup').mockResolvedValue({ items: mockKeptItems });
+
+    render(CleanupView);
+    await waitFor(() => expect(screen.getByText('fix-relay')).toBeInTheDocument());
+
+    const back = screen.getByRole('link', { name: 'System' });
+    expect(back).toHaveAttribute('href', '/system');
   });
 
   it('does not render an in-page back button in the empty state (D3)', async () => {

@@ -843,16 +843,6 @@
     }
   }
 
-  /**
-   * Drops a staged plan through the contract's whole-cut rewrite, which is the only write verb
-   * that can remove a plan before agreement; the server's answer replaces the cut.
-   *
-   * @param planId the staged plan to remove
-   */
-  async function dropPlan(planId: string): Promise<void> {
-    await instructDecomposition(null, `Drop the plan ${planId} from the cut.`, 'rewrite');
-  }
-
   function discardReadBack(): void {
     decompositionReadBack = null;
     void loadDecomposition();
@@ -1157,7 +1147,6 @@
           readBack={decompositionReadBack}
           {busy}
           onKeep={() => {}}
-          onDrop={dropPlan}
           onInstruct={instructDecomposition}
           onAccept={() => (decompositionReadBack = null)}
           onInstructAgain={() => {

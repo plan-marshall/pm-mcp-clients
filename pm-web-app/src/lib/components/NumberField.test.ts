@@ -120,6 +120,34 @@ describe('NumberField', () => {
       expect(onchange).toHaveBeenCalledExactlyOnceWith(10);
     });
 
+    it.each([
+      ['Enter', async (input: HTMLInputElement) => fireEvent.keyDown(input, { key: 'Enter' })],
+      ['blur', async (input: HTMLInputElement) => fireEvent.change(input)],
+    ])(
+      'reports the clamped value through input as well as change on %s, so an oninput form holds it',
+      async (_name, commitThe) => {
+        const seen: string[] = [];
+        const oninput = vi.fn((event: Event & { currentTarget: HTMLInputElement }) => {
+          seen.push(event.currentTarget.value);
+        });
+        const onchange = vi.fn();
+        const { container } = render(NumberField, {
+          props: { label: 'Count', min: 5, max: 10, value: 7, oninput, onchange },
+        });
+        const input = container.querySelector('input') as HTMLInputElement;
+
+        await fireEvent.input(input, { target: { value: '12' } });
+        seen.length = 0;
+        await commitThe(input);
+
+        // A form wired to `oninput` keeps the unclamped 12 unless the commit reports what the field
+        // now holds; Enter would then submit the value the field no longer shows.
+        expect(input.value).toBe('10');
+        expect(seen.at(-1)).toBe('10');
+        expect(onchange).toHaveBeenCalledExactlyOnceWith(10);
+      },
+    );
+
     it('does not commit on the Enter that confirms an IME composition and forwards it to the caller', async () => {
       const onchange = vi.fn();
       const onkeydown = vi.fn();

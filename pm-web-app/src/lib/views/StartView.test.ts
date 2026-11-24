@@ -7,6 +7,8 @@ import { ClientError } from '../api/errors';
 import { runtimeStore } from '../stores/runtime';
 import { ENTRY_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
+import { messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 import { PROJECT, RECIPES, entry, offersFor, representation, source, sources } from './startFixtures';
 
 /**
@@ -307,17 +309,45 @@ describe('StartView', () => {
       expect(screen.queryByTestId('decomposition-committed')).toBeNull();
     });
 
-    it('edits a staged plan, reads the change back, and drops a plan through a rewrite', async () => {
+    it('edits a staged plan, reads the change back, offers no Drop act, and shows a wire-dropped plan as dropped', async () => {
       await adoptEpic();
-      vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(CUT);
-      const edited = structuredClone(CUT);
-      edited.workstreams[0].staged_plans[0].objective = 'order the cursor first';
-      const instruct = vi
-        .spyOn(apiClient, 'instructDecomposition')
-        .mockResolvedValueOnce(edited)
-        .mockResolvedValueOnce({ ...CUT, workstreams: [] });
+      const cutWithDropped: EpicDecomposition = {
+        ...CUT,
+        workstreams: [
+          {
+            ...CUT.workstreams[0]!,
+            staged_plans: [
+              ...CUT.workstreams[0]!.staged_plans,
+              {
+                plan_id: 'relay-dropped',
+                title: 'relay-dropped',
+                expected_surface: ['pm-relay/src/dropped'],
+                dependencies: [],
+                status: 'dropped',
+              },
+            ],
+          },
+        ],
+      };
+      vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(cutWithDropped);
+      const edited = structuredClone(cutWithDropped);
+      edited.workstreams[0]!.staged_plans[0]!.objective = 'order the cursor first';
+      const instruct = vi.spyOn(apiClient, 'instructDecomposition').mockResolvedValueOnce(edited);
 
       await fireEvent.click(screen.getByTestId('started-decompose'));
+      await screen.findByTestId('plan-edit-relay-cursor-order');
+
+      expect(screen.queryByRole('button', { name: 'Drop' })).toBeNull();
+      expect(screen.queryByTestId('plan-drop-relay-cursor-order')).toBeNull();
+      expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('dropped');
+
+      messagesStore.set(loadMessages('de'));
+      await vi.waitFor(() =>
+        expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('entfernt'),
+      );
+      expect(screen.queryByRole('button', { name: 'Lass ihn fallen' })).toBeNull();
+      messagesStore.set(loadMessages('en'));
+
       await fireEvent.click(await screen.findByTestId('plan-edit-relay-cursor-order'));
       const instructPanel = screen.getByTestId('decomposition-instruction');
       const textbox = within(instructPanel).getByRole('textbox', { name: 'What should change?' });
@@ -334,17 +364,6 @@ describe('StartView', () => {
       expect(await screen.findByTestId('read-back-accept')).toBeInTheDocument();
       await fireEvent.click(screen.getByTestId('read-back-accept'));
       expect(screen.queryByTestId('read-back-accept')).toBeNull();
-
-      await fireEvent.click(screen.getByTestId('plan-drop-relay-cursor-order'));
-
-      expect(instruct).toHaveBeenLastCalledWith(PROJECT, 'relay-hardening', {
-        plan_id: null,
-        instruction: 'Drop the plan relay-cursor-order from the cut.',
-        action: 'rewrite',
-      });
-      await vi.waitFor(() =>
-        expect(screen.queryByTestId('plan-drop-relay-cursor-order')).toBeNull(),
-      );
     });
   });
 

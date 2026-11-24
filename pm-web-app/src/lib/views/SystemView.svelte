@@ -66,6 +66,12 @@
     restored?: string;
   }>({});
   let reloadWaitsForInput = $state(false);
+  /**
+   * The page heading, which takes the focus back when the consent closes: the control that opened
+   * the dialog — the panel's Upgrade button — is unmounted while the runtime reads as upgrading, and
+   * a removed element cannot take the focus back.
+   */
+  let pageHeading = $state<HTMLElement | null>(null);
 
   // Confirmation modal state for lifecycle actions
   let activeModal = $state<'stop' | 'restart' | null>(null);
@@ -700,7 +706,7 @@
 
 <DashboardPage>
   <div slot="title" class="system-header__titles">
-    <h1 class="system-title">{$t('system.view.title')}</h1>
+    <h1 class="system-title" tabindex="-1" bind:this={pageHeading}>{$t('system.view.title')}</h1>
     {#if snapshot?.runtime}
       <span class="system-subtitle mono">
         pm-mcpd {snapshot.runtime.version}
@@ -1267,6 +1273,7 @@
     : ''}
   danger
   testid="upgrade-consent"
+  returnFocusElement={pageHeading}
   onClose={() => {
     upgradePhase = 'idle';
   }}

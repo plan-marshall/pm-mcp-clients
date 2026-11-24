@@ -2,10 +2,10 @@
   "id": "PLAN-185",
   "slug": "web-shell-up-and-deletion-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
+  "plan_marshall_plan_id": "rb-185-web-shell-up-and-deletion-residue",
   "pr": "#558",
-  "landing": "",
+  "landing": "landings/PLAN-185.md",
   "seq": 185
 }

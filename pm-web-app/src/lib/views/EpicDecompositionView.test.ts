@@ -5,6 +5,8 @@ import { apiClient, type EpicDecomposition } from '../api/client';
 import { ClientError } from '../api/errors';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 function cut(overrides: Partial<EpicDecomposition> = {}): EpicDecomposition {
   return {
@@ -363,40 +365,71 @@ describe('EpicDecompositionView', () => {
     expect(screen.queryByTestId('instruct-modal')).not.toBeInTheDocument();
   });
 
-  it('sends a dropped plan with the check and the commit, so the plan is not committed', async () => {
-    const passing = cut({ status: 'review', findings: [] });
-    const withoutDropped = cut({
+  it('offers no Drop act on any staged plan in English or German, and still shows wire-dropped plans as dropped', async () => {
+    const withDropped = cut({
       status: 'review',
       findings: [],
-      workstreams: [passing.workstreams[0]!],
+      workstreams: [
+        {
+          id: 'WS-1',
+          name: 'Reconnect',
+          order: 1,
+          staged_plans: [
+            {
+              plan_id: 'relay-cursor-order',
+              title: 'relay-cursor-order',
+              expected_surface: ['pm-relay/src/cursor'],
+              dependencies: [],
+              status: 'staged',
+            },
+            {
+              plan_id: 'relay-dropped',
+              title: 'relay-dropped',
+              expected_surface: ['pm-relay/src/dropped'],
+              dependencies: [],
+              status: 'dropped',
+            },
+          ],
+        },
+      ],
     });
+    vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(withDropped);
+
+    render(EpicDecompositionView);
+    await screen.findByTestId('plan-relay-cursor-order');
+
+    expect(screen.queryByRole('button', { name: 'Drop' })).toBeNull();
+    expect(screen.queryByTestId('plan-drop-relay-cursor-order')).toBeNull();
+    expect(screen.queryByTestId('plan-drop-relay-dropped')).toBeNull();
+    const droppedCard = screen.getByTestId('plan-relay-dropped');
+    expect(droppedCard.querySelector('.status-label--neutral')).toBeInTheDocument();
+    expect(droppedCard).toHaveTextContent('dropped');
+
+    messagesStore.set(loadMessages('de'));
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('verworfen'),
+    );
+    expect(screen.queryByRole('button', { name: 'Lass ihn fallen' })).toBeNull();
+  });
+
+  it('agree checks and commits directly without sending an instruct drop rewrite', async () => {
+    const passing = cut({ status: 'review', findings: [] });
     vi.spyOn(apiClient, 'getDecomposition').mockResolvedValue(passing);
-    const instruct = vi
-      .spyOn(apiClient, 'instructDecomposition')
-      .mockResolvedValue(withoutDropped);
-    const check = vi.spyOn(apiClient, 'checkDecomposition').mockResolvedValue(withoutDropped);
+    const instruct = vi.spyOn(apiClient, 'instructDecomposition');
+    const check = vi.spyOn(apiClient, 'checkDecomposition').mockResolvedValue(passing);
     const commit = vi.spyOn(apiClient, 'commitDecomposition').mockResolvedValue({
       status: 'committed',
       ledger_revision: 4,
-      launchable_plan_count: 1,
+      launchable_plan_count: 2,
     });
 
     render(EpicDecompositionView);
-    await screen.findByTestId('plan-drop-relay-auth-v2');
+    const agree = await screen.findByTestId('agree-commit');
+    await fireEvent.click(agree);
 
-    await fireEvent.click(screen.getByTestId('plan-drop-relay-auth-v2'));
-    expect(screen.getByTestId('plan-relay-auth-v2')).toHaveTextContent('dropped');
-
-    await fireEvent.click(screen.getByTestId('agree-commit'));
-
-    expect(instruct).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening', {
-      plan_id: null,
-      instruction: 'Drop the plan relay-auth-v2 from the cut.',
-      action: 'rewrite',
-    });
     await vi.waitFor(() => expect(commit).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening'));
     expect(check).toHaveBeenCalledWith('pm-mcp-clients', 'relay-hardening');
-    expect(screen.queryByTestId('plan-relay-auth-v2')).toBeNull();
+    expect(instruct).not.toHaveBeenCalled();
   });
 
   it('draws a failed instruct inside the dialog, not behind its backdrop', async () => {

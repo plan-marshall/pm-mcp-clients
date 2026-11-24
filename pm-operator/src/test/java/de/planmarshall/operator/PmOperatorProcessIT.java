@@ -221,7 +221,7 @@ class PmOperatorProcessIT {
             assertNotNull(started, "pm-mcpd was not started; stderr: " + process.stderr());
             // The round trip stays in flight: while the daemon start is pending, stdout stays empty.
             await().during(Duration.ofMillis(100)).atMost(Duration.ofSeconds(1))
-                            .until(() -> process.stdout().length == 0);
+                                .until(() -> process.stdout().length == 0);
             assertEquals(0, process.stdout().length, "running is reported only after the round trip");
             fixture.start((request, response) -> response.json(200, PmOperatorTest.STATUS));
 

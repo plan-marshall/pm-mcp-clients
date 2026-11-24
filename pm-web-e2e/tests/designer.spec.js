@@ -174,7 +174,21 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
   });
 
   test('jumps to the line of a validation finding', async ({ page }) => {
-    await page.getByTestId('workflow-text').fill('this is not a workflow');
+    // A `goto` line is refused by the static rules at the line it stands on, so the finding's line
+    // is the one the jump must reach — not the end of the text the field was filled with.
+    const text = [
+      'workflow landing.pull-request version 3 format 1',
+      '---',
+      'name: Jumped',
+      'type: subworkflow',
+      'entry start',
+      'exit done',
+      '---',
+      'state start',
+      'goto nowhere',
+      '  done -> done',
+    ].join('\n');
+    await page.getByTestId('workflow-text').fill(text);
 
     const validated = page.waitForResponse(
       (response) => response.url().includes('/api/v1/workflows/validate'),
@@ -183,6 +197,9 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
     await page.getByTestId('validate-button').click();
     const response = await validated;
     expect(response.status()).toBe(200);
+    const body = await response.json();
+    const expected = body.findings[0].line;
+    expect(expected).toBeGreaterThan(1);
 
     await expect(page.getByTestId('validation-summary')).toContainText('1 finding', {
       timeout: 15000,
@@ -194,17 +211,72 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
       const field = element;
       return field.value.slice(0, field.selectionStart).split('\n').length;
     });
-    expect(line).toBeGreaterThan(0);
+    expect(line).toBe(expected);
   });
 
-  test('asks before leaving a changed draft', async ({ page }) => {
+  test('asks before discarding a changed draft', async ({ page }) => {
     await page.getByTestId('workflow-text').fill('workflow changed version 1 format 1\n');
     await page.getByTestId('unit-open-epic').click();
 
     const dialog = page.getByRole('dialog');
-    await expect(dialog).toContainText('Leave the designer?');
+    await expect(dialog).toContainText('Discard the draft?');
     await dialog.getByRole('button', { name: 'Stay' }).click();
     await expect(page.getByTestId('process-designer')).toBeVisible();
+  });
+
+  test('keeps the place dialog closed when it is dismissed with Escape during the comparison', async ({
+    page,
+  }) => {
+    // Hold the comparison's own read open, so the dismissal happens while it is in flight.
+    let releaseComparison;
+    const comparisonHeld = new Promise((resolve) => {
+      releaseComparison = resolve;
+    });
+    await page.route('**/api/v1/projects/*/workflows', async (route) => {
+      await comparisonHeld;
+      await route.continue();
+    });
+
+    await page.getByTestId('validate-button').click();
+    await expect(page.getByTestId('place-button')).toBeEnabled();
+    await page.getByTestId('place-button').click();
+    const dialog = page.getByTestId('place-dialog');
+    await expect(dialog).toBeVisible();
+
+    // The first project of the target list: the comparison then reads that project's units.
+    await dialog.getByRole('radio').nth(1).check();
+    const comparisonResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/projects/') && response.url().endsWith('/workflows'),
+    );
+    await page.getByTestId('place-compare').click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+
+    releaseComparison();
+    await comparisonResponse;
+    await expect(page.getByTestId('process-designer')).toBeVisible();
+    // The answer that arrived after the dismissal must not bring the dialog back.
+    await expect(page.getByTestId('place-dialog')).toHaveCount(0);
+    await expect(page.getByTestId('designer-diff')).toHaveCount(0);
+  });
+
+  test('asks before it removes a unit and removes it only on confirm', async ({ page }) => {
+    const remove = page.getByTestId('unit-remove-landing.pull-request');
+    await expect(remove).toBeVisible();
+
+    await remove.click();
+    const dialog = page.getByTestId('confirm-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Remove this machine');
+    await expect(dialog).toContainText('Then in force: the compiled default.');
+
+    // Nothing is removed before the confirmation.
+    await expect(remove).toBeVisible();
+    await page.getByTestId('confirm-dialog-confirm').click();
+
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByTestId('unit-remove-landing.pull-request')).toHaveCount(0);
   });
 
   test('is read only at phone width with Validate kept', async ({ page }) => {

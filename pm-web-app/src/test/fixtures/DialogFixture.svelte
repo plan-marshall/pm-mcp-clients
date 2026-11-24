@@ -12,13 +12,15 @@
   export let cancelLabel: string;
   export let confirmLabel: string;
   export let disabledLabel: string;
+  /** Whether the dialog draws its footer; a stage without an act turns it off. */
+  export let footer = true;
 
   let open = false;
 </script>
 
 <Button on:click={() => (open = true)}>{openLabel}</Button>
 
-<Dialog {title} {open} onClose={() => (open = false)}>
+<Dialog {title} {open} {footer} onClose={() => (open = false)}>
   <p>{body}</p>
   <svelte:fragment slot="footer">
     <Button variant="ghost" on:click={() => (open = false)}>{cancelLabel}</Button>

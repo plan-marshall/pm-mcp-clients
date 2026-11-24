@@ -28,7 +28,6 @@
   let loadError = $state<string | null>(null);
   let busy = $state(false);
   let committed = $state<DecompositionCommitResult | null>(null);
-  let droppedPlans = $state<string[]>([]);
 
   let instructOpen = $state(false);
   let instructAction = $state<'edit' | 'add' | 'rewrite'>('edit');
@@ -120,7 +119,7 @@
 
   function checkStateOf(plan: StagedPlanRecord): PlanCheckState {
     const conflicts = conflictsFor(plan.plan_id);
-    if (droppedPlans.includes(plan.plan_id) || plan.status === 'dropped') {
+    if (plan.status === 'dropped') {
       return {
         tone: 'neutral',
         label: $t('decomposition.check.dropped'),
@@ -216,36 +215,11 @@
     readBack = null;
   }
 
-  function keep(planId: string) {
-    droppedPlans = droppedPlans.filter((id) => id !== planId);
-  }
-
-  function drop(planId: string) {
-    if (!droppedPlans.includes(planId)) {
-      droppedPlans = [...droppedPlans, planId];
-    }
-  }
-
   async function agree() {
     if (!cut) return;
     busy = true;
     errorMessage = null;
     try {
-      // A plan marked for dropping leaves the cut before the check and the commit read it: the
-      // whole-cut rewrite is the one write verb that removes a plan before agreement, and its
-      // answer is the cut the check and the commit then see.
-      if (droppedPlans.length > 0) {
-        const instruction =
-          droppedPlans.length === 1
-            ? `Drop the plan ${droppedPlans[0]} from the cut.`
-            : `Drop the plans ${droppedPlans.join(', ')} from the cut.`;
-        cut = await apiClient.instructDecomposition(projectId, epicId, {
-          plan_id: null,
-          instruction,
-          action: 'rewrite',
-        });
-        droppedPlans = [];
-      }
       const checked = await apiClient.checkDecomposition(projectId, epicId);
       cut = checked;
       if (everyCheckPasses(checked)) {
@@ -399,7 +373,6 @@
               <div
                 class="plan"
                 class:plan--error={erroredPlans.has(plan.plan_id)}
-                class:plan--dropped={droppedPlans.includes(plan.plan_id)}
                 data-testid="plan-{plan.plan_id}"
               >
                 <div class="plan__status" data-testid="plan-status-{plan.plan_id}">
@@ -433,7 +406,6 @@
                     size="sm"
                     data-testid="plan-keep-{plan.plan_id}"
                     disabled={busy}
-                    onclick={() => keep(plan.plan_id)}
                   >
                     {$t('decomposition.keep')}
                   </Button>
@@ -445,15 +417,6 @@
                     onclick={() => openInstruct(plan.plan_id, 'edit')}
                   >
                     {$t('decomposition.edit')}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    data-testid="plan-drop-{plan.plan_id}"
-                    disabled={busy}
-                    onclick={() => drop(plan.plan_id)}
-                  >
-                    {$t('decomposition.drop')}
                   </Button>
                 </div>
               </div>
@@ -642,10 +605,6 @@
 
   .plan--error {
     border-color: var(--color-danger);
-  }
-
-  .plan--dropped {
-    opacity: 0.55;
   }
 
   .plan__head {

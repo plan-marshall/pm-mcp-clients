@@ -168,8 +168,8 @@ class ActionsCatalogueTest {
                 var epicActions = List.of("next", "auto", "common_files", "decompose", "findings",
                                     "watches", "chat", "archive", "cancel");
                 assertOffered(ActionMenus.epic(locale, actions("held", holdKind,
-                                    epicActions.toArray(String[]::new)),
-                                    new ActionMenus.EpicLabels("next", List.of(), true, 0, 1, 2), null),
+                                                        epicActions.toArray(String[]::new)),
+                                                        new ActionMenus.EpicLabels("next", List.of(), true, 0, 1, 2), null),
                                     epicActions, locale);
             }
         }
