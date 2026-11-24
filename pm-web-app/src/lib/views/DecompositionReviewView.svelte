@@ -19,7 +19,6 @@
   } | null = null;
   export let busy = false;
   export let onKeep: (planId: string) => void = () => {};
-  export let onDrop: (planId: string) => void = () => {};
   export let onInstruct: (planId: string | null, instruction: string) => void = () => {};
   export let onAccept: () => void = () => {};
   export let onInstructAgain: () => void = () => {};
@@ -162,9 +161,24 @@
               <li class="decomposition-review__row" data-testid={`plan-${plan.plan_id}`}>
                 <div class="decomposition-review__row-top">
                   <span class="decomposition-review__mark" aria-hidden="true">
-                    <Icon name={failed(plan.plan_id) ? 'state.error' : 'state.check'} size={16} />
+                    <Icon
+                      name={plan.status === 'dropped'
+                        ? 'state.dot'
+                        : failed(plan.plan_id)
+                          ? 'state.error'
+                          : 'state.check'}
+                      size={16}
+                    />
                   </span>
                   <span class="decomposition-review__plan-title">{plan.title}</span>
+                  {#if plan.status === 'dropped'}
+                    <span
+                      class="decomposition-review__status"
+                      data-testid={`plan-status-${plan.plan_id}`}
+                    >
+                      {$t('start.decomposition.change', { change: plan.status })}
+                    </span>
+                  {/if}
                   <span
                     class="decomposition-review__surface"
                     data-testid={`plan-surface-${plan.plan_id}`}
@@ -203,15 +217,6 @@
                       }}
                     >
                       {$t('start.decomposition.edit')}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      data-testid={`plan-drop-${plan.plan_id}`}
-                      disabled={busy}
-                      onclick={() => onDrop(plan.plan_id)}
-                    >
-                      {$t('start.decomposition.drop')}
                     </Button>
                   </span>
                 </div>
@@ -402,6 +407,7 @@
   }
 
   .decomposition-review__surface,
+  .decomposition-review__status,
   .decomposition-review__checks,
   .decomposition-review__empty {
     color: var(--color-text-muted);
