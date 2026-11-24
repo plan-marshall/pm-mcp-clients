@@ -66,20 +66,25 @@ describe('Field', () => {
     // wrapper is in it too: it draws no control of its own, but a rule of its own could still take
     // the outline away from the control it wraps.
     const fields = [
-      { name: 'Field', component: Field, props: { label: 'Path', id: 'field-guard' } },
-      { name: 'TextField', component: TextField, props: { label: 'Name' } },
-      { name: 'TextArea', component: TextArea, props: { label: 'Note' } },
-      { name: 'NumberField', component: NumberField, props: { label: 'Count' } },
+      {
+        name: 'Field',
+        draw: () => render(Field, { props: { label: 'Path', id: 'field-guard' } }),
+      },
+      { name: 'TextField', draw: () => render(TextField, { props: { label: 'Name' } }) },
+      { name: 'TextArea', draw: () => render(TextArea, { props: { label: 'Note' } }) },
+      { name: 'NumberField', draw: () => render(NumberField, { props: { label: 'Count' } }) },
       {
         name: 'SelectField',
-        component: SelectField,
-        props: { label: 'Pick', options: [{ value: '1', label: 'One' }], value: '1' },
+        draw: () =>
+          render(SelectField, {
+            props: { label: 'Pick', options: [{ value: '1', label: 'One' }], value: '1' },
+          }),
       },
-      { name: 'CheckField', component: CheckField, props: { label: 'Agree' } },
+      { name: 'CheckField', draw: () => render(CheckField, { props: { label: 'Agree' } }) },
     ];
 
     for (const field of fields) {
-      const rendered = render(field.component, { props: field.props });
+      const rendered = field.draw();
       const control = rendered.container.querySelector('input, textarea, select') as
         | HTMLElement
         | null;

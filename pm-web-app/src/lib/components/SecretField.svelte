@@ -80,9 +80,6 @@
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
-  /** The caller's own error wins; a rejected store reports its own until a newer store starts. */
-  const shownError = $derived(error ?? storeFailure);
-
   let revealed = $state(false);
   // Counts the stores started, so a rejected store knows whether a newer one owns the field.
   let storeGeneration = 0;
@@ -91,6 +88,9 @@
    * names its own `error`. A field that silently puts the secret back leaves the person guessing.
    */
   let storeFailure = $state<string | null>(null);
+
+  /** The caller's own error wins; a rejected store reports its own until a newer store starts. */
+  const shownError = $derived(error ?? storeFailure);
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
