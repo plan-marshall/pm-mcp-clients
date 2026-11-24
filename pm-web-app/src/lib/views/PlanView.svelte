@@ -805,6 +805,11 @@
     />
   {/if}
   <div class="plan-view" data-testid="plan-view">
+  {#if $narrowLayout && !isLoading && upParent?.kind && upParent.address}
+    <div class="plan-view__up" data-testid="plan-view-up">
+      <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
+    </div>
+  {/if}
   {#if isLoading}
     <div class="plan-view__loading" data-testid="plan-loading">
       <Skeleton shape="card" rows={3} label={$t('plan.view.loading')} />
@@ -828,11 +833,6 @@
           onAct={() => loadPlanProcess(false)}
           titleLevel={2}
         />
-      </div>
-    {/if}
-    {#if $narrowLayout && upParent?.kind && upParent.address}
-      <div class="plan-view__up" data-testid="plan-view-up">
-        <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
       </div>
     {/if}
     <!-- Path Navigation Header -->

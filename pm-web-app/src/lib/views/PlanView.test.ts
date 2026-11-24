@@ -565,6 +565,33 @@ describe('PlanView component', () => {
     expect(screen.getByTestId('up-link')).toHaveAttribute('href', '/epics/relay-hardening');
   });
 
+  it('carries Up in the error state at 1023 px and below (D3)', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 1023px)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      vi.spyOn(apiClient, 'getPlanProcess').mockRejectedValue(
+        Object.assign(new Error('scope_not_found'), { status: 404 }),
+      );
+      runtimeStore.update((s) => ({ ...s, selectedProjectId: 'pm-mcp-clients' }));
+
+      render(PlanView);
+
+      await screen.findByTestId('plan-error');
+      const holder = screen.getByTestId('plan-view-up');
+      expect(holder.querySelector('[data-testid="up-link"]')).toHaveAttribute(
+        'href',
+        '/overview?project=pm-mcp-clients',
+      );
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it('opens the parent epic from the breadcrumb in one step', async () => {
     render(PlanView);
 

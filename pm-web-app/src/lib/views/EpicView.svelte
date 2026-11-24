@@ -701,6 +701,11 @@
     <WorkListColumn projectId={epicProjectId} currentEpicId={epicId} />
   {/if}
   <div class="epic-view" data-testid="epic-view">
+  {#if $narrowLayout && !isLoading && upParent?.kind && upParent.address}
+    <div class="epic-view__up" data-testid="epic-view-up">
+      <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
+    </div>
+  {/if}
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
@@ -716,11 +721,6 @@
       />
     </div>
   {:else if epic}
-    {#if $narrowLayout && upParent?.kind && upParent.address}
-      <div class="epic-view__up" data-testid="epic-view-up">
-        <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
-      </div>
-    {/if}
     <ObjectPage compact={listColumn}>
       <span slot="kind"><KindMark kind="epic" /></span>
       <span slot="title" data-testid="epic-title">{epic.title}</span>
