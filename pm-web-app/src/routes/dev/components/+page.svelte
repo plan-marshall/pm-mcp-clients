@@ -48,6 +48,7 @@
   import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
   import DemoFormFixture from '../../../lib/dev/DemoFormFixture.svelte';
+  import EscapingKeyForm from '../../../lib/dev/EscapingKeyForm.svelte';
   import TextField from '../../../lib/components/TextField.svelte';
   import TextArea from '../../../lib/components/TextArea.svelte';
   import NumberField from '../../../lib/components/NumberField.svelte';
@@ -991,6 +992,10 @@
 
         <Card title={$t('dev.field.demo_form')}>
           <DemoFormFixture />
+        </Card>
+
+        <Card title={$t('dev.field.escaping_key_form')}>
+          <EscapingKeyForm />
         </Card>
 
       </div>

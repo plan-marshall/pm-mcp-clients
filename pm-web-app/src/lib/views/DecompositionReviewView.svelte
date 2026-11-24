@@ -19,7 +19,6 @@
   } | null = null;
   export let busy = false;
   export let onKeep: (planId: string) => void = () => {};
-  export let onDrop: (planId: string) => void = () => {};
   export let onInstruct: (planId: string | null, instruction: string) => void = () => {};
   export let onAccept: () => void = () => {};
   export let onInstructAgain: () => void = () => {};
@@ -68,10 +67,14 @@
     return failures.some((finding) => finding.affected_plans.includes(planId));
   }
 
-  function findingText(finding: DecompositionCheckFinding, planId: string): string {
+  function findingText(
+    finding: DecompositionCheckFinding,
+    planId: string,
+    translate: typeof $t,
+  ): string {
     if (finding.rule === 'surface_overlap' && finding.affected_plans.length >= 2) {
       const other = finding.affected_plans.find((candidate) => candidate !== planId) ?? '';
-      return $t('start.decomposition.overlap', {
+      return translate('start.decomposition.overlap', {
         plan: other,
         paths: finding.message,
       });
@@ -79,25 +82,25 @@
     return finding.message;
   }
 
-  function planDetails(plan: StagedPlanRecord): KeyValueItem[] {
+  function planDetails(plan: StagedPlanRecord, translate: typeof $t): KeyValueItem[] {
     return [
       {
-        label: $t('start.decomposition.objective'),
-        value: plan.objective || $t('start.decomposition.none'),
+        label: translate('start.decomposition.objective'),
+        value: plan.objective || translate('start.decomposition.none'),
       },
       {
-        label: $t('start.decomposition.surface'),
+        label: translate('start.decomposition.surface'),
         value:
           plan.expected_surface && plan.expected_surface.length > 0
             ? plan.expected_surface.join(', ')
-            : $t('start.decomposition.none'),
+            : translate('start.decomposition.none'),
       },
       {
-        label: $t('start.decomposition.depends_on'),
+        label: translate('start.decomposition.depends_on'),
         value:
           plan.dependencies && plan.dependencies.length > 0
             ? plan.dependencies.join(', ')
-            : $t('start.decomposition.none'),
+            : translate('start.decomposition.none'),
       },
     ];
   }
@@ -162,9 +165,24 @@
               <li class="decomposition-review__row" data-testid={`plan-${plan.plan_id}`}>
                 <div class="decomposition-review__row-top">
                   <span class="decomposition-review__mark" aria-hidden="true">
-                    <Icon name={failed(plan.plan_id) ? 'state.error' : 'state.check'} size={16} />
+                    <Icon
+                      name={plan.status === 'dropped'
+                        ? 'state.dot'
+                        : failed(plan.plan_id)
+                          ? 'state.error'
+                          : 'state.check'}
+                      size={16}
+                    />
                   </span>
                   <span class="decomposition-review__plan-title">{plan.title}</span>
+                  {#if plan.status === 'dropped'}
+                    <span
+                      class="decomposition-review__status"
+                      data-testid={`plan-status-${plan.plan_id}`}
+                    >
+                      {$t('start.decomposition.change', { change: plan.status })}
+                    </span>
+                  {/if}
                   <span
                     class="decomposition-review__surface"
                     data-testid={`plan-surface-${plan.plan_id}`}
@@ -177,7 +195,7 @@
                       data-testid={`plan-conflict-${plan.plan_id}`}
                     >
                       {#each failures.filter((finding) => finding.affected_plans.includes(plan.plan_id)) as finding}
-                        {findingText(finding, plan.plan_id)}
+                        {findingText(finding, plan.plan_id, $t)}
                       {/each}
                     </span>
                   {/if}
@@ -204,19 +222,10 @@
                     >
                       {$t('start.decomposition.edit')}
                     </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      data-testid={`plan-drop-${plan.plan_id}`}
-                      disabled={busy}
-                      onclick={() => onDrop(plan.plan_id)}
-                    >
-                      {$t('start.decomposition.drop')}
-                    </Button>
                   </span>
                 </div>
                 <div class="decomposition-review__plan-details" data-testid={`plan-details-${plan.plan_id}`}>
-                  <KeyValueList items={planDetails(plan)} />
+                  <KeyValueList items={planDetails(plan, $t)} />
                 </div>
               </li>
             {/each}
@@ -402,6 +411,7 @@
   }
 
   .decomposition-review__surface,
+  .decomposition-review__status,
   .decomposition-review__checks,
   .decomposition-review__empty {
     color: var(--color-text-muted);

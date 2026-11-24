@@ -365,6 +365,31 @@ describe('SystemView component', () => {
     expect(stopSpy).toHaveBeenCalledWith('drain');
   });
 
+  it('keeps the choice the request was sent with when the radio changes while the stop runs', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    let resolveStop: (value: unknown) => void = () => {};
+    const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(
+      new Promise((resolve) => {
+        resolveStop = resolve;
+      }) as never,
+    );
+
+    render(SystemView);
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
+    await fireEvent.click(await openRuntimeAct('Stop…'));
+    await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
+
+    // The operator changes the radio while the request runs: the state update must follow the
+    // choice the request carried — a drain, not the "now" typed afterwards — never the one typed.
+    await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
+    resolveStop({ lifecycle_state: 'draining' });
+
+    expect(stopSpy).toHaveBeenCalledExactlyOnceWith('drain');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).isStopped).toBe(false);
+  });
+
   it('closes the lifecycle dialog on Escape and returns the focus to the act that opened it', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
 
@@ -555,6 +580,42 @@ describe('SystemView component', () => {
 
     await fireEvent.click(screen.getByRole('button', { name: /Upgrade when done/i }));
     expect(upgradeSpy).toHaveBeenCalledWith('0.10.0', 'drain');
+  });
+
+  it('returns the focus to the mounted page heading when the consent closes on Escape', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+    );
+    await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+    await screen.findByTestId('upgrade-consent');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByTestId('upgrade-consent')).toBeNull());
+    // The control that opened the dialog — the panel's own Upgrade button — is unmounted with the
+    // panel, so the focus goes to the page heading, which outlives the dialog.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'System' }));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('returns the focus to the mounted page heading when the consent closes on Not now', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+    );
+    await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+    await screen.findByTestId('upgrade-consent');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+    await waitFor(() => expect(screen.queryByTestId('upgrade-consent')).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'System' }));
+    expect(document.activeElement).not.toBe(document.body);
   });
 
   it('withdraws an upgrade that waits for what runs', async () => {

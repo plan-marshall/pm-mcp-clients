@@ -142,6 +142,7 @@
   .filter__input:focus {
     outline: none;
     border-color: var(--color-primary);
+    box-shadow: var(--focus-ring);
   }
 
   .filter__clear {

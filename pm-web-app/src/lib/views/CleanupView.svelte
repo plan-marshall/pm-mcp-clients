@@ -175,13 +175,15 @@
 
   async function confirmDelete() {
     if (!job) return;
+    // The sentence names what was removed, read before the call that empties the list underneath it.
+    const what = deleteWhat;
     isDeleting = true;
     actionError = '';
     try {
       const excluded = Object.keys(uncheckedIds);
       const res = await apiClient.executeCleanup(job.job_id, excluded);
       actionSuccess = $t('system.cleanup.deleted', {
-        what: `${checkedItems.length} items`,
+        what,
         size: formatBytes(res.freed_bytes),
       });
       closeDeleteModal();
