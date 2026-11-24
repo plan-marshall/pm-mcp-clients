@@ -25,9 +25,8 @@ import de.planmarshall.api.overview.PlanActivity;
  * @param planId       plan identifier
  * @param title        plan title
  * @param currentPhase phase name (or planned start phase)
- * @param phaseState   the plan's activity state, one wire value of the closed {@link PlanActivity} set:
- *                     {@code running}, {@code pausing}, {@code paused}, {@code waiting_for_you},
- *                     {@code held}, {@code staged}, or {@code ended}
+ * @param phaseState   the plan's activity state: one wire value of the closed {@link PlanActivity}
+ *                     set, never a value outside it
  * @param tasksDone    number of completed tasks
  * @param tasksTotal   total planned tasks
  * @param running      {@code true} if actively executing, {@code false} if staged
@@ -49,12 +48,26 @@ public record EpicProcessPlan(
         Objects.requireNonNull(planId, "planId");
         title = title != null ? title : planId;
         currentPhase = currentPhase != null ? currentPhase : "init";
-        phaseState = phaseState != null ? phaseState : defaultPhaseState(running);
+        phaseState = canonicalPhaseState(phaseState, running);
     }
 
     /** A plan that names no phase state is running when it runs, else staged. */
     private static String defaultPhaseState(boolean running) {
         return running ? STATE_RUNNING : STATE_STAGED;
+    }
+
+    /**
+     * @param wire    the activity state, or {@code null} for the default
+     * @param running whether the plan runs, for the default
+     * @return the canonical wire value of the closed {@link PlanActivity} set
+     * @throws IllegalArgumentException if the value is no member of the closed set, so a constructed
+     *         record can never carry a value its reader refuses
+     */
+    private static String canonicalPhaseState(@Nullable String wire, boolean running) {
+        if (wire == null || wire.isBlank()) {
+            return defaultPhaseState(running);
+        }
+        return PlanActivity.parse(wire).value();
     }
 
     /**

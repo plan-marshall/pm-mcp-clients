@@ -391,7 +391,8 @@ class ControlScenarioTest {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
                 var reason = Generators.letterStrings(4, 12).next();
 
-                var cancelled = post(runtime, "/api/v1/epics/relay-hardening/actions/cancel",
+                // The CLI's own path: the flat form of the epic's cancel.
+                var cancelled = post(runtime, "/api/v1/epics/relay-hardening/cancel",
                         JsonTree.write(Map.of("reason", reason, "with_plans", false)));
 
                 var statuses = rowStatuses(epic(runtime, "relay-hardening"));

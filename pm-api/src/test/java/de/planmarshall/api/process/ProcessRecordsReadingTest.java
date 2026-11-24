@@ -253,6 +253,8 @@ class ProcessRecordsReadingTest {
                     () -> assertEquals(done, stated.tasksDone()),
                     () -> assertEquals(done, stated.tasksTotal()),
                     () -> assertThrows(JsonFormatException.class, () -> EpicProcessPlan.fromMap(outside)),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new EpicProcessPlan(planId, null, null, "done", 0, 0, true)),
                     () -> assertThrows(JsonFormatException.class, () -> EpicProcessPlan.fromMap(map)));
 
             for (var activity : PlanActivity.values()) {

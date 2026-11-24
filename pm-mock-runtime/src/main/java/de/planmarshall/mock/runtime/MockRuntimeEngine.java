@@ -380,7 +380,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(
             PlanAction.PAUSE.value(), PlanAction.START.value(),
             PlanAction.CANCEL.value(), PlanAction.ABANDON.value());
-    private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO);
+    private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO, ACTION_CANCEL);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
@@ -4036,7 +4036,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var state = JsonTree.string(epic, KEY_STATE);
             epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
-            epicScope.put(epicId, intMember(epic, "scope"));
+            var scope = JsonTree.integer(epic, "scope");
+            if (scope != null) {
+                // An epic whose control entry omits the scope keeps its resource's scope.
+                epicScope.put(epicId, scope);
+            }
             epicRunning.put(epicId, intMember(epic, ACTIVITY_RUNNING));
             epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
@@ -6028,9 +6032,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * Ends the epic's plans that still run, each with its own {@code cancelled} event, and brings the
-     * row of every plan the epic lists in line with the plan's end: a plan that already ended keeps the
-     * outcome it ended with and is not told again.
+     * Ends every plan of the epic that has not ended, each with its own {@code cancelled} event, so
+     * that an ended epic lists no row still to run; a plan that already ended keeps the outcome it
+     * ended with and is not told again.
      *
      * @param epicId the epic being cancelled
      * @param reason the operator's reason, or {@code null}
@@ -6040,8 +6044,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var transitions = new ArrayList<Map.Entry<String, Object>>();
         var cancelledReason = reason != null ? reason : "Cancelled by operator";
         for (var planId : epicPlanIds(epicId)) {
-            if (STATE_ENDED.equals(controlPlanStates.get(planId)) || rowEnded(epicId, planId)) {
-                // A plan that already ended keeps the outcome it ended with and is not told again.
+            if (planEnded(epicId, planId)) {
                 continue;
             }
             controlPlanStates.put(planId, STATE_ENDED);
@@ -6051,9 +6054,21 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             transitions.add(Map.entry(PlanControlEvent.EVENT_CANCELLED,
                     new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED, null,
                             cancelledReason).toMap()));
-        controlPlanEpics.putIfAbsent(planId, epicId);
+            controlPlanEpics.putIfAbsent(planId, epicId);
         }
         return transitions;
+    }
+
+    /**
+     * @param epicId the epic
+     * @param planId one of its plans
+     * @return whether the plan has ended: by its control state, by the activity an event recorded for
+     *         it, or by the status its row already shows
+     */
+    private boolean planEnded(String epicId, String planId) {
+        return STATE_ENDED.equals(controlPlanStates.get(planId))
+                || STATE_ENDED.equals(planActivities.get(planId))
+                || rowEnded(epicId, planId);
     }
 
     /**
@@ -6149,6 +6164,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private int countRunning(String epicId, List<WorkRow> rows) {
         var running = 0;
         for (var row : rows) {
+            var planId = row.planId();
+            if (STATE_ENDED.equals(controlPlanStates.get(planId)) || STATE_ENDED.equals(planActivities.get(planId))) {
+                // An ended plan occupies no place, whatever its row still shows.
+                continue;
+            }
             var status = rowStatusOf(epicId, row);
             if (ACTIVITY_RUNNING.equals(status) || ACTIVITY_PAUSING.equals(status) || ACTIVITY_PAUSED.equals(status)) {
                 running++;
