@@ -443,6 +443,28 @@ class ControlScenarioTest {
         }
 
         @Test
+        @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+        @DisplayName("does not start a staged row whose plan an event already ended")
+        void endedPlanIsNotStarted() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.epic")) {
+                runtime.engine().broadcast(PlanControlEvent.EVENT_CANCELLED,
+                        Map.of("plan_id", "relay-reconnect-metrics", "state", "ended"));
+
+                var answer = JsonTree.asObject(JsonTree.parse(
+                        post(runtime, "/api/v1/epics/relay-hardening/actions/next", "{}").bodyText()));
+
+                assertAll("the row is neither started nor named as one that waits",
+                        () -> assertNull(answer.get("started_plan")),
+                        () -> assertTrue(JsonTree.asArray(answer.get("not_started")).stream()
+                                        .map(JsonTree::asObject)
+                                        .noneMatch(row -> "relay-reconnect-metrics".equals(
+                                                JsonTree.string(row, "plan_id"))),
+                                String.valueOf(answer.get("not_started"))),
+                        () -> assertEquals("staged", rowStatuses(epic(runtime, "relay-hardening")).get(3)));
+            }
+        }
+
+        @Test
         @DisplayName("serves a manual epic whose completion review runs first")
         void manualEpicReviewFirst() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#control.archive")) {

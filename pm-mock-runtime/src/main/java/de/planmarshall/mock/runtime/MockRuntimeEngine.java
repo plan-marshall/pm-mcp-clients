@@ -6148,7 +6148,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private @Nullable WorkRow firstLaunchableRow(String epicId, List<WorkRow> rows) {
         for (var row : rows) {
-            if (STATUS_STAGED.equals(rowStatusOf(epicId, row)) && mayStartWhenAPlaceIsFree(row)) {
+            // A plan that ended by its own act may still show a staged row: it is not started again.
+            if (STATUS_STAGED.equals(rowStatusOf(epicId, row)) && mayStartWhenAPlaceIsFree(row)
+                    && !planEnded(epicId, row.planId())) {
                 return row;
             }
         }
@@ -6195,7 +6197,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private List<Map<String, Object>> notStartedRows(String epicId, List<WorkRow> rows) {
         var notStarted = new ArrayList<Map<String, Object>>();
         for (var row : rows) {
-            if (!STATUS_STAGED.equals(rowStatusOf(epicId, row))) {
+            // A plan that already ended waits for nothing: it is not one the answer names.
+            if (!STATUS_STAGED.equals(rowStatusOf(epicId, row)) || planEnded(epicId, row.planId())) {
                 continue;
             }
             var entry = new LinkedHashMap<String, Object>();
