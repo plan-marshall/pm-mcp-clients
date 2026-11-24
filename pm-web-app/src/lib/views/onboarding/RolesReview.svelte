@@ -25,7 +25,7 @@
     openAdvisory: {},
   });
 
-  /** Forgets every edit of this visit; the screen calls it when the run records the assignment. */
+  /** Forgets every edit of this page visit; a screen that ends its run calls it, the tests call it. */
   export function resetRoleEditSession(): void {
     roleEditSession.drafts = {};
     roleEditSession.decisions = {};

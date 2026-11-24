@@ -879,6 +879,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    /** The build environment each being-added run was opened with, by the run's entry id. */
+    private final Map<String, Map<String, String>> entryBuildEnvironments = new ConcurrentHashMap<>();
     private final Map<String, String> projectSetupStates = new ConcurrentHashMap<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
@@ -3029,7 +3031,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return true;
             }
             recordAspectAnswer(activeStateId, linkName, answerBody);
-            transitionTo(linkDef.next());
+            transitionTo(onboardingTarget(activeStateId, linkName, linkDef.next()));
             state = currentScenario.get().state(this.currentStateId.get());
         }
 
@@ -4975,7 +4977,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 body.put("id", entryId);
                 body.put("name", entryId);
                 body.put(KEY_PILOT, false);
-                body.put("build_environment", entryBuildEnvironment());
+                body.put("build_environment", entryBuildEnvironment(entryId));
                 body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
                         PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
                 response.json(200, body);
@@ -5027,9 +5029,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      *
      * @return the environment, or {@code null} while none was captured
      */
-    private @Nullable Map<String, Object> entryBuildEnvironment() {
-        var variables = lastBuildEnvironment();
-        if (variables.isEmpty()) {
+    private @Nullable Map<String, Object> entryBuildEnvironment(String entryId) {
+        var variables = entryBuildEnvironments.get(entryId);
+        if (variables == null || variables.isEmpty()) {
             return null;
         }
         var environment = new LinkedHashMap<String, Object>();
@@ -8874,6 +8876,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             machineCredentialStore = "os";
             machineProvidersVerified = false;
             onboardingAuto = false;
+            // A later run of another scenario starts no Change: the origin never outlives its run.
+            onboardingChangeFromResult = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
             machinePlanDefaults.put(KEY_METHOD, PlanDefaults.METHOD_TEST_FIRST);
@@ -10684,6 +10688,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 beingAddedProjects.add(beingAdded);
             }
             lastBuildEnvironment = buildEnvironment;
+            // The capture belongs to the run it was sent with: another run's later capture must not
+            // change what this entry serves.
+            if (!buildEnvironment.isEmpty()) {
+                entryBuildEnvironments.put(encodedEntryId(id), new LinkedHashMap<>(buildEnvironment));
+            }
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, FIXTURE_BEING_ADDED, path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",

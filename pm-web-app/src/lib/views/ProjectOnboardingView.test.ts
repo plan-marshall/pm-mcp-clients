@@ -482,6 +482,44 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.queryByTestId('project-back')).not.toBeInTheDocument();
   });
 
+  it('proposes the identity the entry publishes over the checkout name', async () => {
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.identity',
+      step: 2,
+      total_steps: 10,
+      id: 'remote-project',
+      name: 'Owner / Remote',
+      pilot: false,
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+
+    expect(await screen.findByTestId('project-identity-id')).toHaveValue('remote-project');
+    expect(screen.getByTestId('project-identity-name')).toHaveValue('Owner / Remote');
+  });
+
+  it('does not look up the entry with the checkout when the row names no entry id', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      ...EMPTY_EXPLORER,
+      being_added: [
+        {
+          checkout_path: '~/git/no-entry',
+          current_step: 'Identity',
+          step_number: 2,
+          total_steps: 10,
+        },
+      ],
+    });
+    const getEntrySpy = vi.spyOn(apiClient, 'getEntry');
+
+    render(ProjectOnboardingView, { onboardingId: '~/git/no-entry' });
+
+    await waitFor(() => expect(screen.getByTestId('project-identity-step')).toBeInTheDocument());
+    expect(getEntrySpy).not.toHaveBeenCalled();
+  });
+
   it('records identity of a being-added run through the entry’s own set href with the exact body', async () => {
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
     const byHrefSpy = vi.spyOn(apiClient, 'actByHref').mockResolvedValue({} as never);

@@ -638,7 +638,7 @@ class OnboardingScenarioTest {
                 var known = JsonTree.asArray(none.get("known"));
                 assertEquals(2, known.size());
                 assertFalse(none.containsKey("checks"));
-                assertFalse(none.containsKey("later"));
+                assertFalse(JsonTree.asObject(none.get("links")).containsKey("later"));
                 // `recheck` runs the scan again, as the catalogue's row names it.
                 assertEquals("harness.scan", step(client, auth, "recheck").get("state"));
             }

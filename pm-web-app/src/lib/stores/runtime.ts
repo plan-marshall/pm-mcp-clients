@@ -1916,6 +1916,8 @@ export function adoptRouteFromLocation(): AppRoute | null {
  */
 let onboardingRequestSeq = 0;
 let onboardingAppliedSeq = 0;
+/** The request whose refusal is on screen, so an older answer never clears it. */
+let onboardingRefusalSeq = 0;
 
 /** @returns the sequence number of the request that is starting now */
 function beginOnboardingRequest(): number {
@@ -1934,14 +1936,17 @@ function applyOnboardingState(state: OnboardingState, seq: number): boolean {
   const activeStep = deriveStepFromState(state.state);
   const completed =
     typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
+  // A state the runtime reported supersedes the refusal of an act that led here — but only when it
+  // was asked after that act, so an older read cannot wipe a newer refusal.
+  const clearsRefusal = seq >= onboardingRefusalSeq;
+  if (clearsRefusal) onboardingRefusalSeq = 0;
   runtimeStore.update((s) => ({
     ...s,
     onboarding: state,
     currentState: state as unknown as StateRepresentation,
     activeStep,
     completedSteps: completed,
-    // A state the runtime reported supersedes the refusal of the act that led here.
-    onboardingRefusal: null,
+    onboardingRefusal: clearsRefusal ? null : s.onboardingRefusal,
     isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
   }));
   return true;
@@ -1980,8 +1985,8 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
  * a browser that chose no language of its own shows the recorded one before the state is applied
  * (UC-ONB-3, `onboarding-step-1.adoc`). A browser whose own choice is stored keeps it.
  *
- * A state the runtime reported while the step was in flight is newer than the step's own answer;
- * the step's answer is applied only when nothing landed in between.
+ * A state the runtime reported while the step was in flight is newer than the step's own answer
+ * when it was asked after that step; the newer request wins, whichever answer lands first.
  *
  * @param link the link the step names
  * @param body what the step records
@@ -1992,8 +1997,8 @@ export async function stepOnboarding(
   body: Record<string, unknown> = {},
   options: { adoptLocale?: boolean } = {},
 ): Promise<void> {
+  const seq = beginOnboardingRequest();
   try {
-    const seq = beginOnboardingRequest();
     const next = await apiClient.stepOnboarding(link, body);
     // The adoption is bounded, so a runtime that stops answering cannot keep the record button
     // spinning; a late answer still switches the screen (see `adoptRecordedLocaleBeforeStep`).
@@ -2002,9 +2007,16 @@ export async function stepOnboarding(
     runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
   } catch (err) {
     // A refused step leaves the state as it is; the refusal is shown, so the operator sees why the
-    // act did nothing instead of a screen that silently ignores the click.
-    const fallback = get(t)('onboard.error.step_refused');
-    runtimeStore.update((s) => ({ ...s, onboardingRefusal: actFailureReason(err, fallback) }));
+    // act did nothing instead of a screen that silently ignores the click. A newer outcome that
+    // already landed supersedes this refusal; an older one does not.
+    if (seq >= onboardingAppliedSeq) {
+      onboardingRefusalSeq = seq;
+      const fallback = get(t)('onboard.error.step_refused');
+      runtimeStore.update((s) => ({
+        ...s,
+        onboardingRefusal: actFailureReason(err, fallback),
+      }));
+    }
   }
 }
 

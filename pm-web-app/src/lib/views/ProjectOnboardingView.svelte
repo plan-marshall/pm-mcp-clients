@@ -419,7 +419,9 @@
         return match[1];
       }
     }
-    return entry.checkout_path;
+    // No entry id is parsed: the row's checkout is no address for the entry route, so the caller
+    // reads no entry and shows the run from the row's own facts.
+    return '';
   }
 
   /**
@@ -450,6 +452,10 @@
     }
     const step = Number(entryState.step ?? entry.step_number);
     return {
+      // The entry's published identity, when it names one: a checkout name is a proposal, never a
+      // replacement for the identity the runtime already holds.
+      id: typeof entryState.id === 'string' ? entryState.id : undefined,
+      name: typeof entryState.name === 'string' ? entryState.name : undefined,
       onboarding_id: entryOnboardingId(entry),
       checkout_path: entry.checkout_path,
       step,
