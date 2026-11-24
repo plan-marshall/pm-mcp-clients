@@ -40,6 +40,7 @@ public final class EpicViewFormatting {
     private static final String RUNNING = "running";
     private static final String STAGED = "staged";
     private static final String HELD = "held";
+    private static final String WAITING = "waiting";
     private static final String SCOPE = "scope";
 
     /** The rendered running count when the runtime does not say it. */
@@ -187,7 +188,7 @@ public final class EpicViewFormatting {
             case "paused" -> "\u23f8";
             case STAGED -> "\u25cb";
             case "cancelled", "abandoned", "returned" -> "\u2717";
-            case HELD, "waiting" -> "!";
+            case HELD, WAITING -> "!";
             default -> "\u2022";
         };
     }
@@ -255,12 +256,12 @@ public final class EpicViewFormatting {
             return STAGED;
         }
         var key = clean(status).trim().toLowerCase(Locale.ROOT).replace(' ', '_').replace('-', '_');
-        return "waiting_for_you".equals(key) ? "waiting" : key;
+        return "waiting_for_you".equals(key) ? WAITING : key;
     }
 
     private static @Nullable String countsKey(String status) {
         return switch (status) {
-            case STAGED, RUNNING, "pausing", "paused", "waiting", "shipped", "cancelled", "abandoned",
+            case STAGED, RUNNING, "pausing", "paused", WAITING, "shipped", "cancelled", "abandoned",
                 HELD -> "overview.epic.counts." + status;
             default -> null;
         };

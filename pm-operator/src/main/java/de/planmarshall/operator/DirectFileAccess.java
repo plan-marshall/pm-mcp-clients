@@ -39,7 +39,7 @@ public record DirectFileAccess(MachinePaths paths) {
      * @param paths the machine paths
      */
     public DirectFileAccess {
-        paths = Objects.requireNonNull(paths, "paths");
+        Objects.requireNonNull(paths, "paths");
     }
 
     /**

@@ -117,10 +117,12 @@ final class StatusCommand implements Callable<Integer> {
         }
 
         if (json) {
-            return printStatusJson(out, status);
+            printStatusJson(out, status);
+            return 0;
         }
 
-        return renderStatus(out, status);
+        renderStatus(out, status);
+        return 0;
     }
 
     /**
@@ -128,16 +130,15 @@ final class StatusCommand implements Callable<Integer> {
      *
      * @param out    the command's output
      * @param status the status as read
-     * @return the exit code
      */
-    private int printStatusJson(PrintWriter out, Map<String, Object> status) throws IOException {
+    private void printStatusJson(PrintWriter out, Map<String, Object> status) throws IOException {
         if (project != null && !".".equals(project)) {
             try {
                 var detailRes = context.runtime(false).send(HttpRequest.get(projectPath(project)));
                 if (detailRes.status() == 200) {
                     out.println(detailRes.bodyText());
                     out.flush();
-                    return 0;
+                    return;
                 }
             } catch (IOException _) {
                 // Fall back to status json
@@ -145,7 +146,6 @@ final class StatusCommand implements Callable<Integer> {
         }
         out.println(JsonTree.write(status));
         out.flush();
-        return 0;
     }
 
     /**
@@ -154,9 +154,8 @@ final class StatusCommand implements Callable<Integer> {
      *
      * @param out    the command's output
      * @param status the status as read
-     * @return the exit code
      */
-    private int renderStatus(PrintWriter out, Map<String, Object> status) throws IOException {
+    private void renderStatus(PrintWriter out, Map<String, Object> status) throws IOException {
         // Try rendering hierarchical overview tree
         try {
             var projectsResponse = context.runtime(false).send(HttpRequest.get("/api/v1/projects"));
@@ -165,7 +164,7 @@ final class StatusCommand implements Callable<Integer> {
                 if (hasOverviewContent(overview, status)) {
                     renderOverviewTree(out, status, overview.projects());
                     out.flush();
-                    return 0;
+                    return;
                 }
             }
         } catch (IOException _) {
@@ -174,7 +173,6 @@ final class StatusCommand implements Callable<Integer> {
 
         out.print(render(status, context.clientEnvironment().locale(), context.clock()));
         out.flush();
-        return 0;
     }
 
     /**
@@ -546,7 +544,7 @@ final class StatusCommand implements Callable<Integer> {
                                 : "           ";
             var epicTitle = OutputSafety.stripControlSequences(epic.title());
             var plansCount = MessageCatalogue.format(locale, "overview.epic.plans", Map.of(
-                                "running", epic.runningPlansCount(),
+                                RUNNING, epic.runningPlansCount(),
                                 "staged", epic.stagedPlansCount()
             ));
             var epicWord = MessageCatalogue.format(locale, "overview.kind.epic", Map.of());

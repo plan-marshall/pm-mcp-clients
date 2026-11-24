@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import io.nayuki.qrcodegen.QrCode;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Renders a QR code to the terminal using Unicode half-block characters ({@code ▀}, {@code ▄}, {@code █}, {@code  }).
@@ -31,7 +32,7 @@ public final class QrCodeRenderer {
      * @param sideLines lines to print to the right of the QR code, or {@code null}
      * @return the rendered multi-line string
      */
-    public static String render(String text, List<String> sideLines) {
+    public static String render(String text, @Nullable List<String> sideLines) {
         Objects.requireNonNull(text, "text");
         var qr = QrCode.encodeText(text, QrCode.Ecc.MEDIUM);
         var size = qr.size;

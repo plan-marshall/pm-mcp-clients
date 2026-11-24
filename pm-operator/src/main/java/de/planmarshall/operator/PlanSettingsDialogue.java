@@ -198,7 +198,7 @@ final class PlanSettingsDialogue {
         return 0;
     }
 
-    private int tooLate(String state) {
+    private int tooLate(@Nullable String state) {
         prompt.line("control.settings.too_late", Map.of("plan", planId, "position", state));
         return 0;
     }

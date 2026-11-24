@@ -234,7 +234,7 @@ final class ActionSupport {
         @Nullable String act = null;
         if (effectiveReason == null || effectiveReason.isBlank()) {
             var asked = askForReason(context, out, kind, id, actionVerb, options.noInput);
-            if (asked.exitCode() != null) {
+            if (asked.exitCode() != EndAnswer.GO_ON) {
                 return asked.exitCode();
             }
             effectiveReason = asked.reason();
@@ -285,7 +285,7 @@ final class ActionSupport {
             return new EndAnswer(3, null, null);
         }
         if (!context.isInteractiveTerminal()) {
-            return new EndAnswer(null, (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")
+            return new EndAnswer(EndAnswer.GO_ON, (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")
                                 + " by operator", null);
         }
         var locale = context.clientEnvironment().locale();
@@ -301,7 +301,7 @@ final class ActionSupport {
             if (!confirmEnd(prompt, act, leaveLabel)) {
                 return new EndAnswer(0, null, null);
             }
-            return new EndAnswer(null, reason, act);
+            return new EndAnswer(EndAnswer.GO_ON, reason, act);
         } catch (StartPrompt.InterruptException _) {
             return new EndAnswer(StartPrompt.EXIT_INTERRUPTED, null, null);
         } catch (StartPrompt.StartLeftException _) {
@@ -313,11 +313,14 @@ final class ActionSupport {
      * The answer to the reason question: the exit code that ends the verb, or the reason and the act
      * that go on with it.
      *
-     * @param exitCode the exit code to return, or {@code null} to go on
+     * @param exitCode the exit code to return, or {@link #GO_ON} to go on
      * @param reason   the reason to send, or {@code null} when the verb ends
      * @param act      the act the runtime performs, or {@code null} when it is not read yet
      */
-    private record EndAnswer(@Nullable Integer exitCode, @Nullable String reason, @Nullable String act) {
+    private record EndAnswer(int exitCode, @Nullable String reason, @Nullable String act) {
+
+        /** The exit code of an answer that lets the verb go on. */
+        private static final int GO_ON = -1;
     }
 
     /**

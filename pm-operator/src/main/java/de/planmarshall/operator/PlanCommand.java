@@ -212,7 +212,8 @@ public final class PlanCommand implements Callable<Integer> {
         }
         var response = runtime.send(HttpRequest.get(path));
         if (response.status() == 200) {
-            return printProcess(out, response.bodyText());
+            printProcess(out, response.bodyText());
+            return 0;
         }
         if (response.status() == 404) {
             return refuseRead(err, context.locale(), "plan", response);
@@ -242,19 +243,18 @@ public final class PlanCommand implements Callable<Integer> {
         throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
     }
 
-    private int printProcess(PrintWriter out, String body) throws IOException {
+    private void printProcess(PrintWriter out, String body) throws IOException {
         if (body.contains("\"nodes\"") || body.contains("\"plan_id\"")) {
             try {
                 var tree = ProcessTree.fromJson(body);
                 printProcessTree(out, tree);
-                return 0;
+                return;
             } catch (IOException _) {
                 // Not a process tree the parser can read: fall through to print bodyText
             }
         }
         out.println(body);
         out.flush();
-        return 0;
     }
 
     private int listPlans(PrintWriter out, RuntimeClient runtime) throws IOException {
@@ -461,7 +461,7 @@ public final class PlanCommand implements Callable<Integer> {
         switch (ActivityEntryKind.fromValue(entry.kind())) {
             case MODEL_TEXT -> out.printf(FMT_ACTIVITY_ROW, ts,
                                 MessageCatalogue.format(locale, "plan.activity.kind.text", Map.of()),
-                                textOrEmpty(entry.content()));
+                                OutputSafety.stripControlSequences(entry.content()));
             case TOOL_CALL -> printToolCall(out, locale, ts, entry);
             case FILES_CHANGED -> {
                 var files = entry.files().stream().map(OutputSafety::stripControlSequences).toList();
@@ -471,23 +471,23 @@ public final class PlanCommand implements Callable<Integer> {
             }
             case QUESTIONS_ASKED -> out.printf(FMT_ACTIVITY_ROW, ts,
                                 MessageCatalogue.format(locale, "plan.activity.kind.question", Map.of()),
-                                textOrEmpty(entry.content()));
+                                OutputSafety.stripControlSequences(entry.content()));
             case LINK -> out.printf(FMT_ACTIVITY_ROW, ts,
                                 MessageCatalogue.format(locale, "plan.activity.kind.link", Map.of()),
-                                textOrEmpty(entry.toolTarget()));
+                                OutputSafety.stripControlSequences(entry.toolTarget()));
             case MODEL_DIFFERS -> printModelDiffers(out, locale, ts, entry);
             default -> out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
-                                textOrEmpty(entry.content()));
+                                OutputSafety.stripControlSequences(entry.content()));
         }
     }
 
     private void printToolCall(PrintWriter out, String locale, String ts, ActivityEntry entry) {
         var toolName = OutputSafety.stripControlSequences(entry.toolName());
         var toolTarget = OutputSafety.stripControlSequences(entry.toolTarget());
-        var toolStr = (toolName != null ? toolName : "") + (toolTarget != null ? " " + toolTarget : "");
+        var toolStr = toolName + " " + toolTarget;
         var failStr = "";
         if (entry.toolFailed()) {
-            var size = entry.size() != null ? OutputSafety.stripControlSequences(entry.size()) : "";
+            var size = OutputSafety.stripControlSequences(entry.size());
             failStr = "        " + MessageCatalogue.format(locale, "plan.activity.kind.tool_failed",
                                 Map.of("size", size));
         }
@@ -502,8 +502,7 @@ public final class PlanCommand implements Callable<Integer> {
         var launched = OutputSafety.stripControlSequences(entry.launchModel());
         out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
                             MessageCatalogue.format(locale, "plan.activity.model_differs",
-                                                Map.of("served", served != null ? served : "",
-                                                                    "launched", launched != null ? launched : "")));
+                                                Map.of("served", served, "launched", launched)));
     }
 
     private void printOffTrack(PrintWriter out, String locale, OffTrackInfo offTrack) {
@@ -518,15 +517,6 @@ public final class PlanCommand implements Callable<Integer> {
                                                 "threshold", offTrack.threshold(), "action", action)
                             : Map.<String, Object>of("signal", sig, "action", action);
         out.println("  " + MessageCatalogue.format(locale, key, args));
-    }
-
-    /**
-     * @param text the text to clean, or {@code null}
-     * @return the text without its control sequences, or an empty text
-     */
-    private static String textOrEmpty(@Nullable String text) {
-        var cleaned = OutputSafety.stripControlSequences(text);
-        return cleaned != null ? cleaned : "";
     }
 
     /**

@@ -919,7 +919,7 @@ public final class OverviewFullScreenApp {
      * @param selectedId the selected row's id, or {@code null}
      * @return the place the saved state names
      */
-    private SavedPlace savedPlace(TuiLevel.Kind kind, String levelId, @Nullable String selectedId) {
+    private SavedPlace savedPlace(TuiLevel.Kind kind, @Nullable String levelId, @Nullable String selectedId) {
         if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
             return new SavedPlace(levelId, kind == TuiLevel.Kind.PROJECT_BY_EPIC ? "epic" : "plan", selectedId);
         }
@@ -2670,7 +2670,8 @@ public final class OverviewFullScreenApp {
                 systemOpenSelected();
                 return true;
             }
-            return openUnopenedRow(selected, kind, selectedId);
+            openUnopenedRow(selected, kind, selectedId);
+            return true;
         }
 
         /**
@@ -2679,41 +2680,38 @@ public final class OverviewFullScreenApp {
          * @param selected   the selected row
          * @param kind       the kind of the level shown
          * @param selectedId the selected row's id
-         * @return {@code true} to keep the view open
          */
-        private boolean openUnopenedRow(TuiRow selected, TuiLevel.Kind kind, String selectedId) {
+        private void openUnopenedRow(TuiRow selected, TuiLevel.Kind kind, String selectedId) {
             if (!selected.openable()) {
-                return true;
+                return;
             }
             if (kind == TuiLevel.Kind.OVERVIEW) {
-                return openOverviewRow(selectedId);
+                openOverviewRow(selectedId);
+                return;
             }
             if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
                 // Drill-down to plan or epic detail
                 drillDownWorkItem(selectedId);
             }
-            return true;
         }
 
         /**
          * Opens what waits in the row, or the row's project.
          *
          * @param selectedId the selected row's id
-         * @return {@code true} to keep the view open
          */
-        private boolean openOverviewRow(String selectedId) {
+        private void openOverviewRow(String selectedId) {
             var overview = currentOverviewLevel.get();
             var needsItem = overview != null ? overview.needsItemOf(selectedId) : null;
             if (needsItem != null) {
                 openNeedsItemAct(needsItem);
-                return true;
+                return;
             }
             try {
                 openProject(context.runtime(true), selectedId, false, null);
             } catch (IOException _) {
                 // best effort
             }
-            return true;
         }
 
         private boolean planOpenSelected(String selectedId) {

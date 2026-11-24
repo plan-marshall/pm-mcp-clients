@@ -48,6 +48,7 @@ final class WorkActionDialogue {
     private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
     private static final String KEY_STATE = "state";
+    private static final String KEY_ACTION = "action";
     private static final String KEY_REASON = "reason";
     private static final String ACTION_ABORT = "abort";
     private static final String ACTION_CANCEL = "cancel";
@@ -162,7 +163,7 @@ final class WorkActionDialogue {
         }
         if (!availability.available()) {
             prompt.line("control.action.disabled",
-                                Map.of("action", action, KEY_REASON, availability.reason() != null
+                                Map.of(KEY_ACTION, action, KEY_REASON, availability.reason() != null
                                                     ? availability.reason() : ""));
             return 1;
         }
@@ -203,7 +204,7 @@ final class WorkActionDialogue {
 
     private int generic(String action) throws IOException {
         client.perform(kind, id, action, Map.of());
-        prompt.line("operator.actions.result.done", Map.of("action", action, "subject", id));
+        prompt.line("operator.actions.result.done", Map.of(KEY_ACTION, action, "subject", id));
         return 0;
     }
 
@@ -228,7 +229,7 @@ final class WorkActionDialogue {
     private int end(String action, WorkActions actions) throws IOException {
         var outcome = integrityPaused(actions) ? ACTION_ABORT : action;
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.end.title",
-                            Map.of("action", outcome, PLAN, id)));
+                            Map.of(KEY_ACTION, outcome, PLAN, id)));
         if (actions.epicId() != null) {
             prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.its_epic", Map.of())
                                 + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.told",
@@ -251,7 +252,7 @@ final class WorkActionDialogue {
                             Map.of()));
         var closePr = "close".equals(pullRequest.ask().key());
         var confirmTitle = MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
-                            Map.of("action", outcome)) + "?";
+                            Map.of(KEY_ACTION, outcome)) + "?";
         var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(action));
         consent.title(confirmTitle);
         consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",

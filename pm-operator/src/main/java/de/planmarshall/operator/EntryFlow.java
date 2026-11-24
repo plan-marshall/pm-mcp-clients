@@ -602,12 +602,9 @@ public final class EntryFlow {
         if (status.get("machine") instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get("onboarded"))) {
             return true;
         }
-        if (status.get("onboard") instanceof Map<?, ?> onboard
+        return status.get("onboard") instanceof Map<?, ?> onboard
                             && ("onboard.completed".equals(onboard.get("state"))
-                                                || Boolean.TRUE.equals(onboard.get("completed")))) {
-            return true;
-        }
-        return false;
+                                                || Boolean.TRUE.equals(onboard.get("completed")));
     }
 
     static int getCompletedOnboardStep(Map<String, Object> status) {
