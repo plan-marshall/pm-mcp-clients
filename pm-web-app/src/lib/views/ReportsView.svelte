@@ -360,21 +360,6 @@
     return $runtimeStore.selectedReportDetailPlanId ?? null;
   }
 
-  /** Leaves the detail and returns to the list, clearing the plan from the address bar. */
-  function closeDetail(): void {
-    flushRetainedReads();
-    activeDetailPlanId = null;
-    activeDetailReportId = null;
-    syncedRouteReportPlan = null;
-    runtimeStore.update((s) => ({
-      ...s,
-      selectedReportDetailPlanId: null,
-      selectedReportId: null,
-      currentRoute: 'reports',
-    }));
-    writeAddress({ route: 'reports' }, 'replace');
-  }
-
   // The reports route stays the same while its detail changes (a header visit to Reports, the
   // browser's back between two reports). Follow the store so the view does not keep a plan the
   // address no longer names.
@@ -1310,7 +1295,6 @@
       <CompletionReportView
         planId={activeDetailPlanId}
         titleLevel={isNarrow ? 1 : 2}
-        onClose={closeDetail}
       />
     {/key}
   {/if}
