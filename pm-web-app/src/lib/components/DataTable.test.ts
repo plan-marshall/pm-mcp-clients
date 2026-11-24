@@ -169,4 +169,15 @@ describe('DataTable', () => {
 
     expect(screen.getByRole('table', { name: LABEL })).toBeInTheDocument();
   });
+
+  it('makes the scroll area a named region a keyboard can reach, not a bare tab stop', () => {
+    const { container } = render(DataTable, {
+      props: { columns: COLUMNS, rows: ROWS, label: LABEL },
+    });
+    const region = screen.getByRole('region', { name: LABEL });
+
+    expect(region).toBe(container.querySelector('.data-table__scroll'));
+    expect(region).toHaveAttribute('tabindex', '0');
+    expect(region).toContainElement(screen.getByRole('table'));
+  });
 });

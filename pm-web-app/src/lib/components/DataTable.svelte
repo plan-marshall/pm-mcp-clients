@@ -63,8 +63,10 @@
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <!-- The scroll area of a wide table must be a keyboard stop of its own (WCAG 2.1.1; axe's
-     scrollable-region-focusable): a person who cannot use a pointer scrolls it with the keys. -->
-<div class="data-table__scroll" tabindex="0">
+     scrollable-region-focusable): a person who cannot use a pointer scrolls it with the keys. It
+     is a named region so that stop is announced as the table's own scroll area, not as a nameless
+     group in the middle of the page. -->
+<div class="data-table__scroll" role="region" aria-label={label} tabindex="0">
   <table
     class="data-table"
     class:data-table--compact={compact}

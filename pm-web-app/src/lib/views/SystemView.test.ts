@@ -557,6 +557,42 @@ describe('SystemView component', () => {
     expect(upgradeSpy).toHaveBeenCalledWith('0.10.0', 'drain');
   });
 
+  it('returns the focus to the mounted page heading when the consent closes on Escape', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+    );
+    await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+    await screen.findByTestId('upgrade-consent');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByTestId('upgrade-consent')).toBeNull());
+    // The control that opened the dialog — the panel's own Upgrade button — is unmounted with the
+    // panel, so the focus goes to the page heading, which outlives the dialog.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'System' }));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('returns the focus to the mounted page heading when the consent closes on Not now', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+
+    render(SystemView);
+    await waitFor(() =>
+      expect(screen.getAllByRole('button', { name: /Upgrade/i }).length).toBeGreaterThan(0),
+    );
+    await fireEvent.click(screen.getAllByRole('button', { name: /Upgrade/i })[0]);
+    await screen.findByTestId('upgrade-consent');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+
+    await waitFor(() => expect(screen.queryByTestId('upgrade-consent')).toBeNull());
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1, name: 'System' }));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
   it('withdraws an upgrade that waits for what runs', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
     const withdrawSpy = vi.spyOn(apiClient, 'withdrawUpgrade').mockResolvedValue();
