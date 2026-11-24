@@ -2,10 +2,10 @@
   "id": "PLAN-177",
   "slug": "web-start-and-decomposition-views-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-177-web-start-and-decomposition-views-residue",
+  "pr": "#552",
+  "landing": "landings/PLAN-177.md",
   "seq": 177
 }

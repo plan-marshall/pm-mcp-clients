@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -29,9 +31,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 /**
  * Tests for Picocli in the operator's language and custom exception handling (D3).
@@ -90,7 +89,7 @@ class PicocliLanguageTest {
         assertEquals(2, code);
         String errorOutput = err.toString();
         assertTrue(errorOutput.contains("✗ " + verb + " ist kein Verb. → pm-operator --help listet sie auf."),
-                "Expected refusal line in: " + errorOutput);
+                            "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }
@@ -103,7 +102,7 @@ class PicocliLanguageTest {
         assertEquals(2, code);
         String errorOutput = err.toString();
         assertTrue(errorOutput.contains("✗ " + verb + " is not a verb. → pm-operator --help lists them."),
-                "Expected refusal line in: " + errorOutput);
+                            "Expected refusal line in: " + errorOutput);
         assertFalse(errorOutput.contains("Unmatched argument"), errorOutput);
         assertFalse(errorOutput.contains("Did you mean"), errorOutput);
     }

@@ -60,9 +60,23 @@ describe('FindingsReviewModal component', () => {
 
     expect(dialog.contains(document.activeElement)).toBe(true);
 
-    await fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    const focusables = dialog.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    expect(focusables.length).toBeGreaterThan(1);
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
 
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    first.focus();
+    expect(document.activeElement).toBe(first);
+
+    // Shift-Tab from first item wraps to last item (fails without focus trap)
+    await fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(last);
+
+    // Tab from last item wraps to first item
+    await fireEvent.keyDown(window, { key: 'Tab', shiftKey: false });
+    expect(document.activeElement).toBe(first);
   });
 
   it('draws every item and every act through the design vocabulary', () => {

@@ -360,6 +360,22 @@ describe('Compose', () => {
       expect(container.querySelector('.compose__tools')).toBeNull();
       expect(container.querySelector('.compose__footer')).toBeNull();
     });
+
+    it('gives the field the test id the frame names', () => {
+      renderCompose({ inputTestid: 'instruct-input' });
+
+      expect(screen.getByTestId('instruct-input')).toBe(
+        screen.getByRole('textbox', { name: 'Message' }),
+      );
+    });
+
+    it('gives the send act the test id the frame names', () => {
+      renderCompose({ submitTestid: 'instruct-submit' });
+
+      expect(screen.getByTestId('instruct-submit')).toBe(
+        screen.getByRole('button', { name: 'Send' }),
+      );
+    });
   });
 
   it('moves the focus into the field on request', () => {

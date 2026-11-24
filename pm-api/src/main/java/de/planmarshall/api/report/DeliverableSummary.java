@@ -19,7 +19,9 @@ import de.planmarshall.api.json.JsonTree;
  * Summary of a plan deliverable in a completion report.
  *
  * @param name  the deliverable name or title
- * @param state state of deliverable: {@code "done"}, {@code "not_done"}, or {@code "dropped"}
+ * @param state state of deliverable as the engine reports it: {@code "done"}, {@code "open"},
+ *              {@code "infeasible"}, {@code "deferred"} or {@code "removed"} (a mock may send
+ *              {@code "not_started"}); the parser keeps any value, and a client names an unknown one neutrally
  */
 public record DeliverableSummary(String name, String state) {
 

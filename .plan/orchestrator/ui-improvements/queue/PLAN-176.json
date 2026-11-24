@@ -2,10 +2,10 @@
   "id": "PLAN-176",
   "slug": "web-wire-values-and-onboarding-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-176-web-wire-values-and-onboarding-residue",
+  "pr": "#549",
+  "landing": "landings/PLAN-176.md",
   "seq": 176
 }

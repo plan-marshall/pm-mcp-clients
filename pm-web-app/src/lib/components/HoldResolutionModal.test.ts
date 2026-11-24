@@ -226,4 +226,20 @@ describe('HoldResolutionModal component', () => {
     );
     expect(screen.getByTestId('hold-act-show_pr')).toHaveTextContent(ACT_WORDS.show_pr);
   });
+
+  it('an owner that closes while the hold confirmation is open does not leave the page at overflow: hidden', async () => {
+    const { unmount } = render(HoldResolutionModal, {
+      props: { hold: integrityHold, open: true },
+    });
+    expect(document.documentElement.style.overflow).toBe('hidden');
+
+    // Open confirmation
+    await fireEvent.click(screen.getByTestId('hold-act-accept'));
+    expect(screen.getByRole('dialog', { name: ACT_WORDS.accept })).toBeInTheDocument();
+    expect(document.documentElement.style.overflow).toBe('hidden');
+
+    // Owner closes / unmounts while confirmation was open
+    unmount();
+    expect(document.documentElement.style.overflow).toBe('');
+  });
 });

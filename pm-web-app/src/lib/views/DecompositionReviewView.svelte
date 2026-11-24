@@ -3,7 +3,6 @@
   import Icon from '../components/Icon.svelte';
   import Button from '../components/Button.svelte';
   import Compose from '../components/Compose.svelte';
-  import TextArea from '../components/TextArea.svelte';
   import KeyValueList, { type KeyValueItem } from '../components/KeyValueList.svelte';
   import type {
     DecompositionCheckFinding,
@@ -32,7 +31,6 @@
   let editing: string | null = null;
   let adding = false;
   let instruction = '';
-  let editedObjective = '';
   let drafting = false;
 
   $: failures = (decomposition?.findings ?? []).filter(
@@ -40,26 +38,17 @@
   );
   $: plans = (decomposition?.workstreams ?? []).flatMap((stream) => stream.staged_plans);
 
+  /**
+   * Sends the instruction the person typed, and nothing else: the objective is the plan's own and
+   * is what the runtime keeps, so the message stays the one the base sent.
+   */
   function submitInstruct(): void {
-    const currentPlan = plans.find((p) => p.plan_id === editing);
-    const originalObjective = (currentPlan?.objective ?? '').trim();
-    const objectiveChanged = editedObjective.trim() !== originalObjective;
-    const trimmedInstruction = instruction.trim();
-    const trimmedObjective = editedObjective.trim();
-
-    let text = '';
-    if (objectiveChanged && trimmedObjective && trimmedInstruction) {
-      text = `${trimmedObjective}\n${trimmedInstruction}`;
-    } else if (trimmedInstruction) {
-      text = trimmedInstruction;
-    } else if (objectiveChanged && trimmedObjective) {
-      text = trimmedObjective;
+    const text = instruction.trim();
+    if (!text) {
+      return;
     }
-
-    if (!text) return;
     onInstruct(editing, text);
     instruction = '';
-    editedObjective = '';
     editing = null;
     adding = false;
   }
@@ -90,18 +79,11 @@
     return finding.message;
   }
 
-  function planDetails(plan: StagedPlanRecord, stream: WorkstreamRecord): KeyValueItem[] {
+  function planDetails(plan: StagedPlanRecord): KeyValueItem[] {
     return [
       {
         label: $t('start.decomposition.objective'),
         value: plan.objective || $t('start.decomposition.none'),
-      },
-      {
-        label: $t('start.decomposition.deliverables'),
-        value:
-          plan.deliverables && plan.deliverables.length > 0
-            ? plan.deliverables.join(', ')
-            : $t('start.decomposition.none'),
       },
       {
         label: $t('start.decomposition.surface'),
@@ -116,10 +98,6 @@
           plan.dependencies && plan.dependencies.length > 0
             ? plan.dependencies.join(', ')
             : $t('start.decomposition.none'),
-      },
-      {
-        label: $t('start.decomposition.order'),
-        value: String(plan.order ?? stream.order ?? 1),
       },
     ];
   }
@@ -222,7 +200,6 @@
                         editing = plan.plan_id;
                         adding = false;
                         instruction = '';
-                        editedObjective = plan.objective ?? '';
                       }}
                     >
                       {$t('start.decomposition.edit')}
@@ -239,7 +216,7 @@
                   </span>
                 </div>
                 <div class="decomposition-review__plan-details" data-testid={`plan-details-${plan.plan_id}`}>
-                  <KeyValueList items={planDetails(plan, stream)} />
+                  <KeyValueList items={planDetails(plan)} />
                 </div>
               </li>
             {/each}
@@ -252,25 +229,20 @@
       <section class="decomposition-review__instruction" data-testid="decomposition-instruction">
         <h3>
           {$t('start.decomposition.instruct.title', {
-            plan: editing ?? $t('start.decomposition.add'),
+            plan: editing ?? $t('start.decomposition.new_plan'),
           })}
         </h3>
         {#if editing}
-          <TextArea
-            label={$t('start.decomposition.objective')}
-            bind:value={editedObjective}
-            disabled={busy}
-            rows={2}
-            testid="edit-objective"
-          />
+          <p class="decomposition-review__plan-title">{editing}</p>
         {/if}
         <Compose
           bind:value={instruction}
           label={$t('start.decomposition.instruct_prompt')}
-          sendLabel={$t('start.decomposition.edit')}
+          sendLabel={$t('start.decomposition.send')}
+          disabledReason={$t('start.decomposition.instruct_held')}
           inputTestid="instruct-input"
           submitTestid="instruct-submit"
-          disabled={busy || (!instruction.trim() && !editedObjective.trim())}
+          disabled={busy || !instruction.trim()}
           onsend={submitInstruct}
         />
         <div class="decomposition-review__actions">
@@ -295,7 +267,8 @@
         <Compose
           bind:value={instruction}
           label={$t('start.decomposition.draft_again')}
-          sendLabel={$t('start.decomposition.draft_again')}
+          sendLabel={$t('start.decomposition.send_draft')}
+          disabledReason={$t('start.decomposition.instruct_held')}
           disabled={busy || !instruction.trim()}
           onsend={submitDraft}
         />
@@ -323,7 +296,6 @@
           adding = true;
           editing = null;
           instruction = '';
-          editedObjective = '';
         }}
       >
         {$t('start.decomposition.add')}

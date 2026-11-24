@@ -3,6 +3,8 @@
   import { t } from '../i18n';
   import Button from './Button.svelte';
   import Dialog from './Dialog.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
+  import { isLoopbackSession } from '../utils/loopback';
   import { apiClient, type ConnectionStatus } from '../api/client';
 
   /**
@@ -19,6 +21,7 @@
   let notice = '';
   let error = '';
   let isMounted = true;
+  let confirmingTurnOff = false;
 
   onMount(() => {
     isMounted = true;
@@ -46,6 +49,14 @@
       onChanged();
     } catch {
       error = $t('entry.lan.turn_off');
+    }
+  }
+
+  function handleTurnOff(): void {
+    if (isLoopbackSession()) {
+      void turnOff();
+    } else {
+      confirmingTurnOff = true;
     }
   }
 </script>
@@ -77,12 +88,27 @@
       {$t('entry.lan.keep')}
     </Button>
     {#if status?.lan_enabled}
-      <Button variant="secondary" data-testid="lan-turn-off-button" on:click={turnOff}>
+      <Button variant="danger" data-testid="lan-turn-off-button" on:click={handleTurnOff}>
         {$t('entry.lan.turn_off')}
       </Button>
     {/if}
   </svelte:fragment>
 </Dialog>
+
+<ConfirmDialog
+  open={confirmingTurnOff}
+  title={$t('devices.listener_off.confirm_title')}
+  consequences={[$t('devices.listener_off.confirm_explain')]}
+  actionLabel={$t('devices.act.listener_off')}
+  cancelLabel={$t('devices.revoke.keep')}
+  onConfirm={() => {
+    confirmingTurnOff = false;
+    void turnOff();
+  }}
+  onClose={() => {
+    confirmingTurnOff = false;
+  }}
+/>
 
 <style>
   .modal-state {

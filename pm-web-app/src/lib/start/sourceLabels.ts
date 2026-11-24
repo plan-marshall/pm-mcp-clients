@@ -213,6 +213,20 @@ export function resetTime(resetsAt?: number | null, locale: Locale = 'en'): stri
 
 /**
  * @param source the source
+ * @returns whether the source owes no further state before Continue may be offered
+ */
+export function settledSource(source: StartSource): boolean {
+  return (
+    source.state === 'stored' ||
+    source.state === 'copied' ||
+    source.state === 'moved' ||
+    source.state === 'flagged' ||
+    source.state === 'unscreened'
+  );
+}
+
+/**
+ * @param source the source
  * @returns the text of a settled source's state, or the empty string for another state
  */
 export function settledLabel(source: StartSource): string {

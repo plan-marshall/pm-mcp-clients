@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import type { SourceKindOffer, StartSource } from '../api/client';
-  import { failureMessage, offerReason, resetTime } from '../start/sourceLabels';
+  import { failureMessage, offerReason, resetTime, settledSource } from '../start/sourceLabels';
   import Icon from './Icon.svelte';
   import Button from './Button.svelte';
   import ActMenu, { type ActMenuItem } from './ActMenu.svelte';
@@ -50,17 +50,7 @@
   });
 
   /** The sources that still owe a state before Continue may be offered. */
-  $: waiting = sources.length === 0 ? 1 : sources.filter((source) => !settled(source)).length;
-
-  function settled(source: StartSource): boolean {
-    return (
-      source.state === 'stored' ||
-      source.state === 'copied' ||
-      source.state === 'moved' ||
-      source.state === 'flagged' ||
-      source.state === 'unscreened'
-    );
-  }
+  $: waiting = sources.length === 0 ? 1 : sources.filter((source) => !settledSource(source)).length;
 
   function stateText(source: StartSource): string {
     if ((source.state === 'failed' || source.state === 'unscreened') && source.failure) {
@@ -116,7 +106,7 @@
             />{:else if source.state === 'unscreened'}<Icon
               name="state.clock"
               size={16}
-            />{:else if settled(source)}<Icon name="state.check" size={16} />{:else}<Icon
+            />{:else if settledSource(source)}<Icon name="state.check" size={16} />{:else}<Icon
               name="act.start"
               size={16}
             />{/if}

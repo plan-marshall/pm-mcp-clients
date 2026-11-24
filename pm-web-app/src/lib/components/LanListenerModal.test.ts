@@ -76,4 +76,43 @@ describe('LanListenerModal', () => {
     );
     expect(screen.queryByTestId('lan-turn-off-button')).not.toBeInTheDocument();
   });
+
+  it('turn-off button is danger variant and asks for confirmation in a non-loopback session', async () => {
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue(openStatus);
+    const turnOffSpy = vi.spyOn(apiClient, 'turnOffLanListener').mockResolvedValue(undefined);
+
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      writable: true,
+      value: { ...originalLocation, hostname: 'mbp-oliver.local' },
+    });
+
+    try {
+      render(LanListenerModal, { props: { onClose: () => {}, onChanged: () => {} } });
+
+      const turnOffBtn = await screen.findByTestId('lan-turn-off-button');
+      expect(turnOffBtn.className).toContain('btn--danger');
+
+      await fireEvent.click(turnOffBtn);
+      expect(turnOffSpy).not.toHaveBeenCalled();
+
+      const confirmDialog = screen.getByRole('dialog', {
+        name: 'Turn the network listener off from this browser?',
+      });
+      expect(confirmDialog).toBeInTheDocument();
+      expect(confirmDialog).toHaveTextContent('This browser is on the network: it loses its access');
+
+      const confirmBtn = within(confirmDialog).getByRole('button', {
+        name: 'Turn the network listener off',
+      });
+      await fireEvent.click(confirmBtn);
+
+      expect(turnOffSpy).toHaveBeenCalledOnce();
+    } finally {
+      Object.defineProperty(window, 'location', {
+        writable: true,
+        value: originalLocation,
+      });
+    }
+  });
 });

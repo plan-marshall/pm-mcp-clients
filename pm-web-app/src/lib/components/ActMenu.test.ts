@@ -2,6 +2,7 @@ import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ActMenu, { type ActMenuItem } from './ActMenu.svelte';
+import { apiClient } from '../api/client';
 import { styleOf, rulesOf } from '../../test/templateStyle';
 
 describe('ActMenu component', () => {
@@ -166,13 +167,39 @@ describe('ActMenu component', () => {
     expect(onclick).not.toHaveBeenCalled();
     const dialog = screen.getByRole('dialog');
     expect(dialog).toBeInTheDocument();
-    expect(dialog).toHaveTextContent('Delete item');
+    expect(dialog).toHaveTextContent('Delete item?');
+    expect(dialog).toHaveTextContent('This action cannot be undone.');
 
     // Confirm runs the act
     const confirmBtn = screen.getByRole('button', { name: 'Delete item' });
     await fireEvent.click(confirmBtn);
     expect(onclick).toHaveBeenCalled();
     expect(onAct).toHaveBeenCalledWith(expect.objectContaining({ id: 'delete' }));
+  });
+
+  it('asserts web.confirm.destructive.title and consequence in German', async () => {
+    const { setLocale } = await import('../i18n');
+    const { loadMessages } = await import('../../test/catalogue-fixture');
+    vi.spyOn(apiClient, 'getMessages').mockImplementation(async (locale) => loadMessages(locale));
+    await setLocale('de');
+    try {
+      render(ActMenu, {
+        props: {
+          open: true,
+          label: 'Aktionen',
+          items: [{ id: 'delete', label: 'Löschen', destructive: true, onclick: vi.fn() }],
+        },
+      });
+
+      const item = screen.getByRole('menuitem', { name: 'Löschen' });
+      await fireEvent.click(item);
+
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent('Löschen?');
+      expect(dialog).toHaveTextContent('Diese Aktion kann nicht rückgängig gemacht werden.');
+    } finally {
+      await setLocale('en');
+    }
   });
 
   it('does not confirm destructive action if busy becomes true while confirmation is open', async () => {

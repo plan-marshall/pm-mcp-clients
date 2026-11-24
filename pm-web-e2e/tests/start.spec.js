@@ -46,6 +46,39 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
   });
 
+  test('starts the recipe from the ready step by its one primary act', async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('choose-recipe').click();
+
+    await expect(page.getByTestId('start-recipe')).toBeVisible();
+    // The recipe step carries one primary act, and it chooses the recipe.
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await page.getByTestId('recipe-choose-code-review').click();
+    await expect(page.getByTestId('recipe-parameters')).toBeVisible();
+    await page.getByTestId('recipe-continue').click();
+
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.btn--primary')).toHaveCount(1);
+    await page.getByTestId('ready-start').click();
+    await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
+  });
+
+  test('starts the recipe from the ready step on the Enter of its title', async ({ page }) => {
+    await page.getByRole('button', { name: 'Start the plan' }).click();
+    await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('choose-recipe').click();
+
+    await expect(page.getByTestId('start-recipe')).toBeVisible();
+    await page.getByTestId('recipe-choose-code-review').click();
+    await expect(page.getByTestId('recipe-parameters')).toBeVisible();
+    await page.getByTestId('recipe-continue').click();
+
+    await expect(page.getByTestId('recipe-ready')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('ready-title').press('Enter');
+    await expect(page.getByTestId('started-title')).toContainText(/recipe-code-review-/);
+  });
+
   test("goes back from the recipe choice to the sources", async ({ page }) => {
     await page.getByRole('button', { name: 'Start the plan' }).click();
     await expect(page.getByTestId('start-choose')).toBeVisible({ timeout: 15000 });

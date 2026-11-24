@@ -1470,7 +1470,7 @@ public final class PlanCommand implements Callable<Integer> {
                 var val = TokenFormat.formatSplit(item.total(), item.input(), item.output(), item.floor(), locale);
                 var unmeasuredItem = item.unmeasured() > 0
                                     ? "   " + MessageCatalogue.format(locale, "report.tokens.unmeasured",
-                                                        Map.of(KEY_COUNT, item.unmeasured()))
+                                    Map.of(KEY_COUNT, item.unmeasured()))
                                     : "";
                 var paddedName = padRight(ConsoleNotice.stripControlSequences(item.name()), nameWidth);
                 if (isRole) {
@@ -1499,7 +1499,9 @@ public final class PlanCommand implements Callable<Integer> {
                                     MessageCatalogue.format(locale, "report.completion.tokens_count",
                                                         Map.of(KEY_TOKENS, wasteTotal)),
                                     MessageCatalogue.format(locale, "report.completion.waste_share",
-                                                        Map.of("percent", usage.wasteSharePercent())));
+                                                        Map.of("percent", usage.wasteSharePercent(),
+                                                                            "coverage", usage.tasksTotal() > usage.tasksMeasured()
+                                                                                                ? "partial" : "all")));
                 for (var w : usage.wasteRecords()) {
                     var label = wasteLabel(locale, w.wasteClass());
                     var amount = TokenFormat.formatTokens(w.tokens(), false, locale);

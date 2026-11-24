@@ -138,6 +138,7 @@ export interface EnrolledProject {
   remote_url?: string | null;
   readiness: ProjectReadiness;
   setup_needs_summary?: string | null;
+  needs_operator_kind?: string | null;
   needs_operator_count: number;
   active_plans_count: number;
   active_epics_count: number;
@@ -153,6 +154,8 @@ export interface BeingAddedProject {
   total_steps: number;
   continue_link?: string | null;
   abandon_link?: string | null;
+  build_environment?: ProjectBuildEnvironment | null;
+  links?: Record<string, OnboardingLink | string>;
 }
 
 export interface ProjectExplorer {
@@ -231,6 +234,7 @@ export interface ProjectOnboardingState {
   detected_domains?: string[];
   discovered_modules?: string[];
   credentials_needed?: string[];
+  lifecycle_gate?: boolean;
   links?: Record<string, OnboardingLink | string>;
   /** What the state reports of its own, for a step without a screen here. */
   [key: string]: unknown;
@@ -1099,6 +1103,7 @@ export interface PlanCompletionReport {
   change?: ChangeSizeRecord | null;
   change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
+  phase?: string;
   ended?: string;
   ran?: string;
 }
@@ -1939,10 +1944,8 @@ export interface StagedPlanRecord {
   plan_id: string;
   title: string;
   objective?: string | null;
-  deliverables?: string[];
   expected_surface: string[];
   dependencies: string[];
-  order?: number;
   status: string;
 }
 

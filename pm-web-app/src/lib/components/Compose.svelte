@@ -14,6 +14,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import Button from './Button.svelte';
+  import { isConfirmingEnter } from '../utils/ime';
   import { uniqueId } from '../utils/uniqueId';
 
   /**
@@ -154,14 +155,8 @@
   /** @param event a key press in the field */
   function onkeydown(event: KeyboardEvent): void {
     // Safari delivers the confirming `Enter` after `compositionend` with `isComposing` already false;
-    // it still marks that keydown with the legacy key code 229.
-    if (
-      event.key !== 'Enter' ||
-      event.shiftKey ||
-      event.isComposing ||
-      event.keyCode === IME_KEY_CODE ||
-      composing
-    ) {
+    // it still marks that keydown with the legacy key code 229 — the shared guard reads both.
+    if (!isConfirmingEnter(event, composing)) {
       return;
     }
     event.preventDefault();

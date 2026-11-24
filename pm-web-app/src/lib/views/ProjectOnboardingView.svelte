@@ -70,6 +70,8 @@
   let hasShownRun = $state(false);
   let run = $state<ProjectOnboardingState | null>(null);
   let beingAdded = $state<BeingAddedProject | null>(null);
+  /** The checkout path or entry id of a run started from the checkout form in this mount. */
+  let startedRunTarget = $state<string | null>(null);
   let checkoutDraft = $state('');
   let isStarting = $state(false);
   let isSubmitting = $state(false);
@@ -93,9 +95,14 @@
   let identityKey = $state('');
 
   const currentStep = $derived(stepOf(run));
+  /**
+   * The project the step actions address: the one the page was opened for, or — after a reload at
+   * the run's own address, which names the run and not the project — the one the loaded run reports.
+   */
+  const activeProjectId = $derived(projectId ?? run?.project_id ?? null);
   const isNewRun = $derived(!projectId && !run);
   const isComplete = $derived(run?.state === 'project.completed');
-  const chatOffered = $derived(Boolean(projectId) && run?.chat_available !== false);
+  const chatOffered = $derived(Boolean(activeProjectId) && run?.chat_available !== false);
   const chatReason = $derived(
     run?.chat_disabled_reason ? $t(run.chat_disabled_reason) : $t('project.chat.disabled.no_role'),
   );
@@ -109,12 +116,13 @@
   const identity = $derived(identityDraft ?? identityProposal(run));
 
   /**
-   * Whether this step waits for something only the terminal can give it: the build environment of
+   * Whether step 3 waits for something only the terminal can give it: the build environment of
    * the machine, which the terminal client captures (`project-onboarding.adoc#build-environment`).
    */
   const needsTerminal = $derived(
-    run !== null && currentStep <= 3 && !run.build_environment?.captured_at,
+    run !== null && currentStep === 3 && !run.build_environment?.captured_at,
   );
+  const canSave = $derived(Boolean(activeProjectId || run?.links?.set));
 
   // A run that reaches the identity step — or a new run — proposes its values again, and keeps the
   // operator's edits while the step stays the one on screen.
@@ -198,12 +206,30 @@
 
   /** Records the identity and moves the run on. */
   async function saveIdentity(): Promise<void> {
-    if (!projectId) return;
-    await applyStep('set', {
+    const payload = {
       id: identity.id,
       name: identity.name,
       pilot: identity.pilot,
-    });
+    };
+    if (activeProjectId) {
+      await applyStep('set', payload);
+      return;
+    }
+    const entryId = run?.onboarding_id || onboardingId;
+    if (entryId) {
+      isSubmitting = true;
+      error = '';
+      try {
+        await apiClient.actEntry(entryId, 'set', payload);
+        // The reload selects the same being-added run this screen shows, by its checkout, so a run
+        // started from the checkout form (which has no `onboardingId`) stays on screen.
+        await load(run?.checkout_path ?? undefined);
+      } catch (err: unknown) {
+        error = actFailureText(err, $t('project.settings.update_failed'));
+      } finally {
+        isSubmitting = false;
+      }
+    }
   }
 
   /**
@@ -332,7 +358,7 @@
 
   /** Reads the explorer's being-added report, for the run this screen was opened at. */
   async function loadBeingAdded(startedPath?: string): Promise<void> {
-    const wanted = startedPath?.trim() || onboardingId?.trim();
+    const wanted = onboardingId?.trim() || startedPath?.trim() || startedRunTarget?.trim();
     if (!wanted) {
       // No selection is a new run: the screen asks for its checkout path.
       beingAdded = null;
@@ -344,9 +370,23 @@
     );
     beingAdded = match ?? null;
     if (match) {
+      if (!onboardingId?.trim()) {
+        startedRunTarget = match.checkout_path;
+      }
       run = runOfBeingAdded(match);
       checkoutDraft = match.checkout_path;
+      return;
     }
+    const isEnrolled = [...explorer.all_projects, ...explorer.favourites, ...explorer.recent].some(
+      (p) => p.project_id === wanted,
+    );
+    if (isEnrolled) {
+      // A failed read reaches `load`'s catch, so it shows the error with its retry and never the
+      // form that starts another run.
+      run = await apiClient.getProjectOnboarding(wanted);
+      return;
+    }
+    startedRunTarget = null;
   }
 
   /**
@@ -354,7 +394,12 @@
    * @returns the id the entry addresses the run by
    */
   function entryOnboardingId(entry: BeingAddedProject): string {
-    const match = /\/entries\/([^/]+)\//.exec(entry.continue_link ?? '');
+    const linkStr =
+      entry.continue_link ??
+      (typeof entry.links?.set === 'string'
+        ? entry.links.set
+        : (entry.links?.set?.href ?? ''));
+    const match = /\/entries\/([^/]+)\//.exec(linkStr);
     if (match?.[1]) {
       try {
         return decodeURIComponent(match[1]);
@@ -370,6 +415,21 @@
    * @returns the run, in the shape the enrolled run reports
    */
   function runOfBeingAdded(entry: BeingAddedProject): ProjectOnboardingState {
+    const rawLinks: Record<string, any> = { ...(entry.links ?? {}) };
+    if (entry.continue_link && !rawLinks.continue) {
+      rawLinks.continue = entry.continue_link;
+    }
+    if (entry.abandon_link && !rawLinks.abandon) {
+      rawLinks.abandon = entry.abandon_link;
+    }
+    const links: Record<string, any> = {};
+    for (const [k, v] of Object.entries(rawLinks)) {
+      if (typeof v === 'string') {
+        links[k] = { href: v, method: 'POST' };
+      } else if (v && typeof v === 'object') {
+        links[k] = v;
+      }
+    }
     return {
       onboarding_id: entryOnboardingId(entry),
       checkout_path: entry.checkout_path,
@@ -378,6 +438,8 @@
       state: STEPS[entry.step_number - 1]?.state ?? 'project.checkout',
       summary: entry.current_step,
       chat_available: false,
+      build_environment: entry.build_environment ?? null,
+      links,
     };
   }
 
@@ -387,8 +449,10 @@
     isStarting = true;
     error = '';
     try {
-      await apiClient.startProjectOnboarding(checkoutDraft.trim());
-      await load(checkoutDraft.trim());
+      const checkout = checkoutDraft.trim();
+      await apiClient.startProjectOnboarding(checkout);
+      startedRunTarget = checkout;
+      await load(checkout);
     } catch (err: unknown) {
       error = actFailureText(err, $t('project.adding.start_failed'));
     } finally {
@@ -404,12 +468,12 @@
    * @param body the step's values
    */
   async function applyStep(step: string, body: Record<string, unknown> = {}): Promise<void> {
-    if (!projectId || isSubmitting) return;
+    if (!activeProjectId || isSubmitting) return;
     isSubmitting = true;
     error = '';
     conflict = null;
     try {
-      const result = await apiClient.stepProjectOnboarding(projectId, step, body);
+      const result = await apiClient.stepProjectOnboarding(activeProjectId, step, body);
       if (result.conflict) {
         // A step that sent fields replays them; a step the link itself answered replays the value
         // the runtime named as wanted.
@@ -442,7 +506,7 @@
   /** Keeps the other client's value and closes the card, without writing anything. */
   async function keepCurrentValue(): Promise<void> {
     conflict = null;
-    if (projectId) {
+    if (activeProjectId) {
       await load();
     }
   }
@@ -484,7 +548,7 @@
 
   /** Sends the operator's question to the setup's role. */
   async function sendChat(): Promise<void> {
-    if (!chatDraft.trim() || isChatting || !projectId) return;
+    if (!chatDraft.trim() || isChatting || !activeProjectId) return;
     isChatting = true;
     const text = chatDraft.trim();
     chatDraft = '';
@@ -663,19 +727,21 @@
               oninput={(event) =>
                 setIdentityField('name', (event.currentTarget as HTMLInputElement).value)}
             />
-            <CheckField
-              label={$t('project.identity.pilot')}
-              description={$t('project.identity.pilot_hint')}
-              checked={identity.pilot}
-              testid="project-identity-pilot"
-              onchange={(checked) => setIdentityField('pilot', checked)}
-            />
+            {#if run?.lifecycle_gate !== false}
+              <CheckField
+                label={$t('project.identity.pilot')}
+                description={$t('project.identity.pilot_hint')}
+                checked={identity.pilot}
+                testid="project-identity-pilot"
+                onchange={(checked) => setIdentityField('pilot', checked)}
+              />
+            {/if}
             <div class="identity__actions">
               <Button
                 variant="primary"
                 loading={isSubmitting}
-                disabled={!identity.id.trim() || !identity.name.trim() || !projectId}
-                disabledReason={!projectId ? $t('project.identity.enrol_in_terminal') : undefined}
+                disabled={!identity.id.trim() || !identity.name.trim() || !canSave}
+                disabledReason={!canSave ? $t('project.identity.enrol_in_terminal') : undefined}
                 on:click={saveIdentity}
                 data-testid="project-identity-save"
               >
@@ -804,7 +870,7 @@
         </div>
 
         <div class="state-card__actions">
-          {#if projectId}
+          {#if activeProjectId}
             {#each linkIds() as id}
               <Button
                 variant="secondary"
@@ -892,7 +958,7 @@
         <Button
           variant="primary"
           loading={isChatting}
-          disabled={!chatDraft.trim() || !projectId}
+          disabled={!chatDraft.trim() || !activeProjectId}
           on:click={sendChat}
           data-testid="project-chat-send"
         >
