@@ -1451,8 +1451,8 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
     }
     await apiClient.getReport(shown.id);
     return null;
-  } catch (failure: unknown) {
-    if ((failure as { status?: number }).status !== 404) return null;
+  } catch (err: unknown) {
+    if ((err as { status?: number }).status !== 404) return null;
     return shown.kind === 'report' ? { kind: 'parent' } : endedWork();
   }
 }
@@ -1465,7 +1465,7 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
 async function fallBackFromCleanup(jobId: string | null): Promise<void> {
   const shown = shownObjectOf(get(runtimeStore), currentAddress());
   if (!shown) return;
-  const deletion = cleanupDeletion && cleanupDeletion.jobId === jobId ? cleanupDeletion : null;
+  const deletion = cleanupDeletion?.jobId === jobId ? cleanupDeletion : null;
   const target = await deletionTargetOf(shown);
   if (!target) return;
   // The address may have moved while the read ran: a stale probe never navigates.
