@@ -12445,7 +12445,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return switch (status) {
             case STATUS_WAITING_FOR_YOU -> STATE_WAITING_FOR_YOU;
             case STATUS_SHIPPED, STATE_MERGED, STATUS_COMPLETED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED,
-                    STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
+                STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
             default -> status;
         };
     }

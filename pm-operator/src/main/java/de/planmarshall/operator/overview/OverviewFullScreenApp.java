@@ -945,7 +945,7 @@ public final class OverviewFullScreenApp {
      * @param selectedId the row the overview ended on, or {@code null}
      */
     private record SavedPlace(@Nullable String projectId, @Nullable String view,
-                        @Nullable String selectedId) {
+    @Nullable String selectedId) {
     }
 
     /**
