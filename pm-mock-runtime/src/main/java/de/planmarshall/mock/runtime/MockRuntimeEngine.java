@@ -560,6 +560,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     /** The status of a project onboarding the operator abandoned. */
     private static final String STATUS_ABANDONED = "abandoned";
     private static final String STATUS_SHIPPED = "shipped";
+    /** The row status a row whose plan merged carries; it names shipped work, as {@code merged} does. */
+    private static final String STATUS_COMPLETED = "completed";
     private static final String STATUS_LANDED = "landed";
     private static final String STATUS_RETURNED = "returned";
     private static final String STATUS_HANDED_BACK = "handed back";
@@ -6146,7 +6148,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private @Nullable WorkRow firstLaunchableRow(String epicId, List<WorkRow> rows) {
         for (var row : rows) {
-            if (STATUS_STAGED.equals(rowStatusOf(epicId, row)) && waitsForNothing(row)) {
+            if (STATUS_STAGED.equals(rowStatusOf(epicId, row)) && mayStartWhenAPlaceIsFree(row)) {
                 return row;
             }
         }
@@ -6155,11 +6157,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     /**
      * @param row one of the epic's rows
-     * @return whether the row waits for nothing, so only a free place keeps it from starting; a wait
-     *         the closed set refuses is no "can start"
+     * @return whether the row can start as soon as a place is free: it waits for nothing, or for the
+     *         place itself; a dependency, an overlap, a lock or a wait the closed set refuses keeps it
      */
-    private static boolean waitsForNothing(WorkRow row) {
-        return row.waitReason() == null || EpicWaitReason.NONE == row.waits();
+    private static boolean mayStartWhenAPlaceIsFree(WorkRow row) {
+        var wait = row.waits();
+        return row.waitReason() == null || EpicWaitReason.NONE == wait || EpicWaitReason.SCOPE == wait;
     }
 
     /**
@@ -6197,7 +6200,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var entry = new LinkedHashMap<String, Object>();
             entry.put(KEY_PLAN_ID, row.planId());
-            if (waitsForNothing(row)) {
+            if (mayStartWhenAPlaceIsFree(row)) {
                 // The row could start if a place were free, so the place is what it waits for.
                 entry.put(FIELD_WAIT_REASON, EpicWaitReason.SCOPE.value());
             } else if (row.waits() != null) {
@@ -12438,8 +12441,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static String planStateOf(String status) {
         return switch (status) {
             case STATUS_WAITING_FOR_YOU -> STATE_WAITING_FOR_YOU;
-            case STATUS_SHIPPED, STATE_MERGED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED, STATUS_RETURNED,
-                    STATUS_HANDED_BACK -> STATE_ENDED;
+            case STATUS_SHIPPED, STATE_MERGED, STATUS_COMPLETED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED,
+                    STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
             default -> status;
         };
     }
