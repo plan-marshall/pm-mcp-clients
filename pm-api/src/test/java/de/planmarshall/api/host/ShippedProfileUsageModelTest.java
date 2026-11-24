@@ -33,8 +33,8 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * The {@code headless.usage.model} member of the shipped client profiles (Client Profiles
  * Specification, the {@code usage} object of the shipped declarations): the required RFC 6901 pointer
- * into the harness's turn output that names the answering model, or {@code null} when the harness
- * reports no model.
+ * into the harness's turn output that names the answering model, or {@code null} where the profile
+ * declares that the harness reports no model.
  * <p>
  * The documents are read through the shipped catalog and {@code profiles/*.json}, as the
  * {@link ProfileDocumentReader} reads them, and parsed with the streaming API of {@code jackson-core}
@@ -78,8 +78,14 @@ class ShippedProfileUsageModelTest {
         }
     }
 
+    /**
+     * Pins the table to the shipped catalog, so a profile added to {@code profiles.index} cannot keep a
+     * {@code usage} object without a {@code model} member while this test stays green. What it adds
+     * beyond the catalog-versus-directory parity of {@code ProfileDocumentReaderTest} is the
+     * table-versus-catalog link: the per-profile assertions above cover exactly the cataloged profiles.
+     */
     @Test
-    @DisplayName("cover every shipped profile, every one and no other")
+    @DisplayName("covers every shipped profile, every one and no other")
     void coversEveryShippedProfile() {
         var table = EXPECTED_MODELS.stream().map(ExpectedModel::clientId).collect(Collectors.toSet());
 
@@ -90,7 +96,7 @@ class ShippedProfileUsageModelTest {
         var resource = "profiles/" + clientId + ".json";
         Map<?, ?> document;
         try (InputStream input = ShippedProfileUsageModelTest.class.getClassLoader().getResourceAsStream(resource)) {
-            assertNotNull(input, "the catalog names an absent document: " + resource);
+            assertNotNull(input, "the shipped profiles directory holds no " + resource);
             document = object(JsonTree.parse(input.readAllBytes()), resource);
         }
         var headless = object(document.get("headless"), resource + " headless");
