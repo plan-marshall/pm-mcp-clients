@@ -32,8 +32,11 @@ import de.planmarshall.operator.tui.TuiRow;
  * <p>The model is pure: it turns a page of reports into rows and knows nothing about the runtime.
  * Marking a report read is the caller's act; {@link #without(String)} returns the level without the
  * report, so the row leaves at once and with it the selection moves to its neighbour.
+ *
+ * @param reports     the unread reports of the page, newest first
+ * @param unreadCount the runtime's count of unread reports across all pages
  */
-public final class ReportsLevel {
+public record ReportsLevel(List<ReportItem> reports, int unreadCount) {
 
     /** The prefix of the row id of a report. */
     public static final String REPORT_PREFIX = "report:";
@@ -55,26 +58,13 @@ public final class ReportsLevel {
     private static final String PROJECT_INDENT = "  ";
     private static final String REPORT_INDENT = "    ";
 
-    private final List<ReportItem> reports;
-    private final int unreadCount;
-
     /**
      * @param reports     the unread reports of the page, newest first
      * @param unreadCount the runtime's count of unread reports across all pages
      */
-    public ReportsLevel(List<ReportItem> reports, int unreadCount) {
-        this.reports = List.copyOf(Objects.requireNonNull(reports, "reports"));
-        this.unreadCount = Math.max(0, unreadCount);
-    }
-
-    /** @return the reports the level holds, in the order the runtime served them */
-    public List<ReportItem> reports() {
-        return reports;
-    }
-
-    /** @return the runtime's count of unread reports */
-    public int unreadCount() {
-        return unreadCount;
+    public ReportsLevel {
+        reports = List.copyOf(Objects.requireNonNull(reports, "reports"));
+        unreadCount = Math.max(0, unreadCount);
     }
 
     /**
@@ -186,8 +176,14 @@ public final class ReportsLevel {
     private static TuiRow reportRow(String locale, ReportItem report, String indent) {
         var plan = trimToNull(report.from().planId());
         var epic = trimToNull(report.from().epicId());
-        var name = plan != null ? plan : epic != null
-                            ? epic : MessageCatalogue.format(locale, "report.list.project_level", Map.of());
+        String name;
+        if (plan != null) {
+            name = plan;
+        } else if (epic != null) {
+            name = epic;
+        } else {
+            name = MessageCatalogue.format(locale, "report.list.project_level", Map.of());
+        }
         var glyph = plan == null && epic == null ? PROJECT_GLYPH : PLAN_GLYPH;
         var time = sanitize(report.created());
         if (report.isSentLater()) {

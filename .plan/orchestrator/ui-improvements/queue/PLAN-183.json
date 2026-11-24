@@ -2,10 +2,10 @@
   "id": "PLAN-183",
   "slug": "pm-api-and-mock-hygiene-residue",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-183-pm-api-and-mock-hygiene-residue",
+  "pr": "#553",
+  "landing": "landings/PLAN-183.md",
   "seq": 183
 }

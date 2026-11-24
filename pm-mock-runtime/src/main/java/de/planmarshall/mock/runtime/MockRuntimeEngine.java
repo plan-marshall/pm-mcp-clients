@@ -68,6 +68,7 @@ import de.planmarshall.api.control.DecompositionPlan;
 import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.control.DecompositionWorkstream;
 import de.planmarshall.api.control.EpicResource;
+import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.HoldChangedEvent;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionRequest;
@@ -379,7 +380,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(
             PlanAction.PAUSE.value(), PlanAction.START.value(),
             PlanAction.CANCEL.value(), PlanAction.ABANDON.value());
-    private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO);
+    private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO, ACTION_CANCEL);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
@@ -514,7 +515,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String PROJECT_SETUP_COMPLETED = "project.completed";
     private static final String PROJECT_SETUP_READY_SUFFIX = " is ready";
     private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
-    /** The plan state a landed or merged epic row maps to. */
+    /** The state a finished phase node carries; a plan state of that name is read as ended too. */
     private static final String STATE_DONE = "done";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
@@ -542,6 +543,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_ARG_VERSION = "version";
     private static final String ACTIVITY_RUNNING = "running";
     private static final String ACTIVITY_PAUSING = "pausing";
+    private static final String ACTIVITY_PAUSED = "paused";
     private static final String KEY_PHASE_STATE = "phase_state";
     private static final String KEY_CURRENT_PHASE = "current_phase";
     private static final String KEY_NEW_PHASE = "new_phase";
@@ -551,6 +553,27 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String STATE_ENDED = "ended";
     private static final String STATE_MERGED = "merged";
     private static final String STATE_WAITING_FOR_YOU = "waiting_for_you";
+    /** The row status of a plan the epic has not started yet. */
+    private static final String STATUS_STAGED = "staged";
+    /** The row status of a plan an epic's cancel ended with the epic. */
+    private static final String STATUS_CANCELLED = "cancelled";
+    /** The status of a project onboarding the operator abandoned. */
+    private static final String STATUS_ABANDONED = "abandoned";
+    private static final String STATUS_SHIPPED = "shipped";
+    /** The row status a row whose plan merged carries; it names shipped work, as {@code merged} does. */
+    private static final String STATUS_COMPLETED = "completed";
+    private static final String STATUS_LANDED = "landed";
+    private static final String STATUS_RETURNED = "returned";
+    private static final String STATUS_HANDED_BACK = "handed back";
+    private static final String STATUS_HELD = "held";
+    /** The row status a plan waits in for the operator, with the spaces the queue row carries. */
+    private static final String STATUS_WAITING_FOR_YOU = "waiting for you";
+    /** The member an epic's {@code next} answer names the plan it started with. */
+    private static final String FIELD_STARTED_PLAN = "started_plan";
+    /** The member an epic's {@code next} answer names the rows it could not start with. */
+    private static final String FIELD_NOT_STARTED = "not_started";
+    private static final String FIELD_WAIT_REASON = "wait_reason";
+    private static final String FIELD_WAIT_PLAN_ID = "wait_plan_id";
     private static final String KEY_NODES = "nodes";
     private static final String KEY_SUB_NODES = "sub_nodes";
     private static final String KEY_LEAF_TASKS = "leaf_tasks";
@@ -925,6 +948,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final Map<String, Integer> controlSettingsRevisions = new LinkedHashMap<>();
     private final Map<String, Map<String, PlanSettingsValue>> controlSettings = new LinkedHashMap<>();
     private final Map<String, EpicResource> controlEpics = new LinkedHashMap<>();
+    /** A row's status once an epic's act moved it, by epic and plan; the epic's row is the seed. */
+    private final Map<String, Map<String, String>> controlEpicRowStates = new LinkedHashMap<>();
     private final Map<String, ReviewResource> controlReviews = new LinkedHashMap<>();
     private final Map<String, ArchiveCheck> controlArchiveChecks = new LinkedHashMap<>();
 
@@ -3885,6 +3910,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             controlSettingsRevisions.clear();
             controlSettings.clear();
             controlEpics.clear();
+            controlEpicRowStates.clear();
             controlReviews.clear();
             controlArchiveChecks.clear();
             planQueuedRevisions.clear();
@@ -4019,7 +4045,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             var state = JsonTree.string(epic, KEY_STATE);
             epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
-            epicScope.put(epicId, intMember(epic, "scope"));
+            var scope = JsonTree.integer(epic, "scope");
+            if (scope != null) {
+                // An epic whose control entry omits the scope keeps its resource's scope.
+                epicScope.put(epicId, scope);
+            }
             epicRunning.put(epicId, intMember(epic, ACTIVITY_RUNNING));
             epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
@@ -5630,7 +5660,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
-            case "paused" -> {
+            case ACTIVITY_PAUSED -> {
                 actions.add(ActionAvailability.enabled(ACTION_START));
                 actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
@@ -5956,6 +5986,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private void handleEpicAction(MockHttpRequest request, MockHttpResponse response, String epicId, String action)
             throws IOException {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
+        // The transitions are published after the control lock is released: the chat registry takes
+        // its own lock and calls back into these facts, so the two must never be held in the other order.
+        var published = new ArrayList<Map.Entry<String, Object>>();
+        Map<String, Object> resp;
         synchronized (controlLock) {
             if (!controlEpicStates.containsKey(epicId)) {
                 response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND, KEY_MESSAGE, epicNotFound(epicId)));
@@ -5972,6 +6006,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         KEY_REASON, availability.reason() != null ? availability.reason() : ""));
                 return;
             }
+            var answer = new LinkedHashMap<String, Object>();
             switch (action) {
                 case ACTION_AUTO -> applyAuto(epicId, actionRequest);
                 case ACTION_COMMON_FILES -> {
@@ -5980,18 +6015,292 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         controlEpicOverlap.put(epicId, number.intValue());
                     }
                 }
-                case ACTION_CANCEL -> controlEpicStates.put(epicId, STATE_ENDED);
+                case ACTION_CANCEL -> {
+                    controlEpicStates.put(epicId, STATE_ENDED);
+                    if (Boolean.TRUE.equals(actionRequest.withPlans())) {
+                        published.addAll(cancelEpicPlans(epicId, actionRequest.reason()));
+                    }
+                }
+                case ACTION_NEXT -> answer.putAll(startNextEpicPlan(epicId, published));
                 default -> {
-                    // next, decompose, findings, watches, archive, chat: the epic rests between its events
+                    // decompose, findings, watches, archive, chat: the epic rests between its events
                 }
             }
-            var resp = new LinkedHashMap<String, Object>();
-            resp.put(KEY_STATUS, "ok");
-            resp.put("auto_enabled", controlEpicAuto.getOrDefault(epicId, true));
-            resp.put(FIELD_OVERLAP_MAX_FILES, controlEpicOverlap.getOrDefault(epicId, 0));
-            resp.putAll(buildEpicActions(epicId).toMap());
-            response.json(200, resp);
+            var built = new LinkedHashMap<String, Object>();
+            built.put(KEY_STATUS, "ok");
+            built.put("auto_enabled", controlEpicAuto.getOrDefault(epicId, true));
+            built.put(FIELD_OVERLAP_MAX_FILES, controlEpicOverlap.getOrDefault(epicId, 0));
+            built.putAll(buildEpicActions(epicId).toMap());
+            built.putAll(answer);
+            resp = built;
         }
+        for (var transition : published) {
+            broadcastEvent(transition.getKey(), transition.getValue());
+        }
+        response.json(200, resp);
+    }
+
+    /**
+     * Ends every plan of the epic that has not ended, each with its own {@code cancelled} event, so
+     * that an ended epic lists no row still to run; a plan that already ended keeps the outcome it
+     * ended with and is not told again.
+     *
+     * @param epicId the epic being cancelled
+     * @param reason the operator's reason, or {@code null}
+     * @return the transitions to publish once the control lock is released
+     */
+    private List<Map.Entry<String, Object>> cancelEpicPlans(String epicId, @Nullable String reason) {
+        var transitions = new ArrayList<Map.Entry<String, Object>>();
+        var cancelledReason = reason != null ? reason : "Cancelled by operator";
+        for (var planId : epicPlanIds(epicId)) {
+            if (planEnded(epicId, planId)) {
+                continue;
+            }
+            controlPlanStates.put(planId, STATE_ENDED);
+            controlPlanPausePoints.remove(planId);
+            removeHolds(planId);
+            setRowStatus(epicId, planId, STATUS_CANCELLED);
+            transitions.add(Map.entry(PlanControlEvent.EVENT_CANCELLED,
+                    new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED, null,
+                            cancelledReason).toMap()));
+            controlPlanEpics.putIfAbsent(planId, epicId);
+        }
+        return transitions;
+    }
+
+    /**
+     * @param epicId the epic
+     * @param planId one of its plans
+     * @return whether the plan has ended: by its control state, by the activity an event recorded for
+     *         it, or by the status its row already shows
+     */
+    private boolean planEnded(String epicId, String planId) {
+        return STATE_ENDED.equals(controlPlanStates.get(planId))
+                || STATE_ENDED.equals(planActivities.get(planId))
+                || rowEnded(epicId, planId);
+    }
+
+    /**
+     * @param epicId the epic
+     * @param planId one of its plans
+     * @return whether the plan's row already shows an ended plan
+     */
+    private boolean rowEnded(String epicId, String planId) {
+        var resource = controlEpics.get(epicId);
+        if (resource == null) {
+            return false;
+        }
+        for (var row : epicRows(resource)) {
+            if (planId.equals(row.planId())) {
+                return STATE_ENDED.equals(planStateOf(rowStatusOf(epicId, row)));
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Starts the epic's next launchable row in the queue's order, when a place is free, or answers why
+     * no row starts, per staged row.
+     *
+     * @param epicId    the epic whose next plan the operator asked for
+     * @param published collects the transition of a started row
+     * @return the members the answer carries: the started plan, or the rows that cannot start
+     */
+    private Map<String, Object> startNextEpicPlan(String epicId, List<Map.Entry<String, Object>> published) {
+        var answer = new LinkedHashMap<String, Object>();
+        var resource = controlEpics.get(epicId);
+        if (resource == null) {
+            return answer;
+        }
+        var rows = epicRows(resource);
+        var launchable = firstLaunchableRow(epicId, rows);
+        var scope = controlEpicScope.getOrDefault(epicId, resource.scope());
+        var place = countRunning(epicId, rows) < scope;
+        if (launchable == null || !place) {
+            answer.put(FIELD_NOT_STARTED, notStartedRows(epicId, rows));
+            return answer;
+        }
+        startEpicRow(epicId, launchable.planId(), published);
+        answer.put(FIELD_STARTED_PLAN, launchable.planId());
+        return answer;
+    }
+
+    /**
+     * Starts one row: the row and its plan run, and the transition is published as a plan resuming.
+     *
+     * @param epicId    the epic that lists the row
+     * @param planId    the plan to start
+     * @param published collects the transition
+     */
+    private void startEpicRow(String epicId, String planId, List<Map.Entry<String, Object>> published) {
+        setRowStatus(epicId, planId, ACTIVITY_RUNNING);
+        controlPlanStates.put(planId, ACTIVITY_RUNNING);
+        controlPlanPausePoints.remove(planId);
+        controlPlanEpics.put(planId, epicId);
+        published.add(Map.entry(PlanControlEvent.EVENT_RESUMED,
+                new PlanControlEvent(PlanControlEvent.EVENT_RESUMED, planId, ACTIVITY_RUNNING, null, null).toMap()));
+    }
+
+    /**
+     * @param epicId the epic
+     * @param rows   the epic's rows in the queue's order
+     * @return the first staged row that waits for nothing, or {@code null} when no row can start
+     */
+    private @Nullable WorkRow firstLaunchableRow(String epicId, List<WorkRow> rows) {
+        for (var row : rows) {
+            // A plan that ended by its own act may still show a staged row: it is not started again.
+            if (STATUS_STAGED.equals(rowStatusOf(epicId, row)) && mayStartWhenAPlaceIsFree(row)
+                    && !planEnded(epicId, row.planId())) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param row one of the epic's rows
+     * @return whether the row can start as soon as a place is free: it waits for nothing, or for the
+     *         place itself; a dependency, an overlap, a lock or a wait the closed set refuses keeps it
+     */
+    private static boolean mayStartWhenAPlaceIsFree(WorkRow row) {
+        var wait = row.waits();
+        return row.waitReason() == null || EpicWaitReason.NONE == wait || EpicWaitReason.SCOPE == wait;
+    }
+
+    /**
+     * @param epicId the epic
+     * @param rows   the epic's rows
+     * @return how many of its plans run, a pausing or paused one counted as running, as the engine's
+     *         admission tests do
+     */
+    private int countRunning(String epicId, List<WorkRow> rows) {
+        var running = 0;
+        for (var row : rows) {
+            var planId = row.planId();
+            if (STATE_ENDED.equals(controlPlanStates.get(planId)) || STATE_ENDED.equals(planActivities.get(planId))) {
+                // An ended plan occupies no place, whatever its row still shows.
+                continue;
+            }
+            var status = rowStatusOf(epicId, row);
+            if (ACTIVITY_RUNNING.equals(status) || ACTIVITY_PAUSING.equals(status) || ACTIVITY_PAUSED.equals(status)) {
+                running++;
+            }
+        }
+        return running;
+    }
+
+    /**
+     * @param epicId the epic
+     * @param rows   the epic's rows
+     * @return one entry per staged row, naming why it does not start
+     */
+    private List<Map<String, Object>> notStartedRows(String epicId, List<WorkRow> rows) {
+        var notStarted = new ArrayList<Map<String, Object>>();
+        for (var row : rows) {
+            // A plan that already ended waits for nothing: it is not one the answer names.
+            if (!STATUS_STAGED.equals(rowStatusOf(epicId, row)) || planEnded(epicId, row.planId())) {
+                continue;
+            }
+            var entry = new LinkedHashMap<String, Object>();
+            entry.put(KEY_PLAN_ID, row.planId());
+            if (mayStartWhenAPlaceIsFree(row)) {
+                // The row could start if a place were free, so the place is what it waits for.
+                entry.put(FIELD_WAIT_REASON, EpicWaitReason.SCOPE.value());
+            } else if (row.waits() != null) {
+                entry.put(FIELD_WAIT_REASON, row.waits().value());
+                if (row.waitPlanId() != null) {
+                    entry.put(FIELD_WAIT_PLAN_ID, row.waitPlanId());
+                }
+            } else {
+                // The scenario's own word, which the closed set refuses: echoed, never read as "can start".
+                entry.put(FIELD_WAIT_REASON, row.waitReason());
+            }
+            notStarted.add(entry);
+        }
+        return notStarted;
+    }
+
+    /**
+     * @param epicId the epic
+     * @return every plan the epic names: its rows' plans and the plans whose control entry names it
+     */
+    private List<String> epicPlanIds(String epicId) {
+        var planIds = new LinkedHashSet<String>();
+        var resource = controlEpics.get(epicId);
+        if (resource != null) {
+            for (var row : epicRows(resource)) {
+                planIds.add(row.planId());
+            }
+        }
+        controlPlanEpics.forEach((planId, epic) -> {
+            if (epicId.equals(epic)) {
+                planIds.add(planId);
+            }
+        });
+        return List.copyOf(planIds);
+    }
+
+    /**
+     * @param resource the epic's fixture resource
+     * @return its rows in the queue's order, workstream after workstream
+     */
+    private static List<WorkRow> epicRows(EpicResource resource) {
+        var rows = new ArrayList<WorkRow>();
+        for (var workstream : resource.workstreams()) {
+            rows.addAll(workstream.rows());
+        }
+        return rows;
+    }
+
+    /**
+     * @param epicId the epic
+     * @param row    one of its rows
+     * @return the row's status as the mock now lists it, the fixture's when no act moved it
+     */
+    private String rowStatusOf(String epicId, WorkRow row) {
+        var moved = controlEpicRowStates.get(epicId);
+        var status = moved != null ? moved.get(row.planId()) : null;
+        return status != null ? status : row.status();
+    }
+
+    /**
+     * @param epicId the epic
+     * @param planId the plan whose row moved
+     * @param status the row's new status
+     */
+    private void setRowStatus(String epicId, String planId, String status) {
+        controlEpicRowStates.computeIfAbsent(epicId, _ -> new LinkedHashMap<>()).put(planId, status);
+    }
+
+    /**
+     * @param epicId   the epic
+     * @param resource the epic's fixture resource
+     * @return the epic's workstreams with every row at the status the mock now lists
+     */
+    private List<Map<String, Object>> overlaidWorkstreams(String epicId, EpicResource resource) {
+        var workstreams = new ArrayList<Map<String, Object>>(resource.workstreams().size());
+        for (var workstream : resource.workstreams()) {
+            var map = new LinkedHashMap<>(workstream.toMap());
+            var rows = new ArrayList<Map<String, Object>>(workstream.rows().size());
+            for (var row : workstream.rows()) {
+                var status = rowStatusOf(epicId, row);
+                rows.add(status.equals(row.status()) ? row.toMap() : movedRow(row, status).toMap());
+            }
+            map.put("rows", rows);
+            workstreams.add(map);
+        }
+        return workstreams;
+    }
+
+    /**
+     * @param row    the fixture's row
+     * @param status the row's status after an act
+     * @return the row with that status and no wait left
+     */
+    private static WorkRow movedRow(WorkRow row, String status) {
+        return new WorkRow(row.planId(), row.title(), status, null, null, null, List.of(),
+                row.pullRequestNumber(), row.pullRequestUrl(), row.change(), row.objective(),
+                row.deliverables(), row.surface(), row.dependencies());
     }
 
     private void applyAuto(String epicId, PlanActionRequest actionRequest) {
@@ -6184,6 +6493,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return;
             }
             var map = new LinkedHashMap<>(resource.toMap());
+            map.put(KEY_STATE, controlEpicStates.getOrDefault(epicId, resource.state()));
+            map.put("workstreams", overlaidWorkstreams(epicId, resource));
             var overlap = controlEpicOverlap.get(epicId);
             if (overlap != null) {
                 map.put(FIELD_OVERLAP_MAX_FILES, overlap);
@@ -10480,8 +10791,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private void handleAbandonProjectOnboarding(MockHttpResponse response, String id) throws IOException {
         synchronized (projectsLock) {
             beingAddedProjects.removeIf(b -> b.checkoutPath().contains(id) || (b.abandonLink() != null && b.abandonLink().contains(id)));
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "abandoned", id));
-            response.json(200, Map.of(KEY_STATUS, "abandoned", "id", id));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, STATUS_ABANDONED, id));
+            response.json(200, Map.of(KEY_STATUS, STATUS_ABANDONED, "id", id));
         }
     }
 
@@ -10716,7 +11027,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             tasksQueued = 3;
             activeProjects = 1;
         } else {
-            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, "held", 1, "paused", 2);
+            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, STATUS_HELD, 1, ACTIVITY_PAUSED, 2);
             epicsByState = Map.of(ACTIVITY_RUNNING, 1, STATE_WAITING_FOR_YOU, 1);
             tasksRunning = 4;
             tasksQueued = 6;
@@ -12096,7 +12407,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 for (var workstream : epic.workstreams()) {
                     for (var row : workstream.rows()) {
                         if (planId.equals(row.planId())) {
-                            return planRowSummary(row, planId, epic.projectId(), epic.epicId());
+                            return planRowSummary(epic.epicId(), row, planId, epic.projectId());
                         }
                     }
                 }
@@ -12106,14 +12417,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
+     * @param epicId    the epic that lists the plan
      * @param row       the epic's row for the plan
      * @param planId    the plan id
      * @param projectId the project the epic belongs to
-     * @param epicId    the epic that lists the plan
      * @return the summary the process synthesis reads
      */
-    private static Map<String, Object> planRowSummary(WorkRow row, String planId,
-            @Nullable String projectId, String epicId) {
+    private Map<String, Object> planRowSummary(String epicId, WorkRow row, String planId,
+            @Nullable String projectId) {
         var summary = new LinkedHashMap<String, Object>();
         summary.put("id", planId);
         summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
@@ -12122,17 +12433,19 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
         summary.put(KEY_PHASE, PHASE_EXECUTE);
-        summary.put(KEY_STATE, planStateOf(row.status()));
+        summary.put(KEY_STATE, planStateOf(rowStatusOf(epicId, row)));
         return summary;
     }
 
     /**
      * @param status the row's status as the epic lists it
-     * @return the plan state the view understands
+     * @return the plan's activity state, one wire value of the closed {@code PlanActivity} set
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "shipped", STATE_MERGED, "landed" -> STATE_DONE;
+            case STATUS_WAITING_FOR_YOU -> STATE_WAITING_FOR_YOU;
+            case STATUS_SHIPPED, STATE_MERGED, STATUS_COMPLETED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED,
+                    STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
             default -> status;
         };
     }
@@ -12211,7 +12524,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get(KEY_NODES) instanceof List<?> nodes)) {
-            var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
+            var state = planEnded(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -12232,6 +12545,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "phase " + currentPhase));
         }
         return result;
+    }
+
+    /**
+     * @param phaseState the plan's activity state
+     * @return whether the plan has ended, so its phases are all done
+     */
+    private static boolean planEnded(String phaseState) {
+        return STATE_DONE.equals(phaseState) || STATE_ENDED.equals(phaseState);
     }
 
     /**
@@ -12286,7 +12607,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @return the node's state: done before the current phase, the current phase's own, planned after
      */
     private static String phaseNodeState(int index, int current, String phaseState) {
-        if (STATE_DONE.equals(phaseState)) {
+        if (planEnded(phaseState)) {
             return STATE_DONE;
         }
         if (current >= 0 && index < current) {

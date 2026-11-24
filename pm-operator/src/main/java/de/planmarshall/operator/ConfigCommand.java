@@ -1154,14 +1154,14 @@ public final class ConfigCommand implements Callable<Integer> {
                 if (defaults || set != null || reset != null || resetAll) {
                     return exclusive(context, spec.commandLine().getErr());
                 }
-                return PlanSettingsDialogue.run(context, out, plan, "roles", false);
+                return PlanSettingsDialogue.run(context, out, plan, ROLES, false);
             }
             var facts = new LinkedHashMap<String, String>();
             if (defaults) facts.put("defaults", "true");
             if (set != null && !set.isEmpty()) facts.put("set", String.join(",", set));
             if (reset != null) facts.put("reset", reset);
             if (resetAll) facts.put("reset_all", "true");
-            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), "roles",
+            return ConfigAspectRun.run(context, out, spec.commandLine().getErr(), ROLES,
                                 ConfigAspectRun.Answers.of(facts));
         }
     }

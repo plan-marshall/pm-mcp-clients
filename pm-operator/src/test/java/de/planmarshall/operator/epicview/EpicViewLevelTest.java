@@ -278,7 +278,7 @@ class EpicViewLevelTest {
 
     @Test
     @DisplayName("an epic whose collection is empty says so")
-    void empty() throws Exception {
+    void empty() {
         var resource = new EpicResource("e-1", "p", "p", null, "running", true, 0, 1, 0,
                             null, List.of(), List.of(), 0, null, null, null, List.of());
         var view = new EpicViewLevel(CLOCK, resource);

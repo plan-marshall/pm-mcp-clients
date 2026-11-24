@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import io.nayuki.qrcodegen.QrCode;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Renders a QR code to the terminal using Unicode half-block characters ({@code ▀}, {@code ▄}, {@code █}, {@code  }).
@@ -31,7 +32,7 @@ public final class QrCodeRenderer {
      * @param sideLines lines to print to the right of the QR code, or {@code null}
      * @return the rendered multi-line string
      */
-    public static String render(String text, List<String> sideLines) {
+    public static String render(String text, @Nullable List<String> sideLines) {
         Objects.requireNonNull(text, "text");
         var qr = QrCode.encodeText(text, QrCode.Ecc.MEDIUM);
         var size = qr.size;
@@ -46,18 +47,7 @@ public final class QrCodeRenderer {
         for (int y = -BORDER_MODULES; y < size + BORDER_MODULES; y += 2) {
             sb.append("  ");
             for (int x = -BORDER_MODULES; x < size + BORDER_MODULES; x++) {
-                boolean top = isModuleDark(qr, x, y, size);
-                boolean bottom = isModuleDark(qr, x, y + 1, size);
-
-                if (top && bottom) {
-                    sb.append('█');
-                } else if (top) {
-                    sb.append('▀');
-                } else if (bottom) {
-                    sb.append('▄');
-                } else {
-                    sb.append(' ');
-                }
+                sb.append(moduleCharacter(qr, x, y, size));
             }
 
             if (sideLines != null && sideIndex < sideLines.size() && currentRow >= startSideRow) {
@@ -79,6 +69,21 @@ public final class QrCodeRenderer {
         }
 
         return sb.toString();
+    }
+
+    private static char moduleCharacter(QrCode qr, int x, int y, int size) {
+        boolean top = isModuleDark(qr, x, y, size);
+        boolean bottom = isModuleDark(qr, x, y + 1, size);
+        if (top && bottom) {
+            return '█';
+        }
+        if (top) {
+            return '▀';
+        }
+        if (bottom) {
+            return '▄';
+        }
+        return ' ';
     }
 
     private static boolean isModuleDark(QrCode qr, int x, int y, int size) {

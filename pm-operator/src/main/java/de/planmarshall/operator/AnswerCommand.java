@@ -682,15 +682,13 @@ public final class AnswerCommand implements Callable<Integer> {
             }
             if ("?".equals(choice)) {
                 printEvidenceDetails(session.out(), envelope.evidence(), session.locale());
-                continue;
-            }
-            if (keys.waive().equalsIgnoreCase(choice)) {
+            } else if (keys.waive().equalsIgnoreCase(choice)) {
                 return executeWaiverAct(session, envelope, ACTION_WAIVE);
-            }
-            if (keys.decline().equalsIgnoreCase(choice)) {
+            } else if (keys.decline().equalsIgnoreCase(choice)) {
                 return executeWaiverAct(session, envelope, ACTION_DECLINE);
+            } else {
+                printWaiverNeedsAnswer(session.out(), session.locale());
             }
-            printWaiverNeedsAnswer(session.out(), session.locale());
         }
     }
 

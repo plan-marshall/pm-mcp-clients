@@ -116,7 +116,8 @@ public final class TuiLayout {
         }
         var sb = new StringBuilder();
         int used = 0;
-        for (int index = 0; index < safe.length(); ) {
+        int index = 0;
+        while (index < safe.length()) {
             int codePoint = safe.codePointAt(index);
             int cellWidth = Math.max(0, WCWidth.wcwidth(codePoint));
             if (used + cellWidth > budget) {
@@ -143,7 +144,8 @@ public final class TuiLayout {
      */
     public static int displayWidth(String text) {
         int width = 0;
-        for (int index = 0; index < text.length(); ) {
+        int index = 0;
+        while (index < text.length()) {
             int codePoint = text.codePointAt(index);
             width += Math.max(0, WCWidth.wcwidth(codePoint));
             index += Character.charCount(codePoint);
@@ -453,17 +455,57 @@ public final class TuiLayout {
         }
         int total = lines.size();
         if (total <= height) {
-            var filled = new ArrayList<AttributedString>(height);
-            for (var line : lines) {
-                filled.add(line.text);
-            }
-            var blank = new AttributedString(" ".repeat(Math.max(0, width)));
-            while (filled.size() < height) {
-                filled.add(blank);
-            }
-            return filled;
+            return filledToHeight(lines, width, height);
         }
-        int selected = Math.max(0, screen.selectedIndex());
+        int offset = windowOffset(lines, Math.max(0, screen.selectedIndex()), height, total);
+
+        var view = new ArrayList<AttributedString>(height);
+        boolean indicators = height >= 3;
+        int inner = indicators ? height - 2 : height;
+        if (indicators) {
+            int above = rowsAbove(lines, offset);
+            view.add(new AttributedString(pad(above > 0
+                                ? indicator("operator.overview.more_above", above) : "", width)));
+        }
+        for (int i = 0; i < inner; i++) {
+            view.add(lines.get(offset + i).text);
+        }
+        if (indicators) {
+            int below = rowsBelow(lines, offset + inner, total);
+            view.add(new AttributedString(pad(below > 0
+                                ? indicator("operator.overview.more_below", below) : "", width)));
+        }
+        return view;
+    }
+
+    /**
+     * @param lines  the body's lines
+     * @param width  the columns of a line
+     * @param height the lines the body holds
+     * @return the body filled with blank lines to exactly {@code height} lines
+     */
+    private static List<AttributedString> filledToHeight(List<BodyLine> lines, int width, int height) {
+        var filled = new ArrayList<AttributedString>(height);
+        for (var line : lines) {
+            filled.add(line.text);
+        }
+        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
+        while (filled.size() < height) {
+            filled.add(blank);
+        }
+        return filled;
+    }
+
+    /**
+     * The first line of the window the body shows, the selection fitted into it.
+     *
+     * @param lines    the body's lines
+     * @param selected the selected row
+     * @param height   the lines the body holds
+     * @param total    the lines the body has
+     * @return the index of the first line the window shows
+     */
+    private static int windowOffset(List<BodyLine> lines, int selected, int height, int total) {
         int start = 0;
         for (int i = 0; i < total; i++) {
             if (lines.get(i).rowIndex == selected) {
@@ -487,23 +529,7 @@ public final class TuiLayout {
             offset = start;
         }
         // More lines than the body holds: the window of inner lines always lies inside them.
-        offset = Math.clamp(offset, 0, total - inner);
-
-        var view = new ArrayList<AttributedString>(height);
-        if (indicators) {
-            int above = rowsAbove(lines, offset);
-            view.add(new AttributedString(pad(above > 0
-                                ? indicator("operator.overview.more_above", above) : "", width)));
-        }
-        for (int i = 0; i < inner; i++) {
-            view.add(lines.get(offset + i).text);
-        }
-        if (indicators) {
-            int below = rowsBelow(lines, offset + inner, total);
-            view.add(new AttributedString(pad(below > 0
-                                ? indicator("operator.overview.more_below", below) : "", width)));
-        }
-        return view;
+        return Math.clamp(offset, 0, total - inner);
     }
 
     private String indicator(String key, int count) {

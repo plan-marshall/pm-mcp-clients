@@ -30,16 +30,16 @@ import de.planmarshall.api.runtime.RuntimeTokenFile;
  * <p>
  * It is the only directory a CLI binary writes; it holds no answer, secret, or state of the runtime,
  * and the runtime never reads it (PM-SEC-4).
+ *
+ * @param root the state directory root
  */
-public final class OperatorStateDirectory {
-
-    private final Path root;
+public record OperatorStateDirectory(Path root) {
 
     /**
      * @param root the state directory root
      */
-    public OperatorStateDirectory(Path root) {
-        this.root = Objects.requireNonNull(root, "root").toAbsolutePath().normalize();
+    public OperatorStateDirectory {
+        root = Objects.requireNonNull(root, "root").toAbsolutePath().normalize();
     }
 
     /**
@@ -58,13 +58,6 @@ public final class OperatorStateDirectory {
             dir = userHome.resolve(".local/state/pm-operator");
         }
         return new OperatorStateDirectory(dir);
-    }
-
-    /**
-     * @return the state directory root
-     */
-    public Path root() {
-        return root;
     }
 
     /**
@@ -96,7 +89,7 @@ public final class OperatorStateDirectory {
             try {
                 Files.createDirectory(root, PosixFilePermissions.asFileAttribute(RuntimeTokenFile.DIRECTORY_MODE));
                 setDirectoryPermissions(root);
-            } catch (FileAlreadyExistsException e) {
+            } catch (FileAlreadyExistsException _) {
                 // created concurrently
             }
         }
@@ -117,7 +110,7 @@ public final class OperatorStateDirectory {
             try {
                 Files.createFile(file, PosixFilePermissions.asFileAttribute(RuntimeTokenFile.FILE_MODE));
                 setFilePermissions(file);
-            } catch (FileAlreadyExistsException e) {
+            } catch (FileAlreadyExistsException _) {
                 // created concurrently
             }
         }

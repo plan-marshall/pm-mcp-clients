@@ -61,7 +61,7 @@ public record TuiMenu(@Nullable String subjectRowId, List<TuiMenuEntry> entries,
      * @return the same menu with the selection moved, stopping at the edges
      */
     public TuiMenu move(int delta) {
-        int next = (int) Math.clamp((long) selectedIndex + delta, 0, entries.size() - 1);
+        int next = Math.clamp((long) selectedIndex + delta, 0, entries.size() - 1);
         return new TuiMenu(subjectRowId, entries, next);
     }
 

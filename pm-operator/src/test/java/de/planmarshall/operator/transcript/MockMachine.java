@@ -35,7 +35,7 @@ final class MockMachine {
     static void recordLiveRuntime(MockRuntime runtime) throws IOException {
         var self = ProcessHandle.current();
         var start = self.info().startInstant().orElseThrow();
-        var record = "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}";
-        Files.writeString(runtime.paths().runtimeRecord(), record, StandardCharsets.UTF_8);
+        var recordJson = "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}";
+        Files.writeString(runtime.paths().runtimeRecord(), recordJson, StandardCharsets.UTF_8);
     }
 }
