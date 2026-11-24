@@ -57,6 +57,7 @@ test.describe('Work list column and navigation (PLAN-144 D5)', () => {
 
     // From epic, Up leads to the project's level of Running work
     const epicUpLink = page.getByTestId('work-list-column').getByTestId('up-link');
+    await expect(epicUpLink).toBeVisible();
     await expect(epicUpLink).toContainText('pm-mcp-clients');
     await expect(epicUpLink).toHaveAttribute('href', '/overview?project=pm-mcp-clients');
 

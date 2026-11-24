@@ -360,8 +360,6 @@
     return $runtimeStore.selectedReportDetailPlanId ?? null;
   }
 
-  /** Leaves the detail and returns to the list, clearing the plan from the address bar. */
-
   // The reports route stays the same while its detail changes (a header visit to Reports, the
   // browser's back between two reports). Follow the store so the view does not keep a plan the
   // address no longer names.
