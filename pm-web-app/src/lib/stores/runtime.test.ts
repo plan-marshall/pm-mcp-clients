@@ -1752,6 +1752,42 @@ describe('the decision announcer', () => {
     expect(window.location.pathname).toBe('/reports/rep-2');
   });
 
+  it('attributes a deletion only to the delete decision of the same job (D2)', async () => {
+    // Arrange: the client saw a deletion decision for one job
+    const absent = Object.assign(new Error('target_not_found'), { status: 404 });
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0001',
+      decision: 'delete',
+      who: 'the console',
+      decided_at: '2026-10-14T14:12:00Z',
+    });
+
+    // Act: another job ends, and a report it deleted is on screen
+    window.history.pushState(null, '', '/reports/rep-9');
+    adoptRouteFromLocation();
+    vi.spyOn(apiClient, 'getReport').mockRejectedValue(absent);
+    handleRuntimeEvent('cleanup.done', { job_id: 'cln-0002' });
+
+    // Assert: no other job's deletion is attributed to that decision
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
+    expect(get(runtimeStore).quietNavigationNotice).toContain('rep-9 no longer exists');
+
+    // And a decision that deletes nothing names no cleanup either
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0003',
+      decision: 'remind',
+      who: 'the console',
+      decided_at: '2026-10-15T09:00:00Z',
+    });
+    window.history.pushState(null, '', '/reports/rep-10');
+    adoptRouteFromLocation();
+    runtimeStore.update((s) => ({ ...s, quietNavigationNotice: null }));
+    handleRuntimeEvent('cleanup.done', { job_id: 'cln-0003' });
+
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
+    expect(get(runtimeStore).quietNavigationNotice).toContain('rep-10 no longer exists');
+  });
+
   it('opens project onboarding with a dedicated address and restores run on reload', () => {
     openProjectOnboarding('ent-cui');
     expect(get(runtimeStore).currentRoute).toBe('project-onboarding');

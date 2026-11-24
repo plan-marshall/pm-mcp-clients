@@ -1338,8 +1338,14 @@ const LIFECYCLE_EVENTS = new Set([
 /** The cleanup events the store follows: who decided the deletion, and when it is done. */
 const CLEANUP_EVENTS = new Set(['cleanup.decided', 'cleanup.done']);
 
-/** Who decided the cleanup and when, as `cleanup.decided` announced it; `null` when unknown. */
-let cleanupDecision: { who: string; at: string } | null = null;
+/**
+ * The deletion a cleanup announced: its job, who decided it and when.
+ *
+ * It is bound to the job, so a `cleanup.done` whose decision this client did not see is not
+ * attributed to an earlier cleanup, and a decision that deletes nothing (`remind`, `ignore`) is
+ * not kept at all.
+ */
+let cleanupDeletion: { jobId: string; who: string; at: string } | null = null;
 
 /** The object the address shows, as a re-probe after a cleanup names it. */
 interface ShownObject {
@@ -1459,20 +1465,23 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
  * the runtime no longer serves it, falls back to the target the specification names
  * (`cleanup.adoc#deleting`), with the cleanup's own sentence.
  */
-async function fallBackFromCleanup(): Promise<void> {
+async function fallBackFromCleanup(jobId: string | null): Promise<void> {
   const shown = shownObjectOf(get(runtimeStore), currentAddress());
   if (!shown) return;
+  const deletion = cleanupDeletion && cleanupDeletion.jobId === jobId ? cleanupDeletion : null;
   const target = await deletionTargetOf(shown);
   if (!target) return;
   // The address may have moved while the read ran: a stale probe never navigates.
   const stillShown = shownObjectOf(get(runtimeStore), currentAddress());
   if (stillShown?.kind !== shown.kind || stillShown.id !== shown.id) return;
   const locale = get(currentLocale);
-  const notice = cleanupDecision
+  // The cleanup's sentence needs both who and when; a runtime that reports neither leaves the
+  // generic "no longer exists" notice rather than a sentence with an invented time.
+  const notice = deletion
     ? translate(locale, 'system.cleanup.item_deleted', {
         item: shown.name,
-        who: cleanupDecision.who,
-        time: formatTime(cleanupDecision.at, 'short', locale),
+        who: deletion.who,
+        time: formatTime(deletion.at, 'short', locale),
       })
     : translate(locale, 'web.nav.gone', { name: shown.name });
   if (target.kind === 'ended-work') {
@@ -1494,15 +1503,23 @@ async function fallBackFromCleanup(): Promise<void> {
   announceNavigation(notice);
 }
 
-/** A decision for the cleanup: remembers who decided, then follows the deletion once it is done. */
+/** A decision for the cleanup: remembers a deletion, then follows it once the job is done. */
 function handleCleanupEvent(event: string, data: unknown): void {
   if (event === 'cleanup.decided') {
-    const payload = (data || {}) as { who?: string; decided_at?: string };
-    cleanupDecision =
-      payload.who && payload.decided_at ? { who: payload.who, at: payload.decided_at } : null;
+    const payload = (data || {}) as {
+      job_id?: string;
+      decision?: string;
+      who?: string;
+      decided_at?: string;
+    };
+    cleanupDeletion =
+      payload.job_id && payload.decision === 'delete' && payload.who && payload.decided_at
+        ? { jobId: payload.job_id, who: payload.who, at: payload.decided_at }
+        : null;
     return;
   }
-  void fallBackFromCleanup();
+  const payload = (data || {}) as { job_id?: string };
+  void fallBackFromCleanup(payload.job_id ?? null);
 }
 
 export function handleRuntimeEvent(event: string, data: unknown): void {
