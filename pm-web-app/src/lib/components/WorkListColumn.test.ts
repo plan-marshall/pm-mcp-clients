@@ -264,6 +264,38 @@ describe('WorkListColumn component', () => {
     );
   });
 
+  it('lists the epics and the epic-less plans for a plan without an epic (D4)', async () => {
+    // Arrange: one plan belongs to an epic, one to none, and one names an epic the detail omits
+    const detail: ProjectDetailResponse = {
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        planRow('fix-relay', 'Fix Relay Transport', 'relay-hardening'),
+        planRow('loose-plan', 'Loose Plan'),
+        planRow('orphan-plan', 'Orphan Plan', 'retired-epic'),
+      ],
+      epics: [epicRow('relay-hardening', 'Relay Hardening', [])],
+      alongside_landings: [],
+    };
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(detail);
+
+    // Act: the open object is the epic-less plan
+    render(WorkListColumn, { projectId: 'pm-mcp-clients', currentPlanId: 'loose-plan' });
+
+    // Assert: the project's epics, the epic-less plan and the plan whose epic is not served
+    await waitFor(() => expect(screen.getByTestId('work-list-items')).toBeInTheDocument());
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Loose Plan');
+    expect(items[1]).toHaveTextContent('Orphan Plan');
+    expect(items[2]).toHaveTextContent('Relay Hardening');
+    expect(screen.getByRole('link', { name: /Loose Plan/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
   it('renders UpLink in the column head when a parent exists (D5)', async () => {
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(mockDetail);
     runtime.openPlanView('fix-relay');

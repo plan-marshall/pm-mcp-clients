@@ -174,8 +174,11 @@
       return [...siblings.values()].map(toPlanItem);
     }
 
+    // The project's epics, and the plans that belong to none — a plan whose epic is not served
+    // beside it would otherwise be visible in no column, so it is listed here.
+    const servedEpics = new Set(epics.map((epic) => epic.epic_id));
     return [
-      ...plans.filter((plan) => !plan.epic_id).map(toPlanItem),
+      ...plans.filter((plan) => !plan.epic_id || !servedEpics.has(plan.epic_id)).map(toPlanItem),
       ...epics.map(toEpicItem),
     ];
   });
