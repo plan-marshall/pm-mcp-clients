@@ -174,13 +174,14 @@
 
   // A footer that goes away takes the act that held the focus with it. The focus then returns to the
   // dialog box, which stays mounted, instead of falling to the page behind the dialog. It runs after
-  // the update, because the earlier pass still holds the control that is about to be removed.
+  // the update, because the earlier pass still holds the control that is about to be removed, and
+  // only on the dialog on top: a background dialog never takes the focus from the one opened from it.
   afterUpdate(() => {
-    if (!open || footer) {
+    if (!open || footer || panel === undefined || openPanels[openPanels.length - 1] !== panel) {
       return;
     }
     const active = typeof document === 'undefined' ? null : document.activeElement;
-    if (panel !== undefined && (active === null || !panel.contains(active))) {
+    if (active === null || !panel.contains(active)) {
       panel.focus();
     }
   });

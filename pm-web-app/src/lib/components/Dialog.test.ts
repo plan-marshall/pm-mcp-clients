@@ -320,6 +320,32 @@ describe('Dialog', () => {
     expect(screen.queryByRole('dialog', { name: 'Inner' })).not.toBeInTheDocument();
   });
 
+  it('leaves the focus in the dialog on top when the one below draws no footer', async () => {
+    const props = {
+      outerTitle: 'Outer',
+      innerTitle: 'Inner',
+      openInnerLabel: 'Open inner',
+      outerActLabel: 'Outer act',
+      innerFirstLabel: 'Inner first',
+      innerLastLabel: 'Inner last',
+      outerFooter: false,
+    };
+    const { rerender } = render(NestedDialogFixture, { props });
+    await fireEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    const inner = await screen.findByRole('dialog', { name: 'Inner' });
+    const first = within(inner).getByRole('button', { name: 'Inner first' });
+    first.focus();
+
+    // The dialog below re-renders (a title update): its footer recovery must not reach past the
+    // dialog on top.
+    await rerender({ ...props, outerTick: 1 });
+
+    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole('dialog', { name: /^Outer/ }).querySelector('.dialog'),
+    );
+  });
+
   it('does not take the focus from a child that takes it as it mounts', async () => {
     render(DialogWithAutofocusFixture, { props: { label: 'Name' } });
     await tick();
