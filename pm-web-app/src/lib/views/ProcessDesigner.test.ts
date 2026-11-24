@@ -1581,6 +1581,32 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     expect(screen.getByTestId('unit-remove-phase-6-finalize')).toBeInTheDocument();
   });
 
+  it('retires a comparison still in flight when another unit replaces the text', async () => {
+    const workflows = vi.spyOn(apiClient, 'getWorkflows').mockResolvedValueOnce(units);
+    let resolveUnits: (value: WorkflowUnit[]) => void = () => {};
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    workflows.mockImplementationOnce(
+      () =>
+        new Promise<WorkflowUnit[]>((resolve) => {
+          resolveUnits = resolve;
+        }),
+    );
+    await openPlacement();
+    const dialog = screen.getByTestId('place-dialog');
+    await fireEvent.click(within(dialog).getAllByRole('radio')[1]);
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // Another unit opens while the comparison runs: the answer belongs to the closed dialogue.
+    await fireEvent.click(screen.getByTestId('unit-open-epic'));
+    await waitFor(() => expect(screen.getByTestId('designer-unit')).toHaveTextContent('epic'));
+
+    resolveUnits(units);
+    await waitFor(() => expect(screen.queryByTestId('place-dialog')).toBeNull());
+    expect(screen.queryByTestId('designer-diff')).not.toBeInTheDocument();
+  });
+
   it('opens the place dialog at the wide size the difference needs, and the dialog owns that width', async () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));

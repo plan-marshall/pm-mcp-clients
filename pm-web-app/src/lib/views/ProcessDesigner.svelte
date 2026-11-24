@@ -433,6 +433,9 @@
    * @param unit the unit to open
    */
   function openUnit(unit: WorkflowUnit): void {
+    // Another unit or scope replaces the text the open dialogue was for: its comparison is retired
+    // with the dialogue, so no answer in flight can reopen it against the new unit.
+    retireComparison();
     const level =
       unit.levels.find((entry) => entry.level === unit.level_in_force) ?? unit.levels[0];
     unitName = unit.name;
@@ -963,12 +966,16 @@
     placeStage = 'conflict';
   }
 
+  /** Retires a comparison still in flight: its answer belongs to a dialogue nobody is looking at. */
+  function retireComparison(): void {
+    placeCompareToken += 1;
+    isComparing = false;
+  }
+
   /** Closes the placement dialogue and returns to the editor. */
   function closePlace(): void {
     if (isPlacing) return;
-    // A comparison still in flight belongs to the dialogue being closed: its answer is retired.
-    placeCompareToken += 1;
-    isComparing = false;
+    retireComparison();
     placeStage = 'idle';
     landingError = '';
     landingSteps = [];
