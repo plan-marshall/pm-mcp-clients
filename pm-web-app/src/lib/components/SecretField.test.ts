@@ -231,6 +231,9 @@ describe('SecretField', () => {
 
       expect(input.value).toBe('tok-new');
       expect(input.type).toBe('password');
+      // The refused store is still reported, even though the newer input stays: the person is told
+      // the secret was not stored.
+      expect(screen.getByText('The secret was not stored. Try again.')).toBeInTheDocument();
     });
 
     it('does not restore an older rejected secret after a newer store succeeded', async () => {

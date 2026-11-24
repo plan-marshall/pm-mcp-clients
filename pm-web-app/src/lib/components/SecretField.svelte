@@ -151,10 +151,14 @@
     try {
       await onstore?.(secretToStore);
     } catch {
-      if (generation === storeGeneration && !value) {
-        value = secretToStore;
-        revealed = false;
+      if (generation === storeGeneration) {
+        // The store that was refused is the current one: report it even when newer typing means
+        // there is nothing to put back, or the rejection stays silent.
         storeFailed = true;
+        if (!value) {
+          value = secretToStore;
+          revealed = false;
+        }
       }
     }
   }

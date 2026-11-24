@@ -1395,7 +1395,8 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
 
     const dialog = await screen.findByTestId('confirm-dialog');
     expect(dialog).toHaveTextContent(/Remove .* of phase-6-finalize\?/);
-    expect(dialog).toHaveTextContent('Then in force: the compiled default.');
+    // The unit's only copy is the project's: nothing below it holds the unit.
+    expect(dialog).toHaveTextContent('No copy is in force afterwards.');
     expect(removeSpy).not.toHaveBeenCalled();
 
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
@@ -1430,6 +1431,8 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     const dialog = screen.getByTestId('place-dialog');
     await waitFor(() => expect(dialog).toHaveTextContent('Placing phase-6-finalize'));
     expect(dialog.querySelector('.dialog__footer')).toBeNull();
+    // The act that held the focus went away with the footer: the focus returns to the dialog box.
+    expect(document.activeElement).toBe(dialog);
 
     await fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -1502,6 +1505,44 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     const icon = screen.getByTestId('frontmatter-icon');
     expect(icon).toHaveAttribute('id', 'designer-icon');
     expect(screen.getByLabelText('Icon')).toBe(icon);
+  });
+
+  it('binds the comparison to the target it was asked for, so a later choice cannot place elsewhere', async () => {
+    const placeSpy = vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'pm-mcp-clients',
+      status: 'landed',
+      steps: ['written'],
+      digest: 'sha256:placed',
+    });
+    const workflows = vi.spyOn(apiClient, 'getWorkflows').mockResolvedValueOnce(units);
+    let resolveUnits: (value: WorkflowUnit[]) => void = () => {};
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    workflows.mockImplementationOnce(
+      () =>
+        new Promise<WorkflowUnit[]>((resolve) => {
+          resolveUnits = resolve;
+        }),
+    );
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    const dialog = screen.getByTestId('place-dialog');
+    await fireEvent.click(within(dialog).getAllByRole('radio')[1]);
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // The radios hold while the comparison runs: the choice cannot drift under the answer.
+    expect(within(dialog).getAllByRole('radio')[0]).toBeDisabled();
+    resolveUnits(units);
+    await screen.findByTestId('designer-diff');
+
+    await fireEvent.click(screen.getByTestId('place-confirm'));
+    await waitFor(() => expect(placeSpy).toHaveBeenCalled());
+    // The placement goes to the target the difference was computed for.
+    expect(placeSpy.mock.calls[0][0]).toBe('pm-mcp-clients');
   });
 
   it('opens the place dialog at the wide size the difference needs, and the dialog owns that width', async () => {

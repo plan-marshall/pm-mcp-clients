@@ -195,10 +195,13 @@ describe('Dialog', () => {
     expect(screen.getByRole('dialog')).not.toHaveClass('dialog--wide');
   });
 
-  it('draws no footer area for a stage that offers no act', () => {
-    render(Dialog, { props: { open: true, title: 'No act', footer: false } });
+  it('draws no footer area for a stage that offers no act, and keeps the focus in the dialog then', async () => {
+    render(DialogFixture, { props: { ...FIXTURE, footer: false } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
 
-    expect(screen.getByRole('dialog').querySelector('.dialog__footer')).toBeNull();
+    expect(dialog.querySelector('.dialog__footer')).toBeNull();
+    expect(document.activeElement).toBe(dialog);
   });
 
   it('reports a close even when the view keeps the dialog open', async () => {

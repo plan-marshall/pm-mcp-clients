@@ -171,6 +171,15 @@
     window.addEventListener('keydown', onKeydown, true);
     return () => window.removeEventListener('keydown', onKeydown, true);
   });
+
+  // A footer that goes away takes the act that held the focus with it. The focus then returns to the
+  // dialog box, which stays mounted, instead of falling to the page behind the dialog.
+  $: if (open && !footer) {
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    if (panel === undefined || active === null || !panel.contains(active)) {
+      panel?.focus();
+    }
+  }
 </script>
 
 {#if open}

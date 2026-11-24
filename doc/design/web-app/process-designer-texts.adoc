@@ -402,6 +402,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Remove it
 |Entferne sie
 
+|`designer.remove.none`
+|No copy is in force afterwards.
+|Danach gilt keine Kopie mehr.
+
 |`designer.phone.note`
 |Edit and place it on a wider screen.
 |Bearbeite und platziere sie auf einem breiteren Bildschirm.

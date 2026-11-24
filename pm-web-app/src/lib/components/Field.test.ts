@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/svelte';
@@ -92,9 +93,18 @@ describe('Field', () => {
       },
     ];
 
+    // The population is not hand-picked: every field component of the directory has to be in it, so
+    // a new one cannot be added to the design and left out of this guard.
+    const rendered = new Set(fields.map((field) => `${field.name}.svelte`));
+    const present = fs
+      .readdirSync(__dirname)
+      .filter((name) => (name.endsWith('Field.svelte') && name !== 'FieldError.svelte') ||
+        name === 'FilterInput.svelte');
+    expect(present.filter((name) => !rendered.has(name))).toEqual([]);
+
     for (const field of fields) {
-      const rendered = field.draw();
-      const control = rendered.container.querySelector('input, textarea, select') as
+      const drawn = field.draw();
+      const control = drawn.container.querySelector('input, textarea, select') as
         | HTMLElement
         | null;
       if (field.name !== 'Field') {
@@ -113,7 +123,7 @@ describe('Field', () => {
           ).toContain('var(--focus-ring)');
         }
       }
-      rendered.unmount();
+      drawn.unmount();
     }
   });
 });

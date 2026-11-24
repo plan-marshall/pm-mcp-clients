@@ -148,6 +148,8 @@
   let isComparing = $state(false);
   /** The comparison the open dialogue belongs to; a dismissal retires the answer in flight. */
   let placeCompareToken = 0;
+  /** The target the shown difference was computed for; the placing uses that one. */
+  let placeComparedTarget = $state<string | null>(null);
   /** The unit a removal asks about, kept here so the confirmation can name it. */
   let pendingRemoval = $state<WorkflowUnit | null>(null);
   /** Whether the confirmed removal runs, which holds its dialog open. */
@@ -782,6 +784,7 @@
   /** Opens the placement's target choice; _Place…_ is enabled only for a valid, current result. */
   function openPlace(): void {
     placeTargetProject = projectId;
+    placeComparedTarget = null;
     placeStage = 'target';
     landingError = '';
     landingSteps = [];
@@ -789,12 +792,16 @@
   }
 
   /**
+   * @param target the project the units are read for, or null for this machine's scope
    * @returns the units of the level the operator chose to place into
    */
-  async function placementUnits(): Promise<WorkflowUnit[]> {
-    if ((placeTargetProject ?? null) === (projectId ?? null)) return units;
-    return apiClient.getWorkflows(placeTargetProject);
+  async function placementUnits(target: string | null = placeTargetProject): Promise<WorkflowUnit[]> {
+    if ((target ?? null) === (projectId ?? null)) return units;
+    return apiClient.getWorkflows(target);
   }
+
+  /** The levels a unit is in force from, the first that has it: the design's own order. */
+  const LEVEL_ORDER = ['project', 'machine', 'default'] as const;
 
   /**
    * Reads the unit's text at the chosen level, falling back to the level in force there.
@@ -803,15 +810,19 @@
    * force; the comparison is against that text, and the label names the level it used.
    *
    * @param targetUnits the units of the chosen scope
+   * @param target the project the comparison is for, or null for this machine
    * @returns the baseline text and the level it came from
    */
-  function baselineOf(targetUnits: WorkflowUnit[]): {
+  function baselineOf(
+    targetUnits: WorkflowUnit[],
+    target: string | null = placeTargetProject,
+  ): {
     text: string;
     level: string;
     digest: string | null;
   } {
     const existing = targetUnits.find((unit) => unit.name === unitName);
-    const wanted = placeTargetProject ? 'project' : 'machine';
+    const wanted = target ? 'project' : 'machine';
     if (!existing) return { text: '', level: wanted, digest: null };
     const exact = existing.levels.find((entry) => entry.level === wanted);
     if (exact) return { text: exact.text, level: wanted, digest: exact.digest };
@@ -828,22 +839,26 @@
    *
    * The comparison awaits the chosen scope's units. The person can dismiss the dialogue while that
    * runs, so the stage it sets is guarded by the dialogue still being open: an answer that arrives
-   * after Escape never reopens the dialogue it belonged to.
+   * after Escape never reopens the dialogue it belonged to. It also pins the target it was asked
+   * for: the difference and the digest belong to that target, so a later change of the choice
+   * cannot place the draft into another one behind a difference computed for the first.
    */
   async function compareForPlacement(): Promise<void> {
     if (isComparing) return;
     // Every comparison carries the dialogue it belongs to: a dismissal bumps the token, so an
     // answer that arrives afterwards is dropped instead of reopening a dialogue nobody sees.
     const token = ++placeCompareToken;
+    const target = placeTargetProject;
     isComparing = true;
     landingError = '';
     placeDiff = null;
     placeOutcomeUnknown = false;
     try {
-      const targetUnits = await placementUnits();
+      const targetUnits = await placementUnits(target);
       if (token !== placeCompareToken) return;
-      const baseline = baselineOf(targetUnits);
+      const baseline = baselineOf(targetUnits, target);
       placeAgainst = $t(`designer.level.${baseline.level}`);
+      placeComparedTarget = target;
       placeDigest = baseline.digest;
       placeDiff = diffLines(baseline.text, text);
     } catch (err: unknown) {
@@ -873,7 +888,7 @@
 
   /** @returns the path a placing writes, for the progress lines */
   function targetPath(): string {
-    return placeTargetProject ? `.marshall/config/${unitName}.pmwf` : `workflows/${unitName}.pmwf`;
+    return placeComparedTarget ? `.marshall/config/${unitName}.pmwf` : `workflows/${unitName}.pmwf`;
   }
 
   /**
@@ -894,7 +909,7 @@
     landingSteps = [];
     placeStage = 'progress';
     try {
-      const placed = await apiClient.placeWorkflowUnit(placeTargetProject, unitName, {
+      const placed = await apiClient.placeWorkflowUnit(placeComparedTarget, unitName, {
         text,
         unit_name: unitName,
         unit_kind: unitKind,
@@ -971,17 +986,19 @@
     pendingRemoval = unit;
   }
 
-  /** @returns the level that is in force once the asked-for removal has landed */
+  /**
+   * @returns the sentence the removal confirmation says about what stays in force: the level the
+   *          next one below takes over from, or that no copy remains
+   */
   function levelAfterRemoval(): string {
     const unit = pendingRemoval;
-    if (!unit) return $t('designer.level.default');
+    if (!unit) return $t('designer.remove.none');
     // In force is the first level that has the unit, the project's copy first: the removal takes
     // one level away, so every level above it is unchanged and the next one below takes over.
-    const order = ['project', 'machine', 'default'];
     const removed = projectId ? 'project' : 'machine';
-    const lower = order.slice(order.indexOf(removed) + 1);
+    const lower = LEVEL_ORDER.slice(LEVEL_ORDER.indexOf(removed) + 1);
     const next = lower.find((level) => unit.levels.some((entry) => entry.level === level));
-    return $t(`designer.level.${next ?? 'default'}`);
+    return next ? $t('designer.remove.then', { level: $t(`designer.level.${next}`) }) : $t('designer.remove.none');
   }
 
   /** Removes the unit the confirmation named, once the operator confirmed it. */
@@ -1455,7 +1472,7 @@
     level: $t(projectId ? 'designer.level.project' : 'designer.level.machine'),
     unit: pendingRemoval?.name ?? '',
   })}
-  consequences={[$t('designer.remove.then', { level: levelAfterRemoval() })]}
+  consequences={[levelAfterRemoval()]}
   actionLabel={$t('designer.remove.confirm')}
   cancelLabel={$t('common.action.cancel')}
   busy={isRemoving}
@@ -1492,6 +1509,7 @@
           type="radio"
           name="placeTarget"
           checked={placeTargetProject === null}
+          disabled={isComparing}
           onchange={() => {
             placeTargetProject = null;
           }}
@@ -1507,6 +1525,7 @@
             type="radio"
             name="placeTarget"
             checked={placeTargetProject === project.project_id}
+            disabled={isComparing}
             onchange={() => {
               placeTargetProject = project.project_id;
             }}

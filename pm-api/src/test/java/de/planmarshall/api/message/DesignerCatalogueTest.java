@@ -131,6 +131,10 @@ class DesignerCatalogueTest {
                 "designer.remove.title",
                 "designer.remove.then",
                 "designer.remove.confirm",
+                "designer.place.unknown",
+                "designer.plan.open",
+                "designer.plan.open.title",
+                "designer.remove.none",
                 "designer.phone.note"
         };
 
