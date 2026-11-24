@@ -801,7 +801,7 @@
     <WorkListColumn
       projectId={planProjectId}
       currentPlanId={planId}
-      parentEpicId={plan?.epic?.epic_id ?? null}
+      parentEpicId={plan?.plan_id === planId ? (plan?.epic?.epic_id ?? null) : null}
     />
   {/if}
   <div class="plan-view" data-testid="plan-view">

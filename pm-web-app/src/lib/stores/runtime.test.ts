@@ -1659,8 +1659,8 @@ describe('the decision announcer', () => {
     expect(get(runtimeStore).quietNavigationNotice ?? '').not.toContain('no longer exists');
   });
 
-  it('falls back to the target a deletion names once the cleanup is done (D2)', async () => {
-    // Arrange: the cleanup decided who deletes, and the shown objects are gone from the runtime
+  it('falls back to the ended work for a deleted plan, with the cleanup sentence (D2)', async () => {
+    // Arrange: the cleanup decided who deletes, and the plan is gone from the runtime
     const absent = Object.assign(new Error('target_not_found'), { status: 404 });
     handleRuntimeEvent('cleanup.decided', {
       job_id: 'cln-0001',
@@ -1668,8 +1668,6 @@ describe('the decision announcer', () => {
       who: 'the console',
       decided_at: '2026-10-14T14:12:00Z',
     });
-
-    // ... a plan of a project
     window.history.pushState(null, '', '/plans/pln-1');
     adoptRouteFromLocation();
     runtimeStore.update((s) => ({
@@ -1692,13 +1690,28 @@ describe('the decision announcer', () => {
     expect(get(runtimeStore).quietNavigationNotice).toContain(
       'Fix Relay was deleted by the cleanup (by the console,',
     );
+  });
 
-    // ... an epic of the same project
+  it('takes the deleted epic to the epic’s own project, not the cached plan’s (D2)', async () => {
+    // Arrange: a plan of another project is still cached when the epic is on screen
+    const absent = Object.assign(new Error('target_not_found'), { status: 404 });
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0001',
+      decision: 'delete',
+      who: 'the console',
+      decided_at: '2026-10-14T14:12:00Z',
+    });
     window.history.pushState(null, '', '/epics/ep-1');
     adoptRouteFromLocation();
     runtimeStore.update((s) => ({
       ...s,
       lensMode: null,
+      lensProject: null,
+      currentProcessTree: {
+        plan_id: 'other-plan',
+        title: 'Other project’s plan',
+        project: { project_id: 'another-project', display_name: 'another-project' },
+      } as unknown as ProcessTree,
       currentEpicResource: {
         epic_id: 'ep-1',
         project_id: 'pm-mcp-clients',
@@ -1707,24 +1720,47 @@ describe('the decision announcer', () => {
     }));
     vi.spyOn(apiClient, 'getEpicResource').mockRejectedValue(absent);
 
+    // Act
     handleRuntimeEvent('cleanup.done', { job_id: 'cln-0001' });
 
+    // Assert: the epic's own project, never the cached plan's
     await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('overview'));
     expect(window.location.search).toBe('?project=pm-mcp-clients&mode=ended');
-    expect(get(runtimeStore).quietNavigationNotice).toContain('UI Overhaul was deleted by the cleanup');
+    expect(get(runtimeStore).quietNavigationNotice).toContain(
+      'UI Overhaul was deleted by the cleanup',
+    );
+  });
 
-    // ... a report, which falls back to its list
+  it('falls back to the reports list for a deleted report, with the cleanup sentence (D2)', async () => {
+    // Arrange
+    const absent = Object.assign(new Error('target_not_found'), { status: 404 });
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0001',
+      decision: 'delete',
+      who: 'the console',
+      decided_at: '2026-10-14T14:12:00Z',
+    });
     window.history.pushState(null, '', '/reports/rep-1');
     adoptRouteFromLocation();
     vi.spyOn(apiClient, 'getReport').mockRejectedValue(absent);
 
+    // Act
     handleRuntimeEvent('cleanup.done', { job_id: 'cln-0001' });
 
+    // Assert
     await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
     expect(window.location.pathname).toBe('/reports');
     expect(get(runtimeStore).quietNavigationNotice).toContain('rep-1 was deleted by the cleanup');
+  });
 
-    // ... and a task, which falls back to its plan
+  it('falls back to its plan for a deleted task, with the cleanup sentence (D2)', async () => {
+    // Arrange
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0001',
+      decision: 'delete',
+      who: 'the console',
+      decided_at: '2026-10-14T14:12:00Z',
+    });
     window.history.pushState(null, '', '/plans/pln-1/tasks/tsk-1');
     adoptRouteFromLocation();
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
@@ -1732,13 +1768,23 @@ describe('the decision announcer', () => {
       nodes: [{ node_id: 'execute', leaf_tasks: [] }],
     } as unknown as ProcessTree);
 
+    // Act
     handleRuntimeEvent('cleanup.done', { job_id: 'cln-0001' });
 
+    // Assert
     await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('plan'));
     expect(window.location.pathname).toBe('/plans/pln-1');
     expect(get(runtimeStore).quietNavigationNotice).toContain('tsk-1 was deleted by the cleanup');
+  });
 
-    // A re-probe that finds the object still there leaves the address where it is
+  it('leaves the address alone when the re-probe still finds the object (D2)', async () => {
+    // Arrange
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0001',
+      decision: 'delete',
+      who: 'the console',
+      decided_at: '2026-10-14T14:12:00Z',
+    });
     window.history.pushState(null, '', '/reports/rep-2');
     adoptRouteFromLocation();
     const present = vi
@@ -1746,9 +1792,11 @@ describe('the decision announcer', () => {
       .mockResolvedValue({ id: 'rep-2', kind: 'completion' } as unknown as ReportItem);
     present.mockClear();
 
+    // Act
     handleRuntimeEvent('cleanup.done', { job_id: 'cln-0001' });
     await vi.waitFor(() => expect(present).toHaveBeenCalled());
 
+    // Assert
     expect(get(runtimeStore).currentRoute).toBe('report');
     expect(window.location.pathname).toBe('/reports/rep-2');
   });

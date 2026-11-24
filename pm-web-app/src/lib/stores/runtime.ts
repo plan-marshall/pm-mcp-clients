@@ -1412,16 +1412,20 @@ type DeletionTarget = { kind: 'ended-work'; project: string | null } | { kind: '
 
 /**
  * @param state the store
- * @returns the project of the object on screen, when the store holds it
+ * @param shown the object the address shows
+ * @returns the project of that object, from a cached resource that names the same object
  */
-function projectOfShownObject(state: RuntimeState): string | null {
-  return (
-    state.currentProcessTree?.project.project_id ??
-    state.currentEpicResource?.project_id ??
-    state.selectedProjectId ??
-    state.lensProject ??
-    null
-  );
+function projectOfShownObject(state: RuntimeState, shown: ShownObject): string | null {
+  const planId = shown.kind === 'task' ? shown.planId : shown.id;
+  const fromPlan =
+    shown.kind === 'epic' || state.currentProcessTree?.plan_id !== planId
+      ? null
+      : state.currentProcessTree.project.project_id;
+  const fromEpic =
+    shown.kind === 'epic' && state.currentEpicResource?.epic_id === shown.id
+      ? state.currentEpicResource.project_id
+      : null;
+  return fromEpic ?? fromPlan ?? state.selectedProjectId ?? state.lensProject ?? null;
 }
 
 /**
@@ -1434,7 +1438,7 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
   const state = get(runtimeStore);
   const endedWork = (): DeletionTarget => ({
     kind: 'ended-work',
-    project: projectOfShownObject(state),
+    project: projectOfShownObject(state, shown),
   });
   try {
     if (shown.kind === 'task' && shown.planId) {
@@ -1463,11 +1467,19 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
  * (`cleanup.adoc#deleting`), with the cleanup's own sentence.
  */
 async function fallBackFromCleanup(jobId: string | null): Promise<void> {
-  const shown = shownObjectOf(get(runtimeStore), currentAddress());
+  const state = get(runtimeStore);
+  const intent = navigationIntent;
+  const epoch = navigationEpochOf();
+  const route = state.currentRoute;
+  const shown = shownObjectOf(state, currentAddress());
   if (!shown) return;
   const deletion = cleanupDeletion?.jobId === jobId ? cleanupDeletion : null;
   const target = await deletionTargetOf(shown);
   if (!target) return;
+  // A navigation that began while the read ran wins, and so does a route the runtime changed on
+  // its own (a closed listener, which has no address of its own).
+  if (intent !== navigationIntent || epoch !== navigationEpochOf()) return;
+  if (get(runtimeStore).currentRoute !== route) return;
   // The address may have moved while the read ran: a stale probe never navigates.
   const stillShown = shownObjectOf(get(runtimeStore), currentAddress());
   if (stillShown?.kind !== shown.kind || stillShown.id !== shown.id) return;
