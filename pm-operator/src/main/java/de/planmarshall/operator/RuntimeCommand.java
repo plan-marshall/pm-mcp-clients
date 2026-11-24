@@ -197,7 +197,7 @@ public final class RuntimeCommand implements Callable<Integer> {
                 }
                 var statusKey = stopNow ? "operator.runtime.status_stopping" : "operator.runtime.status_draining";
                 out.println(MessageCatalogue.get(context.clientEnvironment().locale(), statusKey));
-            } catch (RuntimeUnavailableException e) {
+            } catch (RuntimeUnavailableException _) {
                 var refusal = RuntimeActDialogue.notStopped(context);
                 RuntimeActDialogue.print(context, out, spec.commandLine().getErr(), refusal);
                 return refusal.exitCode();

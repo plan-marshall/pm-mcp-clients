@@ -573,7 +573,7 @@ public final class TuiScreenDriver {
             case MENU_DOWN -> handler.menuNavigate(1);
             case MENU_ENTER -> {
                 var selected = menu.selected();
-                yield selected != null ? handler.menu(selected.trigger()) : true;
+                yield selected == null || handler.menu(selected.trigger());
             }
             default -> handler.menu(binding);
         };

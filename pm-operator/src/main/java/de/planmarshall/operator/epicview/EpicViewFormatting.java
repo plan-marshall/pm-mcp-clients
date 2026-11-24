@@ -38,6 +38,9 @@ public final class EpicViewFormatting {
     private static final String DOT = " \u00b7 ";
     private static final String PULL_REQUEST = "#";
     private static final String RUNNING = "running";
+    private static final String STAGED = "staged";
+    private static final String HELD = "held";
+    private static final String WAITING = "waiting";
     private static final String SCOPE = "scope";
 
     /** The rendered running count when the runtime does not say it. */
@@ -147,7 +150,7 @@ public final class EpicViewFormatting {
             case SCOPE -> "operator.actions.epic.reason.scope";
             case "overlap" -> "operator.actions.epic.reason.overlap";
             case "stale" -> "operator.actions.epic.reason.stale";
-            case "held" -> "operator.actions.epic.reason.held";
+            case HELD -> "operator.actions.epic.reason.held";
             default -> null;
         };
         return message == null ? "" : MessageCatalogue.format(locale, message, params);
@@ -183,9 +186,9 @@ public final class EpicViewFormatting {
             case "shipped" -> "\u2713";
             case RUNNING, "pausing" -> "\u25b6";
             case "paused" -> "\u23f8";
-            case "staged" -> "\u25cb";
+            case STAGED -> "\u25cb";
             case "cancelled", "abandoned", "returned" -> "\u2717";
-            case "held", "waiting" -> "!";
+            case HELD, WAITING -> "!";
             default -> "\u2022";
         };
     }
@@ -250,17 +253,18 @@ public final class EpicViewFormatting {
      */
     public static String statusKey(@Nullable String status) {
         if (status == null || status.isBlank()) {
-            return "staged";
+            return STAGED;
         }
         var key = clean(status).trim().toLowerCase(Locale.ROOT).replace(' ', '_').replace('-', '_');
-        return "waiting_for_you".equals(key) ? "waiting" : key;
+        return "waiting_for_you".equals(key) ? WAITING : key;
     }
 
+    /**
+     * @param status a status as {@link #statusKey(String)} normalises it
+     * @return the key of the status' count line, or {@code null} when the catalogue holds none
+     */
     private static @Nullable String countsKey(String status) {
-        return switch (status) {
-            case "staged", RUNNING, "pausing", "paused", "waiting", "shipped", "cancelled", "abandoned",
-                "held" -> "overview.epic.counts." + status;
-            default -> null;
-        };
+        var key = "overview.epic.counts." + status;
+        return MessageCatalogue.hasKey(key) ? key : null;
     }
 }

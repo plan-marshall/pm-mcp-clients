@@ -458,7 +458,7 @@ class ActionsFullScreenTest {
         return thread;
     }
 
-    private static void select(VirtualScreenTerminal virtual, String title) throws Exception {
+    private static void select(VirtualScreenTerminal virtual, String title) {
         for (int step = 0; step < 8; step++) {
             if (virtual.screen().lines().stream()
                                 .anyMatch(line -> line.startsWith("\u25b6") && line.contains(title))) {

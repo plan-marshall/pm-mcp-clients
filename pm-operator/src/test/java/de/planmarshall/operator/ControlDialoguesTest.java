@@ -279,7 +279,7 @@ class ControlDialoguesTest {
     }
 
     private int dialogue(String kind, String id, String action) throws IOException {
-        return WorkActionDialogue.run(context, new PrintWriter(out), kind, id, action, false, null, null);
+        return WorkActionDialogue.run(context, new PrintWriter(out), kind, id, action, false, null);
     }
 
     @Test
@@ -641,25 +641,25 @@ class ControlDialoguesTest {
         });
         var epic = EpicResource.fromJson(EPIC);
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "auto", false,
-                            epic, null));
+                            new WorkActionDialogue.ActContext(epic, null)));
         assertTrue(out.toString().contains("starts its plans by itself"), out.toString());
 
         out.getBuffer().setLength(0);
         virtual.type("2\n");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
-                            false, epic, null));
+                            false, new WorkActionDialogue.ActContext(epic, null)));
         assertTrue(out.toString().contains("allows 2"), out.toString());
 
         out.getBuffer().setLength(0);
         virtual.type("r\n");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            epic, null));
+                            new WorkActionDialogue.ActContext(epic, null)));
         assertTrue(out.toString().contains("started"), out.toString());
 
         out.getBuffer().setLength(0);
         virtual.type("y\n");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "archive", false,
-                            epic, null));
+                            new WorkActionDialogue.ActContext(epic, null)));
         assertTrue(out.toString().contains("e archived"), out.toString());
     }
 
@@ -844,7 +844,7 @@ class ControlDialoguesTest {
         var noWork = EPIC.replace("\"status\":\"staged\",\"wait_reason\":\"none\"",
                             "\"status\":\"shipped\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(noWork), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(noWork), null)));
         assertTrue(out.toString().contains("No plan can start"), out.toString());
     }
 
@@ -855,7 +855,7 @@ class ControlDialoguesTest {
         virtual.endOfInput();
         var unknown = EPIC_WITHOUT_RUNNING;
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(unknown), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(unknown), null)));
         var text = out.toString();
         assertFalse(text.contains("How many plans run is not known"), text);
         assertTrue(text.contains("next-plan started (? of 3 at once)"), text);
@@ -871,7 +871,7 @@ class ControlDialoguesTest {
         virtual.type("n\n");
         var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         var text = out.toString();
         assertTrue(text.contains("How many plans run is not known"), text);
         assertTrue(text.contains("Left the epic; its scope stays as it is. Nothing was sent."), text);
@@ -886,7 +886,7 @@ class ControlDialoguesTest {
         virtual.type("\nn\n");
         var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         var text = out.toString();
         assertTrue(text.contains("How many plans run is not known"), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
@@ -900,7 +900,7 @@ class ControlDialoguesTest {
         virtual.type("r\n");
         var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
                                                 && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());
@@ -913,7 +913,7 @@ class ControlDialoguesTest {
         var server = serveNext();
         virtual.type("r\n");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(EPIC), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null)));
         var text = out.toString();
         assertTrue(text.contains("e runs 3 of 3 at once"), text);
         assertTrue(text.contains("next-plan started (4 of 4 at once)"), text);
@@ -927,7 +927,7 @@ class ControlDialoguesTest {
     void workActionNextWithoutResource() throws Exception {
         var server = serveNext();
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            null, null));
+                            null));
         var text = out.toString();
         assertTrue(text.contains("The epic is still being read"), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)),
@@ -941,7 +941,7 @@ class ControlDialoguesTest {
         virtual.type("r\n");
         var blocked = EPIC.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         var text = out.toString();
         assertTrue(text.contains("e runs 3 of 3 at once"), text);
         assertTrue(text.contains("next-plan started (4 of 4 at once)"), text);
@@ -957,7 +957,7 @@ class ControlDialoguesTest {
         virtual.type("x\nr\n");
         var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         var text = out.toString();
         assertTrue(text.contains("Type r to raise the scope or n to leave it."), text);
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)
@@ -972,7 +972,7 @@ class ControlDialoguesTest {
         virtual.type("x\nn\n");
         var blocked = EPIC_WITHOUT_RUNNING.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
-                            EpicResource.fromJson(blocked), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(blocked), null)));
         var text = out.toString();
         assertTrue(text.contains("Type r to raise the scope or n to leave it."), text);
         assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)),
@@ -993,7 +993,7 @@ class ControlDialoguesTest {
         });
         var running = EpicResource.fromJson(EPIC.replace("\"auto_start\":false", "\"auto_start\":true"));
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "auto", false,
-                            running, null));
+                            new WorkActionDialogue.ActContext(running, null)));
         assertTrue(out.toString().contains("starts no plan by itself any more"), out.toString());
     }
 
@@ -1009,7 +1009,7 @@ class ControlDialoguesTest {
         });
         virtual.type("many\n");
         assertEquals(1, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
-                            false, EpicResource.fromJson(EPIC), null));
+                            false, new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null)));
         assertTrue(out.toString().contains("Give the number"), out.toString());
     }
 
@@ -1050,7 +1050,7 @@ class ControlDialoguesTest {
         });
         virtual.type("y\n");
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "findings", false,
-                            EpicResource.fromJson(EPIC), null));
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null)));
         assertTrue(out.toString().contains("written to the ledger"), out.toString());
     }
 
@@ -1873,7 +1873,7 @@ class ControlDialoguesTest {
 
     private int decompose(OperatorContext on) throws IOException {
         return WorkActionDialogue.run(on, new PrintWriter(out), "epic", "e", "decompose", false,
-                            EpicResource.fromJson(EPIC), null);
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null));
     }
 
     @Nested
@@ -2129,7 +2129,7 @@ class ControlDialoguesTest {
             script("-" + Generators.integers(1, 50).next() + "\n");
 
             assertEquals(1, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "common_files",
-                                false, EpicResource.fromJson(EPIC), null));
+                                false, new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null)));
 
             assertTrue(out.toString().contains("Give the number"), out.toString());
             assertEquals(List.of(), performed(server));
@@ -2214,7 +2214,7 @@ class ControlDialoguesTest {
             var server = serveActions(EPIC_ACTIONS);
 
             assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "retry", false,
-                                null, null));
+                                null));
 
             assertEquals(List.of("/api/v1/epics/e/actions/retry"), performed(server));
         }
@@ -2249,8 +2249,8 @@ class ControlDialoguesTest {
             var server = serveActions(PLAN_ACTIONS);
 
             assertEquals(StartDialogue.EXIT_MISSING_INPUT,
-                                WorkActionDialogue.run(context, new PrintWriter(out), "plan", "p", "pause", true, null,
-                                                    null));
+                                WorkActionDialogue.run(context, new PrintWriter(out), "plan", "p", "pause",
+                                                    true, null));
 
             assertEquals(List.of(), performed(server));
         }

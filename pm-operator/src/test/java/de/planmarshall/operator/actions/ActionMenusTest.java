@@ -202,7 +202,7 @@ class ActionMenusTest {
         var menu = ActionMenus.epic("en",
                             actions("epic", "running", null, "next", "auto", "common_files", "decompose",
                                                 "findings", "watches", "chat", "archive", "cancel"),
-                            "relay-token-store", List.of(), true, 2, 3, 5, "row");
+                            new ActionMenus.EpicLabels("relay-token-store", List.of(), true, 2, 3, 5), "row");
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.get(0).contains("Next plan: relay-token-store"), labels.toString());
         assertTrue(labels.get(1).contains("Automatic: on"), labels.toString());
@@ -227,7 +227,8 @@ class ActionMenusTest {
         offered.add(ActionAvailability.disabled("archive", "the ledger is landing"));
         var menu = ActionMenus.epic("en",
                             new WorkActions("subject", "epic", "landing", null, null, null, offered),
-                            null, List.of("relay-docs waits: overlap with relay-auth-v2"), false, 0, 0, 0, null);
+                            new ActionMenus.EpicLabels(null, List.of("relay-docs waits: overlap with relay-auth-v2"),
+                                                false, 0, 0, 0), null);
         assertTrue(menu.entries().get(0).label().contains("No plan can start"), menu.entries().get(0).label());
         assertTrue(menu.entries().get(0).label().contains("overlap with relay-auth-v2"));
         assertFalse(menu.entries().get(1).enabled());
@@ -298,7 +299,7 @@ class ActionMenusTest {
     @DisplayName("the review entries of an epic without new findings or open watches carry no count")
     void reviewsWithoutCounts() {
         var menu = ActionMenus.epic("en", actions("epic", "running", null, "findings", "watches"),
-                            "next-plan", List.of(), false, 0, 0, 0, null);
+                            new ActionMenus.EpicLabels("next-plan", List.of(), false, 0, 0, 0), null);
 
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.stream().noneMatch(label -> label.contains("(")), labels.toString());

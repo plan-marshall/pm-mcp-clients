@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -24,7 +25,6 @@ import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -119,7 +119,7 @@ class PmOperatorProcessIT {
                 assertEquals(0, process.awaitExit(WAIT));
             }
         }
-        Collections.sort(samples);
+        samples.sort(null);
         var median = samples.get(samples.size() / 2);
         var pass = median <= BUDGET_MS * 1000;
         var values = new LinkedHashMap<String, Object>();
@@ -219,7 +219,9 @@ class PmOperatorProcessIT {
         try (var process = operator(environment, "runtime", "start")) {
             var started = staged.awaitStart(WAIT);
             assertNotNull(started, "pm-mcpd was not started; stderr: " + process.stderr());
-            Thread.sleep(100);
+            // The round trip stays in flight: while the daemon start is pending, stdout stays empty.
+            await().during(Duration.ofMillis(100)).atMost(Duration.ofSeconds(1))
+                            .until(() -> process.stdout().length == 0);
             assertEquals(0, process.stdout().length, "running is reported only after the round trip");
             fixture.start((request, response) -> response.json(200, PmOperatorTest.STATUS));
 

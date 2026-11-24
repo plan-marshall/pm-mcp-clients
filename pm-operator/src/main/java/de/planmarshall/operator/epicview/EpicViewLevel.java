@@ -84,6 +84,9 @@ public final class EpicViewLevel {
     private static final String NO_CHILDREN = "  ";
     private static final String CHILD_INDENT = "    ";
     private static final String DOT = " \u00b7 ";
+    private static final String STAGED = "staged";
+    private static final String REGISTER_FINDINGS = "findings";
+    private static final String REGISTER_WATCHES = "watches";
 
     private final Map<String, WorkRow> rowsById = new LinkedHashMap<>();
     private final Map<String, String> workstreamOfPlan = new LinkedHashMap<>();
@@ -234,10 +237,10 @@ public final class EpicViewLevel {
         appendSources(rows, locale);
         appendLandings(rows, locale);
         rows.add(registerRow(locale, FINDINGS_ID, "operator.epic.findings",
-                            EpicViewFormatting.registerCounts(locale, epic.findings(), "findings"),
+                            EpicViewFormatting.registerCounts(locale, epic.findings(), REGISTER_FINDINGS),
                             "epic findings", epic.findings().newCount() > 0));
         rows.add(registerRow(locale, WATCHES_ID, "operator.epic.watches",
-                            EpicViewFormatting.registerCounts(locale, epic.watches(), "watches"),
+                            EpicViewFormatting.registerCounts(locale, epic.watches(), REGISTER_WATCHES),
                             "epic watches", false));
         rows.add(tokensRow(locale));
         appendTokens(rows, locale);
@@ -257,7 +260,7 @@ public final class EpicViewLevel {
         if (rowId.startsWith(PLAN_PREFIX)) {
             var planId = rowId.substring(PLAN_PREFIX.length());
             var row = rowsById.get(planId);
-            if (row == null || !"staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+            if (row == null || !STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
                 return null;
             }
             toggle(planId);
@@ -298,7 +301,7 @@ public final class EpicViewLevel {
         for (var workstream : epic.workstreams()) {
             expanded.add(WORKSTREAM_PREFIX + workstream.id());
             for (var row : workstream.rows()) {
-                if ("staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+                if (STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
                     expanded.add(row.planId());
                 }
             }
@@ -329,7 +332,7 @@ public final class EpicViewLevel {
             return false;
         }
         var row = rowsById.get(rowId.substring(PLAN_PREFIX.length()));
-        return row != null && "staged".equals(EpicViewFormatting.statusKey(row.status()));
+        return row != null && STAGED.equals(EpicViewFormatting.statusKey(row.status()));
     }
 
     /**
@@ -350,10 +353,10 @@ public final class EpicViewLevel {
      */
     public @Nullable String registerOf(@Nullable String rowId) {
         if (FINDINGS_ID.equals(rowId)) {
-            return "findings";
+            return REGISTER_FINDINGS;
         }
         if (WATCHES_ID.equals(rowId)) {
-            return "watches";
+            return REGISTER_WATCHES;
         }
         return null;
     }
@@ -365,7 +368,7 @@ public final class EpicViewLevel {
         for (var row : rowsById.values()) {
             var status = EpicViewFormatting.statusKey(row.status());
             var reason = row.waits();
-            if ("staged".equals(status) && (reason == null || "none".equals(reason.value()))) {
+            if (STAGED.equals(status) && (reason == null || "none".equals(reason.value()))) {
                 return row.planId();
             }
         }
@@ -379,7 +382,7 @@ public final class EpicViewLevel {
     public List<String> waitReasons(String locale) {
         var reasons = new ArrayList<String>();
         for (var row : rowsById.values()) {
-            if (!"staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+            if (!STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
                 continue;
             }
             var line = EpicViewFormatting.waitReasonLine(locale, row);
@@ -420,7 +423,12 @@ public final class EpicViewLevel {
     private void appendWorkstreams(List<TuiRow> rows, String locale) {
         for (var workstream : epic.workstreams()) {
             var open = expanded.contains(WORKSTREAM_PREFIX + workstream.id());
-            var marker = workstream.rows().isEmpty() ? NO_CHILDREN : open ? OPEN : CLOSED;
+            String marker;
+            if (workstream.rows().isEmpty()) {
+                marker = NO_CHILDREN;
+            } else {
+                marker = open ? OPEN : CLOSED;
+            }
             var line = marker + MessageCatalogue.format(locale, "operator.epic.workstream",
                                 Map.of("id", EpicViewFormatting.clean(workstream.id()),
                                                     "name", EpicViewFormatting.clean(workstream.name())))
@@ -442,7 +450,7 @@ public final class EpicViewLevel {
                             .append(EpicViewFormatting.statusGlyph(row)).append("  ")
                             .append(EpicViewFormatting.clean(row.title()))
                             .append("   ").append(status);
-        if ("staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+        if (STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
             line.append(DOT).append(EpicViewFormatting.waitText(locale, row, epic.running(), epic.scope()));
         }
         var pr = EpicViewFormatting.pullRequest(row);
@@ -461,7 +469,7 @@ public final class EpicViewLevel {
                                                     "paths", String.join(", ", cleanAll(row.overlapFiles())))));
         }
         rows.add(new TuiRow(PLAN_PREFIX + row.planId(), line.toString(), joinOrNull(details), false, true));
-        if (expanded.contains(row.planId()) && "staged".equals(EpicViewFormatting.statusKey(row.status()))) {
+        if (expanded.contains(row.planId()) && STAGED.equals(EpicViewFormatting.statusKey(row.status()))) {
             appendPlanDetails(rows, row, locale);
         }
     }
