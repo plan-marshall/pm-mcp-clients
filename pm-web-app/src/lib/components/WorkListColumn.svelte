@@ -161,12 +161,17 @@
     const epics = detail.epics ?? [];
 
     if (parentEpicId) {
+      // The runtime's two views of one epic disagree in its own answer: the nested `plans` may
+      // omit a plan whose flat row still names the epic (the mock serves it so). The column takes
+      // both, keyed by plan id, so a sibling is never lost to the shape of the answer.
+      const siblings = new Map<string, ActivePlanSummary>();
       const parent = epics.find((epic) => epic.epic_id === parentEpicId);
-      // The epic's own plans are the siblings; a plan the detail lists under the epic is the
-      // fallback when the epic itself is not in the served detail.
-      return (parent?.plans ?? plans.filter((plan) => plan.epic_id === parentEpicId)).map(
-        toPlanItem,
-      );
+      for (const plan of parent?.plans ?? []) siblings.set(plan.plan_id, plan);
+      for (const plan of plans) {
+        if (plan.epic_id !== parentEpicId || siblings.has(plan.plan_id)) continue;
+        siblings.set(plan.plan_id, plan);
+      }
+      return [...siblings.values()].map(toPlanItem);
     }
 
     return [

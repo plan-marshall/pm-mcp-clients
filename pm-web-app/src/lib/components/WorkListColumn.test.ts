@@ -199,9 +199,10 @@ describe('WorkListColumn component', () => {
         planRow('loose-plan', 'Loose Plan'),
       ],
       epics: [
+        // The mock's own detail lists one plan under the epic while the flat list carries a
+        // second plan of the same epic: the column must show both.
         epicRow('relay-hardening', 'Relay Hardening', [
           planRow('fix-relay', 'Fix Relay Transport', 'relay-hardening'),
-          planRow('relay-metrics', 'Relay metrics', 'relay-hardening'),
         ]),
         epicRow('staged-epic', 'Staged Epic', []),
       ],
