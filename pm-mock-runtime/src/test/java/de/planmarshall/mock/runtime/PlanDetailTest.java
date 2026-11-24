@@ -109,12 +109,12 @@ class PlanDetailTest {
                     () -> assertEquals("relay-hardening",
                             JsonTree.string(JsonTree.object(process, "epic"), "epic_id"),
                             "the plan names the epic that lists it"),
-                    () -> assertEquals("done", JsonTree.string(process, "phase_state"),
-                            "the shipped row is a done plan"),
+                    () -> assertEquals("ended", JsonTree.string(process, "phase_state"),
+                            "the shipped row is an ended plan, which the closed activity set names ended"),
                     () -> assertNotNull(JsonTree.asArray(process.get("nodes")),
                             "the plan answers a node list"),
                     () -> assertEquals(List.of("done"), nodeStates(process),
-                            "every phase of a done plan is done"));
+                            "every phase of an ended plan is done"));
         }
     }
 

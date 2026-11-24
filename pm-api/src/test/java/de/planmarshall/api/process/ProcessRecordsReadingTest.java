@@ -28,6 +28,7 @@ import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.PlanActivity;
 
 /**
  * How the records of the process tree below the plan's head read a sparse member set: the defaults of an
@@ -236,20 +237,33 @@ class ProcessRecordsReadingTest {
         }
 
         @Test
-        @DisplayName("should keep a stated phase state whatever the running flag says, and refuse a plan without id")
-        void shouldKeepStatedPhaseStateAndRefuseMissingId() throws Exception {
+        @DisplayName("should read every value of the closed activity set, keep a stated one, and refuse another")
+        void shouldReadTheClosedActivitySetAndRefuseAnotherValue() throws Exception {
             var planId = Generators.nonBlankStrings().next();
             var done = Generators.integers(0, 50).next();
 
-            var plan = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", "done", "running", true,
+            var stated = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", "paused", "running", true,
                     "tasks_done", done, "tasks_total", done));
+            // "done" is the value the old Javadoc named and is no member of the closed set.
+            var outside = Map.<String, Object>of("plan_id", planId, "phase_state", "done");
             var map = Map.<String, Object>of("title", planId);
 
             assertAll(
-                    () -> assertEquals("done", plan.phaseState()),
-                    () -> assertEquals(done, plan.tasksDone()),
-                    () -> assertEquals(done, plan.tasksTotal()),
+                    () -> assertEquals("paused", stated.phaseState()),
+                    () -> assertEquals(done, stated.tasksDone()),
+                    () -> assertEquals(done, stated.tasksTotal()),
+                    () -> assertThrows(JsonFormatException.class, () -> EpicProcessPlan.fromMap(outside)),
+                    () -> assertThrows(IllegalArgumentException.class,
+                            () -> new EpicProcessPlan(planId, null, null, "done", 0, 0, true)),
                     () -> assertThrows(JsonFormatException.class, () -> EpicProcessPlan.fromMap(map)));
+
+            for (var activity : PlanActivity.values()) {
+                var plan = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", activity.value()));
+                assertEquals(activity.value(), plan.phaseState(), activity.value());
+            }
+            var shouting = EpicProcessPlan.fromMap(Map.of("plan_id", planId, "phase_state", "ENDED"));
+            assertEquals(PlanActivity.ENDED.value(), shouting.phaseState(),
+                    "a member read by name still carries its canonical wire value");
         }
     }
 

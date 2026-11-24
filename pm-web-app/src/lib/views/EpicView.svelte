@@ -7,6 +7,7 @@
   import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkListColumn from '../components/WorkListColumn.svelte';
+  import UpLink from '../components/UpLink.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import Chip from '../components/Chip.svelte';
@@ -34,6 +35,8 @@
   } from '../stores/runtime';
   import { formatSplit, formatTime } from '../display/format';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
+  import { buildChain, upOf } from '../navigation/chain';
+  import { narrowLayout } from '../utils/narrowLayout';
   import { refreshesEpicView } from './epicEvents';
 
   let epicId = $derived($runtimeStore.selectedEpicId || '');
@@ -61,6 +64,22 @@
   let resource = $state<EpicResource | null>(null);
   const epicProjectId = $derived(
     resource?.project_id ?? epic?.project ?? $runtimeStore.selectedProjectId ?? '',
+  );
+
+  /** The parent Up leads to, from what this view already holds: the epic's project. */
+  const upParent = $derived(
+    upOf(
+      buildChain(
+        $runtimeStore.currentRoute,
+        {
+          epic: resource ?? $runtimeStore.currentEpicResource,
+          epicId,
+          projectId: epicProjectId,
+        },
+        $t,
+      ),
+      $runtimeStore.currentRoute,
+    ),
   );
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
@@ -682,6 +701,11 @@
     <WorkListColumn projectId={epicProjectId} currentEpicId={epicId} />
   {/if}
   <div class="epic-view" data-testid="epic-view">
+  {#if $narrowLayout && !isLoading && upParent?.kind && upParent.address}
+    <div class="epic-view__up" data-testid="epic-view-up">
+      <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
+    </div>
+  {/if}
   {#if isLoading}
     <div class="epic-view__loading" data-testid="epic-loading">
       <Skeleton shape="card" rows={3} label={$t('epic.view.loading')} />
@@ -1142,6 +1166,12 @@
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
+  }
+
+  /* The first visible column's head carries Up where the work list column is hidden
+     (`navigation.adoc#up`). */
+  .epic-view__up {
+    padding: var(--space-3) var(--space-6) 0;
   }
 
   .epic-state {

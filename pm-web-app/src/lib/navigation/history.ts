@@ -294,26 +294,3 @@ export function switchTab(address: Address, tab: ObjectTab): Address {
   delete next.file;
   return next;
 }
-
-/**
- * The address with an in-place opened object closed.
- *
- * @param address the current address
- * @returns the address with `open` removed
- */
-export function closeOpenObject(address: Address): Address {
-  const next: Address = { ...address };
-  delete next.open;
-  return next;
-}
-
-/**
- * The address with an in-place opened object replaced.
- *
- * @param address the current address
- * @param open the new object identifier to show in place
- * @returns the address with `open` updated
- */
-export function replaceOpenObject(address: Address, open: NonNullable<Address['open']>): Address {
-  return { ...address, open };
-}

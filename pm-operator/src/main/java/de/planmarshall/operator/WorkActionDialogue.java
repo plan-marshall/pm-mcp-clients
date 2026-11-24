@@ -48,8 +48,13 @@ final class WorkActionDialogue {
     private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
     private static final String KEY_STATE = "state";
+    private static final String KEY_ACTION = "action";
+    private static final String KEY_REASON = "reason";
+    private static final String ACTION_ABORT = "abort";
+    private static final String ACTION_CANCEL = "cancel";
+    private static final String ACTION_ABANDON = "abandon";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
-                        "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
+                        "raise_budget", "accept", ACTION_ABORT, "end_plan", "cancel_epic", "show_pr",
                         "give_up_removal");
 
     private final OperatorContext context;
@@ -72,6 +77,15 @@ final class WorkActionDialogue {
     }
 
     /**
+     * What an act needs of the view beside the verb's own arguments.
+     *
+     * @param epic   the epic as the view holds it, or {@code null}
+     * @param holdId the hold an act belongs to, or {@code null} for the first
+     */
+    public record ActContext(@Nullable EpicResource epic, @Nullable String holdId) {
+    }
+
+    /**
      * Runs one action of a plan or an epic.
      *
      * @param context the operator context
@@ -80,14 +94,14 @@ final class WorkActionDialogue {
      * @param id      the subject
      * @param action  the action the runtime offered
      * @param noInput whether the verb may ask nothing
-     * @param epic    the epic as the view holds it, or {@code null}
-     * @param holdId  the hold an act belongs to, or {@code null} for the first
+     * @param act     the epic and the hold the view holds, or {@code null}
      * @return the exit code
      * @throws IOException on transport failure
      */
     static int run(OperatorContext context, PrintWriter out, String kind, String id, String action,
-                        boolean noInput, @Nullable EpicResource epic, @Nullable String holdId)
-                        throws IOException {
+                        boolean noInput, @Nullable ActContext act) throws IOException {
+        var holdId = act != null ? act.holdId() : null;
+        var epic = act != null ? act.epic() : null;
         if (HOLD_ACTS.contains(action) && PLAN.equals(kind)) {
             return HoldDialogue.run(context, out, id, holdId, action, noInput);
         }
@@ -149,14 +163,14 @@ final class WorkActionDialogue {
         }
         if (!availability.available()) {
             prompt.line("control.action.disabled",
-                                Map.of("action", action, "reason", availability.reason() != null
+                                Map.of(KEY_ACTION, action, KEY_REASON, availability.reason() != null
                                                     ? availability.reason() : ""));
             return 1;
         }
         return switch (action) {
             case "pause" -> pause(actions);
             case "start" -> start();
-            case "cancel", "abandon" -> EPIC.equals(kind) ? endEpic() : end(action, actions);
+            case ACTION_CANCEL, ACTION_ABANDON -> EPIC.equals(kind) ? endEpic() : end(action, actions);
             case "chat" -> chat(epic);
             case "settings" -> settings();
             case "next" -> next(epic);
@@ -190,7 +204,7 @@ final class WorkActionDialogue {
 
     private int generic(String action) throws IOException {
         client.perform(kind, id, action, Map.of());
-        prompt.line("operator.actions.result.done", Map.of("action", action, "subject", id));
+        prompt.line("operator.actions.result.done", Map.of(KEY_ACTION, action, "subject", id));
         return 0;
     }
 
@@ -199,23 +213,23 @@ final class WorkActionDialogue {
         var point = choice.key();
         client.perform(kind, id, "pause", Map.of("point", point));
         if ("now".equals(point)) {
-            prompt.line("operator.actions.result.paused", Map.of("plan", id));
+            prompt.line("operator.actions.result.paused", Map.of(PLAN, id));
         } else {
-            prompt.line("operator.actions.result.pausing", Map.of("plan", id, "point", point));
+            prompt.line("operator.actions.result.pausing", Map.of(PLAN, id, "point", point));
         }
         return 0;
     }
 
     private int start() throws IOException {
         client.perform(kind, id, "start", Map.of());
-        prompt.line("operator.actions.result.started", Map.of("plan", id));
+        prompt.line("operator.actions.result.started", Map.of(PLAN, id));
         return 0;
     }
 
     private int end(String action, WorkActions actions) throws IOException {
-        var outcome = integrityPaused(actions) ? "abort" : action;
+        var outcome = integrityPaused(actions) ? ACTION_ABORT : action;
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.end.title",
-                            Map.of("action", outcome, "plan", id)));
+                            Map.of(KEY_ACTION, outcome, PLAN, id)));
         if (actions.epicId() != null) {
             prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.its_epic", Map.of())
                                 + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.told",
@@ -223,9 +237,7 @@ final class WorkActionDialogue {
         }
         prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.afterwards", Map.of())
                             + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.afterwards_text",
-                            Map.of("outcome", "abort".equals(outcome) ? "aborted"
-                                                : "cancel".equals(action) ? "cancelled"
-                                                : "abandoned")));
+                            Map.of("outcome", afterwardsWord(action, outcome))));
         var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel(action), id);
         if (reason == null) {
             return 0;
@@ -240,7 +252,7 @@ final class WorkActionDialogue {
                             Map.of()));
         var closePr = "close".equals(pullRequest.ask().key());
         var confirmTitle = MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
-                            Map.of("action", outcome)) + "?";
+                            Map.of(KEY_ACTION, outcome)) + "?";
         var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(action));
         consent.title(confirmTitle);
         consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",
@@ -249,16 +261,38 @@ final class WorkActionDialogue {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
-        payload.put("reason", reason);
+        payload.put(KEY_REASON, reason);
         payload.put("close_pr", closePr);
         client.perform(kind, id, action, payload);
         prompt.line("operator.actions.result.ended",
-                            Map.of("plan", id, "outcome", "cancel".equals(action) ? "cancelled"
-                                                : "abandon".equals(action) ? "abandoned" : "aborted"));
+                            Map.of(PLAN, id, "outcome", endedOutcome(action)));
         if (actions.epicId() != null) {
             prompt.line("operator.actions.result.epic_told", Map.of("epic", actions.epicId()));
         }
         return 0;
+    }
+
+    /**
+     * @param action  the action the dialogue ends the plan with
+     * @param outcome the action as it is performed: the abort of an integrity pause, or the action
+     * @return the word the afterwards text names the outcome with
+     */
+    private static String afterwardsWord(String action, String outcome) {
+        if (ACTION_ABORT.equals(outcome)) {
+            return "aborted";
+        }
+        return ACTION_CANCEL.equals(action) ? "cancelled" : "abandoned";
+    }
+
+    /**
+     * @param action the action the plan was ended with
+     * @return the word the result line names the outcome with
+     */
+    private static String endedOutcome(String action) {
+        if (ACTION_CANCEL.equals(action)) {
+            return "cancelled";
+        }
+        return ACTION_ABANDON.equals(action) ? "abandoned" : "aborted";
     }
 
     private int endEpic() throws IOException {
@@ -267,7 +301,7 @@ final class WorkActionDialogue {
         prompt.raw("  " + MessageCatalogue.format(locale, "operator.actions.epic.cancel.afterwards", Map.of())
                             + "   " + MessageCatalogue.format(locale, "operator.actions.epic.cancel.afterwards_text",
                             Map.of()));
-        var plans = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("cancel"));
+        var plans = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(ACTION_CANCEL));
         plans.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans", Map.of()));
         plans.explanation(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_explain", Map.of()));
         plans.addChoice(WITH_PLANS, MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with",
@@ -281,20 +315,20 @@ final class WorkActionDialogue {
                                                 Map.of()),
                             false);
         var withPlans = WITH_PLANS.equals(plans.ask().key());
-        var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel("cancel"), id);
+        var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel(ACTION_CANCEL), id);
         if (reason == null) {
             return 0;
         }
-        var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("cancel"));
+        var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(ACTION_CANCEL));
         consent.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.title", Map.of("epic", id)));
         consent.explanation(MessageCatalogue.format(locale, "operator.actions.end.consent_explain", Map.of()));
         if (!consent.askConsent()) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
-        payload.put("reason", reason);
+        payload.put(KEY_REASON, reason);
         payload.put(WITH_PLANS, withPlans);
-        client.perform(EPIC, id, "cancel", payload);
+        client.perform(EPIC, id, ACTION_CANCEL, payload);
         prompt.line("operator.actions.epic.cancel.done", Map.of("epic", id));
         return 0;
     }

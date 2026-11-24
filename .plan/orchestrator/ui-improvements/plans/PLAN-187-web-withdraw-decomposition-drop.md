@@ -46,11 +46,17 @@ The documents are the specification; read them first: `doc/design/shared/startin
 ## Claim Labels
 
 - OBSERVED: the epic decomposition sends a drop as a null-plan rewrite before check and commit — read at `pm-web-app/src/lib/views/EpicDecompositionView.svelte:237-247` (orchestrator re-read at `e0e95c05`, 2026-11-24)
+  - verdict: corroborated | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: EpicDecompositionView.svelte unchanged since adb0d310 (git diff adb0d310..1c646489 empty); null-plan rewrite drop at :237-247 holds
 - OBSERVED: the mock resolves a null plan id to the first open plan and rewrites its objective — read at `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java:4673-4679,4688-4700` (orchestrator re-read at `e0e95c05`)
+  - verdict: corroborated | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: MockRuntimeEngine.java: #553 shifted the lines +30; null plan id -> firstOpenPlanId(current) now at :4703, applyRewrite at :4709 (origin/main 1c646489)
 - OBSERVED: the terminal offers no drop because the contract has none — read at `EpicDecompositionDialogue.java:287-289` (orchestrator re-read at `e0e95c05`)
+  - verdict: corroborated | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: EpicDecompositionDialogue.java unchanged since adb0d310; no drop key offered at :287-289
 - OBSERVED: the Start wizard drops through the same rewrite — read at `pm-web-app/src/lib/views/StartView.svelte:852-854,1160` and `DecompositionReviewView.svelte:22,212-214` (read at `adb0d310`)
+  - verdict: corroborated | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: StartView.svelte and DecompositionReviewView.svelte unchanged since adb0d310 (git diff empty)
 - OBSERVED: `decomposition.drop` and `start.decomposition.drop` have no Java user — read by `git grep` over `pm-operator` and `pm-api/src/main/java` at `adb0d310` (0 lines); the web uses are `EpicDecompositionView.svelte:456`, `DecompositionReviewView.svelte:214`, `catalogue.test.ts:335`
+  - verdict: corroborated | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep decomposition.drop / start.decomposition.drop over pm-operator and pm-api/src/main/java at 1c646489: 0 lines
 - Verify-first clause: before each deliverable re-read the named files at the then-current HEAD (PLAN-185 and PLAN-178 are running on other web surfaces; PLAN-137, parked, touches `StartView`). A refuted claim re-scopes the deliverable and is reported, never silently worked around.
+  - verdict: unverifiable | checked_at: 1c6464892797893ada148065ce551f953cd19e2e | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; settled by the lane per deliverable
 
 ## Expected Surface
 

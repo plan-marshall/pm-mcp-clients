@@ -894,4 +894,42 @@ describe('EpicView component', () => {
       'How many plans run is not known; relay-hardening may run 3 at once, and the next plan, relay-reconnect-metrics, waits for a free place.',
     );
   });
+
+  it('carries Up in the object column at 1023 px and below, once (D3)', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 1023px)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(EpicView);
+
+      await screen.findByTestId('epic-title');
+      const holder = await screen.findByTestId('epic-view-up');
+
+      expect(holder.querySelector('[data-testid="up-link"]')).toHaveAttribute(
+        'href',
+        '/overview?project=pm-mcp-clients',
+      );
+      expect(holder).toHaveTextContent('pm-mcp-clients');
+      expect(screen.getAllByTestId('up-link')).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it('carries Up once above 1023 px, in the work list column (D3)', async () => {
+    render(EpicView);
+
+    await screen.findByTestId('epic-title');
+    await waitFor(() => expect(screen.getAllByTestId('up-link')).toHaveLength(1));
+
+    expect(screen.queryByTestId('epic-view-up')).toBeNull();
+    expect(screen.getByTestId('up-link')).toHaveAttribute(
+      'href',
+      '/overview?project=pm-mcp-clients',
+    );
+  });
 });

@@ -35,9 +35,12 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 public final class ActionMenus {
 
     private static final String KEY_PREFIX = "operator.actions.key.";
+    private static final String KEY_PLAN_CHAT = "control.plan.chat";
     private static final String ELLIPSIS = "\u2026";
     private static final String ACTION_CHAT = "chat";
     private static final String ACTION_DECIDE = "decide";
+    private static final String ACTION_CANCEL = "cancel";
+    private static final String ACTION_RETRY = "retry";
     private static final Set<String> WAITING_STATES = Set.of("waiting", "waiting_for_you");
 
     private ActionMenus() {
@@ -71,7 +74,7 @@ public final class ActionMenus {
         }
         for (var availability : actions.actions()) {
             var action = availability.action();
-            if (holdEnds && ("cancel".equals(action) || "abandon".equals(action))) {
+            if (holdEnds && (ACTION_CANCEL.equals(action) || "abandon".equals(action))) {
                 continue;
             }
             add(entries, used, dropped, availability, planLabel(locale, action), locale);
@@ -80,28 +83,21 @@ public final class ActionMenus {
     }
 
     /**
-     * @param locale          the interface locale
-     * @param actions         the actions the runtime offers for the epic
-     * @param nextPlan        the plan the next-work action would start, or {@code null}
-     * @param waitReasons     why no plan can start, one line per row
-     * @param autoStart       whether the epic starts its plans by itself
-     * @param overlapMaxFiles how many files a plan may share with a running one
-     * @param findingsNew     the number of new findings
-     * @param watchesOpen     the number of open watches
-     * @param rowId           the row the menu is drawn below, or {@code null}
+     * @param locale   the interface locale
+     * @param actions  the actions the runtime offers for the epic
+     * @param labels   the epic facts the menu's labels are built from
+     * @param rowId    the row the menu is drawn below, or {@code null}
      * @return the epic's menu
      */
-    public static ActionsMenu epic(String locale, WorkActions actions, @Nullable String nextPlan,
-                        List<String> waitReasons, boolean autoStart, int overlapMaxFiles, int findingsNew,
-                        int watchesOpen, @Nullable String rowId) {
+    public static ActionsMenu epic(String locale, WorkActions actions, EpicLabels labels,
+                        @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
         var dropped = new ArrayList<String>();
         boolean holdCancels = addEpicHoldActs(entries, used, dropped, locale, actions.holdKind());
-        var labels = new EpicLabels(nextPlan, waitReasons, autoStart, overlapMaxFiles, findingsNew, watchesOpen);
         for (var availability : actions.actions()) {
             var action = availability.action();
-            if (holdCancels && "cancel".equals(action)) {
+            if (holdCancels && ACTION_CANCEL.equals(action)) {
                 continue;
             }
             add(entries, used, dropped, availability, epicLabel(locale, action, labels), locale);
@@ -109,9 +105,21 @@ public final class ActionMenus {
         return new ActionsMenu(actions.subjectId(), ActionsMenu.Subject.EPIC, rowId, entries, dropped);
     }
 
-    private record EpicLabels(@Nullable String nextPlan, List<String> waitReasons, boolean autoStart,
-    int overlapMaxFiles, int findingsNew, int watchesOpen) {
-        private EpicLabels {
+    /**
+     * The epic facts the menu's labels are built from.
+     *
+     * @param nextPlan        the plan the next-work action would start, or {@code null}
+     * @param waitReasons     why no plan can start, one line per row; the constructor copies them,
+     *                        so a later change to the caller's list leaves the menu as it is
+     * @param autoStart       whether the epic starts its plans by itself
+     * @param overlapMaxFiles how many files a plan may share with a running one
+     * @param findingsNew     the number of new findings
+     * @param watchesOpen     the number of open watches
+     */
+    public record EpicLabels(@Nullable String nextPlan, List<String> waitReasons, boolean autoStart,
+                        int overlapMaxFiles, int findingsNew, int watchesOpen) {
+
+        public EpicLabels {
             waitReasons = List.copyOf(waitReasons);
         }
     }
@@ -125,7 +133,7 @@ public final class ActionMenus {
      */
     public static ActionsMenu ended(String locale, String subjectId, String subject, @Nullable String rowId) {
         var label = MessageCatalogue.format(locale, "operator.actions.ended", Map.of("name", subject));
-        var chat = MessageCatalogue.format(locale, "control.plan.chat", Map.of()) + ELLIPSIS;
+        var chat = MessageCatalogue.format(locale, KEY_PLAN_CHAT, Map.of()) + ELLIPSIS;
         var entry = TuiMenuEntry.enabled(key(locale, ACTION_CHAT), ACTION_CHAT, label + "   " + chat);
         return new ActionsMenu(subjectId, ActionsMenu.Subject.ENDED, rowId, List.of(entry), List.of());
     }
@@ -142,7 +150,7 @@ public final class ActionMenus {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
         var dropped = new ArrayList<String>();
-        addHoldAct(entries, used, dropped, locale, "retry");
+        addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
         addHoldAct(entries, used, dropped, locale, HoldActs.SHOW_PR);
         if ("landing_failed".equals(holdKind)) {
             addHoldAct(entries, used, dropped, locale, HoldActs.GIVE_UP_REMOVAL);
@@ -186,25 +194,25 @@ public final class ActionMenus {
         }
         switch (holdKind) {
             case "landing_failed" -> {
-                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
                 addHoldAct(entries, used, dropped, locale, HoldActs.SHOW_PR);
                 addHoldAct(entries, used, dropped, locale, HoldActs.GIVE_UP_REMOVAL);
             }
             case "integrity_pause" -> {
-                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
                 addHoldAct(entries, used, dropped, locale, HoldActs.ACCEPT);
             }
             case "stalled" -> {
-                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
                 addHoldAct(entries, used, dropped, locale, "recycle");
             }
             case "condition" -> {
-                addHoldAct(entries, used, dropped, locale, "retry");
+                addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
                 addHoldAct(entries, used, dropped, locale, "grant");
                 addHoldAct(entries, used, dropped, locale, "add_credential");
                 addHoldAct(entries, used, dropped, locale, "raise_budget");
             }
-            default -> addHoldAct(entries, used, dropped, locale, "retry");
+            default -> addHoldAct(entries, used, dropped, locale, ACTION_RETRY);
         }
         addHoldAct(entries, used, dropped, locale, HoldActs.CANCEL_EPIC);
         return true;
@@ -230,8 +238,11 @@ public final class ActionMenus {
         if (availability.available()) {
             entries.add(TuiMenuEntry.enabled(trigger, availability.action(), label));
         } else {
-            entries.add(TuiMenuEntry.disabled(trigger, availability.action(), label,
-                                availability.reason() != null ? availability.reason() : ""));
+            String reason = availability.reason();
+            if (reason == null) {
+                reason = "";
+            }
+            entries.add(TuiMenuEntry.disabled(trigger, availability.action(), label, reason));
         }
     }
 
@@ -239,9 +250,9 @@ public final class ActionMenus {
         return switch (action) {
             case "pause" -> text(locale, "control.plan.pause") + ELLIPSIS;
             case "start" -> text(locale, "control.plan.start");
-            case "cancel" -> text(locale, "control.plan.cancel") + ELLIPSIS;
+            case ACTION_CANCEL -> text(locale, "control.plan.cancel") + ELLIPSIS;
             case "abandon" -> text(locale, "control.plan.abandon") + ELLIPSIS;
-            case "chat" -> text(locale, "control.plan.chat") + ELLIPSIS;
+            case "chat" -> text(locale, KEY_PLAN_CHAT) + ELLIPSIS;
             case "settings" -> text(locale, "control.plan.settings") + ELLIPSIS;
             default -> action;
         };
@@ -261,9 +272,9 @@ public final class ActionMenus {
             case "decompose" -> text(locale, "control.epic.decompose_again") + ELLIPSIS;
             case "findings" -> count(text(locale, "control.epic.findings_review"), labels.findingsNew());
             case "watches" -> count(text(locale, "control.epic.watches_review"), labels.watchesOpen());
-            case "chat" -> text(locale, "control.plan.chat") + ELLIPSIS;
+            case "chat" -> text(locale, KEY_PLAN_CHAT) + ELLIPSIS;
             case "archive" -> text(locale, "control.epic.archive") + ELLIPSIS;
-            case "cancel" -> text(locale, "control.epic.cancel") + ELLIPSIS;
+            case ACTION_CANCEL -> text(locale, "control.epic.cancel") + ELLIPSIS;
             default -> action;
         };
     }

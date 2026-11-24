@@ -216,13 +216,11 @@ public final class PmConsole {
         var locale = locale();
         while (running.get()) {
             var line = readCommand(reader, out, locale);
-            if (line == null) {
+            if (line == null || "exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
                 break;
             }
             if (line.isEmpty()) {
                 handleEmptyEnter(out, reader, terminal);
-            } else if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
-                break;
             } else {
                 dispatchCommand(line, out, reader, terminal);
             }

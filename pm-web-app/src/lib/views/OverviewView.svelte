@@ -560,25 +560,6 @@
     }
   }
 
-  function closeEndedWork() {
-    showEnded = false;
-    currentEndedPage = 1;
-    endedRequestGeneration += 1;
-    endedPage = null;
-    endedError = null;
-    // Leaving Ended Work drops the mode from the address.
-    lastStoreEnded = false;
-    runtimeStore.update((s) => ({ ...s, lensMode: null }));
-    writeAddress(
-      {
-        route: 'overview',
-        project: selectedProjectId ?? undefined,
-        group: viewMode === 'epic' ? 'epic' : undefined,
-      },
-      'replace',
-    );
-  }
-
   async function loadEndedWork(projectId: string, page: number) {
     const requestGeneration = ++endedRequestGeneration;
     isLoadingEnded = true;

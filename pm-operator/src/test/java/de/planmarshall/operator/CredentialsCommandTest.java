@@ -453,7 +453,7 @@ class CredentialsCommandTest {
 
     @Test
     @DisplayName("the verb without a subcommand prints its usage")
-    void usage() throws Exception {
+    void usage() {
         var code = run(context(""), "credentials");
         assertEquals(0, code);
         assertTrue(out.toString().contains("credentials") || err.toString().contains("credentials"));

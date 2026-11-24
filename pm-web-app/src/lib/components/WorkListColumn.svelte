@@ -18,14 +18,26 @@
   import { writeAddress } from '../navigation/history';
   import UpLink from './UpLink.svelte';
   import { upOf, buildChain } from '../navigation/chain';
+  import { narrowLayout } from '../utils/narrowLayout';
 
   interface Props {
     projectId: string;
     currentPlanId?: string | null;
     currentEpicId?: string | null;
+    /**
+     * The epic of the open plan. A plan of an epic lists that epic's plans; an epic, or a plan
+     * without an epic, lists the project's epics and the plans that belong to none
+     * (`navigation.adoc#levels`).
+     */
+    parentEpicId?: string | null;
   }
 
-  let { projectId, currentPlanId = null, currentEpicId = null }: Props = $props();
+  let {
+    projectId,
+    currentPlanId = null,
+    currentEpicId = null,
+    parentEpicId = null,
+  }: Props = $props();
 
   let detail = $state<ProjectDetailResponse | null>(null);
   let isLoading = $state(false);
@@ -148,8 +160,25 @@
     const plans = detail.plans ?? [];
     const epics = detail.epics ?? [];
 
+    if (parentEpicId) {
+      // The runtime's two views of one epic disagree in its own answer: the nested `plans` may
+      // omit a plan whose flat row still names the epic (the mock serves it so). The column takes
+      // both, keyed by plan id, so a sibling is never lost to the shape of the answer.
+      const siblings = new Map<string, ActivePlanSummary>();
+      const parent = epics.find((epic) => epic.epic_id === parentEpicId);
+      for (const plan of parent?.plans ?? []) siblings.set(plan.plan_id, plan);
+      for (const plan of plans) {
+        if (plan.epic_id !== parentEpicId || siblings.has(plan.plan_id)) continue;
+        siblings.set(plan.plan_id, plan);
+      }
+      return [...siblings.values()].map(toPlanItem);
+    }
+
+    // The project's epics, and the plans that belong to none — a plan whose epic is not served
+    // beside it would otherwise be visible in no column, so it is listed here.
+    const servedEpics = new Set(epics.map((epic) => epic.epic_id));
     return [
-      ...plans.map(toPlanItem),
+      ...plans.filter((plan) => !plan.epic_id || !servedEpics.has(plan.epic_id)).map(toPlanItem),
       ...epics.map(toEpicItem),
     ];
   });
@@ -178,7 +207,7 @@
   aria-label={$t('overview.running.title')}
 >
   <header class="work-list-column__head">
-    {#if upParent && upParent.kind && upParent.address}
+    {#if !$narrowLayout && upParent && upParent.kind && upParent.address}
       <div class="work-list-column__up">
         <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
       </div>

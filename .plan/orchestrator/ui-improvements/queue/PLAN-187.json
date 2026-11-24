@@ -2,10 +2,10 @@
   "id": "PLAN-187",
   "slug": "web-withdraw-decomposition-drop",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "running",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
+  "pr": "#561",
   "landing": "",
   "seq": 187
 }

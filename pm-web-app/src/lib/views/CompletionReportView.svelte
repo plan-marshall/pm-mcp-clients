@@ -25,10 +25,9 @@
     planId: string;
     report?: PlanCompletionReport | null;
     titleLevel?: 1 | 2;
-    onClose?: () => void;
   }
 
-  let { planId, report = null, titleLevel = 1, onClose }: Props = $props();
+  let { planId, report = null, titleLevel = 1 }: Props = $props();
 
   let fetchedData = $state<PlanCompletionReport | null>(null);
   let data = $derived(report ?? fetchedData);
