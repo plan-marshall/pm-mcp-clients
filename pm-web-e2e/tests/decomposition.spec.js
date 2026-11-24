@@ -73,18 +73,37 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
     await expect(page.getByTestId('read-back')).toBeVisible();
   });
 
-  test('marks a dropped plan and shows it as dropped, not as checked', async ({ page }) => {
-    const plan = page.getByTestId('plan-relay-auth-v2');
-    await expect(plan).toContainText('check failed');
-    await expect(plan.locator('.status-label--danger')).toBeVisible();
+  test('offers no Drop control and still shows a wire-dropped plan as dropped', async ({
+    page,
+  }) => {
+    await page.route('**/api/v1/projects/*/epics/*/decomposition', async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue();
+        return;
+      }
+      const response = await route.fetch();
+      const body = await response.json();
+      body.workstreams = body.workstreams.map((stream) => ({
+        ...stream,
+        staged_plans: stream.staged_plans.map((plan) =>
+          plan.plan_id === 'relay-auth-v2' ? { ...plan, status: 'dropped' } : plan,
+        ),
+      }));
+      await route.fulfill({ response, json: body });
+    });
 
-    await page.getByTestId('plan-drop-relay-auth-v2').click();
+    await page.goto('/epics/relay-hardening/decomposition?project=pm-mcp-clients');
+    await expect(page.getByTestId('decomposition-title')).toContainText(
+      'relay-hardening · decomposition',
+      { timeout: 15000 },
+    );
 
-    // The card says the plan is dropped, dimmed, and no longer wears the success tone.
-    await expect(plan).toHaveClass(/plan--dropped/);
-    await expect(plan.locator('.status-label--neutral')).toBeVisible();
-    await expect(plan.locator('.status-label--danger')).toHaveCount(0);
-    // The cut still carries a failing check elsewhere, so the agree act stays held back with its reason.
-    await expect(page.getByTestId('agree-commit')).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByRole('button', { name: 'Drop' })).toHaveCount(0);
+    await expect(page.locator('[data-testid^="plan-drop-"]')).toHaveCount(0);
+
+    const droppedPlan = page.getByTestId('plan-relay-auth-v2');
+    await expect(droppedPlan).toContainText('dropped');
+    await expect(droppedPlan.locator('.status-label--neutral')).toBeVisible();
+    await expect(droppedPlan.locator('.status-label--danger')).toHaveCount(0);
   });
 });

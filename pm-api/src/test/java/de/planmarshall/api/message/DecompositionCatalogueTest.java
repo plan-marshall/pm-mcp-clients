@@ -46,7 +46,6 @@ class DecompositionCatalogueTest {
                 "decomposition.workstreams",
                 "decomposition.keep",
                 "decomposition.edit",
-                "decomposition.drop",
                 "decomposition.add",
                 "decomposition.open_plan",
                 "decomposition.chat",
