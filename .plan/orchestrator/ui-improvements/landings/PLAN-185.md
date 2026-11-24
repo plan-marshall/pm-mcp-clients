@@ -9,7 +9,7 @@ Message `rb-185-web-shell-up-and-deletion-residue-001` (revision 0): `merge_stat
 
 **Review numbers re-read** (`review-gate --pr-number 558`, after the merge): 0 unresolved threads, 6 review-body findings, equal to the message; `handled` reads 0 there (`body_findings_undisposed`: the gate reads no disposition line after the merge). Not re-verified beyond the message.
 
-**Sonar.** PR: `sonar_rest gate-status --pr 558` OK (new coverage 81.7). Default branch: still the 9 keys of `landings/PLAN-186.md` (none in `pm-web-app`), but the last `main` analysis is 13:01:56Z, before this merge, so the read **after** #558 is `unknown`, not 0.
+**Sonar.** PR: `sonar_rest gate-status --pr 558` OK (new coverage 81.7). Default branch: still the 9 keys of `landings/PLAN-186.md` (none in `pm-web-app`), but the last `main` analysis is 13:01:56Z, before this merge, so the read **after** #558 is `unknown`, not 0. **Update 2026-11-24 (PLAN-187's landing):** `main` analyses at 15:25:52Z and 18:01:30Z (both after this merge) read the same 9 keys, none in `pm-web-app`: this landing added no default-branch issue.
 
 ## Layer 1: specified
 
