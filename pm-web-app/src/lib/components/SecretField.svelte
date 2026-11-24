@@ -80,13 +80,21 @@
   const errorId = $derived(`${effectiveId}-error`);
   const reasonId = $derived(`${effectiveId}-reason`);
 
+  /** The caller's own error wins; a rejected store reports its own until a newer store starts. */
+  const shownError = $derived(error ?? storeFailure);
+
   let revealed = $state(false);
   // Counts the stores started, so a rejected store knows whether a newer one owns the field.
   let storeGeneration = 0;
+  /**
+   * The sentence a rejected store leaves under the field, until a newer store starts or the caller
+   * names its own `error`. A field that silently puts the secret back leaves the person guessing.
+   */
+  let storeFailure = $state<string | null>(null);
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
-    if (error) {
+    if (shownError) {
       ids.push(errorId);
     } else if (hint) {
       ids.push(hintId);
@@ -136,6 +144,7 @@
     const secretToStore = value;
     storeGeneration += 1;
     const generation = storeGeneration;
+    storeFailure = null;
     value = '';
     revealed = false;
     try {
@@ -144,6 +153,7 @@
       if (generation === storeGeneration && !value) {
         value = secretToStore;
         revealed = false;
+        storeFailure = $t('common.field.store_failed');
       }
     }
   }
@@ -154,7 +164,7 @@
   {label}
   {optional}
   {hint}
-  {error}
+  error={shownError}
   {disabled}
   {disabledReason}
   {hintId}
@@ -165,7 +175,7 @@
     <input
       id={effectiveId}
       class="secret-field__input"
-      class:secret-field__input--invalid={Boolean(error)}
+      class:secret-field__input--invalid={Boolean(shownError)}
       type={revealed ? 'text' : 'password'}
       {name}
       bind:value
@@ -175,7 +185,7 @@
       {disabled}
       {placeholder}
       data-testid={testid}
-      aria-invalid={error ? 'true' : undefined}
+      aria-invalid={shownError ? 'true' : undefined}
       aria-describedby={describedBy}
       onpaste={handlePaste}
       oninput={handleInput}

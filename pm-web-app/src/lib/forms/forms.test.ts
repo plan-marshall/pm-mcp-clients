@@ -278,6 +278,60 @@ describe('lib/forms: The shape of a form', () => {
       document.body.removeChild(secondInput);
     });
 
+    it.each(['2fa', 'a.b', 'a"b'])(
+      'focuses the first invalid field whose key needs no selector escaping (%s) and shows its error',
+      async (key) => {
+        const form = createForm({
+          fields: {
+            [key]: {
+              initial: '',
+              validate: (val: string) => (!val ? 'This field is required.' : null),
+            },
+          },
+        });
+
+        const input = document.createElement('input');
+        input.setAttribute('name', key);
+        document.body.appendChild(input);
+
+        // A key that is no CSS identifier used to make querySelector throw inside submit(): the
+        // error was never shown and the focus never moved.
+        const submitted = await form.submit();
+
+        expect(submitted).toBe(false);
+        expect(document.activeElement).toBe(input);
+        expect(form.getErrors()[key]).toBe('This field is required.');
+
+        document.body.removeChild(input);
+      },
+    );
+
+    it.each([
+      ['id', 'id'],
+      ['data-testid', 'data-testid'],
+    ])('finds the first invalid control by its %s when it carries no name', async (_kind, attribute) => {
+      const key = '2nd.field';
+      const form = createForm({
+        fields: {
+          [key]: {
+            initial: '',
+            validate: (val: string) => (!val ? 'This field is required.' : null),
+          },
+        },
+      });
+
+      const input = document.createElement('input');
+      input.setAttribute(attribute, key);
+      document.body.appendChild(input);
+
+      const submitted = await form.submit();
+
+      expect(submitted).toBe(false);
+      expect(document.activeElement).toBe(input);
+
+      document.body.removeChild(input);
+    });
+
     it('required-empty field places reason in disabledReason, FormStatus, and field description', () => {
       const form = createForm({
         fields: {

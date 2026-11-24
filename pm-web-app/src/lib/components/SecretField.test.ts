@@ -136,6 +136,7 @@ describe('SecretField', () => {
 
   describe('storing the secret', () => {
     it('clears the secret on store and no input of the field holds it afterwards', async () => {
+      const secret = `tok-${crypto.randomUUID()}`;
       const onstore = vi.fn();
       const { container } = render(SecretField, {
         props: { label: 'New Secret', onstore, storeLabel: 'Save Secret' },
@@ -146,18 +147,18 @@ describe('SecretField', () => {
       // Initially store button is disabled when empty
       expect(storeBtn).toBeDisabled();
 
-      await fireEvent.input(input, { target: { value: 'super-secret-token' } });
-      expect(input.value).toBe('super-secret-token');
+      await fireEvent.input(input, { target: { value: secret } });
+      expect(input.value).toBe(secret);
       expect(storeBtn).not.toBeDisabled();
 
       await fireEvent.click(container.querySelector('.toggle') as HTMLButtonElement);
       await fireEvent.click(storeBtn);
-      expect(onstore).toHaveBeenCalledWith('super-secret-token');
+      expect(onstore).toHaveBeenCalledWith(secret);
 
       expect(input.type).toBe('password');
       expect(input.value).toBe('');
       const holders = [...container.querySelectorAll('input')].filter(
-        (el) => el.value === 'super-secret-token',
+        (el) => el.value === secret,
       );
       expect(holders).toEqual([]);
     });
@@ -199,6 +200,8 @@ describe('SecretField', () => {
         expect(input.type).toBe('password');
         expect(onstore).toHaveBeenCalledOnce();
         expect(unhandled).not.toHaveBeenCalled();
+        // The person is told why the secret came back, not left to guess at the restored field.
+        expect(screen.getByText('The secret was not stored. Try again.')).toBeInTheDocument();
       } finally {
         process.off('unhandledRejection', unhandled);
       }

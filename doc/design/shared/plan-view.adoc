@@ -443,10 +443,6 @@ Keys of the area `plan`, shared by both clients.
 |answer received
 |Antwort erhalten
 
-|`plan.activity.kind.egress`
-|refused
-|abgelehnt
-
 |`plan.activity.server_only`
 |This harness reports no steps; only what the server saw is shown.
 |Dieser Harness meldet keine Schritte; gezeigt wird nur, was der Server gesehen hat.

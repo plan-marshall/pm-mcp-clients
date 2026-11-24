@@ -21,6 +21,15 @@ export interface FormKeyboard {
 }
 
 /**
+ * @param value an attribute value a selector names
+ * @returns the value escaped for a double-quoted CSS string, so a key with a quote or a backslash
+ *          names its control instead of breaking the selector
+ */
+function cssStringValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
  * Keyboard listeners for a one-line form: Enter submits.
  *
  * The Enter that confirms an IME composition only ends the composition, and an Enter on a checkbox
@@ -317,9 +326,15 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
     if (firstInvalid) {
       if (typeof document !== 'undefined') {
-        const el = document.querySelector<HTMLElement>(
-          `[name="${firstInvalid}"], #${firstInvalid}, [data-testid="${firstInvalid}"]`,
-        );
+        // A field key is the operator's data, not a CSS identifier: `2fa`, `a.b` and `a"b` are
+        // ordinary keys, and a selector built from them unescaped throws before the error is shown.
+        // The id is read through its own lookup, which needs no escaping at all.
+        const el =
+          document.querySelector<HTMLElement>(`[name="${cssStringValue(firstInvalid)}"]`) ??
+          document.getElementById(firstInvalid) ??
+          document.querySelector<HTMLElement>(
+            `[data-testid="${cssStringValue(firstInvalid)}"]`,
+          );
         el?.focus();
       }
       publish();
