@@ -150,8 +150,8 @@
   let placeCompareToken = 0;
   /** The target the shown difference was computed for; the placing uses that one. */
   let placeComparedTarget = $state<string | null>(null);
-  /** The unit a removal asks about, kept here so the confirmation can name it. */
-  let pendingRemoval = $state<WorkflowUnit | null>(null);
+  /** The unit and the scope a removal asks about, kept here so the confirmation can name them. */
+  let pendingRemoval = $state<{ unit: WorkflowUnit; projectId: string | null } | null>(null);
   /** Whether the confirmed removal runs, which holds its dialog open. */
   let isRemoving = $state(false);
   /** The installed-units heading: the focus goes there once a removed row is gone. */
@@ -977,13 +977,15 @@
   }
 
   /**
-   * Asks whether to remove a unit; the confirmation names the level that takes over.
+   * Asks whether to remove a unit; the confirmation names the level that takes over. The scope is
+   * stored with the unit: a later change of the designer's project cannot move the removal, and the
+   * sentence, to another project's unit of the same name.
    *
    * @param unit the unit the list offers to remove
    */
   function askToRemove(unit: WorkflowUnit): void {
     notice = '';
-    pendingRemoval = unit;
+    pendingRemoval = { unit, projectId };
   }
 
   /**
@@ -991,11 +993,12 @@
    *          next one below takes over from, or that no copy remains
    */
   function levelAfterRemoval(): string {
-    const unit = pendingRemoval;
-    if (!unit) return $t('designer.remove.none');
+    const asked = pendingRemoval;
+    if (!asked) return $t('designer.remove.none');
+    const unit = asked.unit;
     // In force is the first level that has the unit, the project's copy first: the removal takes
     // one level away, so every level above it is unchanged and the next one below takes over.
-    const removed = projectId ? 'project' : 'machine';
+    const removed = asked.projectId ? 'project' : 'machine';
     const lower = LEVEL_ORDER.slice(LEVEL_ORDER.indexOf(removed) + 1);
     const next = lower.find((level) => unit.levels.some((entry) => entry.level === level));
     return next ? $t('designer.remove.then', { level: $t(`designer.level.${next}`) }) : $t('designer.remove.none');
@@ -1003,11 +1006,11 @@
 
   /** Removes the unit the confirmation named, once the operator confirmed it. */
   async function confirmRemoval(): Promise<void> {
-    const unit = pendingRemoval;
-    if (!unit) return;
+    const asked = pendingRemoval;
+    if (!asked) return;
     isRemoving = true;
     try {
-      await apiClient.removeWorkflowUnit(projectId, unit.name);
+      await apiClient.removeWorkflowUnit(asked.projectId, asked.unit.name);
       pendingRemoval = null;
       await loadAll();
     } catch {
@@ -1469,8 +1472,8 @@
 <ConfirmDialog
   open={pendingRemoval !== null}
   title={$t('designer.remove.title', {
-    level: $t(projectId ? 'designer.level.project' : 'designer.level.machine'),
-    unit: pendingRemoval?.name ?? '',
+    level: $t(pendingRemoval?.projectId ? 'designer.level.project' : 'designer.level.machine'),
+    unit: pendingRemoval?.unit.name ?? '',
   })}
   consequences={[levelAfterRemoval()]}
   actionLabel={$t('designer.remove.confirm')}

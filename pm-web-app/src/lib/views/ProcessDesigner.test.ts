@@ -1545,6 +1545,37 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     expect(placeSpy.mock.calls[0][0]).toBe('pm-mcp-clients');
   });
 
+  it('keeps a removal on the scope it was asked for when the designer changes project meanwhile', async () => {
+    const removeSpy = vi.spyOn(apiClient, 'removeWorkflowUnit');
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.click(screen.getByTestId('unit-remove-phase-6-finalize'));
+    const dialog = await screen.findByTestId('confirm-dialog');
+    expect(dialog).toHaveTextContent('machine');
+
+    // The project changes behind the open confirmation: the removal stays on the asked-for scope.
+    await fireEvent.change(screen.getByTestId('project-select'), {
+      target: { value: 'pm-mcp-clients' },
+    });
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(removeSpy).toHaveBeenCalledWith(null, 'phase-6-finalize'));
+  });
+
+  it('closes the removal confirmation on Cancel without removing anything', async () => {
+    const removeSpy = vi.spyOn(apiClient, 'removeWorkflowUnit');
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.click(screen.getByTestId('unit-remove-phase-6-finalize'));
+    await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+    expect(removeSpy).not.toHaveBeenCalled();
+    expect(screen.getByTestId('unit-remove-phase-6-finalize')).toBeInTheDocument();
+  });
+
   it('opens the place dialog at the wide size the difference needs, and the dialog owns that width', async () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
