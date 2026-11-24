@@ -51,6 +51,14 @@ The documents are the specification; read them first: the engine's `state-catalo
    - `onboarding.spec.js` runs the onboarding with the cut-back mock and passes with `PM_MOCK_WEB_PORT` and `PM_WEB_PORT` set (it waits on the address and the DOM); the full `-Pe2e` run at the head is green and cited. Evidence order: `test-first`.
    - Browser check (Playwright MCP) of `harness.none`, `auto.result` with a Change, the roles review and the defaults review in `en` and `de`, light and dark, at `1440 × 900` and `390 × 844`, after the last visual commit. Evidence order: `none`.
 
+5. **The project onboarding records its identity and keeps its address on the real wire (folded 2026-11-24: PLAN-176 L3-1, L3-2, L3-3)**
+ - What: PLAN-176 (#549) wired the project onboarding against fields no wire record carries (`landings/PLAN-176.md`, read at `adb0d310`). (a) A being-added run cannot save its identity: `canSave` needs `run.links.set` (`ProjectOnboardingView.svelte:125`), `runOfBeingAdded` (`:417-444`) takes its links only from the explorer's `being_added` row, and `BeingAddedProject` (`pm-api`) carries only `checkout_path`, `current_step`, `step_number`, `total_steps`, `continue_link`, `abandon_link`; the mock serves `links.set` (and the entry's facts) on `GET /api/v1/entries/{id}` (`MockRuntimeEngine.java:4941,5002`), which the view never reads. Read the entry for the run's `links` and `build_environment`, record the identity by following the `set` link's `href` (not a path rebuilt in `actEntry(entryId,'set')`, `:223`), and drop the invented client fields `BeingAddedProject.links`, `.build_environment`, `ProjectOnboardingState.lifecycle_gate`, `EnrolledProject.needs_operator_kind` and `PlanCompletionReport.phase` (`client.ts:141,157-158,237,1106`) or replace each with what the wire sends; the pilot checkbox gate on `lifecycle_gate` (`:730`) and the needs-terminal card at step 3 (`:122-124`) read only wire facts. (b) The run's address is lost: `openProjectOnboarding` writes `/projects/onboarding/{id}` (`runtime.ts:2103-2110`), but the layout's `syncPath` replaces the URL with `addressOfState` on every store change (`routes/+layout.svelte:263-277`) and `routeParamsOf` (`runtime.ts:1576-1591`) carries no `onboardingId`, so a reload lands on `/projects/onboarding` and the run is gone. Carry the onboarding id in the route params. (c) The design still lists `/projects/onboard` as an old address and names no `/projects/onboarding/{id}` (`doc/design/web-app/navigation.adoc:222`, `doc/design/web-app/README.adoc:494`): bring both to the code.
+ - Persona: plan-marshall:persona-implementer
+ - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+ - Done when:
+   - `ProjectOnboardingView.test.ts` is fed a `being_added` row exactly as `BeingAddedProject` serialises and the entry exactly as the mock serves it, and records the identity through the entry's `set` `href` with the specified body; no test feeds a field the wire record lacks; each fails with its production line reverted. Evidence order: `test-first`.
+   - `runtime.test.ts` mounts the address writer (or calls `addressOfState` after `openProjectOnboarding`) and the address keeps `/projects/onboarding/{id}`; `projects.spec.js` reloads a started run and lands on the same run (waits on the address and the DOM, ports set). Evidence order: `test-first`.
+
 ## Standing Constraints
 
 - Build and test through Maven only (`CLAUDE.md`): `./mvnw -pl pm-api,pm-mock-runtime,pm-web-app verify`, `./mvnw -pl pm-api,pm-mock-runtime,pm-web-app verify -Ppre-commit` (review every rewrite), `PM_MOCK_WEB_PORT=<mock port> PM_WEB_PORT=<app port> ./mvnw -pl pm-web-e2e verify -Pe2e` at the head, and `-Pcoverage` at the head after the last code commit (minimum 80 % per module). The CLI modules run against the mock too: the full `./mvnw verify` passes.
@@ -76,6 +84,7 @@ The documents are the specification; read them first: the engine's `state-catalo
   - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: StoreScreen.svelte:22-26 linkId = os_unavailable for an unavailable os store else kind; view.linkBy(linkId), no links[0] fallback (origin/main 3ae8a305)
 - OBSERVED: the dead keys `onboard.catalogue.select.group`, `onboard.harness.tokens.partial` and `.not_reported` are gone from the catalogue — read by `git grep -n` over `pm-api/src/main/resources` (0 lines each)
   - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep ^key= over pm-api/src/main/resources: onboard.catalogue.select.group, onboard.harness.tokens.partial and .not_reported return 0 lines (origin/main 3ae8a305)
+- OBSERVED: a being-added run cannot save its identity on the wire, and `routeParamsOf` carries no `onboardingId` — read at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte:125,417-444`, `pm-api/.../BeingAddedProject.java` (six fields, no `links`), `pm-mock-runtime/.../MockRuntimeEngine.java:4941,5002`, `pm-web-app/src/lib/stores/runtime.ts:1576-1591,2103-2110`, `pm-web-app/src/routes/+layout.svelte:263-277` (orchestrator re-read at `e0e95c05`, 2026-11-24; the address loss is a structural read, confirmed by deliverable 5's e2e)
 - HYPOTHESIS: the engine's catalogue names no `checks[]`, `path`, `check` or `later` on `harness.none` — confirm/refute at `pm-mcp-core` `doc/specification/state-catalogue/14-machine-onboarding.adoc:277-283` (verify-at-outline; the PLAN-66 landing read it on 2026-11-18)
   - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: the PLAN-66 landing read 14-machine-onboarding.adoc:277-283 on 2026-11-18; not re-read here; settled at outline
 - HYPOTHESIS: the minors of deliverable 3 still hold at the head (the leaf's readings of 2026-11-18, PLAN-169 and PLAN-59 deliverable 5 may have changed some) — confirm/refute each at its file and line (verify-at-outline)
@@ -113,11 +122,19 @@ The documents are the specification; read them first: the engine's `state-catalo
 - OBSERVED: `doc/design/web-app/onboarding-texts.adoc` — present at HEAD 3ae8a305
 - OBSERVED: `doc/design/web-app/onboarding-steps-4-7.adoc` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD 3ae8a305
+- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at HEAD adb0d310 (deliverable 5, folded 2026-11-24)
+- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at HEAD adb0d310 (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD adb0d310 (deliverable 5)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD adb0d310 (deliverable 5)
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD adb0d310 (deliverable 5, read; edited only if the address writer must change)
+- OBSERVED: `pm-web-e2e/tests/projects.spec.js` — present at HEAD adb0d310 (deliverable 5)
+- OBSERVED: `doc/design/web-app/navigation.adoc` — present at HEAD adb0d310 (deliverable 5)
+- OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD adb0d310 (deliverable 5)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-66`, `PLAN-169`, `PLAN-59` (shipped); `PLAN-174` (#533, running: `OnboardingScenarioTest.java`), `PLAN-181` (running: `pm-mock-runtime` Sonar part, `OnboardingScenarioTest.java`) and `PLAN-176` (staged: `ProjectOnboardingView`, the catalogue) landed first.
-- Overlaps with: `PLAN-85`, `PLAN-135`, `PLAN-136` (staged: `runtime.ts`, `routes.ts`, `common.*`), `PLAN-177` and `PLAN-179` (no shared file beyond `runtime.ts` and `i18n/index.ts`). Sequenced after `PLAN-174`, `PLAN-181` and `PLAN-176`.
+- Depends on: `PLAN-66`, `PLAN-169`, `PLAN-59` (shipped); `PLAN-174` (#533, running: `OnboardingScenarioTest.java`), `PLAN-181` (running: `pm-mock-runtime` Sonar part, `OnboardingScenarioTest.java`) and `PLAN-176` (`ProjectOnboardingView`, the catalogue) landed first — all three have landed (PLAN-176 #549 `ae123acb`, 2026-11-24).
+- Overlaps with: `PLAN-185` (running: `runtime.ts`, `runtime.test.ts`; sequenced after it unless the operator decides), `PLAN-85`, `PLAN-135`, `PLAN-136` (staged: `runtime.ts`, `routes.ts`, `common.*`), `PLAN-177` and `PLAN-179` (no shared file beyond `runtime.ts` and `i18n/index.ts`). Sequenced after `PLAN-174`, `PLAN-181` and `PLAN-176`.
 - Adjacent to: the engine work package for `request_id` (`briefs/engine-request-id-work-package.md`, not a plan; no shared file), the engine's gaps this plan reports (the aspect spelling after `change:`).
 
 ## Hand-Off Command

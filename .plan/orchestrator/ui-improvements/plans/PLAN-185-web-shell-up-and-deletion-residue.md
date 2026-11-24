@@ -14,6 +14,7 @@ PLAN-144 (#542) shipped the web shell's Up, breadcrumb and work list, and four t
 Read first: `landings/PLAN-144.md` (Layer 3), `doc/design/shared/navigation.adoc` (`:56-65` the columns, `:111`, `:172` Up "behaves the same at every width", `:266`), `doc/design/shared/cleanup.adoc:219` and `cleanup-texts.adoc:189` (what a client shows for a deleted plan or epic), and `doc/plans/web-moving-between-plans.adoc`.
 
 1. **The e2e spec follows the removed Back**
+ - **Re-grounded 2026-11-24 at `e0e95c05`: already done by PLAN-177 (#552).** `overview.spec.js:182-184` now ends the leg on the rail's `nav-overview-btn` and asserts the `.plan-card`; no Back is clicked. What is left of this deliverable is to confirm it under `-Pe2e` together with deliverable 3's browser run; no code change is expected. The text below is the original reading at `a1e33f94`.
  - What: `pm-web-e2e/tests/overview.spec.js:183-185` clicks `getByRole('button', {name:/Back/i})` and expects it visible; #542 removed that button from `OverviewView.svelte`. The ended-work leg ends by Up, the breadcrumb or the browser's `page.goBack()` (the line `:203` already uses `goBack`) and then asserts the `.plan-card`. No other e2e test clicks a removed Back (read: `epic-view.spec.js:83` and `chrome.spec.js:90` assert `back-btn` has count 0; `start-back` is the wizard Back that stays).
  - Persona: plan-marshall:persona-implementer
  - Skills: pm-dev-frontend:javascript, pm-dev-frontend:lint-config

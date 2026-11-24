@@ -2,10 +2,10 @@
   "id": "PLAN-183",
   "slug": "pm-api-and-mock-hygiene-residue",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "running",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
+  "pr": "#553",
   "landing": "",
   "seq": 183
 }
