@@ -1722,6 +1722,7 @@ describe('the decision announcer', () => {
 
     await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
     expect(window.location.pathname).toBe('/reports');
+    expect(get(runtimeStore).quietNavigationNotice).toContain('rep-1 was deleted by the cleanup');
 
     // ... and a task, which falls back to its plan
     window.history.pushState(null, '', '/plans/pln-1/tasks/tsk-1');
@@ -1786,6 +1787,22 @@ describe('the decision announcer', () => {
 
     await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
     expect(get(runtimeStore).quietNavigationNotice).toContain('rep-10 no longer exists');
+
+    // The mock's own shape spells the decider `by` and carries no time: the generic notice stands
+    handleRuntimeEvent('cleanup.decided', {
+      job_id: 'cln-0004',
+      decision: 'delete',
+      by: 'operator',
+      channel: 'web',
+      device: 'iPad',
+    });
+    window.history.pushState(null, '', '/reports/rep-11');
+    adoptRouteFromLocation();
+    runtimeStore.update((s) => ({ ...s, quietNavigationNotice: null }));
+    handleRuntimeEvent('cleanup.done', { job_id: 'cln-0004' });
+
+    await vi.waitFor(() => expect(get(runtimeStore).currentRoute).toBe('reports'));
+    expect(get(runtimeStore).quietNavigationNotice).toContain('rep-11 no longer exists');
   });
 
   it('opens project onboarding with a dedicated address and restores run on reload', () => {

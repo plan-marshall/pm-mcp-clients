@@ -24,6 +24,7 @@ import {
   currentAddress,
   intentFor,
   openedFromOutside,
+  parentOf,
   switchTab,
   writeAddress,
   type WriteIntent,
@@ -1407,9 +1408,7 @@ function treeHasTask(nodes: ProcessNode[], taskId: string): boolean {
 }
 
 /** Where a deletion sends the client: the project's ended work, or the object's parent. */
-type DeletionTarget =
-  | { kind: 'ended-work'; project: string | null }
-  | { kind: 'address'; address: Address };
+type DeletionTarget = { kind: 'ended-work'; project: string | null } | { kind: 'parent' };
 
 /**
  * @param state the store
@@ -1440,9 +1439,7 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
   try {
     if (shown.kind === 'task' && shown.planId) {
       const tree = await apiClient.getPlanProcess(shown.planId);
-      return treeHasTask(tree.nodes ?? [], shown.id)
-        ? null
-        : { kind: 'address', address: { route: 'plan', planId: shown.planId } };
+      return treeHasTask(tree.nodes ?? [], shown.id) ? null : { kind: 'parent' };
     }
     if (shown.kind === 'plan') {
       await apiClient.getPlanProcess(shown.id);
@@ -1456,7 +1453,7 @@ async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | nu
     return null;
   } catch (failure: unknown) {
     if ((failure as { status?: number }).status !== 404) return null;
-    return shown.kind === 'report' ? { kind: 'address', address: { route: 'reports' } } : endedWork();
+    return shown.kind === 'report' ? { kind: 'parent' } : endedWork();
   }
 }
 
@@ -1475,8 +1472,9 @@ async function fallBackFromCleanup(jobId: string | null): Promise<void> {
   const stillShown = shownObjectOf(get(runtimeStore), currentAddress());
   if (stillShown?.kind !== shown.kind || stillShown.id !== shown.id) return;
   const locale = get(currentLocale);
-  // The cleanup's sentence needs both who and when; a runtime that reports neither leaves the
-  // generic "no longer exists" notice rather than a sentence with an invented time.
+  // The cleanup's sentence names who deleted and when; the event catalogue names neither field,
+  // the record spells the decider `who`, and the mock runtime does not send a time. Without both
+  // facts the generic notice stands, rather than a sentence with an invented time.
   const notice = deletion
     ? translate(locale, 'system.cleanup.item_deleted', {
         item: shown.name,
@@ -1497,7 +1495,9 @@ async function fallBackFromCleanup(jobId: string | null): Promise<void> {
       lensMode: 'ended',
     }));
   } else {
-    applyRoute(target.address.route ?? 'overview', target.address);
+    const parent = parentOf(addressOfState(get(runtimeStore)));
+    if (!parent?.route) return;
+    applyRoute(parent.route, parent);
   }
   writeAddress(addressOfState(get(runtimeStore)), 'replace');
   announceNavigation(notice);
@@ -1509,12 +1509,15 @@ function handleCleanupEvent(event: string, data: unknown): void {
     const payload = (data || {}) as {
       job_id?: string;
       decision?: string;
+      /** The decider's name. The event record spells it `who`; the mock runtime spells it `by`. */
       who?: string;
+      by?: string;
       decided_at?: string;
     };
+    const who = payload.who ?? payload.by;
     cleanupDeletion =
-      payload.job_id && payload.decision === 'delete' && payload.who && payload.decided_at
-        ? { jobId: payload.job_id, who: payload.who, at: payload.decided_at }
+      payload.job_id && payload.decision === 'delete' && who && payload.decided_at
+        ? { jobId: payload.job_id, who, at: payload.decided_at }
         : null;
     return;
   }
