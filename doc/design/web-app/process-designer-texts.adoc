@@ -22,6 +22,14 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Process designer
 |Prozess-Designer
 
+|`designer.plan.open`
+|Design process
+|Prozess gestalten
+
+|`designer.plan.open.title`
+|Open the process designer for this plan's project
+|Öffne den Prozess-Designer für das Projekt dieses Plans
+
 |`designer.open.title`
 |Design a process
 |Einen Prozess entwerfen
@@ -29,6 +37,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.open.question`
 |Where does the unit come from?
 |Woher kommt die Einheit?
+
+|`designer.open.scope`
+|Checked against
+|Geprüft gegen
 
 |`designer.input.upload`
 |Upload a file
@@ -99,8 +111,8 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Dein Entwurf von {time} ist wieder da.
 
 |`designer.leave.question`
-|Leave the designer? The draft changed since it was last placed.
-|Designer verlassen? Der Entwurf hat sich geändert, seit er zuletzt platziert wurde.
+|Discard the draft? The draft changed since it was last placed.
+|Entwurf verwerfen? Der Entwurf hat sich geändert, seit er zuletzt platziert wurde.
 
 |`designer.frontmatter.title`
 |About this unit
@@ -129,6 +141,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.leave.discard`
 |Discard the draft
 |Verwirf den Entwurf
+
+|`designer.leave.discard.title`
+|Discard the draft and continue; nothing is saved
+|Verwirf den Entwurf und fahre fort; nichts wird gespeichert
 
 |`designer.checked_against`
 |checked against {project}
@@ -349,6 +365,14 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |`designer.place.failed`
 |The landing failed: {reason}. The unit is not in force.
 |Die Landung ist fehlgeschlagen: {reason}. Die Einheit gilt nicht.
+
+|`designer.place.compare_failed`
+|The comparison failed: {reason}. Nothing was placed.
+|Der Vergleich ist fehlgeschlagen: {reason}. Es wurde nichts platziert.
+
+|`designer.place.unknown`
+|The placement did not confirm: {reason}. Check the installed units before you place it again.
+|Die Platzierung ist nicht bestätigt: {reason}. Prüfe die installierten Einheiten, bevor du sie erneut platzierst.
 
 |`designer.place.retry`
 |Try again

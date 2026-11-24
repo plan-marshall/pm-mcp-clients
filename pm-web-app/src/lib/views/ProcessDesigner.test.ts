@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import ProcessDesigner from './ProcessDesigner.svelte';
 import { apiClient } from '../api/client';
@@ -7,6 +7,8 @@ import { ClientError } from '../api/errors';
 import type { WorkflowCatalogue, WorkflowUnit, WorkflowValidationResult } from '../api/client';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore } from '../stores/runtime';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 const finalizeText = [
   'workflow phase-6-finalize version 5 format 1',
@@ -799,10 +801,12 @@ describe('ProcessDesigner intake, draft, frontmatter, and placing', () => {
     await fireEvent.click(screen.getByRole('radio', { name: /pm-mcp-clients/i }));
     await fireEvent.click(screen.getByTestId('place-compare'));
 
-    // Failed comparison must show the failure text, NOT the stale unconfirmed-placement text
+    // Failed comparison must show the comparison's own text, NOT the stale unconfirmed-placement
+    // text and never the landing's sentence, which would claim something about the unit.
     const failedNotice = await screen.findByTestId('designer-place-failed');
     expect(failedNotice).not.toHaveTextContent(/did not confirm/i);
-    expect(failedNotice).toHaveTextContent(/The landing failed/i);
+    expect(failedNotice).toHaveTextContent(/The comparison failed/i);
+    expect(failedNotice).not.toHaveTextContent(/The landing failed/i);
   });
 
   it('asks the browser to keep the page only while the draft changed', async () => {
@@ -1267,5 +1271,234 @@ describe('ProcessDesigner route reconciliation', () => {
     await waitFor(() => expect(select.value).toBe('project-a'));
     expect(window.location.pathname + window.location.search).toBe('/designer?project=project-a');
     expect(get(runtimeStore).designerProjectId).toBe('project-a');
+  });
+});
+
+describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)', () => {
+  /** @param locale the language the catalogue is loaded in */
+  function useCatalogue(locale: 'de' | 'en'): void {
+    currentLocale.set(locale);
+    messagesStore.set(loadMessages(locale));
+  }
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getWorkflows').mockResolvedValue(units);
+    vi.spyOn(apiClient, 'getWorkflowCatalogue').mockResolvedValue(catalogue);
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
+      favourites: [],
+      recent: [],
+      all_projects: [
+        {
+          project_id: 'pm-mcp-clients',
+          display_name: 'pm-mcp-clients',
+          readiness: 'ready',
+          needs_operator_count: 0,
+          active_plans_count: 0,
+          active_epics_count: 0,
+          is_favourite: false,
+          is_released: false,
+        },
+      ],
+      being_added: [],
+    });
+    vi.spyOn(apiClient, 'validateWorkflow').mockResolvedValue(validResult);
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'machine',
+      status: 'landed',
+      steps: ['written'],
+      digest: 'sha256:placed',
+    });
+    vi.spyOn(apiClient, 'removeWorkflowUnit').mockResolvedValue({
+      unit: 'phase-6-finalize',
+      target: 'machine',
+      status: 'landed',
+      steps: ['written'],
+    });
+  });
+
+  afterEach(() => {
+    useCatalogue('en');
+  });
+
+  /** Validates the open text and opens the placement's target choice. */
+  async function openPlacement(): Promise<void> {
+    await fireEvent.click(screen.getByTestId('validate-button'));
+    await waitFor(() => expect(screen.getByTestId('place-button')).not.toBeDisabled());
+    await fireEvent.click(screen.getByTestId('place-button'));
+  }
+
+  it('keeps the place dialog closed when it is dismissed with Escape during the comparison', async () => {
+    const workflows = vi
+      .spyOn(apiClient, 'getWorkflows')
+      .mockResolvedValueOnce(units);
+    let resolveUnits: (value: WorkflowUnit[]) => void = () => {};
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    workflows.mockImplementationOnce(
+      () =>
+        new Promise<WorkflowUnit[]>((resolve) => {
+          resolveUnits = resolve;
+        }),
+    );
+    await openPlacement();
+    const dialog = screen.getByTestId('place-dialog');
+    await fireEvent.click(within(dialog).getAllByRole('radio')[1]);
+    await fireEvent.click(screen.getByTestId('place-compare'));
+
+    // The comparison is still in flight when the person dismisses the dialog.
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByTestId('place-dialog')).toBeNull());
+
+    resolveUnits(units);
+    await waitFor(() => expect(screen.queryByTestId('place-dialog')).toBeNull());
+    expect(screen.queryByTestId('designer-diff')).not.toBeInTheDocument();
+  });
+
+  it.each(['en', 'de'] as const)(
+    'names a failed comparison as a comparison, not as a landing, in %s',
+    async (locale) => {
+      useCatalogue(locale);
+      const workflows = vi.spyOn(apiClient, 'getWorkflows').mockResolvedValueOnce(units);
+      render(ProcessDesigner);
+      await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+      workflows.mockRejectedValueOnce(new ClientError('timeout'));
+      await openPlacement();
+      const dialog = screen.getByTestId('place-dialog');
+      await fireEvent.click(within(dialog).getAllByRole('radio')[1]);
+      await fireEvent.click(screen.getByTestId('place-compare'));
+
+      const failed = await screen.findByTestId('designer-place-failed');
+      expect(failed).toHaveTextContent(
+        locale === 'en' ? 'The comparison failed:' : 'Der Vergleich ist fehlgeschlagen:',
+      );
+      expect(failed).not.toHaveTextContent(locale === 'en' ? 'The landing failed' : 'Landung');
+      expect(failed).toHaveTextContent(
+        locale === 'en'
+          ? 'Nothing was placed.'
+          : 'Es wurde nichts platziert.',
+      );
+    },
+  );
+
+  it('asks before it removes a unit and removes it only on confirm', async () => {
+    const removeSpy = vi.spyOn(apiClient, 'removeWorkflowUnit');
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.click(screen.getByTestId('unit-remove-phase-6-finalize'));
+
+    const dialog = await screen.findByTestId('confirm-dialog');
+    expect(dialog).toHaveTextContent(/Remove .* of phase-6-finalize\?/);
+    expect(dialog).toHaveTextContent('Then in force: the compiled default.');
+    expect(removeSpy).not.toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(removeSpy).toHaveBeenCalledWith(null, 'phase-6-finalize'));
+    await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+  });
+
+  it('keeps the place dialog open on Escape while the landing runs, and shows no empty footer row', async () => {
+    let resolvePlace: (value: unknown) => void = () => {};
+    vi.spyOn(apiClient, 'placeWorkflowUnit').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePlace = resolve;
+        }) as never,
+    );
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state placed\n` },
+    });
+    await openPlacement();
+    await fireEvent.click(screen.getByTestId('place-compare'));
+    await fireEvent.click(screen.getByTestId('place-confirm'));
+
+    const dialog = screen.getByTestId('place-dialog');
+    await waitFor(() => expect(dialog).toHaveTextContent('Placing phase-6-finalize'));
+    expect(dialog.querySelector('.dialog__footer')).toBeNull();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(screen.getByTestId('place-dialog')).toBeInTheDocument();
+    resolvePlace({
+      unit: 'phase-6-finalize',
+      target: 'machine',
+      status: 'landed',
+      steps: ['written'],
+      digest: 'sha256:placed',
+    });
+    expect(await screen.findByTestId('designer-place-done')).toBeInTheDocument();
+  });
+
+  it('closes the leave dialog on Escape and keeps the draft the person typed', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.input(screen.getByTestId('workflow-text'), {
+      target: { value: `${finalizeText}state drafted\n` },
+    });
+    // The edit stamps the draft's date and release, so the draft is read back from the editor.
+    const drafted = (screen.getByTestId('workflow-text') as HTMLTextAreaElement).value;
+
+    await fireEvent.click(screen.getByTestId('unit-open-epic'));
+    expect(await screen.findByTestId('designer-leave-dialog')).toBeInTheDocument();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByTestId('designer-leave-dialog')).toBeNull());
+    expect(screen.getByTestId('workflow-text')).toHaveValue(drafted);
+    expect(screen.getByTestId('designer-unit')).toHaveTextContent('phase-6-finalize');
+  });
+
+  it('switches the intake from the keyboard', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const installed = screen.getByRole('radio', { name: 'Start from an installed unit' });
+    installed.focus();
+    await fireEvent.keyDown(installed, { key: 'ArrowRight' });
+
+    expect(screen.getByRole('radio', { name: 'Upload a file' })).toBeChecked();
+    expect(screen.getByTestId('designer-file-input')).toBeInTheDocument();
+  });
+
+  it('names the head’s project select apart from the intake’s choice', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    expect(screen.getByRole('combobox', { name: 'Checked against' })).toBe(
+      screen.getByTestId('project-select'),
+    );
+    expect(
+      screen.getByRole('radiogroup', { name: 'Where does the unit come from?' }),
+    ).toBeInTheDocument();
+  });
+
+  it('links a hint and a label to the raw controls they describe', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await fireEvent.click(screen.getByRole('radio', { name: 'Upload a file' }));
+
+    const file = screen.getByTestId('designer-file-input');
+    expect(file).toHaveAttribute('aria-describedby', 'designer-file-hint');
+    expect(document.getElementById('designer-file-hint')).toHaveTextContent('a .pmwf file');
+
+    const icon = screen.getByTestId('frontmatter-icon');
+    expect(icon).toHaveAttribute('id', 'designer-icon');
+    expect(screen.getByLabelText('Icon')).toBe(icon);
+  });
+
+  it('opens the place dialog at the wide size the difference needs', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+    await openPlacement();
+
+    expect(screen.getByTestId('place-dialog')).toHaveClass('dialog--wide');
   });
 });

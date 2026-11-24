@@ -109,7 +109,7 @@ The head names the unit and where it came from, the project it is checked agains
 [#draft]
 === The Draft
 
-The one exception to _The screen is the state_: until it is placed, the unit being designed is the operator's draft, not a state of the runtime. It is kept in the browser of this device, so that a reload shows it again (`designer.draft.restored`); another device does not see it. Leaving the designer with a draft changed since it was last placed asks first (`designer.leave.*`).
+The one exception to _The screen is the state_: until it is placed, the unit being designed is the operator's draft, not a state of the runtime. It is kept in the browser of this device, so that a reload shows it again (`designer.draft.restored`); another device does not see it. Opening another unit or scope with a draft changed since it was last placed asks first (`designer.leave.*`); nothing leaves the designer, so the question names the draft, not the view.
 
 [#editor]
 == The Text and the Structure (`designer.edit`)
@@ -264,12 +264,12 @@ _Compare…_ validates the unit again against the target (`designer.validate-tar
 [#remove]
 == Removing a Placed Unit
 
-A project's or the machine's copy can be removed: _Remove…_ in the list of installed units, in the project's setup, or in the machine settings (`DELETE /api/v1/projects/{project_id}/workflows/{unit}`, `DELETE /api/v1/workflows/{unit}`). The confirmation names the level that takes over (`Then in force: this machine's copy`) with the difference against it; a project's copy is removed as a short landing, as it was placed. Removing the machine's copy is validated like placing it, against every project that would fall back to the compiled default, and refused while any fails. The compiled default cannot be removed.
+A project's or the machine's copy can be removed: _Remove…_ in the list of installed units, in the project's setup, or in the machine settings (`DELETE /api/v1/projects/{project_id}/workflows/{unit}`, `DELETE /api/v1/workflows/{unit}`). The confirmation names the act and the level that takes over: _Remove the project's copy of phase-6-finalize?_ (`designer.remove.title`), _Then in force: this machine's copy._ (`designer.remove.then`), _Remove it_ (`designer.remove.confirm`); a project's copy is removed as a short landing, as it was placed. Removing the machine's copy is validated like placing it, against every project that would fall back to the compiled default, and refused while any fails. The compiled default cannot be removed.
 
 [#phone]
 == At Phone Width
 
-The input choice, then the text and the structure as two tabs, with the frontmatter panel above the structure, read only; _Validate_ with its findings and the composed process. Editing, the building blocks, and _Place…_ are not offered; one line says so (`designer.phone.note`). Placing and removing need the confirmation's difference, which needs the width.
+The input choice, then the text and the structure as two tabs, with the frontmatter panel above the structure, read only; _Validate_ with its findings and the composed process. Editing, the building blocks, and _Place…_ are not offered; one line says so (`designer.phone.note`). Placing needs the confirmation's difference, which needs the width.
 
 [#texts]
 == Texts

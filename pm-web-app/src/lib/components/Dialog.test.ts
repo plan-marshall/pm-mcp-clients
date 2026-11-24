@@ -186,6 +186,21 @@ describe('Dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('draws the wide size a dialog asks for, and the default size otherwise', () => {
+    const wide = render(Dialog, { props: { open: true, title: 'Wide', size: 'wide' } });
+    expect(screen.getByRole('dialog')).toHaveClass('dialog--wide');
+    wide.unmount();
+
+    render(Dialog, { props: { open: true, title: 'Default' } });
+    expect(screen.getByRole('dialog')).not.toHaveClass('dialog--wide');
+  });
+
+  it('draws no footer area for a stage that offers no act', () => {
+    render(Dialog, { props: { open: true, title: 'No act', footer: false } });
+
+    expect(screen.getByRole('dialog').querySelector('.dialog__footer')).toBeNull();
+  });
+
   it('reports a close even when the view keeps the dialog open', async () => {
     const onClose = vi.fn();
     render(Dialog, { props: { open: true, title: 'Delete the plan', onClose } });
