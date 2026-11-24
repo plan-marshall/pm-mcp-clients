@@ -157,6 +157,21 @@
       delete drafts[role.role];
       delete decidedOn[role.role];
     }
+    // An edit the refreshed state already carries is recorded: its draft is dropped, so a later
+    // visit to this screen in the same page does not resend it. A decision stays until its own
+    // proposal is gone or changed (above), so a successful record with a decision keeps the word it
+    // recorded until the row's proposal settles.
+    for (const role of roles) {
+      const draft = drafts[role.role];
+      if (!draft || decisions[role.role]) continue;
+      if (
+        draft.harness_id === (role.harness_id ?? '') &&
+        draft.model_id === (role.model_id ?? '') &&
+        draft.effort === (role.effort ?? '')
+      ) {
+        delete drafts[role.role];
+      }
+    }
   });
 
   /** @param role the role's id @returns the proposal the state reports, as the decision records it */

@@ -670,7 +670,8 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  * Called after pairing, when the machine can be asked: the wait is bounded so the first paint is
  * never held up by a slow runtime, and the read goes on so a late answer still switches the screen.
  *
- * @see adoptRecordedLocaleNow for the step that records the language, which waits for it
+ * @see adoptRecordedLocaleBeforeStep for the onboarding's record step, which bounds this wait so the
+ *      button cannot spin on a runtime that stopped answering
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;

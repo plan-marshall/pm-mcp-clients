@@ -5020,11 +5020,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * @param entryId   the onboarding's entry
-     * @param completed whether the run reached its last state
-     * @return the state the entry reports
-     */
-    /**
      * The build environment an entry serves for the run's enrolment step, or {@code null} while the
      * terminal client captured none yet: the same shape the runtime serves on a project's onboarding
      * ({@code captured_at}, {@code source}, {@code variables}), so the needs-terminal card clears
@@ -5049,7 +5044,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @param completed whether the run completed
      * @return the entry's representation after an act
      */
-    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {        var body = new LinkedHashMap<String, Object>();
+    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
+        var body = new LinkedHashMap<String, Object>();
         body.put(KEY_STATE, completed ? PROJECT_SETUP_COMPLETED : PROJECT_SETUP_IDENTITY);
         body.put(KEY_STEP, completed ? 10 : 2);
         body.put(KEY_TOTAL_STEPS, 10);
@@ -12507,7 +12503,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return switch (status) {
             case STATUS_WAITING_FOR_YOU -> STATE_WAITING_FOR_YOU;
             case STATUS_SHIPPED, STATE_MERGED, STATUS_COMPLETED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED,
-                    STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
+                STATUS_RETURNED, STATUS_HANDED_BACK -> STATE_ENDED;
             default -> status;
         };
     }

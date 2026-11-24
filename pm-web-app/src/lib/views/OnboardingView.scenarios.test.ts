@@ -63,6 +63,7 @@ describe('roles review minors (D3)', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    resetRoleEditSession();
   });
 
   function roleRow(partial: Record<string, unknown> = {}): Record<string, unknown> {

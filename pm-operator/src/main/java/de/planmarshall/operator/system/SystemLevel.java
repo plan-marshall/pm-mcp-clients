@@ -43,7 +43,7 @@ import de.planmarshall.operator.tui.TuiRow;
  * @param projectId the project the view shows, or {@code null} for all projects
  */
 public record SystemLevel(@Nullable SystemSnapshot snapshot, SystemWindow window, String groupBy,
-                    @Nullable String projectId) {
+@Nullable String projectId) {
 
     /** The row id of the runtime figure. */
     public static final String ROW_RUNTIME = "sys:runtime";

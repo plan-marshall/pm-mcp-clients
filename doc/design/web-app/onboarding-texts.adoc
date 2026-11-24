@@ -42,7 +42,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.harness.icons-consent.title`, `onboard.harness.fetch-icons.title`, `onboard.harness.fetch_icons.failed`, `onboard.harness.scan.title`; `common.consent.withdraw_hint` (link:../shared/consents.adoc#texts[Consents, Texts])
 
 |xref:onboarding.adoc#harness-choose[harness-choose], xref:onboarding.adoc#harness-none[harness-none]
-|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_label`, `.new_default`, `.none`, `.at_least_one`, `.action`, `.check`, `.advanced`, `.tokens`, `.usage_complete`, `.usage_partial`, `.usage_partial_missing`, `.usage_not_reported` with `report.tokens.component` for the figures; `onboard.harness.none.title`, `.install_one` with `onboard.harness.check.*` and `onboard.state.fix` where a failure's words are shown; `onboard.link.recheck`, `onboard.link.add`
+|`onboard.harness.choose.title`, `.found`, `.supported`, `.no_workers`, `.not_found`, `.default`, `.default_label`, `.new_default`, `.none`, `.at_least_one`, `.action`, `.check`, `.advanced`, `.tokens`, `.usage_complete`, `.usage_partial`, `.usage_partial_missing`, `.usage_not_reported` with `report.tokens.component` for the figures; `onboard.harness.none.title`, `.install_one`; `onboard.link.recheck`, `onboard.link.add`
 
 |xref:onboarding.adoc#harness-add[harness-add], xref:onboarding.adoc#harness-add-confirm[harness-add-confirm]
 |`onboard.harness.add.title`, `.executable`, `.name`; `onboard.harness.add-consent.title`; `onboard.harness.verify-profile.title`; `onboard.harness.add-confirm.title`; `onboard.harness.install-profile.title`, `.done`; `onboard.link.back`
