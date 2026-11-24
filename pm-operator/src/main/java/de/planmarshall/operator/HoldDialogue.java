@@ -125,33 +125,51 @@ final class HoldDialogue {
             if (reason == null) {
                 return 0;
             }
-            HoldResolutionResult result;
-            try {
-                result = client.resolveHold(planId, hold.holdId(), act, reason);
-            } catch (IOException refused) {
-                prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.hold.refused",
-                                    Map.of("reason", OutputSafety.stripControlSequences(
-                                                        OperatorRefusedException.screenText(refused, prompt.locale())))));
+            var result = resolve(hold, act, reason);
+            if (result == null) {
                 return 1;
             }
             if (result.released()) {
-                prompt.line("control.hold.released", Map.of("subject", OutputSafety.stripControlSequences(
-                                    result.subject())));
-                if (ACT_ACCEPT.equals(act)) {
-                    prompt.line("operator.actions.hold.goes_on", Map.of("plan", planId));
-                }
+                return released(act, result);
+            }
+            var next = afterStillHeld(hold, result);
+            if (next == null) {
                 return 0;
             }
-            prompt.line("control.hold.still_held",
-                                Map.of("cause", OutputSafety.stripControlSequences(
-                                                    result.cause() != null ? result.cause() : "")));
-            holds = client.holds(planId);
-            if (holds.isEmpty()) {
-                prompt.line("control.hold.released", Map.of("subject", planId));
-                return 0;
-            }
-            hold = select(holds, hold.holdId());
+            hold = next;
         }
+    }
+
+    private @Nullable HoldResolutionResult resolve(HoldRecord hold, String act, String reason) {
+        try {
+            return client.resolveHold(planId, hold.holdId(), act, reason);
+        } catch (IOException refused) {
+            prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.hold.refused",
+                                Map.of("reason", OutputSafety.stripControlSequences(
+                                                    OperatorRefusedException.screenText(refused, prompt.locale())))));
+            return null;
+        }
+    }
+
+    private int released(String act, HoldResolutionResult result) {
+        prompt.line("control.hold.released", Map.of("subject", OutputSafety.stripControlSequences(
+                            result.subject())));
+        if (ACT_ACCEPT.equals(act)) {
+            prompt.line("operator.actions.hold.goes_on", Map.of("plan", planId));
+        }
+        return 0;
+    }
+
+    private @Nullable HoldRecord afterStillHeld(HoldRecord hold, HoldResolutionResult result) throws IOException {
+        prompt.line("control.hold.still_held",
+                            Map.of("cause", OutputSafety.stripControlSequences(
+                                                result.cause() != null ? result.cause() : "")));
+        var holds = client.holds(planId);
+        if (holds.isEmpty()) {
+            prompt.line("control.hold.released", Map.of("subject", planId));
+            return null;
+        }
+        return select(holds, hold.holdId());
     }
 
     private void show(HoldRecord hold) {
@@ -163,8 +181,7 @@ final class HoldDialogue {
         if (hold.attempts() > 0) {
             prompt.line("control.hold.tried",
                                 Map.of("count", hold.attempts(),
-                                                    "time", hold.lastTriedAt() != null
-                                                                        ? time(hold.lastTriedAt()) : ""));
+                                                    "time", timeOrEmpty(hold.lastTriedAt())));
         }
         if ("integrity_pause".equals(hold.kind())) {
             prompt.line("control.hold.integrity.file",
@@ -300,8 +317,8 @@ final class HoldDialogue {
         return slash >= 0 && slash + 1 < url.length() ? url.substring(slash + 1) : "";
     }
 
-    private String time(Instant instant) {
-        return DateTimeFormatter.ofPattern("HH:mm")
+    private String timeOrEmpty(@Nullable Instant instant) {
+        return instant == null ? "" : DateTimeFormatter.ofPattern("HH:mm")
                             .format(instant.atZone(clock.getZone()));
     }
 }

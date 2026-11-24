@@ -164,29 +164,7 @@ public final class EntryFlow {
         int completedStep = getCompletedOnboardStep(status);
         var locale = context.clientEnvironment().locale();
         int totalSteps = aspects.size();
-        out.println();
-        if (completedStep == 0) {
-            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
-            out.println();
-            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of("total", totalSteps)));
-            out.println();
-            for (int step = 1; step <= totalSteps; step++) {
-                var name = MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
-                var whatKey = "operator.entry.step.what." + aspects.get(step - 1).name().toLowerCase(Locale.ROOT);
-                out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
-                                    "number", step,
-                                    "name", name + " ".repeat(Math.max(1, 13 - name.length())),
-                                    "what", MessageCatalogue.format(locale, whatKey, Map.of()))));
-            }
-            out.println();
-        } else {
-            int nextStep = Math.min(completedStep + 1, totalSteps);
-            out.println(MessageCatalogue.format(locale, "operator.entry.stopped_at", Map.of(
-                                "done", completedStep, "total", totalSteps,
-                                "step", "[" + nextStep + "/" + totalSteps + "] " + stepName(locale, nextStep))));
-            out.println();
-        }
-        out.flush();
+        printUnonboardedHeader(out, locale, completedStep, totalSteps);
 
         String promptKey;
         if (completedStep == 0) {
@@ -212,21 +190,12 @@ public final class EntryFlow {
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
         if ("w".equals(choice) && context.gate().permits()) {
-            ensureLoopbackListener(runtime, webPort);
-            var pairing = issueOrReport(runtime, webPort, out);
+            var pairing = openWebAccess(runtime, out, locale, isSsh, webPort);
             if (pairing == null) {
                 // Without a code no device can pair: the console opens without one, and web pair
                 // asks for one again.
-                out.flush();
                 return new EntryResult(status, badges, null, null, cBadges);
             }
-            if (!isSsh) {
-                tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
-            } else {
-                printSshWaysIn(out, webPort, pairing.code());
-            }
-            out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
-            out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url(), cBadges);
         }
         if ("w".equals(choice)) {
@@ -240,6 +209,50 @@ public final class EntryFlow {
         out.flush();
         runOnboardingDialogue(runtime, out, reader, locale);
         return refreshedAfterDialogue(runtime, status, cBadges);
+    }
+
+    private void printUnonboardedHeader(PrintWriter out, String locale, int completedStep, int totalSteps) {
+        out.println();
+        if (completedStep == 0) {
+            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
+            out.println();
+            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of("total", totalSteps)));
+            out.println();
+            for (int step = 1; step <= totalSteps; step++) {
+                var name = MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
+                var whatKey = "operator.entry.step.what." + aspects.get(step - 1).name().toLowerCase(Locale.ROOT);
+                out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
+                                    "number", step,
+                                    "name", name + " ".repeat(Math.max(1, 13 - name.length())),
+                                    "what", MessageCatalogue.format(locale, whatKey, Map.of()))));
+            }
+            out.println();
+        } else {
+            int nextStep = Math.min(completedStep + 1, totalSteps);
+            out.println(MessageCatalogue.format(locale, "operator.entry.stopped_at", Map.of(
+                                "done", completedStep, "total", totalSteps,
+                                "step", "[" + nextStep + "/" + totalSteps + "] " + stepName(locale, nextStep))));
+            out.println();
+        }
+        out.flush();
+    }
+
+    private @Nullable PairingCode openWebAccess(RuntimeClient runtime, PrintWriter out, String locale, boolean isSsh,
+                        int webPort) throws IOException {
+        ensureLoopbackListener(runtime, webPort);
+        var pairing = issueOrReport(runtime, webPort, out);
+        if (pairing == null) {
+            out.flush();
+            return null;
+        }
+        if (!isSsh) {
+            tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
+        } else {
+            printSshWaysIn(out, webPort, pairing.code());
+        }
+        out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
+        out.flush();
+        return pairing;
     }
 
     /**
@@ -589,10 +602,10 @@ public final class EntryFlow {
         if (status.get("machine") instanceof Map<?, ?> machine && Boolean.TRUE.equals(machine.get("onboarded"))) {
             return true;
         }
-        if (status.get("onboard") instanceof Map<?, ?> onboard) {
-            if ("onboard.completed".equals(onboard.get("state")) || Boolean.TRUE.equals(onboard.get("completed"))) {
-                return true;
-            }
+        if (status.get("onboard") instanceof Map<?, ?> onboard
+                            && ("onboard.completed".equals(onboard.get("state"))
+                                                || Boolean.TRUE.equals(onboard.get("completed")))) {
+            return true;
         }
         return false;
     }

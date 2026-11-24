@@ -36,8 +36,14 @@ import de.planmarshall.operator.tui.TuiRow;
  * <p>The model is pure: it holds one snapshot the caller read and turns it into rows through
  * {@link SystemView}, the formatter both views share. The window, the grouping of the models, and
  * the project are the operator's choice and stay with the model until the caller replaces it.
+ *
+ * @param snapshot  the snapshot the runtime served, or {@code null} when it could not be read
+ * @param window    the models' window
+ * @param groupBy   {@code model} or {@code role}
+ * @param projectId the project the view shows, or {@code null} for all projects
  */
-public final class SystemLevel {
+public record SystemLevel(@Nullable SystemSnapshot snapshot, SystemWindow window, String groupBy,
+                    @Nullable String projectId) {
 
     /** The row id of the runtime figure. */
     public static final String ROW_RUNTIME = "sys:runtime";
@@ -129,11 +135,6 @@ public final class SystemLevel {
         }
     }
 
-    private final @Nullable SystemSnapshot snapshot;
-    private final SystemWindow window;
-    private final String groupBy;
-    private final @Nullable String projectId;
-
     /**
      * @param snapshot  the snapshot the runtime served, or {@code null} when it could not be read
      * @param window    the models' window
@@ -169,26 +170,6 @@ public final class SystemLevel {
     public static SystemLevel unavailable(SystemWindow window, @Nullable String groupBy,
                         @Nullable String projectId) {
         return new SystemLevel(null, window, groupBy, projectId);
-    }
-
-    /** @return the snapshot, or {@code null} when it could not be read */
-    public @Nullable SystemSnapshot snapshot() {
-        return snapshot;
-    }
-
-    /** @return the models' window */
-    public SystemWindow window() {
-        return window;
-    }
-
-    /** @return {@code model} or {@code role} */
-    public String groupBy() {
-        return groupBy;
-    }
-
-    /** @return the project the view shows, or {@code null} for all projects */
-    public @Nullable String projectId() {
-        return projectId;
     }
 
     /** @return {@code true} when the runtime offers to upgrade this installation */

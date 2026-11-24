@@ -30,23 +30,16 @@ import de.planmarshall.api.runtime.RuntimeRecord;
  * </ul>
  * Neither CLI binary writes any file under {@code <PM_MCP_BASE>}; every other state reaches a CLI
  * binary through the runtime's API (PM-SEC-4).
+ *
+ * @param paths the machine paths
  */
-public final class DirectFileAccess {
-
-    private final MachinePaths paths;
+public record DirectFileAccess(MachinePaths paths) {
 
     /**
      * @param paths the machine paths
      */
-    public DirectFileAccess(MachinePaths paths) {
-        this.paths = Objects.requireNonNull(paths, "paths");
-    }
-
-    /**
-     * @return the machine paths
-     */
-    public MachinePaths paths() {
-        return paths;
+    public DirectFileAccess {
+        paths = Objects.requireNonNull(paths, "paths");
     }
 
     /**

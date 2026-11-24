@@ -43,13 +43,11 @@ public final class ClientCommand implements Callable<Integer> {
 
     private static final String HARNESSES = "harnesses";
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
 
     ClientCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        Objects.requireNonNull(context, "context");
     }
 
     @Override

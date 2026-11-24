@@ -233,36 +233,12 @@ final class ActionSupport {
         String effectiveReason = options.reason;
         @Nullable String act = null;
         if (effectiveReason == null || effectiveReason.isBlank()) {
-            if (options.noInput) {
-                out.println(MessageCatalogue.format(context.locale(), "operator.actions.end.reason_missing",
-                                    Map.of("action", actionVerb.toLowerCase(Locale.ROOT))));
-                out.flush();
-                return 3;
+            var asked = askForReason(context, out, kind, id, actionVerb, options.noInput);
+            if (asked.exitCode() != null) {
+                return asked.exitCode();
             }
-            if (context.isInteractiveTerminal()) {
-                var locale = context.clientEnvironment().locale();
-                var prompt = new StartPrompt(context, out, locale, false);
-                var leaveLabel = MessageCatalogue.format(locale,
-                                    "operator.dialogue.label." + actionVerb.toLowerCase(Locale.ROOT), Map.of());
-                try {
-                    var reason = askEndReason(prompt, "control.action", leaveLabel, id);
-                    if (reason == null) {
-                        return 1;
-                    }
-                    effectiveReason = reason;
-                    act = endOutcome(context, kind, id, actionVerb);
-                    if (!confirmEnd(prompt, act, leaveLabel)) {
-                        return 0;
-                    }
-                } catch (StartPrompt.InterruptException _) {
-                    return StartPrompt.EXIT_INTERRUPTED;
-                } catch (StartPrompt.StartLeftException _) {
-                    return 0;
-                }
-            } else {
-                effectiveReason = (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")
-                                    + " by operator";
-            }
+            effectiveReason = asked.reason();
+            act = asked.act();
         }
 
         if (act == null) {
@@ -287,6 +263,61 @@ final class ActionSupport {
             return 0;
         }
         throw new OperatorRefusedException(kind + " " + actionVerb, response);
+    }
+
+    /**
+     * Asks the reason an end needs, when the verb carried none.
+     *
+     * @param context    the operator context
+     * @param out        the verb's output
+     * @param kind       {@code plan} or {@code epic}
+     * @param id         the subject
+     * @param actionVerb the verb the operator typed
+     * @param noInput    whether the verb may ask nothing
+     * @return the reason to send, or the exit code that ends the verb
+     */
+    private static EndAnswer askForReason(OperatorContext context, PrintWriter out, String kind, String id,
+                        String actionVerb, boolean noInput) {
+        if (noInput) {
+            out.println(MessageCatalogue.format(context.locale(), "operator.actions.end.reason_missing",
+                                Map.of("action", actionVerb.toLowerCase(Locale.ROOT))));
+            out.flush();
+            return new EndAnswer(3, null, null);
+        }
+        if (!context.isInteractiveTerminal()) {
+            return new EndAnswer(null, (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")
+                                + " by operator", null);
+        }
+        var locale = context.clientEnvironment().locale();
+        var prompt = new StartPrompt(context, out, locale, false);
+        var leaveLabel = MessageCatalogue.format(locale,
+                            "operator.dialogue.label." + actionVerb.toLowerCase(Locale.ROOT), Map.of());
+        try {
+            var reason = askEndReason(prompt, "control.action", leaveLabel, id);
+            if (reason == null) {
+                return new EndAnswer(1, null, null);
+            }
+            var act = endOutcome(context, kind, id, actionVerb);
+            if (!confirmEnd(prompt, act, leaveLabel)) {
+                return new EndAnswer(0, null, null);
+            }
+            return new EndAnswer(null, reason, act);
+        } catch (StartPrompt.InterruptException _) {
+            return new EndAnswer(StartPrompt.EXIT_INTERRUPTED, null, null);
+        } catch (StartPrompt.StartLeftException _) {
+            return new EndAnswer(0, null, null);
+        }
+    }
+
+    /**
+     * The answer to the reason question: the exit code that ends the verb, or the reason and the act
+     * that go on with it.
+     *
+     * @param exitCode the exit code to return, or {@code null} to go on
+     * @param reason   the reason to send, or {@code null} when the verb ends
+     * @param act      the act the runtime performs, or {@code null} when it is not read yet
+     */
+    private record EndAnswer(@Nullable Integer exitCode, @Nullable String reason, @Nullable String act) {
     }
 
     /**

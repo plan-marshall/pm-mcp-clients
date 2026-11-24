@@ -50,6 +50,24 @@ import picocli.CommandLine.Spec;
 @Command(name = "status", description = "Shows the runtime status; never starts the runtime.")
 final class StatusCommand implements Callable<Integer> {
 
+    /** The option path the refusals of the ended read name. */
+    private static final String ENDED_READ = "status --ended";
+
+    /** The status key of the worker count, read by the overview tree and by its guard. */
+    private static final String WORKERS_COUNT = "workers_count";
+
+    /** The message parameter name of the project, shared by the ended lines. */
+    private static final String PROJECT_PARAM = "project";
+
+    /** The status key and message parameter name of the runtime's version. */
+    private static final String VERSION = "version";
+
+    /** The blanks of a plan row's indent, also used where a row has no marker to show. */
+    private static final String PLAN_INDENT = "     ";
+
+    /** The state word of what runs: a plan, a landing, the runtime itself. */
+    private static final String RUNNING = "running";
+
     private final OperatorContext context;
 
     @Spec
@@ -82,8 +100,8 @@ final class StatusCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
-        var record = RuntimeRecord.read(context.paths().runtimeRecord());
-        if (record.isEmpty() || !record.get().processAlive()) {
+        var runtimeRecord = RuntimeRecord.read(context.paths().runtimeRecord());
+        if (runtimeRecord.isEmpty() || !runtimeRecord.get().processAlive()) {
             return notRunning();
         }
 
@@ -99,30 +117,52 @@ final class StatusCommand implements Callable<Integer> {
         }
 
         if (json) {
-            if (project != null && !".".equals(project)) {
-                try {
-                    var detailRes = context.runtime(false).send(HttpRequest.get(projectPath(project)));
-                    if (detailRes.status() == 200) {
-                        out.println(detailRes.bodyText());
-                        out.flush();
-                        return 0;
-                    }
-                } catch (IOException _) {
-                    // Fall back to status json
-                }
-            }
-            out.println(JsonTree.write(status));
-            out.flush();
-            return 0;
+            return printStatusJson(out, status);
         }
 
+        return renderStatus(out, status);
+    }
+
+    /**
+     * Prints the status as JSON, the project's own detail when one was asked for.
+     *
+     * @param out    the command's output
+     * @param status the status as read
+     * @return the exit code
+     */
+    private int printStatusJson(PrintWriter out, Map<String, Object> status) throws IOException {
+        if (project != null && !".".equals(project)) {
+            try {
+                var detailRes = context.runtime(false).send(HttpRequest.get(projectPath(project)));
+                if (detailRes.status() == 200) {
+                    out.println(detailRes.bodyText());
+                    out.flush();
+                    return 0;
+                }
+            } catch (IOException _) {
+                // Fall back to status json
+            }
+        }
+        out.println(JsonTree.write(status));
+        out.flush();
+        return 0;
+    }
+
+    /**
+     * Renders the hierarchical overview tree when the runtime serves the projects, and the legacy
+     * status lines when it does not.
+     *
+     * @param out    the command's output
+     * @param status the status as read
+     * @return the exit code
+     */
+    private int renderStatus(PrintWriter out, Map<String, Object> status) throws IOException {
         // Try rendering hierarchical overview tree
         try {
             var projectsResponse = context.runtime(false).send(HttpRequest.get("/api/v1/projects"));
             if (projectsResponse.status() == 200) {
                 var overview = ProjectOverviewResponse.fromJson(projectsResponse.bodyText());
-                if (!overview.projects().isEmpty() || status.containsKey("running_since")
-                                    || status.containsKey("workers_count") || project != null) {
+                if (hasOverviewContent(overview, status)) {
                     renderOverviewTree(out, status, overview.projects());
                     out.flush();
                     return 0;
@@ -138,6 +178,16 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     /**
+     * @param overview the projects as the runtime lists them
+     * @param status   the status as read
+     * @return whether the overview tree has anything to draw
+     */
+    private boolean hasOverviewContent(ProjectOverviewResponse overview, Map<String, Object> status) {
+        return !overview.projects().isEmpty() || status.containsKey("running_since")
+                            || status.containsKey(WORKERS_COUNT) || project != null;
+    }
+
+    /**
      * @param projectId a project id as the operator or the runtime names it
      * @return the project's resource, its id one encoded path segment: an id is never read as
      *         path or query syntax
@@ -149,20 +199,7 @@ final class StatusCommand implements Callable<Integer> {
     private int handleEnded(PrintWriter out) throws IOException {
         String locale = context.clientEnvironment().locale();
         if (json) {
-            try {
-                var path = project != null && !".".equals(project)
-                                    ? projectPath(project) + "/ended"
-                                    : "/api/v1/status?ended=true";
-                var response = context.runtime(false).send(HttpRequest.get(path));
-                if (response.status() == 200) {
-                    out.println(response.bodyText());
-                    out.flush();
-                    return 0;
-                }
-                throw new OperatorRefusedException("status --ended", response);
-            } catch (RuntimeUnavailableException _) {
-                return notRunning();
-            }
+            return handleEndedJson(out);
         }
 
         try {
@@ -174,20 +211,54 @@ final class StatusCommand implements Callable<Integer> {
 
             var projectsRes = context.runtime(false).send(HttpRequest.get("/api/v1/projects"));
             if (projectsRes.status() == 200) {
-                var overview = ProjectOverviewResponse.fromJson(projectsRes.bodyText());
-                if (overview.projects().isEmpty()) {
-                    out.println(MessageCatalogue.format(locale, "overview.ended.empty", Map.of("project", "all")));
-                } else {
-                    for (var p : overview.projects()) {
-                        renderEndedPages(out, p.projectId(), locale, false, false);
-                    }
-                }
+                renderEndedOverview(out, ProjectOverviewResponse.fromJson(projectsRes.bodyText()), locale);
                 out.flush();
                 return 0;
             }
-            throw new OperatorRefusedException("status --ended", projectsRes);
+            throw new OperatorRefusedException(ENDED_READ, projectsRes);
         } catch (RuntimeUnavailableException _) {
             return notRunning();
+        }
+    }
+
+    /**
+     * Prints the ended work as the runtime serves it, for {@code --json}.
+     *
+     * @param out the command's output
+     * @return the exit code
+     */
+    private int handleEndedJson(PrintWriter out) throws IOException {
+        try {
+            var path = project != null && !".".equals(project)
+                                ? projectPath(project) + "/ended"
+                                : "/api/v1/status?ended=true";
+            var response = context.runtime(false).send(HttpRequest.get(path));
+            if (response.status() == 200) {
+                out.println(response.bodyText());
+                out.flush();
+                return 0;
+            }
+            throw new OperatorRefusedException(ENDED_READ, response);
+        } catch (RuntimeUnavailableException _) {
+            return notRunning();
+        }
+    }
+
+    /**
+     * Prints the ended work of every project, or the empty line when there is none.
+     *
+     * @param out      the command's output
+     * @param overview the projects as the runtime lists them
+     * @param locale   the interface locale
+     */
+    private void renderEndedOverview(PrintWriter out, ProjectOverviewResponse overview, String locale)
+                        throws IOException {
+        if (overview.projects().isEmpty()) {
+            out.println(MessageCatalogue.format(locale, "overview.ended.empty", Map.of(PROJECT_PARAM, "all")));
+            return;
+        }
+        for (var p : overview.projects()) {
+            renderEndedPages(out, p.projectId(), locale, false, false);
         }
     }
 
@@ -196,39 +267,69 @@ final class StatusCommand implements Callable<Integer> {
         boolean headerPrinted = false;
         var cleanProject = OutputSafety.stripControlSequences(projectId);
 
-        while (true) {
-            var res = context.runtime(false).send(HttpRequest.get(projectPath(projectId) + "/ended?page=" + pageNum));
-            if (res.status() != 200) {
-                if (failHard) {
-                    throw new OperatorRefusedException("status --ended", res);
-                }
-                break;
-            }
-            var page = EndedWorkPage.fromJson(res.bodyText());
-            if (!page.items().isEmpty()) {
-                if (!headerPrinted) {
-                    out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of("project", cleanProject)));
-                    headerPrinted = true;
-                }
-                renderEndedItems(out, page.items(), locale);
-            }
-            if (!page.hasOlder() || page.items().isEmpty()) {
-                break;
+        boolean more = true;
+        while (more) {
+            var page = endedPage(projectId, pageNum, failHard);
+            if (page == null) {
+                more = false;
+            } else {
+                headerPrinted = renderEndedPage(out, page, locale, cleanProject, headerPrinted);
+                more = page.hasOlder() && !page.items().isEmpty();
             }
             pageNum++;
         }
 
         if (!headerPrinted && renderEmpty) {
-            out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of("project", cleanProject)));
-            out.println("  " + MessageCatalogue.format(locale, "overview.ended.empty", Map.of("project", cleanProject)));
+            out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of(PROJECT_PARAM, cleanProject)));
+            out.println("  " + MessageCatalogue.format(locale, "overview.ended.empty", Map.of(PROJECT_PARAM, cleanProject)));
         }
+    }
+
+    /**
+     * Reads one page of a project's ended work.
+     *
+     * @param projectId the project whose ended work is read
+     * @param pageNum   the page to read
+     * @param failHard  whether a refused read is thrown instead of ending the walk
+     * @return the page, or {@code null} when the walk ends here
+     */
+    private @Nullable EndedWorkPage endedPage(String projectId, int pageNum, boolean failHard) throws IOException {
+        var res = context.runtime(false).send(HttpRequest.get(projectPath(projectId) + "/ended?page=" + pageNum));
+        if (res.status() == 200) {
+            return EndedWorkPage.fromJson(res.bodyText());
+        }
+        if (failHard) {
+            throw new OperatorRefusedException(ENDED_READ, res);
+        }
+        return null;
+    }
+
+    /**
+     * Prints one page of a project's ended work, the title first when no page printed it yet.
+     *
+     * @param out           the command's output
+     * @param page          the page to print
+     * @param locale        the interface locale
+     * @param cleanProject  the project as it may be printed
+     * @param headerPrinted whether a title was printed before
+     * @return whether a title is printed after this page
+     */
+    private boolean renderEndedPage(PrintWriter out, EndedWorkPage page, String locale, String cleanProject,
+                        boolean headerPrinted) {
+        if (page.items().isEmpty()) {
+            return headerPrinted;
+        }
+        if (!headerPrinted) {
+            out.println(MessageCatalogue.format(locale, "operator.status.ended_title", Map.of(PROJECT_PARAM, cleanProject)));
+        }
+        renderEndedItems(out, page.items(), locale);
+        return true;
     }
 
     private void renderEndedItems(PrintWriter out, List<EndedWorkItem> items, String locale) {
         for (var item : items) {
-            var kind = "epic".equalsIgnoreCase(item.kind())
-                                ? MessageCatalogue.format(locale, "overview.kind.epic", Map.of())
-                                : MessageCatalogue.format(locale, "overview.kind.plan", Map.of());
+            var kindKey = "epic".equalsIgnoreCase(item.kind()) ? "overview.kind.epic" : "overview.kind.plan";
+            var kind = MessageCatalogue.format(locale, kindKey, Map.of());
             var title = OutputSafety.stripControlSequences(item.title());
             var outcome = "epic".equalsIgnoreCase(item.kind())
                                 ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
@@ -256,7 +357,7 @@ final class StatusCommand implements Callable<Integer> {
         String locale = context.clientEnvironment().locale();
 
         // 1. Runtime summary line
-        var version = Objects.toString(status.get("version"), "0.1");
+        var version = Objects.toString(status.get(VERSION), "0.1");
         if (!version.startsWith("pm-mcpd")) {
             version = "pm-mcpd " + version;
         }
@@ -267,12 +368,12 @@ final class StatusCommand implements Callable<Integer> {
         if (runningSince.isBlank()) {
             runningSince = MessageCatalogue.format(locale, "common.time.unknown", Map.of());
         }
-        var workers = status.get("workers_count") != null ? status.get("workers_count") : 0;
+        var workers = status.get(WORKERS_COUNT) != null ? status.get(WORKERS_COUNT) : 0;
         var slots = status.get("build_slots_used") != null ? status.get("build_slots_used") : 0;
         var total = status.get("build_slots_total") != null ? status.get("build_slots_total") : 0;
 
         var header = MessageCatalogue.format(locale, "operator.status.runtime", Map.of(
-                            "version", version,
+                            VERSION, version,
                             "time", runningSince,
                             "workers", workers,
                             "slots", slots,
@@ -298,31 +399,18 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     private void renderProjectNode(PrintWriter out, ProjectSummary p, boolean groupByEpic, String locale) {
-        String markerCol = p.needsOperatorCount() > 0
-                            ? String.format("! %-2d ", p.needsOperatorCount())
-                            : (p.setupNeedsOperator() ? "! 1  " : "     ");
+        String markerCol;
+        if (p.needsOperatorCount() > 0) {
+            markerCol = String.format("! %-2d ", p.needsOperatorCount());
+        } else if (p.setupNeedsOperator()) {
+            markerCol = "! 1  ";
+        } else {
+            markerCol = PLAN_INDENT;
+        }
 
         var pName = OutputSafety.stripControlSequences(p.displayName() != null ? p.displayName() : p.projectId());
-        String countsPart;
-        if (p.setupNeedsOperator() && p.activePlansCount() == 0) {
-            countsPart = MessageCatalogue.format(locale, "overview.project.setup", Map.of());
-        } else if (p.activePlansCount() > 0 && p.activeEpicsCount() > 0) {
-            countsPart = MessageCatalogue.format(locale, "overview.project.counts", Map.of(
-                                "plans", p.activePlansCount(),
-                                "epics", p.activeEpicsCount()
-            ));
-        } else if (p.activePlansCount() > 0) {
-            countsPart = MessageCatalogue.format(locale, "overview.project.plans_only", Map.of(
-                                "plans", p.activePlansCount()
-            ));
-        } else if (p.activeEpicsCount() > 0) {
-            countsPart = MessageCatalogue.format(locale, "overview.project.epics_only", Map.of(
-                                "epics", p.activeEpicsCount()
-            ));
-        } else {
-            countsPart = "";
-        }
-        out.printf("%s%s \u00b7 %s%n", markerCol, pName, countsPart);
+        var counts = countsPart(p, locale);
+        out.printf("%s%s \u00b7 %s%n", markerCol, pName, counts);
 
         ProjectDetailResponse detail = null;
         try {
@@ -347,9 +435,39 @@ final class StatusCommand implements Callable<Integer> {
         renderAlongsideLandings(out, detail.alongsideLandings(), locale);
     }
 
+    /**
+     * The word a project's row says about its plans and epics.
+     *
+     * @param p      the project
+     * @param locale the interface locale
+     * @return the counts part of the row, empty when the project holds nothing
+     */
+    private static String countsPart(ProjectSummary p, String locale) {
+        if (p.setupNeedsOperator() && p.activePlansCount() == 0) {
+            return MessageCatalogue.format(locale, "overview.project.setup", Map.of());
+        }
+        if (p.activePlansCount() > 0 && p.activeEpicsCount() > 0) {
+            return MessageCatalogue.format(locale, "overview.project.counts", Map.of(
+                                "plans", p.activePlansCount(),
+                                "epics", p.activeEpicsCount()
+            ));
+        }
+        if (p.activePlansCount() > 0) {
+            return MessageCatalogue.format(locale, "overview.project.plans_only", Map.of(
+                                "plans", p.activePlansCount()
+            ));
+        }
+        if (p.activeEpicsCount() > 0) {
+            return MessageCatalogue.format(locale, "overview.project.epics_only", Map.of(
+                                "epics", p.activeEpicsCount()
+            ));
+        }
+        return "";
+    }
+
     private void renderProjectByPlan(PrintWriter out, ProjectDetailResponse detail, String locale) {
         for (var plan : detail.plans()) {
-            renderPlanRow(out, plan, "     ", locale);
+            renderPlanRow(out, plan, PLAN_INDENT, locale);
         }
     }
 
@@ -367,7 +485,7 @@ final class StatusCommand implements Callable<Integer> {
         var stateKey = "waiting_for_you".equals(rawState) ? "waiting" : rawState;
         var state = stateKey != null
                             ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
-                            : "running";
+                            : RUNNING;
         var timeInPhase = Display.duration(locale, plan.phaseEnteredAt(), context.clock());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
@@ -450,7 +568,7 @@ final class StatusCommand implements Callable<Integer> {
         if (!withoutEpic.isEmpty()) {
             out.printf("     %s%n", MessageCatalogue.format(locale, "overview.group.without_epic", Map.of()));
             for (var plan : withoutEpic) {
-                renderPlanRow(out, plan, "     ", locale);
+                renderPlanRow(out, plan, PLAN_INDENT, locale);
             }
         }
     }
@@ -495,7 +613,7 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     private static String landingStateWord(String locale, AlongsideLanding landing) {
-        var rawState = landing.state() != null ? landing.state() : "running";
+        var rawState = landing.state() != null ? landing.state() : RUNNING;
         return Display.word(locale, "landing", rawState);
     }
 
@@ -568,8 +686,8 @@ final class StatusCommand implements Callable<Integer> {
 
     static String render(Map<String, Object> status, String locale, Clock clock) {
         var text = new StringBuilder();
-        line(text, locale, "runtime", "running");
-        line(text, locale, "version", status.get("version"));
+        line(text, locale, "runtime", RUNNING);
+        line(text, locale, VERSION, status.get(VERSION));
         line(text, locale, "pid", status.get("pid"));
         line(text, locale, "listener", status.get("listener"));
         line(text, locale, "socket", status.get("socket_path"));

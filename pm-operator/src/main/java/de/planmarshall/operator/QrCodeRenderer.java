@@ -46,18 +46,7 @@ public final class QrCodeRenderer {
         for (int y = -BORDER_MODULES; y < size + BORDER_MODULES; y += 2) {
             sb.append("  ");
             for (int x = -BORDER_MODULES; x < size + BORDER_MODULES; x++) {
-                boolean top = isModuleDark(qr, x, y, size);
-                boolean bottom = isModuleDark(qr, x, y + 1, size);
-
-                if (top && bottom) {
-                    sb.append('█');
-                } else if (top) {
-                    sb.append('▀');
-                } else if (bottom) {
-                    sb.append('▄');
-                } else {
-                    sb.append(' ');
-                }
+                sb.append(moduleCharacter(qr, x, y, size));
             }
 
             if (sideLines != null && sideIndex < sideLines.size() && currentRow >= startSideRow) {
@@ -79,6 +68,21 @@ public final class QrCodeRenderer {
         }
 
         return sb.toString();
+    }
+
+    private static char moduleCharacter(QrCode qr, int x, int y, int size) {
+        boolean top = isModuleDark(qr, x, y, size);
+        boolean bottom = isModuleDark(qr, x, y + 1, size);
+        if (top && bottom) {
+            return '█';
+        }
+        if (top) {
+            return '▀';
+        }
+        if (bottom) {
+            return '▄';
+        }
+        return ' ';
     }
 
     private static boolean isModuleDark(QrCode qr, int x, int y, int size) {

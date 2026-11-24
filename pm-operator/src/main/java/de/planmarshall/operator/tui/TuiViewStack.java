@@ -235,7 +235,7 @@ public final class TuiViewStack {
         if (frame.visible.isEmpty()) {
             return;
         }
-        int next = Math.max(0, Math.min(frame.visible.size() - 1, selectedIndex() + delta));
+        int next = Math.clamp(selectedIndex() + delta, 0, frame.visible.size() - 1);
         frame.selectedId = frame.visible.get(next).id();
     }
 

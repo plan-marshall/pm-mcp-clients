@@ -18,6 +18,7 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.PlanSettingsRecord;
+import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
@@ -43,6 +44,7 @@ final class PlanSettingsDialogue {
     private static final List<String> GROUPS = List.of(GROUP_PLAN_DEFAULTS, GROUP_ROLES,
                         GROUP_INTEGRATIONS, GROUP_PROVIDERS);
     private static final String PREFIX = "operator.actions.settings.aspect.";
+    private static final String ASPECT_FIELD = "aspect";
 
     private final StartPrompt prompt;
     private final WorkActionsClient client;
@@ -123,7 +125,7 @@ final class PlanSettingsDialogue {
 
     private void showGroup(String group, List<PlanSettingsValue> values) {
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.settings.header",
-                            Map.of("aspect", groupLabel(group), "plan", planId)));
+                            Map.of(ASPECT_FIELD, groupLabel(group), "plan", planId)));
         for (var value : values) {
             var renderedValue = value.value() != null
                                 ? OutputSafety.stripControlSequences(value.value())
@@ -146,7 +148,7 @@ final class PlanSettingsDialogue {
         while (true) {
             var answer = prompt.askRaw(options.toString(), STATE_ID,
                                 MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
-                                                    Map.of("aspect", "", "plan", planId)), planId);
+                                                    Map.of(ASPECT_FIELD, "", "plan", planId)), planId);
             if (leaves(answer)) {
                 return null;
             }
@@ -169,41 +171,61 @@ final class PlanSettingsDialogue {
             var answer = client.updateSettings(planId, settings.revision(), aspect, chosen.value());
             var result = answer.result();
             if (result.applied()) {
-                if (chosen.value() == null) {
-                    prompt.line("operator.actions.settings.removed", Map.of("plan", planId, "aspect", aspect));
-                } else {
-                    prompt.line("operator.actions.settings.applied",
-                                        Map.of("plan", planId, "version", result.revision()));
-                }
-                return 0;
+                return applied(chosen, aspect, result);
             }
             if (result.restoreState() != null) {
-                prompt.line("control.settings.too_late",
-                                    Map.of("plan", planId, "position", result.restoreState()));
-                return 0;
+                return tooLate(result.restoreState());
             }
             if (result.conflict()) {
-                var current = result.currentValue() != null ? result.currentValue() : "";
-                prompt.line("common.conflict.changed", Map.of("value", current));
-                if (!applyAgain()) {
+                var next = conflict(aspect, settings, chosen, result);
+                if (next == null) {
                     return 0;
                 }
-                var again = client.updateSettings(planId, result.revision(), aspect, chosen.value());
-                if (again.result().applied()) {
-                    prompt.line("operator.actions.settings.applied",
-                                        Map.of("plan", planId, "version", again.result().revision()));
-                    return 0;
-                }
-                settings = new PlanSettingsRecord(planId, again.result().revision(), settings.values());
+                settings = next;
                 continue;
             }
-            var reason = answer.refusalReason() != null ? answer.refusalReason() : "";
-            // Only an asking dialogue reaches a change: the group, the aspect and the value are asked
-            // first, so a refused value is asked again.
-            prompt.line("control.settings.refused",
-                                Map.of("value", chosen.value() != null ? chosen.value() : aspect,
-                                                    "reason", reason));
+            refused(chosen, aspect, answer);
         }
+    }
+
+    private int applied(ChosenValue chosen, String aspect, PlanSettingsUpdateResult result) {
+        if (chosen.value() == null) {
+            prompt.line("operator.actions.settings.removed", Map.of("plan", planId, ASPECT_FIELD, aspect));
+        } else {
+            prompt.line("operator.actions.settings.applied",
+                                Map.of("plan", planId, "version", result.revision()));
+        }
+        return 0;
+    }
+
+    private int tooLate(String state) {
+        prompt.line("control.settings.too_late", Map.of("plan", planId, "position", state));
+        return 0;
+    }
+
+    private @Nullable PlanSettingsRecord conflict(String aspect, PlanSettingsRecord settings, ChosenValue chosen,
+                        PlanSettingsUpdateResult result) throws IOException {
+        var current = result.currentValue() != null ? result.currentValue() : "";
+        prompt.line("common.conflict.changed", Map.of("value", current));
+        if (!applyAgain()) {
+            return null;
+        }
+        var again = client.updateSettings(planId, result.revision(), aspect, chosen.value());
+        if (again.result().applied()) {
+            prompt.line("operator.actions.settings.applied",
+                                Map.of("plan", planId, "version", again.result().revision()));
+            return null;
+        }
+        return new PlanSettingsRecord(planId, again.result().revision(), settings.values());
+    }
+
+    private void refused(ChosenValue chosen, String aspect, WorkActionsClient.SettingsAnswer answer) {
+        var reason = answer.refusalReason() != null ? answer.refusalReason() : "";
+        // Only an asking dialogue reaches a change: the group, the aspect and the value are asked
+        // first, so a refused value is asked again.
+        prompt.line("control.settings.refused",
+                            Map.of("value", chosen.value() != null ? chosen.value() : aspect,
+                                                "reason", reason));
     }
 
     private @Nullable ChosenValue askValue(String aspect, List<String> choices) {
@@ -216,7 +238,7 @@ final class PlanSettingsDialogue {
         while (true) {
             var answer = prompt.askRaw(options.toString(), STATE_ID,
                                 MessageCatalogue.format(prompt.locale(), "operator.actions.settings.value",
-                                                    Map.of("aspect", aspect, "plan", planId)), planId);
+                                                    Map.of(ASPECT_FIELD, aspect, "plan", planId)), planId);
             if (leaves(answer)) {
                 return null;
             }

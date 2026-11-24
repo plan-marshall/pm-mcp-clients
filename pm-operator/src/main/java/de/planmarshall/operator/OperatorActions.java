@@ -42,7 +42,8 @@ public final class OperatorActions {
      */
     public static int run(OperatorContext context, PrintWriter out, String kind, String id, String action,
                         @Nullable EpicResource epic, @Nullable String holdId) throws IOException {
-        return WorkActionDialogue.run(context, out, kind, id, action, false, epic, holdId);
+        return WorkActionDialogue.run(context, out, kind, id, action, false,
+                            new WorkActionDialogue.ActContext(epic, holdId));
     }
 
     /**

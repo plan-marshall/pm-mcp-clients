@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
 
@@ -34,6 +35,9 @@ public final class ConsoleNoticeBuffer {
 
     /** The message parameter name of the place the operator was in, shared by its three uses. */
     private static final String WHERE = "where";
+
+    /** The message parameter name of the number of items that arrived meanwhile. */
+    private static final String COUNT = "count";
 
     /** What kind of item arrived while the view was open. */
     public enum Category {
@@ -161,15 +165,15 @@ public final class ConsoleNoticeBuffer {
         var parts = new ArrayList<String>();
         if (decisions > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
-                                Map.of("count", decisions)));
+                                Map.of(COUNT, decisions)));
         }
         if (reports > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.reports",
-                                Map.of("count", reports)));
+                                Map.of(COUNT, reports)));
         }
         if (needs > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.needs",
-                                Map.of("count", needs)));
+                                Map.of(COUNT, needs)));
         }
         var lines = List.copyOf(deferred);
         var summary = summarize(locale, parts, where);
@@ -190,11 +194,11 @@ public final class ConsoleNoticeBuffer {
 
     /**
      * @param locale the interface locale
-     * @param parts  the already localized item summaries
+     * @param parts  the already localized item summaries, or {@code null} when nothing arrived
      * @param where  the localized place the operator was in
      * @return the composed meanwhile line, or an empty string when there is nothing to say
      */
-    public static String summarize(String locale, List<String> parts, String where) {
+    public static String summarize(String locale, @Nullable List<String> parts, String where) {
         if (parts == null || parts.isEmpty()) {
             return "";
         }

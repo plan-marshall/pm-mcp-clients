@@ -36,8 +36,12 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.process.ActivityEntry;
 import de.planmarshall.api.process.ActivityEntryKind;
+import de.planmarshall.api.process.LeafJob;
+import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
+import de.planmarshall.api.process.OffTrackInfo;
 import de.planmarshall.api.process.ProcessNode;
 import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.process.ProcessTree;
@@ -112,6 +116,9 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String PHASE = "phase";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
+    private static final String NODE_ROW_WITH_INFO = "%s%s %s %-30s %s%n";
+    private static final String NODE_ROW = "%s%s %s %s%n";
+    private static final String SETTINGS_SUFFIX = "/settings";
 
     private final OperatorContext context;
 
@@ -187,57 +194,70 @@ public final class PlanCommand implements Callable<Integer> {
         var runtime = context.runtime(true);
 
         if (planId != null && !planId.isBlank()) {
-            if (changes || changesFile != null) {
-                return printChanges(out, runtime, planId);
-            }
-            if (activity != null && !activity.isBlank()) {
-                var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
-                                    + "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
-                var response = runtime.send(HttpRequest.get(path));
-                if (response.status() == 200) {
-                    try {
-                        var taskActivity = TaskActivity.fromJson(response.bodyText());
-                        printTaskActivity(out, planId, taskActivity);
-                        return 0;
-                    } catch (IOException _) {
-                        // Not a task activity the parser can read: print the body as it came
-                        out.println(response.bodyText());
-                        out.flush();
-                        return 0;
-                    }
-                }
-                if (response.status() == 404) {
-                    return refuseRead(err, context.locale(), "plan", response);
-                }
-                throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
-            }
+            return showOnePlan(out, err, runtime);
+        }
+        return listPlans(out, runtime);
+    }
 
-            var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process";
-            if (depth != null) {
-                path += "?depth=" + depth;
-            }
-            var response = runtime.send(HttpRequest.get(path));
-            if (response.status() == 200) {
-                var body = response.bodyText();
-                if (body.contains("\"nodes\"") || body.contains("\"plan_id\"")) {
-                    try {
-                        var tree = ProcessTree.fromJson(body);
-                        printProcessTree(out, tree);
-                        return 0;
-                    } catch (IOException _) {
-                        // Not a process tree the parser can read: fall through to print bodyText
-                    }
-                }
-                out.println(body);
+    private int showOnePlan(PrintWriter out, PrintWriter err, RuntimeClient runtime) throws IOException {
+        if (changes || changesFile != null) {
+            return printChanges(out, runtime, planId);
+        }
+        if (activity != null && !activity.isBlank()) {
+            return printActivity(out, err, runtime);
+        }
+        var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/process";
+        if (depth != null) {
+            path += "?depth=" + depth;
+        }
+        var response = runtime.send(HttpRequest.get(path));
+        if (response.status() == 200) {
+            return printProcess(out, response.bodyText());
+        }
+        if (response.status() == 404) {
+            return refuseRead(err, context.locale(), "plan", response);
+        }
+        throw new OperatorRefusedException("plan " + planId, response);
+    }
+
+    private int printActivity(PrintWriter out, PrintWriter err, RuntimeClient runtime) throws IOException {
+        var path = PLANS_API + OperatorUrlUtil.encodePathSegment(planId)
+                            + "/tasks/" + OperatorUrlUtil.encodePathSegment(activity) + "/activity";
+        var response = runtime.send(HttpRequest.get(path));
+        if (response.status() == 200) {
+            try {
+                var taskActivity = TaskActivity.fromJson(response.bodyText());
+                printTaskActivity(out, planId, taskActivity);
+                return 0;
+            } catch (IOException _) {
+                // Not a task activity the parser can read: print the body as it came
+                out.println(response.bodyText());
                 out.flush();
                 return 0;
             }
-            if (response.status() == 404) {
-                return refuseRead(err, context.locale(), "plan", response);
-            }
-            throw new OperatorRefusedException("plan " + planId, response);
         }
+        if (response.status() == 404) {
+            return refuseRead(err, context.locale(), "plan", response);
+        }
+        throw new OperatorRefusedException("plan activity " + planId + " " + activity, response);
+    }
 
+    private int printProcess(PrintWriter out, String body) throws IOException {
+        if (body.contains("\"nodes\"") || body.contains("\"plan_id\"")) {
+            try {
+                var tree = ProcessTree.fromJson(body);
+                printProcessTree(out, tree);
+                return 0;
+            } catch (IOException _) {
+                // Not a process tree the parser can read: fall through to print bodyText
+            }
+        }
+        out.println(body);
+        out.flush();
+        return 0;
+    }
+
+    private int listPlans(PrintWriter out, RuntimeClient runtime) throws IOException {
         // List running plans
         var response = runtime.send(HttpRequest.get("/api/v1/plans"));
         if (response.status() == 200) {
@@ -426,76 +446,87 @@ public final class PlanCommand implements Callable<Integer> {
                             KEY_TOKENS, tokensStr)));
 
         for (var entry : act.entries()) {
-            var ts = OutputSafety.stripControlSequences(entry.timestamp());
-            var kind = ActivityEntryKind.fromValue(entry.kind());
-            switch (kind) {
-                case MODEL_TEXT -> {
-                    var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf(FMT_ACTIVITY_ROW, ts,
-                                        MessageCatalogue.format(locale, "plan.activity.kind.text", Map.of()),
-                                        content != null ? content : "");
-                }
-                case TOOL_CALL -> {
-                    var toolName = OutputSafety.stripControlSequences(entry.toolName());
-                    var toolTarget = OutputSafety.stripControlSequences(entry.toolTarget());
-                    var toolStr = (toolName != null ? toolName : "") + (toolTarget != null ? " " + toolTarget : "");
-                    var failStr = "";
-                    if (entry.toolFailed()) {
-                        var size = entry.size() != null ? OutputSafety.stripControlSequences(entry.size()) : "";
-                        failStr = "        " + MessageCatalogue.format(locale, "plan.activity.kind.tool_failed",
-                                            Map.of("size", size));
-                    }
-                    out.printf("  %s  %-9s  %-30s%s%n", ts,
-                                        MessageCatalogue.format(locale, "plan.activity.kind.tool_call", Map.of()),
-                                        toolStr, failStr);
-                }
-                case FILES_CHANGED -> {
-                    var files = entry.files().stream().map(OutputSafety::stripControlSequences).toList();
-                    out.printf(FMT_ACTIVITY_ROW, ts,
-                                        MessageCatalogue.format(locale, "plan.activity.kind.file_changed", Map.of()),
-                                        String.join(", ", files));
-                }
-                case QUESTIONS_ASKED -> {
-                    var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf(FMT_ACTIVITY_ROW, ts,
-                                        MessageCatalogue.format(locale, "plan.activity.kind.question", Map.of()),
-                                        content != null ? content : "");
-                }
-                case LINK -> {
-                    var target = OutputSafety.stripControlSequences(entry.toolTarget());
-                    out.printf(FMT_ACTIVITY_ROW, ts,
-                                        MessageCatalogue.format(locale, "plan.activity.kind.link", Map.of()),
-                                        target != null ? target : "");
-                }
-                case MODEL_DIFFERS -> {
-                    // The harness answered a turn with another model: name both, information only.
-                    var served = OutputSafety.stripControlSequences(entry.servedModel());
-                    var launched = OutputSafety.stripControlSequences(entry.launchModel());
-                    out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
-                                        MessageCatalogue.format(context.clientEnvironment().locale(),
-                                                            "plan.activity.model_differs",
-                                                            Map.of("served", served != null ? served : "",
-                                                                                "launched", launched != null ? launched : "")));
-                }
-                default -> {
-                    var content = OutputSafety.stripControlSequences(entry.content());
-                    out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()), content != null ? content : "");
-                }
-            }
+            printActivityEntry(out, locale, entry);
         }
 
-        if (act.offTrack() != null) {
-            var ot = act.offTrack();
-            var sig = OutputSafety.stripControlSequences(ot.signal());
-            var action = OutputSafety.stripControlSequences(ot.action());
-            out.println("  " + (ot.value() != null && ot.threshold() != null
-                                ? MessageCatalogue.format(locale, "operator.plan.activity.off_track_banner", Map.of(
-                                "signal", sig, KEY_VALUE, ot.value(), "threshold", ot.threshold(),
-                                "action", action))
-                                : MessageCatalogue.format(locale, "operator.plan.activity.off_track_plain", Map.of(
-                                "signal", sig, "action", action))));
+        var offTrack = act.offTrack();
+        if (offTrack != null) {
+            printOffTrack(out, locale, offTrack);
         }
         out.flush();
+    }
+
+    private void printActivityEntry(PrintWriter out, String locale, ActivityEntry entry) {
+        var ts = OutputSafety.stripControlSequences(entry.timestamp());
+        switch (ActivityEntryKind.fromValue(entry.kind())) {
+            case MODEL_TEXT -> out.printf(FMT_ACTIVITY_ROW, ts,
+                                MessageCatalogue.format(locale, "plan.activity.kind.text", Map.of()),
+                                textOrEmpty(entry.content()));
+            case TOOL_CALL -> printToolCall(out, locale, ts, entry);
+            case FILES_CHANGED -> {
+                var files = entry.files().stream().map(OutputSafety::stripControlSequences).toList();
+                out.printf(FMT_ACTIVITY_ROW, ts,
+                                    MessageCatalogue.format(locale, "plan.activity.kind.file_changed", Map.of()),
+                                    String.join(", ", files));
+            }
+            case QUESTIONS_ASKED -> out.printf(FMT_ACTIVITY_ROW, ts,
+                                MessageCatalogue.format(locale, "plan.activity.kind.question", Map.of()),
+                                textOrEmpty(entry.content()));
+            case LINK -> out.printf(FMT_ACTIVITY_ROW, ts,
+                                MessageCatalogue.format(locale, "plan.activity.kind.link", Map.of()),
+                                textOrEmpty(entry.toolTarget()));
+            case MODEL_DIFFERS -> printModelDiffers(out, locale, ts, entry);
+            default -> out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
+                                textOrEmpty(entry.content()));
+        }
+    }
+
+    private void printToolCall(PrintWriter out, String locale, String ts, ActivityEntry entry) {
+        var toolName = OutputSafety.stripControlSequences(entry.toolName());
+        var toolTarget = OutputSafety.stripControlSequences(entry.toolTarget());
+        var toolStr = (toolName != null ? toolName : "") + (toolTarget != null ? " " + toolTarget : "");
+        var failStr = "";
+        if (entry.toolFailed()) {
+            var size = entry.size() != null ? OutputSafety.stripControlSequences(entry.size()) : "";
+            failStr = "        " + MessageCatalogue.format(locale, "plan.activity.kind.tool_failed",
+                                Map.of("size", size));
+        }
+        out.printf("  %s  %-9s  %-30s%s%n", ts,
+                            MessageCatalogue.format(locale, "plan.activity.kind.tool_call", Map.of()),
+                            toolStr, failStr);
+    }
+
+    private void printModelDiffers(PrintWriter out, String locale, String ts, ActivityEntry entry) {
+        // The harness answered a turn with another model: name both, information only.
+        var served = OutputSafety.stripControlSequences(entry.servedModel());
+        var launched = OutputSafety.stripControlSequences(entry.launchModel());
+        out.printf(FMT_ACTIVITY_ROW, ts, OutputSafety.stripControlSequences(entry.kind()),
+                            MessageCatalogue.format(locale, "plan.activity.model_differs",
+                                                Map.of("served", served != null ? served : "",
+                                                                    "launched", launched != null ? launched : "")));
+    }
+
+    private void printOffTrack(PrintWriter out, String locale, OffTrackInfo offTrack) {
+        var sig = OutputSafety.stripControlSequences(offTrack.signal());
+        var action = OutputSafety.stripControlSequences(offTrack.action());
+        boolean bounded = offTrack.value() != null && offTrack.threshold() != null;
+        var key = bounded
+                            ? "operator.plan.activity.off_track_banner"
+                            : "operator.plan.activity.off_track_plain";
+        var args = bounded
+                            ? Map.<String, Object>of("signal", sig, KEY_VALUE, offTrack.value(),
+                                                "threshold", offTrack.threshold(), "action", action)
+                            : Map.<String, Object>of("signal", sig, "action", action);
+        out.println("  " + MessageCatalogue.format(locale, key, args));
+    }
+
+    /**
+     * @param text the text to clean, or {@code null}
+     * @return the text without its control sequences, or an empty text
+     */
+    private static String textOrEmpty(@Nullable String text) {
+        var cleaned = OutputSafety.stripControlSequences(text);
+        return cleaned != null ? cleaned : "";
     }
 
     /**
@@ -594,96 +625,117 @@ public final class PlanCommand implements Callable<Integer> {
         var stateEnum = NodeState.fromValue(node.state());
         var glyph = stateEnum.glyph();
         var stateName = stateEnum.value();
+        var locale = context.clientEnvironment().locale();
 
         if (node.pruneReason() != null || stateEnum == NodeState.NOT_IN_PLAN) {
-            var reason = node.pruneReason() != null ? node.pruneReason().replace('_', ' ') : "";
-            out.println(indent + glyph + " " + MessageCatalogue.format(
-                                context.clientEnvironment().locale(), "operator.plan.tree.not_in_plan", Map.of(
-                                                    "title", OutputSafety.stripControlSequences(node.title()),
-                                                    KEY_REASON, reason.isBlank() ? "" : " (" + reason + ")")));
+            printNodeNotInPlan(out, locale, indent, glyph, node);
             return;
         }
 
-        var locale = context.clientEnvironment().locale();
         var runStr = node.runCount() > 1 && stateEnum == NodeState.DONE ? " ×" + node.runCount() : "";
-        var currentRunStr = node.currentRun() > 1 && stateEnum == NodeState.RUNNING ? "run " + node.currentRun() : "";
-        var durationStr = node.durationSeconds() > 0 ? Display.duration(locale, node.durationSeconds()) : "";
-
-        var infoParts = new ArrayList<String>();
-        if (!currentRunStr.isEmpty()) infoParts.add(currentRunStr);
-        if (!durationStr.isEmpty()) infoParts.add(durationStr);
-        if (!node.leafTasks().isEmpty()) {
-            long doneCount = node.leafTasks().stream().filter(t -> "done".equalsIgnoreCase(t.status()) || "submitted".equalsIgnoreCase(t.status())).count();
-            infoParts.add(String.format("tasks: %d of %d done", doneCount, node.leafTasks().size()));
-        }
-        if (node.waitsFor() != null && !node.waitsFor().isBlank()) {
-            infoParts.add("waits: " + OutputSafety.stripControlSequences(node.waitsFor()));
-        }
-        var info = String.join(" · ", infoParts);
+        var stateCol = String.format("%-9s", stateName + runStr);
 
         var kindPrefix = kindPrefix(node.kind());
         var title = OutputSafety.stripControlSequences(node.title());
         if (title.startsWith("phase ") || title.startsWith("sub-workflow ")) {
             kindPrefix = "";
         }
-
-        var stateCol = String.format("%-9s", stateName + runStr);
         var titleCol = kindPrefix + title;
 
-        if (!info.isEmpty()) {
-            out.printf("%s%s %s %-30s %s%n", indent, glyph, stateCol, titleCol, info);
-        } else {
-            out.printf("%s%s %s %s%n", indent, glyph, stateCol, titleCol);
-        }
+        printRow(out, indent, glyph, stateCol, titleCol, nodeInfo(node, stateEnum, locale));
 
         if ((level + 1) <= maxDepth && !node.leafTasks().isEmpty()) {
-            var taskIndent = "  ".repeat(level + 1);
-            for (var task : node.leafTasks()) {
-                var taskGlyph = PlanViewLevel.taskGlyph(task.status());
-                var taskStateCol = String.format("%-9s", OutputSafety.stripControlSequences(task.status()));
-                var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
-                var taskInfoParts = new ArrayList<String>();
-                if (task.durationSeconds() > 0) {
-                    taskInfoParts.add(Display.duration(locale, task.durationSeconds()));
-                }
-                if (task.offTrack() != null) {
-                    taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
-                }
-                var taskInfo = String.join(" · ", taskInfoParts);
-                if (!taskInfo.isEmpty()) {
-                    out.printf("%s%s %s %-30s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc, taskInfo);
-                } else {
-                    out.printf("%s%s %s %s%n", taskIndent, taskGlyph, taskStateCol, taskDesc);
-                }
-            }
+            printLeafTasks(out, locale, node.leafTasks(), level + 1);
         }
 
-        if ((level + 1) <= maxDepth && node.leafJob() != null) {
-            var job = node.leafJob();
-            var jobIndent = "  ".repeat(level + 1);
-            var jobGlyph = PlanViewLevel.taskGlyph(job.status());
-            var jobStateCol = String.format("%-9s", OutputSafety.stripControlSequences(job.status()));
-            var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
-            var jobInfoParts = new ArrayList<String>();
-            if (job.durationSeconds() > 0) {
-                jobInfoParts.add(Display.duration(locale, job.durationSeconds()));
-            }
-            if (job.waitsSlot()) {
-                jobInfoParts.add("waits slot");
-            }
-            if (job.outcome() != null && !job.outcome().isBlank()) {
-                jobInfoParts.add(OutputSafety.stripControlSequences(job.outcome()));
-            }
-            var jobInfo = String.join(" · ", jobInfoParts);
-            if (!jobInfo.isEmpty()) {
-                out.printf("%s%s %s %-30s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc, jobInfo);
-            } else {
-                out.printf("%s%s %s %s%n", jobIndent, jobGlyph, jobStateCol, jobDesc);
-            }
+        var leafJob = node.leafJob();
+        if ((level + 1) <= maxDepth && leafJob != null) {
+            printLeafJob(out, locale, leafJob, level + 1);
         }
 
         if (level < maxDepth && !node.subNodes().isEmpty()) {
             renderNodes(out, node.subNodes(), level + 1, maxDepth);
+        }
+    }
+
+    private void printNodeNotInPlan(PrintWriter out, String locale, String indent, String glyph, ProcessNode node) {
+        var reason = node.pruneReason() != null ? node.pruneReason().replace('_', ' ') : "";
+        out.println(indent + glyph + " " + MessageCatalogue.format(
+                            locale, "operator.plan.tree.not_in_plan", Map.of(
+                                                "title", OutputSafety.stripControlSequences(node.title()),
+                                                KEY_REASON, reason.isBlank() ? "" : " (" + reason + ")")));
+    }
+
+    /**
+     * @param node   the node
+     * @param state  the node's state
+     * @param locale the interface locale
+     * @return the parts that follow the node's title, as one text
+     */
+    private static String nodeInfo(ProcessNode node, NodeState state, String locale) {
+        var infoParts = new ArrayList<String>();
+        var currentRunStr = node.currentRun() > 1 && state == NodeState.RUNNING ? "run " + node.currentRun() : "";
+        var durationStr = node.durationSeconds() > 0 ? Display.duration(locale, node.durationSeconds()) : "";
+        if (!currentRunStr.isEmpty()) {
+            infoParts.add(currentRunStr);
+        }
+        if (!durationStr.isEmpty()) {
+            infoParts.add(durationStr);
+        }
+        if (!node.leafTasks().isEmpty()) {
+            long doneCount = node.leafTasks().stream()
+                                .filter(task -> "done".equalsIgnoreCase(task.status())
+                                                    || "submitted".equalsIgnoreCase(task.status()))
+                                .count();
+            infoParts.add(String.format("tasks: %d of %d done", doneCount, node.leafTasks().size()));
+        }
+        if (node.waitsFor() != null && !node.waitsFor().isBlank()) {
+            infoParts.add("waits: " + OutputSafety.stripControlSequences(node.waitsFor()));
+        }
+        return String.join(" · ", infoParts);
+    }
+
+    private void printLeafTasks(PrintWriter out, String locale, List<LeafTask> tasks, int level) {
+        var taskIndent = "  ".repeat(level);
+        for (var task : tasks) {
+            var taskGlyph = PlanViewLevel.taskGlyph(task.status());
+            var taskStateCol = String.format("%-9s", OutputSafety.stripControlSequences(task.status()));
+            var taskDesc = OutputSafety.stripControlSequences(task.taskId() + " (" + task.role() + ")");
+            var taskInfoParts = new ArrayList<String>();
+            if (task.durationSeconds() > 0) {
+                taskInfoParts.add(Display.duration(locale, task.durationSeconds()));
+            }
+            if (task.offTrack() != null) {
+                taskInfoParts.add("off-track: " + OutputSafety.stripControlSequences(task.offTrack().signal()));
+            }
+            printRow(out, taskIndent, taskGlyph, taskStateCol, taskDesc, String.join(" · ", taskInfoParts));
+        }
+    }
+
+    private void printLeafJob(PrintWriter out, String locale, LeafJob job, int level) {
+        var jobIndent = "  ".repeat(level);
+        var jobGlyph = PlanViewLevel.taskGlyph(job.status());
+        var jobStateCol = String.format("%-9s", OutputSafety.stripControlSequences(job.status()));
+        var jobDesc = OutputSafety.stripControlSequences("job (" + job.kind() + ")");
+        var jobInfoParts = new ArrayList<String>();
+        if (job.durationSeconds() > 0) {
+            jobInfoParts.add(Display.duration(locale, job.durationSeconds()));
+        }
+        if (job.waitsSlot()) {
+            jobInfoParts.add("waits slot");
+        }
+        if (job.outcome() != null && !job.outcome().isBlank()) {
+            jobInfoParts.add(OutputSafety.stripControlSequences(job.outcome()));
+        }
+        printRow(out, jobIndent, jobGlyph, jobStateCol, jobDesc, String.join(" · ", jobInfoParts));
+    }
+
+    private static void printRow(PrintWriter out, String indent, String glyph, String stateCol, String titleCol,
+                        String info) {
+        if (!info.isEmpty()) {
+            out.printf(NODE_ROW_WITH_INFO, indent, glyph, stateCol, titleCol, info);
+        } else {
+            out.printf(NODE_ROW, indent, glyph, stateCol, titleCol);
         }
     }
 
@@ -1621,7 +1673,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         private PlanSettingsRecord loadSettings() throws IOException {
             var response = context.runtime(true).send(
-                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
+                                HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + SETTINGS_SUFFIX));
             if (response.status() == 200) {
                 return PlanSettingsRecord.fromJson(response.bodyText());
             }
@@ -1687,7 +1739,7 @@ public final class PlanCommand implements Callable<Integer> {
                 payload.put("remove", true);
             }
             payload.put("revision", revision);
-            var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings";
+            var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + SETTINGS_SUFFIX;
             var response = context.runtime(true).send(HttpRequest.json("PUT", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 409) {
                 return new PutOutcome(PlanSettingsUpdateResult.fromJson(response.bodyText()), false);
@@ -1762,7 +1814,7 @@ public final class PlanCommand implements Callable<Integer> {
         private List<String> rereadChoices(String aspect) {
             try {
                 var response = context.runtime(true).send(
-                                    HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/settings"));
+                                    HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + SETTINGS_SUFFIX));
                 if (response.status() != 200) {
                     return List.of();
                 }
