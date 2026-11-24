@@ -31,10 +31,10 @@ describe('AspectChoice', () => {
       expect(screen.getByRole('button', { name: 'Keep the tokens in the keychain' })).toBeVisible();
       for (const store of STORES) {
         const row = screen.getByRole('radio', { name: store.name }).closest('li') as HTMLElement;
-        expect(row).toHaveTextContent('Protects a secret against: anything the store itself guarantees');
         expect(row).toHaveTextContent(
-          'Does not protect against: anything the store itself does not guarantee',
+          'Protects a secret against: not reported for this store',
         );
+        expect(row).toHaveTextContent('Does not protect against: not reported for this store');
       }
     });
 
@@ -121,10 +121,9 @@ describe('AspectChoice', () => {
       });
 
       const row = screen.getByRole('radio', { name: 'GNOME Keyring' }).closest('li') as HTMLElement;
-      expect(row).toHaveTextContent('Protects a secret against: anything the store itself guarantees');
-      expect(row).toHaveTextContent(
-        'Does not protect against: anything the store itself does not guarantee',
-      );
+      expect(row).toHaveTextContent('Protects a secret against: not reported for this store');
+      expect(row).toHaveTextContent('Does not protect against: not reported for this store');
+      expect(row).not.toHaveTextContent('anything the store itself guarantees');
       expect(row).not.toHaveTextContent('macOS');
       expect(row).not.toHaveTextContent('Secret Service');
       expect(row).not.toHaveTextContent('mode 0600');

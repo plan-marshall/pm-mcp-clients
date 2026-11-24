@@ -40,7 +40,6 @@ import {
 } from '../navigation/rememberedPlace';
 import {
   adoptRecordedLocale,
-  adoptRecordedLocaleNow,
   currentLocale,
   t,
   translate,
@@ -1902,13 +1901,29 @@ export function adoptRouteFromLocation(): AppRoute | null {
 }
 
 /**
- * How many onboarding states this page has applied. A request that lands after another state has
- * been applied must not overwrite it: the newer state is the one the runtime means.
+ * How many onboarding reads and steps this page has STARTED, and how many the screen has applied.
+ *
+ * The order that matters is the order the requests were asked, not the order their answers land: a
+ * load asked before a step is older than that step even when its answer arrives later, so the step's
+ * newer state is not dropped by a stale read (PLAN-66 residue, D3).
  */
-let onboardingStateRevision = 0;
+let onboardingRequestSeq = 0;
+let onboardingAppliedSeq = 0;
 
-function applyOnboardingState(state: OnboardingState): void {
-  onboardingStateRevision += 1;
+/** @returns the sequence number of the request that is starting now */
+function beginOnboardingRequest(): number {
+  onboardingRequestSeq += 1;
+  return onboardingRequestSeq;
+}
+
+/**
+ * @param state the state the runtime reported
+ * @param seq the sequence number the request that carried it was asked under
+ * @returns whether the state was applied: a request older than one already applied is dropped
+ */
+function applyOnboardingState(state: OnboardingState, seq: number): boolean {
+  if (seq < onboardingAppliedSeq) return false;
+  onboardingAppliedSeq = seq;
   const activeStep = deriveStepFromState(state.state);
   const completed =
     typeof state.completed_steps === 'number' ? state.completed_steps : Math.max(0, activeStep - 1);
@@ -1920,6 +1935,7 @@ function applyOnboardingState(state: OnboardingState): void {
     completedSteps: completed,
     isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
   }));
+  return true;
 }
 
 /**
@@ -1938,9 +1954,10 @@ export function completedStepNumbers(completedSteps: number): number[] {
 
 export async function loadOnboardingState(): Promise<OnboardingState | null> {
   if (!apiClient.isPaired()) return null;
+  const seq = beginOnboardingRequest();
   try {
     const state = await apiClient.getOnboardingState();
-    applyOnboardingState(state);
+    applyOnboardingState(state, seq);
     return state;
   } catch {
     return null;
@@ -1967,12 +1984,13 @@ export async function stepOnboarding(
   options: { adoptLocale?: boolean } = {},
 ): Promise<void> {
   try {
-    const revision = onboardingStateRevision;
+    const seq = beginOnboardingRequest();
     const next = await apiClient.stepOnboarding(link, body);
-    if (options.adoptLocale) await adoptRecordedLocaleNow();
-    if (onboardingStateRevision !== revision) return;
+    // The adoption is bounded, so a runtime that stops answering cannot keep the record button
+    // spinning; a late answer still switches the screen (see `adoptRecordedLocale`).
+    if (options.adoptLocale) await adoptRecordedLocale();
+    if (!applyOnboardingState(next, seq)) return;
     runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
-    applyOnboardingState(next);
   } catch (err) {
     // A refused step leaves the state as it is; the refusal is shown, so the operator sees why the
     // act did nothing instead of a screen that silently ignores the click.
@@ -2037,11 +2055,11 @@ export async function storeCredential(
 
 export async function startOnboardingAuto(): Promise<void> {
   try {
-    const revision = onboardingStateRevision;
+    const seq = beginOnboardingRequest();
     const next = await apiClient.startOnboardingAuto();
     await adoptRecordedLocale();
-    if (onboardingStateRevision !== revision) return;
-    applyOnboardingState(next);
+    if (!applyOnboardingState(next, seq)) return;
+    runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
   } catch {
     // A refused automatic run leaves the state as it is.
   }

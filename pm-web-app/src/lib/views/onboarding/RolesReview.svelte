@@ -1,10 +1,46 @@
+<script lang="ts" module>
+  /** The operator's unfinished edits of the roles screen. */
+  export interface RoleEditSession {
+    drafts: Record<string, { harness_id: string; model_id: string; effort: string }>;
+    decisions: Record<string, 'accept' | 'reject'>;
+    decidedOn: Record<string, string>;
+    editing: Record<string, boolean>;
+    openAdvisory: Record<string, boolean>;
+  }
+
+  /**
+   * The edits the operator has made and not yet recorded, kept for this visit.
+   *
+   * A refused `roles.validate` returns to this screen as a fresh mount, and so does a back from the
+   * validating screen: the edits live outside the component instance, so the hand-typed model ids,
+   * the opened rows and the departure decisions survive it (PLAN-66 residue, D3).
+   */
+  export const roleEditSession: RoleEditSession = $state({
+    drafts: {},
+    decisions: {},
+    decidedOn: {},
+    editing: {},
+    openAdvisory: {},
+  });
+
+  /** Forgets every edit of this visit; the screen calls it when the run records the assignment. */
+  export function resetRoleEditSession(): void {
+    roleEditSession.drafts = {};
+    roleEditSession.decisions = {};
+    roleEditSession.decidedOn = {};
+    roleEditSession.editing = {};
+    roleEditSession.openAdvisory = {};
+  }
+</script>
+
 <script lang="ts">
+  import { tick } from 'svelte';
   import Button from '../../components/Button.svelte';
   import Icon from '../../components/Icon.svelte';
   import SelectField, { type SelectOption } from '../../components/SelectField.svelte';
   import StatusLabel from '../../components/StatusLabel.svelte';
   import TextField from '../../components/TextField.svelte';
-  import { t } from '../../i18n';
+  import { hasMessage, t } from '../../i18n';
   import type { ScreenProps } from './screens';
 
   /**
@@ -80,20 +116,38 @@
 
   const roles = $derived(view.arrayField<RoleRow>('roles'));
 
-  /** The rows the operator opened for editing. */
-  let editing = $state<Record<string, boolean>>({});
+  /** The rows the operator opened for editing, kept outside the instance (see the module above). */
+  const editing = roleEditSession.editing;
   /** The assignment the operator set per role. */
-  let drafts = $state<Record<string, Draft>>({});
+  const drafts = roleEditSession.drafts;
   /** The advisory the operator opened. */
-  let openAdvisory = $state<Record<string, boolean>>({});
+  const openAdvisory = roleEditSession.openAdvisory;
   /** The operator's decision on a departure, per role. */
-  let decisions = $state<Record<string, 'accept' | 'reject'>>({});
+  const decisions = roleEditSession.decisions;
   /** The departure each decision was taken against, so a proposal that changes clears the decision. */
-  let decidedOn = $state<Record<string, string>>({});
+  const decidedOn = roleEditSession.decidedOn;
 
   // A refreshed proposal for the same role makes the decision and its draft stale: the row starts
   // again from the proposal the state reports, and no stale assignment travels with the decision.
+  // A role the refresh no longer lists takes its edits with it, so a vanished role's decision is
+  // never recorded.
   $effect(() => {
+    const present = new Set(roles.map((role) => role.role));
+    for (const key of Object.keys(decisions)) {
+      if (!present.has(key)) {
+        delete decisions[key];
+        delete decidedOn[key];
+      }
+    }
+    for (const key of Object.keys(drafts)) {
+      if (!present.has(key)) delete drafts[key];
+    }
+    for (const key of Object.keys(editing)) {
+      if (!present.has(key)) delete editing[key];
+    }
+    for (const key of Object.keys(openAdvisory)) {
+      if (!present.has(key)) delete openAdvisory[key];
+    }
     for (const role of roles) {
       const seen = decidedOn[role.role];
       if (seen === undefined || seen === departureSnapshot(role)) continue;
@@ -185,8 +239,7 @@
   }
 
   /** @param role the role's id @param decision the decision to take on its departure */
-  function decide(role: RoleRow, decision: 'accept' | 'reject'): void {
-    decisions[role.role] = decision;
+  function decide(role: RoleRow, decision: 'accept' | 'reject'): void {    decisions[role.role] = decision;
     decidedOn[role.role] = departureSnapshot(role);
     // Accepting takes the steward's proposal; rejecting returns the row to the role's default.
     const target = decision === 'accept' ? role.departure : role.default;
@@ -195,6 +248,19 @@
       model_id: target?.model_id ?? role.model_id ?? '',
       effort: target?.effort ?? role.effort ?? '',
     };
+  }
+
+  /**
+   * Opens or closes a row's edit, and moves the focus into its first field when it opens, so the
+   * operator lands where they act instead of at the top of the page.
+   *
+   * @param role the role whose row is opened
+   */
+  async function toggleEdit(role: RoleRow): Promise<void> {
+    editing[role.role] = !editing[role.role];
+    if (!editing[role.role]) return;
+    await tick();
+    document.querySelector<HTMLElement>(`[data-testid="role-harness-${role.role}"]`)?.focus();
   }
 
   /** The harnesses a role can be assigned to, by their names. */
@@ -287,8 +353,22 @@
 
   /** @param role the role's id @returns the word beside its effort, from the catalogue */
   function effortLabel(role: RoleRow): string {
-    const effort = draftOf(role).effort;
-    return effort === '' ? $t('onboard.roles.effort.none') : $t(`onboard.roles.effort.${effort}`);
+    return effortWord(draftOf(role).effort);
+  }
+
+  /**
+   * The catalogue's word for an effort it names, and the value itself for one it does not: the
+   * engine defines the effort as what the harness accepts for the model
+   * (`model-work/01-roles-and-configuration.adoc:84`), so a value outside low, medium and high is a
+   * legal fact, never a missing translation.
+   *
+   * @param effort the effort the assignment carries
+   * @returns the word to show
+   */
+  function effortWord(effort: string): string {
+    if (effort === '') return $t('onboard.roles.effort.none');
+    const key = `onboard.roles.effort.${effort}`;
+    return hasMessage(key) ? $t(key) : effort;
   }
 
   /** @param role the role's id @returns the assignment the steward proposes, in the row's words */
@@ -297,7 +377,7 @@
     if (!departure) return '';
     const harness = harnessLabel(departure.harness_id ?? '');
     const model = departure.model_id ?? '';
-    const effort = departure.effort ? ` · ${$t(`onboard.roles.effort.${departure.effort}`)}` : '';
+    const effort = departure.effort ? ` · ${effortWord(departure.effort)}` : '';
     return `${harness} · ${model}${effort}`;
   }
 
@@ -330,6 +410,7 @@
       });
     }
     view.onLink(target.id, body);
+    resetRoleEditSession();
   }
 </script>
 
@@ -387,6 +468,7 @@
                     variant="secondary"
                     size="sm"
                     loading={view.busy}
+                    aria-pressed={decisions[role.role] === 'accept'}
                     onclick={() => decide(role, 'accept')}
                     data-testid={`role-departure-accept-${role.role}`}
                   >
@@ -396,6 +478,7 @@
                     variant="ghost"
                     size="sm"
                     loading={view.busy}
+                    aria-pressed={decisions[role.role] === 'reject'}
                     onclick={() => decide(role, 'reject')}
                     data-testid={`role-departure-reject-${role.role}`}
                   >
@@ -406,22 +489,26 @@
                   variant="ghost"
                   size="sm"
                   icon="act.edit"
+                  aria-label={$t('onboard.roles.review.change_for', { role: role.role })}
                   title={$t('onboard.roles.review.change_for', { role: role.role })}
-                  onclick={() => (editing[role.role] = !editing[role.role])}
+                  onclick={() => void toggleEdit(role)}
                   data-testid={`role-change-${role.role}`}
                 >
                   {$t('onboard.roles.review.change')}
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-pressed={openAdvisory[role.role] ?? false}
-                  title={$t('onboard.roles.review.advisory_for', { role: role.role })}
-                  onclick={() => (openAdvisory[role.role] = !openAdvisory[role.role])}
-                  data-testid={`role-advisory-${role.role}`}
-                >
-                  {$t('onboard.roles.review.advisory_label')}
-                </Button>
+                {#if role.advisory}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-pressed={openAdvisory[role.role] ?? false}
+                    aria-label={$t('onboard.roles.review.advisory_for', { role: role.role })}
+                    title={$t('onboard.roles.review.advisory_for', { role: role.role })}
+                    onclick={() => (openAdvisory[role.role] = !openAdvisory[role.role])}
+                    data-testid={`role-advisory-${role.role}`}
+                  >
+                    {$t('onboard.roles.review.advisory_label')}
+                  </Button>
+                {/if}
               </div>
 
               {#if editing[role.role]}

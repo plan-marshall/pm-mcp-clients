@@ -8,6 +8,7 @@ import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
+import { resetRoleEditSession } from './onboarding/RolesReview.svelte';
 
 /**
  * The onboarding as a view test against the states `pm-mock-runtime` reports.
@@ -51,6 +52,179 @@ function arrange(state: OnboardingState, completedSteps = 0): void {
   // The view pulls the state on mount; the mock reports the state this case arranges.
   vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(state);
 }
+
+describe('roles review minors (D3)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+    resetRoleEditSession();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function roleRow(partial: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      role: 'plan',
+      class: 'read_only',
+      phase: 'planning',
+      harness_id: 'claude',
+      model_id: 'opus-5.5',
+      effort: 'high',
+      origin: 'default',
+      ...partial,
+    };
+  }
+
+  it('shows an effort the catalogue does not name as the value itself', async () => {
+    messagesStore.set(loadMessages('de'));
+    currentLocale.set('de');
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [roleRow({ effort: 'max' })],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    try {
+      render(OnboardingView);
+
+      const row = screen.getByTestId('role-row-plan');
+      // The engine defines the effort as what the harness accepts for the model, so an unknown
+      // value is shown as the value — never a humanised word nor a raw key.
+      expect(row).toHaveTextContent('max');
+      expect(row).not.toHaveTextContent('Max');
+      expect(row).not.toHaveTextContent('onboard.roles.effort');
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      currentLocale.set('en');
+    }
+  });
+
+  it('drops the decision of a role a refresh no longer lists', async () => {
+    const first = onboardingState({
+      state: 'roles.review',
+      roles: [
+        roleRow({ role: 'plan', departure: { harness_id: 'claude', model_id: 'sonnet-5', effort: 'medium' } }),
+        roleRow({ role: 'implement' }),
+      ],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(first);
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-departure-accept-plan'));
+
+    // A refresh that no longer lists the role: its decision must not travel.
+    const refreshed = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'implement' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    runtimeStore.update((s) => ({ ...s, onboarding: refreshed, currentState: refreshed }));
+    await tick();
+
+    const stepSpy = vi.spyOn(apiClient, 'stepOnboarding').mockResolvedValue(refreshed);
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    expect(stepSpy).toHaveBeenCalledTimes(1);
+    const body = stepSpy.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.departures ?? []).toEqual([]);
+    expect(body.roles ?? []).toEqual([]);
+  });
+
+  it('offers the advisory only for a row the runtime gives one', () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [
+          roleRow({ role: 'plan', advisory: { does: 'Plans', needs: 'Reasoning', why: 'Tier' } }),
+          roleRow({ role: 'implement' }),
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-advisory-plan')).toBeInTheDocument();
+    expect(screen.queryByTestId('role-advisory-implement')).toBeNull();
+  });
+
+  it('names one role in the save button', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [roleRow({ role: 'plan', departure: { harness_id: 'claude', model_id: 'sonnet-5' } })],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-departure-accept-plan'));
+
+    expect(screen.getByTestId('roles-record')).toHaveTextContent('Save 1 role');
+  });
+
+  it('gives each row its own accessible names and marks the decision pressed', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [
+          roleRow({
+            role: 'plan',
+            departure: { harness_id: 'claude', model_id: 'sonnet-5' },
+            advisory: { does: 'Plans' },
+          }),
+          roleRow({ role: 'implement', departure: { harness_id: 'claude', model_id: 'sonnet-5' } }),
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByRole('button', { name: 'Change the harness, model and effort of plan' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change the harness, model and effort of implement' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Advisory for plan' })).toBeInTheDocument();
+
+    const accept = screen.getByTestId('role-departure-accept-plan');
+    expect(accept).toHaveAttribute('aria-pressed', 'false');
+    await fireEvent.click(accept);
+    expect(accept).toHaveAttribute('aria-pressed', 'true');
+
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    expect(document.activeElement).toBe(screen.getByTestId('role-harness-plan'));
+  });
+
+  it('keeps the operator’s hand edits across a remount after a refused validate', async () => {
+    const state = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'plan' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(state);
+
+    const first = render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    await fireEvent.input(screen.getByTestId('role-model-plan'), {
+      target: { value: 'hand-typed-model' },
+    });
+    first.unmount();
+
+    // The refused validate brings the screen back: a remount must not lose the edit.
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-model-plan')).toHaveValue('hand-typed-model');
+  });
+});
 
 describe('OnboardingView against the mock runtime states', () => {
   beforeEach(() => {
@@ -1248,6 +1422,67 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.queryByRole('button', { name: /change:/i })).toBeNull();
   });
 
+  it('prints only the catalogue’s four reason words, and nothing for a missing reason', () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [
+          { aspect: 'language', value: 'Deutsch', reason: 'detected' },
+          { aspect: 'harness', value: 'Claude Code', reason: 'some_new_reason' },
+          { aspect: 'store', value: 'keychain' },
+        ],
+        links: { done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const table = screen.getByTestId('auto-result');
+    // A known reason reads its catalogue word; a missing one prints nothing rather than "the
+    // default", and an unknown one prints nothing rather than an English word on a German screen.
+    expect(table).toHaveTextContent('detected');
+    expect(table).not.toHaveTextContent('the default');
+    expect(table).not.toHaveTextContent('Some new reason');
+    expect(table).not.toHaveTextContent('some_new_reason');
+  });
+
+  it('closes the token entry after a saved token and checks the provider again', async () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be verified',
+        provider: 'SonarCloud',
+        provider_id: 'sonar',
+        cause: '401 "Invalid token"',
+        fix: 'enter the token again',
+        links: {
+          check_again: { href: '/api/v1/onboarding/providers/check-again', next: 'providers.verify' },
+          continue_without: {
+            href: '/api/v1/onboarding/providers/continue-without',
+            next: 'providers.record',
+          },
+        },
+      }),
+    );
+    const setSpy = vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'providers.verify' }));
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('providers-failed-enter-token'));
+    await fireEvent.input(screen.getByTestId('credential-secret-input'), {
+      target: { value: 'sonar-token' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /store the secret/i }));
+
+    await waitFor(() => expect(setSpy).toHaveBeenCalledWith('sonar', 'sonar-token'));
+    // The saved token is checked, not left behind a closed form with a failed row.
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('check_again', {}));
+    expect(screen.queryByTestId('credential-entry')).toBeNull();
+  });
+
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
     arrange(
       onboardingState({
@@ -1834,12 +2069,8 @@ describe('store.choose protection lines per option (D9)', () => {
     expect(screen.getAllByText(/^Does not protect against:/)).toHaveLength(2);
 
     const osOption = screen.getByTestId('store-os').closest('li') as HTMLElement;
-    expect(osOption).toHaveTextContent(
-      'Protects a secret against: anything the store itself guarantees',
-    );
-    expect(osOption).toHaveTextContent(
-      'Does not protect against: anything the store itself does not guarantee',
-    );
+    expect(osOption).toHaveTextContent('Protects a secret against: not reported for this store');
+    expect(osOption).toHaveTextContent('Does not protect against: not reported for this store');
     expect(osOption).not.toHaveTextContent('macOS asking first');
     expect(within(osOption).getByText('recommended')).toBeVisible();
 
@@ -1871,7 +2102,7 @@ describe('store.choose protection lines per option (D9)', () => {
 
     expect(container).not.toHaveTextContent('without macOS asking first');
     expect(container).not.toHaveTextContent('Secret Service');
-    expect(container).toHaveTextContent('anything the store itself guarantees');
+    expect(container).toHaveTextContent('not reported for this store');
   });
 
   it('records os_unavailable for an unavailable OS store', async () => {
@@ -1959,7 +2190,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     vi.restoreAllMocks();
   });
 
-  it('draws a monogram when no icon is fetched and says usage complete, usage partial or usage not reported', () => {
+  it('draws a monogram when no icon is fetched and says usage complete, usage partly reported or usage not reported', () => {
     arrange(
       onboardingState({
         state: 'harness.choose',
@@ -2021,9 +2252,9 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
     expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
     expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-      'usage partial (not reported: cache read, cache write)',
+      'usage partly reported (not reported: cache read, cache write)',
     );
-    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
+    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partly reported');
     expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
   });
 
@@ -2065,7 +2296,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
         'Tokenverbrauch vollständig',
       );
       expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-        'Tokenverbrauch teilweise (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
+        'Tokenverbrauch teilweise gemeldet (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
       );
     } finally {
       messagesStore.set(loadMessages('en'));
@@ -2109,7 +2340,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(list).not.toHaveTextContent('complete:');
     expect(list).not.toHaveTextContent('input, cache read');
     expect(list).toHaveTextContent('OpenCode');
-    expect(list).toHaveTextContent('usage partial (not reported: cache read, cache write)');
+    expect(list).toHaveTextContent('usage partly reported (not reported: cache read, cache write)');
     expect(list).toHaveTextContent('Codex');
     expect(list).toHaveTextContent('usage not reported');
   });

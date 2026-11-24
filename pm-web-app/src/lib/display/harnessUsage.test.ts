@@ -21,7 +21,7 @@ describe('harnessUsageText', () => {
         token_usage: 'partial',
         missing_figures: ['cache_read', 'cache_write'],
       }),
-    ).toBe('usage partial (not reported: cache read, cache write)');
+    ).toBe('usage partly reported (not reported: cache read, cache write)');
 
     try {
       currentLocale.set('de');
@@ -31,7 +31,9 @@ describe('harnessUsageText', () => {
           token_usage: 'partial',
           missing_figures: ['cache_read', 'cache_write'],
         }),
-      ).toBe('Tokenverbrauch teilweise (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)');
+      ).toBe(
+        'Tokenverbrauch teilweise gemeldet (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
+      );
     } finally {
       currentLocale.set('en');
       messagesStore.set(loadMessages('en'));
@@ -50,12 +52,12 @@ describe('harnessUsageText', () => {
           },
         },
       }),
-    ).toBe('usage partial (not reported: input, reasoning)');
+    ).toBe('usage partly reported (not reported: input, reasoning)');
   });
 
   it('avoids dangling parentheses when figures are absent', () => {
     const translate = get(t);
-    expect(harnessUsageText(translate, { token_usage: 'partial' })).toBe('usage partial');
+    expect(harnessUsageText(translate, { token_usage: 'partial' })).toBe('usage partly reported');
     expect(harnessUsageText(translate, { token_usage: 'not_reported' })).toBe('usage not reported');
     expect(harnessUsageText(translate, {})).toBe('usage not reported');
   });

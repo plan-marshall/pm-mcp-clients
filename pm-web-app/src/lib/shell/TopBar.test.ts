@@ -12,6 +12,51 @@ function useCatalogue(locale: 'de' | 'en'): void {
   messagesStore.set(loadMessages(locale));
 }
 
+describe('TopBar on the onboarding frame (D3)', () => {
+  beforeEach(() => {
+    useCatalogue('en');
+    runtimeStore.set({
+      isInitialized: true,
+      isPaired: true,
+      isOnboarded: false,
+      deviceLabel: 'test-device',
+      machineName: 'test-machine',
+      currentRoute: 'onboarding',
+      currentState: null,
+      isRevoked: false,
+      revokedReason: '',
+      isOffline: false,
+      streamState: 'connected',
+      isListenerClosed: false,
+      isDraining: false,
+      isStopped: false,
+      activeStep: 1,
+      completedSteps: 0,
+      unreadReportsCount: 0,
+      openDecisionsCount: 0,
+      currentProcessTree: null,
+      currentEpicResource: null,
+    });
+  });
+
+  it('shows the machine only while the onboarding fills the app: no path, no search, no live indicator', () => {
+    render(TopBar);
+
+    expect(screen.getByTestId('header-machine')).toHaveTextContent('test-machine');
+    expect(screen.queryByTestId('search-trigger')).toBeNull();
+    expect(screen.queryByRole('navigation')).toBeNull();
+  });
+
+  it('shows the path and the search once the machine is onboarded', () => {
+    runtimeStore.update((state) => ({ ...state, isOnboarded: true }));
+
+    render(TopBar);
+
+    expect(screen.getByTestId('search-trigger')).toBeInTheDocument();
+    expect(screen.getByTestId('header-machine')).toBeInTheDocument();
+  });
+});
+
 describe('TopBar component (PLAN-144 D2)', () => {
   beforeEach(() => {
     useCatalogue('en');
