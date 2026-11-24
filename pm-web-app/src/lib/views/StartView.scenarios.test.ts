@@ -89,7 +89,7 @@ describe('start-sources: a plan from a description and from an issue of another 
 
     await screen.findByTestId('source-list');
     expect(screen.getByTestId('sources-title')).toHaveTextContent('What does the plan start from?');
-    expect(screen.getByTestId('source-continue')).toBeDisabled();
+    expect(screen.getByTestId('source-continue')).toHaveAttribute('aria-disabled', 'true');
 
     await fireEvent.input(screen.getByTestId('description-input'), {
       target: { value: 'Add a Codeberg provider for issues' },
@@ -648,8 +648,15 @@ describe('start-epic: ready shows epic.auto_start and never asks the scope', () 
 
     render(StartView, { props: { projectId: PROJECT, kind: 'epic' } });
     await screen.findByTestId('source-list');
-    expect(screen.queryByTestId('add-pull_request')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('add-local_changes')).not.toBeInTheDocument();
+    // The menu lists the kinds an epic offers, under the ids the menu builds; a pull request and
+    // the local changes are no kinds of an epic at all.
+    await fireEvent.click(screen.getByTestId('source-add-menu'));
+    expect(await screen.findByTestId('action-description')).toBeInTheDocument();
+    expect(screen.getByTestId('action-documents')).toBeInTheDocument();
+    expect(screen.getByTestId('action-issue')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-pull_request')).toBeNull();
+    expect(screen.queryByTestId('action-local_changes')).toBeNull();
+    await fireEvent.click(screen.getByTestId('source-add-menu'));
 
     await fireEvent.click(screen.getByTestId('source-continue'));
     expect(start).toHaveBeenCalledWith('ent-3f9a2c41', 'start', {});

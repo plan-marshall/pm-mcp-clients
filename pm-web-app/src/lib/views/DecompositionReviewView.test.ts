@@ -52,7 +52,7 @@ function cut(overrides: Partial<EpicDecomposition> = {}): EpicDecomposition {
 }
 
 describe('the decomposition review', () => {
-  it('shows the workstreams, rows, failing check, and plan details in KeyValueList (a plan with no deliverables)', () => {
+  it('shows the workstreams, rows, failing check, and the plan details the wire carries', () => {
     render(DecompositionReviewView, { props: { decomposition: cut() } });
 
     expect(screen.getByTestId('decomposition-title')).toHaveTextContent(
@@ -66,51 +66,18 @@ describe('the decomposition review', () => {
     );
     expect(screen.getByTestId('agree-commit')).toHaveAttribute('aria-disabled', 'true');
 
-    // KeyValueList for relay-auth-v2:
+    // KeyValueList for relay-auth-v2: what a StagedPlanRecord carries, and nothing else.
     const planAuth = screen.getByTestId('plan-relay-auth-v2');
     const kv = within(planAuth).getByTestId('key-value-list');
     expect(kv).toHaveTextContent('Objective');
     expect(kv).toHaveTextContent('a token exchange');
-    expect(kv).toHaveTextContent('Deliverables');
-    expect(kv).toHaveTextContent('—'); // No deliverables shows —
     expect(kv).toHaveTextContent('Surface');
     expect(kv).toHaveTextContent('pm-api/src/cursor');
     expect(kv).toHaveTextContent('Depends on');
     expect(kv).toHaveTextContent('relay-cursor-order');
-    expect(kv).toHaveTextContent('Order');
-    expect(kv).toHaveTextContent('2');
-  });
-
-  it('shows deliverables in KeyValueList when present', () => {
-    const cutWithDeliverables = cut({
-      workstreams: [
-        {
-          id: 'WS-2',
-          name: 'Authentication',
-          order: 2,
-          staged_plans: [
-            {
-              plan_id: 'relay-auth-v2',
-              title: 'relay-auth-v2',
-              objective: 'a token exchange',
-              deliverables: ['the token exchange', 'token rotation'],
-              expected_surface: ['pm-api/src/cursor'],
-              dependencies: ['relay-cursor-order'],
-              order: 3,
-              status: 'staged',
-            },
-          ],
-        },
-      ],
-      findings: [],
-    });
-
-    render(DecompositionReviewView, { props: { decomposition: cutWithDeliverables } });
-
-    const planAuth = screen.getByTestId('plan-relay-auth-v2');
-    const kv = within(planAuth).getByTestId('key-value-list');
-    expect(kv).toHaveTextContent('the token exchange, token rotation');
-    expect(kv).toHaveTextContent('3');
+    // The wire has no per-plan order and no deliverables, so neither row is drawn.
+    expect(kv).not.toHaveTextContent('Deliverables');
+    expect(kv).not.toHaveTextContent('Order');
   });
 
   it('renders the three actions of a plan as secondary buttons', async () => {
@@ -205,7 +172,7 @@ describe('the decomposition review', () => {
     expect(onDiscard).toHaveBeenCalled();
   });
 
-  it('combines edited objective and instruction when both are present', async () => {
+  it('sends the instruction alone, never the plan objective', async () => {
     const instruct = vi.fn();
     render(DecompositionReviewView, {
       props: {
@@ -216,11 +183,8 @@ describe('the decomposition review', () => {
 
     await fireEvent.click(screen.getByTestId('plan-edit-relay-auth-v2'));
 
-    const objectiveInput = screen.getByLabelText('Objective');
-    await fireEvent.input(objectiveInput, {
-      target: { value: 'token rotation objective' },
-    });
-
+    // The base sent the instruction only: a plan's objective has no field of its own here.
+    expect(screen.queryByLabelText('Objective')).toBeNull();
     const instructPanel = screen.getByTestId('decomposition-instruction');
     const textbox = within(instructPanel).getByRole('textbox', { name: 'What should change?' });
     await fireEvent.input(textbox, {
@@ -229,10 +193,27 @@ describe('the decomposition review', () => {
 
     await fireEvent.click(screen.getByTestId('instruct-submit'));
 
-    expect(instruct).toHaveBeenCalledWith(
-      'relay-auth-v2',
-      'token rotation objective\nkeep the API compatible',
-    );
+    expect(instruct).toHaveBeenCalledWith('relay-auth-v2', 'keep the API compatible');
+  });
+
+  it('holds the send back with its reason while nothing is typed, and names it apart from the row acts', async () => {
+    render(DecompositionReviewView, { props: { decomposition: cut() } });
+
+    await fireEvent.click(screen.getByTestId('plan-edit-relay-auth-v2'));
+
+    const send = screen.getByTestId('instruct-submit');
+    expect(send).toHaveAccessibleName('Send the instruction');
+    expect(send).toHaveAttribute('aria-disabled', 'true');
+    const describedBy = send.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)).toHaveTextContent('Type what should change');
+
+    const textbox = within(screen.getByTestId('decomposition-instruction')).getByRole('textbox', {
+      name: 'What should change?',
+    });
+    await fireEvent.input(textbox, { target: { value: 'the exchange belongs into pm-relay' } });
+
+    expect(send).not.toHaveAttribute('aria-disabled');
   });
 
   it('disables agree while checks fail with disabledReason and agrees once passing', async () => {

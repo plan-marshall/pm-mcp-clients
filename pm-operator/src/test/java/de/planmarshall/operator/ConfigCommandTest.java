@@ -1487,8 +1487,8 @@ class ConfigCommandTest {
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
                             () -> assertTrue(err.toString().contains(
-                                                "Unable to load the documents mode, a machine setting: "
-                                                                    + ErrorTexts.title("en", (ApiErrorCode) null)),
+                                                                    "Unable to load the documents mode, a machine setting: "
+                                                                                        + ErrorTexts.title("en", (ApiErrorCode) null)),
                                                 err.toString()),
                             () -> assertFalse(out.toString().contains("documents mode"), out.toString()));
     }

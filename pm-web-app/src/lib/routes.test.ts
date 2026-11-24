@@ -33,7 +33,8 @@ describe('the routes of the app', () => {
 
   it('resolves every view that has a path of its own', () => {
     expect(routeForPath('/projects')).toBe('projects');
-    expect(routeForPath('/projects/onboard')).toBe('project-onboarding');
+    expect(routeForPath('/projects/onboarding')).toBe('project-onboarding');
+    expect(routeForPath('/projects/onboarding/ent-cui')).toBe('project-onboarding');
     expect(routeForPath('/overview')).toBe('overview');
     expect(routeForPath('/decisions')).toBe('decisions');
     expect(routeForPath('/reports')).toBe('reports');
@@ -70,7 +71,10 @@ describe('the routes of the app', () => {
     expect(pathForRoute('entry')).toBe('/entry');
     expect(pathForRoute('pair')).toBe('/pair');
     expect(pathForRoute('settings')).toBe('/settings');
-    expect(pathForRoute('project-onboarding')).toBe('/projects/onboard');
+    expect(pathForRoute('project-onboarding')).toBe('/projects/onboarding');
+    expect(pathForRoute('project-onboarding', { onboardingId: 'ent-cui' })).toBe(
+      '/projects/onboarding/ent-cui',
+    );
     expect(pathForRoute('overview')).toBe('/overview');
     expect(pathForRoute('inbox')).toBe('/');
     expect(pathForRoute('decisions')).toBe('/decisions');
@@ -330,10 +334,18 @@ describe('the address model', () => {
     // `/decomposition` is the workflow's own path, so an epic called `decompose` is an id.
     expect(parseAddress('/epics/decompose')).toEqual({ route: 'epic', epicId: 'decompose' });
     expect(formatAddress({ route: 'epic', epicId: 'decompose' })).toBe('/epics/decompose');
-    // A project called `onboard` is written as the object; PLAN-59 moves the onboarding that still
-    // answers to `/projects/onboard` today, so the string stays canonical either way.
+    // A project called `onboard` is written as the object: /projects/onboard resolves to the project.
+    expect(parseAddress('/projects/onboard')).toEqual({ route: 'project', projectId: 'onboard' });
     expect(formatAddress({ route: 'project', projectId: 'onboard' })).toBe('/projects/onboard');
     expect(canonicalAddress('/projects/onboard')).toBe('/projects/onboard');
+    // A project onboarding run has an address of its own.
+    expect(parseAddress('/projects/onboarding/ent-cui')).toEqual({
+      route: 'project-onboarding',
+      onboardingId: 'ent-cui',
+    });
+    expect(formatAddress({ route: 'project-onboarding', onboardingId: 'ent-cui' })).toBe(
+      '/projects/onboarding/ent-cui',
+    );
   });
 
   it('replaces every old address this plan owns', () => {

@@ -6,6 +6,7 @@
    * otherwise be taken by the outer one and move the focus out of the dialog on top.
    */
   const openPanels: HTMLElement[] = [];
+  let rootOverflowBeforeFirstDialog: string | null = null;
 </script>
 
 <script lang="ts">
@@ -60,11 +61,13 @@
    */
   function takeFocus(node: HTMLElement): { destroy: () => void } {
     panel = node;
+    const root = document.documentElement;
+    if (openPanels.length === 0) {
+      rootOverflowBeforeFirstDialog = root.style.overflow;
+    }
     openPanels.push(node);
     returnFocus = returnFocusElement ?? (document.activeElement as HTMLElement | null);
     // The page behind the backdrop must not scroll under the dialog; its own position survives.
-    const root = document.documentElement;
-    const previousOverflow = root.style.overflow;
     root.style.overflow = 'hidden';
     node.focus();
     queueMicrotask(() => {
@@ -80,7 +83,10 @@
         if (index >= 0) {
           openPanels.splice(index, 1);
         }
-        root.style.overflow = previousOverflow;
+        if (openPanels.length === 0) {
+          root.style.overflow = rootOverflowBeforeFirstDialog ?? '';
+          rootOverflowBeforeFirstDialog = null;
+        }
         returnFocus?.focus();
         returnFocus = null;
         panel = undefined;
@@ -108,7 +114,7 @@
       return;
     }
     if (event.key === 'Escape') {
-      if (event.defaultPrevented) {
+      if (event.defaultPrevented || event.isComposing) {
         return;
       }
       // The Escape yields to the menu that holds the keyboard: that menu closes itself on this

@@ -515,7 +515,7 @@ class CleanupCommandTest {
         assertAll(
                             () -> assertEquals(3, code, out.toString() + err),
                             () -> assertTrue(lines.contains(
-                                                "Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?"),
+                                                                    "Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?"),
                                                 out.toString()),
                             () -> assertTrue(lines.contains("This frees 1.8 GB. It cannot be undone."), out.toString())
         );

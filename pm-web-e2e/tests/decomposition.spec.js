@@ -72,4 +72,19 @@ test.describe('Epic Decomposition (UC-STA-6)', () => {
     await input.press('Enter');
     await expect(page.getByTestId('read-back')).toBeVisible();
   });
+
+  test('marks a dropped plan and shows it as dropped, not as checked', async ({ page }) => {
+    const plan = page.getByTestId('plan-relay-auth-v2');
+    await expect(plan).toContainText('check failed');
+    await expect(plan.locator('.status-label--danger')).toBeVisible();
+
+    await page.getByTestId('plan-drop-relay-auth-v2').click();
+
+    // The card says the plan is dropped, dimmed, and no longer wears the success tone.
+    await expect(plan).toHaveClass(/plan--dropped/);
+    await expect(plan.locator('.status-label--neutral')).toBeVisible();
+    await expect(plan.locator('.status-label--danger')).toHaveCount(0);
+    // The cut still carries a failing check elsewhere, so the agree act stays held back with its reason.
+    await expect(page.getByTestId('agree-commit')).toHaveAttribute('aria-disabled', 'true');
+  });
 });

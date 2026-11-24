@@ -2,22 +2,27 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import RecipeReadyView from './RecipeReadyView.svelte';
 
-describe('RecipeReadyView', () => {
-  it('renders parameters through SelectField and TextField in parameters mode, and submits with Enter', async () => {
-    const onParameter = vi.fn();
-    const onSubmit = vi.fn();
+/**
+ * The recipe and ready steps as the view fills them: the parameters the server resolved, the
+ * proposed title and derived id, and the one Enter that confirms the field. The step's own act is
+ * the wizard's, so the view draws none.
+ */
 
+const RECIPE = {
+  key: 'free',
+  name: 'free',
+  description: 'A recipe the project offers',
+  origin: 'project',
+  takes_request: false,
+  parameters: [],
+};
+
+describe('RecipeReadyView', () => {
+  it('draws a parameter with options as a choice and one without options as its reason, with no field', () => {
     render(RecipeReadyView, {
       props: {
         mode: 'parameters',
-        recipe: {
-          key: 'code-review',
-          name: 'code-review',
-          description: 'A code review recipe',
-          origin: 'builtin',
-          takes_request: false,
-          parameters: [],
-        },
+        recipe: RECIPE,
         parameters: [
           {
             name: 'module',
@@ -26,84 +31,56 @@ describe('RecipeReadyView', () => {
             proposed: false,
             available: true,
           },
-          {
-            name: 'target',
-            options: [],
-            value: 'src/main',
-            proposed: false,
-            available: true,
-          },
+          { name: 'target', options: [], proposed: false, available: true },
         ],
-        onParameter,
-        onSubmit,
       },
     });
 
-    // SelectField for module
-    const select = screen.getByTestId('parameter-module');
-    expect(select).toBeInTheDocument();
-    await fireEvent.change(select, { target: { value: 'pm-relay' } });
-    expect(onParameter).toHaveBeenCalledWith('module', 'pm-relay');
-
-    // TextField for target (a parameter without fixed options)
-    const targetInput = screen.getByTestId('parameter-target');
-    expect(targetInput).toBeInTheDocument();
-    await fireEvent.input(targetInput, { target: { value: 'src/core' } });
-    expect(onParameter).toHaveBeenCalledWith('target', 'src/core');
-
-    // Pressing Enter while IME is composing does NOT submit
-    await fireEvent.keyDown(targetInput, { key: 'Enter', isComposing: true });
-    expect(onSubmit).not.toHaveBeenCalled();
-
-    // Submitting parameter with ordinary Enter
-    await fireEvent.keyDown(targetInput, { key: 'Enter' });
-    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('parameter-module')).toBeInTheDocument();
+    expect(screen.queryByTestId('parameter-target')).toBeNull();
+    expect(screen.getByTestId('no-option-target')).toHaveTextContent(
+      'target: none the recipe can work on; the recipe cannot run',
+    );
   });
 
-  it('renders ready mode with TextField for title and id, and primary button naming the act', async () => {
-    const onTitle = vi.fn();
-    const onId = vi.fn();
-    const onSubmit = vi.fn();
-
+  it('draws no act of its own: the step has one primary, and it is the wizard footer’s', () => {
     render(RecipeReadyView, {
       props: {
         mode: 'ready',
-        recipe: {
-          key: 'code-review',
-          name: 'code-review',
-          description: 'A code review recipe',
-          origin: 'builtin',
-          takes_request: false,
-          parameters: [],
-        },
-        title: 'Review relay code',
+        recipe: RECIPE,
+        title: 'Review relay',
         planId: 'review-relay',
-        onSubmit,
-        onTitle,
-        onId,
+        onSubmit: vi.fn(),
       },
     });
 
-    const titleInput = screen.getByTestId('ready-title');
-    expect(titleInput).toBeInTheDocument();
-    await fireEvent.input(titleInput, { target: { value: 'Review relay and api code' } });
-    expect(onTitle).toHaveBeenCalledWith('Review relay and api code');
+    expect(screen.getByTestId('ready-title')).toHaveValue('Review relay');
+    expect(screen.getByTestId('ready-id')).toHaveValue('review-relay');
+    expect(screen.queryByTestId('ready-start-act')).toBeNull();
+    expect(screen.getByTestId('recipe-ready').querySelector('.btn--primary')).toBeNull();
+  });
 
-    const idInput = screen.getByTestId('ready-id');
-    expect(idInput).toBeInTheDocument();
+  it('submits on Enter through the shared guard, and sends nothing on an IME confirm', async () => {
+    const onSubmit = vi.fn();
+    render(RecipeReadyView, {
+      props: {
+        mode: 'ready',
+        recipe: RECIPE,
+        title: 'Review relay',
+        planId: 'review-relay',
+        onSubmit,
+      },
+    });
+    const title = screen.getByTestId('ready-title');
 
-    // Primary button naming the act
-    const submitBtn = screen.getByTestId('ready-start-act');
-    expect(submitBtn).toHaveClass('btn--primary');
-    await fireEvent.click(submitBtn);
-    expect(onSubmit).toHaveBeenCalled();
+    await fireEvent.keyDown(title, { key: 'Enter', isComposing: true });
+    await fireEvent.keyDown(title, { key: 'Enter', keyCode: 229 });
+    await fireEvent.keyDown(title, { key: 'Enter', shiftKey: true });
 
-    // Pressing Enter while IME is composing does NOT submit
-    await fireEvent.keyDown(titleInput, { key: 'Enter', isComposing: true });
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(title, { key: 'Enter' });
+
     expect(onSubmit).toHaveBeenCalledTimes(1);
-
-    // Pressing Enter in title submits
-    await fireEvent.keyDown(titleInput, { key: 'Enter' });
-    expect(onSubmit).toHaveBeenCalledTimes(2);
   });
 });

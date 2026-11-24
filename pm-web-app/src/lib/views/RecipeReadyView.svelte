@@ -4,7 +4,7 @@
   import Field from '../components/Field.svelte';
   import TextField from '../components/TextField.svelte';
   import SelectField, { type SelectOption } from '../components/SelectField.svelte';
-  import Button from '../components/Button.svelte';
+  import { isConfirmingEnter } from '../utils/ime';
 
   export let mode: 'parameters' | 'ready' = 'ready';
   export let recipe: RecipeRef | null = null;
@@ -25,15 +25,6 @@
 
   $: recipeName = recipe?.name ?? '';
 
-  $: actLabel =
-    mode === 'parameters'
-      ? $t('start.sources.continue')
-      : recipe
-        ? $t('start.recipe.run')
-        : kind === 'epic'
-          ? $t('start.ready.start_epic')
-          : $t('start.ready.start_plan');
-
   function valueOf(parameter: RecipeParameter): string {
     return parameter.value ?? parameter.options[0] ?? '';
   }
@@ -43,9 +34,11 @@
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter' && !event.isComposing) {
-      onSubmit?.();
+    if (!isConfirmingEnter(event)) {
+      return;
     }
+    event.preventDefault();
+    onSubmit?.();
   }
 </script>
 
@@ -74,21 +67,6 @@
               testid={`parameter-${parameter.name}`}
               hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
               onchange={(val) => onParameter(parameter.name, val)}
-            />
-            {#if parameter.proposed}
-              <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
-            {/if}
-          </div>
-        {:else if parameter.available !== false}
-          <div class="recipe-ready__param">
-            <TextField
-              label={parameter.name}
-              value={valueOf(parameter)}
-              disabled={busy}
-              testid={`parameter-${parameter.name}`}
-              hint={parameter.proposed ? $t('start.recipe.proposed') : undefined}
-              oninput={(event) => onParameter(parameter.name, event.currentTarget.value)}
-              onkeydown={handleKeyDown}
             />
             {#if parameter.proposed}
               <span data-testid={`proposed-${parameter.name}`} hidden>{$t('start.recipe.proposed')}</span>
@@ -157,19 +135,6 @@
       </p>
     {/if}
   {/if}
-
-  {#if onSubmit}
-    <div class="recipe-ready__actions">
-      <Button
-        variant="primary"
-        data-testid="ready-start-act"
-        disabled={busy}
-        onclick={onSubmit}
-      >
-        {actLabel}
-      </Button>
-    </div>
-  {/if}
 </section>
 
 <style>
@@ -230,11 +195,5 @@
 
   .recipe-ready__chosen dd {
     margin: 0 0 var(--space-1, 0.25rem) 0;
-  }
-
-  .recipe-ready__actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: var(--space-2);
   }
 </style>

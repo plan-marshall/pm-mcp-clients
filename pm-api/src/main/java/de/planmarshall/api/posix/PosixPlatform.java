@@ -39,7 +39,7 @@ public enum PosixPlatform {
 
     /** macOS (libSystem). */
     MACOS(new SpawnFlags((short) 0x0400, (short) 0x4000), new StructSizes(8, 8, 4), ValueLayout.JAVA_SHORT,
-            new OpenFlags(0x200, 0x8), false),
+        new OpenFlags(0x200, 0x8), false),
 
     /** Linux with glibc. */
     LINUX(new SpawnFlags((short) 0x80, (short) 0), new StructSizes(336, 80, 128), ValueLayout.JAVA_INT,

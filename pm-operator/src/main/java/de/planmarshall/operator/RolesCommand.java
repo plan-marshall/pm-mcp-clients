@@ -234,7 +234,7 @@ public final class RolesCommand implements Callable<Integer> {
                 err.println(MessageCatalogue.format(locale, "operator.roles.show.failed",
                                     Map.of("role", OutputSafety.stripControlSequences(role),
                                                         FIELD_REASON, new OperatorRefusedException(VERB_SHOW,
-                                                                            response).message(locale))));
+                                                        response).message(locale))));
                 err.flush();
                 return 1;
             }
