@@ -26,7 +26,7 @@ export interface FormKeyboard {
  *          names its control instead of breaking the selector
  */
 function cssStringValue(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return value.replaceAll('\\', String.raw`\\`).replaceAll('"', String.raw`\"`);
 }
 
 /**
