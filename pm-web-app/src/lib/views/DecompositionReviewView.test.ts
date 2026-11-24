@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import DecompositionReviewView from './DecompositionReviewView.svelte';
 import type { EpicDecomposition } from '../api/client';
+import { messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 function cut(overrides: Partial<EpicDecomposition> = {}): EpicDecomposition {
   return {
@@ -80,10 +82,27 @@ describe('the decomposition review', () => {
     expect(kv).not.toHaveTextContent('Order');
   });
 
-  it('renders the three actions of a plan as secondary buttons', async () => {
+  it('renders Keep and Edit as secondary buttons, offers no Drop act in English or German, and shows wire-dropped plans as dropped', async () => {
     const onKeep = vi.fn();
-    const onDrop = vi.fn();
-    render(DecompositionReviewView, { props: { decomposition: cut(), onKeep, onDrop } });
+    const withDropped = cut({
+      workstreams: [
+        cut().workstreams[0]!,
+        {
+          ...cut().workstreams[1]!,
+          staged_plans: [
+            ...cut().workstreams[1]!.staged_plans,
+            {
+              plan_id: 'relay-dropped',
+              title: 'relay-dropped',
+              expected_surface: ['pm-api/src/dropped'],
+              dependencies: [],
+              status: 'dropped',
+            },
+          ],
+        },
+      ],
+    });
+    render(DecompositionReviewView, { props: { decomposition: withDropped, onKeep } });
 
     const keep = screen.getByTestId('plan-keep-relay-auth-v2');
     expect(keep).toHaveClass('btn--secondary');
@@ -95,11 +114,24 @@ describe('the decomposition review', () => {
     expect(edit).toHaveClass('btn--secondary');
     expect(edit).not.toHaveClass('btn--ghost');
 
-    const drop = screen.getByTestId('plan-drop-relay-auth-v2');
-    expect(drop).toHaveClass('btn--secondary');
-    expect(drop).not.toHaveClass('btn--ghost');
-    await fireEvent.click(drop);
-    expect(onDrop).toHaveBeenCalledWith('relay-auth-v2');
+    expect(screen.queryByRole('button', { name: 'Drop' })).toBeNull();
+    expect(screen.queryByTestId('plan-drop-relay-auth-v2')).toBeNull();
+    expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('dropped');
+
+    expect(screen.getByTestId('plan-details-relay-auth-v2')).toHaveTextContent('Objective');
+    expect(screen.getByTestId('plan-conflict-relay-auth-v2')).toHaveTextContent(
+      'surface overlaps relay-cursor-order',
+    );
+
+    messagesStore.set(loadMessages('de'));
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('entfernt');
+      expect(screen.getByTestId('plan-details-relay-auth-v2')).toHaveTextContent('Ziel');
+      expect(screen.getByTestId('plan-conflict-relay-auth-v2')).toHaveTextContent(
+        'Bereich überschneidet sich mit relay-cursor-order',
+      );
+    });
+    expect(screen.queryByRole('button', { name: 'Lass ihn fallen' })).toBeNull();
   });
 
   it('passes an instruction on through Compose and reads the change back with signs − and + and hierarchy', async () => {

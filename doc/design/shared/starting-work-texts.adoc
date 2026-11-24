@@ -55,8 +55,8 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Die Einrichtung des Projekts wird geprüft…
 
 |`start.gate.slow`
-|The project's setup did not answer within 20 seconds.
-|Die Einrichtung des Projekts hat innerhalb von 20 Sekunden nicht geantwortet.
+|The project's setup did not answer within {seconds} seconds.
+|Die Einrichtung des Projekts hat innerhalb von {seconds} Sekunden nicht geantwortet.
 
 |`start.gate.choose_project`
 |Choose a project
@@ -314,17 +314,33 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Edit
 |Bearbeite ihn
 
-|`start.decomposition.drop`
-|Drop
-|Lass ihn fallen
-
 |`start.decomposition.add`
 |Add a plan
 |Füge einen Plan hinzu
 
+|`start.decomposition.new_plan`
+|the new plan
+|der neue Plan
+
 |`start.decomposition.instruct.title`
 |What should change in {plan}?
 |Was soll sich an {plan} ändern?
+
+|`start.decomposition.instruct_prompt`
+|What should change?
+|Was soll sich ändern?
+
+|`start.decomposition.send`
+|Send the instruction
+|Schicke die Anweisung
+
+|`start.decomposition.send_draft`
+|Send the draft
+|Schicke den Entwurf
+
+|`start.decomposition.instruct_held`
+|Type what should change
+|Schreib, was sich ändern soll
 
 |`start.decomposition.read_back.title`
 |{plan}: old against new
@@ -377,4 +393,20 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |`start.decomposition.change`
 |{change, select, unchanged {unchanged} changed {changed} new {new} other {dropped}}
 |{change, select, unchanged {unverändert} changed {geändert} new {neu} other {entfernt}}
+
+|`start.decomposition.objective`
+|Objective
+|Ziel
+
+|`start.decomposition.surface`
+|Surface
+|Bereich
+
+|`start.decomposition.depends_on`
+|Depends on
+|Abhängig von
+
+|`start.decomposition.none`
+|—
+|—
 |===

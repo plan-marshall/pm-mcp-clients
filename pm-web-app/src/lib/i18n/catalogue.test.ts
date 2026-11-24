@@ -37,6 +37,8 @@ const RETIRED_ACT_KEYS = [
   'common.close',
   'common.save',
   'decision.waiver.later',
+  'decomposition.drop',
+  'start.decomposition.drop',
 ];
 
 /**
@@ -332,7 +334,6 @@ describe('the catalogue carries every text of the package', () => {
       'start.decomposition.plans',
       'start.decomposition.keep',
       'start.decomposition.edit',
-      'start.decomposition.drop',
       'start.decomposition.add',
       'start.decomposition.instruct.title',
       'start.decomposition.read_back.title',
