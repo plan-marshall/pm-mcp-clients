@@ -7,16 +7,16 @@ link:../README.adoc[Design] » Intent and Outline
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-6[UC-STA-6], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]_
 
-_Relies on: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[Phase Workflows, Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas, Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work, Epic Intent], link:../../../../pm-mcp-core/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[Model Work, A Worker Off Track]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record], link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#builder-check[Phase Workflows, Builder Check], link:../../../../pm-mcp-core/doc/specification/store-schemas/06-task-and-references.adoc#outline-record-store[Store Schemas, Outline Record], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-intent[Model Work, Epic Intent]_
 
 Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
-A plan says what it intends before it starts and how it will get there before it executes. An epic says where it ends before it is cut into plans. The clients show both as structured records, never as the Markdown the server renders for a pull request: the goal and its criteria, the outline's deliverables and files, the builder's remaining questions, the epic's done-when checks, and the distribution behind a changed `over_size` multiple.
+A plan says what it intends before it starts and how it will get there before it executes. An epic says where it ends before it is cut into plans. The clients show both as structured records, never as the Markdown the server renders for a pull request: the goal and its criteria, the outline's deliverables and files, the builder's remaining questions, and the epic's done-when checks.
 
 [#records]
 == The Records, Not the Rendered Markdown
 
-The server keeps the plan's intent record (`intent.json`), its outline record (`outline.json`), the epic's intent (`epic.json#intent`), and the measured task sizes behind `over_size`. It renders a request for the pull request and an outline for the repository; the clients never read those renderings and never parse Markdown. They read the records through the local API and show the fields below. A field the record does not carry is left out; a client never fills a gap with a guess.
+The server keeps the plan's intent record (`intent.json`), its outline record (`outline.json`), and the epic's intent (`epic.json#intent`). It renders a request for the pull request and an outline for the repository; the clients never read those renderings and never parse Markdown. They read the records through the local API and show the fields below. A field the record does not carry is left out; a client never fills a gap with a guess.
 
 Every text of a record may come from a model or a source. Both clients show it as text only: the terminal removes control sequences (link:../terminal-client/04-console.adoc#output-safety[Output Safety]), the web app renders no raw HTML. The operator's own words reach a model only quoted, as data.
 
@@ -202,13 +202,8 @@ The outline is the plan's answer to how it will satisfy the intent. It is opened
 |===
 
 * *The file intent is not a promise of a diff*: `read` means the deliverable only reads the file, a `write-*` intent is a change, and `write-conditional` names the gate that changes it. A client never turns a path into a link to a file it has not been given.
-* *A dependency* is shown by number and title, and a dependency on a deliverable the record does not carry is shown as `missing deliverable <n>`; the client does not hide it. The server refuses a dependency cycle and an added dependency that names no deliverable.
+* *A dependency* is shown by number and title, and a dependency on a deliverable the record does not carry is shown as `missing deliverable <n>`; the client does not hide it. The server refuses a dependency cycle.
 * *A deliverable's title and gloss are the plan's, not a task's*: derived tasks copy the gloss, and the outline view stays the place where the operator judges the deliverable itself.
-
-[#dependencies]
-=== Justified Added Dependencies
-
-A dependency the plan adds is never shown as an unqualified coordinate. Each row shows the coordinates, the version where the record names one, the deliverable that adds it, and the justification. An addition the plan did not inherit is therefore one the operator can judge, and a missing justification is a record defect the server refuses.
 
 [#epic]
 == The Epic's Intent
@@ -231,30 +226,6 @@ An epic states where it ends before it is cut into plans. The epic view and the 
 * *Each plan's done-when*: the staged rows' observable criteria, with the plan's title. They are shown with the epic's intent because the cut is judged against them; the plan's own intent record carries the same criterion as a source claim.
 * *Editing*: in the decomposition's review the operator edits the epic intent and the rows like a plan's record, with the checks' results beside them. The agreed draft writes the intent to the ledger; a later decomposition the operator agrees is the only other writer.
 
-[#oversize]
-== The `over_size` Distribution
-
-A role's `over_size` multiple is the number of times its predicted task cost a worker may spend before the server judges it off track. Its compiled value (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/timeouts/01-job-budgets-and-waits.adoc#off-track-thresholds[Timeouts & Budgets, Off-track signal thresholds]) a role artifact may lower, never raise, and the operator changes it for a role. Changing it is a decision about past work as much as future work, so the measured distribution is shown where a project's setup is: the runtime measures it per project and role (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/03-supervision-and-recycling.adoc#over-size-distribution[Model Work, The `over_size` Distribution]) and serves it with the multiple in force and the proposed one, one distribution per role (link:../../specification/runtime-model/06-event-catalogue.adoc#oversize-distribution[Runtime & Interaction Model, The `over_size` Distribution]), and the web app shows it in the project's setup (<<web>>). The chart is read-only: it shows the proposal the runtime serves and offers no act, since the act that proposes a multiple is open (link:../../../../plan-marshall-documentation/doc/discussions/open-questions.adoc#over-size-proposal[Open Questions]). Without a proposal it shows the distribution under the multiple in force and no flagged comparison; a role without measured tasks carries no bucket in its distribution and shows `intent.oversize.empty` instead of a chart.
-
-[#buckets]
-=== The Buckets
-
-Each bucket holds the tasks whose spent tokens fall between two multiples of their own predicted cost, and how many of them the proposed multiple would have flagged:
-
-----
-  implement · over_size 3x → 2x
-  0–1x   8 tasks
-  1–2x   5 tasks
-  2–3x   3 tasks  · 3 flagged
-  3x+    4 tasks  · 4 flagged
-  20 tasks · 7 flagged · 35 %
-----
-
-* *A multiple of the prediction, not a token count*: the bounds are those the runtime serves, multiples of each task's own prediction (link:../../specification/runtime-model/06-event-catalogue.adoc#oversize-distribution[The `over_size` Distribution]), because that prediction is the reference of the signal; the absolute token count is not comparable across tasks.
-* *The flagged share*: the sum of the flagged tasks over all tasks, shown as a count and a percentage. The client never recomputes a bucket or a share from raw tokens; it shows the runtime's distribution.
-* *The proposed multiple*: shown beside the one in force, with the direction (`3x → 2x` lowers the multiple and flags more). The chart marks the buckets the proposal changes, and the line says what the change would have done.
-* *An empty bucket* is left out; the distribution never invents a zero bar to look complete. The last bucket covers every task above its lower bound and may be labelled open-ended (`Nx and more`); its upper bound stays finite on the wire (link:../../specification/runtime-model/06-event-catalogue.adoc#oversize-distribution[Runtime Model, The `over_size` Distribution]).
-
 [#clients]
 == In the Clients
 
@@ -269,7 +240,6 @@ The terminal's sections are designed here, not in its own view documents (link:.
 The web app shows the same order in the tab _Intent_ of the plan and of the epic (link:plan-view.adoc#tabs[Plan View, The Tabs of the Web App]; link:epic-view.adoc#tabs[Epic View, The Tabs of the Web App]): the intent with the goal and the criterion list, each criterion's verdict, the choices grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria.
 
 * *A verdict* is a `StatusLabel` (link:../web-app/components-tags.adoc#status-label[Web App, Tags and Kinds, StatusLabel]): a criterion's `state.criterion.met` (success), `.not_met` (danger), `.not_verified` and `.not_reviewed` (neutral: never a warning), a done-when check's `state.check.pending` (neutral), `.met` and `.not_met`; the reason stands one expansion away.
-* *The `over_size` distribution* is a small bar chart on the project page's setup tab (`/projects/{id}?tab=setup`, link:project-explorer.adoc#project-page[Project Explorer, The Project Page]), one per role whose multiple the project sets, with the counts and the flagged share in text, so it is readable without colour and at phone width. The terminal shows no `over_size` chart.
 
 [#live]
 === Live and One Step Away
@@ -279,7 +249,7 @@ Both clients update the records with the plan's state: a new revision of the int
 [#contract]
 === What the Contract Carries
 
-The records above are the engine's (link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record]). The client contract `pm-api` (`PlanIntentResource`, `BuilderCheckResource`) carries them all: a choice's `adr` and `evidence`, the non-goals as items `{id, text}`, the decider `role`, and the reason of a `not_run` builder check; the contract and the mock carry them, grown in one step before the web app's intent panels. The same step gives the distribution resource (`OverSizeDistributionResource`) an absent proposal: it omits `proposed_multiple` where the runtime serves no proposal, so a client shows the distribution under the multiple in force and no flagged comparison (<<oversize>>), and it lets a role without measured tasks carry no bucket, so the absence of a measurement is served instead of an invented zero bar. A project's answer carries one such distribution per role (`OverSizeDistributionsResource`), each naming the same project, no role twice. A client shows what the contract carries and leaves a missing field out, never guessing it. Vote support is in neither record and is not shown.
+The records above are the engine's (link:../../../../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc#intent-record[Phase Workflows, The Intent Record]). The client contract `pm-api` (`PlanIntentResource`, `BuilderCheckResource`) carries them all: a choice's `adr` and `evidence`, the non-goals as items `{id, text}`, the decider `role`, and the reason of a `not_run` builder check; the contract and the mock carry them, grown in one step before the web app's intent panels. A client shows what the contract carries and leaves a missing field out, never guessing it. Vote support is in neither record and is not shown.
 
 [#texts]
 === Texts
@@ -290,11 +260,11 @@ The words of this design, both clients', are link:intent-and-outline-texts.adoc[
 == What the Clients Do Not Do
 
 * They do not read the rendered `request.md`, `outline.md`, or the pull-request body; the records are the source.
-* They do not derive a criterion's verdict from a deliverable's state, a done-when's verdict from a plan's row, or a flagged share from raw tokens.
+* They do not derive a criterion's verdict from a deliverable's state, or a done-when's verdict from a plan's row.
 * They do not fill a missing field with a guess, hide a `not_verified` criterion, or show a model's call as a recommendation or a decision of the operator.
 * They do not compute the builder check's routing; the runtime states it.
 
 [#decisions]
 == Decisions of the Operator
 
-Settled by the operator on 2026-11-10 (D6): the records stand in the tab _Intent_ of the plan and of the epic, the epic's sources at the top of its tab; a verdict is a `StatusLabel` state; the words are a texts document of their own, area `intent`; the `over_size` chart stands on the project page's setup tab; the design shows what the engine's record carries (the ADR relation, the evidence, `NG-n` by id, the reason of `not_run`, the decider `role`) and the contract grows to carry it; vote support is not shown.
+Settled by the operator on 2026-11-10 (D6): the records stand in the tab _Intent_ of the plan and of the epic, the epic's sources at the top of its tab; a verdict is a `StatusLabel` state; the words are a texts document of their own, area `intent`; the design shows what the engine's record carries (the ADR relation, the evidence, `NG-n` by id, the reason of `not_run`, the decider `role`) and the contract grows to carry it; vote support is not shown.
