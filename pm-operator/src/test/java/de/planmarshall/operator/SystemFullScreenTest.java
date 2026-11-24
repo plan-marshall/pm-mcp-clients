@@ -266,8 +266,8 @@ class SystemFullScreenTest {
     }
 
     /** Starts the view and opens the system level with {@code S}. */
-    private Thread startAndOpenSystem(VirtualScreenTerminal virtual, OperatorContext context,
-                        OverviewFullScreenApp app) throws InterruptedException {
+    private Thread startAndOpenSystem(VirtualScreenTerminal virtual, OverviewFullScreenApp app)
+                        throws InterruptedException {
         var thread = new Thread(() -> {
             try {
                 app.run(new PrintWriter(new StringWriter()));
@@ -287,7 +287,7 @@ class SystemFullScreenTest {
     void opensTheSystemView() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             await(() -> shows(virtual, "Runtime   running since today 08:14"));
             await(() -> shows(virtual, "Work      plans  3 running"));
@@ -312,7 +312,7 @@ class SystemFullScreenTest {
     void cyclesTheWindowAndGrouping() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             virtual.type("w");
             await(() -> shows(virtual, "Models    Today"));
@@ -344,7 +344,7 @@ class SystemFullScreenTest {
     void togglesPerProject() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             virtual.type("p");
             await(() -> shows(virtual, "System \u00b7 pm-mcpd 0.9.1 \u00b7 pm-mcp-clients"));
@@ -362,7 +362,7 @@ class SystemFullScreenTest {
     void drillsDownIntoASection() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("Runtime"));
             virtual.type("jj");
@@ -398,7 +398,7 @@ class SystemFullScreenTest {
     void showsTheDrainingLine() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
                                 + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
@@ -422,7 +422,7 @@ class SystemFullScreenTest {
     void theDrainingLineGivesWayToTheStatus(String expectedState, String status) throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
                                 + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
@@ -446,7 +446,7 @@ class SystemFullScreenTest {
     void opensTheRuntimeActions() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             virtual.type("a");
             await(() -> shows(virtual, "Stop\u2026"));
@@ -466,7 +466,7 @@ class SystemFullScreenTest {
     void respectsTheWidthThresholds() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(80, 24)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             await(() -> shows(virtual, "memory 412 MB in use of 1 GB"));
 
@@ -476,7 +476,7 @@ class SystemFullScreenTest {
 
         try (var virtual = VirtualScreenTerminal.create(70, 24)) {
             var context = createContext(virtual);
-            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenSystem(virtual, createApp(context, virtual));
 
             await(() -> shows(virtual, "Runtime   running since"));
             assertFalse(shows(virtual, "memory 412 MB"), virtual.screen().lines().toString());
@@ -616,7 +616,7 @@ class SystemFullScreenTest {
             statusBody.set(STATUS_DRAINING_THREE);
             try (var virtual = VirtualScreenTerminal.create(120, 30)) {
                 var context = createContext(virtual);
-                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                var thread = startAndOpenSystem(virtual, createApp(context, virtual));
                 await(() -> shows(virtual, "draining \u00b7 3 left"));
 
                 statusBody.set(STATUS_DRAINING_FIVE);
@@ -634,7 +634,7 @@ class SystemFullScreenTest {
         void aStatusReadLeavesTheEventLineAlone() throws Exception {
             try (var virtual = VirtualScreenTerminal.create(120, 30)) {
                 var context = createContext(virtual);
-                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                var thread = startAndOpenSystem(virtual, createApp(context, virtual));
                 sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
                                     + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
                                     + "\"withdrawable\":true}");
@@ -664,7 +664,7 @@ class SystemFullScreenTest {
             statusBody.set(STATUS_DRAINING_THREE);
             try (var virtual = VirtualScreenTerminal.create(120, 30)) {
                 var context = createContext(virtual);
-                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                var thread = startAndOpenSystem(virtual, createApp(context, virtual));
                 await(() -> shows(virtual, "draining \u00b7 3 left"));
 
                 statusBody.set(STATUS_RUNNING);
@@ -688,7 +688,7 @@ class SystemFullScreenTest {
             statusBody.set(STATUS_DRAINING_THREE);
             try (var virtual = VirtualScreenTerminal.create(120, 30)) {
                 var context = createContext(virtual);
-                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                var thread = startAndOpenSystem(virtual, createApp(context, virtual));
                 await(() -> shows(virtual, "draining \u00b7 3 left"));
 
                 statusCode.set(500);
