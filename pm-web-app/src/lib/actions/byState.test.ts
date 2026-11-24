@@ -194,6 +194,24 @@ describe('actsFor', () => {
   it('names the five resource kinds the use cases carry', () => {
     expect(RESOURCE_KINDS).toEqual(['plan', 'epic', 'project', 'device', 'runtime']);
   });
+
+  it('keeps the runtime’s destructive acts destructive, behind the overflow', () => {
+    const running = actsFor('runtime', 'running');
+    expect(running.map((act) => act.id)).toEqual(['check', 'stop', 'restart']);
+    for (const id of ['stop', 'restart']) {
+      const act = running.find((candidate) => candidate.id === id);
+      expect(act?.destructive, `${id} must be marked destructive`).toBe(true);
+      expect(act?.role).toBe('overflow');
+    }
+
+    const updateAvailable = actsFor('runtime', 'update_available');
+    for (const id of ['upgrade', 'stop', 'restart']) {
+      const act = updateAvailable.find((candidate) => candidate.id === id);
+      expect(act?.destructive, `${id} must be marked destructive`).toBe(true);
+      expect(act?.role).toBe('overflow');
+    }
+    expect(primaries(updateAvailable)).toEqual([]);
+  });
 });
 
 describe('tableActIds and handledActIds', () => {

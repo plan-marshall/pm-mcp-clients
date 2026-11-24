@@ -186,6 +186,24 @@ describe('Dialog', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
+  it('draws the wide size a dialog asks for, and the default size otherwise', () => {
+    const wide = render(Dialog, { props: { open: true, title: 'Wide', size: 'wide' } });
+    expect(screen.getByRole('dialog')).toHaveClass('dialog--wide');
+    wide.unmount();
+
+    render(Dialog, { props: { open: true, title: 'Default' } });
+    expect(screen.getByRole('dialog')).not.toHaveClass('dialog--wide');
+  });
+
+  it('draws no footer area for a stage that offers no act, and keeps the focus in the dialog then', async () => {
+    render(DialogFixture, { props: { ...FIXTURE, footer: false } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(dialog.querySelector('.dialog__footer')).toBeNull();
+    expect(document.activeElement).toBe(dialog);
+  });
+
   it('reports a close even when the view keeps the dialog open', async () => {
     const onClose = vi.fn();
     render(Dialog, { props: { open: true, title: 'Delete the plan', onClose } });
@@ -300,6 +318,32 @@ describe('Dialog', () => {
     expect(onOuterClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Outer' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Inner' })).not.toBeInTheDocument();
+  });
+
+  it('leaves the focus in the dialog on top when the one below draws no footer', async () => {
+    const props = {
+      outerTitle: 'Outer',
+      innerTitle: 'Inner',
+      openInnerLabel: 'Open inner',
+      outerActLabel: 'Outer act',
+      innerFirstLabel: 'Inner first',
+      innerLastLabel: 'Inner last',
+      outerFooter: false,
+    };
+    const { rerender } = render(NestedDialogFixture, { props });
+    await fireEvent.click(screen.getByRole('button', { name: 'Open inner' }));
+    const inner = await screen.findByRole('dialog', { name: 'Inner' });
+    const first = within(inner).getByRole('button', { name: 'Inner first' });
+    first.focus();
+
+    // The dialog below re-renders (a title update): its footer recovery must not reach past the
+    // dialog on top.
+    await rerender({ ...props, outerTick: 1 });
+
+    expect(document.activeElement).toBe(first);
+    expect(document.activeElement).not.toBe(
+      screen.getByRole('dialog', { name: /^Outer/ }).querySelector('.dialog'),
+    );
   });
 
   it('does not take the focus from a child that takes it as it mounts', async () => {

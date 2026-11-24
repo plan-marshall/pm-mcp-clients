@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { afterUpdate, onMount } from 'svelte';
   import { uniqueId } from '../utils/uniqueId';
   import { portal } from '../utils/portal';
 
@@ -36,6 +36,14 @@
   export let testid = 'dialog';
   /** Optional element focus returns to when the dialog is removed. */
   export let returnFocusElement: HTMLElement | null = null;
+  /**
+   * The dialog's width: `default` is the reading width of a confirmation, `wide` the width a
+   * side-by-side difference needs. A caller names the size; it never overrides the width from
+   * outside the component, where the cascade would decide instead of the intent.
+   */
+  export let size: 'default' | 'wide' = 'default';
+  /** Whether the footer area is drawn; a stage that offers no act keeps no empty row. */
+  export let footer = true;
 
   /** The elements the Tab key walks, in document order. */
   const FOCUSABLE =
@@ -163,6 +171,20 @@
     window.addEventListener('keydown', onKeydown, true);
     return () => window.removeEventListener('keydown', onKeydown, true);
   });
+
+  // A footer that goes away takes the act that held the focus with it. The focus then returns to the
+  // dialog box, which stays mounted, instead of falling to the page behind the dialog. It runs after
+  // the update, because the earlier pass still holds the control that is about to be removed, and
+  // only on the dialog on top: a background dialog never takes the focus from the one opened from it.
+  afterUpdate(() => {
+    if (!open || footer || panel === undefined || openPanels[openPanels.length - 1] !== panel) {
+      return;
+    }
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    if (active === null || !panel.contains(active)) {
+      panel.focus();
+    }
+  });
 </script>
 
 {#if open}
@@ -170,6 +192,7 @@
     <div
       class="dialog"
       class:dialog--danger={danger}
+      class:dialog--wide={size === 'wide'}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -191,7 +214,7 @@
         <slot />
       </div>
 
-      {#if $$slots.footer}
+      {#if footer && $$slots.footer}
         <div class="dialog__footer">
           <slot name="footer" />
         </div>
@@ -229,6 +252,12 @@
   .dialog:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring), var(--shadow-overlay);
+  }
+
+  /* The width a side-by-side difference needs; the dialog owns the rule so no caller has to win
+     a cascade against it. */
+  .dialog--wide {
+    inline-size: min(1000px, 100%);
   }
 
   .dialog__title {

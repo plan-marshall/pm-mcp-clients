@@ -117,7 +117,7 @@ public final class ActionMenus {
      * @param watchesOpen     the number of open watches
      */
     public record EpicLabels(@Nullable String nextPlan, List<String> waitReasons, boolean autoStart,
-                        int overlapMaxFiles, int findingsNew, int watchesOpen) {
+    int overlapMaxFiles, int findingsNew, int watchesOpen) {
 
         public EpicLabels {
             waitReasons = List.copyOf(waitReasons);

@@ -11,6 +11,7 @@
     type SegmentedControlOption,
   } from '../components/SegmentedControl.svelte';
   import Dialog from '../components/Dialog.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import Field from '../components/Field.svelte';
   import SelectField, { type SelectOption } from '../components/SelectField.svelte';
   import TextField from '../components/TextField.svelte';
@@ -141,6 +142,20 @@
   let landingError = $state('');
   /** Whether the failure left the placement's outcome unknown, so no claim about the unit is made. */
   let placeOutcomeUnknown = $state(false);
+  /** Which act failed while the dialogue was open: the comparison or the landing. */
+  let placeFailure = $state<'compare' | 'landing'>('landing');
+  /** Whether the comparison's own request runs, so its button shows it. */
+  let isComparing = $state(false);
+  /** The comparison the open dialogue belongs to; a dismissal retires the answer in flight. */
+  let placeCompareToken = 0;
+  /** The target the shown difference was computed for; the placing uses that one. */
+  let placeComparedTarget = $state<string | null>(null);
+  /** The unit and the scope a removal asks about, kept here so the confirmation can name them. */
+  let pendingRemoval = $state<{ unit: WorkflowUnit; projectId: string | null } | null>(null);
+  /** Whether the confirmed removal runs, which holds its dialog open. */
+  let isRemoving = $state(false);
+  /** The installed-units heading: the focus goes there once a removed row is gone. */
+  let unitsHeading = $state<HTMLElement | null>(null);
 
   const placeTitle = $derived.by(() => {
     if (placeStage === 'target') return $t('designer.place.question', { unit: unitName });
@@ -418,6 +433,9 @@
    * @param unit the unit to open
    */
   function openUnit(unit: WorkflowUnit): void {
+    // Another unit or scope replaces the text the open dialogue was for: its comparison is retired
+    // with the dialogue, so no answer in flight can reopen it against the new unit.
+    retireComparison();
     const level =
       unit.levels.find((entry) => entry.level === unit.level_in_force) ?? unit.levels[0];
     unitName = unit.name;
@@ -769,6 +787,7 @@
   /** Opens the placement's target choice; _Place…_ is enabled only for a valid, current result. */
   function openPlace(): void {
     placeTargetProject = projectId;
+    placeComparedTarget = null;
     placeStage = 'target';
     landingError = '';
     landingSteps = [];
@@ -776,12 +795,16 @@
   }
 
   /**
+   * @param target the project the units are read for, or null for this machine's scope
    * @returns the units of the level the operator chose to place into
    */
-  async function placementUnits(): Promise<WorkflowUnit[]> {
-    if ((placeTargetProject ?? null) === (projectId ?? null)) return units;
-    return apiClient.getWorkflows(placeTargetProject);
+  async function placementUnits(target: string | null = placeTargetProject): Promise<WorkflowUnit[]> {
+    if ((target ?? null) === (projectId ?? null)) return units;
+    return apiClient.getWorkflows(target);
   }
+
+  /** The levels a unit is in force from, the first that has it: the design's own order. */
+  const LEVEL_ORDER = ['project', 'machine', 'default'] as const;
 
   /**
    * Reads the unit's text at the chosen level, falling back to the level in force there.
@@ -790,15 +813,19 @@
    * force; the comparison is against that text, and the label names the level it used.
    *
    * @param targetUnits the units of the chosen scope
+   * @param target the project the comparison is for, or null for this machine
    * @returns the baseline text and the level it came from
    */
-  function baselineOf(targetUnits: WorkflowUnit[]): {
+  function baselineOf(
+    targetUnits: WorkflowUnit[],
+    target: string | null = placeTargetProject,
+  ): {
     text: string;
     level: string;
     digest: string | null;
   } {
     const existing = targetUnits.find((unit) => unit.name === unitName);
-    const wanted = placeTargetProject ? 'project' : 'machine';
+    const wanted = target ? 'project' : 'machine';
     if (!existing) return { text: '', level: wanted, digest: null };
     const exact = existing.levels.find((entry) => entry.level === wanted);
     if (exact) return { text: exact.text, level: wanted, digest: exact.digest };
@@ -812,22 +839,43 @@
 
   /**
    * Compares the draft with the text at the chosen level and shows the difference.
+   *
+   * The comparison awaits the chosen scope's units. The person can dismiss the dialogue while that
+   * runs, so the stage it sets is guarded by the dialogue still being open: an answer that arrives
+   * after Escape never reopens the dialogue it belonged to. It also pins the target it was asked
+   * for: the difference and the digest belong to that target, so a later change of the choice
+   * cannot place the draft into another one behind a difference computed for the first.
    */
   async function compareForPlacement(): Promise<void> {
+    if (isComparing) return;
+    // Every comparison carries the dialogue it belongs to: a dismissal bumps the token, so an
+    // answer that arrives afterwards is dropped instead of reopening a dialogue nobody sees.
+    const token = ++placeCompareToken;
+    const target = placeTargetProject;
+    isComparing = true;
     landingError = '';
     placeDiff = null;
     placeOutcomeUnknown = false;
     try {
-      const targetUnits = await placementUnits();
-      const baseline = baselineOf(targetUnits);
+      const targetUnits = await placementUnits(target);
+      if (token !== placeCompareToken) return;
+      const baseline = baselineOf(targetUnits, target);
       placeAgainst = $t(`designer.level.${baseline.level}`);
+      placeComparedTarget = target;
       placeDigest = baseline.digest;
       placeDiff = diffLines(baseline.text, text);
-    } catch {
-      landingError = $t('system.figure.unavailable');
+    } catch (err: unknown) {
+      if (token !== placeCompareToken) return;
+      placeFailure = 'compare';
+      landingError = actFailureReason(err, $t('system.action.failed'));
       placeStage = 'failed';
       return;
+    } finally {
+      if (token === placeCompareToken) {
+        isComparing = false;
+      }
     }
+    if (token !== placeCompareToken) return;
     conflictDiff = null;
     placeStage = 'diff';
   }
@@ -843,7 +891,7 @@
 
   /** @returns the path a placing writes, for the progress lines */
   function targetPath(): string {
-    return placeTargetProject ? `.marshall/config/${unitName}.pmwf` : `workflows/${unitName}.pmwf`;
+    return placeComparedTarget ? `.marshall/config/${unitName}.pmwf` : `workflows/${unitName}.pmwf`;
   }
 
   /**
@@ -860,10 +908,11 @@
     isPlacing = true;
     landingError = '';
     placeOutcomeUnknown = false;
+    placeFailure = 'landing';
     landingSteps = [];
     placeStage = 'progress';
     try {
-      const placed = await apiClient.placeWorkflowUnit(placeTargetProject, unitName, {
+      const placed = await apiClient.placeWorkflowUnit(placeComparedTarget, unitName, {
         text,
         unit_name: unitName,
         unit_kind: unitKind,
@@ -917,9 +966,16 @@
     placeStage = 'conflict';
   }
 
+  /** Retires a comparison still in flight: its answer belongs to a dialogue nobody is looking at. */
+  function retireComparison(): void {
+    placeCompareToken += 1;
+    isComparing = false;
+  }
+
   /** Closes the placement dialogue and returns to the editor. */
   function closePlace(): void {
     if (isPlacing) return;
+    retireComparison();
     placeStage = 'idle';
     landingError = '';
     landingSteps = [];
@@ -927,13 +983,48 @@
     placeDigest = null;
   }
 
-  async function removeUnit(unit: WorkflowUnit): Promise<void> {
+  /**
+   * Asks whether to remove a unit; the confirmation names the level that takes over. The scope is
+   * stored with the unit: a later change of the designer's project cannot move the removal, and the
+   * sentence, to another project's unit of the same name.
+   *
+   * @param unit the unit the list offers to remove
+   */
+  function askToRemove(unit: WorkflowUnit): void {
     notice = '';
+    pendingRemoval = { unit, projectId };
+  }
+
+  /**
+   * @returns the sentence the removal confirmation says about what stays in force: the level the
+   *          next one below takes over from, or that no copy remains
+   */
+  function levelAfterRemoval(): string {
+    const asked = pendingRemoval;
+    if (!asked) return $t('designer.remove.none');
+    const unit = asked.unit;
+    // In force is the first level that has the unit, the project's copy first: the removal takes
+    // one level away, so every level above it is unchanged and the next one below takes over.
+    const removed = asked.projectId ? 'project' : 'machine';
+    const lower = LEVEL_ORDER.slice(LEVEL_ORDER.indexOf(removed) + 1);
+    const next = lower.find((level) => unit.levels.some((entry) => entry.level === level));
+    return next ? $t('designer.remove.then', { level: $t(`designer.level.${next}`) }) : $t('designer.remove.none');
+  }
+
+  /** Removes the unit the confirmation named, once the operator confirmed it. */
+  async function confirmRemoval(): Promise<void> {
+    const asked = pendingRemoval;
+    if (!asked) return;
+    isRemoving = true;
     try {
-      await apiClient.removeWorkflowUnit(projectId, unit.name);
+      await apiClient.removeWorkflowUnit(asked.projectId, asked.unit.name);
+      pendingRemoval = null;
       await loadAll();
     } catch {
+      pendingRemoval = null;
       notice = $t('designer.remove.failed');
+    } finally {
+      isRemoving = false;
     }
   }
 
@@ -991,7 +1082,7 @@
         options={projectOptions}
         onchange={handleProjectSelect}
         testid="project-select"
-        ariaLabel={$t('designer.open.question')}
+        ariaLabel={$t('designer.open.scope')}
       />
       <Button
         variant="primary"
@@ -1057,6 +1148,7 @@
               class="intake-file"
               type="file"
               accept=".pmwf,.txt,text/plain"
+              aria-describedby="designer-file-hint"
               onchange={handleFile}
               data-testid="designer-file-input"
             />
@@ -1097,7 +1189,9 @@
 
   <div class="designer__workspace">
     <aside class="designer__units">
-      <h2 class="designer__units-title">{$t('designer.input.installed')}</h2>
+      <h2 class="designer__units-title" tabindex="-1" bind:this={unitsHeading}>
+        {$t('designer.input.installed')}
+      </h2>
       {#if units.length === 0}
         <p class="designer__units-empty">—</p>
       {:else}
@@ -1128,7 +1222,7 @@
               {:else}
                 <Button
                   variant="ghost"
-                  on:click={() => removeUnit(unit)}
+                  on:click={() => askToRemove(unit)}
                   data-testid={`unit-remove-${unit.name}`}
                 >
                   {$t('designer.remove.action')}
@@ -1240,13 +1334,13 @@
               {$t('designer.frontmatter.interface_kept')}
             </p>
           {/if}
-          <Field label={$t('designer.frontmatter.icon')}>
+          <Field id="designer-icon" label={$t('designer.frontmatter.icon')}>
             <div class="frontmatter__icon">
               <WorkflowIcon id={currentIcon} size={20} />
               <input
+                id="designer-icon"
                 class="frontmatter__input"
                 value={frontmatter.icon}
-                aria-label={$t('designer.frontmatter.icon')}
                 readonly={isPhone || isCompiledOnly}
                 oninput={(event) => setField('icon', event.currentTarget.value)}
                 data-testid="frontmatter-icon"
@@ -1382,29 +1476,41 @@
   {/if}
 </div>
 
-<Dialog
+<ConfirmDialog
+  open={pendingRemoval !== null}
+  title={$t('designer.remove.title', {
+    level: $t(pendingRemoval?.projectId ? 'designer.level.project' : 'designer.level.machine'),
+    unit: pendingRemoval?.unit.name ?? '',
+  })}
+  consequences={[levelAfterRemoval()]}
+  actionLabel={$t('designer.remove.confirm')}
+  cancelLabel={$t('common.action.cancel')}
+  busy={isRemoving}
+  returnFocusElement={unitsHeading}
+  onConfirm={confirmRemoval}
+  onClose={() => {
+    pendingRemoval = null;
+  }}
+/>
+
+<ConfirmDialog
   open={Boolean(pendingAction)}
   title={$t('designer.leave.question')}
-  onClose={stayInDesigner}
+  consequences={[$t('designer.leave.consequence')]}
+  actionLabel={$t('designer.leave.discard')}
+  cancelLabel={$t('designer.leave.stay')}
   testid="designer-leave-dialog"
->
-  <svelte:fragment slot="footer">
-    <Button variant="secondary" onclick={stayInDesigner}>{$t('designer.leave.stay')}</Button>
-    <Button
-      variant="danger"
-      onclick={discardDraft}
-      data-advisory={$t('designer.leave.discard.title')}
-    >
-      {$t('designer.leave.discard')}
-    </Button>
-  </svelte:fragment>
-</Dialog>
+  onConfirm={discardDraft}
+  onClose={stayInDesigner}
+/>
 
 <Dialog
   open={placeStage !== 'idle'}
   title={placeTitle}
   onClose={closePlace}
   testid="place-dialog"
+  size="wide"
+  footer={placeStage !== 'progress'}
 >
   {#if placeStage === 'target'}
     <fieldset class="designer__targets">
@@ -1413,6 +1519,7 @@
           type="radio"
           name="placeTarget"
           checked={placeTargetProject === null}
+          disabled={isComparing}
           onchange={() => {
             placeTargetProject = null;
           }}
@@ -1428,6 +1535,7 @@
             type="radio"
             name="placeTarget"
             checked={placeTargetProject === project.project_id}
+            disabled={isComparing}
             onchange={() => {
               placeTargetProject = project.project_id;
             }}
@@ -1468,7 +1576,9 @@
     <p class="text-muted text-sm">{$t('designer.place.starting')}</p>
   {:else if placeStage === 'failed'}
     <p class="designer__notice" role="alert" data-testid="designer-place-failed">
-      {#if placeOutcomeUnknown}
+      {#if placeFailure === 'compare'}
+        {$t('designer.place.compare_failed', { reason: landingError })}
+      {:else if placeOutcomeUnknown}
         {$t('designer.place.unknown', { reason: landingError })}
       {:else}
         {$t('designer.place.failed', { reason: landingError })}
@@ -1500,7 +1610,12 @@
   <svelte:fragment slot="footer">
     {#if placeStage === 'target'}
       <Button variant="secondary" onclick={closePlace}>{$t('common.action.cancel')}</Button>
-      <Button variant="primary" onclick={compareForPlacement} data-testid="place-compare">
+      <Button
+        variant="primary"
+        loading={isComparing}
+        onclick={compareForPlacement}
+        data-testid="place-compare"
+      >
         {$t('designer.place.compare')}
       </Button>
     {:else if placeStage === 'diff' && placeDiff}
@@ -1958,10 +2073,6 @@
   .designer__preview-node-kind,
   .designer__preview-node-state {
     color: var(--color-text-muted);
-  }
-
-  :global([data-testid="place-dialog"]) {
-    inline-size: min(1000px, 100%);
   }
 
   .designer__targets {

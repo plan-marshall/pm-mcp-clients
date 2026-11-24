@@ -106,11 +106,11 @@ class TuiScreenDriverTest {
 
     private static void await(BooleanSupplier condition) {
         Awaitility.await()
-                        .atMost(Duration.ofSeconds(5))
-                        .pollDelay(Duration.ZERO)
-                        .pollInterval(Duration.ofMillis(20))
-                        .untilAsserted(() -> assertTrue(condition.getAsBoolean(),
-                                            "the view did not reach the expected state in time"));
+                            .atMost(Duration.ofSeconds(5))
+                            .pollDelay(Duration.ZERO)
+                            .pollInterval(Duration.ofMillis(20))
+                            .untilAsserted(() -> assertTrue(condition.getAsBoolean(),
+                                                "the view did not reach the expected state in time"));
     }
 
     private static void join(Thread thread) throws InterruptedException {

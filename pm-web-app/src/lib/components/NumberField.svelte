@@ -168,6 +168,7 @@
    * @param input the number input
    */
   function commit(input: HTMLInputElement): void {
+    const typed = input.value;
     let num = parse(input.value);
     if (num !== null) {
       if (min !== undefined && num < min) num = min;
@@ -176,6 +177,12 @@
       input.value = String(num);
     }
     setOwn(num);
+    // The field now holds the clamped text. A form wired to `oninput` sees the field only through
+    // this event, so without it such a form keeps the value typed before the clamp and Enter submits
+    // what the field no longer shows.
+    if (input.value !== typed) {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
     onchange?.(num);
   }
 

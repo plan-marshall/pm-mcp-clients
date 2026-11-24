@@ -40,6 +40,7 @@ class DesignerCatalogueTest {
                 "designer.view.title",
                 "designer.open.title",
                 "designer.open.question",
+                "designer.open.scope",
                 "designer.input.upload",
                 "designer.input.upload_hint",
                 "designer.input.not_text",
@@ -58,6 +59,7 @@ class DesignerCatalogueTest {
                 "designer.installed.compiled_only",
                 "designer.draft.restored",
                 "designer.leave.question",
+                "designer.leave.consequence",
                 "designer.frontmatter.title",
                 "designer.frontmatter.add",
                 "designer.frontmatter.author",
@@ -121,6 +123,7 @@ class DesignerCatalogueTest {
                 "designer.place.step",
                 "designer.place.machine_done",
                 "designer.place.failed",
+                "designer.place.compare_failed",
                 "designer.place.retry",
                 "designer.place.conflict",
                 "designer.place.result",
@@ -128,6 +131,10 @@ class DesignerCatalogueTest {
                 "designer.remove.title",
                 "designer.remove.then",
                 "designer.remove.confirm",
+                "designer.place.unknown",
+                "designer.plan.open",
+                "designer.plan.open.title",
+                "designer.remove.none",
                 "designer.phone.note"
         };
 

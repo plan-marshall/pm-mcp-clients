@@ -34,17 +34,24 @@ describe('CheckField', () => {
     expect(onchange).toHaveBeenCalledWith(true);
   });
 
-  it('leaves the box unchanged and reports nothing on Enter', async () => {
+  it('answers Space and leaves Enter to the form: neither the box nor the label row toggles on Enter', async () => {
     const onchange = vi.fn();
     const { container } = render(CheckField, {
       props: { label: 'Agree to terms', checked: false, onchange },
     });
     const checkbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const labelRow = container.querySelector('.check-field') as HTMLElement;
 
     await fireEvent.keyDown(checkbox, { key: 'Enter' });
+    await fireEvent.keyDown(labelRow, { key: 'Enter' });
 
     expect(checkbox.checked).toBe(false);
     expect(onchange).not.toHaveBeenCalled();
+
+    // The control: the key the component does answer still toggles the box.
+    await fireEvent.keyDown(checkbox, { key: ' ' });
+    expect(checkbox.checked).toBe(true);
+    expect(onchange).toHaveBeenCalledExactlyOnceWith(true);
   });
 
   it('toggles once and reports once on Space', async () => {
