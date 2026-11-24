@@ -8,6 +8,7 @@
   import PlanChanges from '../components/PlanChanges.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkListColumn from '../components/WorkListColumn.svelte';
+  import UpLink from '../components/UpLink.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import {
@@ -45,6 +46,8 @@
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState, formatChangeSize } from '../display';
+  import { buildChain, upOf } from '../navigation/chain';
+  import { narrowLayout } from '../utils/narrowLayout';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
   import Skeleton from '../components/Skeleton.svelte';
@@ -74,6 +77,25 @@
   const planProjectId = $derived(plan?.project?.project_id ?? $runtimeStore.selectedProjectId ?? '');
   let isLoading = $state(true);
   let errorCode = $state<string | null>(null);
+
+  /**
+   * The parent Up leads to, from what this view already holds: the epic of the plan, or the
+   * project when the plan belongs to no epic (`navigation.adoc#up`).
+   */
+  const upParent = $derived(
+    upOf(
+      buildChain(
+        $runtimeStore.currentRoute,
+        {
+          plan: plan ?? $runtimeStore.currentProcessTree,
+          planId,
+          projectId: plan?.project?.project_id ?? $runtimeStore.selectedProjectId,
+        },
+        $t,
+      ),
+      $runtimeStore.currentRoute,
+    ),
+  );
   let showTokenBreakdown = $state(false);
   let isLoadingBreakdown = $state(false);
   let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
@@ -776,7 +798,11 @@
 
 <div class="plan-view-layout" data-testid="plan-view-layout">
   {#if planProjectId}
-    <WorkListColumn projectId={planProjectId} currentPlanId={planId} />
+    <WorkListColumn
+      projectId={planProjectId}
+      currentPlanId={planId}
+      parentEpicId={plan?.epic?.epic_id ?? null}
+    />
   {/if}
   <div class="plan-view" data-testid="plan-view">
   {#if isLoading}
@@ -802,6 +828,11 @@
           onAct={() => loadPlanProcess(false)}
           titleLevel={2}
         />
+      </div>
+    {/if}
+    {#if $narrowLayout && upParent?.kind && upParent.address}
+      <div class="plan-view__up" data-testid="plan-view-up">
+        <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
       </div>
     {/if}
     <!-- Path Navigation Header -->
@@ -1381,6 +1412,12 @@
     justify-content: center;
     padding: var(--space-8);
     gap: var(--space-4);
+  }
+
+  /* The first visible column's head carries Up where the work list column is hidden
+     (`navigation.adoc#up`). */
+  .plan-view__up {
+    padding: var(--space-3) var(--space-6) 0;
   }
 
   .plan-header {

@@ -530,6 +530,41 @@ describe('PlanView component', () => {
     expect(screen.getByTestId('work-list-column')).toBeInTheDocument();
   });
 
+  it('carries Up in the object column at 1023 px and below, once (D3)', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query === '(max-width: 1023px)',
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(PlanView);
+
+      await screen.findByTestId('plan-title');
+      const holder = await screen.findByTestId('plan-view-up');
+
+      expect(holder.querySelector('[data-testid="up-link"]')).toHaveAttribute(
+        'href',
+        '/epics/relay-hardening',
+      );
+      expect(holder).toHaveTextContent('relay-hardening');
+      expect(screen.getAllByTestId('up-link')).toHaveLength(1);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it('carries Up once above 1023 px, in the work list column (D3)', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    await waitFor(() => expect(screen.getAllByTestId('up-link')).toHaveLength(1));
+
+    expect(screen.queryByTestId('plan-view-up')).toBeNull();
+    expect(screen.getByTestId('up-link')).toHaveAttribute('href', '/epics/relay-hardening');
+  });
+
   it('opens the parent epic from the breadcrumb in one step', async () => {
     render(PlanView);
 

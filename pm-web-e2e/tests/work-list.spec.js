@@ -24,59 +24,52 @@ test.describe('Work list column and navigation (PLAN-144 D5)', () => {
     }
   });
 
-  test('moves between siblings in work list and navigates back by Up', async ({ page }) => {
+  test('lists the siblings of the open object and navigates back by Up', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
 
     // Open fix-relay plan
     await page.goto('/plans/fix-relay');
     await expect(page.getByTestId('plan-view')).toBeVisible();
 
-    // Verify work list column is rendered beside plan
+    // The column lists the plans of the plan's epic — its siblings — not the project's epics
     const workList = page.getByTestId('work-list-column');
     await expect(workList).toBeVisible();
 
-    // Verify fix-relay item is marked as current
     const fixRelayRow = page.getByTestId('work-item-fix-relay');
     await expect(fixRelayRow).toBeVisible();
-    const fixRelayLink = fixRelayRow.getByRole('link');
-    await expect(fixRelayLink).toHaveAttribute('aria-current', 'page');
+    await expect(fixRelayRow.getByRole('link')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('work-item-relay-hardening')).toHaveCount(0);
 
-    // Verify Up link in work list head points to parent epic (Relay Hardening)
+    // Up in the column head points to the parent epic (Relay Hardening)
     const planUpLink = workList.getByTestId('up-link');
     await expect(planUpLink).toBeVisible();
     await expect(planUpLink).toContainText('Relay Hardening');
     await expect(planUpLink).toHaveAttribute('href', '/epics/relay-hardening');
 
-    // One step to its neighbour in the work list: click relay-hardening epic
-    const epicRow = page.getByTestId('work-item-relay-hardening');
-    await expect(epicRow).toBeVisible();
-    await epicRow.getByRole('link').click();
-
-    // Address is replaced, epic view opens
+    await planUpLink.click();
     await expect(page).toHaveURL(/\/epics\/relay-hardening/);
     await expect(page.getByTestId('epic-view')).toBeVisible();
 
-    // In epic view, epic item is current
+    // From the epic, the column lists the project's epics and the plans that belong to none
     const epicLinkInList = page.getByTestId('work-item-relay-hardening').getByRole('link');
     await expect(epicLinkInList).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId('work-item-drop-legacy-api')).toBeVisible();
 
-    // From epic, step to neighbour fix-relay plan in work list
-    await page.getByTestId('work-item-fix-relay').getByRole('link').click();
-    await expect(page).toHaveURL(/\/plans\/fix-relay/);
-    await expect(page.getByTestId('plan-view')).toBeVisible();
-
-    // Navigate back to epic by Up
-    await workList.getByTestId('up-link').click();
-    await expect(page).toHaveURL(/\/epics\/relay-hardening/);
-    await expect(page.getByTestId('epic-view')).toBeVisible();
-
-    // From epic, Up leads to project overview (pm-mcp-clients)
+    // From epic, Up leads to the project's level of Running work
     const epicUpLink = page.getByTestId('work-list-column').getByTestId('up-link');
-    await expect(epicUpLink).toBeVisible();
     await expect(epicUpLink).toContainText('pm-mcp-clients');
     await expect(epicUpLink).toHaveAttribute('href', '/overview?project=pm-mcp-clients');
 
-    await epicUpLink.click();
+    // One step to the plan that belongs to no epic: it is a row of the epic's column
+    await page.getByTestId('work-item-drop-legacy-api').getByRole('link').click();
+    await expect(page).toHaveURL(/\/plans\/drop-legacy-api/);
+    await expect(page.getByTestId('plan-view')).toBeVisible();
+
+    // Its own Up is the project, since no epic stands between them
+    const looseUpLink = page.getByTestId('work-list-column').getByTestId('up-link');
+    await expect(looseUpLink).toHaveAttribute('href', '/overview?project=pm-mcp-clients');
+
+    await looseUpLink.click();
     await expect(page).toHaveURL(/\/overview\?project=pm-mcp-clients/);
     await expect(page.locator('.overview')).toBeVisible();
   });
@@ -145,7 +138,9 @@ test.describe('Work list column and navigation (PLAN-144 D5)', () => {
     await expect(page.locator('.overview')).toBeVisible();
   });
 
-  test('hides work list column on phone and displays bottom bar', async ({ page }) => {
+  test('hides work list column on phone, shows Up there, and displays bottom bar', async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     await page.goto('/plans/fix-relay');
@@ -153,6 +148,10 @@ test.describe('Work list column and navigation (PLAN-144 D5)', () => {
 
     // Work list column is hidden on phone
     await expect(page.getByTestId('work-list-column')).toBeHidden();
+
+    // Up is in the object column's head, leading to the plan's epic at every width
+    await expect(page.getByTestId('up-link')).toBeVisible();
+    await expect(page.getByTestId('up-link')).toHaveAttribute('href', '/epics/relay-hardening');
 
     // Bottom bar is visible on phone
     const bottomBar = page.getByTestId('bottom-bar');
