@@ -9,6 +9,7 @@ import SelectField from './SelectField.svelte';
 import CheckField from './CheckField.svelte';
 import SecretField from './SecretField.svelte';
 import CodeField from './CodeField.svelte';
+import FilterInput from './FilterInput.svelte';
 import { styleOf } from '../../test/templateStyle';
 import { REMOVED_OUTLINE } from '../../test/fieldContract';
 
@@ -65,8 +66,8 @@ describe('Field', () => {
   it('leaves the focus outline of every field control to the design, never removing it without the focus ring', async () => {
     // The population is the field components of components-fields.adoc that draw a control of their
     // own: a component added there has to be added here, which is a visible decision and not a
-    // silently skipped one. The design draws the ring in the component's own `:focus` rule, a block
-    // apart from the one that removes the outline, so the ring is looked for in the whole sheet.
+    // silently skipped one. A rule that takes the outline away must draw the ring in the same block:
+    // forced-colors mode drops a box-shadow-less focus mark entirely.
     const fields = [
       {
         name: 'Field',
@@ -85,6 +86,10 @@ describe('Field', () => {
       { name: 'CheckField', draw: () => render(CheckField, { props: { label: 'Agree' } }) },
       { name: 'SecretField', draw: () => render(SecretField, { props: { label: 'Secret' } }) },
       { name: 'CodeField', draw: () => render(CodeField, { props: { label: 'Code' } }) },
+      {
+        name: 'FilterInput',
+        draw: () => render(FilterInput, { props: { label: 'Filter', onchange: () => {} } }),
+      },
     ];
 
     for (const field of fields) {
@@ -99,10 +104,14 @@ describe('Field', () => {
       }
 
       const style = styleOf(path.resolve(__dirname, `./${field.name}.svelte`));
-      if (REMOVED_OUTLINE.test(style)) {
-        expect(style, `${field.name} removes its outline and must draw the focus ring`).toContain(
-          'var(--focus-ring)',
-        );
+      // Rule by rule: a block that takes the outline away must draw the ring in that same block.
+      for (const block of style.split('}')) {
+        if (REMOVED_OUTLINE.test(block)) {
+          expect(
+            block,
+            `${field.name} removes its outline without drawing the focus ring in the same rule`,
+          ).toContain('var(--focus-ring)');
+        }
       }
       rendered.unmount();
     }

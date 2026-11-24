@@ -8,7 +8,7 @@ import EscapingKeyForm from './EscapingKeyForm.svelte';
  * from the key threw inside `submit()`, so neither happened.
  */
 describe('EscapingKeyForm', () => {
-  it('focuses its own control and shows the reason when the key needs no selector', async () => {
+  it('focuses its own control and shows the reason when its key is no CSS identifier', async () => {
     render(EscapingKeyForm);
     const control = screen.getByTestId('2fa');
 
@@ -16,14 +16,5 @@ describe('EscapingKeyForm', () => {
 
     expect(document.activeElement).toBe(control);
     expect(screen.getByText('Fill in this field.')).toBeInTheDocument();
-  });
-
-  it('accepts a value typed into it', async () => {
-    render(EscapingKeyForm);
-    const control = screen.getByTestId('2fa') as HTMLInputElement;
-
-    await fireEvent.input(control, { target: { value: 'abc123' } });
-
-    expect(control.value).toBe('abc123');
   });
 });

@@ -38,8 +38,8 @@
   export let returnFocusElement: HTMLElement | null = null;
   /**
    * The dialog's width: `default` is the reading width of a confirmation, `wide` the width a
-   * side-by-side difference needs. A caller never overrides the width from outside the component —
-   * the cascade decides that against the dialog's own rule, not against the caller's intent.
+   * side-by-side difference needs. A caller names the size; it never overrides the width from
+   * outside the component, where the cascade would decide instead of the intent.
    */
   export let size: 'default' | 'wide' = 'default';
   /** Whether the footer area is drawn; a stage that offers no act keeps no empty row. */

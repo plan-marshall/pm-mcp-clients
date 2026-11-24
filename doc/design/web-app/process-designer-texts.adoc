@@ -146,10 +146,6 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Discard the draft
 |Verwirf den Entwurf
 
-|`designer.leave.discard.title`
-|Discard the draft and continue; nothing is saved
-|Verwirf den Entwurf und fahre fort; nichts wird gespeichert
-
 |`designer.checked_against`
 |checked against {project}
 |geprüft gegen {project}

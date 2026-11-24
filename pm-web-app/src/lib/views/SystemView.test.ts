@@ -380,12 +380,14 @@ describe('SystemView component', () => {
     await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
 
     // The operator changes the radio while the request runs: the state update must follow the
-    // choice the request carried, never the one typed afterwards.
+    // choice the request carried — a drain, not the "now" typed afterwards — never the one typed.
     await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
     resolveStop({ lifecycle_state: 'draining' });
 
     expect(stopSpy).toHaveBeenCalledExactlyOnceWith('drain');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).isStopped).toBe(false);
   });
 
   it('closes the lifecycle dialog on Escape and returns the focus to the act that opened it', async () => {

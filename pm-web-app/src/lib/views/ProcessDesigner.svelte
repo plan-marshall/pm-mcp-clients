@@ -1466,25 +1466,16 @@
   }}
 />
 
-<Dialog
+<ConfirmDialog
   open={Boolean(pendingAction)}
   title={$t('designer.leave.question')}
-  danger
   consequences={[$t('designer.leave.consequence')]}
-  onClose={stayInDesigner}
+  actionLabel={$t('designer.leave.discard')}
+  cancelLabel={$t('designer.leave.stay')}
   testid="designer-leave-dialog"
->
-  <svelte:fragment slot="footer">
-    <Button variant="secondary" onclick={stayInDesigner}>{$t('designer.leave.stay')}</Button>
-    <Button
-      variant="danger"
-      onclick={discardDraft}
-      data-advisory={$t('designer.leave.discard.title')}
-    >
-      {$t('designer.leave.discard')}
-    </Button>
-  </svelte:fragment>
-</Dialog>
+  onConfirm={discardDraft}
+  onClose={stayInDesigner}
+/>
 
 <Dialog
   open={placeStage !== 'idle'}
