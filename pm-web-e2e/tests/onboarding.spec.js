@@ -202,6 +202,48 @@ test.describe('The recorded interface language', () => {
   });
 });
 
+test.describe('The cut-back onboarding states (D1, D2)', () => {
+  test('names how to install each known harness at harness.none, and offers recheck and add only', async ({
+    page,
+    request,
+  }) => {
+    await openOnboarding(page, request);
+    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/harness.none`);
+    expect(moved.ok()).toBeTruthy();
+    await page.reload();
+
+    await expect(page.getByRole('heading', { name: 'No harness found' })).toBeVisible();
+    const install = page.getByTestId('harness-none-install');
+    await expect(install).toContainText('docs.anthropic.com/en/docs/claude-code/setup');
+    await expect(install).toContainText('opencode.ai/docs/');
+    await expect(page.getByRole('button', { name: 'Check again' })).toBeVisible();
+    await expect(
+      page.getByRole('button', { name: 'Add a harness that is not listed' }),
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Later' })).toHaveCount(0);
+  });
+
+  test('runs a Change from auto.result through the aspect and back to the result', async ({
+    page,
+    request,
+  }) => {
+    await openOnboarding(page, request);
+    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/auto.result`);
+    expect(moved.ok()).toBeTruthy();
+    await page.reload();
+
+    await expect(page.getByTestId('auto-result')).toBeVisible();
+    await page.getByTestId('auto-result-change-language').click();
+
+    // The aspect's own later run is what the Change opens.
+    await expect(page.getByTestId('language-screen')).toBeVisible();
+    await page.getByTestId('language-record').click();
+
+    // Its answer is the automatic run's result again.
+    await expect(page.getByTestId('auto-result')).toBeVisible();
+  });
+});
+
 test.describe('The one settings view', () => {
   test('replaces the old machine settings address with the setup tab', async ({ page, request }) => {
     // The settings are reachable once the machine is onboarded.
