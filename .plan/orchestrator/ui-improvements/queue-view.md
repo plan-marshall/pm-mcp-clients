@@ -4,9 +4,9 @@
 
 ## START HERE
 
-**Resume anchor**: 2026-11-24 07:30 (RESTART-READY): re-anchor with `/plan-orchestrator resume slug=ui-improvements`; nothing is half-done, no sub-agent is running.
+**Resume anchor**: 2026-11-24 (RESTART-READY, after the ledger land): re-anchor with `/plan-orchestrator resume slug=ui-improvements`; nothing is half-done, no sub-agent is running.
 
-STATE. Running 4 of N=4: PLAN-183 pm-api-and-mock-hygiene-residue (trace: lane worktree 2026-11-23 22:32), PLAN-186 sonar-standing-debt-pm-operator (operator's word 2026-11-23; meets PlanCommand.java:1459-1462 changed by #549 and pre-commit whitespace from #552), PLAN-185 web-shell-up-and-deletion-residue and PLAN-178 web-dialog-form-and-designer-correctness (both emitted 2026-11-24, running on the operator's word 07:27; they share no file). PARKED on the operator's word: PLAN-42 (paused at 90757a51, 2 of 7, branch unmerged; resumed with the same lane command, then takes a slot). STAGED new: PLAN-187 web-withdraw-decomposition-drop (operator's word 2026-11-24: withdraw Drop as the CLI does; gates pass). PLAN-182 gained deliverable 5 (PLAN-176 L3-1/2/3, operator's word); it now shares runtime.ts and runtime.test.ts with running PLAN-185 (two files: emit after 185 or on the operator's word). SHIPPED this run: PLAN-176 (#549), PLAN-177 (#552), PLAN-181, 180, 144, 154, 156, 59, 174. SONAR: 113 open on main: pm-operator 110 (PLAN-186) plus the 3 PLAN-181 dismissals (kept as an open issue, operator 2026-11-24). Inbox empty; owed landings: PLAN-183, 186, 185, 178, later 42.
+STATE. Running 4 of N=4: PLAN-183 pm-api-and-mock-hygiene-residue (PR #553 open), PLAN-186 sonar-standing-debt-pm-operator (operator's word 2026-11-23; meets PlanCommand.java:1459-1462 changed by #549 and pre-commit whitespace from #552), PLAN-185 web-shell-up-and-deletion-residue and PLAN-178 web-dialog-form-and-designer-correctness (both emitted 2026-11-24, running on the operator's word; traces: worktrees and remote branches; they share no file); PLAN-186 has a remote branch, no PR yet. PARKED on the operator's word: PLAN-42 (paused at 90757a51, 2 of 7, branch unmerged; resumed with the same lane command, then takes a slot). STAGED new: PLAN-187 web-withdraw-decomposition-drop (operator's word 2026-11-24: withdraw Drop as the CLI does; gates pass). PLAN-182 gained deliverable 5 (PLAN-176 L3-1/2/3, operator's word); it now shares runtime.ts and runtime.test.ts with running PLAN-185 (two files: emit after 185 or on the operator's word). SHIPPED this run: PLAN-176 (#549), PLAN-177 (#552), PLAN-181, 180, 144, 154, 156, 59, 174. SONAR: 113 open on main: pm-operator 110 (PLAN-186) plus the 3 PLAN-181 dismissals (kept as an open issue, operator 2026-11-24). Inbox empty (checked again before restart; no plan landed since #552); owed landings: PLAN-183, 186, 185, 178, later 42.
 
 NEXT ACTION on restart: (1) no free slot; `inbox list`, analyze each landing by a sub-agent in three layers, read Sonar, write landings/PLAN-NN.md, land the ledger. (2) On a free slot, in order as surfaces allow: PLAN-187 (no shared file with the running plans), PLAN-182 (after PLAN-185: runtime.ts), PLAN-179 (after 185: EpicView), PLAN-85 (re-read at HEAD: claims 2 and 4 contradicted; fold PLAN-60 as D0); PLAN-136, 135 after re-reading; the CLI chain 44, 48, 50, 63, 184, 138-140 only after PLAN-42 lands and after PLAN-186.
 
@@ -18,7 +18,7 @@ RULES THAT HOLD: orchestrate, never implement; `auto_emit=false`; emit only runb
 **Phase**: orchestrating
 **Running**:
 - PLAN-178 (WS-03)
-- PLAN-183 (WS-01)
+- PLAN-183 (WS-01) — PR #553
 - PLAN-185 (WS-03)
 - PLAN-186 (WS-04)
 **Parked**:
