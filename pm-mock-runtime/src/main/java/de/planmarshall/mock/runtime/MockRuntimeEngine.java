@@ -4974,8 +4974,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 body.put(KEY_STATE, stateId);
                 body.put(KEY_STEP, being.stepNumber());
                 body.put(KEY_TOTAL_STEPS, being.totalSteps());
-                body.put("id", entryId);
-                body.put("name", entryId);
+                body.put("id", entryIdentity(being));
+                body.put("name", entryIdentity(being));
                 body.put(KEY_PILOT, false);
                 body.put("build_environment", entryBuildEnvironment(entryId));
                 body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
@@ -10661,6 +10661,18 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, KEY_PROJECT_ID, projectId, "is_favourite", fav));
             response.json(200, Map.of(KEY_PROJECT_ID, projectId, "is_favourite", fav));
         }
+    }
+
+    /**
+     * The identity an entry proposes for its run: the checkout's own name, as the design derives it
+     * (`15-project-onboarding.adoc`: the id proposed from the remote's name).
+     *
+     * @param being the being-added run
+     * @return the proposed id and name
+     */
+    private static String entryIdentity(BeingAddedProject being) {
+        var path = being.checkoutPath();
+        return path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
     }
 
     private void handleStartProjectOnboarding(MockHttpRequest request, MockHttpResponse response) throws IOException {
