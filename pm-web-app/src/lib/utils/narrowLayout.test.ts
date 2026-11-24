@@ -44,11 +44,11 @@ describe('the narrow layout store', () => {
   });
 
   it('follows the window across the width', () => {
-    let listener: ((event: MediaQueryListEvent) => void) | null = null;
+    const listeners: Array<(event: MediaQueryListEvent) => void> = [];
     window.matchMedia = vi.fn().mockReturnValue({
       matches: false,
       addEventListener: (_: string, onChange: (event: MediaQueryListEvent) => void) => {
-        listener = onChange;
+        listeners.push(onChange);
       },
       removeEventListener: () => {},
     }) as unknown as typeof window.matchMedia;
@@ -56,7 +56,7 @@ describe('the narrow layout store', () => {
     const { value, stop } = subscribe();
     expect(value()).toBe(false);
 
-    listener?.({ matches: true } as MediaQueryListEvent);
+    listeners[0]?.({ matches: true } as MediaQueryListEvent);
 
     expect(value()).toBe(true);
     stop();
