@@ -50,6 +50,8 @@ import picocli.CommandLine.Spec;
 @OperatorVerb
 public final class DecomposeCommand implements Callable<Integer> {
 
+    static final String CONTEXT_PARAM = "context";
+
     @Spec
     CommandSpec spec = CommandSpec.create();
 
@@ -67,7 +69,7 @@ public final class DecomposeCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     DecomposeCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, CONTEXT_PARAM);
     }
 
     @Override
@@ -113,7 +115,7 @@ final class ReviewCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     ReviewCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, DecomposeCommand.CONTEXT_PARAM);
     }
 
     @Override
@@ -184,7 +186,7 @@ final class InstructCommand implements Callable<Integer> {
     private final OperatorContext context;
 
     InstructCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
+        this.context = Objects.requireNonNull(context, DecomposeCommand.CONTEXT_PARAM);
     }
 
     @Override

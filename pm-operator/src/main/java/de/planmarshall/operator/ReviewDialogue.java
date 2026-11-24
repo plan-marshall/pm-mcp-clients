@@ -41,6 +41,7 @@ final class ReviewDialogue {
     private static final String COUNT_PARAM = "count";
     private static final String REGISTER_FINDINGS = "findings";
     private static final String REGISTER_WATCHES = "watches";
+    private static final String REGISTER_FIELD = "register";
 
     private final OperatorContext context;
     private final PrintWriter out;
@@ -123,7 +124,7 @@ final class ReviewDialogue {
     private void show(ReviewResource review, ReviewItemResource item) {
         prompt.raw(MessageCatalogue.format(prompt.locale(), "control.review.title",
                             Map.of("epic", OutputSafety.stripControlSequences(epicId),
-                                                "register", register)));
+                                                REGISTER_FIELD, register)));
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.review.progress",
                             Map.of("done", review.decided(), "total", review.total())));
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.review.item",
@@ -190,7 +191,7 @@ final class ReviewDialogue {
         while (true) {
             var answer = prompt.askInline(options.toString(), STATE_ID,
                                 MessageCatalogue.format(prompt.locale(), "control.review.title",
-                                                    Map.of("epic", epicId, "register", register)), epicId);
+                                                    Map.of("epic", epicId, REGISTER_FIELD, register)), epicId);
             if (answer.isEmpty() || ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 return null;
             }
@@ -245,11 +246,11 @@ final class ReviewDialogue {
         if (stay) {
             prompt.line("operator.actions.review.kept",
                                 Map.of("item", OutputSafety.stripControlSequences(item.itemId()),
-                                                    "register", register));
+                                                    REGISTER_FIELD, register));
         } else {
             prompt.line("operator.actions.review.moved",
                                 Map.of("item", OutputSafety.stripControlSequences(item.itemId()),
-                                                    "register", other));
+                                                    REGISTER_FIELD, other));
         }
         return updated;
     }
@@ -284,7 +285,7 @@ final class ReviewDialogue {
             updated = client.disposition(epicId, item.itemId(), keptValue(), null);
             prompt.line("operator.actions.review.kept",
                                 Map.of("item", OutputSafety.stripControlSequences(item.itemId()),
-                                                    "register", register));
+                                                    REGISTER_FIELD, register));
         }
         return updated;
     }
@@ -314,11 +315,10 @@ final class ReviewDialogue {
     }
 
     private String registerLabel(String register) {
-        return REGISTER_FINDINGS.equals(register)
-                            ? MessageCatalogue.format(prompt.locale(), "operator.actions.review.keep_finding",
-                            Map.of())
-                            : MessageCatalogue.format(prompt.locale(), "operator.actions.review.keep_watch",
-                            Map.of());
+        var labelKey = REGISTER_FINDINGS.equals(register)
+                            ? "operator.actions.review.keep_finding"
+                            : "operator.actions.review.keep_watch";
+        return MessageCatalogue.format(prompt.locale(), labelKey, Map.of());
     }
 
     private String text(String key) {
@@ -341,8 +341,7 @@ final class ReviewDialogue {
 
     private static String firstLine(String text) {
         var clean = OutputSafety.stripControlSequences(text).replace('\n', ' ').trim();
-        var cut = clean.length() > 60 ? clean.substring(0, 60) + "\u2026" : clean;
-        return cut;
+        return clean.length() > 60 ? clean.substring(0, 60) + "\u2026" : clean;
     }
 
     private static List<String> cleanAll(List<String> values) {

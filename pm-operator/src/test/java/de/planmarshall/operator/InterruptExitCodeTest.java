@@ -144,7 +144,7 @@ class InterruptExitCodeTest {
         });
 
         var code = interruptedAt(pausePrompt(), () -> WorkActionDialogue.run(context, new PrintWriter(out),
-                            "plan", subject, "pause", false, null, null));
+                            "plan", subject, "pause", false, null));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
         assertEquals(130, code, out.toString());

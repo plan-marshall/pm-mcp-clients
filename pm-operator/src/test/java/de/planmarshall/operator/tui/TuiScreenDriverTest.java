@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +31,7 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
+import org.awaitility.Awaitility;
 import org.jline.terminal.Attributes;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -102,14 +104,13 @@ class TuiScreenDriverTest {
         };
     }
 
-    private static void await(BooleanSupplier condition) throws InterruptedException {
-        var deadline = System.nanoTime() + 5_000_000_000L;
-        while (!condition.getAsBoolean()) {
-            if (System.nanoTime() > deadline) {
-                fail("the view did not reach the expected state in time");
-            }
-            Thread.sleep(20L);
-        }
+    private static void await(BooleanSupplier condition) {
+        Awaitility.await()
+                        .atMost(Duration.ofSeconds(5))
+                        .pollDelay(Duration.ZERO)
+                        .pollInterval(Duration.ofMillis(20))
+                        .untilAsserted(() -> assertTrue(condition.getAsBoolean(),
+                                            "the view did not reach the expected state in time"));
     }
 
     private static void join(Thread thread) throws InterruptedException {
@@ -291,10 +292,11 @@ class TuiScreenDriverTest {
     void restoresOnException() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var driver = new TuiScreenDriver(virtual.terminal(), "en");
-            assertThrows(IllegalStateException.class,
-                                () -> driver.run(() -> {
-                                    throw new IllegalStateException("rendering failed");
-                                }, handler(stack(2))));
+            var keyHandler = handler(stack(2));
+            TuiScreenDriver.Renderer failingRenderer = () -> {
+                throw new IllegalStateException("rendering failed");
+            };
+            assertThrows(IllegalStateException.class, () -> driver.run(failingRenderer, keyHandler));
             var after = virtual.screen();
             assertAll(
                                 () -> assertFalse(after.alternateScreenActive()),
@@ -427,7 +429,7 @@ class TuiScreenDriverTest {
     @DisplayName("canOpenFullScreen")
     class Gate {
 
-        private OperatorContext context(boolean interactive, Map<String, String> extra) throws IOException {
+        private OperatorContext context(boolean interactive, Map<String, String> extra) {
             var environment = new HashMap<String, String>();
             environment.put("PM_MCP_BASE", tempDir.resolve("machine").toString());
             environment.putAll(extra);

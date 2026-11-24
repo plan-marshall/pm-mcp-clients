@@ -341,7 +341,7 @@ class ReportsFullScreenTest {
         pendingEvents.add(new String[]{name, data});
     }
 
-    private Thread startView(VirtualScreenTerminal virtual, OperatorContext context, OverviewFullScreenApp app)
+    private Thread startView(VirtualScreenTerminal virtual, OverviewFullScreenApp app)
                         throws InterruptedException {
         var thread = new Thread(() -> {
             try {
@@ -356,9 +356,9 @@ class ReportsFullScreenTest {
     }
 
     /** Starts the view and opens the reports with {@code R}. */
-    private Thread startAndOpenReports(VirtualScreenTerminal virtual, OperatorContext context,
-                        OverviewFullScreenApp app) throws InterruptedException {
-        var thread = startView(virtual, context, app);
+    private Thread startAndOpenReports(VirtualScreenTerminal virtual, OverviewFullScreenApp app)
+                        throws InterruptedException {
+        var thread = startView(virtual, app);
         virtual.type("R");
         await(() -> shows(virtual, "Reports \u00b7 4 unread"));
         return thread;
@@ -369,7 +369,7 @@ class ReportsFullScreenTest {
     void opensTheGroupedReports() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> shows(virtual, "\u25c7 relay-hardening"));
             await(() -> shows(virtual, "\u25b8 fix-relay"));
@@ -389,7 +389,7 @@ class ReportsFullScreenTest {
     void marksOneReportRead() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             virtual.type("m");
@@ -408,7 +408,7 @@ class ReportsFullScreenTest {
     void marksAllShownRead() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             virtual.type("M");
             await(() -> shows(virtual, "Nothing new"));
@@ -432,7 +432,7 @@ class ReportsFullScreenTest {
     void navigatesWithoutReading() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             virtual.type("p");
@@ -456,7 +456,7 @@ class ReportsFullScreenTest {
     void opensTheCompletionReportAndReads() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             virtual.type("\r");
@@ -478,7 +478,7 @@ class ReportsFullScreenTest {
     void keepsTheSelectionOnALiveArrival() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             await(() -> activeStream.get() != null);
@@ -498,7 +498,7 @@ class ReportsFullScreenTest {
     void showsTheReportDetails() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             virtual.type("jj");
@@ -521,7 +521,7 @@ class ReportsFullScreenTest {
         failReads.set(true);
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
-            var thread = startAndOpenReports(virtual, context, createApp(context, virtual));
+            var thread = startAndOpenReports(virtual, createApp(context, virtual));
 
             await(() -> selectedRow(virtual).contains("fix-relay"));
             virtual.type("\r");
@@ -546,7 +546,7 @@ class ReportsFullScreenTest {
             reportsJson.set("{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}");
             try (var virtual = VirtualScreenTerminal.create(120, 30)) {
                 var context = createContext(virtual);
-                var thread = startView(virtual, context, createApp(context, virtual));
+                var thread = startView(virtual, createApp(context, virtual));
 
                 virtual.type("R");
                 await(() -> shows(virtual, "Reports \u00b7 0 unread"));

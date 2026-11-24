@@ -39,6 +39,8 @@ import de.planmarshall.operator.dialogue.ChoicePrompt;
 final class WorkChatDialogue {
 
     private static final String STATE_ID = "control.chat";
+    private static final String KEY_SUBJECT = "subject";
+    private static final String KEY_CHAT_KEPT = "operator.actions.chat.kept";
     private static final String ROLE_OPERATOR = ChatTurn.AUTHOR_OPERATOR;
 
     private final StartPrompt prompt;
@@ -131,53 +133,71 @@ final class WorkChatDialogue {
         boolean saidNoProposal = false;
         while (true) {
             if (chat.hasProposal()) {
-                var proposal = chat.proposal();
-                var answer = askProposal(chat, endedChat);
-                if (answer == null) {
+                var next = answerProposal(chat, endedChat, seen);
+                if (next == null) {
                     return null;
                 }
-                if (answer) {
-                    if (endedChat) {
-                        // The accept opens the start on the runtime; no B1 surface names the entry it
-                        // opened, so the operator is told the start is being prepared and the chat is
-                        // left with the proposal answered (PLAN-161, D2).
-                        var accepted = proposal;
-                        var description = accepted == null ? null : followUp(accepted);
-                        client.chatProposal(kind, subjectId, accepted.turnId(), true);
-                        prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                        if (description != null) {
-                            prompt.line("operator.actions.chat.follow_up_started",
-                                                Map.of("description", description));
-                        }
-                        return null;
-                    }
-                    chat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
-                    showNewTurns(chat, seen);
-                    seen = lastTurnId(chat);
-                    prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                    continue;
+                chat = next;
+                seen = lastTurnId(chat);
+            } else {
+                var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
+                                    Map.of()) + StartPrompt.SUFFIX, STATE_ID,
+                                    MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end", Map.of()),
+                                    subjectId);
+                if (message.isBlank()) {
+                    prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+                    return null;
                 }
-                chat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
+                chat = client.chatTurn(kind, subjectId, message);
                 showNewTurns(chat, seen);
                 seen = lastTurnId(chat);
-                continue;
-            }
-            var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
-                                Map.of()) + StartPrompt.SUFFIX, STATE_ID,
-                                MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end", Map.of()),
-                                subjectId);
-            if (message.isBlank()) {
-                prompt.line("operator.actions.chat.kept", Map.of("subject", subjectId));
-                return null;
-            }
-            chat = client.chatTurn(kind, subjectId, message);
-            showNewTurns(chat, seen);
-            seen = lastTurnId(chat);
-            if (!chat.hasProposal() && !saidNoProposal) {
-                prompt.line("operator.actions.chat.no_proposal", Map.of("subject", subjectId));
-                saidNoProposal = true;
+                if (!chat.hasProposal() && !saidNoProposal) {
+                    prompt.line("operator.actions.chat.no_proposal", Map.of(KEY_SUBJECT, subjectId));
+                    saidNoProposal = true;
+                }
             }
         }
+    }
+
+    /**
+     * Answers the proposal the chat holds, as the operator answered it.
+     *
+     * @param chat      the chat with an open proposal
+     * @param endedChat {@code true} for the read-only chat about ended work
+     * @param seen      the id of the last turn shown, or {@code null}
+     * @return the chat as the runtime answered it, or {@code null} to leave the chat
+     * @throws IOException on transport failure
+     */
+    private @Nullable ChatResource answerProposal(ChatResource chat, boolean endedChat, @Nullable String seen)
+                        throws IOException {
+        var proposal = chat.proposal();
+        var answer = askProposal(chat, endedChat);
+        if (answer == null) {
+            return null;
+        }
+        if (answer) {
+            if (endedChat) {
+                // The accept opens the start on the runtime; no B1 surface names the entry it
+                // opened, so the operator is told the start is being prepared and the chat is
+                // left with the proposal answered (PLAN-161, D2).
+                var accepted = proposal;
+                var description = accepted == null ? null : followUp(accepted);
+                client.chatProposal(kind, subjectId, accepted.turnId(), true);
+                prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+                if (description != null) {
+                    prompt.line("operator.actions.chat.follow_up_started",
+                                        Map.of("description", description));
+                }
+                return null;
+            }
+            var acceptedChat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
+            showNewTurns(acceptedChat, seen);
+            prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+            return acceptedChat;
+        }
+        var rejectedChat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
+        showNewTurns(rejectedChat, seen);
+        return rejectedChat;
     }
 
     /**
@@ -202,9 +222,9 @@ final class WorkChatDialogue {
         if (applies != null) {
             prompt.raw("  " + OutputSafety.stripControlSequences(applies));
         }
-        var question = endedChat
-                            ? MessageCatalogue.format(prompt.locale(), "operator.actions.chat.follow_up", Map.of())
-                            : MessageCatalogue.format(prompt.locale(), "operator.actions.chat.accept", Map.of());
+        var question = MessageCatalogue.format(prompt.locale(), endedChat
+                            ? "operator.actions.chat.follow_up"
+                            : "operator.actions.chat.accept", Map.of());
         var rejectKey = MessageCatalogue.format(prompt.locale(), "operator.actions.key.reject", Map.of());
         while (true) {
             var answer = prompt.askRaw(question + "   " + MessageCatalogue.format(prompt.locale(),
@@ -238,7 +258,7 @@ final class WorkChatDialogue {
             default -> "operator.actions.chat.scope.plan";
         };
         prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.head",
-                            Map.of("subject", OutputSafety.stripControlSequences(chat.subject().id()),
+                            Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(chat.subject().id()),
                                                 "role", chat.role().name(),
                                                 "scope", MessageCatalogue.format(prompt.locale(), scope, Map.of())))
                             + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end",

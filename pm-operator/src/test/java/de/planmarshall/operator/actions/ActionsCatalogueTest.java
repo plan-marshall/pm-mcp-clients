@@ -91,7 +91,7 @@ class ActionsCatalogueTest {
             }
             assertUnique(ActionMenus.epic(locale, actions("running", null, "next", "auto", "common_files",
                                 "decompose", "findings", "watches", "chat", "archive", "cancel"),
-                                "next", List.of(), true, 0, 1, 2, null), locale);
+                                new ActionMenus.EpicLabels("next", List.of(), true, 0, 1, 2), null), locale);
             assertUnique(ActionMenus.plan(locale, actions("waiting", null, "pause", "cancel", "chat",
                                 "settings"), null, "Q-009", null), locale);
             assertUnique(ActionMenus.ended(locale, "p", "p", null), locale);
@@ -168,8 +168,9 @@ class ActionsCatalogueTest {
                 var epicActions = List.of("next", "auto", "common_files", "decompose", "findings",
                                     "watches", "chat", "archive", "cancel");
                 assertOffered(ActionMenus.epic(locale, actions("held", holdKind,
-                                    epicActions.toArray(String[]::new)), "next", List.of(), true, 0, 1, 2,
-                                    null), epicActions, locale);
+                                    epicActions.toArray(String[]::new)),
+                                    new ActionMenus.EpicLabels("next", List.of(), true, 0, 1, 2), null),
+                                    epicActions, locale);
             }
         }
     }

@@ -235,7 +235,7 @@ class HandlerInterruptExitCodeTest {
 
         var code = interruptedAt("Which settings of " + plan,
                             () -> WorkActionDialogue.run(context, new PrintWriter(out), "plan", plan,
-                                                "settings", false, null, null));
+                                                "settings", false, null));
 
         assertEquals(0, code, "the view's other dialogues leave back: " + out);
         assertNoAct(server);

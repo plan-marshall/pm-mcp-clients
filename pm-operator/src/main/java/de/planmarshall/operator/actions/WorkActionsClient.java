@@ -57,6 +57,7 @@ public final class WorkActionsClient {
     private static final String DECISIONS = "/api/v1/decisions";
     private static final String ACTIONS = "/actions";
     private static final String HOLDS = "/holds/";
+    private static final String REASON = "reason";
 
     /** How long a chat turn waits for the role's reply before the chat is read as it stands. */
     private static final Duration CHAT_REPLY_BOUND = Duration.ofSeconds(20);
@@ -183,7 +184,7 @@ public final class WorkActionsClient {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("act", act);
         if (reason != null && !reason.isBlank()) {
-            payload.put("reason", reason);
+            payload.put(REASON, reason);
         }
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             PLANS + path(planId) + HOLDS + path(holdId) + "/resolve", JsonTree.write(payload)));
@@ -245,7 +246,7 @@ public final class WorkActionsClient {
         }
         if (response.status() == 400) {
             var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-            var reason = body != null ? JsonTree.string(body, "reason") : null;
+            var reason = body != null ? JsonTree.string(body, REASON) : null;
             return new SettingsAnswer(new PlanSettingsUpdateResult(false, false, (int) revision, null, null),
                                 reason != null ? reason : "");
         }
@@ -283,7 +284,7 @@ public final class WorkActionsClient {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("disposition", disposition);
         if (reason != null && !reason.isBlank()) {
-            payload.put("reason", reason);
+            payload.put(REASON, reason);
         }
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             EPICS + path(epicId) + "/review/" + path(itemId) + "/disposition",
