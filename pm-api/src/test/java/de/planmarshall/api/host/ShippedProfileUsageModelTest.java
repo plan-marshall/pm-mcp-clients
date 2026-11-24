@@ -11,6 +11,7 @@ package de.planmarshall.api.host;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -63,7 +64,7 @@ class ShippedProfileUsageModelTest {
     @ParameterizedTest(name = "{0}")
     @MethodSource("expectedModels")
     @DisplayName("declares the usage model of the contract table")
-    void declaresTheUsageModel(String clientId, String expected) throws IOException {
+    void declaresTheUsageModel(String clientId, String expected) throws Exception {
         var usage = usageOf(clientId);
 
         assertTrue(usage.containsKey("model"), clientId + " declares headless.usage.model");
@@ -97,7 +98,7 @@ class ShippedProfileUsageModelTest {
     }
 
     private static Map<?, ?> object(Object value, String what) {
-        assertTrue(value instanceof Map, what + " is a JSON object");
+        assertInstanceOf(Map.class, value, what + " is a JSON object");
         return (Map<?, ?>) value;
     }
 }
