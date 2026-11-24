@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import WorkListColumn from './WorkListColumn.svelte';
-import { apiClient, type ProjectDetailResponse, type ProcessTree } from '../api/client';
+import {
+  apiClient,
+  type ActiveEpicSummary,
+  type ActivePlanSummary,
+  type ProcessTree,
+  type ProjectDetailResponse,
+} from '../api/client';
 import * as runtime from '../stores/runtime';
 import * as history from '../navigation/history';
 
@@ -142,6 +148,119 @@ describe('WorkListColumn component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('work-list-items')).toBeInTheDocument();
     });
+  });
+
+  /**
+   * @param planId the plan
+   * @param title its title
+   * @param epicId the epic it belongs to, if any
+   * @returns the plan row the runtime serves in a project's detail
+   */
+  function planRow(planId: string, title: string, epicId?: string): ActivePlanSummary {
+    return {
+      plan_id: planId,
+      title,
+      current_phase: 'execute',
+      phase_state: 'running',
+      tasks_done: 2,
+      tasks_total: 3,
+      ...(epicId ? { epic_id: epicId } : {}),
+    };
+  }
+
+  /**
+   * @param epicId the epic
+   * @param title its title
+   * @param plans its plans
+   * @returns the epic row the runtime serves in a project's detail
+   */
+  function epicRow(
+    epicId: string,
+    title: string,
+    plans: ActivePlanSummary[],
+  ): ActiveEpicSummary {
+    return {
+      epic_id: epicId,
+      title,
+      running_plans_count: 1,
+      staged_plans_count: 0,
+      plans,
+    };
+  }
+
+  it('lists the epic of the open plan for a plan of an epic (D4)', async () => {
+    // Arrange: a project whose plans belong to epics and whose epics carry their own plans
+    const detail: ProjectDetailResponse = {
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        planRow('fix-relay', 'Fix Relay Transport', 'relay-hardening'),
+        planRow('relay-metrics', 'Relay metrics', 'relay-hardening'),
+        planRow('loose-plan', 'Loose Plan'),
+      ],
+      epics: [
+        epicRow('relay-hardening', 'Relay Hardening', [
+          planRow('fix-relay', 'Fix Relay Transport', 'relay-hardening'),
+          planRow('relay-metrics', 'Relay metrics', 'relay-hardening'),
+        ]),
+        epicRow('staged-epic', 'Staged Epic', []),
+      ],
+      alongside_landings: [],
+    };
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(detail);
+
+    // Act: the open plan names its epic
+    render(WorkListColumn, {
+      projectId: 'pm-mcp-clients',
+      currentPlanId: 'fix-relay',
+      parentEpicId: 'relay-hardening',
+    });
+
+    // Assert: the epic's plans, with the open one still marked
+    await waitFor(() => expect(screen.getByTestId('work-list-items')).toBeInTheDocument());
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent('Fix Relay Transport');
+    expect(items[1]).toHaveTextContent('Relay metrics');
+    expect(screen.getByRole('link', { name: /Fix Relay Transport/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('lists the epics and the epic-less plans of the project for an epic (D4)', async () => {
+    // Arrange
+    const detail: ProjectDetailResponse = {
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [
+        planRow('fix-relay', 'Fix Relay Transport', 'relay-hardening'),
+        planRow('loose-plan', 'Loose Plan'),
+      ],
+      epics: [
+        epicRow('relay-hardening', 'Relay Hardening', []),
+        epicRow('staged-epic', 'Staged Epic', []),
+      ],
+      alongside_landings: [],
+    };
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue(detail);
+
+    // Act: no parent epic is named
+    render(WorkListColumn, { projectId: 'pm-mcp-clients', currentEpicId: 'relay-hardening' });
+
+    // Assert: the epics and the plan that belongs to none, the open epic marked
+    await waitFor(() => expect(screen.getByTestId('work-list-items')).toBeInTheDocument());
+
+    const items = screen.getAllByRole('listitem');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveTextContent('Loose Plan');
+    expect(items[1]).toHaveTextContent('Relay Hardening');
+    expect(items[2]).toHaveTextContent('Staged Epic');
+    expect(screen.getByRole('link', { name: /Relay Hardening/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
   });
 
   it('renders UpLink in the column head when a parent exists (D5)', async () => {

@@ -18,14 +18,26 @@
   import { writeAddress } from '../navigation/history';
   import UpLink from './UpLink.svelte';
   import { upOf, buildChain } from '../navigation/chain';
+  import { narrowLayout } from '../utils/narrowLayout';
 
   interface Props {
     projectId: string;
     currentPlanId?: string | null;
     currentEpicId?: string | null;
+    /**
+     * The epic of the open plan. A plan of an epic lists that epic's plans; an epic, or a plan
+     * without an epic, lists the project's epics and the plans that belong to none
+     * (`navigation.adoc#levels`).
+     */
+    parentEpicId?: string | null;
   }
 
-  let { projectId, currentPlanId = null, currentEpicId = null }: Props = $props();
+  let {
+    projectId,
+    currentPlanId = null,
+    currentEpicId = null,
+    parentEpicId = null,
+  }: Props = $props();
 
   let detail = $state<ProjectDetailResponse | null>(null);
   let isLoading = $state(false);
@@ -148,8 +160,17 @@
     const plans = detail.plans ?? [];
     const epics = detail.epics ?? [];
 
+    if (parentEpicId) {
+      const parent = epics.find((epic) => epic.epic_id === parentEpicId);
+      // The epic's own plans are the siblings; a plan the detail lists under the epic is the
+      // fallback when the epic itself is not in the served detail.
+      return (parent?.plans ?? plans.filter((plan) => plan.epic_id === parentEpicId)).map(
+        toPlanItem,
+      );
+    }
+
     return [
-      ...plans.map(toPlanItem),
+      ...plans.filter((plan) => !plan.epic_id).map(toPlanItem),
       ...epics.map(toEpicItem),
     ];
   });
@@ -178,7 +199,7 @@
   aria-label={$t('overview.running.title')}
 >
   <header class="work-list-column__head">
-    {#if upParent && upParent.kind && upParent.address}
+    {#if !$narrowLayout && upParent && upParent.kind && upParent.address}
       <div class="work-list-column__up">
         <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
       </div>
