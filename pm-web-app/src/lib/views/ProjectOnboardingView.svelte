@@ -381,8 +381,13 @@
       // The explorer's row carries six fields; the run's own link surface and its facts are the
       // entry's (the mock serves them on `GET /api/v1/entries/{id}`), so the screen reads it instead
       // of inventing `links` or `build_environment` on the row.
-      const entryState = await apiClient.getEntry(entryOnboardingId(match));
-      run = runOfBeingAdded(match, entryState);
+      const entryId = entryOnboardingId(match);
+      if (entryId) {
+        run = runOfBeingAdded(match, await apiClient.getEntry(entryId));
+      } else {
+        // A row whose link names no entry is shown from its own six facts: no link, no guess.
+        run = runOfBeingAdded(match, {} as StartStateResource);
+      }
       checkoutDraft = match.checkout_path;
       return;
     }
@@ -454,7 +459,8 @@
       chat_available: false,
       build_environment:
         (entryState.build_environment as ProjectBuildEnvironment | null | undefined) ?? null,
-      pilot: entryState.pilot === true,
+      // The entry publishes `pilot` or it does not: only a published boolean offers the checkbox.
+      pilot: typeof entryState.pilot === 'boolean' ? entryState.pilot : undefined,
       links,
     };
   }

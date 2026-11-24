@@ -200,7 +200,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose
 ----
   No harness found
 
-  Install one, then check again:
+  Install one of them, then check again:
     claude     docs.anthropic.com/en/docs/claude-code/setup
     opencode   opencode.ai/docs/
 

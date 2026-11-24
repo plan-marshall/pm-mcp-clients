@@ -1026,6 +1026,37 @@
         }
       ]
     },
+    "harness.scan": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.scan",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Looking for harnesses \u2026"
+        },
+        "links": [
+          {
+            "id": "continue",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/scan/continue",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/scan/continue",
+          "next": "harness.choose"
+        }
+      }
+    },
     "harness.none": {
       "representation": {
         "scope": {
@@ -1068,7 +1099,7 @@
         "recheck": {
           "method": "POST",
           "href": "/api/v1/onboarding/harness/recheck",
-          "next": "harness.probe-failed"
+          "next": "harness.scan"
         },
         "add": {
           "method": "POST",

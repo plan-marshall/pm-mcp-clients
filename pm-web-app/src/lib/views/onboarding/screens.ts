@@ -127,6 +127,7 @@ const CONSENT_ID = /(\.consent|-consent)$/;
 const WORKING_STATES = new Set([
   'auto.scan',
   'auto.run',
+  'harness.scan',
   'harness.probe',
   'harness.enrol',
   'harness.install-profile',

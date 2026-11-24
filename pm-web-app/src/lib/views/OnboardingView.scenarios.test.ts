@@ -204,6 +204,27 @@ describe('roles review minors (D3)', () => {
     expect(document.activeElement).toBe(screen.getByTestId('role-harness-plan'));
   });
 
+  it('keeps the operator’s hand edits when the record act is refused', async () => {
+    const state = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'plan' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(state);
+    vi.spyOn(apiClient, 'stepOnboarding').mockRejectedValue(new Error('roles_invalid'));
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    await fireEvent.input(screen.getByTestId('role-model-plan'), {
+      target: { value: 'hand-typed-model' },
+    });
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('role-model-plan')).toHaveValue('hand-typed-model'),
+    );
+  });
+
   it('keeps the operator’s hand edits across a remount after a refused validate', async () => {
     const state = onboardingState({
       state: 'roles.review',

@@ -40,6 +40,7 @@ import {
 } from '../navigation/rememberedPlace';
 import {
   adoptRecordedLocale,
+  adoptRecordedLocaleBeforeStep,
   currentLocale,
   t,
   translate,
@@ -1939,6 +1940,8 @@ function applyOnboardingState(state: OnboardingState, seq: number): boolean {
     currentState: state as unknown as StateRepresentation,
     activeStep,
     completedSteps: completed,
+    // A state the runtime reported supersedes the refusal of the act that led here.
+    onboardingRefusal: null,
     isOnboarded: state.state === 'onboard.completed' ? true : s.isOnboarded,
   }));
   return true;
@@ -1993,8 +1996,8 @@ export async function stepOnboarding(
     const seq = beginOnboardingRequest();
     const next = await apiClient.stepOnboarding(link, body);
     // The adoption is bounded, so a runtime that stops answering cannot keep the record button
-    // spinning; a late answer still switches the screen (see `adoptRecordedLocale`).
-    if (options.adoptLocale) await adoptRecordedLocale();
+    // spinning; a late answer still switches the screen (see `adoptRecordedLocaleBeforeStep`).
+    if (options.adoptLocale) await adoptRecordedLocaleBeforeStep();
     if (!applyOnboardingState(next, seq)) return;
     runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
   } catch (err) {

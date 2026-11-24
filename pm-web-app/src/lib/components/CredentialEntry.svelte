@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from './Button.svelte';
   import { apiClient } from '../api/client';
@@ -11,6 +11,13 @@
 
   /** Emitted when the secret was stored, so the screen that opened the entry can check again. */
   const dispatch = createEventDispatcher<{ saved: { key: string } }>();
+
+  /** The field the entry opens into, so the operator lands where they type. */
+  let secretInput: HTMLInputElement | null = null;
+
+  onMount(() => {
+    if (isLoopback) secretInput?.focus();
+  });
 
   let secret = '';
   let isSaving = false;
@@ -75,6 +82,7 @@
         type="password"
         class="credential-entry__input"
         autocomplete="off"
+        bind:this={secretInput}
         bind:value={secret}
         data-testid="credential-secret-input"
       />

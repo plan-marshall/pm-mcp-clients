@@ -678,13 +678,24 @@ export async function adoptRecordedLocale(): Promise<void> {
 }
 
 /**
- * Applies the interface language the machine recorded, and WAITS for it.
+ * Applies the interface language the machine recorded, for the step that records it.
  *
- * The step that records the language must show the next screen in that language (UC-ONB-3,
- * `onboarding-step-1.adoc`), so it cannot bound the wait: the screen waits until the machine's
- * language and its catalogue are in hand, or until the machine cannot be asked at all. Starting the
- * adoption also invalidates every adoption still in flight, so a language recorded later is never
- * overwritten by an earlier read.
+ * The record button must not spin on a runtime that stopped answering, so the step waits at most
+ * the pairing bound; the read itself goes on and switches the screen when it lands.
+ *
+ * @returns when the recorded language is applied, or the bound passed first
+ */
+export async function adoptRecordedLocaleBeforeStep(): Promise<void> {
+  await withinBound(adoptRecordedLocaleUntimed(++switchGeneration), ADOPTION_BOUND_MS);
+}
+
+/**
+ * Applies the interface language the machine recorded, and WAITS for it without a bound.
+ *
+ * A caller that must show the next screen in that language (UC-ONB-3, `onboarding-step-1.adoc`) uses
+ * this form; the onboarding's record step uses {@link adoptRecordedLocaleBeforeStep}, which bounds
+ * the wait so a slow runtime cannot hold the button. Starting the adoption also invalidates every
+ * adoption still in flight, so a language recorded later is never overwritten by an earlier read.
  *
  * @returns when the recorded language is applied, or could not be read
  */

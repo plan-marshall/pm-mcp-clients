@@ -4975,6 +4975,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 body.put("id", entryId);
                 body.put("name", entryId);
                 body.put(KEY_PILOT, false);
+                body.put("build_environment", entryBuildEnvironment());
                 body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
                         PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
                 response.json(200, body);
@@ -5023,8 +5024,32 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      * @param completed whether the run reached its last state
      * @return the state the entry reports
      */
-    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
-        var body = new LinkedHashMap<String, Object>();
+    /**
+     * The build environment an entry serves for the run's enrolment step, or {@code null} while the
+     * terminal client captured none yet: the same shape the runtime serves on a project's onboarding
+     * ({@code captured_at}, {@code source}, {@code variables}), so the needs-terminal card clears
+     * from a wire fact once the terminal captured one.
+     *
+     * @return the environment, or {@code null} while none was captured
+     */
+    private @Nullable Map<String, Object> entryBuildEnvironment() {
+        var variables = lastBuildEnvironment();
+        if (variables.isEmpty()) {
+            return null;
+        }
+        var environment = new LinkedHashMap<String, Object>();
+        environment.put("captured_at", Instant.now().toString());
+        environment.put("source", "terminal");
+        environment.put("variables", variables);
+        return environment;
+    }
+
+    /**
+     * @param entryId the entry id
+     * @param completed whether the run completed
+     * @return the entry's representation after an act
+     */
+    private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {        var body = new LinkedHashMap<String, Object>();
         body.put(KEY_STATE, completed ? PROJECT_SETUP_COMPLETED : PROJECT_SETUP_IDENTITY);
         body.put(KEY_STEP, completed ? 10 : 2);
         body.put(KEY_TOTAL_STEPS, 10);

@@ -639,7 +639,8 @@ class OnboardingScenarioTest {
                 assertEquals(2, known.size());
                 assertFalse(none.containsKey("checks"));
                 assertFalse(none.containsKey("later"));
-                assertEquals("harness.probe-failed", step(client, auth, "recheck").get("state"));
+                // `recheck` runs the scan again, as the catalogue's row names it.
+                assertEquals("harness.scan", step(client, auth, "recheck").get("state"));
             }
         }
 

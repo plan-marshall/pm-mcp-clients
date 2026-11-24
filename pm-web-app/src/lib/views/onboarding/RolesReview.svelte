@@ -9,11 +9,13 @@
   }
 
   /**
-   * The edits the operator has made and not yet recorded, kept for this visit.
+   * The edits the operator has made and not yet recorded, kept for this page visit.
    *
    * A refused `roles.validate` returns to this screen as a fresh mount, and so does a back from the
    * validating screen: the edits live outside the component instance, so the hand-typed model ids,
-   * the opened rows and the departure decisions survive it (PLAN-66 residue, D3).
+   * the opened rows and the departure decisions survive it (PLAN-66 residue, D3). They are not
+   * cleared when the record act is sent — a refused record keeps them — only when a refreshed state
+   * no longer carries the role or changes its proposal.
    */
   export const roleEditSession: RoleEditSession = $state({
     drafts: {},
@@ -410,7 +412,6 @@
       });
     }
     view.onLink(target.id, body);
-    resetRoleEditSession();
   }
 </script>
 
