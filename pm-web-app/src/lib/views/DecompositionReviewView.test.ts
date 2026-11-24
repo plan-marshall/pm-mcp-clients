@@ -118,10 +118,19 @@ describe('the decomposition review', () => {
     expect(screen.queryByTestId('plan-drop-relay-auth-v2')).toBeNull();
     expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('dropped');
 
-    messagesStore.set(loadMessages('de'));
-    await vi.waitFor(() =>
-      expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('entfernt'),
+    expect(screen.getByTestId('plan-details-relay-auth-v2')).toHaveTextContent('Objective');
+    expect(screen.getByTestId('plan-conflict-relay-auth-v2')).toHaveTextContent(
+      'surface overlaps relay-cursor-order',
     );
+
+    messagesStore.set(loadMessages('de'));
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('plan-relay-dropped')).toHaveTextContent('entfernt');
+      expect(screen.getByTestId('plan-details-relay-auth-v2')).toHaveTextContent('Ziel');
+      expect(screen.getByTestId('plan-conflict-relay-auth-v2')).toHaveTextContent(
+        'Bereich überschneidet sich mit relay-cursor-order',
+      );
+    });
     expect(screen.queryByRole('button', { name: 'Lass ihn fallen' })).toBeNull();
   });
 

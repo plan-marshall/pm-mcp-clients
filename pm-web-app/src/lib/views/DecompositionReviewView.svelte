@@ -67,10 +67,14 @@
     return failures.some((finding) => finding.affected_plans.includes(planId));
   }
 
-  function findingText(finding: DecompositionCheckFinding, planId: string): string {
+  function findingText(
+    finding: DecompositionCheckFinding,
+    planId: string,
+    translate: typeof $t,
+  ): string {
     if (finding.rule === 'surface_overlap' && finding.affected_plans.length >= 2) {
       const other = finding.affected_plans.find((candidate) => candidate !== planId) ?? '';
-      return $t('start.decomposition.overlap', {
+      return translate('start.decomposition.overlap', {
         plan: other,
         paths: finding.message,
       });
@@ -78,25 +82,25 @@
     return finding.message;
   }
 
-  function planDetails(plan: StagedPlanRecord): KeyValueItem[] {
+  function planDetails(plan: StagedPlanRecord, translate: typeof $t): KeyValueItem[] {
     return [
       {
-        label: $t('start.decomposition.objective'),
-        value: plan.objective || $t('start.decomposition.none'),
+        label: translate('start.decomposition.objective'),
+        value: plan.objective || translate('start.decomposition.none'),
       },
       {
-        label: $t('start.decomposition.surface'),
+        label: translate('start.decomposition.surface'),
         value:
           plan.expected_surface && plan.expected_surface.length > 0
             ? plan.expected_surface.join(', ')
-            : $t('start.decomposition.none'),
+            : translate('start.decomposition.none'),
       },
       {
-        label: $t('start.decomposition.depends_on'),
+        label: translate('start.decomposition.depends_on'),
         value:
           plan.dependencies && plan.dependencies.length > 0
             ? plan.dependencies.join(', ')
-            : $t('start.decomposition.none'),
+            : translate('start.decomposition.none'),
       },
     ];
   }
@@ -191,7 +195,7 @@
                       data-testid={`plan-conflict-${plan.plan_id}`}
                     >
                       {#each failures.filter((finding) => finding.affected_plans.includes(plan.plan_id)) as finding}
-                        {findingText(finding, plan.plan_id)}
+                        {findingText(finding, plan.plan_id, $t)}
                       {/each}
                     </span>
                   {/if}
@@ -221,7 +225,7 @@
                   </span>
                 </div>
                 <div class="decomposition-review__plan-details" data-testid={`plan-details-${plan.plan_id}`}>
-                  <KeyValueList items={planDetails(plan)} />
+                  <KeyValueList items={planDetails(plan, $t)} />
                 </div>
               </li>
             {/each}
