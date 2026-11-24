@@ -38,7 +38,13 @@ import {
   type PlaceFacts,
   type RememberedPlace,
 } from '../navigation/rememberedPlace';
-import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
+import {
+  adoptRecordedLocale,
+  adoptRecordedLocaleNow,
+  currentLocale,
+  t,
+  translate,
+} from '../i18n';
 import { formatTime } from '../display/format';
 import { actFailureReason, errorCodeOf } from '../api/errors';
 import { isLoopbackSession } from '../utils/loopback';
@@ -73,6 +79,11 @@ export interface RuntimeState {
   currentRoute: AppRoute;
   currentState: StateRepresentation | null;
   onboarding?: OnboardingState | null;
+  /**
+   * Why the runtime refused the last onboarding step, as the catalogue's error sentence. A refused
+   * step leaves the state where it is, so the view shows this instead of failing silently.
+   */
+  onboardingRefusal?: string | null;
   machineSettings?: MachineSettingsRecord | null;
   isRevoked: boolean;
   revokedReason: string;
@@ -1960,9 +1971,13 @@ export async function stepOnboarding(
     const next = await apiClient.stepOnboarding(link, body);
     if (options.adoptLocale) await adoptRecordedLocaleNow();
     if (onboardingStateRevision !== revision) return;
+    runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
     applyOnboardingState(next);
-  } catch {
-    // A refused step leaves the state as it is.
+  } catch (err) {
+    // A refused step leaves the state as it is; the refusal is shown, so the operator sees why the
+    // act did nothing instead of a screen that silently ignores the click.
+    const fallback = get(t)('onboard.error.step_refused');
+    runtimeStore.update((s) => ({ ...s, onboardingRefusal: actFailureReason(err, fallback) }));
   }
 }
 

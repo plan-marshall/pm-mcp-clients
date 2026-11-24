@@ -341,6 +341,15 @@
             </div>
           </div>
         {:else}
+          {#if $runtimeStore.onboardingRefusal}
+            <p
+              class="onboarding__refusal"
+              role="alert"
+              data-testid="onboarding-refusal"
+            >
+              {$runtimeStore.onboardingRefusal}
+            </p>
+          {/if}
           <ScreenHost {screen} {view} />
         {/if}
       </div>
@@ -378,6 +387,16 @@
   .onboarding__container {
     max-width: 50rem;
     margin: 0 auto;
+  }
+
+  .onboarding__refusal {
+    margin-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-primary);
+    font-size: var(--text-sm);
   }
 
   @media (max-width: 767px) {

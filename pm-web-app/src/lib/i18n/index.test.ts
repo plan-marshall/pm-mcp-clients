@@ -13,6 +13,7 @@ import {
   initI18n,
   adoptRecordedLocale,
   forgetVisitChoice,
+  humanizeKey,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
@@ -26,8 +27,7 @@ describe('i18n dynamic message formatting', () => {
     vi.restoreAllMocks();
   });
 
-  it('replaces parameter placeholders in template strings', () => {
-    // Arrange
+  it('replaces parameter placeholders in template strings', () => {    // Arrange
     const template = 'Hello {name}, your code is {code}';
     const params = { name: 'Oliver', code: 'KXQB-MRTN' };
 
@@ -732,5 +732,12 @@ describe('the recorded language of the machine', () => {
     await vi.advanceTimersByTimeAsync(0);
     await Promise.resolve();
     expect(get(currentLocale)).toBe('de');
+  });
+});
+
+describe('humanizeKey reads a link qualifier as its own word', () => {
+  it('splits a qualifier after a colon, so no wire token reaches the screen', () => {
+    expect(humanizeKey('credential:github')).toBe('Credential github');
+    expect(humanizeKey('change:foo')).toBe('Change foo');
   });
 });

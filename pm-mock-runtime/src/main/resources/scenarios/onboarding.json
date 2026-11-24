@@ -248,37 +248,37 @@
         "change:language": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/language",
-          "next": "language.reconfigure-result"
+          "next": "language.reconfigure"
         },
         "change:harness": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
-          "next": "harness.reconfigure-result"
+          "next": "harness.reconfigure-consent"
         },
         "change:catalogue": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/models",
-          "next": "catalogue.reconfigure-result"
+          "next": "catalogue.reconfigure"
         },
         "change:roles": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/roles",
-          "next": "roles.reconfigure-result"
+          "next": "roles.reconfigure"
         },
         "change:store": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/credentials",
-          "next": "store.reconfigure-result"
+          "next": "store.reconfigure"
         },
         "change:providers": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/providers",
-          "next": "providers.reconfigure-result"
+          "next": "providers.reconfigure"
         },
         "change:defaults": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults",
-          "next": "defaults.reconfigure-result"
+          "next": "defaults.reconfigure"
         },
         "done": {
           "method": "POST",
@@ -2553,272 +2553,6 @@
           "method": "GET",
           "href": "/api/v1/onboarding/settings",
           "next": "settings.choose"
-        }
-      }
-    },
-    "language.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "language.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose your languages",
-          "interface": "de",
-          "model": "same"
-        },
-        "links": [
-          {
-            "id": "set",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/language/set",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "set": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/language/set",
-          "next": "auto.result"
-        }
-      }
-    },
-    "harness.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "harness.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose the harnesses to enrol",
-          "harnesses": [
-            {
-              "harness_id": "claude",
-              "name": "Claude Code",
-              "version": "2.4.1",
-              "path": "~/.local/bin/claude",
-              "supported": true,
-              "workers": true,
-              "tokens": {
-                "coverage": "complete"
-              }
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "choose",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/harness/choose",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "choose": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/harness/choose",
-          "next": "auto.result"
-        }
-      }
-    },
-    "catalogue.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "catalogue.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose the models to allow",
-          "harnesses": [
-            {
-              "harness_id": "claude",
-              "name": "Claude Code",
-              "models": [
-                {
-                  "model_id": "claude-sonnet-5",
-                  "allowed": true
-                }
-              ]
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/catalogue/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/catalogue/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "roles.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "roles.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "The roles of the planning",
-          "roles": [
-            {
-              "role": "plan",
-              "class": "read_only",
-              "harness_id": "claude",
-              "model_id": "claude-sonnet-5",
-              "effort": "medium",
-              "origin": "default"
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/roles/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/roles/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "store.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "store.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Where should this machine keep its tokens?",
-          "current": "keychain"
-        },
-        "links": [
-          {
-            "id": "os",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/store/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "os": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/store/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "providers.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "providers.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Which providers should this machine check?",
-          "providers": [
-            {
-              "provider": "github",
-              "variant": "gh",
-              "available": true
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/providers/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/providers/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "defaults.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "defaults.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "How plans run on this machine",
-          "landing": "landing.pull-request",
-          "method": "method.test-first",
-          "asking": "ask.key-points",
-          "posture": "standard"
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/defaults/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/defaults/record",
-          "next": "auto.result"
         }
       }
     },

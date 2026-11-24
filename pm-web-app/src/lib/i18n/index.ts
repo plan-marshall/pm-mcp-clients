@@ -790,7 +790,9 @@ function ownMessage(messages: Record<string, string> | null, key: string): strin
  * Turns a message key into a label a person can read.
  *
  * `web.offline.unreachable` becomes `Unreachable`: the leaf identifier names the action or the
- * subject, while the package path is an implementation detail that never belongs on screen.
+ * subject, while the package path is an implementation detail that never belongs on screen. A link
+ * id carries its own qualifier after a colon (`change:foo`, `credential:github`), which is a word
+ * boundary like a dot, so the qualifier never reads as part of the verb.
  *
  * @param key the message key
  * @returns a human-readable label
@@ -799,7 +801,7 @@ export function humanizeKey(key: string): string {
   const leaf = key.split('.').findLast((segment) => segment.length > 0) ?? '';
   const words = leaf
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
+    .replace(/[:_-]+/g, ' ')
     .trim();
   if (!words) return 'Unknown';
   return words.charAt(0).toUpperCase() + words.slice(1);

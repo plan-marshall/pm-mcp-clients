@@ -921,6 +921,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
 
+    /**
+     * Whether the later run in progress was opened by a {@code change:<aspect>} link of the automatic
+     * run's result. The aspect returns to {@code auto.result} then, and to the settings otherwise
+     * (State Catalogue § {@code onboard.next}).
+     */
+    private volatile boolean onboardingChangeFromResult;
+
     /** The credential store a later run of the store aspect chose. */
     private String machineCredentialStore = "os";
     /** Whether the providers' later run verified them. */
@@ -9091,7 +9098,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         String newState;
         synchronized (this) {
-            transitionTo(link.next());
+            transitionTo(onboardingTarget(previousState, linkName, link.next()));
             newState = currentStateId.get();
             state = currentScenario.get().state(newState);
         }
@@ -9102,6 +9109,36 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     previousAspect, newState, completedStepsFor(newState)).toMap());
         }
         response.json(link.status(), mergeRepresentation(state, newState));
+    }
+
+    /**
+     * The state a step leads to.
+     *
+     * A later run opened from the automatic run's result returns to that result once its aspect is
+     * done, as the catalogue's {@code onboard.next} routes it: a {@code change} on {@code auto.result}
+     * calls the aspect as a later run and its return leads back to the result (State Catalogue
+     * § {@code auto.result} and § {@code onboard.next}). A run opened from the settings keeps the
+     * settings return the scenario names, and a step out ({@code back}) goes there as the catalogue
+     * says.
+     *
+     * @param previousState the state the step left, may be {@code null}
+     * @param linkName      the link the step took, may be {@code null}
+     * @param scenarioNext  the state the scenario's link names
+     * @return the state to enter
+     */
+    private String onboardingTarget(@Nullable String previousState, @Nullable String linkName,
+            String scenarioNext) {
+        if ("auto.result".equals(previousState) && linkName != null && linkName.startsWith("change:")) {
+            onboardingChangeFromResult = true;
+            return scenarioNext;
+        }
+        if (previousState == null || !previousState.endsWith(".reconfigure")) {
+            return scenarioNext;
+        }
+        var fromResult = onboardingChangeFromResult;
+        onboardingChangeFromResult = false;
+        // `back` is the later run's step out: the catalogue sends it to the settings.
+        return fromResult && !"back".equals(linkName) ? "auto.result" : scenarioNext;
     }
 
     /**

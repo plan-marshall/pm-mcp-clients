@@ -211,6 +211,21 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("runs a Change from auto.result through the aspect and back to auto.result")
+        void shouldRunAChangeThroughTheAspect() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.result");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                // The catalogue routes a change as a later run of that aspect: `onboard.next` calls
+                // the aspect and its return leads back to the result (14-machine-onboarding.adoc:61-62).
+                assertEquals("language.reconfigure", step(client, auth, "change:language").get("state"));
+                assertEquals("auto.result", step(client, auth, "set").get("state"));
+            }
+        }
+
+        @Test
         @DisplayName("reports the seven done aspects at the review step without completing the machine")
         void shouldReportTheReviewStep() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {

@@ -1175,6 +1175,109 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('change:harness', {}));
   });
 
+  it('runs a Change from auto.result through the aspect and back to auto.result', async () => {
+    const result = onboardingState({
+      state: 'auto.result',
+      summary: 'Everything is decided.',
+      results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+      links: {
+        'change:language': {
+          href: '/api/v1/onboarding/settings/reconfigure/language',
+          next: 'language.reconfigure',
+        },
+        done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+      },
+    });
+    arrange(result);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValueOnce(
+        onboardingState({
+          state: 'language.reconfigure',
+          summary: 'The interface and model languages run again',
+          aspect: 'language',
+          interface: 'en',
+          model: 'same',
+          links: {
+            back: { href: '/api/v1/onboarding/settings', next: 'settings.choose' },
+            set: { href: '/api/v1/onboarding/language/set', next: 'auto.result' },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(result);
+
+    render(OnboardingView);
+    // Let the mount's first read land before the step captures its revision.
+    await waitFor(() => expect(apiClient.getOnboardingState).toHaveBeenCalled());
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Change Language' }));
+
+    // The aspect's own later run is what the Change opens; no state stands between it and the result.
+    await waitFor(() => expect(stepSpy).toHaveBeenNthCalledWith(1, 'change:language', {}));
+    await waitFor(() => expect(screen.getByTestId('language-screen')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByTestId('language-record'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenNthCalledWith(2, 'set', {
+        language_interface: 'en',
+        language_model: 'en',
+      }),
+    );
+    // Its answer is the automatic run's result again.
+    await waitFor(() => expect(screen.getByTestId('auto-result')).toBeInTheDocument());
+  });
+
+  it('shows the refusal of a refused Change instead of swallowing it', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          change: { href: '/api/v1/onboarding/auto/result/change', next: 'auto.result' },
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+    vi.spyOn(apiClient, 'stepOnboarding').mockRejectedValue(new Error('act_not_available'));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+
+    const refusal = await screen.findByTestId('onboarding-refusal');
+    expect(refusal).toHaveAttribute('role', 'alert');
+    expect(refusal.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it('names an unknown aspect of a change link instead of its raw id', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:foo': { href: '/api/v1/onboarding/auto/result/change', next: 'auto.result' },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('button', { name: 'Change Foo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /change:/i })).toBeNull();
+  });
+
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
     arrange(
       onboardingState({
@@ -1853,10 +1956,10 @@ describe('store.choose protection lines per option (D9)', () => {
     expect(stepSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps the store reconfiguration action enabled when store.reconfigure-result carries no stores array', async () => {
+  it('keeps the store reconfiguration action enabled when store.reconfigure carries no stores array', async () => {
     arrange(
       onboardingState({
-        state: 'store.reconfigure-result',
+        state: 'store.reconfigure',
         summary: 'Where should this machine keep its tokens?',
         current: 'keychain',
         links: { os: { href: '/api/v1/onboarding/store/record', next: 'auto.result' } },
