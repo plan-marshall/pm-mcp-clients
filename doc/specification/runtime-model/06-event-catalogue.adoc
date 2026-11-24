@@ -126,19 +126,6 @@ The events of a chat are sent on the stream of the scope that holds it: a plan's
 |`activity` |A |one entry of the task's activity journal, its fields as untrusted plain text (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/harness-profiles/01-profile-schema.adoc#worker-activity[Harness Profiles Specification, What a Worker Does])
 |===
 
-[#oversize-distribution]
-== The `over_size` Distribution
-_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-WORK-7[PM-WORK-7: Worker Activity & Off-Track Signals]_
-
-_See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-ARCH-11[PM-ARCH-11: The Operator's Two Clients & Their Contract]_
-
-The resource with which a client shows what a role's `over_size` multiple did to the project's past plan tasks and what a proposed multiple would have done. The runtime computes the distribution (link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/specification/model-work/03-supervision-and-recycling.adoc#over-size-distribution[Model Work Specification, The `over_size` Distribution]) and serves it per project (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#over-size-distribution[Runtime & Interaction Model Specification, The `over_size` Distribution of a Project]); `pm-api` holds its types, `OverSizeDistributionsResource`, `OverSizeDistributionResource` and `TokenBucket`, and the client shows the served values and computes no bucket, count or share from raw tokens. Every object is closed: a field outside the lists below, or a value outside its bounds, refuses the whole answer, which a client never draws in part.
-
-* *The project's answer* (`OverSizeDistributionsResource`): `project_id`, and `distributions`, one distribution per role whose multiple the project sets, in the runtime's order. Every distribution names the same `project_id`, and no role appears twice. A role without a measured task is not left out: its distribution carries no bucket.
-* *A role's distribution* (`OverSizeDistributionResource`): `project_id`, `role`, `current_multiple` (the multiple in force, a positive finite number), `proposed_multiple` (the multiple the operator considers, a positive finite number; absent when the runtime serves no proposal), and `buckets`. Without `proposed_multiple` no bucket carries a flagged task.
-* *A bucket* (`TokenBucket`): `label` (the bucket's display text, given by the runtime), `from_multiple` (inclusive, at least `0`) and `to_multiple` (exclusive, above `from_multiple`), both finite multiples of each task's own `predicted_cost_tokens`, never token counts; `task_count`, the tasks whose spent tokens fall in the bucket; and `flagged_tasks`, between `0` and `task_count`, the tasks the proposed multiple would have flagged. The buckets are in ascending order and do not overlap, and the last bucket's `to_multiple` lies above the largest multiple of the role's measured tasks, so every measured task falls in a bucket; the runtime's `label` may show the last bucket as open-ended (`3x+`).
-* *Derived values*: the client derives only these from the served buckets: the total of `task_count`, the total of `flagged_tasks`, the flagged share (the second over the first, `0` without a proposal or without a task), the buckets that carry a flagged task, and whether the proposal flags more (`proposed_multiple` below `current_multiple`). Without a proposal nothing is flagged.
-
 [#client-text-hidden-characters]
 == No Hidden Character Reaches a Client
 _See Requirement link:../../../../plan-marshall-documentation/doc/Requirements.adoc#PM-SEC-1[PM-SEC-1: Two-Boundary Security Model & Untrusted Content Containment]_ +

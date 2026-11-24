@@ -31,7 +31,7 @@ Specification each carries (link:../../../plan-marshall-documentation/doc/specif
 Structure Specification], `Specified in`):
 
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-api[`pm-api`]: part 06,
-  the event catalogue of the event streams, the `over_size` distribution resource and the hidden-character rule of its
+  the event catalogue of the event streams and the hidden-character rule of its
   encoder; the local API its socket client implements (its on-demand start is specified in
   link:cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[CLI, Coordination & Security, part 01])
 * link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc#module-pm-relay[`pm-relay`]: part
@@ -55,4 +55,4 @@ Structure Specification], `Specified in`):
   runtime
 * link:runtime-model/06-event-catalogue.adoc[Event Catalogue] — the events of every stream: stream control, the
   runtime, system and cleanup, the overview, states and process and decisions, the chat, and the reports and activity;
-  the `over_size` distribution resource of `pm-api`; and the hidden-character rule of the encoder of `pm-api`
+  and the hidden-character rule of the encoder of `pm-api`

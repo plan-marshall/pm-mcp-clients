@@ -118,7 +118,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `plan`: the plan view (link:plan-view.adoc#texts[Plan View]);
 ** `decision`: what both clients show of a decision and a waiver request (link:decisions-texts.adoc#texts[Decisions, Texts]);
 ** `overview`: running work, ended work, and the epic view (link:plan-overview.adoc#texts[Plan Overview], link:epic-view.adoc#texts[Epic View]);
-** `intent`: the plan's and the epic's intent, the builder check, the outline, and the `over_size` distribution (link:intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]);
+** `intent`: the plan's and the epic's intent, the builder check, and the outline (link:intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]);
 ** `project`: the projects, their onboarding, release, and unenrolment (link:project-explorer.adoc#texts[Project Explorer], link:project-onboarding.adoc#texts[Project Onboarding]);
 ** `start`: starting a plan or an epic (link:starting-work-texts.adoc#texts[Starting Work, Texts], link:starting-work-sources-texts.adoc#texts[Starting Work, Texts of the Sources]);
 ** `control`: the actions on plans and epics, the holds, and the reviews (link:work-actions-texts.adoc#texts[Actions on Plans and Epics, Texts], link:work-actions-review-texts.adoc#texts[Actions on Plans and Epics, Texts of the Reviews]);
@@ -142,7 +142,7 @@ A word not in the glossary is translated. A new domain word is added here before
 [#phases]
 == Phases and Roles
 
-The six phases of a plan and the roles that ask are product terms: they keep their English word in both languages, as the glossary words do, and the catalogue owns them.
+The seven phases of a plan and the roles that ask are product terms: they keep their English word in both languages, as the glossary words do, and the catalogue owns them.
 
 [cols="2,1,1",options="header"]
 |===
@@ -153,6 +153,7 @@ The six phases of a plan and the roles that ask are product terms: they keep the
 |`phase.name.outline` |outline |outline
 |`phase.name.plan` |plan |plan
 |`phase.name.execute` |execute |execute
+|`phase.name.sanity-check` |sanity-check |sanity-check
 |`phase.name.finalize` |finalize |finalize
 |===
 
