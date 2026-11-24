@@ -259,11 +259,12 @@ public final class EpicViewFormatting {
         return "waiting_for_you".equals(key) ? WAITING : key;
     }
 
+    /**
+     * @param status a status as {@link #statusKey(String)} normalises it
+     * @return the key of the status' count line, or {@code null} when the catalogue holds none
+     */
     private static @Nullable String countsKey(String status) {
-        return switch (status) {
-            case STAGED, RUNNING, "pausing", "paused", WAITING, "shipped", "cancelled", "abandoned",
-                HELD -> "overview.epic.counts." + status;
-            default -> null;
-        };
+        var key = "overview.epic.counts." + status;
+        return MessageCatalogue.hasKey(key) ? key : null;
     }
 }
