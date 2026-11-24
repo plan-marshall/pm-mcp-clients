@@ -559,6 +559,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String STATUS_CANCELLED = "cancelled";
     /** The status of a project onboarding the operator abandoned. */
     private static final String STATUS_ABANDONED = "abandoned";
+    private static final String STATUS_SHIPPED = "shipped";
+    private static final String STATUS_LANDED = "landed";
+    private static final String STATUS_RETURNED = "returned";
+    private static final String STATUS_HANDED_BACK = "handed back";
+    private static final String STATUS_HELD = "held";
+    /** The row status a plan waits in for the operator, with the spaces the queue row carries. */
+    private static final String STATUS_WAITING_FOR_YOU = "waiting for you";
     /** The member an epic's {@code next} answer names the plan it started with. */
     private static final String FIELD_STARTED_PLAN = "started_plan";
     /** The member an epic's {@code next} answer names the rows it could not start with. */
@@ -11014,7 +11021,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             tasksQueued = 3;
             activeProjects = 1;
         } else {
-            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, "held", 1, "paused", 2);
+            plansByState = Map.of(ACTIVITY_RUNNING, 3, STATE_WAITING_FOR_YOU, 1, STATUS_HELD, 1, ACTIVITY_PAUSED, 2);
             epicsByState = Map.of(ACTIVITY_RUNNING, 1, STATE_WAITING_FOR_YOU, 1);
             tasksRunning = 4;
             tasksQueued = 6;
@@ -12430,9 +12437,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "waiting for you" -> STATE_WAITING_FOR_YOU;
-            case "shipped", STATE_MERGED, "landed", STATUS_CANCELLED, "abandoned", "returned", "handed back" ->
-                STATE_ENDED;
+            case STATUS_WAITING_FOR_YOU -> STATE_WAITING_FOR_YOU;
+            case STATUS_SHIPPED, STATE_MERGED, STATUS_LANDED, STATUS_CANCELLED, STATUS_ABANDONED, STATUS_RETURNED,
+                    STATUS_HANDED_BACK -> STATE_ENDED;
             default -> status;
         };
     }
