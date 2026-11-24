@@ -38,7 +38,7 @@ function controlForKey(key: string): HTMLElement | null {
     if (
       candidate.getAttribute('name') === key ||
       candidate.id === key ||
-      candidate.getAttribute('data-testid') === key
+      candidate.dataset.testid === key
     ) {
       return candidate;
     }
