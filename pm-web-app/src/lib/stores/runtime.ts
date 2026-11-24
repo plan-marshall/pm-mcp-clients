@@ -1476,7 +1476,12 @@ async function fallBackFromCleanup(): Promise<void> {
       })
     : translate(locale, 'web.nav.gone', { name: shown.name });
   if (target.kind === 'ended-work') {
-    applyRoute('overview', { route: 'overview', project: target.project ?? undefined, mode: 'ended' });
+    const endedWork: Address = {
+      route: 'overview',
+      project: target.project ?? undefined,
+      mode: 'ended',
+    };
+    applyRoute('overview', endedWork);
     runtimeStore.update((s) => ({
       ...s,
       lensProject: target.project ?? s.lensProject ?? null,
