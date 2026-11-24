@@ -417,6 +417,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
     private static final String KEY_PILOT = "pilot";
+    /** The build environment a run was captured with (`captured_at`, `source`, `variables`). */
+    private static final String KEY_CAPTURED_AT = "captured_at";
+    private static final String KEY_SOURCE = "source";
+    private static final String KEY_VARIABLES = "variables";
+    private static final String SOURCE_TERMINAL = "terminal";
     private static final String KEY_READY = "ready";
     private static final String KEY_ASPECTS = "aspects";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
@@ -5035,9 +5040,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return null;
         }
         var environment = new LinkedHashMap<String, Object>();
-        environment.put("captured_at", Instant.now().toString());
-        environment.put("source", "terminal");
-        environment.put("variables", variables);
+        environment.put(KEY_CAPTURED_AT, Instant.now().toString());
+        environment.put(KEY_SOURCE, SOURCE_TERMINAL);
+        environment.put(KEY_VARIABLES, variables);
         return environment;
     }
 
@@ -6737,7 +6742,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         new ReportFrom(CONST_PM_MCP_CORE, null, null),
                         ReportKind.SOURCE_FLAGGED,
                         "A source of codeberg-issues was flagged: issue #4711",
-                        Map.of("item", "codeberg-issues", "source", "issue #4711"),
+                        Map.of("item", "codeberg-issues", KEY_SOURCE, "issue #4711"),
                         null,
                         Instant.parse("2026-10-13T08:00:00Z"),
                         Instant.parse("2026-10-13T08:00:00Z"),
