@@ -67,8 +67,7 @@ final class PseudoTerminal {
         builder.environment().clear();
         builder.environment().putAll(environment);
         var process = builder.start();
-        var stdin = process.getOutputStream();
-        try {
+        try (var _ = process.getOutputStream()) {
             var rendered = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
             var outerExit = process.waitFor();
             // macOS script(1) does not propagate the child status, so a missing status file there is
@@ -79,8 +78,6 @@ final class PseudoTerminal {
                 throw new IllegalStateException("the command exited " + reason + ":\n" + rendered);
             }
             return rendered;
-        } finally {
-            stdin.close();
         }
     }
 

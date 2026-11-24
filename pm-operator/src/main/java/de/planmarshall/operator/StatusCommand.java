@@ -245,7 +245,7 @@ final class StatusCommand implements Callable<Integer> {
     }
 
     /**
-     * Prints the ended work of every project, or the empty line when there is none.
+     * Prints the ended work of every project, or the message that there is none.
      *
      * @param out      the command's output
      * @param overview the projects as the runtime lists them
