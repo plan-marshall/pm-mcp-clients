@@ -9975,6 +9975,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
             projectSetupStates.clear();
+            // A reseed is a new machine: a capture of a previous run is not this run's.
+            entryBuildEnvironments.clear();
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
@@ -10669,6 +10671,26 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
+     * @param being a being-added run
+     * @return the entry id its published continue link names, or its checkout-derived id
+     */
+    private static String entryIdOf(BeingAddedProject being) {
+        var continueLink = being.continueLink();
+        if (continueLink != null) {
+            var matcher = ENTRY_ID_PATTERN.matcher(continueLink);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        var path = being.checkoutPath();
+        var name = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+        return encodedEntryId(name.isBlank() ? "new-project" : name);
+    }
+
+    private static final java.util.regex.Pattern ENTRY_ID_PATTERN =
+            java.util.regex.Pattern.compile("/entries/([^/]+)/");
+
+    /**
      * The identity an entry proposes for its run: the checkout's own name, as the design derives it
      * (`15-project-onboarding.adoc`: the id proposed from the remote's name).
      *
@@ -10705,10 +10727,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 beingAddedProjects.add(beingAdded);
             }
             lastBuildEnvironment = buildEnvironment;
-            // The capture belongs to the run it was sent with: another run's later capture must not
-            // change what this entry serves.
+            // The capture belongs to the run it was sent with: a reused row keeps the entry id its
+            // own links publish, so the read of that entry finds the capture.
             if (!buildEnvironment.isEmpty()) {
-                entryBuildEnvironments.put(encodedEntryId(id), new LinkedHashMap<>(buildEnvironment));
+                entryBuildEnvironments.put(entryIdOf(beingAdded), new LinkedHashMap<>(buildEnvironment));
             }
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, FIXTURE_BEING_ADDED, path));
             response.json(201, Map.of(

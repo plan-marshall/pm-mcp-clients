@@ -2003,8 +2003,7 @@ export async function stepOnboarding(
     // The adoption is bounded, so a runtime that stops answering cannot keep the record button
     // spinning; a late answer still switches the screen (see `adoptRecordedLocaleBeforeStep`).
     if (options.adoptLocale) await adoptRecordedLocaleBeforeStep();
-    if (!applyOnboardingState(next, seq)) return;
-    runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
+    applyOnboardingState(next, seq);
   } catch (err) {
     // A refused step leaves the state as it is; the refusal is shown, so the operator sees why the
     // act did nothing instead of a screen that silently ignores the click. A newer outcome that
@@ -2079,8 +2078,7 @@ export async function startOnboardingAuto(): Promise<void> {
     const seq = beginOnboardingRequest();
     const next = await apiClient.startOnboardingAuto();
     await adoptRecordedLocale();
-    if (!applyOnboardingState(next, seq)) return;
-    runtimeStore.update((s) => ({ ...s, onboardingRefusal: null }));
+    applyOnboardingState(next, seq);
   } catch {
     // A refused automatic run leaves the state as it is.
   }
