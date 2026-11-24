@@ -543,6 +543,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_ARG_VERSION = "version";
     private static final String ACTIVITY_RUNNING = "running";
     private static final String ACTIVITY_PAUSING = "pausing";
+    private static final String ACTIVITY_PAUSED = "paused";
     private static final String KEY_PHASE_STATE = "phase_state";
     private static final String KEY_CURRENT_PHASE = "current_phase";
     private static final String KEY_NEW_PHASE = "new_phase";
@@ -556,6 +557,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String STATUS_STAGED = "staged";
     /** The row status of a plan an epic's cancel ended with the epic. */
     private static final String STATUS_CANCELLED = "cancelled";
+    /** The status of a project onboarding the operator abandoned. */
+    private static final String STATUS_ABANDONED = "abandoned";
     /** The member an epic's {@code next} answer names the plan it started with. */
     private static final String FIELD_STARTED_PLAN = "started_plan";
     /** The member an epic's {@code next} answer names the rows it could not start with. */
@@ -5644,7 +5647,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
-            case "paused" -> {
+            case ACTIVITY_PAUSED -> {
                 actions.add(ActionAvailability.enabled(ACTION_START));
                 actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
@@ -6048,9 +6051,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             transitions.add(Map.entry(PlanControlEvent.EVENT_CANCELLED,
                     new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, STATE_ENDED, null,
                             cancelledReason).toMap()));
-            if (!controlPlanEpics.containsKey(planId)) {
-                controlPlanEpics.put(planId, epicId);
-            }
+        controlPlanEpics.putIfAbsent(planId, epicId);
         }
         return transitions;
     }
@@ -6149,7 +6150,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var running = 0;
         for (var row : rows) {
             var status = rowStatusOf(epicId, row);
-            if (ACTIVITY_RUNNING.equals(status) || ACTIVITY_PAUSING.equals(status) || "paused".equals(status)) {
+            if (ACTIVITY_RUNNING.equals(status) || ACTIVITY_PAUSING.equals(status) || ACTIVITY_PAUSED.equals(status)) {
                 running++;
             }
         }
@@ -10757,8 +10758,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private void handleAbandonProjectOnboarding(MockHttpResponse response, String id) throws IOException {
         synchronized (projectsLock) {
             beingAddedProjects.removeIf(b -> b.checkoutPath().contains(id) || (b.abandonLink() != null && b.abandonLink().contains(id)));
-            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "abandoned", id));
-            response.json(200, Map.of(KEY_STATUS, "abandoned", "id", id));
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, STATUS_ABANDONED, id));
+            response.json(200, Map.of(KEY_STATUS, STATUS_ABANDONED, "id", id));
         }
     }
 

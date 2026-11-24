@@ -49,6 +49,7 @@ import de.planmarshall.api.control.ReviewDisposition;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -731,7 +732,7 @@ class ControlScenarioTest {
     private static List<String> rowStatuses(EpicResource epic) {
         return epic.workstreams().stream()
                 .flatMap(workstream -> workstream.rows().stream())
-                .map(row -> row.status())
+                .map(WorkRow::status)
                 .toList();
     }
 
