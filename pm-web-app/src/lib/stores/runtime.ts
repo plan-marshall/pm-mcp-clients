@@ -1416,16 +1416,15 @@ type DeletionTarget = { kind: 'ended-work'; project: string | null } | { kind: '
  * @returns the project of that object, from a cached resource that names the same object
  */
 function projectOfShownObject(state: RuntimeState, shown: ShownObject): string | null {
+  if (shown.kind === 'epic') {
+    const resource = state.currentEpicResource;
+    const fromEpic = resource?.epic_id === shown.id ? resource.project_id : null;
+    return fromEpic ?? state.selectedProjectId ?? state.lensProject ?? null;
+  }
   const planId = shown.kind === 'task' ? shown.planId : shown.id;
-  const fromPlan =
-    shown.kind === 'epic' || state.currentProcessTree?.plan_id !== planId
-      ? null
-      : state.currentProcessTree.project.project_id;
-  const fromEpic =
-    shown.kind === 'epic' && state.currentEpicResource?.epic_id === shown.id
-      ? state.currentEpicResource.project_id
-      : null;
-  return fromEpic ?? fromPlan ?? state.selectedProjectId ?? state.lensProject ?? null;
+  const tree = state.currentProcessTree;
+  const fromPlan = tree && tree.plan_id === planId ? tree.project.project_id : null;
+  return fromPlan ?? state.selectedProjectId ?? state.lensProject ?? null;
 }
 
 /**
