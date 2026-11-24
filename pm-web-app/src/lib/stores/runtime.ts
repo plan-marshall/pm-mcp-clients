@@ -8,6 +8,7 @@ import {
   type MachineSettingsUpdateResult,
   type ProjectOverviewResponse,
   type EventStreamState,
+  type ProcessNode,
   type ProcessTree,
   type EpicResource,
 } from '../api/client';
@@ -23,7 +24,6 @@ import {
   currentAddress,
   intentFor,
   openedFromOutside,
-  parentOf,
   switchTab,
   writeAddress,
   type WriteIntent,
@@ -38,6 +38,7 @@ import {
   type RememberedPlace,
 } from '../navigation/rememberedPlace';
 import { adoptRecordedLocale, adoptRecordedLocaleNow, currentLocale, translate } from '../i18n';
+import { formatTime } from '../display/format';
 import { actFailureReason, errorCodeOf } from '../api/errors';
 import { isLoopbackSession } from '../utils/loopback';
 import { refreshesProjectView } from './refreshEvents';
@@ -999,42 +1000,6 @@ export function announceNavigation(text: string): void {
   runtimeStore.update((s) => ({ ...s, quietNavigationNotice: text }));
 }
 
-/**
- * Falls back to the parent when the object the address shows was deleted.
- *
- * The fallback replaces the address rather than pushing, so the browser's Back never returns to
- * the deleted object, and the frame's live region says what went away (`web.nav.gone`).
- *
- * @param name the object's name, as the notice prints it
- * @returns `true` when the address moved to the parent
- */
-export function fallBackFromDeletedObject(name: string): boolean {
-  const parent = parentOf(addressOfState(get(runtimeStore)));
-  if (!parent?.route) return false;
-  applyRoute(parent.route, parent);
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-  announceNavigation(translate(get(currentLocale), 'web.nav.gone', { name }));
-  return true;
-}
-
-/**
- * Closes an in-place opened object by replacing the address without `open`.
- */
-export function closeOpenObject(): void {
-  runtimeStore.update((s) => ({ ...s, openObject: null }));
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-}
-
-/**
- * Replaces an in-place opened object with another one.
- *
- * @param open the new object identifier
- */
-export function replaceOpenObject(open: NonNullable<Address['open']>): void {
-  runtimeStore.update((s) => ({ ...s, openObject: open }));
-  writeAddress(addressOfState(get(runtimeStore)), 'replace');
-}
-
 /** A new or read report: the unread count, and the quiet notice of an arrival. */
 function handleReportEvent(event: string, data: unknown): void {
   if (event === 'report.sent') {
@@ -1279,13 +1244,6 @@ function handleDecisionEvent(event: string, data: unknown): void {
     const closed = announcedDecisionOf(data);
     if (closed) {
       decisionAnnouncer.decisionClosed(closed.id);
-      const state = get(runtimeStore);
-      if (
-        state.currentRoute === 'decision' &&
-        (state.selectedDecisionId === closed.id || currentAddress()?.decisionId === closed.id)
-      ) {
-        fallBackFromDeletedObject(closed.subject || closed.id);
-      }
     }
     runtimeStore.update((s) => ({
       ...s,
@@ -1377,65 +1335,169 @@ const LIFECYCLE_EVENTS = new Set([
   'runtime.stopping',
 ]);
 
-interface DeletionSpec {
-  events: string[];
-  route: AppRoute;
-  getId: (p: Record<string, string | undefined>) => string | undefined;
-  getSelectedId: (s: RuntimeState) => string | null | undefined;
-  getAddressId: (a: Address | null) => string | undefined;
-  fallbackKind: string;
+/** The cleanup events the store follows: who decided the deletion, and when it is done. */
+const CLEANUP_EVENTS = new Set(['cleanup.decided', 'cleanup.done']);
+
+/** Who decided the cleanup and when, as `cleanup.decided` announced it; `null` when unknown. */
+let cleanupDecision: { who: string; at: string } | null = null;
+
+/** The object the address shows, as a re-probe after a cleanup names it. */
+interface ShownObject {
+  kind: 'plan' | 'epic' | 'report' | 'task';
+  id: string;
+  /** What the notice prints for it. */
+  name: string;
+  /** The plan a task belongs to. */
+  planId?: string;
 }
 
-const DELETION_SPECS: DeletionSpec[] = [
-  {
-    events: ['plan.deleted', 'plan.removed'],
-    route: 'plan',
-    getId: (p) => p.plan_id,
-    getSelectedId: (s) => s.selectedPlanId,
-    getAddressId: (a) => a?.planId,
-    fallbackKind: 'plan',
-  },
-  {
-    events: ['epic.deleted', 'epic.removed'],
-    route: 'epic',
-    getId: (p) => p.epic_id,
-    getSelectedId: (s) => s.selectedEpicId,
-    getAddressId: (a) => a?.epicId,
-    fallbackKind: 'epic',
-  },
-  {
-    events: ['report.deleted', 'report.detail.deleted'],
-    route: 'report',
-    getId: (p) => p.report_id,
-    getSelectedId: (s) => s.selectedReportId,
-    getAddressId: (a) => a?.reportId,
-    fallbackKind: 'report',
-  },
-  {
-    events: ['task.deleted', 'task.removed'],
-    route: 'task',
-    getId: (p) => p.task_id,
-    getSelectedId: (s) => s.selectedTaskId,
-    getAddressId: (a) => a?.taskId,
-    fallbackKind: 'task',
-  },
-];
-
-function handleDeletionEvent(event: string, data: unknown): boolean {
-  for (const spec of DELETION_SPECS) {
-    if (!spec.events.includes(event)) continue;
-    const payload = (data || {}) as Record<string, string | undefined>;
-    const targetId = spec.getId(payload);
-    const state = get(runtimeStore);
-    const matchesTarget =
-      Boolean(targetId) &&
-      (spec.getSelectedId(state) === targetId || spec.getAddressId(currentAddress()) === targetId);
-    if (state.currentRoute === spec.route && matchesTarget) {
-      fallBackFromDeletedObject(payload.title || payload.name || targetId || spec.fallbackKind);
-    }
-    return true;
+/**
+ * @param state the store
+ * @param address the address bar's address
+ * @returns the object the address shows, or `null` for a route that shows none
+ */
+function shownObjectOf(state: RuntimeState, address: Address | null): ShownObject | null {
+  switch (address?.route) {
+    case 'plan':
+      return address.planId
+        ? {
+            kind: 'plan',
+            id: address.planId,
+            name: state.currentProcessTree?.title || address.planId,
+          }
+        : null;
+    case 'epic':
+      return address.epicId
+        ? {
+            kind: 'epic',
+            id: address.epicId,
+            name: state.currentEpicResource?.display_name || address.epicId,
+          }
+        : null;
+    case 'report':
+      return address.reportId
+        ? { kind: 'report', id: address.reportId, name: address.reportId }
+        : null;
+    case 'task':
+      return address.planId && address.taskId
+        ? { kind: 'task', id: address.taskId, name: address.taskId, planId: address.planId }
+        : null;
+    default:
+      return null;
   }
-  return false;
+}
+
+/**
+ * @param nodes the plan's process tree
+ * @param taskId the task to find
+ * @returns whether the tree still carries that task
+ */
+function treeHasTask(nodes: ProcessNode[], taskId: string): boolean {
+  return nodes.some(
+    (node) =>
+      (node.leaf_tasks ?? []).some((task) => task.task_id === taskId) ||
+      treeHasTask(node.sub_nodes ?? [], taskId),
+  );
+}
+
+/** Where a deletion sends the client: the project's ended work, or the object's parent. */
+type DeletionTarget =
+  | { kind: 'ended-work'; project: string | null }
+  | { kind: 'address'; address: Address };
+
+/**
+ * @param state the store
+ * @returns the project of the object on screen, when the store holds it
+ */
+function projectOfShownObject(state: RuntimeState): string | null {
+  return (
+    state.currentProcessTree?.project.project_id ??
+    state.currentEpicResource?.project_id ??
+    state.selectedProjectId ??
+    state.lensProject ??
+    null
+  );
+}
+
+/**
+ * Re-probes the object on screen and names where it goes when the runtime no longer has it.
+ *
+ * @param shown the object the address shows
+ * @returns the target, or `null` when the runtime still serves the object or cannot say
+ */
+async function deletionTargetOf(shown: ShownObject): Promise<DeletionTarget | null> {
+  const state = get(runtimeStore);
+  const endedWork = (): DeletionTarget => ({
+    kind: 'ended-work',
+    project: projectOfShownObject(state),
+  });
+  try {
+    if (shown.kind === 'task' && shown.planId) {
+      const tree = await apiClient.getPlanProcess(shown.planId);
+      return treeHasTask(tree.nodes ?? [], shown.id)
+        ? null
+        : { kind: 'address', address: { route: 'plan', planId: shown.planId } };
+    }
+    if (shown.kind === 'plan') {
+      await apiClient.getPlanProcess(shown.id);
+      return null;
+    }
+    if (shown.kind === 'epic') {
+      await apiClient.getEpicResource(shown.id);
+      return null;
+    }
+    await apiClient.getReport(shown.id);
+    return null;
+  } catch (failure: unknown) {
+    if ((failure as { status?: number }).status !== 404) return null;
+    return shown.kind === 'report' ? { kind: 'address', address: { route: 'reports' } } : endedWork();
+  }
+}
+
+/**
+ * Follows a cleanup that may have deleted the object on screen: the store re-probes it and, when
+ * the runtime no longer serves it, falls back to the target the specification names
+ * (`cleanup.adoc#deleting`), with the cleanup's own sentence.
+ */
+async function fallBackFromCleanup(): Promise<void> {
+  const shown = shownObjectOf(get(runtimeStore), currentAddress());
+  if (!shown) return;
+  const target = await deletionTargetOf(shown);
+  if (!target) return;
+  // The address may have moved while the read ran: a stale probe never navigates.
+  const stillShown = shownObjectOf(get(runtimeStore), currentAddress());
+  if (stillShown?.kind !== shown.kind || stillShown.id !== shown.id) return;
+  const locale = get(currentLocale);
+  const notice = cleanupDecision
+    ? translate(locale, 'system.cleanup.item_deleted', {
+        item: shown.name,
+        who: cleanupDecision.who,
+        time: formatTime(cleanupDecision.at, 'short', locale),
+      })
+    : translate(locale, 'web.nav.gone', { name: shown.name });
+  if (target.kind === 'ended-work') {
+    applyRoute('overview', { route: 'overview', project: target.project ?? undefined, mode: 'ended' });
+    runtimeStore.update((s) => ({
+      ...s,
+      lensProject: target.project ?? s.lensProject ?? null,
+      lensMode: 'ended',
+    }));
+  } else {
+    applyRoute(target.address.route ?? 'overview', target.address);
+  }
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+  announceNavigation(notice);
+}
+
+/** A decision for the cleanup: remembers who decided, then follows the deletion once it is done. */
+function handleCleanupEvent(event: string, data: unknown): void {
+  if (event === 'cleanup.decided') {
+    const payload = (data || {}) as { who?: string; decided_at?: string };
+    cleanupDecision =
+      payload.who && payload.decided_at ? { who: payload.who, at: payload.decided_at } : null;
+    return;
+  }
+  void fallBackFromCleanup();
 }
 
 export function handleRuntimeEvent(event: string, data: unknown): void {
@@ -1451,6 +1513,8 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     handleDecisionEvent(event, data);
   } else if (LIFECYCLE_EVENTS.has(event)) {
     handleLifecycleEvent(event, data);
+  } else if (CLEANUP_EVENTS.has(event)) {
+    handleCleanupEvent(event, data);
   } else if (refreshesProjectView(event)) {
     runtimeStore.update((s) => ({ ...s, projectEventNotice: `${event}_${Date.now()}` }));
   } else if (event === 'onboarding.step_completed') {
@@ -1461,8 +1525,6 @@ export function handleRuntimeEvent(event: string, data: unknown): void {
     // The list of what waits is the shell's count and the start page's rows: it follows every
     // change the runtime announces, whoever resolved the item.
     void handleNeedsOperatorChanged();
-  } else if (handleDeletionEvent(event, data)) {
-    // Deletion handled above
   }
 }
 
@@ -1515,7 +1577,6 @@ export async function pairBrowser(code: string): Promise<void> {
   void refreshDecisionsCount();
   void loadAttention();
 }
-
 
 /**
  * How many route applications this store has made. A call that awaits a read before it navigates
