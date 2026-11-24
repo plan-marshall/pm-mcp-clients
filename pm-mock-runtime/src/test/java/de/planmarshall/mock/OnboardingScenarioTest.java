@@ -633,8 +633,13 @@ class OnboardingScenarioTest {
 
                 var none = step(client, auth, "continue");
                 assertEquals("harness.none", none.get("state"));
-                assertEquals("No harness can be used", none.get("summary"));
-                assertEquals("harness.none", step(client, auth, "later").get("state"));
+                // The step names how to install each known harness and offers recheck and add only
+                // (14-machine-onboarding.adoc:277-283); the failed checks are not its facts.
+                var known = JsonTree.asArray(none.get("known"));
+                assertEquals(2, known.size());
+                assertFalse(none.containsKey("checks"));
+                assertFalse(none.containsKey("later"));
+                assertEquals("harness.probe-failed", step(client, auth, "recheck").get("state"));
             }
         }
 

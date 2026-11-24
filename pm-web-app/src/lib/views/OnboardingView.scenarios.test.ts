@@ -928,130 +928,100 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
   });
 
-  it('names each harness that failed its check at harness.none, never the raw state id', () => {
+  it('names how to install each known harness at harness.none, with recheck and add only', () => {
     arrange(
       onboardingState({
         state: 'harness.none',
-        summary: 'No harness can be used',
-        checks: [
+        summary: 'Looked for claude, opencode in your PATH. Nothing was found.',
+        known: [
           {
-            harness: 'claude',
-            name: 'Claude Code',
-            result: 'fail',
-            cause: 'not logged in',
-            fix: 'claude login',
+            harness_id: 'claude',
+            install_hint: 'docs.anthropic.com/en/docs/claude-code/setup',
           },
-          {
-            harness: 'opencode',
-            name: 'OpenCode',
-            result: 'fail',
-            cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
-            fix: 'install a version in 1.5 - 1.x, then check again',
-          },
+          { harness_id: 'opencode', install_hint: 'opencode.ai/docs/' },
         ],
         links: {
-          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.probe-failed' },
-          later: { href: '/api/v1/onboarding/harness/none/later', next: 'harness.none' },
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.scan' },
+          add: { href: '/api/v1/onboarding/harness/add', next: 'harness.add' },
         },
       }),
     );
 
     render(OnboardingView);
 
-    // The published shape of a failed check: the harness's name, the answer it gave and the fix.
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
-    const failures = screen.getByTestId('harness-none-failures');
-    expect(failures).toHaveTextContent('Claude Code');
-    expect(failures).toHaveTextContent('not logged in');
-    expect(failures).toHaveTextContent('claude login');
-    expect(failures).toHaveTextContent('OpenCode');
-    expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
-
-    // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
-    expect(document.body).not.toHaveTextContent('harness.none');
-    expect(document.body).not.toHaveTextContent('Machine · harness.none');
-  });
-
-  it('shows a harness’s path and failed check when the runtime reports them', () => {
-    arrange(
-      onboardingState({
-        state: 'harness.none',
-        summary: 'No harness can be used',
-        checks: [
-          {
-            harness: 'claude',
-            name: 'Claude Code',
-            path: '~/.local/bin/claude',
-            check: 'login',
-            result: 'fail',
-            cause: 'not logged in',
-            fix: 'claude login',
-          },
-          {
-            harness: 'opencode',
-            name: 'OpenCode',
-            check: 'wordsmith',
-            result: 'fail',
-            cause: 'refused',
-            fix: 'reinstall',
-          },
-          {
-            harness: 'codex',
-            name: 'Codex',
-            path: '/opt/homebrew/bin/codex',
-            result: 'pass',
-            cause: '',
-            fix: '',
-          },
-        ],
-      }),
-    );
-
-    render(OnboardingView);
-
-    const failures = screen.getByTestId('harness-none-failures');
-    expect(failures).toHaveTextContent('~/.local/bin/claude');
-    expect(failures).toHaveTextContent('the login check');
-    // An id the catalogue does not know reads as a word, never as a raw key or a wire token.
-    expect(failures).toHaveTextContent('Wordsmith');
-    expect(failures).not.toHaveTextContent('onboard.harness.check.');
-    expect(failures).not.toHaveTextContent('wordsmith');
-
-    // A check that passed is not listed under "none passed".
-    expect(failures).not.toHaveTextContent('Codex');
-  });
-
-  it('says what was looked for when nothing was found', () => {
-    arrange(
-      onboardingState({
-        state: 'harness.none',
-        summary: 'No harness found',
-        looks_for: 'claude, opencode',
-        locations: 'your PATH, ~/.local/bin',
-      }),
-    );
-
-    render(OnboardingView);
-
+    // The heading is the catalogue's, the runtime's summary stays a sentence under it.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness found');
     expect(
-      screen.getByText('Looked for claude, opencode in your PATH, ~/.local/bin.'),
+      screen.getByText('Looked for claude, opencode in your PATH. Nothing was found.'),
     ).toBeInTheDocument();
+
+    // Each known profile's install hint, and only the two links the catalogue names.
+    const install = screen.getByTestId('harness-none-install');
+    expect(install).toHaveTextContent('docs.anthropic.com/en/docs/claude-code/setup');
+    expect(install).toHaveTextContent('opencode.ai/docs/');
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add a harness that is not listed' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /later/i })).toBeNull();
     expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
   });
 
-  it('names the harnesses of a list and the place the runtime calls “in”', () => {
+  it('renders the install hints and both links in German, the heading from the catalogue', async () => {
+    const { setLocale, messagesStore } = await import('../i18n');
+    const { loadMessages } = await import('../../test/catalogue-fixture');
+    messagesStore.set(loadMessages('de'));
+    await setLocale('de');
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'Nichts gefunden.',
+        known: [
+          { harness_id: 'claude', install_hint: 'docs.anthropic.com/en/docs/claude-code/setup' },
+        ],
+        links: {
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.scan' },
+          add: { href: '/api/v1/onboarding/harness/add', next: 'harness.add' },
+        },
+      }),
+    );
+
+    try {
+      render(OnboardingView);
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+        'Kein Harness gefunden',
+      );
+      expect(screen.getByTestId('harness-none-install')).toHaveTextContent(
+        'docs.anthropic.com/en/docs/claude-code/setup',
+      );
+      expect(screen.getByRole('button', { name: 'Erneut prüfen' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Einen Harness hinzufügen, der nicht gelistet ist' }),
+      ).toBeInTheDocument();
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      await setLocale('en');
+    }
+  });
+
+  it('prints the summary only when it differs from the catalogue heading', () => {
     arrange(
       onboardingState({
         state: 'harness.none',
         summary: 'No harness found',
-        harnesses: [{ name: 'Claude Code' }, { harness_id: 'opencode' }],
-        in: 'your PATH',
+        known: [{ harness_id: 'claude', install_hint: 'docs.anthropic.com/en/docs/claude-code/setup' }],
       }),
     );
 
     render(OnboardingView);
 
-    expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
+    // The runtime's summary repeats the heading: it is not printed twice, and the install hint is
+    // still the explanation under it.
+    expect(screen.getAllByText('No harness found')).toHaveLength(1);
+    expect(screen.getByTestId('harness-none-install')).toHaveTextContent(
+      'docs.anthropic.com/en/docs/claude-code/setup',
+    );
   });
 
   it('names the aspect of a change link whose line the result does not report', () => {

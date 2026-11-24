@@ -1037,21 +1037,15 @@
           "level": "machine"
         },
         "facts": {
-          "summary": "No harness can be used",
-          "checks": [
+          "summary": "Looked for claude, opencode, codex, agy in your PATH. Nothing was found.",
+          "known": [
             {
-              "harness": "claude",
-              "name": "Claude Code",
-              "result": "fail",
-              "cause": "not logged in",
-              "fix": "claude login"
+              "harness_id": "claude",
+              "install_hint": "docs.anthropic.com/en/docs/claude-code/setup"
             },
             {
-              "harness": "opencode",
-              "name": "OpenCode",
-              "result": "fail",
-              "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
-              "fix": "install a version in 1.5 - 1.x, then check again"
+              "harness_id": "opencode",
+              "install_hint": "opencode.ai/docs/"
             }
           ]
         },
@@ -1067,12 +1061,6 @@
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/harness/add"
-          },
-          {
-            "id": "later",
-            "rel": "alt",
-            "method": "POST",
-            "href": "/api/v1/onboarding/harness/none/later"
           }
         ]
       },
@@ -1086,11 +1074,6 @@
           "method": "POST",
           "href": "/api/v1/onboarding/harness/add",
           "next": "harness.add"
-        },
-        "later": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/harness/none/later",
-          "next": "harness.none"
         }
       }
     },
