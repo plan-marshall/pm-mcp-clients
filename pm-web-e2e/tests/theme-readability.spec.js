@@ -405,7 +405,7 @@ const GUARD_JOURNEYS = [
       const add = page.getByTestId('add-project-btn');
       await expect(add).toBeVisible();
       await add.click();
-      await expect(page).toHaveURL(/\/projects\/onboard$/);
+      await expect(page).toHaveURL(/\/projects\/onboarding$/);
       await expect(page.getByTestId('project-onboarding-view')).toBeVisible();
       await record('ProjectOnboardingView');
     },
@@ -907,7 +907,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           const addBtn = page.getByTestId('add-project-btn');
           await expect(addBtn).toBeVisible();
           await addBtn.click();
-          await expect(page).toHaveURL(/\/projects\/onboard$/);
+          await expect(page).toHaveURL(/\/projects\/onboarding$/);
           await expect(page.getByTestId('project-onboarding-view')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'ProjectOnboardingView', theme, viewport: vp });
