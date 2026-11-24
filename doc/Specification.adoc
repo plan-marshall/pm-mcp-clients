@@ -65,7 +65,7 @@ link:../../plan-marshall-documentation/doc/specification/cli-and-security.adoc#_
 |`IN PROGRESS`
 |the family's requirements are listed in its
 link:../../plan-marshall-documentation/doc/specification/runtime-model.adoc#_traceability[Traceability]
-|the relay `pm-mcp serve --job`, the mock runtime, the event catalogue of the event streams, the `over_size` distribution resource of `pm-api` and the hidden-character rule of its encoder
+|the relay `pm-mcp serve --job`, the mock runtime, the event catalogue of the event streams, and the hidden-character rule of the encoder of `pm-api`
 |link:implementation-watch/runtime-model.adoc[runtime-model.adoc] (5 items)
 
 |link:specification/harness-integration.adoc[harness-integration.adoc]

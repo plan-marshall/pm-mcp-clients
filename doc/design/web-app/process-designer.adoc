@@ -21,7 +21,7 @@ A workflow unit the operator may own. Which units those are is the runtime's, se
 |Group |Units |In the designer
 
 |Project-owned units
-|the phase units `phase-1-init`, `phase-2-refine`, `phase-3-outline`, `phase-4-plan`, `phase-5-execute`, `phase-6-finalize`, and the `land` lane's `land`; `git.commit_and_push`, `remediation.*`, `replan`, `adjudicate.decisions`
+|the phase units `phase-1-init`, `phase-2-refine`, `phase-3-outline`, `phase-4-plan`, `phase-5-execute`, `phase-sanity-check`, `phase-6-finalize`, and the `land` lane's `land`; `git.commit_and_push`, `remediation.*`, `replan`, `adjudicate.decisions`, `sanity-check`
 |opened, edited, placed, removed
 
 |Variants of the plan behaviour axes

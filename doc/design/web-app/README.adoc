@@ -93,7 +93,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/epic-view.adoc[Epic View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5]), with its tabs Plans, Intent, Landings, Reviews and Events
 
 |Intent and outline
-|link:../shared/intent-and-outline.adoc[Intent and Outline] with link:../shared/intent-and-outline-texts.adoc[its Texts]: the plan's intent, builder check and outline, the epic's intent (each in its object's tab _Intent_), and the `over_size` chart on a project's setup tab
+|link:../shared/intent-and-outline.adoc[Intent and Outline] with link:../shared/intent-and-outline-texts.adoc[its Texts]: the plan's intent, builder check and outline, and the epic's intent, each in its object's tab _Intent_
 
 |Decisions
 |link:../shared/decisions.adoc[Decisions] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]), with the browser notifications (link:../shared/decisions.adoc#announce[Announcing a Decision]) and the chat as a side column beside a decision (link:../shared/decisions.adoc#chat[A Chat Before Answering])
@@ -460,7 +460,7 @@ Every view and every object has one canonical address, in one scheme: path segme
 
 |`/projects`, `/projects/{id}`
 |Projects and the one project page
-|`?tab=setup` opens the project's setup (with the `over_size` chart of link:../shared/intent-and-outline.adoc#oversize[Intent and Outline]); without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
+|`?tab=setup` opens the project's setup; without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
 
 |`/project-onboarding/{entry}`
 |Project onboarding

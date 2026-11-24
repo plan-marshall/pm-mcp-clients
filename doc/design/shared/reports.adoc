@@ -48,10 +48,6 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |`relay-docs waits: overlap with relay-auth-v2 (2 files)`
 |the epic view, at the row (link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself])
 
-|`epic.overlap_found`
-|`relay-cursor-order and relay-docs-site changed 3 files in common`
-|the epic view, at the two rows
-
 |`epic.recut_applied`
 |`relay-hardening re-ordered its staged plans after relay-auth-v2 landed`
 |the epic view, at the landing and its judgment
@@ -353,10 +349,6 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |`report.subject.epic_waits_overlap`
 |{plan} waits: overlap with {other} ({files, plural, one {# file} other {# files}})
 |{plan} wartet: Überschneidung mit {other} ({files, plural, one {# Datei} other {# Dateien}})
-
-|`report.subject.epic_overlap_found`
-|{plan} and {other} changed {files, plural, one {# file} other {# files}} in common
-|{plan} und {other} haben {files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} geändert
 
 |`report.subject.epic_recut_applied`
 |{epic} {change, select, reorder {re-ordered its staged plans} amend {amended its staged plans} other {changed its staged plans}} after {plan} landed

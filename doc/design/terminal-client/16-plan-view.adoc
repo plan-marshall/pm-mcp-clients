@@ -105,7 +105,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
 ----
 
 * The head, the entries and their kinds, the gap where entries gave way to the journal's bound (`plan.activity.gap`), and a harness without an event stream (`plan.activity.server_only`) are those of the shared design; every text and target is printed after the control sequences are removed (xref:04-console.adoc#output-safety[Output Safety]).
-* *Off track*: the head and the entry name the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`); it needs no act and is never a badge of what needs the operator. A `yield` or a `restart` is also the report `task.off_track` (xref:24-reports.adoc[Reports]).
+* *Off track*: the head and the entry name the signal (`repeating`, `no_progress`, `failing_again`, `edit_churn`, `agent_started`), its value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`); it needs no act and is never a badge of what needs the operator. A `yield` or a `restart` is also the report `task.off_track` (xref:24-reports.adoc[Reports]).
 * The stream is opened only while the level is shown and closed when it is left.
 
 [#changes]
