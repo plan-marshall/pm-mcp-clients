@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
+import path from 'node:path';
 import { get } from 'svelte/store';
 import ProcessDesigner from './ProcessDesigner.svelte';
 import { apiClient } from '../api/client';
@@ -9,6 +10,7 @@ import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore } from '../stores/runtime';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
+import { rulesOf, styleOf } from '../../test/templateStyle';
 
 const finalizeText = [
   'workflow phase-6-finalize version 5 format 1',
@@ -1400,6 +1402,11 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
 
     await waitFor(() => expect(removeSpy).toHaveBeenCalledWith(null, 'phase-6-finalize'));
     await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+    // The removed row was the dialog's opener, so the focus goes to the installed-units heading,
+    // which outlives the list — never to the page body.
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 2, name: 'Start from an installed unit' }),
+    );
   });
 
   it('keeps the place dialog open on Escape while the landing runs, and shows no empty footer row', async () => {
@@ -1447,7 +1454,10 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     const drafted = (screen.getByTestId('workflow-text') as HTMLTextAreaElement).value;
 
     await fireEvent.click(screen.getByTestId('unit-open-epic'));
-    expect(await screen.findByTestId('designer-leave-dialog')).toBeInTheDocument();
+    const leave = await screen.findByTestId('designer-leave-dialog');
+    // A discard is a destructive act: the dialog names what it costs in the danger colour.
+    expect(leave).toHaveClass('dialog--danger');
+    expect(leave).toHaveTextContent('The draft is thrown away; nothing is saved.');
 
     await fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -1494,11 +1504,17 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     expect(screen.getByLabelText('Icon')).toBe(icon);
   });
 
-  it('opens the place dialog at the wide size the difference needs', async () => {
+  it('opens the place dialog at the wide size the difference needs, and the dialog owns that width', async () => {
     render(ProcessDesigner);
     await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
     await openPlacement();
 
     expect(screen.getByTestId('place-dialog')).toHaveClass('dialog--wide');
+    // The rule is the dialog's own: a caller cannot win a cascade against it.
+    const wide = rulesOf(
+      styleOf(path.resolve(__dirname, '../components/Dialog.svelte')),
+      '.dialog--wide',
+    );
+    expect(wide.join(' ')).toContain('inline-size: min(1000px, 100%)');
   });
 });

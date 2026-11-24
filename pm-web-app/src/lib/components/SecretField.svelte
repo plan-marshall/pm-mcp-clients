@@ -84,13 +84,14 @@
   // Counts the stores started, so a rejected store knows whether a newer one owns the field.
   let storeGeneration = 0;
   /**
-   * The sentence a rejected store leaves under the field, until a newer store starts or the caller
-   * names its own `error`. A field that silently puts the secret back leaves the person guessing.
+   * Whether the last store was rejected, until a newer store starts or the caller names its own
+   * `error`. A field that silently puts the secret back leaves the person guessing. The flag is
+   * held, not the sentence: a language switch re-words the message like every other one.
    */
-  let storeFailure = $state<string | null>(null);
+  let storeFailed = $state(false);
 
   /** The caller's own error wins; a rejected store reports its own until a newer store starts. */
-  const shownError = $derived(error ?? storeFailure);
+  const shownError = $derived(error ?? (storeFailed ? $t('common.field.store_failed') : null));
 
   const describedBy = $derived.by(() => {
     const ids: string[] = [];
@@ -136,15 +137,15 @@
    * rejected store puts the secret back, still masked, so the operator's input is not lost — but
    * only into a field still empty and only while no newer store has started: what was typed or
    * stored while the store was pending is newer and stays. A reveal pressed while the store was
-   * pending is undone, so the restored secret is masked. The caller reports the failure through
-   * `error`, so the rejection is not rethrown.
+   * pending is undone, so the restored secret is masked. The field then names the failure itself
+   * (`common.field.store_failed`), and a caller's own `error` takes precedence over that message.
    */
   async function handleStore(): Promise<void> {
     if (!value || disabled) return;
     const secretToStore = value;
     storeGeneration += 1;
     const generation = storeGeneration;
-    storeFailure = null;
+    storeFailed = false;
     value = '';
     revealed = false;
     try {
@@ -153,7 +154,7 @@
       if (generation === storeGeneration && !value) {
         value = secretToStore;
         revealed = false;
-        storeFailure = $t('common.field.store_failed');
+        storeFailed = true;
       }
     }
   }

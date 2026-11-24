@@ -152,6 +152,8 @@
   let pendingRemoval = $state<WorkflowUnit | null>(null);
   /** Whether the confirmed removal runs, which holds its dialog open. */
   let isRemoving = $state(false);
+  /** The installed-units heading: the focus goes there once a removed row is gone. */
+  let unitsHeading = $state<HTMLElement | null>(null);
 
   const placeTitle = $derived.by(() => {
     if (placeStage === 'target') return $t('designer.place.question', { unit: unitName });
@@ -1160,7 +1162,9 @@
 
   <div class="designer__workspace">
     <aside class="designer__units">
-      <h2 class="designer__units-title">{$t('designer.input.installed')}</h2>
+      <h2 class="designer__units-title" tabindex="-1" bind:this={unitsHeading}>
+        {$t('designer.input.installed')}
+      </h2>
       {#if units.length === 0}
         <p class="designer__units-empty">—</p>
       {:else}
@@ -1455,7 +1459,7 @@
   actionLabel={$t('designer.remove.confirm')}
   cancelLabel={$t('common.action.cancel')}
   busy={isRemoving}
-  testid="confirm-dialog"
+  returnFocusElement={unitsHeading}
   onConfirm={confirmRemoval}
   onClose={() => {
     pendingRemoval = null;
@@ -1465,6 +1469,8 @@
 <Dialog
   open={Boolean(pendingAction)}
   title={$t('designer.leave.question')}
+  danger
+  consequences={[$t('designer.leave.consequence')]}
   onClose={stayInDesigner}
   testid="designer-leave-dialog"
 >

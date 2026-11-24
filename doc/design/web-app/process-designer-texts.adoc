@@ -114,6 +114,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Discard the draft? The draft changed since it was last placed.
 |Entwurf verwerfen? Der Entwurf hat sich geändert, seit er zuletzt platziert wurde.
 
+|`designer.leave.consequence`
+|The draft is thrown away; nothing is saved.
+|Der Entwurf wird verworfen; nichts wird gespeichert.
+
 |`designer.frontmatter.title`
 |About this unit
 |Über diese Einheit

@@ -59,6 +59,7 @@ class DesignerCatalogueTest {
                 "designer.installed.compiled_only",
                 "designer.draft.restored",
                 "designer.leave.question",
+                "designer.leave.consequence",
                 "designer.frontmatter.title",
                 "designer.frontmatter.add",
                 "designer.frontmatter.author",

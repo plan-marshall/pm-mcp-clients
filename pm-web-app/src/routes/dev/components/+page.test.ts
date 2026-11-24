@@ -533,8 +533,8 @@ describe('/dev/components page fixture', () => {
           expect(fieldsSection).not.toBeNull();
           const section = fieldsSection as HTMLElement;
 
-          // Rest, Filled, Invalid, Disabled, Demo form cards
-          expect(section.querySelectorAll('.card')).toHaveLength(5);
+          // Rest, Filled, Invalid, Disabled, Demo form cards, the escaping-key form's card
+          expect(section.querySelectorAll('.card')).toHaveLength(6);
 
           // (a) Each state card holds the fields the page places in it.
           for (const [titleKey, types] of Object.entries(MATRIX)) {

@@ -365,6 +365,29 @@ describe('SystemView component', () => {
     expect(stopSpy).toHaveBeenCalledWith('drain');
   });
 
+  it('keeps the choice the request was sent with when the radio changes while the stop runs', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    let resolveStop: (value: unknown) => void = () => {};
+    const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(
+      new Promise((resolve) => {
+        resolveStop = resolve;
+      }) as never,
+    );
+
+    render(SystemView);
+    await waitFor(() => expect(screen.getByTestId('action-bar-overflow')).toBeInTheDocument());
+    await fireEvent.click(await openRuntimeAct('Stop…'));
+    await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
+
+    // The operator changes the radio while the request runs: the state update must follow the
+    // choice the request carried, never the one typed afterwards.
+    await fireEvent.click(screen.getByRole('radio', { name: /^Now/ }));
+    resolveStop({ lifecycle_state: 'draining' });
+
+    expect(stopSpy).toHaveBeenCalledExactlyOnceWith('drain');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
   it('closes the lifecycle dialog on Escape and returns the focus to the act that opened it', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
 

@@ -47,7 +47,7 @@ describe('DemoFormFixture keyboard walk and validation (Done-when 4.3)', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/reason/i);
   });
 
-  it('moves the focus in document order from the text field to the textarea to the buttons', async () => {
+  it('gives every control of the documented order a tab stop, and each one takes the focus', async () => {
     render(DemoFormFixture);
     // Both fields are filled, so Save is enabled too and every control can take the focus.
     await fireEvent.input(screen.getByTestId('demo-form-text'), {

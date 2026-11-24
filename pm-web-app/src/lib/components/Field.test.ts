@@ -7,6 +7,8 @@ import TextArea from './TextArea.svelte';
 import NumberField from './NumberField.svelte';
 import SelectField from './SelectField.svelte';
 import CheckField from './CheckField.svelte';
+import SecretField from './SecretField.svelte';
+import CodeField from './CodeField.svelte';
 import { styleOf } from '../../test/templateStyle';
 import { REMOVED_OUTLINE } from '../../test/fieldContract';
 
@@ -61,10 +63,10 @@ describe('Field', () => {
   });
 
   it('leaves the focus outline of every field control to the design, never removing it without the focus ring', async () => {
-    // The population is derived from the roles the field components render, so a component that
-    // gains, loses or renames its control is re-checked rather than silently left out. The Field
-    // wrapper is in it too: it draws no control of its own, but a rule of its own could still take
-    // the outline away from the control it wraps.
+    // The population is the field components of components-fields.adoc that draw a control of their
+    // own: a component added there has to be added here, which is a visible decision and not a
+    // silently skipped one. The design draws the ring in the component's own `:focus` rule, a block
+    // apart from the one that removes the outline, so the ring is looked for in the whole sheet.
     const fields = [
       {
         name: 'Field',
@@ -81,6 +83,8 @@ describe('Field', () => {
           }),
       },
       { name: 'CheckField', draw: () => render(CheckField, { props: { label: 'Agree' } }) },
+      { name: 'SecretField', draw: () => render(SecretField, { props: { label: 'Secret' } }) },
+      { name: 'CodeField', draw: () => render(CodeField, { props: { label: 'Code' } }) },
     ];
 
     for (const field of fields) {

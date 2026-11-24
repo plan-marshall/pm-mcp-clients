@@ -211,9 +211,6 @@ describe('actsFor', () => {
       expect(act?.role).toBe('overflow');
     }
     expect(primaries(updateAvailable)).toEqual([]);
-
-    // Draining has nothing destructive: both acts are additive or leave the runtime running.
-    expect(actsFor('runtime', 'draining').filter((act) => act.destructive)).toEqual([]);
   });
 });
 

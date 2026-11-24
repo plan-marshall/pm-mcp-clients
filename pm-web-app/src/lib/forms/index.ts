@@ -21,12 +21,29 @@ export interface FormKeyboard {
 }
 
 /**
- * @param value an attribute value a selector names
- * @returns the value escaped for a double-quoted CSS string, so a key with a quote or a backslash
- *          names its control instead of breaking the selector
+ * Finds the control of the first invalid field: the element that carries the field key as its
+ * name, its id or its test id, the first in document order.
+ *
+ * A field key is the operator's data, not a CSS identifier: `2fa`, `a.b` and `a"b` are ordinary
+ * keys. A selector built from them unescaped either throws (`a"b`, and `2fa` as an id) before the
+ * error is shown, or silently matches another element (`#a.b` is the id `a` with the class `b`).
+ * The lookup compares the attributes themselves, so no key can break it and no escaping is needed.
+ *
+ * @param key the field's key
+ * @returns the control, or null when nothing carries the key
  */
-function cssStringValue(value: string): string {
-  return value.replaceAll('\\', String.raw`\\`).replaceAll('"', String.raw`\"`);
+function controlForKey(key: string): HTMLElement | null {
+  const candidates = document.querySelectorAll<HTMLElement>('[name], [id], [data-testid]');
+  for (const candidate of candidates) {
+    if (
+      candidate.getAttribute('name') === key ||
+      candidate.id === key ||
+      candidate.getAttribute('data-testid') === key
+    ) {
+      return candidate;
+    }
+  }
+  return null;
 }
 
 /**
@@ -326,16 +343,7 @@ export function createForm<T extends Record<string, unknown>>(config: FormConfig
 
     if (firstInvalid) {
       if (typeof document !== 'undefined') {
-        // A field key is the operator's data, not a CSS identifier: `2fa`, `a.b` and `a"b` are
-        // ordinary keys, and a selector built from them unescaped throws before the error is shown.
-        // The id is read through its own lookup, which needs no escaping at all.
-        const el =
-          document.querySelector<HTMLElement>(`[name="${cssStringValue(firstInvalid)}"]`) ??
-          document.getElementById(firstInvalid) ??
-          document.querySelector<HTMLElement>(
-            `[data-testid="${cssStringValue(firstInvalid)}"]`,
-          );
-        el?.focus();
+        controlForKey(firstInvalid)?.focus();
       }
       publish();
       return false;
