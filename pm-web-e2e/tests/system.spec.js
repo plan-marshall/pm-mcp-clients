@@ -200,6 +200,66 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     await expect(page.getByTestId('upgrade-withdrawn')).toContainText('0.9.1 keeps running');
   });
 
+  test('returns the focus to a visible element when the upgrade consent closes on Escape', async ({
+    page,
+  }) => {
+    await page
+      .getByRole('button', { name: /Upgrade/i })
+      .first()
+      .click();
+    const consent = page.getByTestId('upgrade-consent');
+    await expect(consent).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(consent).toHaveCount(0);
+
+    // The opener is unmounted with the "update available" panel, so the focus must land on
+    // something that is still there and still shown — never on the page body.
+    const focus = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!element) return { onBody: true, visible: false, text: '' };
+      const box = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return {
+        onBody: element === document.body,
+        visible: box.height > 0 && box.width > 0 && style.visibility !== 'hidden',
+        text: element.textContent?.trim() ?? '',
+      };
+    });
+    expect(focus.onBody).toBe(false);
+    expect(focus.visible).toBe(true);
+    expect(focus.text).toBe('System');
+  });
+
+  test('returns the focus to a visible element when the consent closes on Not now', async ({
+    page,
+  }) => {
+    await page
+      .getByRole('button', { name: /Upgrade/i })
+      .first()
+      .click();
+    const consent = page.getByTestId('upgrade-consent');
+    await expect(consent).toBeVisible();
+
+    await page.getByRole('button', { name: 'Not now' }).click();
+    await expect(consent).toHaveCount(0);
+
+    const focus = await page.evaluate(() => {
+      const element = document.activeElement;
+      if (!element) return { onBody: true, visible: false, text: '' };
+      const box = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return {
+        onBody: element === document.body,
+        visible: box.height > 0 && box.width > 0 && style.visibility !== 'hidden',
+        text: element.textContent?.trim() ?? '',
+      };
+    });
+    expect(focus.onBody).toBe(false);
+    expect(focus.visible).toBe(true);
+    expect(focus.text).toBe('System');
+  });
+
   test('lists what the drain still runs, counts it, and shrinks it as it ends', async ({
     page,
     request,
