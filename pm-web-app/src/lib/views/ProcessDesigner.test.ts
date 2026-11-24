@@ -1426,7 +1426,12 @@ describe('ProcessDesigner: the dialogs, the removal and the intake (PLAN-178 D2)
     });
     await openPlacement();
     await fireEvent.click(screen.getByTestId('place-compare'));
-    await fireEvent.click(screen.getByTestId('place-confirm'));
+    const confirm = await screen.findByTestId('place-confirm');
+    // A click in the browser focuses the act first; only then does the footer's removal have a
+    // focus to take away.
+    confirm.focus();
+    expect(document.activeElement).toBe(confirm);
+    await fireEvent.click(confirm);
 
     const dialog = screen.getByTestId('place-dialog');
     await waitFor(() => expect(dialog).toHaveTextContent('Placing phase-6-finalize'));

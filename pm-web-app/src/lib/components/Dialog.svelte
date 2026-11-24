@@ -10,7 +10,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { afterUpdate, onMount } from 'svelte';
   import { uniqueId } from '../utils/uniqueId';
   import { portal } from '../utils/portal';
 
@@ -173,13 +173,17 @@
   });
 
   // A footer that goes away takes the act that held the focus with it. The focus then returns to the
-  // dialog box, which stays mounted, instead of falling to the page behind the dialog.
-  $: if (open && !footer) {
-    const active = typeof document === 'undefined' ? null : document.activeElement;
-    if (panel === undefined || active === null || !panel.contains(active)) {
-      panel?.focus();
+  // dialog box, which stays mounted, instead of falling to the page behind the dialog. It runs after
+  // the update, because the earlier pass still holds the control that is about to be removed.
+  afterUpdate(() => {
+    if (!open || footer) {
+      return;
     }
-  }
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    if (panel !== undefined && (active === null || !panel.contains(active))) {
+      panel.focus();
+    }
+  });
 </script>
 
 {#if open}
