@@ -462,9 +462,9 @@ Every view and every object has one canonical address, in one scheme: path segme
 |Projects and the one project page
 |`?tab=setup` opens the project's setup (with the `over_size` chart of link:../shared/intent-and-outline.adoc#oversize[Intent and Outline]); without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
 
-|`/project-onboarding/{entry}`
+|`/projects/onboarding/{id}`
 |Project onboarding
-|Each open run before its enrolment, addressed by its entry (link:../shared/project-onboarding.adoc#several[Project Onboarding, Several Onboardings at Once]), so several runs open in tabs of their own; after its enrolment the run continues at `/projects/{id}?tab=setup`, and its old entry address is replaced by that one.
+|Each open run before its enrolment, addressed by its own id (link:../shared/project-onboarding.adoc#several[Project Onboarding, Several Onboardings at Once]), so several runs open in tabs of their own and a reload lands on the same run; after its enrolment the run continues at `/projects/{id}?tab=setup`, and its old entry address is replaced by that one.
 
 |`/start`, `/projects/{id}/start`, `/entries/{id}`
 |Starting work

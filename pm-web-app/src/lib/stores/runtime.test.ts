@@ -47,6 +47,7 @@ import {
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { writeRememberedPlace } from '../navigation/rememberedPlace';
+import { formatAddress } from '../routes';
 import { resetOpenedFromOutside } from '../navigation/history';
 import { PROJECT_REFRESH_EVENTS } from './refreshEvents';
 
@@ -1314,6 +1315,26 @@ describe('the onboarding step of a state', () => {
 
     // Assert: the newer read is the state the runtime means.
     expect(get(runtimeStore).onboarding?.state).toBe('roles.review');
+  });
+  it('keeps a project onboarding run’s own id in the address, so a reload lands on the run', () => {
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'project-onboarding', selectedOnboardingId: 'ent-cui' }),
+    );
+
+    const params = routeParamsOf(get(runtimeStore));
+
+    expect(params.onboardingId).toBe('ent-cui');
+    expect(formatAddress({ route: 'project-onboarding', ...params })).toBe(
+      '/projects/onboarding/ent-cui',
+    );
+  });
+
+  it('carries no onboarding id on another route', () => {
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'projects', selectedOnboardingId: 'ent-cui' }),
+    );
+
+    expect(routeParamsOf(get(runtimeStore)).onboardingId).toBeUndefined();
   });
 });
 

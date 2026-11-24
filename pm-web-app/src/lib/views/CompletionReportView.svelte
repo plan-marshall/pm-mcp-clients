@@ -401,9 +401,7 @@
         </span>
         {#if !data.deliverables || data.deliverables.length === 0}
           <p class="empty-text">
-            {data.phase
-              ? $t('report.completion.deliverables_none', { phase: data.phase })
-              : $t('report.completion.deliverables_none_no_phase')}
+            {$t('report.completion.deliverables_none_no_phase')}
           </p>
         {:else}
           <ul class="deliverables-list">

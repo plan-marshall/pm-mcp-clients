@@ -571,21 +571,20 @@ describe('CompletionReportView component', () => {
       unmountDe();
       useCatalogue('en');
 
-      // Empty deliverables names the phase from the report
+      // Empty deliverables read one sentence: the wire names no phase on the report.
       render(CompletionReportView, {
         planId: 'fix-relay',
-        report: { ...mockReport, deliverables: [], phase: 'outline' },
+        report: { ...mockReport, deliverables: [] },
       });
-      expect(screen.getByText('no deliverables yet: it ended in outline')).toBeInTheDocument();
+      expect(screen.getByText('no deliverables yet')).toBeInTheDocument();
     });
 
-    it('names no phase for empty deliverables when the report supplies none, and never guesses one from the token rows', () => {
+    it('never guesses a phase from the token rows', () => {
       useCatalogue('en');
-      const { phase: _phase, ...withoutPhase } = { ...mockReport, phase: 'outline' };
       render(CompletionReportView, {
         planId: 'fix-relay',
         report: {
-          ...withoutPhase,
+          ...mockReport,
           deliverables: [],
           token_usage: {
             ...(mockReport.token_usage as NonNullable<PlanCompletionReport['token_usage']>),

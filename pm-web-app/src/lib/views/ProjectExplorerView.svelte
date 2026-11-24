@@ -891,7 +891,9 @@
    */
   function projectNeedsReason(project: EnrolledProject): string {
     if (project.readiness !== 'ready') return 'setup';
-    return project.needs_operator_kind || 'decision';
+    // The wire names the count of what waits, never a kind: a ready project with a waiting item is
+    // shown with the generic decision reason rather than a field no record carries.
+    return 'decision';
   }
 
   /**

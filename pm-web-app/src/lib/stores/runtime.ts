@@ -1695,6 +1695,12 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
       state.currentRoute === 'onboarding'
         ? (requestedOnboardingStepFromUrl() ?? state.onboardingStep ?? undefined)
         : undefined,
+    // A project's onboarding run keeps its own id in the address, so a reload lands on the same run
+    // instead of the bare route that asks for a checkout.
+    onboardingId:
+      state.currentRoute === 'project-onboarding'
+        ? (state.selectedOnboardingId ?? undefined)
+        : undefined,
   };
 }
 

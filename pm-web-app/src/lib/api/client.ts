@@ -138,7 +138,6 @@ export interface EnrolledProject {
   remote_url?: string | null;
   readiness: ProjectReadiness;
   setup_needs_summary?: string | null;
-  needs_operator_kind?: string | null;
   needs_operator_count: number;
   active_plans_count: number;
   active_epics_count: number;
@@ -154,8 +153,6 @@ export interface BeingAddedProject {
   total_steps: number;
   continue_link?: string | null;
   abandon_link?: string | null;
-  build_environment?: ProjectBuildEnvironment | null;
-  links?: Record<string, OnboardingLink | string>;
 }
 
 export interface ProjectExplorer {
@@ -234,7 +231,6 @@ export interface ProjectOnboardingState {
   detected_domains?: string[];
   discovered_modules?: string[];
   credentials_needed?: string[];
-  lifecycle_gate?: boolean;
   links?: Record<string, OnboardingLink | string>;
   /** What the state reports of its own, for a step without a screen here. */
   [key: string]: unknown;
@@ -1103,7 +1099,6 @@ export interface PlanCompletionReport {
   change?: ChangeSizeRecord | null;
   change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
-  phase?: string;
   ended?: string;
   ran?: string;
 }
@@ -1870,6 +1865,17 @@ export interface StartStateResource {
   state?: unknown;
   links?: unknown;
   start: StartState;
+  /**
+   * A project onboarding's entry serves these beside the state instead of a `start`: the run's id
+   * and name, the step it waits at, whether the pilot is offered, and the machine's build
+   * environment (`GET /api/v1/entries/{id}`).
+   */
+  id?: string;
+  name?: string;
+  step?: number;
+  total_steps?: number;
+  pilot?: boolean;
+  build_environment?: ProjectBuildEnvironment | null;
 }
 
 export interface EntryOpenRequest {
@@ -3286,6 +3292,25 @@ export class ApiClient {
       `/api/v1/entries/${encodeURIComponent(entryId)}/links/${act}`,
       body,
     );
+  }
+
+  /**
+   * Applies the act a link's own {@code href} names, without rebuilding its path.
+   *
+   * The runtime publishes each act as an absolute path on its representation; following that href is
+   * the contract (the entry's `set` link, `project-onboarding.adoc#entry`), so a runtime that moves
+   * the path does not need a client release. Only a path the same origin serves is accepted: a link
+   * that names another host is refused instead of being sent there.
+   *
+   * @param href the act's own href, as the representation published it
+   * @param body the act's body
+   * @returns the resource the act answers
+   */
+  public async actByHref<T = StartStateResource>(
+    href: string,
+    body: Record<string, unknown> = {},
+  ): Promise<T> {
+    return this.request<T>('POST', href, body);
   }
 
   /**
