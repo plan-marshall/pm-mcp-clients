@@ -334,8 +334,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |{task_id} {outcome, select, done {erledigt} failed {fehlgeschlagen} other {nicht machbar}}
 
 |`control.chat.line.decision_opened`
-|{id} opened{blocks, select, yes {: blocks the plan} other {}}
-|{id} gestellt{blocks, select, yes {: blockiert den Plan} other {}}
+|{id} opened{blocks, select, plan {: blocks the plan} epic {: blocks the epic} setup {: blocks the project's setup} entry {: blocks the start} task {: blocks one task} other {}}
+|{id} gestellt{blocks, select, plan {: blockiert den Plan} epic {: blockiert das Epic} setup {: blockiert die Einrichtung des Projekts} entry {: blockiert den Start} task {: blockiert einen Task} other {}}
 
 |`control.chat.line.decision_answered`
 |{id} answered{channel, select, web { in the web app ({device})} cli { in the terminal} other {}}
