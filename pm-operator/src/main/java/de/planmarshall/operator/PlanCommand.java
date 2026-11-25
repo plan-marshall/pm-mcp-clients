@@ -1736,7 +1736,7 @@ public final class PlanCommand implements Callable<Integer> {
                 return new PutOutcome(PlanSettingsUpdateResult.fromJson(response.bodyText()), null);
             }
             if (response.status() == 409) {
-                var answer = settingsAnswer(response);
+                var answer = PlanSettingsUpdateResult.resultOrNull(response.bodyText());
                 if (answer != null) {
                     return new PutOutcome(answer, null);
                 }
@@ -1745,24 +1745,6 @@ public final class PlanCommand implements Callable<Integer> {
             // catalogue renders, and a code the catalogue does not know keeps the neutral line.
             return new PutOutcome(new PlanSettingsUpdateResult(false, false, revision, null, null),
                                 new OperatorRefusedException("plan settings " + planId, response));
-        }
-
-        /**
-         * Reads a {@code 409} answer that is a settings result rather than a coded refusal: a
-         * revision conflict, or a change refused as too late.
-         *
-         * @param response the runtime's answer
-         * @return the settings result, or {@code null} when the body carries no result — a coded
-         *         refusal of the act, which the caller renders from its code
-         */
-        private @Nullable PlanSettingsUpdateResult settingsAnswer(HttpResponse response) {
-            try {
-                var result = PlanSettingsUpdateResult.fromJson(response.bodyText());
-                return result.conflict() || result.restoreState() != null ? result : null;
-            } catch (IOException _) {
-                // The body is no settings result: it is a coded refusal of the act.
-                return null;
-            }
         }
 
         private int refused(PrintWriter out, String aspect, @Nullable String value,

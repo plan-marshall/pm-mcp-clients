@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -170,6 +171,32 @@ class ControlRecordsTest {
 
         var tooLate = PlanSettingsUpdateResult.tooLate("landing");
         assertEquals("landing", PlanSettingsUpdateResult.fromJson(tooLate.toJson()).restoreState());
+    }
+
+    @Test
+    @DisplayName("a 409 answer is read as its settings result, or as none when the body is a refusal")
+    void settingsAnswerIsReadOrRefused() {
+        var conflictRevision = Generators.integers(0, 100).next();
+        var conflict = PlanSettingsUpdateResult.conflict(conflictRevision, "landing.main");
+        var tooLate = PlanSettingsUpdateResult.tooLate("landing");
+
+        assertAll(
+                            () -> assertEquals(conflictRevision,
+                                                Objects.requireNonNull(
+                                                                    PlanSettingsUpdateResult.resultOrNull(conflict.toJson()))
+                                                                    .revision()),
+                            () -> assertEquals("landing",
+                                                Objects.requireNonNull(
+                                                                    PlanSettingsUpdateResult.resultOrNull(tooLate.toJson()))
+                                                                    .restoreState()),
+                            // an applied result carries neither a conflict nor a too-late state
+                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                                                PlanSettingsUpdateResult.applied(conflictRevision).toJson())),
+                            // a coded refusal is no settings result, whatever else the body carries
+                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                                                "{\"error\":\"team_owned\",\"state\":\"ended\"}")),
+                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull("{\"values\":[")),
+                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull("not json")));
     }
 
     @Test

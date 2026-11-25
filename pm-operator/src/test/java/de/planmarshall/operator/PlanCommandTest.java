@@ -1189,7 +1189,7 @@ class PlanCommandTest {
          * @param choices the choices the runtime names for the aspect
          */
         private void serveRefusingSettings(List<String> choices) throws IOException {
-            serveRefusingSettings(choices, 422, "{\"code\":\"invalid_value\"}");
+            serveRefusingSettings(choices, 400, "{\"error\":\"refused\"}");
         }
 
         /**
@@ -1294,8 +1294,8 @@ class PlanCommandTest {
         }
 
         /**
-         * Serves the plan's settings once, refuses every write without the runtime's value code and
-         * answers every further read of the settings with the given handler.
+         * Serves the plan's settings once, refuses every write with a code the catalogue does not
+         * know and answers every further read of the settings with the given handler.
          *
          * @param reread the answer to the read that explains the refusal
          */

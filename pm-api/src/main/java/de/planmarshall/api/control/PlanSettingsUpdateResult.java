@@ -60,6 +60,34 @@ public record PlanSettingsUpdateResult(
     }
 
     /**
+     * The key under which a refusal body names the code it was answered with.
+     */
+    private static final String ERROR_KEY = "error";
+
+    /**
+     * Reads the settings result an answer carries, when the body is one: a revision conflict or a
+     * change refused as too late. A coded refusal of the act carries no result — it names an
+     * {@code error} instead — so {@code null} says the caller must read the code the refusal names
+     * rather than a result.
+     *
+     * @param json the answer's body
+     * @return the result, or {@code null} when the body is no settings result
+     */
+    public static PlanSettingsUpdateResult resultOrNull(String json) {
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(json));
+            if (map == null || map.containsKey(ERROR_KEY)) {
+                return null;
+            }
+            var result = fromMap(map);
+            return result.conflict() || result.restoreState() != null ? result : null;
+        } catch (IOException _) {
+            // Not a settings result at all: the answer is the runtime's refusal.
+            return null;
+        }
+    }
+
+    /**
      * Converts to JSON tree map.
      *
      * @return map representation

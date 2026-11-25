@@ -34,8 +34,8 @@ import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.http.HttpRequest;
-import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
 import de.planmarshall.operator.OperatorUrlUtil;
@@ -209,13 +209,15 @@ public final class WorkActionsClient {
     }
 
     /**
-     * The runtime's answer to a settings change: the result the contract names, and the reason when
-     * a value was refused.
+     * The runtime's answer to a settings change: the result the contract names, and why the value
+     * was refused when the body names a reason.
      *
      * @param result        the result
-     * @param refusalReason why the value was refused, or {@code null}
+     * @param refusalCode   the code the runtime refused the value with, or {@code null}
+     * @param refusalReason the reason the body carries, or {@code null}
      */
-    public record SettingsAnswer(PlanSettingsUpdateResult result, @Nullable String refusalReason) {
+    public record SettingsAnswer(PlanSettingsUpdateResult result, @Nullable ApiErrorCode refusalCode,
+                        @Nullable String refusalReason) {
     }
 
     /**
@@ -240,39 +242,22 @@ public final class WorkActionsClient {
         var response = context.runtime(true).send(HttpRequest.json("PUT",
                             PLANS + path(planId) + "/settings", JsonTree.write(payload)));
         if (response.status() == 200) {
-            return new SettingsAnswer(PlanSettingsUpdateResult.fromJson(response.bodyText()), null);
+            return new SettingsAnswer(PlanSettingsUpdateResult.fromJson(response.bodyText()), null, null);
         }
         if (response.status() == 409) {
-            var result = settingsAnswer(response);
+            var result = PlanSettingsUpdateResult.resultOrNull(response.bodyText());
             if (result != null) {
-                return new SettingsAnswer(result, null);
+                return new SettingsAnswer(result, null, null);
             }
         }
         if (response.status() == 400) {
+            var refusal = new OperatorRefusedException("plan settings", response);
             var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
             var reason = body != null ? JsonTree.string(body, REASON) : null;
             return new SettingsAnswer(new PlanSettingsUpdateResult(false, false, (int) revision, null, null),
-                                reason != null ? reason : "");
+                                refusal.code(), reason != null ? reason : "");
         }
         throw new OperatorRefusedException("plan settings", response);
-    }
-
-    /**
-     * Reads a {@code 409} answer that is a settings result rather than a coded refusal: a revision
-     * conflict, or a change refused as too late.
-     *
-     * @param response the runtime's answer
-     * @return the settings result, or {@code null} when the body carries no result — a coded
-     *         refusal of the act, which the caller surfaces through its code
-     */
-    private static @Nullable PlanSettingsUpdateResult settingsAnswer(HttpResponse response) {
-        try {
-            var result = PlanSettingsUpdateResult.fromJson(response.bodyText());
-            return result.conflict() || result.restoreState() != null ? result : null;
-        } catch (IOException _) {
-            // The body is no settings result: it is a coded refusal of the act.
-            return null;
-        }
     }
 
     /**
