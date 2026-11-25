@@ -147,7 +147,8 @@ public final class EpicViewFormatting {
     public static String waitReasonLine(String locale, WorkRow row) {
         var reason = row.waits();
         if (reason == null) {
-            // No wait is a row that can start (WorkRow#waits), as waitText and nextLaunchable read it.
+            // No closed reason to name: a row that can start, or a word this contract does not
+            // know, which waitText echoes rather than reads as "can start".
             return "";
         }
         var other = clean(row.waitPlanId() != null ? row.waitPlanId() : "");

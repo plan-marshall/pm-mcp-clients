@@ -154,7 +154,7 @@ Keys of the area `overview`, shared by both clients.
 
 |`overview.epic.waits.unreadable`
 |waits: its specification cannot be read
-|wartet: seine Vorgabe ist nicht lesbar
+|wartet: seine Spezifikation ist nicht lesbar
 
 |`overview.epic.waits.held`
 |waits: held

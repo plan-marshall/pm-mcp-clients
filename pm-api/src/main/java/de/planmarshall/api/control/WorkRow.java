@@ -25,9 +25,10 @@ import de.planmarshall.api.json.JsonTree;
  *
  * <p>The status is the queue row's status ({@code staged}, {@code running}, {@code pausing},
  * {@code paused}, {@code shipped}, {@code returned}, {@code cancelled}, {@code abandoned},
- * {@code waiting for you}, {@code held}); a staged row carries its wait reason from
- * {@link EpicWaitReason}. On a later decomposition run {@link #change()} marks the plan
- * {@code unchanged}, {@code changed}, {@code new}, or {@code dropped}.
+ * {@code waiting for you}, {@code held}); a staged row carries its wait reason as the wire string of
+ * an {@link EpicWaitReason}, which {@link #waits()} resolves. On a later decomposition run
+ * {@link #change()} marks the plan {@code unchanged}, {@code changed}, {@code new}, or
+ * {@code dropped}.
  *
  * @param planId            the plan identifier
  * @param title             the plan's title
@@ -72,7 +73,8 @@ public record WorkRow(
     }
 
     /**
-     * @return the wait as a closed enum, or {@code null} where the row can start
+     * @return the row's wait as a closed reason, or {@code null} where it names none the contract
+     *         knows: no wait at all, or a word outside {@link EpicWaitReason}
      */
     public @Nullable EpicWaitReason waits() {
         return EpicWaitReason.fromValue(waitReason);

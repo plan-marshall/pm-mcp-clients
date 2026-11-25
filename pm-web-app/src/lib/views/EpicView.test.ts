@@ -353,6 +353,14 @@ describe('EpicView component', () => {
               status: 'staged',
               wait_reason: 'held',
             },
+            {
+              // The retired reason: the client knows no case for it, so it draws no wait at all.
+              plan_id: 'relay-stale-docs',
+              title: 'Stale docs',
+              status: 'staged',
+              wait_reason: 'stale',
+              wait_since: '2026-10-16T09:48:00Z',
+            },
           ],
         },
       ],
@@ -368,7 +376,9 @@ describe('EpicView component', () => {
     );
     expect(screen.getByTestId('wait-relay-spec-docs')).not.toHaveTextContent('can start');
     expect(screen.getByTestId('wait-relay-held-docs')).not.toHaveTextContent('can start');
-    // The retired reason is gone from the view's vocabulary: no row may render a stale wait.
+    // No `stale` case is left: the retired reason draws no wait, not even the old fresh-cut line.
+    expect(await screen.findByTestId('epic-row-relay-stale-docs')).toBeInTheDocument();
+    expect(screen.queryByTestId('wait-relay-stale-docs')).not.toBeInTheDocument();
     expect(screen.queryByText(/waits for a fresh cut/)).not.toBeInTheDocument();
   });
 

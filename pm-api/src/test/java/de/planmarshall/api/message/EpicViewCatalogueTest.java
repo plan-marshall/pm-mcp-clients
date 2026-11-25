@@ -173,7 +173,7 @@ class EpicViewCatalogueTest {
                 MessageCatalogue.format("en", "overview.epic.waits.scope", Map.of("running", 3, "scope", 3)));
         assertEquals("waits: its specification cannot be read",
                 MessageCatalogue.format("en", "overview.epic.waits.unreadable", Map.of()));
-        assertEquals("wartet: seine Vorgabe ist nicht lesbar",
+        assertEquals("wartet: seine Spezifikation ist nicht lesbar",
                 MessageCatalogue.format("de", "overview.epic.waits.unreadable", Map.of()));
         assertEquals("waits: held",
                 MessageCatalogue.format("en", "overview.epic.waits.held", Map.of()));
