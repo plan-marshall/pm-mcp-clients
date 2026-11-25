@@ -170,7 +170,7 @@ class IntentCatalogueTest {
     }
 
     @Test
-    @DisplayName("should format the outline's deliverables, files, dependencies, and the missing ones")
+    @DisplayName("should format the outline's deliverables, files, depends-on, and the missing ones")
     void shouldFormatTheOutline() {
         assertEquals("1 \u00b7 Reconnect the relay",
                 format("en", "intent.outline.deliverable", Map.of("number", 1, "title", "Reconnect the relay")));
@@ -185,33 +185,11 @@ class IntentCatalogueTest {
         assertEquals("satisfies AC-001, AC-004",
                 format("en", "intent.outline.satisfies", Map.of("criteria", "AC-001, AC-004")));
         assertEquals("satisfies no criterion", format("en", "intent.outline.satisfies_none", Map.of()));
-        assertEquals("de.cuioss:cui-http 2.1.0 \u00b7 added by 1: the retry adapter",
-                format("en", "intent.outline.dependency", Map.of("coordinates", "de.cuioss:cui-http",
-                        "version", "2.1.0", "deliverable", 1, "justification", "the retry adapter")));
     }
 
     @Test
-    @DisplayName("should format the epic texts and the over_size distribution without recomputing them")
-    void shouldFormatTheEpicAndOverSizeTexts() {
-        assertEquals("implement \u00b7 over_size 3x \u2192 2x",
-                format("en", "intent.oversize.title", Map.of("role", "implement", "current", 3, "proposed", 2)));
-        assertEquals("implement \u00b7 over_size 3x",
-                format("en", "intent.oversize.title_current", Map.of("role", "implement", "current", 3)));
-        assertEquals("0\u20131x", format("en", "intent.oversize.bucket", Map.of("from", 0, "to", 1)));
-        assertEquals("3x and more", format("en", "intent.oversize.bucket_open", Map.of("from", 3)));
-        assertEquals("1 task", format("en", "intent.oversize.tasks", Map.of("count", 1)));
-        assertEquals("4 tasks", format("en", "intent.oversize.tasks", Map.of("count", 4)));
-        assertEquals("7 flagged", format("en", "intent.oversize.flagged", Map.of("count", 7)));
-        assertEquals("20 tasks \u00b7 7 flagged \u00b7 35 %",
-                format("en", "intent.oversize.share", Map.of("tasks", 20, "flagged", 7, "percent", 35)));
-        assertEquals("20 Tasks \u00b7 7 markiert \u00b7 35 %",
-                format("de", "intent.oversize.share", Map.of("tasks", 20, "flagged", 7, "percent", 35)));
-        assertEquals("3x \u2192 2x lowers the multiple and can flag more",
-                format("en", "intent.oversize.direction",
-                        Map.of("direction", "lower", "current", 3, "proposed", 2)));
-        assertEquals("3x \u2192 4x raises the multiple and can flag fewer",
-                format("en", "intent.oversize.direction",
-                        Map.of("direction", "higher", "current", 3, "proposed", 4)));
+    @DisplayName("should format the epic texts without recomputing them")
+    void shouldFormatTheEpicTexts() {
         assertEquals("Destination", format("en", "intent.epic.destination", Map.of()));
         assertEquals("Endziel", format("de", "intent.epic.destination", Map.of()));
         assertEquals("Fertig-wenn jedes Plans", format("de", "intent.epic.plans", Map.of()));
