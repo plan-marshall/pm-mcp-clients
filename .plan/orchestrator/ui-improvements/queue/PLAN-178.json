@@ -2,10 +2,10 @@
   "id": "PLAN-178",
   "slug": "web-dialog-form-and-designer-correctness",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
+  "plan_marshall_plan_id": "rb-178-web-dialog-form-and-designer-correctness",
   "pr": "#557",
-  "landing": "",
+  "landing": "landings/PLAN-178.md",
   "seq": 178
 }
