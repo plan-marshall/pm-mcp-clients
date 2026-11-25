@@ -1175,7 +1175,7 @@ class ControlDialoguesTest {
         assertAll(
                             () -> assertEquals(ApiErrorCode.TEAM_OWNED, refusal.code()),
                             () -> assertTrue(RefusalRenderer.linesOf("en", refusal).get(0)
-                                                .contains("The team owns this value"),
+                                                                    .contains("The team owns this value"),
                                                 RefusalRenderer.linesOf("en", refusal).toString()));
     }
 

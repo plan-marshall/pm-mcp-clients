@@ -217,7 +217,7 @@ public final class WorkActionsClient {
      * @param refusalReason the reason the body carries, or {@code null}
      */
     public record SettingsAnswer(PlanSettingsUpdateResult result, @Nullable ApiErrorCode refusalCode,
-                        @Nullable String refusalReason) {
+    @Nullable String refusalReason) {
     }
 
     /**

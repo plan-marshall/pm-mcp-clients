@@ -81,7 +81,7 @@ public record PlanSettingsUpdateResult(
         try {
             var map = JsonTree.asObject(JsonTree.parse(json));
             if (map == null || map.containsKey(ERROR_KEY)
-                                || !(map.containsKey(APPLIED_KEY) || map.containsKey(CONFLICT_KEY))) {
+                    || !(map.containsKey(APPLIED_KEY) || map.containsKey(CONFLICT_KEY))) {
                 // A refusal names a code and carries no result; an applied result is no refusal to
                 // read, so it is not what this lookup describes.
                 return null;

@@ -181,25 +181,25 @@ class ControlRecordsTest {
         var tooLate = PlanSettingsUpdateResult.tooLate("landing");
 
         assertAll(
-                            () -> assertEquals(conflictRevision,
-                                                Objects.requireNonNull(
-                                                                    PlanSettingsUpdateResult.resultOrNull(conflict.toJson()))
-                                                                    .revision()),
-                            () -> assertEquals("landing",
-                                                Objects.requireNonNull(
-                                                                    PlanSettingsUpdateResult.resultOrNull(tooLate.toJson()))
-                                                                    .restoreState()),
-                            // an applied result carries neither a conflict nor a too-late state
-                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
-                                                PlanSettingsUpdateResult.applied(conflictRevision).toJson())),
-                            // a coded refusal is no settings result, whatever else the body carries
-                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
-                                                "{\"error\":\"team_owned\",\"state\":\"ended\"}")),
-                            // a flat code with a state is still a refusal: it carries no result
-                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
-                                                "{\"code\":\"team_owned\",\"state\":\"ended\"}")),
-                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull("{\"values\":[")),
-                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull("not json")));
+                () -> assertEquals(conflictRevision,
+                        Objects.requireNonNull(
+                                PlanSettingsUpdateResult.resultOrNull(conflict.toJson()))
+                                .revision()),
+                () -> assertEquals("landing",
+                        Objects.requireNonNull(
+                                PlanSettingsUpdateResult.resultOrNull(tooLate.toJson()))
+                                .restoreState()),
+                // an applied result carries neither a conflict nor a too-late state
+                () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                        PlanSettingsUpdateResult.applied(conflictRevision).toJson())),
+                // a coded refusal is no settings result, whatever else the body carries
+                () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                        "{\"error\":\"team_owned\",\"state\":\"ended\"}")),
+                // a flat code with a state is still a refusal: it carries no result
+                () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                        "{\"code\":\"team_owned\",\"state\":\"ended\"}")),
+                () -> assertNull(PlanSettingsUpdateResult.resultOrNull("{\"values\":[")),
+                () -> assertNull(PlanSettingsUpdateResult.resultOrNull("not json")));
     }
 
     @Test
