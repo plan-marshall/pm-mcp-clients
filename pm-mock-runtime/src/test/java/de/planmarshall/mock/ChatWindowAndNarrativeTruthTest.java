@@ -29,10 +29,14 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatSubject;
 import de.planmarshall.api.chat.ChatSubjectKind;
+import de.planmarshall.api.chat.ChatTurnAccepted;
+import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.NarrativeLine;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
 import de.planmarshall.api.chat.ProposalState;
@@ -57,6 +61,7 @@ import de.planmarshall.mock.scenario.StateDefinition;
 @DisplayName("Revision window and narrative truth (D3)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class ChatWindowAndNarrativeTruthTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -67,9 +72,10 @@ class ChatWindowAndNarrativeTruthTest {
     @Test
     @DisplayName("scope.ended closes the revision window so a plan decision's revision lapses (M1)")
     void scopeEndedClosesRevisionWindow() throws Exception {
-        var decisionRoutes = ChatRoutes.planDecision(PLAN, "Q-801");
+        var questionId = "Q-" + Generators.integers(100, 999).next();
+        var decisionRoutes = ChatRoutes.planDecision(PLAN, questionId);
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                     .initialScenario(withPlanDecisionRevision(PLAN, "Q-801")).timing(MockTiming.ORDERED).build())) {
+                     .initialScenario(withPlanDecisionRevision(PLAN, questionId)).timing(MockTiming.ORDERED).build())) {
             var chat = read(runtime, decisionRoutes);
             var proposal = Objects.requireNonNull(chat.proposal());
 
@@ -88,6 +94,38 @@ class ChatWindowAndNarrativeTruthTest {
     }
 
     @Test
+    @DisplayName("scope.ended with an active queued revision keeps activity ended and window closed")
+    void scopeEndedWithQueuedRevisionKeepsWindowClosed() throws Exception {
+        var questionId = "Q-" + Generators.integers(100, 999).next();
+        var decisionRoutes = ChatRoutes.planDecision(PLAN, questionId);
+        var planRoutes = ChatRoutes.plan(PLAN);
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                     .initialScenario(withPlanDecisionRevision(PLAN, questionId))
+                     .timing(MockTiming.ORDERED).build())) {
+            open(runtime, planRoutes);
+            send(runtime, planRoutes);
+            send(runtime, planRoutes);
+            var planProposal = Objects.requireNonNull(read(runtime, planRoutes).proposal());
+            assertEquals(200, post(runtime, planRoutes.accept(),
+                    new ProposalAnswerRequest(planProposal.turnId()).toJson()).status());
+
+            var decisionProposal = Objects.requireNonNull(read(runtime, decisionRoutes).proposal());
+            broadcast(runtime, "scope.ended", Map.of("plan_id", PLAN, "outcome", "merged",
+                    "scope", Map.of("kind", "plan", "id", PLAN, "project_id", "pm-mcp-core")));
+
+            assertAll("queued revision at scope.ended never re-opens activity or revision window",
+                    () -> assertEquals("ended", runtime.engine().activity(PLAN)),
+                    () -> assertFalse(runtime.engine().revisionWindowOpen(PLAN),
+                            "revisionWindowOpen must stay closed after activity.changed"),
+                    () -> assertEquals(ProposalState.LAPSED,
+                            Objects.requireNonNull(read(runtime, decisionRoutes).proposal()).state()),
+                    () -> assertEquals(409,
+                            post(runtime, decisionRoutes.accept(),
+                                    new ProposalAnswerRequest(decisionProposal.turnId()).toJson()).status()));
+        }
+    }
+
+    @Test
     @DisplayName("plan.paused in state pausing narrates pausing and does not deduplicate the later paused (m1)")
     void pausingThenPausedBothNarrated() throws Exception {
         var routes = ChatRoutes.plan(PLAN);
@@ -96,7 +134,8 @@ class ChatWindowAndNarrativeTruthTest {
 
             broadcast(runtime, "plan.paused", Map.of("plan_id", PLAN, "state", "pausing", "point", "task"));
             broadcast(runtime, "plan.paused",
-                    Map.of("plan_id", PLAN, "state", "paused", "channel", "web", "device", "dev-1"));
+                    Map.of("plan_id", PLAN, "state", "paused", "channel", "web",
+                            "device", Generators.letterStrings(4, 10).next()));
 
             var lines = noticeLines(read(runtime, routes));
             assertAll("pausing and paused are both narrated in order",
@@ -231,14 +270,14 @@ class ChatWindowAndNarrativeTruthTest {
         proposal.put("kind", "revision");
         proposal.put("summary", "a revision");
         proposal.put("applies", Map.of("key", "chat.applies.after_task", "args", Map.of("task_id", "TASK-4")));
-        proposal.put("before", "before");
-        proposal.put("after", "after");
+        proposal.put("before", Generators.letterStrings(4, 16).next());
+        proposal.put("after", Generators.letterStrings(4, 16).next());
         proposal.put("state", "open");
         chat.put("proposal", proposal);
         chat.put("turns", List.of(
-                turn(turnPrefix + "1", "message", "operator", "Ask"),
-                turn(turnPrefix + "2", "message", "decompose", "Reply"),
-                turn(turnPrefix + "3", "proposal", "decompose", "a revision")));
+                turn(turnPrefix + "1", "message", "operator", Generators.letterStrings(4, 24).next()),
+                turn(turnPrefix + "2", "message", "decompose", Generators.letterStrings(4, 24).next()),
+                turn(turnPrefix + "3", "proposal", "decompose", Generators.letterStrings(4, 24).next())));
         return chat;
     }
 
@@ -278,6 +317,16 @@ class ChatWindowAndNarrativeTruthTest {
 
     private static MockRuntime ordered(String state) throws IOException {
         return MockRuntime.start(MockRuntimeConfig.builder().scenario(state).timing(MockTiming.ORDERED).build());
+    }
+
+    private static void open(MockRuntime runtime, ChatRoutes routes) throws IOException {
+        assertEquals(201, post(runtime, routes.chat(), "").status());
+    }
+
+    private static void send(MockRuntime runtime, ChatRoutes routes) throws IOException {
+        var message = new ChatTurnRequest(Generators.letterStrings(4, 30).next(),
+                Generators.letterStrings(8, 16).next());
+        assertEquals(ChatTurnAccepted.HTTP_STATUS, post(runtime, routes.turns(), message.toJson()).status());
     }
 
     private static ChatResource read(MockRuntime runtime, ChatRoutes routes) throws Exception {

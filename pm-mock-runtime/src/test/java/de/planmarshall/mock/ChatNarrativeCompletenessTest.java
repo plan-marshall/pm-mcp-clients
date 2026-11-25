@@ -40,6 +40,7 @@ import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
+import de.planmarshall.api.chat.ChatStatus;
 import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.ChatTurnCompletedEvent;
 import de.planmarshall.api.chat.ChatTurnRequest;
@@ -107,15 +108,40 @@ class ChatNarrativeCompletenessTest {
         }
 
         @Test
+        @DisplayName("merged plan emits pr_merged line even when scope.ended interrupts a streaming reply")
+        void prMergedEmittedWhenScopeEndsDuringReply() throws Exception {
+            var routes = ChatRoutes.plan(PLAN);
+            var prNumber = Generators.integers(100, 999).next();
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .scenario(CHAT_STATE).timing(MockTiming.REALISTIC).build())) {
+                open(runtime, routes);
+                var req = new ChatTurnRequest(Generators.letterStrings(4, 24).next(),
+                        Generators.letterStrings(8, 14).next());
+                assertEquals(202, post(runtime, routes.turns(), req.toJson()).status());
+                assertEquals(ChatStatus.REPLY, read(runtime, routes).state());
+
+                broadcast(runtime, "scope.ended", Map.of(
+                        "scope", Map.of("kind", "plan", "id", PLAN),
+                        "outcome", "merged",
+                        "pull_request_number", prNumber));
+
+                var lines = allNoticeLines(read(runtime, routes));
+                assertEquals(List.of("chat.line.pr_merged"), lines.stream().map(NarrativeLine::key).toList());
+                assertEquals(prNumber, intArg(lines.getFirst().args().get("number")));
+            }
+        }
+
+        @Test
         @DisplayName("native DecisionOpenedEvent writes decision_opened into plan chat")
         void nativeDecisionOpenedNarratesPlanChat() throws Exception {
             var routes = ChatRoutes.plan(PLAN);
             try (var runtime = ordered(CHAT_STATE)) {
                 open(runtime, routes);
-                var envelope = new DecisionEnvelope("Q-55", 1, "Confirm migration window", null, "plan " + PLAN,
+                var envelope = new DecisionEnvelope("Q-" + Generators.integers(10, 99).next(), 1,
+                        Generators.letterStrings(6, 24).next(), null, "plan " + PLAN,
                         DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
-                        "Needs confirmation.", null,
-                        List.of(new DecisionPart("1", "Proceed?", AnswerType.ONE_OPTION,
+                        Generators.letterStrings(6, 24).next(), null,
+                        List.of(new DecisionPart("1", Generators.letterStrings(4, 16).next(), AnswerType.ONE_OPTION,
                                 List.of(new DecisionOption("1", "Proceed", null, null, null, null)),
                                 null, null, null, null, false, false)),
                         Instant.now(), false, null, null, null, "pm-mcp-core", PLAN);
@@ -125,7 +151,7 @@ class ChatNarrativeCompletenessTest {
                 assertAll("native decision.opened narrative line",
                         () -> assertEquals(List.of("chat.line.decision_opened"),
                                 lines.stream().map(NarrativeLine::key).toList()),
-                        () -> assertEquals("Q-55", lines.getFirst().args().get("id")),
+                        () -> assertEquals(envelope.id(), lines.getFirst().args().get("id")),
                         () -> assertEquals("yes", lines.getFirst().args().get("blocks")));
             }
         }

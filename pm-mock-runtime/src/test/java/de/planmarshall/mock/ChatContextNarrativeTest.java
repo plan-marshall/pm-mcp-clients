@@ -233,7 +233,7 @@ class ChatContextNarrativeTest {
 
         @Test
         @DisplayName("a role's reply names the act the operator may take without a synthetic hold")
-        void replyNamesAHoldAndAnAct() throws Exception {
+        void replyNamesAnActWithoutSyntheticHold() throws Exception {
             var routes = ChatRoutes.plan(PLAN);
             try (var runtime = ordered(CHAT_STATE)) {
                 open(runtime, routes);

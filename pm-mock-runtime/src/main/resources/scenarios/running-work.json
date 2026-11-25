@@ -2899,7 +2899,7 @@
                       "status": "complete",
                       "format": "plain",
                       "untrusted": false,
-                      "text": "Where does session-log stand?",
+                      "text": "Where does storage-v2 stand?",
                       "steps": [],
                       "refs": [],
                       "at": "2026-10-16T11:50:00Z"
@@ -2912,7 +2912,7 @@
                       "format": "markdown",
                       "untrusted": false,
                       "model": "sonnet",
-                      "text": "TASK-003 is running in execute after TASK-002 passed.",
+                      "text": "TASK-002 is running in execute after TASK-001 passed.",
                       "steps": [
                         {
                           "key": "chat.step.read",
@@ -2947,13 +2947,13 @@
                         {
                           "key": "chat.line.task_ended",
                           "args": {
-                            "task_id": "TASK-002",
+                            "task_id": "TASK-001",
                             "outcome": "done"
                           },
                           "refs": [
                             {
                               "kind": "task",
-                              "id": "TASK-002"
+                              "id": "TASK-001"
                             }
                           ],
                           "at": "2026-10-16T11:45:00Z"

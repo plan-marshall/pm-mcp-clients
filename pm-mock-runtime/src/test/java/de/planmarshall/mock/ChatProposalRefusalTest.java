@@ -165,9 +165,9 @@ class ChatProposalRefusalTest {
         proposal.put("state", "open");
         chat.put("proposal", proposal);
         chat.put("turns", List.of(
-                turn("T-9101", "message", "operator", "Can we revise?"),
-                turn("T-9102", "message", "refine", "Proposed a revision."),
-                turn("T-9103", "proposal", "refine", "cannot revise without a plan")));
+                turn("T-9101", "message", "operator", Generators.letterStrings(4, 24).next()),
+                turn("T-9102", "message", "refine", Generators.letterStrings(4, 24).next()),
+                turn("T-9103", "proposal", "refine", Generators.letterStrings(4, 24).next())));
         return chat;
     }
 

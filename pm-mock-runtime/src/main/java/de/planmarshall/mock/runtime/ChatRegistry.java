@@ -1137,7 +1137,11 @@ final class ChatRegistry {
             var events = new ArrayList<ChatEvent>();
             for (var chat : chats.values()) {
                 if (takesNarrative(chat, subject)) {
-                    events.addAll(addLine(chat, prLine));
+                    chat.cancelPlay();
+                    var lines = new ArrayList<>(chat.heldLines);
+                    chat.heldLines.clear();
+                    lines.add(prLine);
+                    events.addAll(notice(chat, lines));
                 }
             }
             mergedEvents = List.copyOf(events);
@@ -1808,7 +1812,7 @@ final class ChatRegistry {
      * mapped to its refusal or lapse otherwise ({@code state-catalogue.adoc#chat-proposal-states}).
      *
      * @param chat     the chat
-     * @param address  where the chat is addressed
+     * @param stream   where the chat is addressed
      * @param proposal the open proposal
      * @return the answer, or {@code null} when the accept goes on and the revision is queued
      */

@@ -134,9 +134,9 @@ final class ChatScripts {
     }
 
     /**
-     * The reply to every later message: a short answer that names, of a plan that still runs, a hold and
-     * the act the operator may take instead ({@code state-catalogue.adoc#chat-names-acts}: the role names
-     * an act, never performs one). Ended work names no act, since its archive offers none.
+     * The reply to every later message: a short answer that names, of a plan that still runs, the act
+     * the operator may take ({@code state-catalogue.adoc#chat-names-acts}: the role names an act,
+     * never performs one). Ended work names no act, since its archive offers none.
      *
      * @param subject   the kind of the chat's subject
      * @param subjectId the id of the chat's subject

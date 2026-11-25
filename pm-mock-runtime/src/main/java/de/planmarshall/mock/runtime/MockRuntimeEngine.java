@@ -1291,6 +1291,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public String activity(String planId) {
         synchronized (controlLock) {
+            var tracked = planActivities.get(planId);
+            if (tracked != null) {
+                return tracked;
+            }
             return controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         }
     }

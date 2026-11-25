@@ -43,6 +43,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatOrigin;
 import de.planmarshall.api.chat.ChatRoutes;
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -65,6 +67,7 @@ import de.planmarshall.mock.scenario.StateDefinition.ChatFailure;
  */
 @DisplayName("Replaced-worker vs stop concurrency race")
 @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class ChatRegistryRaceTest {
 
     private static final int ROUNDS = 400;
@@ -107,10 +110,11 @@ class ChatRegistryRaceTest {
                 }, stubFacts());
 
         registry.arm(List.of(ChatFailure.of(ChatFailure.Kind.WORKER_REPLACED)));
-        var routes = ChatRoutes.plan("race-" + round);
+        var routes = ChatRoutes.plan("race-" + round + "-" + Generators.letterStrings(4, 6).next());
         assertEquals(201, send(registry, "POST", routes.chat(), "{}").status());
 
-        var turnReq = new ChatTurnRequest("hello", "client-" + round).toJson();
+        var turnReq = new ChatTurnRequest(Generators.letterStrings(4, 24).next(),
+                "client-" + round + "-" + Generators.letterStrings(4, 8).next()).toJson();
         var accepted = send(registry, "POST", routes.turns(), turnReq);
         assertEquals(202, accepted.status());
         var openedChat = send(registry, "GET", routes.chat(), "");
