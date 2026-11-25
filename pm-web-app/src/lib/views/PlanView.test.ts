@@ -1,14 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
 import {
   apiClient,
+  type DecisionEnvelope,
+  type OutlineRecord,
   type PlanChangesAnswer,
   type PlanChangeFile,
   type PlanCompletionReport,
+  type PlanIntentRecord,
   type ProcessTree,
   type TaskActivity,
 } from '../api/client';
+import { reportBox } from '../test/resizeObserver';
 import { workflowIconUrl } from '../icons/workflowIcons';
 import { formatTime } from '../display/format';
 import { runtimeStore, openPlanView } from '../stores/runtime';
@@ -190,34 +194,33 @@ describe('PlanView component', () => {
     vi.useRealTimers();
   });
 
-  it('renders plan header, breadcrumb path, tokens, and PR badge', async () => {
+  it('renders the plan head on the object page with tokens', async () => {
     render(PlanView);
 
     // Wait for plan process to load
     expect(await screen.findByTestId('plan-title')).toHaveTextContent('fix-relay');
-    expect(screen.getByTestId('breadcrumb-project')).toHaveTextContent('pm-mcp-clients');
-    expect(screen.getByTestId('breadcrumb-epic')).toHaveTextContent('relay-hardening');
-    expect(screen.getByTestId('breadcrumb-plan')).toHaveTextContent('fix-relay');
+    expect(screen.getByTestId('plan-kind').querySelector('[data-kind="plan"]')).toBeInTheDocument();
+    expect(screen.getByTestId('plan-id-chip')).toHaveTextContent('fix-relay');
 
     expect(screen.getByTestId('plan-phase')).toHaveTextContent('execute');
     expect(screen.getByTestId('plan-state')).toHaveTextContent('running');
-    expect(screen.getByTestId('pr-link')).toHaveTextContent('#214');
+    expect(screen.getByTestId('plan-pr-chip')).toHaveTextContent('PR #214');
 
     expect(screen.getByTestId('plan-tokens')).toHaveTextContent(/412 k/);
   });
 
-  it('shows the phase icon on the badge and the process-tree phase header', async () => {
+  it('shows the phase icon on the phase label and the process-tree phase header', async () => {
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
       ...mockPlan,
-      current_phase: 'phase-5-execute',
+      current_phase: 'refine',
     });
 
     render(PlanView);
 
-    const badge = await screen.findByTestId('plan-phase');
-    expect(badge).toHaveTextContent('phase-5-execute');
-    expect(badge.querySelector('.workflow-icon')?.getAttribute('style')).toContain(
-      workflowIconUrl('phase.execute'),
+    const label = await screen.findByTestId('plan-phase');
+    expect(label).toHaveTextContent('refine');
+    expect(label.querySelector('.workflow-icon')?.getAttribute('style')).toContain(
+      workflowIconUrl('phase.refine'),
     );
     expect(
       screen.getByTestId('node-execute').querySelector('.workflow-icon')?.getAttribute('style'),
@@ -592,41 +595,14 @@ describe('PlanView component', () => {
     }
   });
 
-  it('opens the parent epic from the breadcrumb in one step', async () => {
+  it('links to the process designer of the plan’s project', async () => {
     render(PlanView);
 
     await screen.findByTestId('plan-title');
-    await fireEvent.click(screen.getByTestId('breadcrumb-epic'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('epic');
-    expect(state.selectedEpicId).toBe('relay-hardening');
-  });
-
-  it('opens the project in the explorer in one step', async () => {
-    render(PlanView);
-
-    await screen.findByTestId('plan-title');
-    await fireEvent.click(screen.getByTestId('breadcrumb-project'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('project');
-    expect(state.selectedProjectId).toBe('pm-mcp-clients');
-    expect(window.location.pathname).toBe('/projects/pm-mcp-clients');
-    expect(window.location.search).toBe('');
-  });
-
-  it('opens the process designer for the plan’s project', async () => {
-    render(PlanView);
-
-    await screen.findByTestId('plan-title');
-    await fireEvent.click(screen.getByTestId('design-process-btn'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('designer');
-    expect(state.designerProjectId).toBe('pm-mcp-clients');
-    expect(window.location.pathname).toBe('/designer');
-    expect(window.location.search).toBe('?project=pm-mcp-clients');
+    expect(screen.getByTestId('design-process-link')).toHaveAttribute(
+      'href',
+      '/designer?project=pm-mcp-clients',
+    );
   });
 
   it('discloses the token breakdown by phase and role with raw components', async () => {
@@ -746,7 +722,7 @@ describe('PlanView component', () => {
     expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
   });
 
-  it('shows an ended plan as it ended and opens its completion report in one step', async () => {
+  it('shows an ended plan as it ended and links to its completion report', async () => {
     runtimeStore.update((s) => ({
       ...s,
       selectedPlanEnded: {
@@ -766,13 +742,10 @@ describe('PlanView component', () => {
     expect(banner).toHaveTextContent(`ended ${endedAt}`);
     expect(banner).toHaveTextContent('Reason: the fallback held');
 
-    await fireEvent.click(screen.getByTestId('ended-completion-report'));
-
-    const state = get(runtimeStore);
-    expect(state.currentRoute).toBe('reports');
-    expect(state.selectedReportDetailPlanId).toBe('fix-relay');
-    expect(window.location.pathname).toBe('/reports');
-    expect(window.location.search).toBe('');
+    expect(screen.getByTestId('completion-report-link')).toHaveAttribute(
+      'href',
+      '/reports?plan=fix-relay',
+    );
   });
 
   it('selects running task over earlier completed task on initial load', async () => {
@@ -1798,18 +1771,697 @@ describe('PlanView’s Changes tab', () => {
     expect(readList).toHaveBeenCalledTimes(readsBefore);
   });
 
-  it('opens Process and replaces an address that names a tab this view does not draw', async () => {
-    // Arrange: `intent` belongs to PLAN-55's tab set, which is not in this view yet.
-    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
-    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+});
 
-    // Act
+describe('PlanView head on the object page (PLAN-55 D1)', () => {
+  function headPlan(overrides: Partial<ProcessTree> = {}): ProcessTree {
+    return {
+      plan_id: 'fix-relay',
+      title: 'Fix Relay Transport',
+      project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients' },
+      epic: { epic_id: 'relay-hardening', title: 'Relay hardening' },
+      current_phase: 'execute',
+      phase_state: 'running',
+      instance_version: 1,
+      needs_operator: false,
+      pull_request_number: 214,
+      pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+      duration_seconds: 7800,
+      tokens_so_far: {
+        total: 412000,
+        input: 380000,
+        output: 32000,
+        floor: false,
+        tasks_total: 5,
+        tasks_measured: 5,
+        none_yet: false,
+        not_measured: false,
+      },
+      current_position_path: ['execute', 'TASK-003'],
+      nodes: [
+        {
+          node_id: 'execute',
+          title: 'execute',
+          kind: 'phase',
+          state: 'running',
+          run_count: 1,
+          current_run: 1,
+          duration_seconds: 1500,
+          sub_nodes: [],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-003',
+              role: 'implement',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'running',
+              duration_seconds: 360,
+              tokens_so_far: 48000,
+            },
+          ],
+        },
+      ],
+      ...overrides,
+    };
+  }
+
+  const decision: DecisionEnvelope = {
+    id: 'Q-007',
+    revision: 1,
+    title: 'Resolve rebase conflict',
+    subject: 'plan fix-relay',
+    scope: 'plan',
+    plan: 'fix-relay',
+    blocks: 'plan',
+    reversibility: 'reversible',
+    parts: [],
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    runtimeStore.set(
+      makeRuntimeState({
+        currentRoute: 'plan',
+        selectedPlanId: 'fix-relay',
+        selectedEpicId: 'relay-hardening',
+      }),
+    );
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [],
+      epics: [],
+      alongside_landings: [],
+    });
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [],
+    });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+  });
+
+  it('draws the head slots of the object page', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+
     render(PlanView);
     await screen.findByTestId('plan-title');
 
-    // Assert
+    expect(screen.getByTestId('object-page')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('plan-kind').querySelector('[data-kind="plan"]'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('object-page-title')).toHaveTextContent('Fix Relay Transport');
+    expect(screen.getByTestId('plan-id-chip')).toHaveTextContent('fix-relay');
+    expect(screen.getByTestId('plan-pr-chip')).toHaveTextContent('PR #214');
+    expect(screen.getByTestId('plan-phase')).toHaveTextContent('execute');
+    expect(screen.getByTestId('plan-state')).toHaveTextContent('running');
+    expect(screen.getByTestId('plan-state-sentence')).toHaveTextContent('for 2 h 10 min');
+  });
+
+  it('draws no in-page path', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.queryByTestId('plan-breadcrumb')).toBeNull();
+    expect(screen.queryByTestId('breadcrumb-project')).toBeNull();
+    expect(screen.queryByTestId('breadcrumb-epic')).toBeNull();
+  });
+
+  it('shows the completion report only on an ended plan', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    expect(screen.queryByTestId('completion-report-link')).toBeNull();
+
+    cleanup();
+    runtimeStore.update((state) => ({
+      ...state,
+      selectedPlanEnded: {
+        plan_id: 'fix-relay',
+        outcome: 'merged',
+        ended_at: '2026-10-16T11:20:00Z',
+      },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    expect(screen.getByTestId('completion-report-link')).toBeInTheDocument();
+  });
+
+  it('shows the attention strip and the decision link on a waiting plan', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-attention-strip')).toHaveTextContent(
+        'Waits for your decision',
+      ),
+    );
+    const link = await screen.findByTestId('plan-decision-link');
+    expect(link).toHaveAttribute('href', '/decisions/Q-007');
+    expect(link).toHaveTextContent('Open the decision');
+  });
+
+  it('does not take a decision that blocks another object for the plan wait', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([{ ...decision, blocks: 'epic' }]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await waitFor(() => expect(screen.queryByTestId('plan-decision-link')).toBeNull());
+    expect(screen.queryByTestId('plan-attention-strip')).toBeNull();
+  });
+
+  it('explains the head actions on hover', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const designer = screen.getByTestId('design-process-link');
+    expect(designer).toHaveAttribute('title');
+    expect(designer.getAttribute('title')).not.toBe('');
+    const link = await screen.findByTestId('plan-decision-link');
+    expect(link).toHaveAttribute('title');
+    expect(link.getAttribute('title')).not.toBe('');
+  });
+
+  it('keeps a plan’s decision off the next plan’s head', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockImplementation(async (id: string) =>
+      headPlan({
+        plan_id: id,
+        phase_state: 'waiting_for_you',
+        needs_operator: true,
+      }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await screen.findByTestId('plan-decision-link');
+
+    // The router reuses the view, and the next plan's decision read is still open: the previous
+    // plan's link must not stand in for it.
+    vi.spyOn(apiClient, 'getDecisions').mockReturnValue(new Promise(() => {}));
+    runtimeStore.update((state) => ({
+      ...state,
+      selectedPlanId: 'next-plan',
+      selectedPlanEnded: null,
+    }));
+
+    await waitFor(() => expect(apiClient.getPlanProcess).toHaveBeenCalledWith('next-plan'));
+    expect(screen.queryByTestId('plan-decision-link')).toBeNull();
+  });
+
+  it('shows neither the attention strip nor the decision link on a running plan', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.queryByTestId('plan-attention-strip')).toBeNull();
+    expect(screen.queryByTestId('plan-decision-link')).toBeNull();
+  });
+
+  it('shows the off-track banner on an off-track plan', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        nodes: [
+          {
+            node_id: 'execute',
+            title: 'execute',
+            kind: 'phase',
+            state: 'running',
+            run_count: 1,
+            current_run: 1,
+            duration_seconds: 1500,
+            sub_nodes: [],
+            leaf_tasks: [
+              {
+                task_id: 'TASK-003',
+                role: 'implement',
+                harness: 'claude',
+                model: 'sonnet',
+                attempt: 1,
+                status: 'running',
+                duration_seconds: 360,
+                tokens_so_far: 48000,
+                off_track: { signal: 'repeating', action: 'shown', value: 5, threshold: 5 },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-off-track')).toHaveTextContent('off track: repeating');
+  });
+
+  it('shows the queued revision line when the plan reports one', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await waitFor(() => expect(onEvent).toBeDefined());
+
+    onEvent?.('plan.revision_queued', {
+      plan_id: 'fix-relay',
+      queued_revision: {
+        chat_id: 'chat-1',
+        turn_id: 'turn-1',
+        subject: { kind: 'plan', id: 'fix-relay' },
+        chat_open: true,
+        applies: { key: 'chat.applies.after_task', args: { task_id: 'TASK-003' } },
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent(
+        'Revision from the chat queued',
+      ),
+    );
+    expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent('after TASK-003');
+  });
+
+  it('shows the queued revision the plan resource carries after a reload', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        queued_revision: {
+          chat_id: 'chat-1',
+          turn_id: 'turn-1',
+          subject: { kind: 'plan', id: 'fix-relay' },
+          chat_open: true,
+          applies: { key: 'chat.applies.on_start' },
+        },
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent(
+      'applies when fix-relay starts again',
+    );
+  });
+});
+
+describe('PlanView activity rows (PLAN-55 D3)', () => {
+  const activityPlan: ProcessTree = {
+    plan_id: 'fix-relay',
+    title: 'Fix Relay Transport',
+    project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients' },
+    current_phase: 'execute',
+    phase_state: 'running',
+    instance_version: 1,
+    needs_operator: false,
+    duration_seconds: 7800,
+    tokens_so_far: {
+      total: 0,
+      input: 0,
+      output: 0,
+      floor: false,
+      tasks_total: 1,
+      tasks_measured: 1,
+      none_yet: false,
+      not_measured: false,
+    },
+    current_position_path: ['execute'],
+    nodes: [
+      {
+        node_id: 'execute',
+        title: 'execute',
+        kind: 'phase',
+        state: 'running',
+        run_count: 1,
+        current_run: 1,
+        duration_seconds: 1500,
+        sub_nodes: [],
+        leaf_tasks: [
+          {
+            task_id: 'TASK-003',
+            role: 'implement',
+            harness: 'claude',
+            model: 'sonnet',
+            attempt: 1,
+            status: 'running',
+            duration_seconds: 360,
+            tokens_so_far: 48000,
+          },
+        ],
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }),
+    );
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(activityPlan);
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [],
+      epics: [],
+      alongside_landings: [],
+    });
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
+  });
+
+  it('renders no row for a link entry without a target and one for a link entry with a target', async () => {
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [
+        { timestamp: '14:03:40', kind: 'link' },
+        { timestamp: '14:03:41', kind: 'link', tool_target: 'submit:TASK-003' },
+      ],
+    });
+
+    render(PlanView);
+    await screen.findByTestId('activity-feed');
+
+    const rows = screen.getAllByTestId('activity-entry');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent('submit:TASK-003');
+  });
+
+  it('names the kind icon by the catalogue word instead of a text tag', async () => {
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [
+        {
+          timestamp: '14:02:14',
+          kind: 'tool',
+          tool_name: 'read',
+          tool_target: 'pm-relay/src/main/java/Transport.java',
+        },
+      ],
+    });
+
+    render(PlanView);
+    await screen.findByTestId('activity-feed');
+
+    const icon = screen.getByTestId('activity-kind');
+    expect(icon).toHaveAttribute('role', 'img');
+    expect(icon).toHaveAttribute('aria-label', 'tool');
+    const row = screen.getByTestId('activity-entry');
+    expect(row.querySelector('[data-icon]')).not.toBeNull();
+    expect(row.textContent).not.toMatch(/\btool\b/);
+  });
+});
+
+describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
+  const capturedPlan: ProcessTree = {
+    plan_id: 'fix-relay',
+    title: 'Fix Relay Transport',
+    project: { project_id: 'pm-mcp-clients', display_name: 'pm-mcp-clients' },
+    current_phase: 'execute',
+    phase_state: 'running',
+    instance_version: 1,
+    needs_operator: false,
+    duration_seconds: 7800,
+    tokens_so_far: {
+      total: 412000,
+      input: 380000,
+      output: 32000,
+      floor: false,
+      tasks_total: 5,
+      tasks_measured: 5,
+      none_yet: false,
+      not_measured: false,
+    },
+    current_position_path: ['execute'],
+    nodes: [
+      {
+        node_id: 'execute',
+        title: 'execute',
+        kind: 'phase',
+        state: 'running',
+        run_count: 1,
+        current_run: 1,
+        duration_seconds: 1500,
+        sub_nodes: [],
+        leaf_tasks: [
+          {
+            task_id: 'TASK-003',
+            role: 'implement',
+            harness: 'claude',
+            model: 'sonnet',
+            attempt: 1,
+            status: 'running',
+            duration_seconds: 360,
+            tokens_so_far: 48000,
+          },
+        ],
+      },
+    ],
+    change: { files: 12, insertions: 340, deletions: 27, unplanned: 2 },
+  };
+
+  const intentRecord: PlanIntentRecord = {
+    plan_id: 'fix-relay',
+    revision: 3,
+    goal: 'Make the relay reconnect without losing queued events.',
+    criteria: [],
+    non_goals: [],
+    decisions: [],
+    open_questions: [],
+    deferred: [],
+    builder_check: { resolution: 'pending', questions: [] },
+  };
+
+  const outlineRecord: OutlineRecord = {
+    plan_id: 'fix-relay',
+    revision: 2,
+    summary: 'The relay reconnects.',
+    deliverables: [],
+    added_dependencies: [],
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }),
+    );
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(capturedPlan);
+    vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
+      project_id: 'pm-mcp-clients',
+      display_name: 'pm-mcp-clients',
+      plans: [],
+      epics: [],
+      alongside_landings: [],
+    });
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      task_id: 'TASK-003',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      duration_seconds: 360,
+      tokens_so_far: 48000,
+      entries: [],
+    });
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getPlanIntent').mockResolvedValue(intentRecord);
+    vi.spyOn(apiClient, 'getPlanOutline').mockResolvedValue(outlineRecord);
+    vi.spyOn(apiClient, 'getPlanChanges').mockResolvedValue({
+      plan_id: 'fix-relay',
+      state: 'captured',
+      head: '9f3c2ab41d7e',
+      base_ref: 'main',
+      files: [
+        {
+          path: 'pm-relay/src/main/java/Transport.java',
+          status: 'modified',
+          added: 48,
+          removed: 12,
+          binary: false,
+          unplanned: false,
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'getPlanChangeFile').mockResolvedValue({
+      path: 'pm-relay/src/main/java/Transport.java',
+      hunks: [],
+      binary: false,
+      truncated: false,
+    });
+  });
+
+  it('draws exactly the three tabs', async () => {
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((tab) => tab.textContent?.trim())).toEqual(['Process', 'Intent', 'Changes']);
+  });
+
+  it('opens the Intent tab from its address with the three panels in order', async () => {
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const intent = await screen.findByTestId('plan-intent-panel');
+    const builder = screen.getByTestId('builder-check');
+    const outline = await screen.findByTestId('outline-panel');
+
+    expect(intent.compareDocumentPosition(builder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(builder.compareDocumentPosition(outline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('says the intent is not written and shows no panel when refine wrote no record', async () => {
+    vi.spyOn(apiClient, 'getPlanIntent').mockResolvedValue(null);
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(await screen.findByTestId('plan-intent-none')).toHaveTextContent(
+      'Refine has not written the intent yet.',
+    );
+    expect(screen.queryByTestId('plan-intent-panel')).toBeNull();
+    expect(screen.queryByTestId('outline-panel')).toBeNull();
+  });
+
+  it('says the intent read failed instead of claiming refine wrote nothing', async () => {
+    vi.spyOn(apiClient, 'getPlanIntent').mockRejectedValue(new Error('503'));
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(await screen.findByTestId('error-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('plan-intent-none')).toBeNull();
+  });
+
+  it('lays the process side by side at a 720 px column and stacked at 719 px', async () => {
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const column = screen.getByTestId('plan-view');
+    const host = screen.getByTestId('plan-panel-host');
+    reportBox(column, 720, 600);
+    await tick();
+    expect(host).toHaveAttribute('data-layout', 'side');
+
+    reportBox(column, 719, 600);
+    await tick();
+    expect(host).toHaveAttribute('data-layout', 'stacked');
+  });
+
+  it('lays the changes side by side at a 720 px column and stacked at 719 px', async () => {
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await fireEvent.click(screen.getByTestId('plan-change-size'));
+    const column = screen.getByTestId('plan-view');
+    const host = screen.getByTestId('plan-panel-host');
+
+    reportBox(column, 720, 600);
+    await tick();
+    expect(host).toHaveAttribute('data-layout', 'side');
+    expect(screen.getByTestId('plan-changes').querySelector('.plan-changes__body')).toHaveClass(
+      'plan-changes__body--wide',
+    );
+
+    reportBox(column, 719, 600);
+    await tick();
+    expect(host).toHaveAttribute('data-layout', 'stacked');
+    expect(screen.getByTestId('plan-changes').querySelector('.plan-changes__body')).not.toHaveClass(
+      'plan-changes__body--wide',
+    );
+  });
+
+  it('drops file= when Changes becomes Process and restores the file from memory', async () => {
+    runtimeStore.update((state) => ({
+      ...state,
+      objectTab: 'changes',
+      changeFile: 'pm-relay/src/main/java/Transport.java',
+    }));
+    window.history.replaceState(
+      {},
+      '',
+      '/plans/fix-relay?tab=changes&file=pm-relay%2Fsrc%2Fmain%2Fjava%2FTransport.java',
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await screen.findByTestId('plan-changes');
+    expect(window.location.search).toContain('file=');
+
+    const processTab = screen.getAllByRole('tab')[0];
+    await fireEvent.click(processTab);
     await waitFor(() => expect(get(runtimeStore).objectTab).toBe('process'));
-    expect(window.location.search).not.toContain('tab=intent');
+    expect(window.location.search).not.toContain('file=');
+
+    const changesTab = screen.getAllByRole('tab')[2];
+    await fireEvent.click(changesTab);
+    await waitFor(() => expect(get(runtimeStore).objectTab).toBe('changes'));
+    expect(get(runtimeStore).changeFile).toBe('pm-relay/src/main/java/Transport.java');
+  });
+
+  it('opens Process and replaces an address that names a tab of another object', async () => {
+    // `access` is a settings tab: no tab of this view, so Process stands in and the address is rewritten.
+    runtimeStore.update((state) => ({ ...state, objectTab: 'access' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=access');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await waitFor(() => expect(get(runtimeStore).objectTab).toBe('process'));
+    expect(window.location.search).not.toContain('tab=access');
     expect(screen.queryByTestId('plan-changes')).toBeNull();
   });
 });

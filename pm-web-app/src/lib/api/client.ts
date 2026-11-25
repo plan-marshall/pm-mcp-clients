@@ -435,6 +435,20 @@ export interface ProcessTree {
   ended?: ProcessEndedInfo | null;
   /** The size of the plan's change at its last capture; a plan with none carries no field. */
   change?: ChangeSizeRecord | null;
+  /** The chat revision the plan queued, as the process resource reports it; absent when none waits. */
+  queued_revision?: QueuedRevisionRecord | null;
+}
+
+/**
+ * A plan's queued chat revision (`state-catalogue.adoc#chat`, Apply Paths): the point it waits for
+ * and, where it names one, the task that boundary belongs to.
+ */
+export interface QueuedRevisionRecord {
+  chat_id: string;
+  turn_id: string;
+  subject: { kind: string; id: string };
+  chat_open: boolean;
+  applies: { key: string; args?: Record<string, unknown> };
 }
 
 export interface ActivityEntry {

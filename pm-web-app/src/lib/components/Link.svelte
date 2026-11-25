@@ -55,9 +55,13 @@
     look?: LinkLook;
     /** An icon before the label. */
     icon?: Snippet;
+    /** The test id of the rendered element, where a view's test names it. */
+    testid?: string;
+    /** The hover explanation, already localized; the label alone does not explain the action. */
+    advisory?: string;
   }
 
-  let { href, label, look = 'text', icon }: Props = $props();
+  let { href, label, look = 'text', icon, testid, advisory }: Props = $props();
 
   /** The address that was checked and is rendered: the one without the white space around it. */
   const address = $derived(href.trim());
@@ -65,12 +69,17 @@
 </script>
 
 {#if known}
-  <a href={address} class="link link--{look}">
+  <a
+    href={address}
+    class="link link--{look}"
+    data-testid={testid}
+    title={advisory}
+  >
     {#if icon}<span class="link__icon">{@render icon()}</span>{/if}
     <span class="link__label">{label}</span>
   </a>
 {:else}
-  <span class="link-text">{label}</span>
+  <span class="link-text" data-testid={testid}>{label}</span>
 {/if}
 
 <style>

@@ -36,9 +36,18 @@
     onSelectFile: (path: string | null) => void;
     /** A count the view raises on `plan.change_captured`: the list is read again. */
     reloadToken?: number;
+    /** Whether the object column is at least `720 px` wide: the list and the hunks stand side by side. */
+    wide?: boolean;
   }
 
-  let { planId, change, selectedFile, onSelectFile, reloadToken = 0 }: Props = $props();
+  let {
+    planId,
+    change,
+    selectedFile,
+    onSelectFile,
+    reloadToken = 0,
+    wide = false,
+  }: Props = $props();
 
   let answer = $state<PlanChangesAnswer | null>(null);
   let isLoading = $state(true);
@@ -353,7 +362,7 @@
       {$t('plan.changes.title', { head: answer.head.slice(0, 7), size: changeText(change) })}
     </h3>
 
-    <div class="plan-changes__body">
+    <div class="plan-changes__body" class:plan-changes__body--wide={wide}>
       <ol class="change-list">
         {#each answer.files as file (file.path)}
           <li class="change-row" class:change-row--current={selectedFile === file.path}>
@@ -469,14 +478,13 @@
   }
 
   /*
-   * The list and the hunks stand side by side while the object column is wide enough, the same
-   * breakpoint the Process tab stacks at; a narrower column stacks them, the hunks below the list.
+   * The list and the hunks stand side by side while the object column is at least `720 px` wide,
+   * the width the plan view measures on its own panel host; a narrower column stacks them, the
+   * hunks below the list (`plan-view-interaction.adoc#layout`).
    */
-  @media (min-width: 769px) {
-    .plan-changes__body {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
-      align-items: start;
-    }
+  .plan-changes__body--wide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    align-items: start;
   }
 
   .change-list {
