@@ -2,10 +2,10 @@
   "id": "PLAN-188",
   "slug": "profiles-usage-model",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "#566",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-188-profiles-usage-model",
+  "pr": "566",
+  "landing": "landings/PLAN-188.md",
   "seq": 188
 }
