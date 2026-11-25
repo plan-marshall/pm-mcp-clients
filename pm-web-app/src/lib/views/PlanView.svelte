@@ -1751,110 +1751,6 @@
     padding: var(--space-3) var(--space-6) 0;
   }
 
-  .plan-header {
-    background-color: var(--color-bg-surface);
-    border-bottom: 1px solid var(--color-border);
-    padding: var(--space-4) var(--space-6);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .plan-header__top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .plan-breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--text-sm);
-  }
-
-  .breadcrumb-link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--color-accent);
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: inherit;
-    font-family: inherit;
-  }
-
-  .breadcrumb-link:hover {
-    color: var(--color-accent-hover);
-  }
-
-  .breadcrumb-sep {
-    color: var(--color-text-muted);
-  }
-
-  .breadcrumb-current {
-    color: var(--color-text-primary);
-  }
-
-  .plan-header__actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-3);
-    min-inline-size: 0;
-    max-inline-size: 100%;
-  }
-
-  .pr-badge-link {
-    display: inline-flex;
-    align-items: center;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
-    background-color: var(--color-bg-subtle);
-    border: 1px solid var(--color-border);
-    color: var(--color-accent);
-    font-size: var(--text-xs);
-    font-family: monospace;
-    text-decoration: none;
-  }
-
-  .report-link-btn {
-    background: none;
-    border: none;
-    padding: var(--space-1) var(--space-2);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-    font-size: var(--text-sm);
-    text-decoration: underline;
-  }
-
-  .plan-headline {
-    display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    flex-wrap: wrap;
-  }
-
-  .plan-title {
-    font-size: var(--text-xl, 1.25rem);
-    font-weight: 700;
-    margin: 0;
-  }
-
-  .plan-status-tags {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .badge--phase {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35em;
-  }
-
   .plan-tokens {
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
@@ -1886,12 +1782,6 @@
   .change-size-link:focus-visible {
     outline: none;
     box-shadow: var(--focus-ring);
-  }
-
-  .plan-tabs {
-    padding: 0 var(--space-6);
-    background-color: var(--color-bg-surface);
-    border-bottom: 1px solid var(--color-border);
   }
 
   .plan-changes-panel {
@@ -2298,30 +2188,10 @@
     flex-shrink: 0;
   }
 
-  .entry-kind-tag {
-    padding: 1px 6px;
-    border-radius: 3px;
-    font-weight: 600;
-    font-size: var(--text-xs);
+  .entry-kind {
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
-    background-color: var(--color-bg-subtle);
-    color: var(--color-text-secondary);
-  }
-
-  .entry-kind-tag--tool,
-  .entry-kind-tag--tool_call {
-    background-color: var(--color-primary-subtle);
-    color: var(--color-primary);
-  }
-
-  .entry-kind-tag--changed,
-  .entry-kind-tag--file_changed {
-    background-color: var(--color-success-subtle);
-    color: var(--color-success-text);
-  }
-
-  .entry-kind-tag--text {
-    background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
   }
 
