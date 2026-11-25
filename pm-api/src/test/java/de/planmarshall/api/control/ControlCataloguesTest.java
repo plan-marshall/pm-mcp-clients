@@ -52,11 +52,13 @@ class ControlCataloguesTest {
     }
 
     @Test
-    @DisplayName("pins what a staged plan waits for, including none")
+    @DisplayName("pins what a staged plan waits for, including none, and refuses the retired stale")
     void epicWaitReasons() {
-        assertEquals(List.of("none", "dependency", "lock", "scope", "overlap", "stale", "held"),
+        assertEquals(List.of("none", "dependency", "lock", "scope", "overlap", "unreadable", "held"),
                 Arrays.stream(EpicWaitReason.values()).map(EpicWaitReason::value).toList());
         assertEquals(EpicWaitReason.OVERLAP, EpicWaitReason.fromValue("overlap"));
+        assertNull(EpicWaitReason.fromValue("stale"), "the retired wait reason resolves to no constant");
+        assertThrows(IllegalArgumentException.class, () -> EpicWaitReason.parse("stale"));
     }
 
     @Test

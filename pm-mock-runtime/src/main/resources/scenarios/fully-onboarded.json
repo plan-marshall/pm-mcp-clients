@@ -1873,6 +1873,20 @@
                             "overlap_files": [
                               "pm-api/src/store/Docs.java"
                             ]
+                          },
+                          {
+                            "plan_id": "relay-spec-docs",
+                            "title": "relay-spec-docs",
+                            "status": "staged",
+                            "wait_reason": "unreadable",
+                            "wait_since": "2026-10-16T09:44:00Z"
+                          },
+                          {
+                            "plan_id": "relay-held-docs",
+                            "title": "relay-held-docs",
+                            "status": "staged",
+                            "wait_reason": "held",
+                            "wait_since": "2026-10-16T09:46:00Z"
                           }
                         ]
                       },

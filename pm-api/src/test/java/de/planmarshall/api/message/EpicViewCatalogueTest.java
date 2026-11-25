@@ -62,6 +62,9 @@ class EpicViewCatalogueTest {
                 "overview.epic.waits.scope",
                 "overview.epic.waits.overlap",
                 "overview.epic.waits.overlap_files",
+                "overview.epic.waits.unreadable",
+                "overview.epic.waits.held",
+                "overview.epic.waits.other",
                 "overview.epic.waits.none",
                 "overview.epic.mode",
                 "overview.epic.event.landed",
@@ -169,6 +172,18 @@ class EpicViewCatalogueTest {
                 MessageCatalogue.format("en", "overview.epic.waits.lock", Map.of("lock", "landing-a")));
         assertEquals("waits for a free place: 3 of 3 taken",
                 MessageCatalogue.format("en", "overview.epic.waits.scope", Map.of("running", 3, "scope", 3)));
+        assertEquals("waits: its specification cannot be read",
+                MessageCatalogue.format("en", "overview.epic.waits.unreadable", Map.of()));
+        assertEquals("wartet: seine Vorgabe ist nicht lesbar",
+                MessageCatalogue.format("de", "overview.epic.waits.unreadable", Map.of()));
+        assertEquals("waits: held",
+                MessageCatalogue.format("en", "overview.epic.waits.held", Map.of()));
+        assertEquals("wartet: zurückgehalten",
+                MessageCatalogue.format("de", "overview.epic.waits.held", Map.of()));
+        assertEquals("waits: waiting for a place",
+                MessageCatalogue.format("en", "overview.epic.waits.other", Map.of("reason", "waiting for a place")));
+        assertEquals("wartet: waiting for a place",
+                MessageCatalogue.format("de", "overview.epic.waits.other", Map.of("reason", "waiting for a place")));
         assertEquals("can start", MessageCatalogue.format("en", "overview.epic.waits.none", Map.of()));
 
         assertEquals("1 file in common with relay-auth-v2: pm-api/src/A.java",
@@ -263,12 +278,13 @@ class EpicViewCatalogueTest {
     @DisplayName("should keep the wait reason texts for every closed reason")
     void shouldKeepAWaitTextForEveryClosedReason() {
         var en = epicTexts("en");
-        String[] reasons = {"dependency", "lock", "scope", "overlap", "stale", "held"};
+        String[] reasons = {"dependency", "lock", "scope", "overlap", "unreadable", "held"};
         for (String reason : reasons) {
             var key = "epic.views.wait." + reason;
             assertTrue(en.containsKey(key), "A wait text for the closed reason '" + reason + "' must exist");
             var formatted = MessageCatalogue.format("en", key, Map.of("plan", "relay-docs", "other", "relay-auth-v2"));
             assertFalse(formatted.isBlank(), "The wait text for '" + reason + "' must format to a line");
         }
+        assertFalse(en.containsKey("epic.views.wait.stale"), "The retired wait text must be gone");
     }
 }

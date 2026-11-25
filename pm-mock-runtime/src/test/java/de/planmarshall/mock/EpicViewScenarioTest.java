@@ -141,6 +141,9 @@ class EpicViewScenarioTest {
             assertEquals("Observability", observability.name());
             assertEquals("paused", row(epic, "relay-metrics").status());
             assertEquals("staged", row(epic, "relay-metrics-docs").status());
+            // The showroom carries every closed wait reason, so both clients can show each line.
+            assertEquals(EpicWaitReason.UNREADABLE, row(epic, "relay-spec-docs").waits());
+            assertEquals(EpicWaitReason.HELD, row(epic, "relay-held-docs").waits());
         }
     }
 
