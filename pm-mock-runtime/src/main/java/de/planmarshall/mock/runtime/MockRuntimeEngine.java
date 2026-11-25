@@ -1233,7 +1233,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public boolean revisionWindowOpen(String planId) {
         synchronized (controlLock) {
-            if (STATE_ENDED.equals(controlPlanStates.get(planId))) {
+            if (STATE_ENDED.equals(controlPlanStates.get(planId))
+                    || STATE_ENDED.equals(planActivities.get(planId))) {
                 return false;
             }
         }
@@ -1269,10 +1270,28 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return null;
         }
         var slash = subject.id().indexOf('/');
-        if (slash <= 0) {
+        if (slash <= 0 || slash == subject.id().length() - 1) {
             return null;
         }
         var candidate = subject.id().substring(0, slash);
+        var questionId = subject.id().substring(slash + 1);
+        DecisionEnvelope decision;
+        synchronized (decisionsLock) {
+            decision = openDecisions.get(questionId);
+        }
+        if (decision != null) {
+            return "plan".equals(decision.scope())
+                    ? Objects.requireNonNullElse(extractPlan(decision), candidate)
+                    : null;
+        }
+        synchronized (controlLock) {
+            if (controlEpics.containsKey(candidate)) {
+                return null;
+            }
+        }
+        if (startRegistry.find(candidate) != null) {
+            return null;
+        }
         // Only a decision about a plan names one: machine/, project/, epic/ and entry/ decisions do not.
         return planDetail(candidate) == null ? null : candidate;
     }
@@ -2415,6 +2434,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void recordPlanProgress(String event, Map<String, Object> payload) {
         var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId == null && EventName.SCOPE_ENDED.wire().equals(event)) {
+            var scope = scopeOf(event, payload);
+            if (scope.kind() == EventScopeKind.PLAN && scope.id() != null) {
+                planId = scope.id();
+            }
+        }
         if (planId == null) {
             return;
         }

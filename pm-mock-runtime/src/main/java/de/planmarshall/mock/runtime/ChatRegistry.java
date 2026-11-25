@@ -209,6 +209,7 @@ final class ChatRegistry {
     private static final String KEY_PHASE = "phase";
     private static final String KEY_VERSION = "version";
     private static final String KEY_ACTIVITY = "activity";
+    private static final String KEY_STATE = "state";
     private static final String KEY_HOLD_ID = "hold_id";
     private static final String KEY_SCOPE = "scope";
     private static final String KEY_DECISION = "decision";
@@ -1113,7 +1114,11 @@ final class ChatRegistry {
      * @return the outcome the narrative line names
      */
     private static String taskOutcome(String status) {
-        return OUTCOME_FAILED.equals(status) ? OUTCOME_FAILED : OUTCOME_DONE;
+        return switch (status) {
+            case OUTCOME_DONE, "success" -> OUTCOME_DONE;
+            case OUTCOME_FAILED, "failure" -> OUTCOME_FAILED;
+            default -> "infeasible";
+        };
     }
 
     private static NarrativeLine decisionAnsweredLine(Map<String, Object> payload, String at) {
@@ -1194,7 +1199,11 @@ final class ChatRegistry {
      */
     private static String activityOf(String event, Map<String, Object> payload) {
         if (EVENT_PLAN_PAUSED.equals(event)) {
-            return ACTIVITY_PAUSED;
+            var state = JsonTree.string(payload, KEY_STATE);
+            if (state == null) {
+                state = JsonTree.string(payload, KEY_ACTIVITY);
+            }
+            return ACTIVITY_PAUSING.equals(state) ? ACTIVITY_PAUSING : ACTIVITY_PAUSED;
         }
         if (EVENT_PLAN_RESUMED.equals(event)) {
             return ACTIVITY_RUNNING;
@@ -1261,6 +1270,9 @@ final class ChatRegistry {
      */
     private List<ChatEvent> revisionAtBoundary(String event, Map<String, Object> payload) {
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            planId = scopedId(payload, SCOPE_PLAN);
+        }
         if (planId == null) {
             return List.of();
         }
