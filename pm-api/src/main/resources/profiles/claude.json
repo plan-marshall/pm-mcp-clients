@@ -59,7 +59,8 @@
       "cache_creation": "/usage/cache_creation_input_tokens",
       "reasoning": "not_applicable",
       "cost_usd": "/cost_usd",
-      "tool_uses": "/num_turns"
+      "tool_uses": "/num_turns",
+      "model": "/message/model"
     },
     "events": {
       "kind_pointer": "/type",

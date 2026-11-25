@@ -44,7 +44,8 @@
       "cache_creation": null,
       "reasoning": null,
       "cost_usd": null,
-      "tool_uses": null
+      "tool_uses": null,
+      "model": null
     },
     "events": null,
     "endpoints": [ "localhost:8080" ],

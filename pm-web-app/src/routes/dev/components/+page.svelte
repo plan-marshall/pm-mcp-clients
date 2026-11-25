@@ -5,7 +5,6 @@
     apiClient,
     type BuilderCheckRecord,
     type OutlineDeliverableRecord,
-    type OverSizeDistributionRecord,
   } from '../../../lib/api/client';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import RowMenu from '../../../lib/components/RowMenu.svelte';
@@ -44,7 +43,6 @@
   import OutlinePanel from '../../../lib/components/OutlinePanel.svelte';
   import BuilderCheckList from '../../../lib/components/BuilderCheckList.svelte';
   import EpicIntentPanel from '../../../lib/components/EpicIntentPanel.svelte';
-  import OverSizeChart from '../../../lib/components/OverSizeChart.svelte';
   import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
   import DemoFormFixture from '../../../lib/dev/DemoFormFixture.svelte';
@@ -270,21 +268,16 @@
   const INTENT_PLAN_ID = 'fix-relay';
 
   /**
-   * The epic whose intent the fixture shows, and the project whose `over_size` distributions it
-   * shows. Both are read through the real client from the scenario's fixtures, so the epic panel and
-   * the charts walk the runtime's own records.
+   * The epic whose intent the fixture shows, read through the real client from the scenario's
+   * fixture, so the epic panel walks the runtime's own record.
    */
   const INTENT_EPIC_ID = 'relay-hardening';
-  const OVERSIZE_PROJECT_ID = 'pm-mcp-clients';
 
   /** The builder check the fixture shows, read from the plan's own record. */
   let builderCheck: BuilderCheckRecord | null = null;
 
   /** The outline's deliverables, so a criterion names them by number and title. */
   let deliverables: OutlineDeliverableRecord[] = [];
-
-  /** One distribution per role whose multiple the project sets, in the runtime's order. */
-  let distributions: OverSizeDistributionRecord[] = [];
 
   /** @returns the plan's record and outline as the fixture's own parts read them */
   async function readFixtureData(): Promise<void> {
@@ -300,12 +293,6 @@
       deliverables = outline?.deliverables ?? [];
     } catch {
       deliverables = [];
-    }
-    try {
-      const answer = await apiClient.getOverSize(OVERSIZE_PROJECT_ID);
-      distributions = answer?.distributions ?? [];
-    } catch {
-      distributions = [];
     }
   }
 
@@ -861,13 +848,6 @@
           <Card>
             <EpicIntentPanel epicId={INTENT_EPIC_ID} />
           </Card>
-        </div>
-        <div class="dev__stack" data-testid="oversize-fixture">
-          {#each distributions as distribution (distribution.role)}
-            <Card>
-              <OverSizeChart {distribution} />
-            </Card>
-          {/each}
         </div>
       </div>
 

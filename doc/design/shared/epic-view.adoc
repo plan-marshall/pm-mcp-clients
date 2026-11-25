@@ -73,8 +73,7 @@ In the web app the epic is a level of the column chain (link:../web-app/navigati
 An epic manages its plans (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-auto[An Epic Runs by Itself]); the view shows what it did, and never decides anything itself:
 
 * *Automatic or manual*: the head says `automatic` while the epic starts its launchable plans by itself, up to how many may run at once, and `manual` while it starts none and waits for _Next plan_ (link:work-actions.adoc#epic-auto[Automatic: On or Off]). Everything below runs in both modes.
-* *Waits: overlap*: a staged plan whose declared surface shares more files with a running plan than the epic allows waits until that plan has ended, and its row says so (`waits: overlap with relay-auth-v2`); `?` in the terminal or the row's detail in the web app names the files in common. It is never started beside that plan, also not by _Next plan_.
-* *An overlap found*: two running plans whose changes have come to share files beyond the limit go on; the epic records it, the event names both plans and the files (`relay-cursor-order and relay-docs-site changed 3 files in common`), and a report says so (link:reports.adoc#kinds[Reports]). The one that lands second meets its re-planning when the base moves under it.
+* *Waits: overlap*: a staged plan whose declared surface shares more files with the changes of a running plan than the epic allows waits until that plan has ended, and its row says so (`waits: overlap with relay-auth-v2`); `?` in the terminal or the row's detail in the web app names the files in common. It is never started beside that plan, also not by _Next plan_.
 * *After a plan landed*: the event names the landing and its downstream judgment (`relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered`); a re-order, or an amended surface or dependency of a staged plan, is applied and shown in the rows; a change that adds, drops, or re-scopes a plan waits for the operator in the decomposition, first in the head as what waits (link:starting-work.adoc#decomposition[The Decomposition]).
 * *After a plan ended without landing* (cancelled, abandoned, handed back, aborted): the epic's coordination decides on it (link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-informed[The Epic Is Told]): it re-stages the plan as a new row, holds the plans that depend on it, each with that reason and resolved by the operator as every hold is (link:work-actions.adoc#holds[What Holds a Plan]), leaves them as they are, or asks the operator a decision; the event says which (`relay-auth-v2 ended (cancelled); relay-token-rotation held`). The release of the project is no such end: it ends the epic with its plans.
 * *The next plans*: then, automatic, the epic starts what can start (`started relay-token-store (2 of 3 at once)`); manual, the event names what can start now (`can start now: relay-token-store`), a report says so once per change (link:reports.adoc#kinds[Reports]), and _Next plan_ offers it.
@@ -184,10 +183,6 @@ Keys of the area `overview`, shared by both clients.
 |`overview.epic.event.can_start`
 |can start now: {plans}
 |kann jetzt starten: {plans}
-
-|`overview.epic.event.overlap_found`
-|{plan} and {other} changed {files, plural, one {# file} other {# files}} in common
-|{plan} und {other} haben {files, plural, one {# gemeinsame Datei} other {# gemeinsame Dateien}} geändert
 
 |`overview.epic.event.through`
 |{epic} is through: {review, select, ready {the completion review is ready} other {archiving runs its completion review}}
