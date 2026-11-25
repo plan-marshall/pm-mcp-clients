@@ -155,18 +155,17 @@ public final class EpicViewFormatting {
             return "";
         }
         var other = clean(row.waitPlanId() != null ? row.waitPlanId() : "");
-        var key = reason.value();
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.planId()));
         params.put("other", other);
-        var message = switch (key) {
-            case "dependency" -> "operator.actions.epic.reason.dependency";
-            case "lock" -> "operator.actions.epic.reason.lock";
+        var message = switch (reason) {
+            case NONE -> null;
+            case DEPENDENCY -> "operator.actions.epic.reason.dependency";
+            case LOCK -> "operator.actions.epic.reason.lock";
             case SCOPE -> "operator.actions.epic.reason.scope";
-            case "overlap" -> "operator.actions.epic.reason.overlap";
-            case "unreadable" -> "operator.actions.epic.reason.unreadable";
+            case OVERLAP -> "operator.actions.epic.reason.overlap";
+            case UNREADABLE -> "operator.actions.epic.reason.unreadable";
             case HELD -> "operator.actions.epic.reason.held";
-            default -> null;
         };
         return message == null ? "" : MessageCatalogue.format(locale, message, params);
     }

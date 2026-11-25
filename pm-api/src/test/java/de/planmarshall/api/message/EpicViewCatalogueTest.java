@@ -59,15 +59,8 @@ class EpicViewCatalogueTest {
                 "overview.epic.counts.abandoned",
                 "overview.epic.counts.held",
                 "overview.epic.status",
-                "overview.epic.waits.dependency",
-                "overview.epic.waits.lock",
-                "overview.epic.waits.scope",
-                "overview.epic.waits.overlap",
                 "overview.epic.waits.overlap_files",
-                "overview.epic.waits.unreadable",
-                "overview.epic.waits.held",
                 "overview.epic.waits.other",
-                "overview.epic.waits.none",
                 "overview.epic.mode",
                 "overview.epic.event.landed",
                 "overview.epic.event.ended_held",
@@ -114,6 +107,12 @@ class EpicViewCatalogueTest {
             assertNotNull(de.get(key), "Value for '" + key + "' must not be null");
             assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank in English");
             assertFalse(de.get(key).isBlank(), "Value for '" + key + "' must not be blank in German");
+        }
+        // One overview wait text per closed reason: a reason added to the enum forces its key.
+        for (var reason : EpicWaitReason.values()) {
+            var key = "overview.epic.waits." + reason.value();
+            assertTrue(en.containsKey(key), "Key '" + key + "' must exist in the English epic view texts");
+            assertTrue(de.containsKey(key), "Key '" + key + "' must exist in the German epic view texts");
         }
     }
 
