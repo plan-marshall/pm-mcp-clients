@@ -216,7 +216,7 @@ class ChatRegistryRaceTest {
     }
 
     private static HttpResult send(ChatRegistry registry, String method, String path, String jsonBody)
-            throws Exception {
+            throws IOException {
         var out = new ByteArrayOutputStream();
         var request = new MockHttpRequest(method, path, Map.of(),
                 jsonBody.getBytes(StandardCharsets.UTF_8), System.nanoTime());
@@ -225,7 +225,7 @@ class ChatRegistryRaceTest {
         return parseResult(out);
     }
 
-    private static HttpResult parseResult(ByteArrayOutputStream out) throws Exception {
+    private static HttpResult parseResult(ByteArrayOutputStream out) throws IOException {
         var raw = out.toString(StandardCharsets.UTF_8);
         var split = raw.indexOf(HEADER_SEPARATOR);
         var head = raw.substring(0, split);
