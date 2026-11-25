@@ -2999,46 +2999,6 @@
                 "delivered_at": "2026-10-16T15:02:00Z",
                 "is_waiver": false,
                 "project": "pm-mcp-clients"
-              },
-              {
-                "id": "Q-033",
-                "revision": 1,
-                "title": "Apply the cursor order now?",
-                "subject": "plan relay-cursor-order",
-                "scope": "plan",
-                "asking_phase": "execute",
-                "asking_role": "implement",
-                "blocks": "plan",
-                "reversibility": "reversible",
-                "description": "The cursor order of the relay waits for the operator.",
-                "parts": [
-                  {
-                    "part_id": "1",
-                    "question": "Apply the new cursor order now?",
-                    "answer_type": "one_option",
-                    "options": [
-                      {
-                        "key": "1",
-                        "label": "Apply it now",
-                        "tradeoff_description": "The next task reads the new order"
-                      },
-                      {
-                        "key": "2",
-                        "label": "Wait for the next plan",
-                        "tradeoff_description": "The current order stays"
-                      }
-                    ],
-                    "recommendation": "1",
-                    "recommendation_rationale": "The order is ready and the plan waits.",
-                    "recommending_role": "implement",
-                    "allow_own_words": true,
-                    "allow_note": false
-                  }
-                ],
-                "delivered_at": "2026-10-16T15:55:00Z",
-                "is_waiver": false,
-                "plan": "relay-cursor-order",
-                "project": "pm-mcp-clients"
               }
             ],
             "decompositions": [
@@ -6908,7 +6868,125 @@
           "state_id": "decisions.open"
         },
         "facts": {
-          "summary": "The open decisions across scopes"
+          "summary": "The open decisions across scopes",
+          "runtime": {
+            "routes": {
+              "GET /api/v1/plans/drop-legacy-api/process": {
+                "plan_id": "drop-legacy-api",
+                "title": "Drop the legacy endpoints",
+                "project": {
+                  "project_id": "pm-mcp-clients",
+                  "display_name": "pm-mcp-clients",
+                  "link": "/api/v1/projects/pm-mcp-clients"
+                },
+                "epic": {
+                  "epic_id": "relay-hardening",
+                  "title": "Relay Hardening",
+                  "link": "/api/v1/epics/relay-hardening/process"
+                },
+                "current_phase": "execute",
+                "phase_state": "waiting_for_you",
+                "needs_operator": true,
+                "instance_version": 1,
+                "tokens_so_far": {
+                  "total": 0,
+                  "input": 0,
+                  "output": 0,
+                  "tasks_total": 0,
+                  "tasks_measured": 0,
+                  "none_yet": true
+                },
+                "nodes": [
+                  {
+                    "node_id": "execute",
+                    "title": "phase execute",
+                    "kind": "phase",
+                    "state": "waiting_for_operator",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 0
+                  }
+                ],
+                "current_position_path": [],
+                "duration_seconds": 0
+              }
+            }
+          }
+        },
+        "links": []
+      },
+      "links": {}
+    },
+    "plan55.ended": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "plan55.ended"
+        },
+        "facts": {
+          "summary": "An ended plan, opened for the plan page's browser check",
+          "runtime": {
+            "routes": {
+              "GET /api/v1/plans/session-log-merged/process": {
+                "plan_id": "session-log-merged",
+                "title": "Session log, landed",
+                "project": {
+                  "project_id": "pm-mcp-clients",
+                  "display_name": "pm-mcp-clients",
+                  "link": "/api/v1/projects/pm-mcp-clients"
+                },
+                "epic": {
+                  "epic_id": "relay-hardening",
+                  "title": "Relay Hardening",
+                  "link": "/api/v1/epics/relay-hardening/process"
+                },
+                "current_phase": "finalize",
+                "phase_state": "ended",
+                "needs_operator": false,
+                "instance_version": 1,
+                "tokens_so_far": {
+                  "total": 412000,
+                  "input": 380000,
+                  "output": 32000,
+                  "floor": false,
+                  "tasks_total": 5,
+                  "tasks_measured": 5,
+                  "none_yet": false,
+                  "not_measured": false
+                },
+                "ended": {
+                  "outcome": "merged",
+                  "reason": "the change landed",
+                  "ended_at": "2026-11-24T16:20:00Z"
+                },
+                "nodes": [
+                  {
+                    "node_id": "init",
+                    "title": "phase init",
+                    "kind": "phase",
+                    "state": "done",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 120
+                  },
+                  {
+                    "node_id": "finalize",
+                    "title": "phase finalize",
+                    "kind": "phase",
+                    "state": "done",
+                    "run_count": 1,
+                    "current_run": 1,
+                    "duration_seconds": 840
+                  }
+                ],
+                "current_position_path": [],
+                "duration_seconds": 5400
+              }
+            }
+          }
         },
         "links": []
       },

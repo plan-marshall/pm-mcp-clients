@@ -169,7 +169,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     // The designer keeps the project of the plan it was opened from, so the test names it.
     await openPlan(page, 'Fix Relay Transport');
 
-    await page.getByTestId('design-process-btn').click();
+    await page.getByTestId('design-process-link').click();
     await expect(page).toHaveURL(/\/designer\?project=pm-mcp-clients$/);
 
     await page.reload();

@@ -54,14 +54,14 @@ test.describe('Addresses and the remembered place (D2)', () => {
     await page.goto('/plans/fix-relay');
     await expect(page.locator('[data-testid="plan-title"]')).toBeVisible();
 
-    await page.getByTestId('breadcrumb-project').click();
-    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients$/);
+    await page.getByTestId('breadcrumb').getByRole('link', { name: 'pm-mcp-clients' }).click();
+    await expect(page).toHaveURL(/\/overview\?project=pm-mcp-clients$/);
 
     await page.goBack();
     await expect(page).toHaveURL(/\/plans\/fix-relay$/);
 
     await page.goForward();
-    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients$/);
+    await expect(page).toHaveURL(/\/overview\?project=pm-mcp-clients$/);
   });
 
   test('replaces an old address with the address of the scheme', async ({ page }) => {

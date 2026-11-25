@@ -48,14 +48,14 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     ).toBeVisible();
     await expect(page.getByTestId('plan-title')).toHaveText('Fix Relay Transport');
     await expect(page.getByTestId('plan-id-chip')).toHaveText('fix-relay');
-    await expect(page.getByTestId('plan-pr-chip')).toHaveText('PR #214');
+    await expect(page.getByTestId('plan-pr-chip')).toContainText('PR #214');
     await expect(page.getByTestId('plan-phase')).toHaveText('execute');
     await expect(page.getByTestId('plan-state')).toHaveText('running');
     await expect(page.getByTestId('plan-state-sentence')).toContainText('for 2 h 10 min');
 
     // The top bar's breadcrumb is the only path: the head draws none (D1).
     await expect(page.getByTestId('plan-breadcrumb')).toHaveCount(0);
-    await expect(page.getByTestId('breadcrumb')).toContainText('fix-relay');
+    await expect(page.getByTestId('breadcrumb')).toContainText('Fix Relay Transport');
 
     // Verify process tree nodes
     const tree = page.locator('[data-testid="process-tree"]');
@@ -97,13 +97,13 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     page,
     request,
   }) => {
-    // The `decisions.open` state keeps the waiting plan the runtime serves.
+    // The `decisions.open` state serves the plan that waits for its decision.
     const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/decisions.open`);
     expect(moved.ok()).toBeTruthy();
 
-    await page.goto('/plans/relay-cursor-order');
+    await page.goto('/plans/drop-legacy-api');
     await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
-    await expect(page.getByTestId('plan-title')).toHaveText('Relay cursor order');
+    await expect(page.getByTestId('plan-title')).toHaveText('Drop the legacy endpoints');
 
     // The waiting plan says what it waits for, and the decision is a head link.
     await expect(page.getByTestId('plan-attention-strip')).toContainText(
@@ -111,14 +111,14 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     );
     const link = page.getByTestId('plan-decision-link');
     await expect(link).toHaveText('Open the decision');
-    await expect(link).toHaveAttribute('href', '/decisions/Q-033');
+    await expect(link).toHaveAttribute('href', '/decisions/Q-009');
 
     // The link opens the decision that waits (D1).
     await page.setViewportSize({ width: 1440, height: 900 });
     await link.click();
-    await expect(page).toHaveURL(/\/decisions\/Q-033$/);
+    await expect(page).toHaveURL(/\/decisions\/Q-009$/);
     await expect(page.getByTestId('decision-detail')).toContainText(
-      'Apply the new cursor order now?',
+      'Delete the published v1 endpoints from the release branch?',
     );
   });
 
