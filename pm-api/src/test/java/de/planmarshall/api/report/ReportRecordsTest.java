@@ -42,8 +42,8 @@ import de.planmarshall.api.json.JsonTree;
 class ReportRecordsTest {
 
     @Test
-    void shouldVerifyAll16ReportKinds() {
-        assertEquals(16, ReportKind.values().length);
+    void shouldVerifyAll15ReportKinds() {
+        assertEquals(15, ReportKind.values().length);
         for (ReportKind kind : ReportKind.values()) {
             assertEquals(kind, ReportKind.fromValue(kind.value()));
             assertEquals(kind, ReportKind.fromValue(kind.name()));
@@ -51,6 +51,8 @@ class ReportRecordsTest {
             assertFalse(kind.value().isBlank());
         }
         assertThrows(IllegalArgumentException.class, () -> ReportKind.fromValue("unknown.kind"));
+        assertThrows(IllegalArgumentException.class, () -> ReportKind.fromValue("epic.overlap_found"),
+                "the retired report kind resolves to no constant");
     }
 
     @Test

@@ -73,7 +73,6 @@ class EpicViewCatalogueTest {
                 "overview.epic.event.ended_left",
                 "overview.epic.event.started",
                 "overview.epic.event.can_start",
-                "overview.epic.event.overlap_found",
                 "overview.epic.event.through",
                 "overview.epic.event.mode",
                 "overview.epic.sources",
@@ -228,9 +227,8 @@ class EpicViewCatalogueTest {
                         Map.of("plan", "relay-token-store", "running", 2, "scope", 3)));
         assertEquals("can start now: relay-token-store",
                 MessageCatalogue.format("en", "overview.epic.event.can_start", Map.of("plans", "relay-token-store")));
-        assertEquals("relay-cursor-order and relay-docs changed 3 files in common",
-                MessageCatalogue.format("en", "overview.epic.event.overlap_found",
-                        Map.of("plan", "relay-cursor-order", "other", "relay-docs", "files", 3)));
+        assertFalse(epicTexts("en").containsKey("overview.epic.event.overlap_found"),
+                "the retired report kind's event text is removed");
         assertEquals("relay-hardening is through: the completion review is ready",
                 MessageCatalogue.format("en", "overview.epic.event.through",
                         Map.of("epic", "relay-hardening", "review", "ready")));

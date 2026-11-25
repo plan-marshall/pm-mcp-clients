@@ -12,7 +12,7 @@ package de.planmarshall.api.report;
 import java.util.Objects;
 
 /**
- * Closed enumeration of the 16 report kinds emitted by the runtime (UC-PLN-6).
+ * Closed enumeration of the 15 report kinds emitted by the runtime (UC-PLN-6).
  */
 public enum ReportKind {
     PLAN_STARTED("plan.started"),
@@ -21,7 +21,6 @@ public enum ReportKind {
     PLAN_HOLD_RELEASED("plan.hold_released"),
     EPIC_LAUNCHABLE("epic.launchable"),
     EPIC_WAITS_OVERLAP("epic.waits_overlap"),
-    EPIC_OVERLAP_FOUND("epic.overlap_found"),
     EPIC_RECUT_APPLIED("epic.recut_applied"),
     EPIC_THROUGH("epic.through"),
     EPIC_ENDED("epic.ended"),
