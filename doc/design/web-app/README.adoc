@@ -462,9 +462,9 @@ Every view and every object has one canonical address, in one scheme: path segme
 |Projects and the one project page
 |`?tab=setup` opens the project's setup; without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
 
-|`/project-onboarding/{entry}`
+|`/projects/onboarding/{id}`
 |Project onboarding
-|Each open run before its enrolment, addressed by its entry (link:../shared/project-onboarding.adoc#several[Project Onboarding, Several Onboardings at Once]), so several runs open in tabs of their own; after its enrolment the run continues at `/projects/{id}?tab=setup`, and its old entry address is replaced by that one.
+|Each open run before its enrolment, addressed by its own id (link:../shared/project-onboarding.adoc#several[Project Onboarding, Several Onboardings at Once]), so several runs open in tabs of their own and a reload lands on the same run; after its enrolment the run continues at `/projects/{id}?tab=setup`, and its old entry address is replaced by that one.
 
 |`/start`, `/projects/{id}/start`, `/entries/{id}`
 |Starting work
@@ -491,4 +491,4 @@ Every view and every object has one canonical address, in one scheme: path segme
 |Opened from a project's setup, a plan node, or the machine settings; `?project={id}`.
 |===
 
-On any address of a lens, `open={kind}:{id}` opens an object in place and `chat=open` the chat beside its object. An old address of a moved view — `/decisions?decision={id}`, `/reports?plan={id}`, `/projects?project={id}`, `/settings/machine`, `/settings/browser`, `/projects/onboard`, `/epics/decompose` — is replaced by its address in this scheme when it is opened. A route that is not one of these opens the overview for a paired, onboarded browser and the pairing page otherwise; it never opens a blank page. The address bar is written as link:navigation.adoc#url[Navigation, Addresses and History] says — a push for a change of depth or of lens, a replace for a sibling, a mode, a tab and every selection the app makes on its own — and read on `popstate`, so Back and Forward move between views without a reload. A pairing code in the fragment is redeemed before the first write and never rewritten into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
+On any address of a lens, `open={kind}:{id}` opens an object in place and `chat=open` the chat beside its object. An old address of a moved view — `/decisions?decision={id}`, `/reports?plan={id}`, `/projects?project={id}`, `/settings/machine`, `/settings/browser`, `/epics/decompose` — is replaced by its address in this scheme when it is opened; `/projects/onboard` is the page of a project whose id is `onboard`, and the onboarding runs live at `/projects/onboarding` and `/projects/onboarding/{id}`. A route that is not one of these opens the overview for a paired, onboarded browser and the pairing page otherwise; it never opens a blank page. The address bar is written as link:navigation.adoc#url[Navigation, Addresses and History] says — a push for a change of depth or of lens, a replace for a sibling, a mode, a tab and every selection the app makes on its own — and read on `popstate`, so Back and Forward move between views without a reload. A pairing code in the fragment is redeemed before the first write and never rewritten into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).

@@ -48,6 +48,17 @@ describe('ProjectOnboardingView component', () => {
   beforeEach(() => {
     vi.spyOn(apiClient, 'startProjectOnboarding').mockResolvedValue({ ok: true });
     vi.spyOn(apiClient, 'abandonOnboarding').mockResolvedValue();
+    // The entry of a being-added run, exactly as the mock serves it: its state, its facts and the
+    // one `set` link, with no `links` or `build_environment` on the explorer's row.
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.identity',
+      step: 2,
+      total_steps: 10,
+      id: 'cui-parent',
+      name: 'cui-parent',
+      pilot: false,
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
   });
 
   it('renders the ten steps and the captured build environment of the current run', async () => {
@@ -175,6 +186,7 @@ describe('ProjectOnboardingView component', () => {
       step: 2,
       state: 'project.identity',
       summary: 'Identity',
+      pilot: false,
       checkout_path: '~/git/cui-parent',
       links: { set: { href: '/api/v1/entries/ent-cui/step' }, abandon: { href: '#' } },
     });
@@ -470,27 +482,48 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.queryByTestId('project-back')).not.toBeInTheDocument();
   });
 
-  it('records identity of a being-added run through the entry link with the exact body', async () => {
+  it('proposes the identity the entry publishes over the checkout name', async () => {
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.identity',
+      step: 2,
+      total_steps: 10,
+      id: 'remote-project',
+      name: 'Owner / Remote',
+      pilot: false,
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+
+    expect(await screen.findByTestId('project-identity-id')).toHaveValue('remote-project');
+    expect(screen.getByTestId('project-identity-name')).toHaveValue('Owner / Remote');
+  });
+
+  it('does not look up the entry with the checkout when the row names no entry id', async () => {
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
       ...EMPTY_EXPLORER,
       being_added: [
         {
-          checkout_path: '~/git/cui-parent',
+          checkout_path: '~/git/no-entry',
           current_step: 'Identity',
           step_number: 2,
           total_steps: 10,
-          continue_link: '/api/v1/entries/ent-cui/continue',
-          abandon_link: '/api/v1/entries/ent-cui/abandon',
-          links: {
-            set: {
-              href: '/api/v1/entries/ent-cui/links/set',
-              method: 'POST',
-            },
-          },
         },
       ],
     });
-    const actEntrySpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+    const getEntrySpy = vi.spyOn(apiClient, 'getEntry');
+
+    render(ProjectOnboardingView, { onboardingId: '~/git/no-entry' });
+
+    await waitFor(() => expect(screen.getByTestId('project-identity-step')).toBeInTheDocument());
+    expect(getEntrySpy).not.toHaveBeenCalled();
+  });
+
+  it('records identity of a being-added run through the entry’s own set href with the exact body', async () => {
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
+    const byHrefSpy = vi.spyOn(apiClient, 'actByHref').mockResolvedValue({} as never);
+    const actEntrySpy = vi.spyOn(apiClient, 'actEntry');
 
     render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
 
@@ -499,11 +532,13 @@ describe('ProjectOnboardingView component', () => {
 
     await fireEvent.click(saveBtn);
 
-    expect(actEntrySpy).toHaveBeenCalledWith('ent-cui', 'set', {
+    // The link the entry published is followed; no path is rebuilt in the client.
+    expect(byHrefSpy).toHaveBeenCalledWith('/api/v1/entries/ent-cui/links/set', {
       id: 'cui-parent',
       name: 'cui-parent',
       pilot: false,
     });
+    expect(actEntrySpy).not.toHaveBeenCalled();
   });
 
   it('shows the needs-terminal card at step 3 only, and clears after read carrying environment', async () => {
@@ -527,7 +562,7 @@ describe('ProjectOnboardingView component', () => {
     expect(screen.queryByTestId('project-needs-terminal')).not.toBeInTheDocument();
     unmount();
 
-    // At step 3, without build_environment, card DOES show
+    // At step 3, the entry says so, and without build_environment the card DOES show
     vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
       ...EMPTY_EXPLORER,
       being_added: [
@@ -541,29 +576,30 @@ describe('ProjectOnboardingView component', () => {
         },
       ],
     });
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.enrolment',
+      step: 3,
+      total_steps: 10,
+      pilot: false,
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
 
     render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
     expect(await screen.findByTestId('project-needs-terminal')).toBeInTheDocument();
 
-    // Mock explorer returning environment on next read
-    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue({
-      ...EMPTY_EXPLORER,
-      being_added: [
-        {
-          checkout_path: '~/git/cui-parent',
-          current_step: 'Enrolment',
-          step_number: 3,
-          total_steps: 10,
-          continue_link: '/api/v1/entries/ent-cui/continue',
-          abandon_link: '/api/v1/entries/ent-cui/abandon',
-          build_environment: {
-            captured_at: '2026-10-18T08:00:00Z',
-            source: 'terminal',
-            variables: {},
-          },
-        },
-      ],
-    });
+    // Mock the entry carrying the captured environment on the next read
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.enrolment',
+      step: 3,
+      total_steps: 10,
+      pilot: false,
+      build_environment: {
+        captured_at: '2026-10-18T08:00:00Z',
+        source: 'terminal',
+        variables: {},
+      },
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
 
     await fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
 
@@ -572,23 +608,39 @@ describe('ProjectOnboardingView component', () => {
     });
   });
 
-  it('hides the pilot checkbox when lifecycle_gate is false', async () => {
+  it('shows the pilot checkbox when the runtime publishes the pilot fact, and hides it otherwise', async () => {
     vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue({
       ...RUN,
       step: 2,
       state: 'project.identity',
       summary: 'Identity',
       checkout_path: '~/git/cui-parent',
-      lifecycle_gate: false,
     });
 
-    render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+    const { unmount } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
 
     await waitFor(() => {
       expect(screen.getByTestId('project-identity-id')).toBeInTheDocument();
     });
-
+    // A run whose representation carries no `pilot` fact offers no checkbox.
     expect(screen.queryByTestId('project-identity-pilot')).not.toBeInTheDocument();
+    unmount();
+
+    vi.spyOn(apiClient, 'getEntry').mockResolvedValue({
+      state: 'project.identity',
+      step: 2,
+      total_steps: 10,
+      id: 'cui-parent',
+      name: 'cui-parent',
+      pilot: true,
+      links: { set: { href: '/api/v1/entries/ent-cui/links/set', method: 'POST' } },
+    } as never);
+    vi.spyOn(apiClient, 'getProjectExplorer').mockResolvedValue(BEING_ADDED);
+
+    render(ProjectOnboardingView, { onboardingId: 'ent-cui' });
+    await waitFor(() => {
+      expect(screen.getByTestId('project-identity-pilot')).toBeInTheDocument();
+    });
   });
 
   it('keeps a run started from the checkout form selected through save identity, Check again, and Continue', async () => {
@@ -599,7 +651,6 @@ describe('ProjectOnboardingView component', () => {
       total_steps: 10,
       continue_link: '/api/v1/entries/ent-new/continue',
       abandon_link: '/api/v1/entries/ent-new/abandon',
-      links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
     };
     const step3Entry = {
       checkout_path: '~/git/new-service',
@@ -613,7 +664,22 @@ describe('ProjectOnboardingView component', () => {
       .spyOn(apiClient, 'getProjectExplorer')
       .mockResolvedValueOnce({ ...EMPTY_EXPLORER, being_added: [step2Entry] })
       .mockResolvedValue({ ...EMPTY_EXPLORER, being_added: [step3Entry] });
-    const actSpy = vi.spyOn(apiClient, 'actEntry').mockResolvedValue({} as never);
+    vi.spyOn(apiClient, 'getEntry')
+      .mockResolvedValueOnce({
+        state: 'project.identity',
+        step: 2,
+        total_steps: 10,
+        pilot: false,
+        links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
+      } as never)
+      .mockResolvedValue({
+        state: 'project.enrolment',
+        step: 3,
+        total_steps: 10,
+        pilot: false,
+        links: { set: { href: '/api/v1/entries/ent-new/links/set', method: 'POST' } },
+      } as never);
+    const actSpy = vi.spyOn(apiClient, 'actByHref').mockResolvedValue({} as never);
 
     render(ProjectOnboardingView, {});
 

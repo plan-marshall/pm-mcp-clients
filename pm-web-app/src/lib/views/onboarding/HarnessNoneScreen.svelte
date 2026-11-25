@@ -1,144 +1,55 @@
 <script lang="ts">
   import Button from '../../components/Button.svelte';
-  import { hasMessage, humanizeKey, t } from '../../i18n';
+  import { t } from '../../i18n';
   import type { ScreenProps } from './screens';
 
   /**
-   * No harness can be used (`harness.none`, UC-ONB-4).
+   * No usable harness (`harness.none`, UC-ONB-4).
    *
-   * When the state reports the checks that failed, each chosen harness stands with its name, its
-   * path, the check that failed, the answer the harness gave and the fix — the list of what was
-   * looked for is replaced, as `onboarding.adoc` § None Found states. A state that reports no check
-   * (nothing was found in the first place) shows the one sentence of what was looked for.
+   * The catalogue's row is the whole screen: no usable harness, so it names how to install each
+   * known one — each profile's install hint — and offers `recheck` and `add`
+   * (`14-machine-onboarding.adoc:277-283`). The per-harness name, cause and fix are the facts of
+   * `harness.blocked`, never of this state, and the mock-only `checks[]`, `path`, `check` and
+   * `later` are gone with it.
    *
-   * The screen never prints the state's id: the runtime's own summary is the title, and the words
-   * of the copy come from the catalogue.
+   * The heading is the catalogue's, never the runtime's `summary`: that summary is a single ASCII
+   * line (`hypermedia-format/01-…:90-93`) and stands as a sentence under the heading.
    */
   let { view }: ScreenProps = $props();
 
-  /** One harness whose check failed, as the runtime reports it. */
-  interface FailedHarness {
-    harness?: string;
-    name?: string;
-    path?: string;
-    check?: string;
-    result?: string;
-    cause?: string;
-    fix?: string;
+  /** How to install one known harness, as the engine's `HarnessNone.InstallHint` carries it. */
+  interface InstallHint {
+    harness_id?: string;
+    install_hint?: string;
   }
 
-  /**
-   * The checks that failed: a runtime that reports a passing check does not list it under "none
-   * passed".
-   */
-  const failed = $derived(
-    view.arrayField<FailedHarness>('checks').filter((entry) => entry.result !== 'pass'),
-  );
+  const known = $derived(view.arrayField<InstallHint>('known'));
 
-  const title = $derived(
-    view.field('summary') ||
-      (failed.length > 0
-        ? $t('onboard.harness.none.unusable_title')
-        : $t('onboard.harness.none.title')),
-  );
-
-  /**
-   * @param name the fact's name @returns the sentence's half: the string the runtime sent, or the
-   *         items of its list (their names where they are objects), or `null` when it sent neither
-   */
-  function wording(name: string): string | null {
-    const value = (view.state as Record<string, unknown> | null)?.[name];
-    if (typeof value === 'string' && value.length > 0) return value;
-    if (!Array.isArray(value) || value.length === 0) return null;
-    return value
-      .map((item: unknown) => {
-        if (typeof item === 'string') return item;
-        const entry = item as Record<string, unknown> | null;
-        return String(entry?.name ?? entry?.harness_id ?? '');
-      })
-      .filter((word) => word.length > 0)
-      .join(', ');
-  }
-
-  /**
-   * The sentence of what was looked for, when the state names both halves of it and reports no
-   * failed check; a state that names neither gets no sentence rather than one with two holes.
-   */
-  const lookedForText = $derived.by(() => {
-    if (failed.length > 0) return null;
-    const harnesses = wording('looks_for') ?? wording('harnesses');
-    const locations = wording('locations') ?? wording('in');
-    if (!harnesses || !locations) return null;
-    return $t('onboard.harness.none.looked_for', { harnesses, locations });
+  /** The runtime's summary, unless it repeats the catalogue's heading. */
+  const summary = $derived.by(() => {
+    const text = view.field('summary');
+    return text !== undefined && text.trim() !== $t('onboard.harness.none.title') ? text : null;
   });
-
-  /**
-   * @param check the check id the runtime reports
-   * @returns the catalogue's words for it, and for an id the catalogue does not know a readable
-   *         form of the id itself — never the raw key
-   */
-  function checkLabel(check: string): string {
-    const key = `onboard.harness.check.${check}`;
-    return hasMessage(key) ? $t(key) : humanizeKey(check);
-  }
-
-  /**
-   * @param entry the failed check
-   * @returns the harness's name, or a readable form of its id when the runtime names no display name
-   */
-  function harnessName(entry: FailedHarness): string {
-    return entry.name ?? humanizeKey(entry.harness ?? '');
-  }
 </script>
 
 <div class="state-card" data-testid="harness-none">
   <div class="state-card__header">
-    <h1 class="state-card__title">{title}</h1>
-    {#if lookedForText}
-      <p class="state-card__summary">{lookedForText}</p>
+    <h1 class="state-card__title">{$t('onboard.harness.none.title')}</h1>
+    {#if summary}
+      <p class="state-card__summary">{summary}</p>
     {/if}
   </div>
 
-  {#if failed.length > 0}
-    <p class="harness-none__intro">{$t('onboard.harness.none.none_passed')}</p>
-    <div class="harness-none__failures" data-testid="harness-none-failures">
-      {#each failed as entry}
-        <section class="harness-failure">
-          <h2 class="harness-failure__name">{harnessName(entry)}</h2>
-          <dl class="detail-list">
-            {#if entry.check}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.none.check')}</dt>
-                <dd>{checkLabel(entry.check)}</dd>
-              </div>
-            {/if}
-            {#if entry.path}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.none.path')}</dt>
-                <dd class="mono">{entry.path}</dd>
-              </div>
-            {/if}
-            {#if entry.cause}
-              <div class="detail-row">
-                <dt>{$t('onboard.harness.none.answer')}</dt>
-                <dd>{entry.cause}</dd>
-              </div>
-            {/if}
-            {#if entry.fix}
-              <div class="detail-row">
-                <dt>{$t('onboard.state.fix')}</dt>
-                <dd class="mono">{entry.fix}</dd>
-              </div>
-            {/if}
-          </dl>
-        </section>
+  {#if known.length > 0}
+    <p class="harness-none__intro">{$t('onboard.harness.none.install_one')}</p>
+    <ul class="harness-none__install" data-testid="harness-none-install">
+      {#each known as hint}
+        <li class="harness-install">
+          <span class="harness-install__name mono">{hint.harness_id}</span>
+          <span class="harness-install__hint mono">{hint.install_hint}</span>
+        </li>
       {/each}
-    </div>
-    <p class="harness-none__fix-one">{$t('onboard.harness.none.fix_one')}</p>
-  {/if}
-
-  {#if view.links.some((link) => link.id === 'later')}
-    <p class="state-card__next">{$t('onboard.later.hint')}</p>
+    </ul>
   {/if}
 
   <div class="state-card__actions">
@@ -155,29 +66,37 @@
 </div>
 
 <style>
-  .harness-none__intro,
-  .harness-none__fix-one {
+  .harness-none__intro {
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
     margin-bottom: var(--space-3);
   }
 
-  .harness-none__failures {
+  .harness-none__install {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    list-style: none;
+    padding: 0;
   }
 
-  .harness-failure {
-    padding: var(--space-4);
+  .harness-install {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
     background-color: var(--color-bg-subtle);
     border-radius: var(--radius-md);
   }
 
-  .harness-failure__name {
-    font-size: var(--text-base);
+  .harness-install__name {
     font-weight: 600;
     color: var(--color-text-primary);
-    margin-bottom: var(--space-2);
+  }
+
+  .harness-install__hint {
+    color: var(--color-text-secondary);
+    word-break: break-word;
   }
 </style>

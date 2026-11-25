@@ -8,6 +8,16 @@ describe('CredentialEntry', () => {
     vi.restoreAllMocks();
   });
 
+  it('opens with the focus in its token field', async () => {
+    vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+
+    render(CredentialEntry, { props: { credentialKey: 'github', label: 'GitHub' } });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('credential-secret-input')).toHaveFocus(),
+    );
+  });
+
   it('stores a secret on the loopback connection', async () => {
     const setSpy = vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
 

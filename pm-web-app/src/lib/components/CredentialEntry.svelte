@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createEventDispatcher, onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from './Button.svelte';
   import { apiClient } from '../api/client';
@@ -7,6 +8,16 @@
 
   export let credentialKey: string;
   export let label: string;
+
+  /** Emitted when the secret was stored, so the screen that opened the entry can check again. */
+  const dispatch = createEventDispatcher<{ saved: { key: string } }>();
+
+  /** The field the entry opens into, so the operator lands where they type. */
+  let secretInput: HTMLInputElement | null = null;
+
+  onMount(() => {
+    if (isLoopback) secretInput?.focus();
+  });
 
   let secret = '';
   let isSaving = false;
@@ -25,6 +36,7 @@
       await apiClient.setCredential(credentialKey, secret);
       secret = '';
       notice = $t('entry.credentials.stored');
+      dispatch('saved', { key: credentialKey });
     } catch (err) {
       // Only the loopback refusal has a sentence of its own; every other failure reads its code's.
       const refusal = err instanceof Error ? err.message : '';
@@ -70,6 +82,7 @@
         type="password"
         class="credential-entry__input"
         autocomplete="off"
+        bind:this={secretInput}
         bind:value={secret}
         data-testid="credential-secret-input"
       />

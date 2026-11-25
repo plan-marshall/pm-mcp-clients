@@ -211,6 +211,89 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("runs a Change from auto.result through the aspect and back to auto.result")
+        void shouldRunAChangeThroughTheAspect() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.result");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                // The catalogue routes a change as a later run of that aspect: `onboard.next` calls
+                // the aspect and its return leads back to the result (14-machine-onboarding.adoc:61-62).
+                assertEquals("language.reconfigure", step(client, auth, "change:language").get("state"));
+                assertEquals("auto.result", step(client, auth, "set").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("returns a Change taken by its published href to the automatic result")
+        void shouldReturnAChangeTakenByHref() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                runtime.goToState("auto.result");
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // The state's own href, as a client that follows the published link sends it.
+                var changed = client.send(HttpRequest.json("POST",
+                        "/api/v1/onboarding/settings/reconfigure/language", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, changed.status());
+                assertEquals("language.reconfigure", currentState(client, auth));
+
+                var done = client.send(HttpRequest.json("POST", "/api/v1/onboarding/language/set", "{}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, done.status());
+                assertEquals("auto.result", currentState(client, auth));
+            }
+        }
+
+        @Test
+        @DisplayName("keeps the settings return of a later run after a Change has settled")
+        void shouldKeepTheSettingsReturnAfterAChange() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                runtime.goToState("auto.result");
+                assertEquals("language.reconfigure", step(client, auth, "change:language").get("state"));
+                assertEquals("auto.result", step(client, auth, "set").get("state"));
+
+                // A later run opened from the settings returns to the settings.
+                runtime.goToState("settings.choose");
+                assertEquals("language.reconfigure", step(client, auth, "reconfigure:language").get("state"));
+                assertEquals("settings.choose", step(client, auth, "set").get("state"));
+            }
+        }
+
+        @Test
+        @DisplayName("serves the build environment its own run captured, and none for another")
+        void shouldServeEachEntrysOwnBuildEnvironment() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = Map.of("Authorization", "Bearer " + runtime.token());
+
+                var started = client.send(HttpRequest.json("POST", "/api/v1/project-onboardings",
+                        "{\"path\":\"~/git/with-env\",\"build_environment\":{\"PATH\":\"/jdk-a/bin\"}}")
+                        .withHeader("Authorization", auth.get("Authorization")));
+                assertEquals(201, started.status());
+                var startedMap = JsonTree.asObject(JsonTree.parse(
+                        new String(started.body(), StandardCharsets.UTF_8)));
+                var entryId = entryIdOf(JsonTree.string(startedMap, "continue_link"));
+
+                var entry = client.send(HttpRequest.get("/api/v1/entries/" + entryId)
+                        .withHeader("Authorization", auth.get("Authorization")));
+                assertEquals(200, entry.status());
+                var entryMap = JsonTree.asObject(JsonTree.parse(
+                        new String(entry.body(), StandardCharsets.UTF_8)));
+                var environment = JsonTree.asObject(entryMap.get("build_environment"));
+                assertNotNull(environment);
+                assertEquals("terminal", JsonTree.string(environment, "source"));
+                assertEquals("/jdk-a/bin",
+                        JsonTree.string(JsonTree.asObject(environment.get("variables")), "PATH"));
+            }
+        }
+
+        @Test
         @DisplayName("reports the seven done aspects at the review step without completing the machine")
         void shouldReportTheReviewStep() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
@@ -618,8 +701,14 @@ class OnboardingScenarioTest {
 
                 var none = step(client, auth, "continue");
                 assertEquals("harness.none", none.get("state"));
-                assertEquals("No harness can be used", none.get("summary"));
-                assertEquals("harness.none", step(client, auth, "later").get("state"));
+                // The step names how to install each known harness and offers recheck and add only
+                // (14-machine-onboarding.adoc:277-283); the failed checks are not its facts.
+                var known = JsonTree.asArray(none.get("known"));
+                assertEquals(2, known.size());
+                assertFalse(none.containsKey("checks"));
+                assertFalse(JsonTree.asObject(none.get("links")).containsKey("later"));
+                // `recheck` runs the scan again, as the catalogue's row names it.
+                assertEquals("harness.scan", step(client, auth, "recheck").get("state"));
             }
         }
 
@@ -802,6 +891,29 @@ class OnboardingScenarioTest {
     private static int put(UnixSocketHttpClient client, String auth, String body) throws Exception {
         return client.send(HttpRequest.json("PUT", "/api/v1/machine/settings", body)
                 .withHeader("Authorization", auth)).status();
+    }
+
+    /**
+     * @param continueLink the run's continue link
+     * @return the entry id the link names
+     */
+    private static String entryIdOf(String continueLink) {
+        var matcher = java.util.regex.Pattern.compile("/entries/([^/]+)/").matcher(continueLink);
+        assertTrue(matcher.find(), "continue_link names an entry: " + continueLink);
+        return matcher.group(1);
+    }
+
+    /**
+     * @param client the client of the running mock
+     * @param auth   the bearer header value
+     * @return the state the onboarding reports now
+     */
+    private static String currentState(UnixSocketHttpClient client, String auth)
+            throws Exception {
+        var res = client.send(HttpRequest.get("/api/v1/onboarding/state")
+                .withHeader("Authorization", auth));
+        return JsonTree.string(JsonTree.asObject(
+                JsonTree.parse(new String(res.body(), StandardCharsets.UTF_8))), "state");
     }
 
     private static Map<String, Object> step(UnixSocketHttpClient client, Map<String, String> auth, String link)

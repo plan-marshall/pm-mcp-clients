@@ -670,7 +670,8 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  * Called after pairing, when the machine can be asked: the wait is bounded so the first paint is
  * never held up by a slow runtime, and the read goes on so a late answer still switches the screen.
  *
- * @see adoptRecordedLocaleNow for the step that records the language, which waits for it
+ * @see adoptRecordedLocaleBeforeStep for the onboarding's record step, which bounds this wait so the
+ *      button cannot spin on a runtime that stopped answering
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
@@ -678,13 +679,24 @@ export async function adoptRecordedLocale(): Promise<void> {
 }
 
 /**
- * Applies the interface language the machine recorded, and WAITS for it.
+ * Applies the interface language the machine recorded, for the step that records it.
  *
- * The step that records the language must show the next screen in that language (UC-ONB-3,
- * `onboarding-step-1.adoc`), so it cannot bound the wait: the screen waits until the machine's
- * language and its catalogue are in hand, or until the machine cannot be asked at all. Starting the
- * adoption also invalidates every adoption still in flight, so a language recorded later is never
- * overwritten by an earlier read.
+ * The record button must not spin on a runtime that stopped answering, so the step waits at most
+ * the pairing bound; the read itself goes on and switches the screen when it lands.
+ *
+ * @returns when the recorded language is applied, or the bound passed first
+ */
+export async function adoptRecordedLocaleBeforeStep(): Promise<void> {
+  await withinBound(adoptRecordedLocaleUntimed(++switchGeneration), ADOPTION_BOUND_MS);
+}
+
+/**
+ * Applies the interface language the machine recorded, and WAITS for it without a bound.
+ *
+ * A caller that must show the next screen in that language (UC-ONB-3, `onboarding-step-1.adoc`) uses
+ * this form; the onboarding's record step uses {@link adoptRecordedLocaleBeforeStep}, which bounds
+ * the wait so a slow runtime cannot hold the button. Starting the adoption also invalidates every
+ * adoption still in flight, so a language recorded later is never overwritten by an earlier read.
  *
  * @returns when the recorded language is applied, or could not be read
  */
@@ -790,7 +802,9 @@ function ownMessage(messages: Record<string, string> | null, key: string): strin
  * Turns a message key into a label a person can read.
  *
  * `web.offline.unreachable` becomes `Unreachable`: the leaf identifier names the action or the
- * subject, while the package path is an implementation detail that never belongs on screen.
+ * subject, while the package path is an implementation detail that never belongs on screen. A link
+ * id carries its own qualifier after a colon (`change:foo`, `credential:github`), which is a word
+ * boundary like a dot, so the qualifier never reads as part of the verb.
  *
  * @param key the message key
  * @returns a human-readable label
@@ -799,7 +813,7 @@ export function humanizeKey(key: string): string {
   const leaf = key.split('.').findLast((segment) => segment.length > 0) ?? '';
   const words = leaf
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-    .replace(/[_-]+/g, ' ')
+    .replace(/[:_-]+/g, ' ')
     .trim();
   if (!words) return 'Unknown';
   return words.charAt(0).toUpperCase() + words.slice(1);

@@ -200,21 +200,17 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-choose
 ----
   No harness found
 
-  Looked for claude, opencode, codex, agy in your PATH, ~/.local/bin,
-  /Applications, /opt/homebrew/bin.
+  Install one of them, then check again:
+    claude     docs.anthropic.com/en/docs/claude-code/setup
+    opencode   opencode.ai/docs/
 
-  Install one, then look again:
-    CC  Claude Code   docs.anthropic.com/en/docs/claude-code/setup   ↗
-    OC  OpenCode      opencode.ai/docs/                              ↗
-
-  Or add a harness that is not listed, by its program.
-
-  [ Later ]   [ Check again ]   [ Add a harness that is not listed ]
+  [ Check again ]   [ Add a harness that is not listed ]
 ----
 
-* The install pages open in a new tab; nothing is installed from the app.
-* *Check again* runs `harness.scan` again under the consent already given. *Later* sends a step for `later` that runs no scan and records no consent: the onboarding rests in `harness.none`, and the next visit, here or in `pm-operator`, resumes there; the page says so in one line (`web.onboard.later`).
-* *When every chosen harness fails its check* (<<harness-probe>>), the step comes here as well: the title reads `No harness can be used`, and the list of what was looked for is replaced by each chosen harness with its name, the answer the harness gave and the fix — and with its path and the check that failed where the runtime reports them; the links are the same. The step cannot finish without one usable harness.
+* The heading is the catalogue's (`onboard.harness.none.title`); the runtime's `summary` — one ASCII line — stands as a sentence under it, and is not printed when it repeats the heading.
+* The list is each profile's `install_hint` as the state reports it, one line per known harness (`harness-profiles/01-profile-schema.adoc`, `install_hint`); the app opens no install page of its own and installs nothing.
+* *Check again* runs `harness.scan` again under the consent already given; *Add a harness that is not listed* opens `harness.add`. There is no *Later*: the onboarding rests here until the operator acts, and the catalogue offers no such link.
+* *When every chosen harness fails its check* (<<harness-probe>>) the step comes here as well, with the same install hints. The per-harness name, cause and fix are the facts of `harness.blocked`, never of this state. The step cannot finish without one usable harness.
 
 [#harness-probe]
 === Check (`harness.probe-consent`, `harness.probe`, `harness.blocked`)

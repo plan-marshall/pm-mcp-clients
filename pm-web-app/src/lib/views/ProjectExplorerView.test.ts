@@ -932,7 +932,6 @@ describe('the one project page', () => {
           display_name: 'Ready With Needs',
           readiness: 'ready',
           needs_operator_count: 2,
-          needs_operator_kind: 'decision',
           active_plans_count: 1,
           active_epics_count: 0,
           is_favourite: false,

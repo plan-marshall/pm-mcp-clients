@@ -12,7 +12,9 @@ import {
   t,
   initI18n,
   adoptRecordedLocale,
+  adoptRecordedLocaleNow,
   forgetVisitChoice,
+  humanizeKey,
 } from './index';
 import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
@@ -26,8 +28,7 @@ describe('i18n dynamic message formatting', () => {
     vi.restoreAllMocks();
   });
 
-  it('replaces parameter placeholders in template strings', () => {
-    // Arrange
+  it('replaces parameter placeholders in template strings', () => {    // Arrange
     const template = 'Hello {name}, your code is {code}';
     const params = { name: 'Oliver', code: 'KXQB-MRTN' };
 
@@ -732,5 +733,61 @@ describe('the recorded language of the machine', () => {
     await vi.advanceTimersByTimeAsync(0);
     await Promise.resolve();
     expect(get(currentLocale)).toBe('de');
+  });
+  it('applies the recorded language without a bound when the step that records it asks', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      language_interface: 'de',
+    } as never);
+    vi.spyOn(apiClient, 'getMessages').mockResolvedValue({
+      'web.pair.page.title': 'Titel',
+    } as never);
+
+    // Act
+    await adoptRecordedLocaleNow();
+
+    // Assert: the step that records the language waits for it.
+    expect(get(currentLocale)).toBe('de');
+  });
+
+  it('keeps the language this visit chose over the recorded one', async () => {
+    // Arrange: the header switch is the operator's own choice for this visit.
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMessages').mockResolvedValue({
+      'web.pair.page.title': 'Titel',
+    } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      language_interface: 'en',
+    } as never);
+    await setLocale('de');
+
+    // Act
+    await adoptRecordedLocaleNow();
+
+    // Assert
+    expect(get(currentLocale)).toBe('de');
+  });
+
+  it('gives up the wait when no runtime answers, and still resolves', async () => {
+    // Arrange
+    vi.useFakeTimers();
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({ version: '1.0.0' } as never);
+    vi.spyOn(apiClient, 'getMachineSettings').mockRejectedValue(new Error('network_offline'));
+
+    // Act
+    const adoption = adoptRecordedLocaleNow();
+    await vi.advanceTimersByTimeAsync(0);
+    await adoption;
+
+    // Assert: the screen keeps its language instead of spinning forever.
+    expect(get(currentLocale)).toBe('en');
+  });
+});
+
+describe('humanizeKey reads a link qualifier as its own word', () => {
+  it('splits a qualifier after a colon, so no wire token reaches the screen', () => {
+    expect(humanizeKey('credential:github')).toBe('Credential github');
+    expect(humanizeKey('change:foo')).toBe('Change foo');
   });
 });

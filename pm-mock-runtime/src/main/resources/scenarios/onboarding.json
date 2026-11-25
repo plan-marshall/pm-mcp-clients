@@ -248,37 +248,37 @@
         "change:language": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/language",
-          "next": "language.reconfigure-result"
+          "next": "language.reconfigure"
         },
         "change:harness": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/harnesses",
-          "next": "harness.reconfigure-result"
+          "next": "harness.reconfigure-consent"
         },
         "change:catalogue": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/models",
-          "next": "catalogue.reconfigure-result"
+          "next": "catalogue.reconfigure"
         },
         "change:roles": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/roles",
-          "next": "roles.reconfigure-result"
+          "next": "roles.reconfigure"
         },
         "change:store": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/credentials",
-          "next": "store.reconfigure-result"
+          "next": "store.reconfigure"
         },
         "change:providers": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/providers",
-          "next": "providers.reconfigure-result"
+          "next": "providers.reconfigure"
         },
         "change:defaults": {
           "method": "POST",
           "href": "/api/v1/onboarding/settings/reconfigure/plan-defaults",
-          "next": "defaults.reconfigure-result"
+          "next": "defaults.reconfigure"
         },
         "done": {
           "method": "POST",
@@ -1026,6 +1026,37 @@
         }
       ]
     },
+    "harness.scan": {
+      "representation": {
+        "scope": {
+          "kind": "machine"
+        },
+        "state": {
+          "state_id": "harness.scan",
+          "kind": "working",
+          "level": "machine"
+        },
+        "facts": {
+          "summary": "Looking for harnesses \u2026"
+        },
+        "links": [
+          {
+            "id": "continue",
+            "rel": "next",
+            "method": "POST",
+            "href": "/api/v1/onboarding/harness/scan/continue",
+            "preselected": true
+          }
+        ]
+      },
+      "links": {
+        "continue": {
+          "method": "POST",
+          "href": "/api/v1/onboarding/harness/scan/continue",
+          "next": "harness.choose"
+        }
+      }
+    },
     "harness.none": {
       "representation": {
         "scope": {
@@ -1037,21 +1068,15 @@
           "level": "machine"
         },
         "facts": {
-          "summary": "No harness can be used",
-          "checks": [
+          "summary": "Looked for claude, opencode, codex, agy in your PATH. Nothing was found.",
+          "known": [
             {
-              "harness": "claude",
-              "name": "Claude Code",
-              "result": "fail",
-              "cause": "not logged in",
-              "fix": "claude login"
+              "harness_id": "claude",
+              "install_hint": "docs.anthropic.com/en/docs/claude-code/setup"
             },
             {
-              "harness": "opencode",
-              "name": "OpenCode",
-              "result": "fail",
-              "cause": "version 0.9.2 is not supported (1.5 - 1.x)",
-              "fix": "install a version in 1.5 - 1.x, then check again"
+              "harness_id": "opencode",
+              "install_hint": "opencode.ai/docs/"
             }
           ]
         },
@@ -1067,12 +1092,6 @@
             "rel": "alt",
             "method": "POST",
             "href": "/api/v1/onboarding/harness/add"
-          },
-          {
-            "id": "later",
-            "rel": "alt",
-            "method": "POST",
-            "href": "/api/v1/onboarding/harness/none/later"
           }
         ]
       },
@@ -1080,17 +1099,12 @@
         "recheck": {
           "method": "POST",
           "href": "/api/v1/onboarding/harness/recheck",
-          "next": "harness.probe-failed"
+          "next": "harness.scan"
         },
         "add": {
           "method": "POST",
           "href": "/api/v1/onboarding/harness/add",
           "next": "harness.add"
-        },
-        "later": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/harness/none/later",
-          "next": "harness.none"
         }
       }
     },
@@ -2553,272 +2567,6 @@
           "method": "GET",
           "href": "/api/v1/onboarding/settings",
           "next": "settings.choose"
-        }
-      }
-    },
-    "language.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "language.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose your languages",
-          "interface": "de",
-          "model": "same"
-        },
-        "links": [
-          {
-            "id": "set",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/language/set",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "set": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/language/set",
-          "next": "auto.result"
-        }
-      }
-    },
-    "harness.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "harness.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose the harnesses to enrol",
-          "harnesses": [
-            {
-              "harness_id": "claude",
-              "name": "Claude Code",
-              "version": "2.4.1",
-              "path": "~/.local/bin/claude",
-              "supported": true,
-              "workers": true,
-              "tokens": {
-                "coverage": "complete"
-              }
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "choose",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/harness/choose",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "choose": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/harness/choose",
-          "next": "auto.result"
-        }
-      }
-    },
-    "catalogue.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "catalogue.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Choose the models to allow",
-          "harnesses": [
-            {
-              "harness_id": "claude",
-              "name": "Claude Code",
-              "models": [
-                {
-                  "model_id": "claude-sonnet-5",
-                  "allowed": true
-                }
-              ]
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/catalogue/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/catalogue/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "roles.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "roles.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "The roles of the planning",
-          "roles": [
-            {
-              "role": "plan",
-              "class": "read_only",
-              "harness_id": "claude",
-              "model_id": "claude-sonnet-5",
-              "effort": "medium",
-              "origin": "default"
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/roles/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/roles/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "store.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "store.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Where should this machine keep its tokens?",
-          "current": "keychain"
-        },
-        "links": [
-          {
-            "id": "os",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/store/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "os": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/store/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "providers.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "providers.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "Which providers should this machine check?",
-          "providers": [
-            {
-              "provider": "github",
-              "variant": "gh",
-              "available": true
-            }
-          ]
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/providers/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/providers/record",
-          "next": "auto.result"
-        }
-      }
-    },
-    "defaults.reconfigure-result": {
-      "representation": {
-        "scope": {
-          "kind": "machine"
-        },
-        "state": {
-          "state_id": "defaults.reconfigure-result",
-          "kind": "operator_wait",
-          "level": "machine"
-        },
-        "facts": {
-          "summary": "How plans run on this machine",
-          "landing": "landing.pull-request",
-          "method": "method.test-first",
-          "asking": "ask.key-points",
-          "posture": "standard"
-        },
-        "links": [
-          {
-            "id": "accept",
-            "rel": "submit",
-            "method": "POST",
-            "href": "/api/v1/onboarding/defaults/record",
-            "preselected": true
-          }
-        ]
-      },
-      "links": {
-        "accept": {
-          "method": "POST",
-          "href": "/api/v1/onboarding/defaults/record",
-          "next": "auto.result"
         }
       }
     },

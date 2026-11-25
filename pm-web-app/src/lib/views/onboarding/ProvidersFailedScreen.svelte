@@ -68,7 +68,17 @@
         {$t('onboard.providers.failed.enter_token')}
       </Button>
       {#if entering}
-        <CredentialEntry credentialKey={credentialKey} label={provider} />
+        <CredentialEntry
+          credentialKey={credentialKey}
+          label={provider}
+          on:saved={() => {
+            // The token is stored: close the entry and take the state's own re-check, so the saved
+            // secret is verified instead of leaving the operator with a closed form and a failed row.
+            entering = false;
+            const again = view.linkBy('check_again', 'recheck', 'check');
+            if (again) view.onLink(again.id);
+          }}
+        />
       {/if}
     {/if}
   </div>

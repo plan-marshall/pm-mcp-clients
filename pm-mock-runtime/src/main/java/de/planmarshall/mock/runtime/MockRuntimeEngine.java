@@ -417,6 +417,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
     private static final String KEY_PILOT = "pilot";
+    /** The build environment a run was captured with (`captured_at`, `source`, `variables`). */
+    private static final String KEY_CAPTURED_AT = "captured_at";
+    private static final String KEY_SOURCE = "source";
+    private static final String KEY_VARIABLES = "variables";
+    private static final String SOURCE_TERMINAL = "terminal";
     private static final String KEY_READY = "ready";
     private static final String KEY_ASPECTS = "aspects";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
@@ -879,6 +884,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    /** The build environment each being-added run was opened with, by the run's entry id. */
+    private final Map<String, Map<String, String>> entryBuildEnvironments = new ConcurrentHashMap<>();
     private final Map<String, String> projectSetupStates = new ConcurrentHashMap<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
@@ -920,6 +927,13 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
     private final List<Map<String, Object>> machineCredentials = new ArrayList<>();
     private volatile boolean onboardingAuto;
+
+    /**
+     * Whether the later run in progress was opened by a {@code change:<aspect>} link of the automatic
+     * run's result. The aspect returns to {@code auto.result} then, and to the settings otherwise
+     * (State Catalogue § {@code onboard.next}).
+     */
+    private volatile boolean onboardingChangeFromResult;
 
     /** The credential store a later run of the store aspect chose. */
     private String machineCredentialStore = "os";
@@ -3022,7 +3036,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 return true;
             }
             recordAspectAnswer(activeStateId, linkName, answerBody);
-            transitionTo(linkDef.next());
+            transitionTo(onboardingTarget(activeStateId, linkName, linkDef.next()));
             state = currentScenario.get().state(this.currentStateId.get());
         }
 
@@ -4965,9 +4979,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 body.put(KEY_STATE, stateId);
                 body.put(KEY_STEP, being.stepNumber());
                 body.put(KEY_TOTAL_STEPS, being.totalSteps());
-                body.put("id", entryId);
-                body.put("name", entryId);
+                body.put("id", entryIdentity(being));
+                body.put("name", entryIdentity(being));
                 body.put(KEY_PILOT, false);
+                body.put("build_environment", entryBuildEnvironment(entryId));
                 body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
                         PATH_ENTRIES_PREFIX + entryId + SEGMENT_LINKS + "set", KEY_METHOD, METHOD_POST)));
                 response.json(200, body);
@@ -5012,9 +5027,29 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * @param entryId   the onboarding's entry
-     * @param completed whether the run reached its last state
-     * @return the state the entry reports
+     * The build environment an entry serves for the run's enrolment step, or {@code null} while the
+     * terminal client captured none yet: the same shape the runtime serves on a project's onboarding
+     * ({@code captured_at}, {@code source}, {@code variables}), so the needs-terminal card clears
+     * from a wire fact once the terminal captured one.
+     *
+     * @return the environment, or {@code null} while none was captured
+     */
+    private @Nullable Map<String, Object> entryBuildEnvironment(String entryId) {
+        var variables = entryBuildEnvironments.get(entryId);
+        if (variables == null || variables.isEmpty()) {
+            return null;
+        }
+        var environment = new LinkedHashMap<String, Object>();
+        environment.put(KEY_CAPTURED_AT, Instant.now().toString());
+        environment.put(KEY_SOURCE, SOURCE_TERMINAL);
+        environment.put(KEY_VARIABLES, variables);
+        return environment;
+    }
+
+    /**
+     * @param entryId the entry id
+     * @param completed whether the run completed
+     * @return the entry's representation after an act
      */
     private static Map<String, Object> projectOnboardingEntryState(String entryId, boolean completed) {
         var body = new LinkedHashMap<String, Object>();
@@ -6707,7 +6742,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                         new ReportFrom(CONST_PM_MCP_CORE, null, null),
                         ReportKind.SOURCE_FLAGGED,
                         "A source of codeberg-issues was flagged: issue #4711",
-                        Map.of("item", "codeberg-issues", "source", "issue #4711"),
+                        Map.of("item", "codeberg-issues", KEY_SOURCE, "issue #4711"),
                         null,
                         Instant.parse("2026-10-13T08:00:00Z"),
                         Instant.parse("2026-10-13T08:00:00Z"),
@@ -8846,6 +8881,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             machineCredentialStore = "os";
             machineProvidersVerified = false;
             onboardingAuto = false;
+            // A later run of another scenario starts no Change: the origin never outlives its run.
+            onboardingChangeFromResult = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
             machinePlanDefaults.put(KEY_METHOD, PlanDefaults.METHOD_TEST_FIRST);
@@ -9091,7 +9128,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         String newState;
         synchronized (this) {
-            transitionTo(link.next());
+            transitionTo(onboardingTarget(previousState, linkName, link.next()));
             newState = currentStateId.get();
             state = currentScenario.get().state(newState);
         }
@@ -9102,6 +9139,36 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     previousAspect, newState, completedStepsFor(newState)).toMap());
         }
         response.json(link.status(), mergeRepresentation(state, newState));
+    }
+
+    /**
+     * The state a step leads to.
+     *
+     * A later run opened from the automatic run's result returns to that result once its aspect is
+     * done, as the catalogue's {@code onboard.next} routes it: a {@code change} on {@code auto.result}
+     * calls the aspect as a later run and its return leads back to the result (State Catalogue
+     * § {@code auto.result} and § {@code onboard.next}). A run opened from the settings keeps the
+     * settings return the scenario names, and a step out ({@code back}) goes there as the catalogue
+     * says.
+     *
+     * @param previousState the state the step left, may be {@code null}
+     * @param linkName      the link the step took, may be {@code null}
+     * @param scenarioNext  the state the scenario's link names
+     * @return the state to enter
+     */
+    private String onboardingTarget(@Nullable String previousState, @Nullable String linkName,
+            String scenarioNext) {
+        if ("auto.result".equals(previousState) && linkName != null && linkName.startsWith("change:")) {
+            onboardingChangeFromResult = true;
+            return scenarioNext;
+        }
+        if (previousState == null || !previousState.endsWith(".reconfigure")) {
+            return scenarioNext;
+        }
+        var fromResult = onboardingChangeFromResult;
+        onboardingChangeFromResult = false;
+        // `back` is the later run's step out: the catalogue sends it to the settings.
+        return fromResult && !"back".equals(linkName) ? "auto.result" : scenarioNext;
     }
 
     /**
@@ -9908,6 +9975,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
             projectSetupStates.clear();
+            // A reseed is a new machine: a capture of a previous run is not this run's.
+            entryBuildEnvironments.clear();
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
@@ -10601,6 +10670,38 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
     }
 
+    /**
+     * @param being a being-added run
+     * @return the entry id its published continue link names, or its checkout-derived id
+     */
+    private static String entryIdOf(BeingAddedProject being) {
+        var continueLink = being.continueLink();
+        if (continueLink != null) {
+            var matcher = ENTRY_ID_PATTERN.matcher(continueLink);
+            if (matcher.find()) {
+                return matcher.group(1);
+            }
+        }
+        var path = being.checkoutPath();
+        var name = path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+        return encodedEntryId(name.isBlank() ? "new-project" : name);
+    }
+
+    private static final java.util.regex.Pattern ENTRY_ID_PATTERN =
+            java.util.regex.Pattern.compile("/entries/([^/]+)/");
+
+    /**
+     * The identity an entry proposes for its run: the checkout's own name, as the design derives it
+     * (`15-project-onboarding.adoc`: the id proposed from the remote's name).
+     *
+     * @param being the being-added run
+     * @return the proposed id and name
+     */
+    private static String entryIdentity(BeingAddedProject being) {
+        var path = being.checkoutPath();
+        return path.contains("/") ? path.substring(path.lastIndexOf('/') + 1) : path;
+    }
+
     private void handleStartProjectOnboarding(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var onboarding = onboardingRequestOf(request.body());
         String path = onboarding.path();
@@ -10626,6 +10727,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 beingAddedProjects.add(beingAdded);
             }
             lastBuildEnvironment = buildEnvironment;
+            // The capture belongs to the run it was sent with: a reused row keeps the entry id its
+            // own links publish, so the read of that entry finds the capture.
+            if (!buildEnvironment.isEmpty()) {
+                entryBuildEnvironments.put(entryIdOf(beingAdded), new LinkedHashMap<>(buildEnvironment));
+            }
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, FIXTURE_BEING_ADDED, path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",

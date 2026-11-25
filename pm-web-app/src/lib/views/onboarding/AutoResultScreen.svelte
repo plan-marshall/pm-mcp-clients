@@ -1,6 +1,6 @@
 <script lang="ts">
   import Button from '../../components/Button.svelte';
-  import { t } from '../../i18n';
+  import { hasMessage, t } from '../../i18n';
   import type { ScreenProps } from './screens';
 
   /**
@@ -57,6 +57,17 @@
       return !results.some((result) => changeLinkId(result.aspect) === link.id);
     }),
   );
+  /**
+   * @param reason the reason the run reports
+   * @returns the catalogue's word for it, or nothing: the catalogue names exactly four reasons, and a
+   *          missing one is not "the default" any more than an unknown one is an English word on a
+   *          German screen
+   */
+  function reasonLabel(reason: string | undefined): string {
+    if (reason === undefined || reason === '') return '';
+    const key = `onboard.auto.reason.${reason}`;
+    return hasMessage(key) ? $t(key) : '';
+  }
 </script>
 
 <div class="state-card">
@@ -80,7 +91,7 @@
         <tr>
           <td>{aspect}</td>
           <td>{result.value}</td>
-          <td>{$t(`onboard.auto.reason.${result.reason ?? 'default'}`)}</td>
+          <td>{reasonLabel(result.reason)}</td>
           <td class="result-table__act">
             {#if hasChangeLink(result.aspect)}
               <Button

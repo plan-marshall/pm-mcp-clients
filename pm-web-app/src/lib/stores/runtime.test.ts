@@ -37,6 +37,8 @@ import {
   startOnboardingAuto,
   stopRuntimeRecovery,
   storeCredential,
+  loadOnboardingState,
+  stepOnboarding,
   updateMachineSetting,
   withdrawConsent,
   type AppRoute,
@@ -45,6 +47,7 @@ import {
 } from './runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { writeRememberedPlace } from '../navigation/rememberedPlace';
+import { formatAddress } from '../routes';
 import { resetOpenedFromOutside } from '../navigation/history';
 import { PROJECT_REFRESH_EVENTS } from './refreshEvents';
 
@@ -1273,6 +1276,65 @@ describe('the onboarding step of a state', () => {
     // Assert
     expect(auto).toHaveBeenCalledTimes(2);
     expect(get(runtimeStore).activeStep).toBe(4);
+  });
+  it('keeps a step’s newer answer over a load that started before it and lands after it', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'secret123');
+    runtimeStore.set(makeRuntimeState());
+    let resolveLoad: ((state: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'getOnboardingState').mockReturnValue(
+      new Promise((resolve) => {
+        resolveLoad = resolve;
+      }) as never,
+    );
+    vi.spyOn(apiClient, 'stepOnboarding').mockResolvedValue({ state: 'harness.choose' } as never);
+
+    // Act: the load is asked first, the step second; the step answers first.
+    const load = loadOnboardingState();
+    await stepOnboarding('set', {});
+
+    // Assert: the newer request's state stands, and the older load does not replace it.
+    expect(get(runtimeStore).onboarding?.state).toBe('harness.choose');
+    resolveLoad?.({ state: 'language.choose' });
+    await load;
+    expect(get(runtimeStore).onboarding?.state).toBe('harness.choose');
+  });
+
+  it('applies a load asked after a step even when it answers last', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'secret123');
+    runtimeStore.set(makeRuntimeState());
+    vi.spyOn(apiClient, 'stepOnboarding').mockResolvedValue({ state: 'harness.choose' } as never);
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue({
+      state: 'roles.review',
+    } as never);
+
+    // Act
+    await stepOnboarding('set', {});
+    await loadOnboardingState();
+
+    // Assert: the newer read is the state the runtime means.
+    expect(get(runtimeStore).onboarding?.state).toBe('roles.review');
+  });
+  it('keeps a project onboarding run’s own id in the address, so a reload lands on the run', () => {
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'project-onboarding', selectedOnboardingId: 'ent-cui' }),
+    );
+
+    const params = routeParamsOf(get(runtimeStore));
+
+    expect(params.onboardingId).toBe('ent-cui');
+    expect(formatAddress({ route: 'project-onboarding', ...params })).toBe(
+      '/projects/onboarding/ent-cui',
+    );
+  });
+
+  it('carries no onboarding id on another route', () => {
+    runtimeStore.set(
+      makeRuntimeState({ currentRoute: 'projects', selectedOnboardingId: 'ent-cui' }),
+    );
+
+    expect(routeParamsOf(get(runtimeStore)).onboardingId).toBeUndefined();
   });
 });
 

@@ -17,6 +17,7 @@
     ProjectOnboardingState,
     ProjectOnboardingStep,
     ProjectOnboardingStepStatus,
+    StartStateResource,
   } from '../api/client';
   import { navigateTo } from '../stores/runtime';
 
@@ -216,11 +217,15 @@
       return;
     }
     const entryId = run?.onboarding_id || onboardingId;
-    if (entryId) {
+    const setLink = run?.links?.set;
+    const setHref = typeof setLink === 'string' ? setLink : setLink?.href;
+    if (entryId && setHref) {
       isSubmitting = true;
       error = '';
       try {
-        await apiClient.actEntry(entryId, 'set', payload);
+        // The `set` link's own href is what the runtime publishes for this act; the client never
+        // rebuilds it (project-onboarding.adoc#entry).
+        await apiClient.actByHref(setHref, payload);
         // The reload selects the same being-added run this screen shows, by its checkout, so a run
         // started from the checkout form (which has no `onboardingId`) stays on screen.
         await load(run?.checkout_path ?? undefined);
@@ -373,7 +378,16 @@
       if (!onboardingId?.trim()) {
         startedRunTarget = match.checkout_path;
       }
-      run = runOfBeingAdded(match);
+      // The explorer's row carries six fields; the run's own link surface and its facts are the
+      // entry's (the mock serves them on `GET /api/v1/entries/{id}`), so the screen reads it instead
+      // of inventing `links` or `build_environment` on the row.
+      const entryId = entryOnboardingId(match);
+      if (entryId) {
+        run = runOfBeingAdded(match, await apiClient.getEntry(entryId));
+      } else {
+        // A row whose link names no entry is shown from its own six facts: no link, no guess.
+        run = runOfBeingAdded(match, {} as StartStateResource);
+      }
       checkoutDraft = match.checkout_path;
       return;
     }
@@ -394,11 +408,9 @@
    * @returns the id the entry addresses the run by
    */
   function entryOnboardingId(entry: BeingAddedProject): string {
-    const linkStr =
-      entry.continue_link ??
-      (typeof entry.links?.set === 'string'
-        ? entry.links.set
-        : (entry.links?.set?.href ?? ''));
+    // The explorer's row publishes its run through `continue_link` only; the entry's own `links`
+    // are read from `GET /api/v1/entries/{id}`, never from the row.
+    const linkStr = entry.continue_link ?? '';
     const match = /\/entries\/([^/]+)\//.exec(linkStr);
     if (match?.[1]) {
       try {
@@ -407,15 +419,23 @@
         return match[1];
       }
     }
-    return entry.checkout_path;
+    // No entry id is parsed: the row's checkout is no address for the entry route, so the caller
+    // reads no entry and shows the run from the row's own facts.
+    return '';
   }
 
   /**
-   * @param entry the explorer's report of a pre-enrolment run
-   * @returns the run, in the shape the enrolled run reports
+   * @param entry a being-added run
+   * @param entryState the entry the runtime serves for it
+   * @returns the run, in the shape the enrolled run reports, from wire facts only
    */
-  function runOfBeingAdded(entry: BeingAddedProject): ProjectOnboardingState {
-    const rawLinks: Record<string, any> = { ...(entry.links ?? {}) };
+  function runOfBeingAdded(
+    entry: BeingAddedProject,
+    entryState: StartStateResource,
+  ): ProjectOnboardingState {
+    const rawLinks: Record<string, any> = {
+      ...((entryState.links as Record<string, any> | undefined) ?? {}),
+    };
     if (entry.continue_link && !rawLinks.continue) {
       rawLinks.continue = entry.continue_link;
     }
@@ -430,15 +450,23 @@
         links[k] = v;
       }
     }
+    const step = Number(entryState.step ?? entry.step_number);
     return {
+      // The entry's published identity, when it names one: a checkout name is a proposal, never a
+      // replacement for the identity the runtime already holds.
+      id: typeof entryState.id === 'string' ? entryState.id : undefined,
+      name: typeof entryState.name === 'string' ? entryState.name : undefined,
       onboarding_id: entryOnboardingId(entry),
       checkout_path: entry.checkout_path,
-      step: entry.step_number,
-      total_steps: entry.total_steps,
-      state: STEPS[entry.step_number - 1]?.state ?? 'project.checkout',
+      step,
+      total_steps: Number(entryState.total_steps ?? entry.total_steps),
+      state: String(entryState.state ?? STEPS[step - 1]?.state ?? 'project.checkout'),
       summary: entry.current_step,
       chat_available: false,
-      build_environment: entry.build_environment ?? null,
+      build_environment:
+        (entryState.build_environment as ProjectBuildEnvironment | null | undefined) ?? null,
+      // The entry publishes `pilot` or it does not: only a published boolean offers the checkbox.
+      pilot: typeof entryState.pilot === 'boolean' ? entryState.pilot : undefined,
       links,
     };
   }
@@ -727,7 +755,7 @@
               oninput={(event) =>
                 setIdentityField('name', (event.currentTarget as HTMLInputElement).value)}
             />
-            {#if run?.lifecycle_gate !== false}
+            {#if typeof run?.pilot === 'boolean'}
               <CheckField
                 label={$t('project.identity.pilot')}
                 description={$t('project.identity.pilot_hint')}

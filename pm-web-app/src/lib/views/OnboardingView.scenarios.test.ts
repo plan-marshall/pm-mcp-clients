@@ -8,6 +8,7 @@ import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
+import { resetRoleEditSession } from './onboarding/RolesReview.svelte';
 
 /**
  * The onboarding as a view test against the states `pm-mock-runtime` reports.
@@ -51,6 +52,201 @@ function arrange(state: OnboardingState, completedSteps = 0): void {
   // The view pulls the state on mount; the mock reports the state this case arranges.
   vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(state);
 }
+
+describe('roles review minors (D3)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('pm_device_secret', 'secret123');
+    vi.spyOn(apiClient, 'getOnboardingState').mockResolvedValue(onboardingState({}));
+    resetRoleEditSession();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetRoleEditSession();
+  });
+
+  function roleRow(partial: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+      role: 'plan',
+      class: 'read_only',
+      phase: 'planning',
+      harness_id: 'claude',
+      model_id: 'opus-5.5',
+      effort: 'high',
+      origin: 'default',
+      ...partial,
+    };
+  }
+
+  it('shows an effort the catalogue does not name as the value itself', async () => {
+    messagesStore.set(loadMessages('de'));
+    currentLocale.set('de');
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [roleRow({ effort: 'max' })],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    try {
+      render(OnboardingView);
+
+      const row = screen.getByTestId('role-row-plan');
+      // The engine defines the effort as what the harness accepts for the model, so an unknown
+      // value is shown as the value — never a humanised word nor a raw key.
+      expect(row).toHaveTextContent('max');
+      expect(row).not.toHaveTextContent('Max');
+      expect(row).not.toHaveTextContent('onboard.roles.effort');
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      currentLocale.set('en');
+    }
+  });
+
+  it('drops the decision of a role a refresh no longer lists', async () => {
+    const first = onboardingState({
+      state: 'roles.review',
+      roles: [
+        roleRow({ role: 'plan', departure: { harness_id: 'claude', model_id: 'sonnet-5', effort: 'medium' } }),
+        roleRow({ role: 'implement' }),
+      ],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(first);
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-departure-accept-plan'));
+
+    // A refresh that no longer lists the role: its decision must not travel.
+    const refreshed = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'implement' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    runtimeStore.update((s) => ({ ...s, onboarding: refreshed, currentState: refreshed }));
+    await tick();
+
+    const stepSpy = vi.spyOn(apiClient, 'stepOnboarding').mockResolvedValue(refreshed);
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    expect(stepSpy).toHaveBeenCalledTimes(1);
+    const body = stepSpy.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.departures ?? []).toEqual([]);
+    expect(body.roles ?? []).toEqual([]);
+  });
+
+  it('offers the advisory only for a row the runtime gives one', () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [
+          roleRow({ role: 'plan', advisory: { does: 'Plans', needs: 'Reasoning', why: 'Tier' } }),
+          roleRow({ role: 'implement' }),
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-advisory-plan')).toBeInTheDocument();
+    expect(screen.queryByTestId('role-advisory-implement')).toBeNull();
+  });
+
+  it('names one role in the save button', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [roleRow({ role: 'plan', departure: { harness_id: 'claude', model_id: 'sonnet-5' } })],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-departure-accept-plan'));
+
+    expect(screen.getByTestId('roles-record')).toHaveTextContent('Save 1 role');
+  });
+
+  it('gives each row its own accessible names and marks the decision pressed', async () => {
+    arrange(
+      onboardingState({
+        state: 'roles.review',
+        roles: [
+          roleRow({
+            role: 'plan',
+            departure: { harness_id: 'claude', model_id: 'sonnet-5' },
+            advisory: { does: 'Plans' },
+          }),
+          roleRow({ role: 'implement', departure: { harness_id: 'claude', model_id: 'sonnet-5' } }),
+        ],
+        links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(
+      screen.getByRole('button', { name: 'Change the harness, model and effort of plan' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Change the harness, model and effort of implement' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Advisory for plan' })).toBeInTheDocument();
+
+    const accept = screen.getByTestId('role-departure-accept-plan');
+    expect(accept).toHaveAttribute('aria-pressed', 'false');
+    await fireEvent.click(accept);
+    expect(accept).toHaveAttribute('aria-pressed', 'true');
+
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    expect(document.activeElement).toBe(screen.getByTestId('role-harness-plan'));
+  });
+
+  it('keeps the operator’s hand edits when the record act is refused', async () => {
+    const state = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'plan' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(state);
+    vi.spyOn(apiClient, 'stepOnboarding').mockRejectedValue(new Error('roles_invalid'));
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    await fireEvent.input(screen.getByTestId('role-model-plan'), {
+      target: { value: 'hand-typed-model' },
+    });
+    await fireEvent.click(screen.getByTestId('roles-record'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('role-model-plan')).toHaveValue('hand-typed-model'),
+    );
+  });
+
+  it('keeps the operator’s hand edits across a remount after a refused validate', async () => {
+    const state = onboardingState({
+      state: 'roles.review',
+      roles: [roleRow({ role: 'plan' })],
+      links: { accept: { href: '/api/v1/onboarding/roles/record', next: 'onboard.summary' } },
+    });
+    arrange(state);
+
+    const first = render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('role-change-plan'));
+    await fireEvent.input(screen.getByTestId('role-model-plan'), {
+      target: { value: 'hand-typed-model' },
+    });
+    first.unmount();
+
+    // The refused validate brings the screen back: a remount must not lose the edit.
+    render(OnboardingView);
+
+    expect(screen.getByTestId('role-model-plan')).toHaveValue('hand-typed-model');
+  });
+});
 
 describe('OnboardingView against the mock runtime states', () => {
   beforeEach(() => {
@@ -928,130 +1124,100 @@ describe('OnboardingView against the mock runtime states', () => {
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('retry', {}));
   });
 
-  it('names each harness that failed its check at harness.none, never the raw state id', () => {
+  it('names how to install each known harness at harness.none, with recheck and add only', () => {
     arrange(
       onboardingState({
         state: 'harness.none',
-        summary: 'No harness can be used',
-        checks: [
+        summary: 'Looked for claude, opencode in your PATH. Nothing was found.',
+        known: [
           {
-            harness: 'claude',
-            name: 'Claude Code',
-            result: 'fail',
-            cause: 'not logged in',
-            fix: 'claude login',
+            harness_id: 'claude',
+            install_hint: 'docs.anthropic.com/en/docs/claude-code/setup',
           },
-          {
-            harness: 'opencode',
-            name: 'OpenCode',
-            result: 'fail',
-            cause: 'version 0.9.2 is not supported (1.5 - 1.x)',
-            fix: 'install a version in 1.5 - 1.x, then check again',
-          },
+          { harness_id: 'opencode', install_hint: 'opencode.ai/docs/' },
         ],
         links: {
-          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.probe-failed' },
-          later: { href: '/api/v1/onboarding/harness/none/later', next: 'harness.none' },
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.scan' },
+          add: { href: '/api/v1/onboarding/harness/add', next: 'harness.add' },
         },
       }),
     );
 
     render(OnboardingView);
 
-    // The published shape of a failed check: the harness's name, the answer it gave and the fix.
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness can be used');
-    const failures = screen.getByTestId('harness-none-failures');
-    expect(failures).toHaveTextContent('Claude Code');
-    expect(failures).toHaveTextContent('not logged in');
-    expect(failures).toHaveTextContent('claude login');
-    expect(failures).toHaveTextContent('OpenCode');
-    expect(failures).toHaveTextContent('version 0.9.2 is not supported (1.5 - 1.x)');
-
-    // A raw state id never reaches the screen, and neither does the scope-and-id spelling of it.
-    expect(document.body).not.toHaveTextContent('harness.none');
-    expect(document.body).not.toHaveTextContent('Machine · harness.none');
-  });
-
-  it('shows a harness’s path and failed check when the runtime reports them', () => {
-    arrange(
-      onboardingState({
-        state: 'harness.none',
-        summary: 'No harness can be used',
-        checks: [
-          {
-            harness: 'claude',
-            name: 'Claude Code',
-            path: '~/.local/bin/claude',
-            check: 'login',
-            result: 'fail',
-            cause: 'not logged in',
-            fix: 'claude login',
-          },
-          {
-            harness: 'opencode',
-            name: 'OpenCode',
-            check: 'wordsmith',
-            result: 'fail',
-            cause: 'refused',
-            fix: 'reinstall',
-          },
-          {
-            harness: 'codex',
-            name: 'Codex',
-            path: '/opt/homebrew/bin/codex',
-            result: 'pass',
-            cause: '',
-            fix: '',
-          },
-        ],
-      }),
-    );
-
-    render(OnboardingView);
-
-    const failures = screen.getByTestId('harness-none-failures');
-    expect(failures).toHaveTextContent('~/.local/bin/claude');
-    expect(failures).toHaveTextContent('the login check');
-    // An id the catalogue does not know reads as a word, never as a raw key or a wire token.
-    expect(failures).toHaveTextContent('Wordsmith');
-    expect(failures).not.toHaveTextContent('onboard.harness.check.');
-    expect(failures).not.toHaveTextContent('wordsmith');
-
-    // A check that passed is not listed under "none passed".
-    expect(failures).not.toHaveTextContent('Codex');
-  });
-
-  it('says what was looked for when nothing was found', () => {
-    arrange(
-      onboardingState({
-        state: 'harness.none',
-        summary: 'No harness found',
-        looks_for: 'claude, opencode',
-        locations: 'your PATH, ~/.local/bin',
-      }),
-    );
-
-    render(OnboardingView);
-
+    // The heading is the catalogue's, the runtime's summary stays a sentence under it.
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('No harness found');
     expect(
-      screen.getByText('Looked for claude, opencode in your PATH, ~/.local/bin.'),
+      screen.getByText('Looked for claude, opencode in your PATH. Nothing was found.'),
     ).toBeInTheDocument();
+
+    // Each known profile's install hint, and only the two links the catalogue names.
+    const install = screen.getByTestId('harness-none-install');
+    expect(install).toHaveTextContent('docs.anthropic.com/en/docs/claude-code/setup');
+    expect(install).toHaveTextContent('opencode.ai/docs/');
+    expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add a harness that is not listed' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /later/i })).toBeNull();
     expect(screen.queryByTestId('harness-none-failures')).not.toBeInTheDocument();
   });
 
-  it('names the harnesses of a list and the place the runtime calls “in”', () => {
+  it('renders the install hints and both links in German, the heading from the catalogue', async () => {
+    const { setLocale, messagesStore } = await import('../i18n');
+    const { loadMessages } = await import('../../test/catalogue-fixture');
+    messagesStore.set(loadMessages('de'));
+    await setLocale('de');
+    arrange(
+      onboardingState({
+        state: 'harness.none',
+        summary: 'Nichts gefunden.',
+        known: [
+          { harness_id: 'claude', install_hint: 'docs.anthropic.com/en/docs/claude-code/setup' },
+        ],
+        links: {
+          recheck: { href: '/api/v1/onboarding/harness/recheck', next: 'harness.scan' },
+          add: { href: '/api/v1/onboarding/harness/add', next: 'harness.add' },
+        },
+      }),
+    );
+
+    try {
+      render(OnboardingView);
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+        'Kein Harness gefunden',
+      );
+      expect(screen.getByTestId('harness-none-install')).toHaveTextContent(
+        'docs.anthropic.com/en/docs/claude-code/setup',
+      );
+      expect(screen.getByRole('button', { name: 'Erneut prüfen' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Einen Harness hinzufügen, der nicht gelistet ist' }),
+      ).toBeInTheDocument();
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      await setLocale('en');
+    }
+  });
+
+  it('prints the summary only when it differs from the catalogue heading', () => {
     arrange(
       onboardingState({
         state: 'harness.none',
         summary: 'No harness found',
-        harnesses: [{ name: 'Claude Code' }, { harness_id: 'opencode' }],
-        in: 'your PATH',
+        known: [{ harness_id: 'claude', install_hint: 'docs.anthropic.com/en/docs/claude-code/setup' }],
       }),
     );
 
     render(OnboardingView);
 
-    expect(screen.getByText('Looked for Claude Code, opencode in your PATH.')).toBeInTheDocument();
+    // The runtime's summary repeats the heading: it is not printed twice, and the install hint is
+    // still the explanation under it.
+    expect(screen.getAllByText('No harness found')).toHaveLength(1);
+    expect(screen.getByTestId('harness-none-install')).toHaveTextContent(
+      'docs.anthropic.com/en/docs/claude-code/setup',
+    );
   });
 
   it('names the aspect of a change link whose line the result does not report', () => {
@@ -1173,6 +1339,170 @@ describe('OnboardingView against the mock runtime states', () => {
 
     await fireEvent.click(changes[1]);
     await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('change:harness', {}));
+  });
+
+  it('runs a Change from auto.result through the aspect and back to auto.result', async () => {
+    const result = onboardingState({
+      state: 'auto.result',
+      summary: 'Everything is decided.',
+      results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+      links: {
+        'change:language': {
+          href: '/api/v1/onboarding/settings/reconfigure/language',
+          next: 'language.reconfigure',
+        },
+        done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+      },
+    });
+    arrange(result);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValueOnce(
+        onboardingState({
+          state: 'language.reconfigure',
+          summary: 'The interface and model languages run again',
+          aspect: 'language',
+          interface: 'en',
+          model: 'same',
+          links: {
+            back: { href: '/api/v1/onboarding/settings', next: 'settings.choose' },
+            set: { href: '/api/v1/onboarding/language/set', next: 'auto.result' },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(result);
+
+    render(OnboardingView);
+    // Let the mount's first read land before the step captures its revision.
+    await waitFor(() => expect(apiClient.getOnboardingState).toHaveBeenCalled());
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Change Language' }));
+
+    // The aspect's own later run is what the Change opens; no state stands between it and the result.
+    await waitFor(() => expect(stepSpy).toHaveBeenNthCalledWith(1, 'change:language', {}));
+    await waitFor(() => expect(screen.getByTestId('language-screen')).toBeInTheDocument());
+
+    await fireEvent.click(screen.getByTestId('language-record'));
+
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenNthCalledWith(2, 'set', {
+        language_interface: 'en',
+        language_model: 'en',
+      }),
+    );
+    // Its answer is the automatic run's result again.
+    await waitFor(() => expect(screen.getByTestId('auto-result')).toBeInTheDocument());
+  });
+
+  it('shows the refusal of a refused Change instead of swallowing it', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          change: { href: '/api/v1/onboarding/auto/result/change', next: 'auto.result' },
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+    vi.spyOn(apiClient, 'stepOnboarding').mockRejectedValue(new Error('act_not_available'));
+
+    render(OnboardingView);
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Change' }));
+
+    const refusal = await screen.findByTestId('onboarding-refusal');
+    expect(refusal).toHaveAttribute('role', 'alert');
+    expect(refusal.textContent?.trim().length).toBeGreaterThan(0);
+  });
+
+  it('names an unknown aspect of a change link instead of its raw id', async () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [{ aspect: 'language', value: 'Deutsch, models too', reason: 'detected' }],
+        links: {
+          'change:language': {
+            href: '/api/v1/onboarding/settings/reconfigure/language',
+            next: 'language.reconfigure',
+          },
+          'change:foo': { href: '/api/v1/onboarding/auto/result/change', next: 'auto.result' },
+          done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' },
+        },
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('button', { name: 'Change Foo' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /change:/i })).toBeNull();
+  });
+
+  it('prints only the catalogue’s four reason words, and nothing for a missing reason', () => {
+    arrange(
+      onboardingState({
+        state: 'auto.result',
+        summary: 'Everything is decided.',
+        results: [
+          { aspect: 'language', value: 'Deutsch', reason: 'detected' },
+          { aspect: 'harness', value: 'Claude Code', reason: 'some_new_reason' },
+          { aspect: 'store', value: 'keychain' },
+        ],
+        links: { done: { href: '/api/v1/onboarding/auto/result/done', next: 'onboard.completed' } },
+      }),
+    );
+
+    render(OnboardingView);
+
+    const table = screen.getByTestId('auto-result');
+    // A known reason reads its catalogue word; a missing one prints nothing rather than "the
+    // default", and an unknown one prints nothing rather than an English word on a German screen.
+    expect(table).toHaveTextContent('detected');
+    expect(table).not.toHaveTextContent('the default');
+    expect(table).not.toHaveTextContent('Some new reason');
+    expect(table).not.toHaveTextContent('some_new_reason');
+  });
+
+  it('closes the token entry after a saved token and checks the provider again', async () => {
+    arrange(
+      onboardingState({
+        state: 'providers.failed',
+        summary: 'The provider could not be verified',
+        provider: 'SonarCloud',
+        provider_id: 'sonar',
+        cause: '401 "Invalid token"',
+        fix: 'enter the token again',
+        links: {
+          check_again: { href: '/api/v1/onboarding/providers/check-again', next: 'providers.verify' },
+          continue_without: {
+            href: '/api/v1/onboarding/providers/continue-without',
+            next: 'providers.record',
+          },
+        },
+      }),
+    );
+    const setSpy = vi.spyOn(apiClient, 'setCredential').mockResolvedValue(undefined);
+    const stepSpy = vi
+      .spyOn(apiClient, 'stepOnboarding')
+      .mockResolvedValue(onboardingState({ state: 'providers.verify' }));
+
+    render(OnboardingView);
+    await fireEvent.click(screen.getByTestId('providers-failed-enter-token'));
+    await fireEvent.input(screen.getByTestId('credential-secret-input'), {
+      target: { value: 'sonar-token' },
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /store the secret/i }));
+
+    await waitFor(() => expect(setSpy).toHaveBeenCalledWith('sonar', 'sonar-token'));
+    // The saved token is checked, not left behind a closed form with a failed row.
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('check_again', {}));
+    expect(screen.queryByTestId('credential-entry')).toBeNull();
   });
 
   it('renders the completed onboarding read-only, with the recorded summary of each done step', () => {
@@ -1761,12 +2091,8 @@ describe('store.choose protection lines per option (D9)', () => {
     expect(screen.getAllByText(/^Does not protect against:/)).toHaveLength(2);
 
     const osOption = screen.getByTestId('store-os').closest('li') as HTMLElement;
-    expect(osOption).toHaveTextContent(
-      'Protects a secret against: anything the store itself guarantees',
-    );
-    expect(osOption).toHaveTextContent(
-      'Does not protect against: anything the store itself does not guarantee',
-    );
+    expect(osOption).toHaveTextContent('Protects a secret against: not reported for this store');
+    expect(osOption).toHaveTextContent('Does not protect against: not reported for this store');
     expect(osOption).not.toHaveTextContent('macOS asking first');
     expect(within(osOption).getByText('recommended')).toBeVisible();
 
@@ -1798,7 +2124,7 @@ describe('store.choose protection lines per option (D9)', () => {
 
     expect(container).not.toHaveTextContent('without macOS asking first');
     expect(container).not.toHaveTextContent('Secret Service');
-    expect(container).toHaveTextContent('anything the store itself guarantees');
+    expect(container).toHaveTextContent('not reported for this store');
   });
 
   it('records os_unavailable for an unavailable OS store', async () => {
@@ -1853,10 +2179,10 @@ describe('store.choose protection lines per option (D9)', () => {
     expect(stepSpy).not.toHaveBeenCalled();
   });
 
-  it('keeps the store reconfiguration action enabled when store.reconfigure-result carries no stores array', async () => {
+  it('keeps the store reconfiguration action enabled when store.reconfigure carries no stores array', async () => {
     arrange(
       onboardingState({
-        state: 'store.reconfigure-result',
+        state: 'store.reconfigure',
         summary: 'Where should this machine keep its tokens?',
         current: 'keychain',
         links: { os: { href: '/api/v1/onboarding/store/record', next: 'auto.result' } },
@@ -1886,7 +2212,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     vi.restoreAllMocks();
   });
 
-  it('draws a monogram when no icon is fetched and says usage complete, usage partial or usage not reported', () => {
+  it('draws a monogram when no icon is fetched and says usage complete, usage partly reported or usage not reported', () => {
     arrange(
       onboardingState({
         state: 'harness.choose',
@@ -1948,9 +2274,9 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(container.querySelector('[data-harness="claude"]')).toHaveTextContent('usage complete');
     expect(container.querySelector('[data-harness="claude"]')?.textContent).not.toContain('complete:');
     expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-      'usage partial (not reported: cache read, cache write)',
+      'usage partly reported (not reported: cache read, cache write)',
     );
-    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partial');
+    expect(container.querySelector('[data-harness="aider"]')).toHaveTextContent('usage partly reported');
     expect(container.querySelector('[data-harness="codex"]')).toHaveTextContent('usage not reported');
   });
 
@@ -1992,7 +2318,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
         'Tokenverbrauch vollständig',
       );
       expect(container.querySelector('[data-harness="opencode"]')).toHaveTextContent(
-        'Tokenverbrauch teilweise (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
+        'Tokenverbrauch teilweise gemeldet (nicht gemeldet: aus dem Cache gelesen, in den Cache geschrieben)',
       );
     } finally {
       messagesStore.set(loadMessages('en'));
@@ -2036,7 +2362,7 @@ describe('harness.choose monogram and token usage wording (D10)', () => {
     expect(list).not.toHaveTextContent('complete:');
     expect(list).not.toHaveTextContent('input, cache read');
     expect(list).toHaveTextContent('OpenCode');
-    expect(list).toHaveTextContent('usage partial (not reported: cache read, cache write)');
+    expect(list).toHaveTextContent('usage partly reported (not reported: cache read, cache write)');
     expect(list).toHaveTextContent('Codex');
     expect(list).toHaveTextContent('usage not reported');
   });

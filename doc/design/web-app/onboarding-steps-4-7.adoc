@@ -23,14 +23,14 @@ The step opens with the default assignment applied, the roles grouped by the pha
   The default assignment is applied to all 31 roles.
 
   Planning
-    outline        read_only   Claude Code · opus-5.5      high     Default     [ Change ] [ Advisory ]
+    outline        reads only  Claude Code · opus-5.5      high     Default     [ Change ] [ Advisory ]
   Execution
-    implement      write       Claude Code · sonnet-5.5    medium   Default     [ Change ] [ Advisory ]
+    implement      writes      Claude Code · sonnet-5.5    medium   Default     [ Change ] [ Advisory ]
   Review
-    qgate          read_only   OpenCode · qwen-coder-32b   no effort setting
+    qgate          reads only  OpenCode · qwen-coder-32b   no effort setting
                                                             Departure from the steward
                                                             [ Accept ] [ Reject ] [ Change ] [ Advisory ]
-    screener       zero_tool   no harness                  no effort setting   Open
+    screener       no tools    no harness                  no effort setting   Open
                                                             [ Change ] [ Advisory ]
 
   [ Ask the steward to refine… ]                        [ Assign the 2 open roles first ]
@@ -59,7 +59,7 @@ The advisory of a role, opened in place below its row:
 
 [source,text]
 ----
-    outline     read_only  Claude Code  opus-5.5    high     Default
+    outline     reads only  Claude Code  opus-5.5    high     Default
     ┌───────────────────────────────────────────────────────────────────────┐
     │ What it does   Turns the refined request into deliverables and the    │
     │                plan's lane; reads the whole affected codebase.        │
@@ -75,6 +75,7 @@ The advisory of a role, opened in place below its row:
 * The advisory always shows the default's what and why, also when the value departs from it; the steward's proposal and its reason stand on its last line.
 * The record button is disabled while any row is open; its place says `Assign the N open roles first`. `roles.validate` that refuses a role returns to the list with the row marked and the reason beside it.
 * The state reports per role its `role`, `class`, `phase`, the entry it runs on (`harness_id`, `model_id`, `effort`), its `origin` (`default`, `steward`, `changed`, `unmet`), the assignment it holds by `default`, a `departure` (`harness_id`, `model_id`, `effort`, `reason`) when the steward proposed another one, its `validation` (the reason `roles.validate` refused it) and its `advisory` (`does`, `needs`, `why`, `lower_tier`, `steward`). The record sends `roles[]` for the rows the operator changed by hand and `departures[]` (`role`, `decision`) for the decisions; a hand change made after a decision travels as an assignment beside it, so the decision says what was taken and the assignment what the operator set last.
+* Contract gaps: the facts `departure` and `departures[]` (here), `provider_id` (<<providers>>) and `unavailable` (<<plan-defaults>>) are read where the runtime sends them, and no engine specification names them yet. The gap goes to the operator, never filled from the mock.
 
 [#speech]
 === The Speech Role (`roles.speech`, `roles.speech-consent`, `roles.speech-check`, `roles.speech-write`)
@@ -277,7 +278,7 @@ Before the providers are called, the consent kind `verify_providers` (the patter
        → enter the token again
 
   [ Enter the token again ]
-  [ Continue without ]   [ Check again ]
+  [ Check again ]   [ Continue without ]
 ----
 
 * Every provider and every check has its own line; a provider is ✓ only when all its checks are. A ✗ shows the provider's answer and the fix.
@@ -440,7 +441,7 @@ The run shows the step bar moving and each step's check lines as they report:
                                                             [ Finish ]
 ----
 
-* *Change* runs that step again as a later run (`onboard.next`), its current value as the proposal, as the machine's settings would; once the step is done, the result is shown again (`onboard.auto-result`) with the changed value. The state offers the `change` link per line; this client reads `change:<aspect>` — one id per row, as the settings offer `reconfigure:<aspect>` — and a bare `change` currently keeps its own button below the table. A line the state carries no link for stands without a *Change*.
+* *Change* runs that step again as a later run (`onboard.next`), its current value as the proposal, as the machine's settings would; once the step is done, the result is shown again (`onboard.auto-result`) with the changed value. The state offers the `change` link per line and this client sends `change:<aspect>`, one id per row, because the catalogue names the change as a later run of that aspect but leaves the spelling after the colon unspecified; a bare `change` keeps its own button below the table, and a refused step shows its refusal. A line the state carries no link for stands without a *Change*.
 * A value the operator gave during the run has the reason `you were asked`.
 * ② enrols every supported harness found that can run workers, the first of them in the order of the harness id the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
 
