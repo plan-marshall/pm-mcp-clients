@@ -54,6 +54,9 @@ import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnKind;
 import de.planmarshall.api.chat.TurnRef;
 import de.planmarshall.api.chat.TurnStatus;
+import de.planmarshall.api.decomposition.EpicDecomposition;
+import de.planmarshall.api.decomposition.StagedPlanRecord;
+import de.planmarshall.api.decomposition.WorkstreamRecord;
 import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
@@ -213,24 +216,38 @@ class ChatProposalsTest {
         }
 
         @Test
-        @DisplayName("applies a change to an epic's staged rows: the decomposition moves on by one revision")
+        @DisplayName("applies a change to an epic's staged rows: applies after and moves the decomposition on")
         void rows() throws Exception {
             var routes = ChatRoutes.epic(EPIC_ID);
             try (var runtime = ordered(CHAT_STATE)) {
                 assertEquals(ChatScopeKind.EPIC, openChat(runtime, routes).scope());
                 var proposal = proposeAt(runtime, routes, 2, ProposalKind.ROWS);
-                var before = decompositionRevision(runtime);
+                var before = decomposition(runtime);
 
                 var accepted = answer(runtime, routes.accept(), proposal);
 
-                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
-                assertEquals(before + 1, decompositionRevision(runtime));
+                var after = decomposition(runtime);
+                var updatedPlans = after.workstreams().stream()
+                        .filter(ws -> ws.stagedPlans().stream()
+                                .anyMatch(plan -> "relay-cursor-order".equals(plan.planId())
+                                        && ws.stagedPlans().stream()
+                                                .anyMatch(other -> "relay-token-rotation".equals(other.planId()))))
+                        .findFirst().orElse(null);
+                assertAll("rows after is applied to the decomposition",
+                        () -> assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state()),
+                        () -> assertEquals(before.revision() + 1, after.revision()),
+                        () -> assertNotNull(updatedPlans,
+                                "relay-cursor-order and relay-token-rotation sit together in order"),
+                        () -> assertTrue(indexOfPlan(Objects.requireNonNull(updatedPlans), "relay-cursor-order")
+                                < indexOfPlan(Objects.requireNonNull(updatedPlans), "relay-token-rotation")),
+                        () -> assertEquals(StagedPlanRecord.STATUS_CHANGED,
+                                Objects.requireNonNull(after.plan("relay-token-rotation")).status()));
                 assertRefusedTwice(runtime, routes, proposal);
             }
         }
 
         @Test
-        @DisplayName("replaces an open rows proposal by the draft proposal, and applies the draft")
+        @DisplayName("replaces an open rows proposal by the draft proposal, and applies the draft's after")
         void draftReplacesRows() throws Exception {
             var routes = ChatRoutes.epic(EPIC_ID);
             try (var runtime = ordered(CHAT_STATE);
@@ -257,12 +274,16 @@ class ChatProposalsTest {
                                 announced.stream().map(ChatProposalEvent::state).toList()));
                 assertRefused(post(runtime, routes.accept(), new ProposalAnswerRequest(rows.turnId()).toJson()),
                         409, "conflict");
-                var before = decompositionRevision(runtime);
+                var before = decomposition(runtime);
 
                 var accepted = answer(runtime, routes.accept(), draft);
 
-                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
-                assertEquals(before + 1, decompositionRevision(runtime));
+                var after = decomposition(runtime);
+                assertAll("draft after is applied to the decomposition",
+                        () -> assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state()),
+                        () -> assertEquals(before.revision() + 1, after.revision()),
+                        () -> assertEquals(before.workstreams().size() + 1, after.workstreams().size(),
+                                "splitting the workstream adds a workstream"));
             }
         }
 
@@ -404,6 +425,54 @@ class ChatProposalsTest {
                         MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
             }
         }
+
+        @Test
+        @DisplayName("logs an epic proposal it cannot apply when after is blank")
+        void blankEpicRowsAfter() throws Exception {
+            var routes = ChatRoutes.epic(EPIC_ID);
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(withBlankEpicRowsProposal()).timing(MockTiming.ORDERED).build())) {
+                var before = decomposition(runtime);
+                var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded rows proposal");
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(before, decomposition(runtime), "the blank rows after changed nothing");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Scenario withBlankEpicRowsProposal() {
+        var base = new ScenarioRegistry().resolve(StandardScenarios.RUNNING_WORK);
+        var stateId = base.start();
+        var state = Objects.requireNonNull(base.state(stateId));
+        var representation = (Map<String, Object>) copy(state.representation());
+        var control = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) representation
+                .get("facts")).get("runtime")).get("control");
+        var chats = (List<Object>) control.get("chats");
+        var epicChat = (Map<String, Object>) chats.get(1);
+        var proposal = new LinkedHashMap<String, Object>();
+        proposal.put("turn_id", "T-9203");
+        proposal.put("reply_turn_id", "T-0005");
+        proposal.put("kind", "rows");
+        proposal.put("summary", "blank rows");
+        proposal.put("after", " ");
+        proposal.put("state", "open");
+        epicChat.put("state", "chat.read-back");
+        epicChat.put("proposal", proposal);
+        var turns = new ArrayList<>((List<Object>) epicChat.get("turns"));
+        turns.add(Map.of("turn_id", "T-9203", "kind", "proposal", "author", "decompose", "status", "complete",
+                "format", "plain", "untrusted", false, "text", "blank rows", "steps", List.of(), "refs", List.of(),
+                "at", "2026-10-14T10:06:00Z"));
+        epicChat.put("turns", turns);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, state.links(), state.events(), state.auto(),
+                state.chatFailures()));
+        return new Scenario(base.formatVersion(), base.name(), base.description(), stateId, base.pairingCode(),
+                base.routes(), states);
     }
 
     /**
@@ -574,11 +643,23 @@ class ChatProposalsTest {
     }
 
     private static long decompositionRevision(MockRuntime runtime) throws Exception {
+        return decomposition(runtime).revision();
+    }
+
+    private static EpicDecomposition decomposition(MockRuntime runtime) throws Exception {
         var response = get(runtime, DECOMPOSITION);
         assertEquals(200, response.status(), response.bodyText());
-        var revision = JsonTree.number(JsonTree.asObject(JsonTree.parse(response.body())), "revision");
-        assertNotNull(revision, response.bodyText());
-        return revision.longValue();
+        return EpicDecomposition.fromJson(response.bodyText());
+    }
+
+    private static int indexOfPlan(WorkstreamRecord workstream, String planId) {
+        var plans = workstream.stagedPlans();
+        for (var i = 0; i < plans.size(); i++) {
+            if (plans.get(i).planId().equals(planId)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static ChatProposalEvent nextProposal(SseReader events, String chatId) throws IOException {

@@ -1615,14 +1615,14 @@ final class ChatRegistry {
             return refused(ApiErrorCode.TARGET_NOT_FOUND, MESSAGE_NO_CHAT + address.routes().subject());
         }
         var proposal = chat.proposal;
-        if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
+        if (chat.state.isEnded() || proposal == null || !proposal.isOpen(accept)) {
             return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
         }
         if (!proposal.turnId().equals(answer.turnId())) {
             return refused(ApiErrorCode.CONFLICT, "The proposal " + answer.turnId() + " is not the open one");
         }
         if (accept && proposal.kind() == ProposalKind.REVISION) {
-            var revision = revisionAnswer(chat, address, proposal);
+            var revision = revisionAnswer(chat, address.stream(), proposal);
             if (revision != null) {
                 return revision;
             }
@@ -1658,14 +1658,14 @@ final class ChatRegistry {
      * @param proposal the open proposal
      * @return the answer, or {@code null} when the accept goes on and the revision is queued
      */
-    private @Nullable Outcome revisionAnswer(Chat chat, Address address, ChatProposal proposal) {
+    private @Nullable Outcome revisionAnswer(Chat chat, EventScope stream, ChatProposal proposal) {
         if (proposal.applies() == null) {
             return refused(ApiErrorCode.INVALID_ARGUMENTS, "The revision names no point it applies at");
         }
         var appliesAt = proposal.applies().args().get(KEY_TASK_ID);
         if (chat.planId == null) {
             // Another subject's proposal is refused by its own checks: no plan means no revision window.
-            return refusedRevision(chat, address, proposal);
+            return refusedRevision(chat, stream, proposal);
         }
         var refusal = revisionRefusal(chat, proposal);
         if (refusal != null) {
@@ -1674,7 +1674,7 @@ final class ChatRegistry {
         if (appliesAt instanceof String taskId
                 && endedTasks.getOrDefault(chat.planId, Set.of()).contains(taskId)) {
             // The boundary it waits for has passed: its task.ended will not come again.
-            return refusedRevision(chat, address, proposal);
+            return refusedRevision(chat, stream, proposal);
         }
         return null;
     }
@@ -1684,16 +1684,16 @@ final class ChatRegistry {
      * taken ({@code state-catalogue.adoc#chat-proposal-states}).
      *
      * @param chat     the chat
-     * @param address  where the chat is addressed
+     * @param stream   the stream the refusal event goes to
      * @param proposal the open proposal
      * @return the answer
      */
-    private Outcome refusedRevision(Chat chat, Address address, ChatProposal proposal) {
+    private Outcome refusedRevision(Chat chat, EventScope stream, ChatProposal proposal) {
         chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
                 proposal.summary(), proposal.applies(), proposal.before(), proposal.after(),
                 ProposalState.REFUSED, MessageText.of(FINDING_CHECK_FAILED));
         return new Outcome(200, chat.toResource(chat.turns.size()).toMap(),
-                List.of(proposalEvent(chat, address.stream(), chat.proposal)), null);
+                List.of(proposalEvent(chat, stream, chat.proposal)), null);
     }
 
     /**
@@ -1788,7 +1788,7 @@ final class ChatRegistry {
             outcome = payload == null
                     ? refused(ApiErrorCode.INVALID_ARGUMENTS, "The payload of " + event + " is not an object")
                     : playBroadcast(event, payload);
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             outcome = refused(ApiErrorCode.INVALID_ARGUMENTS, e.getMessage());
         }
         outcome.events().forEach(broadcaster);
@@ -1869,11 +1869,18 @@ final class ChatRegistry {
     private Outcome broadcastProposal(Chat chat, ChatProposalEvent answered, String event,
             Map<String, Object> payload) {
         var proposal = chat.proposal;
-        if (chat.state.isEnded() || proposal == null || !proposal.isOpen()) {
+        var accept = answered.state() != ProposalState.REJECTED;
+        if (chat.state.isEnded() || proposal == null || !proposal.isOpen(accept)) {
             return refused(ApiErrorCode.ACT_NOT_AVAILABLE, "No proposal is open in the chat");
         }
         if (!proposal.turnId().equals(answered.turnId())) {
             return refused(ApiErrorCode.CONFLICT, "The proposal " + answered.turnId() + " is not the open one");
+        }
+        if (answered.state() == ProposalState.ACCEPTED && proposal.kind() == ProposalKind.REVISION) {
+            var revision = revisionAnswer(chat, streamOf(chat), proposal);
+            if (revision != null) {
+                return revision;
+            }
         }
         chat.proposal = new ChatProposal(proposal.turnId(), proposal.replyTurnId(), proposal.kind(),
                 proposal.summary(), proposal.applies(), proposal.before(), proposal.after(), answered.state(),
@@ -1886,8 +1893,11 @@ final class ChatRegistry {
                 && chat.planId != null) {
             // Another device accepted a revision: it is queued exactly as a local accept queues it.
             var planId = chat.planId;
-            var revision = new QueuedRevision(chat.id, chat.proposal.turnId(), chat.subject, true,
-                    Objects.requireNonNull(chat.proposal.applies()));
+            var applies = chat.proposal.applies();
+            if (applies == null) {
+                return refused(ApiErrorCode.INVALID_ARGUMENTS, "The revision names no point it applies at");
+            }
+            var revision = new QueuedRevision(chat.id, chat.proposal.turnId(), chat.subject, true, applies);
             facts.queueRevision(planId, revision);
             queuedBaseVersions.put(planId,
                     Objects.requireNonNullElse(chat.proposalPlanVersion, facts.instanceVersion(planId)));

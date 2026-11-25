@@ -105,6 +105,15 @@ public record ChatProposal(
     }
 
     /**
+     * @param accept {@code true} for accept, {@code false} for reject
+     * @return {@code true} if the proposal still takes that answer: an open proposal takes both, and
+     *         a {@link ProposalState#REFUSED refused} proposal extends to reject only
+     */
+    public boolean isOpen(boolean accept) {
+        return state == ProposalState.OPEN || (!accept && state == ProposalState.REFUSED);
+    }
+
+    /**
      * @return the map representation
      */
     public Map<String, Object> toMap() {

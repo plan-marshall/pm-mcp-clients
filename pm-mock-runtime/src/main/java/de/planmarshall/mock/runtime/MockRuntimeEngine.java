@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -1061,15 +1062,117 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             changed = startRegistry.openFollowUp(subject.id(), applied.after());
         } else if (subject.kind() == ChatSubjectKind.EPIC
                 && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
-            synchronized (decompositionLock) {
-                changed = decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(
-                        cut.epicId(), cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings())) != null;
+            var after = applied.after();
+            if (after == null || after.isBlank()) {
+                changed = false;
+            } else {
+                synchronized (decompositionLock) {
+                    changed = decompositions.computeIfPresent(subject.id(),
+                            (epicId, cut) -> applyEpicChatChange(cut, applied.kind(), after.strip())) != null;
+                }
             }
         }
         if (!changed) {
             LOGGER.warn(MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED, applied.kind().wireValue(),
                     subject.kind().wireValue(), subject.id());
         }
+    }
+
+    private static EpicDecomposition applyEpicChatChange(EpicDecomposition cut, ProposalKind kind, String after) {
+        if (kind == ProposalKind.ROWS) {
+            return applyEpicRowsChange(cut, after);
+        }
+        return applyEpicDraftChange(cut, after);
+    }
+
+    private static EpicDecomposition applyEpicRowsChange(EpicDecomposition cut, String after) {
+        var requestedIds = Arrays.stream(after.split("[,\\s]+"))
+                .map(String::strip)
+                .filter(token -> !token.isEmpty())
+                .toList();
+        var byPlanId = new LinkedHashMap<String, StagedPlanRecord>();
+        for (var workstream : cut.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                byPlanId.put(plan.planId(), plan);
+            }
+        }
+        var matchedIds = requestedIds.stream().filter(byPlanId::containsKey).distinct().toList();
+        if (matchedIds.isEmpty()) {
+            var openId = firstOpenPlanId(cut);
+            if (openId != null) {
+                var rewritten = applyRewrite(cut, openId, after);
+                return new EpicDecomposition(rewritten.epicId(), rewritten.status(), cut.revision() + 1,
+                        rewritten.workstreams(), rewritten.findings());
+            }
+            var added = applyAdd(cut, new DecompositionInstructRequest(null, after, InstructAction.ADD));
+            return new EpicDecomposition(added.epicId(), added.status(), cut.revision() + 1,
+                    added.workstreams(), added.findings());
+        }
+        var matchedSet = Set.copyOf(matchedIds);
+        var firstTarget = matchedIds.getFirst();
+        var updated = new ArrayList<WorkstreamRecord>();
+        for (var workstream : cut.workstreams()) {
+            var plans = new ArrayList<StagedPlanRecord>();
+            var inserted = false;
+            for (var plan : workstream.stagedPlans()) {
+                if (plan.planId().equals(firstTarget)) {
+                    for (var id : matchedIds) {
+                        var candidate = byPlanId.get(id);
+                        plans.add(new StagedPlanRecord(candidate.planId(), candidate.title(), candidate.objective(),
+                                candidate.expectedSurface(), candidate.dependencies(),
+                                StagedPlanRecord.STATUS_CHANGED, candidate.origin()));
+                    }
+                    inserted = true;
+                } else if (!matchedSet.contains(plan.planId())) {
+                    plans.add(plan);
+                }
+            }
+            if (!inserted) {
+                plans.removeIf(plan -> matchedSet.contains(plan.planId()));
+            }
+            updated.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                    workstream.order(), plans));
+        }
+        return new EpicDecomposition(cut.epicId(), DecompositionState.READ_BACK, cut.revision() + 1,
+                updated, cut.findings());
+    }
+
+    private static EpicDecomposition applyEpicDraftChange(EpicDecomposition cut, String after) {
+        var workstreams = new ArrayList<WorkstreamRecord>();
+        var splitDone = false;
+        var nextOrder = 1;
+        for (var workstream : cut.workstreams()) {
+            if (!splitDone && workstream.stagedPlans().size() >= 2) {
+                var head = workstream.stagedPlans().subList(0, 1);
+                var tail = workstream.stagedPlans().subList(1, workstream.stagedPlans().size());
+                workstreams.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                        nextOrder++, head));
+                workstreams.add(new WorkstreamRecord(nextWorkstreamId(cut.workstreams(), workstreams),
+                        workstream.name() + " (split)", after, nextOrder++, tail));
+                splitDone = true;
+            } else {
+                workstreams.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                        nextOrder++, workstream.stagedPlans()));
+            }
+        }
+        if (!splitDone) {
+            workstreams.add(new WorkstreamRecord(nextWorkstreamId(cut.workstreams(), workstreams),
+                    WORKSTREAM_NEW_WORK, after, nextOrder, List.of()));
+        }
+        return new EpicDecomposition(cut.epicId(), DecompositionState.READ_BACK, cut.revision() + 1,
+                workstreams, cut.findings());
+    }
+
+    private static String nextWorkstreamId(List<WorkstreamRecord> existing, List<WorkstreamRecord> current) {
+        var used = new HashSet<String>();
+        existing.forEach(ws -> used.add(ws.id()));
+        current.forEach(ws -> used.add(ws.id()));
+        var index = used.size() + 1;
+        String candidate;
+        do {
+            candidate = "WS-" + index++;
+        } while (used.contains(candidate));
+        return candidate;
     }
 
     /**
