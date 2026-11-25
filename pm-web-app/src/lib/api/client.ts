@@ -2496,7 +2496,7 @@ export interface OverSizeBucketRecord {
  * The `over_size` distribution of a role, as the runtime serves it
  * (`OverSizeDistributionResource` of `pm-api`): the multiple in force, the proposed one where the
  * runtime serves a proposal, and the measured buckets. A role without measured tasks carries no
- * bucket, which the chart shows as `intent.oversize.empty` rather than as a zero bar.
+ * bucket.
  */
 export interface OverSizeDistributionRecord {
   project_id: string;
@@ -4300,8 +4300,8 @@ export class ApiClient {
   }
 
   /**
-   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (design
-   * `intent-and-outline.adoc`, The `over_size` Distribution).
+   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (the
+   * `OverSizeDistributionsResource` of `pm-api`).
    *
    * @param projectId the project
    * @returns the roles' distributions, or `null` where the runtime has no such record; a project it

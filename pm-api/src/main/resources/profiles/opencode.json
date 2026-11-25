@@ -57,7 +57,8 @@
       "cache_creation": "/part/tokens/cache/write",
       "reasoning": "/part/tokens/reasoning",
       "cost_usd": null,
-      "tool_uses": null
+      "tool_uses": null,
+      "model": null
     },
     "events": {
       "kind_pointer": "/type",

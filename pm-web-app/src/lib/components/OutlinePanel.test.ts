@@ -8,9 +8,9 @@ import { loadMessages } from '../../test/catalogue-fixture';
 /**
  * `OutlinePanel` (design `intent-and-outline.adoc#outline`): the plan's answer to how it will satisfy
  * the intent — the deliverables with their gloss, the files they affect and the intent of each, the
- * deliverables they depend on, the criteria they satisfy and how they are verified, and the added
- * dependencies with the deliverable that adds them and the reason. A path is never turned into a
- * link, and a dependency on a deliverable the record does not carry is shown, never hidden.
+ * deliverables they depend on, the criteria they satisfy and how they are verified. A path is never
+ * turned into a link, and a dependency on a deliverable the record does not carry is shown, never
+ * hidden.
  */
 
 /** @param locale the language the catalogue is loaded in */
@@ -21,7 +21,7 @@ function useCatalogue(locale: 'en' | 'de' = 'en'): void {
 
 /**
  * @param overrides the members this case changes
- * @returns an outline with one deliverable per file intent and one added dependency
+ * @returns an outline with one deliverable per file intent
  */
 function outline(overrides: Partial<OutlineRecord> = {}): OutlineRecord {
   return {
@@ -200,60 +200,7 @@ describe('OutlinePanel', () => {
     expect(screen.queryByTestId('outline-verification-2')).toBeNull();
   });
 
-  it('shows the added dependencies with coordinates, version, the adding deliverable and the reason', async () => {
-    await renderPanel(outline());
-
-    expect(screen.getByTestId('outline-dependencies')).toHaveTextContent('Added dependencies');
-    expect(screen.getByTestId('outline-dependency-0')).toHaveTextContent(
-      'de.cuioss:cui-http 2.1.0 · added by 1: The retry adapter carries the backoff policy.',
-    );
-  });
-
-  it('shows a dependency without a version without leaving a placeholder behind', async () => {
-    await renderPanel(
-      outline({
-        added_dependencies: [
-          {
-            name: 'de.cuioss:cui-test-generator',
-            justification: 'The tests need the generators.',
-            deliverable: 2,
-          },
-        ],
-      }),
-    );
-
-    const row = screen.getByTestId('outline-dependency-0');
-    expect(row.textContent).not.toContain('{version}');
-    expect(row).toHaveTextContent(
-      'de.cuioss:cui-test-generator · added by 2: The tests need the generators.',
-    );
-  });
-
-  it('shows every added dependency as given, a duplicate one included', async () => {
-    await renderPanel(
-      outline({
-        added_dependencies: [
-          {
-            name: 'de.cuioss:cui-http',
-            version: '2.1.0',
-            justification: 'The retry adapter.',
-            deliverable: 1,
-          },
-          {
-            name: 'de.cuioss:cui-http',
-            version: '2.1.0',
-            justification: 'The retry adapter.',
-            deliverable: 1,
-          },
-        ],
-      }),
-    );
-
-    expect(screen.getByTestId('outline-dependency-0')).toBeInTheDocument();
-    expect(screen.getByTestId('outline-dependency-1')).toBeInTheDocument();
-  });
-
-  it('renders a single deliverable and an outline without added dependencies', async () => {
+  it('renders a single deliverable', async () => {
     await renderPanel(
       outline({
         deliverables: [
@@ -266,12 +213,10 @@ describe('OutlinePanel', () => {
             satisfies: ['AC-001'],
           },
         ],
-        added_dependencies: [],
       }),
     );
 
     expect(screen.getByTestId('outline-deliverable-1')).toBeInTheDocument();
-    expect(screen.queryByTestId('outline-dependency-0')).toBeNull();
   });
 
   it('renders an outline without deliverables without failing', async () => {
