@@ -70,39 +70,35 @@ class ChatRegistryRaceTest {
         var delegate = Executors.newSingleThreadScheduledExecutor();
         var stopExecutor = Executors.newSingleThreadExecutor();
         try {
+            var stopped = 0;
             for (var round = 0; round < ROUNDS; round++) {
-                runRound(round, delegate, stopExecutor);
+                if (runRound(round, delegate, stopExecutor)) {
+                    stopped++;
+                }
             }
+            assertTrue(stopped > 0, "stop never succeeded against a streaming reply");
         } finally {
             stopExecutor.shutdownNow();
             delegate.shutdownNow();
         }
     }
 
-    private static void runRound(int round, ScheduledExecutorService delegate, ExecutorService stopExecutor)
+    private static boolean runRound(int round, ScheduledExecutorService delegate, ExecutorService stopExecutor)
             throws Exception {
         var events = new CopyOnWriteArrayList<ChatEvent>();
-        var replyTurnRef = new AtomicReference<String>();
-        var deltaSeen = new AtomicBoolean();
+        var postTurnsDone = new CountDownLatch(1);
+        var lastInitialTask = new AtomicReference<Callable<?>>();
         var raceArmed = new AtomicBoolean(true);
         var stopReady = new CountDownLatch(1);
         var barrier = new CyclicBarrier(2);
         var uncaught = new AtomicReference<Throwable>();
         var scheduled = new CopyOnWriteArrayList<ScheduledFuture<?>>();
 
-        var timingScheduler = new BarrierScheduler(delegate, scheduled, deltaSeen, raceArmed, stopReady, barrier,
-                uncaught);
-        var registry = new ChatRegistry(event -> {
-            events.add(event);
-            if ("chat.turn.started".equals(event.name())
-                    && !Boolean.TRUE.equals(event.data().get("operator"))) {
-                replyTurnRef.compareAndSet(null, JsonTree.string(event.data(), "turn_id"));
-            }
-            if ("chat.turn.delta".equals(event.name())) {
-                deltaSeen.set(true);
-            }
-        }, _ -> false, new EventTiming(MockTiming.REALISTIC, timingScheduler), _ -> {
-        }, stubFacts());
+        var timingScheduler = new BarrierScheduler(delegate, scheduled, postTurnsDone, lastInitialTask, raceArmed,
+                stopReady, barrier, uncaught);
+        var registry = new ChatRegistry(events::add, _ -> false, new EventTiming(MockTiming.REALISTIC, timingScheduler),
+                _ -> {
+                }, stubFacts());
 
         registry.arm(List.of(ChatFailure.of(ChatFailure.Kind.WORKER_REPLACED)));
         var routes = ChatRoutes.plan("race-" + round);
@@ -111,14 +107,25 @@ class ChatRegistryRaceTest {
         var turnReq = new ChatTurnRequest("hello", "client-" + round).toJson();
         var accepted = send(registry, "POST", routes.turns(), turnReq);
         assertEquals(202, accepted.status());
-        var replyTurnId = Objects.requireNonNull(replyTurnRef.get(), "missing assistant reply turn_id");
+        var openedChat = send(registry, "GET", routes.chat(), "");
+        assertEquals(200, openedChat.status());
+        var replyTurnId = Objects.requireNonNull(lastTurnId(openedChat.body()),
+                "missing assistant reply turn_id");
+        postTurnsDone.countDown();
+
+        var stopOut = new java.io.ByteArrayOutputStream();
+        var stopReq = new MockHttpRequest("POST", routes.stop(replyTurnId), Map.of(),
+                "{}".getBytes(StandardCharsets.UTF_8), System.nanoTime());
+        var stopResp = new MockHttpResponse(stopOut);
 
         var stopFuture = CompletableFuture.supplyAsync(() -> {
             try {
                 if (stopReady.await(2, TimeUnit.SECONDS)) {
                     barrier.await(500, TimeUnit.MILLISECONDS);
+                    java.util.concurrent.locks.LockSupport.parkNanos((round % 12) * 30_000L);
                 }
-                return send(registry, "POST", routes.stop(replyTurnId), "{}");
+                assertTrue(registry.handle(stopReq, stopResp), "stop path not handled");
+                return parseResult(stopOut);
             } catch (Throwable t) {
                 uncaught.compareAndSet(null, t);
                 return new HttpResult(500, Map.of());
@@ -139,7 +146,9 @@ class ChatRegistryRaceTest {
             assertEquals(TurnStatus.STOPPED.wireValue(), status,
                     "stopped turn was resurrected on round " + round);
             assertNoReplayAfterStopCompletion(events, replyTurnId, round);
+            return true;
         }
+        return false;
     }
 
     private static void drainScheduled(List<ScheduledFuture<?>> scheduled) throws Exception {
@@ -175,6 +184,14 @@ class ChatRegistryRaceTest {
         assertTrue(stoppedSeen, "stopped completion event missing on round " + round);
     }
 
+    private static @Nullable String lastTurnId(Map<String, Object> chatBody) {
+        if (!(chatBody.get("turns") instanceof List<?> turns) || turns.isEmpty()) {
+            return null;
+        }
+        var last = JsonTree.asObject(turns.getLast());
+        return last == null ? null : JsonTree.string(last, "turn_id");
+    }
+
     private static @Nullable String turnStatus(Map<String, Object> chatBody, String turnId) {
         if (!(chatBody.get("turns") instanceof List<?> turns)) {
             return null;
@@ -195,6 +212,10 @@ class ChatRegistryRaceTest {
                 jsonBody.getBytes(StandardCharsets.UTF_8), System.nanoTime());
         var response = new MockHttpResponse(out);
         assertTrue(registry.handle(request, response), "path not handled: " + path);
+        return parseResult(out);
+    }
+
+    private static HttpResult parseResult(java.io.ByteArrayOutputStream out) throws Exception {
         var raw = out.toString(StandardCharsets.UTF_8);
         var split = raw.indexOf(HEADER_SEPARATOR);
         var head = raw.substring(0, split);
@@ -266,25 +287,27 @@ class ChatRegistryRaceTest {
     }
 
     /**
-     * Scales realistic play delays into sub-millisecond waits and synchronizes the first step after the
-     * first delta piece with the concurrent stop thread.
+     * Scales realistic play delays into sub-millisecond waits and synchronizes the {@code playFailure}
+     * step (always the last step scheduled during {@code POST .../turns}) with the concurrent stop thread.
      */
     private static final class BarrierScheduler extends AbstractExecutorService implements ScheduledExecutorService {
 
         private final ScheduledExecutorService delegate;
         private final List<ScheduledFuture<?>> scheduled;
-        private final AtomicBoolean deltaSeen;
+        private final CountDownLatch postTurnsDone;
+        private final AtomicReference<Callable<?>> lastInitialTask;
         private final AtomicBoolean raceArmed;
         private final CountDownLatch stopReady;
         private final CyclicBarrier barrier;
         private final AtomicReference<Throwable> uncaught;
 
         BarrierScheduler(ScheduledExecutorService delegate, List<ScheduledFuture<?>> scheduled,
-                AtomicBoolean deltaSeen, AtomicBoolean raceArmed, CountDownLatch stopReady, CyclicBarrier barrier,
-                AtomicReference<Throwable> uncaught) {
+                CountDownLatch postTurnsDone, AtomicReference<Callable<?>> lastInitialTask, AtomicBoolean raceArmed,
+                CountDownLatch stopReady, CyclicBarrier barrier, AtomicReference<Throwable> uncaught) {
             this.delegate = delegate;
             this.scheduled = scheduled;
-            this.deltaSeen = deltaSeen;
+            this.postTurnsDone = postTurnsDone;
+            this.lastInitialTask = lastInitialTask;
             this.raceArmed = raceArmed;
             this.stopReady = stopReady;
             this.barrier = barrier;
@@ -298,9 +321,13 @@ class ChatRegistryRaceTest {
 
         @Override
         public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
+            if (postTurnsDone.getCount() > 0) {
+                lastInitialTask.set(callable);
+            }
             var delayMicros = Math.max(0L, unit.toMillis(delay) * 5L);
             Callable<V> wrapped = () -> {
-                if (deltaSeen.get() && raceArmed.compareAndSet(true, false)) {
+                postTurnsDone.await(5, TimeUnit.SECONDS);
+                if (lastInitialTask.get() == callable && raceArmed.compareAndSet(true, false)) {
                     stopReady.countDown();
                     try {
                         barrier.await(500, TimeUnit.MILLISECONDS);
