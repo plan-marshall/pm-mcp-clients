@@ -655,7 +655,7 @@ describe('WorkControlPanel component', () => {
     await fireEvent.change(screen.getByTestId('settings-value-landing'), {
       target: { value: 'landing.main' },
     });
-    await fireEvent.click(screen.getByTestId('settings-apply-landing'));
+    await fireEvent.click(screen.getByTestId('settings-save'));
 
     await waitFor(() => {
       expect(apiClient.updatePlanSettings).toHaveBeenCalledWith(
@@ -684,7 +684,7 @@ describe('WorkControlPanel component', () => {
     await fireEvent.change(await screen.findByTestId('settings-value-landing'), {
       target: { value: 'landing.files' },
     });
-    await fireEvent.click(screen.getByTestId('settings-apply-landing'));
+    await fireEvent.click(screen.getByTestId('settings-save'));
 
     expect(await screen.findByTestId('settings-conflict')).toBeInTheDocument();
     await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));

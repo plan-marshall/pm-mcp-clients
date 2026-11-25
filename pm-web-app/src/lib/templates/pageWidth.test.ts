@@ -28,6 +28,8 @@ const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'InboxView.svelte', root: '.inbox-view' },
   // PLAN-51 moves the decisions lens onto the triage page (`decisions.adoc#order`).
   { file: 'DecisionView.svelte', root: '.decisions-view' },
+  // PLAN-55 moves the plan onto the object page (`plan-view-interaction.adoc#layout`).
+  { file: 'PlanView.svelte', root: '.plan-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */

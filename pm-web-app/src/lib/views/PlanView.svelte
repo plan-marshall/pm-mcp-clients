@@ -6,10 +6,21 @@
   import Spinner from '../components/Spinner.svelte';
   import Tabs, { type TabItem } from '../components/Tabs.svelte';
   import PlanChanges from '../components/PlanChanges.svelte';
+  import PlanIntentPanel from '../components/PlanIntentPanel.svelte';
+  import BuilderCheckList from '../components/BuilderCheckList.svelte';
+  import OutlinePanel from '../components/OutlinePanel.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkListColumn from '../components/WorkListColumn.svelte';
   import UpLink from '../components/UpLink.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import ObjectPage from '../templates/ObjectPage.svelte';
+  import KindMark from '../components/KindMark.svelte';
+  import Chip from '../components/Chip.svelte';
+  import PrChip from '../components/PrChip.svelte';
+  import PhaseLabel from '../components/PhaseLabel.svelte';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import AttentionStrip from '../components/AttentionStrip.svelte';
+  import Link from '../components/Link.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import {
     apiClient,
@@ -22,13 +33,12 @@
     type TokenBreakdownItem,
     type ActivityEntry,
     type ChangeSizeRecord,
+    type OffTrackInfo,
+    type BuilderCheckRecord,
+    type OutlineDeliverableRecord,
   } from '../api/client';
   import {
     runtimeStore,
-    openEpicView,
-    openProjectInExplorer,
-    openCompletionReport,
-    navigateTo,
     selectObjectTab,
     selectPlanChangeFile,
   } from '../stores/runtime';
@@ -67,6 +77,13 @@
       reportRoleBreakdown = null;
       isLoadingBreakdown = false;
       showTokenBreakdown = false;
+      queuedRevision = null;
+      intentLoading = false;
+      intentLoaded = false;
+      intentHasRecord = false;
+      intentCheck = null;
+      intentDeliverables = [];
+      columnWidth = 0;
       void loadPlanProcess(true);
     } else if (current && lastLoadedPlanId === null) {
       lastLoadedPlanId = current;
@@ -121,23 +138,30 @@
   /**
    * The plan's tab the address names, or the default one the address omits.
    *
-   * This view draws the Process and Changes tabs; Intent belongs to the tab set PLAN-55 carries
-   * into this view, so an address that names it opens Process here.
+   * The plan carries the tab set of D6: Process (the default), Intent and Changes
+   * (`plan-view-interaction.adoc#addresses`).
    */
-  const activeTab = $derived<'process' | 'changes'>(
-    $runtimeStore.objectTab === 'changes' ? 'changes' : 'process',
+  const activeTab = $derived<'process' | 'intent' | 'changes'>(
+    $runtimeStore.objectTab === 'changes'
+      ? 'changes'
+      : $runtimeStore.objectTab === 'intent'
+        ? 'intent'
+        : 'process',
   );
 
   /**
    * @param tab a tab of this view
-   * @returns the id of its panel while that tab is the shown one, and none for the other
+   * @returns the id of its panel while that tab is the shown one, and none for the others
    */
-  function panelIdOf(tab: 'process' | 'changes'): string | undefined {
+  function panelIdOf(tab: 'process' | 'intent' | 'changes'): string | undefined {
     // Only the shown tab has a panel in the document, so only it may name one.
     return tab === activeTab ? `plan-panel-${tab}` : undefined;
   }
 
-  /** The tabs of the plan's column: Changes appears at the first capture, and with it the line. */
+  /**
+   * The tabs of the plan's column: Process and Intent always, Changes from the first capture —
+   * the same condition as the size line's (`plan-view-interaction.adoc#layout`).
+   */
   const tabItems = $derived<TabItem[]>(
     changeSize === null
       ? [
@@ -146,12 +170,22 @@
             label: $t('plan.tab.process'),
             panelId: panelIdOf('process'),
           },
+          {
+            id: 'intent',
+            label: $t('intent.tab.title'),
+            panelId: panelIdOf('intent'),
+          },
         ]
       : [
           {
             id: 'process',
             label: $t('plan.tab.process'),
             panelId: panelIdOf('process'),
+          },
+          {
+            id: 'intent',
+            label: $t('intent.tab.title'),
+            panelId: panelIdOf('intent'),
           },
           {
             id: 'changes',
@@ -165,7 +199,9 @@
    * @param tab the tab a person chose
    */
   function selectTab(tab: string): void {
-    selectObjectTab(tab === 'changes' ? 'changes' : 'process');
+    selectObjectTab(
+      tab === 'changes' ? 'changes' : tab === 'intent' ? 'intent' : 'process',
+    );
   }
 
   /**
@@ -175,7 +211,6 @@
   function changeText(size: ChangeSizeRecord): string {
     return formatChangeSize(size, $t);
   }
-
   /**
    * How the plan ended: the process resource's own record, or what Ended Work handed the view.
    */
@@ -185,6 +220,234 @@
         ? $runtimeStore.selectedPlanEnded
         : null) ??
       null,
+  );
+
+  /** The plan waits for the operator: the strip and the decision head link belong to that state. */
+  const waiting = $derived(
+    plan !== null && (plan.phase_state === 'waiting_for_you' || plan.needs_operator),
+  );
+
+  /**
+   * The open decision of the plan, read once the plan waits for one.
+   *
+   * The head link opens it; a plan whose decisions cannot be read keeps the strip alone rather than
+   * a link to nowhere (`plan-view-interaction.adoc#layout`).
+   */
+  let openDecisionId = $state<string | null>(null);
+
+  async function loadOpenDecision(): Promise<void> {
+    if (!planId) {
+      openDecisionId = null;
+      return;
+    }
+    const currentId = planId;
+    try {
+      const decisions = await apiClient.getDecisions({ plan: currentId });
+      if (currentId !== planId) {
+        return;
+      }
+      const decision = decisions.find((entry) => entry.blocks === 'plan') ?? decisions[0] ?? null;
+      openDecisionId = decision?.id ?? null;
+    } catch {
+      openDecisionId = null;
+    }
+  }
+
+  $effect(() => {
+    if (plan !== null && waiting) {
+      void loadOpenDecision();
+    } else {
+      openDecisionId = null;
+    }
+  });
+
+  /** The queued revision the runtime reported for this plan, absent once it left the queue. */
+  let queuedRevision = $state<{ applies: string; taskId: string | null } | null>(null);
+
+  /**
+   * Applies a `plan.revision_queued` of this plan: the chat revision it queued, and the point it
+   * waits for. A payload without a `queued_revision` says the revision left the queue.
+   *
+   * @param data the event's payload
+   */
+  function applyQueuedRevision(data: unknown): void {
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+    const payload = data as Record<string, unknown>;
+    if (payload.plan_id !== planId) {
+      return;
+    }
+    const revision = payload.queued_revision;
+    if (!revision || typeof revision !== 'object') {
+      queuedRevision = null;
+      return;
+    }
+    const applies = (revision as Record<string, unknown>).applies;
+    if (!applies || typeof applies !== 'object') {
+      queuedRevision = null;
+      return;
+    }
+    const key = textOf((applies as Record<string, unknown>).key) ?? '';
+    const args = (applies as Record<string, unknown>).args;
+    const taskId =
+      args && typeof args === 'object' ? textOf((args as Record<string, unknown>).task_id) : null;
+    queuedRevision = {
+      applies: key === 'chat.applies.on_start' ? 'on_start' : 'after_task',
+      taskId,
+    };
+  }
+
+  /**
+   * The plan-level off-track signal: the first off-track task's, found in the tree the process
+   * resource already carries (the task-level banner stays in the inspector).
+   */
+  const planOffTrack = $derived<OffTrackInfo | null>(firstOffTrack(plan?.nodes ?? []));
+
+  /**
+   * @param nodes the process tree
+   * @returns the first off-track task signal at any depth, or `null`
+   */
+  function firstOffTrack(nodes: ProcessNode[]): OffTrackInfo | null {
+    for (const node of nodes) {
+      const task = (node.leaf_tasks ?? []).find((entry) => entry.off_track);
+      if (task?.off_track) {
+        return task.off_track;
+      }
+      const found = firstOffTrack(node.sub_nodes ?? []);
+      if (found) {
+        return found;
+      }
+    }
+    return null;
+  }
+
+  /** The width of the object column's panel host, as its own `ResizeObserver` reports it. */
+  let columnWidth = $state(0);
+  /** The host the tabs draw into; its width decides the side-by-side layout. */
+  let panelHost = $state<HTMLElement | null>(null);
+  /** Whether the column is at least `720 px` wide, so Process and Changes stand side by side. */
+  const wideColumn = $derived(columnWidth >= 720);
+
+  $effect(() => {
+    const host = panelHost;
+    if (host === null) {
+      return;
+    }
+    const observer = new ResizeObserver((entries) => {
+      columnWidth = entries[entries.length - 1].contentRect.width;
+    });
+    observer.observe(host);
+    return () => observer.disconnect();
+  });
+
+  /** The intent record the Intent tab needs beyond what its own panel reads, and whether one exists. */
+  let intentLoading = $state(false);
+  let intentLoaded = $state(false);
+  let intentHasRecord = $state(false);
+  let intentCheck = $state<BuilderCheckRecord | null>(null);
+  let intentDeliverables = $state<OutlineDeliverableRecord[]>([]);
+
+  /**
+   * Reads the intent record once, for its builder check and its deliverables; the panels read
+   * their own records again, as the development page's fixture does.
+   */
+  async function loadIntent(): Promise<void> {
+    if (!planId || intentLoaded || intentLoading) {
+      return;
+    }
+    const currentId = planId;
+    intentLoading = true;
+    try {
+      const record = await apiClient.getPlanIntent(currentId);
+      if (currentId !== planId) {
+        return;
+      }
+      intentHasRecord = record !== null;
+      intentCheck = record?.builder_check ?? null;
+    } catch {
+      intentHasRecord = false;
+      intentCheck = null;
+    } finally {
+      if (currentId === planId) {
+        intentLoading = false;
+        intentLoaded = true;
+      }
+    }
+    try {
+      const outline = await apiClient.getPlanOutline(currentId);
+      if (currentId !== planId) {
+        return;
+      }
+      intentDeliverables = outline?.deliverables ?? [];
+    } catch {
+      intentDeliverables = [];
+    }
+  }
+
+  $effect(() => {
+    if (activeTab === 'intent') {
+      void loadIntent();
+    }
+  });
+
+  /**
+   * @param state the plan's own state
+   * @returns the dot colour that state takes
+   */
+  function stateTone(state: string): 'neutral' | 'running' | 'attention' | 'danger' | 'success' {
+    switch (state) {
+      case 'running':
+        return 'running';
+      case 'waiting_for_you':
+        return 'attention';
+      case 'failed':
+        return 'danger';
+      case 'done':
+        return 'success';
+      default:
+        return 'neutral';
+    }
+  }
+
+  /**
+   * @param nodes the process tree
+   * @returns the leaf task that runs, and its place among every leaf task, or `null`
+   */
+  function runningTaskPosition(nodes: ProcessNode[]): { n: number; m: number } | null {
+    const tasks: LeafTask[] = [];
+    function collect(list: ProcessNode[]): void {
+      for (const node of list) {
+        tasks.push(...(node.leaf_tasks ?? []));
+        collect(node.sub_nodes ?? []);
+      }
+    }
+    collect(nodes);
+    const index = tasks.findIndex((task) => task.status === 'running');
+    if (index < 0 || tasks.length === 0) {
+      return null;
+    }
+    return { n: index + 1, m: tasks.length };
+  }
+
+  /** The duration phrase of the head's state sentence, and the task's place where the tree has one. */
+  const stateSentence = $derived(
+    [
+      $t('plan.view.state_for', {
+        duration: formatDuration((plan?.duration_seconds ?? 0) * 1000, $currentLocale),
+      }),
+      ...(() => {
+        const position = plan ? runningTaskPosition(plan.nodes) : null;
+        return position
+          ? [$t('plan.view.task_position', { n: position.n, m: position.m })]
+          : [];
+      })(),
+    ].join(' · '),
+  );
+
+  /** The address of the plan's process designer, a head link (`navigation.adoc#levels`). */
+  const designerHref = $derived(
+    plan ? `/designer?project=${encodeURIComponent(plan.project.project_id)}` : '',
   );
 
   let tokenBreakdown: {
@@ -247,6 +510,9 @@
       }
       if (event === 'plan.change_captured') {
         applyCapturedChange(data);
+      }
+      if (event === 'plan.revision_queued') {
+        applyQueuedRevision(data);
       }
     });
     clockTimer = setInterval(() => {
@@ -364,9 +630,8 @@
   }
 
   // The address may name a tab this view does not draw — Changes before the plan's first capture,
-  // or Intent, which PLAN-55's tab set carries into this view. The view then opens Process and
-  // replaces the address, so the address never names a panel that is not there
-  // (`plan-view-interaction.adoc#changes`).
+  // or a tab of another object. The view then opens Process and replaces the address, so the
+  // address never names a panel that is not there (`plan-view-interaction.adoc#changes`).
   $effect(() => {
     if (plan === null) {
       return;
@@ -376,7 +641,13 @@
       return;
     }
     const named = $runtimeStore.objectTab;
-    if (named !== null && named !== undefined && named !== 'process' && named !== 'changes') {
+    if (
+      named !== null &&
+      named !== undefined &&
+      named !== 'process' &&
+      named !== 'intent' &&
+      named !== 'changes'
+    ) {
       selectObjectTab('process');
     }
   });
@@ -631,18 +902,6 @@
     return split;
   }
 
-  function openEpic(epicId: string) {
-    openEpicView(epicId);
-  }
-
-  function openProject(projectId: string) {
-    openProjectInExplorer(projectId);
-  }
-
-  function openReport(pId: string) {
-    openCompletionReport(pId);
-  }
-
   /**
    * Opens or closes the one-step token breakdown.
    *
@@ -703,6 +962,54 @@
    */
   function entryClock(timestamp: string): string {
     return formatTime(timestamp, 'clock', $currentLocale) || timestamp;
+  }
+
+  /**
+   * Whether an activity entry draws a row.
+   *
+   * A `link` entry without a target carries nothing to show: it names a link the worker did not
+   * give (`plan-view-interaction.adoc#node-narrative`). Every other kind keeps its row.
+   *
+   * @param entry the activity entry
+   * @returns whether the feed draws it
+   */
+  function showsActivityRow(entry: ActivityEntry): boolean {
+    if (entry.kind === 'link') {
+      const target = entry.tool_target ?? '';
+      return target.trim() !== '';
+    }
+    return true;
+  }
+
+  /** The entries the feed draws: the link rows without a target are left out. */
+  const activityEntries = $derived((taskActivity?.entries ?? []).filter(showsActivityRow));
+
+  /**
+   * @param kind the activity kind
+   * @returns the delivered icon of that kind
+   */
+  function activityKindIcon(kind: string): string {
+    switch (kind) {
+      case 'tool':
+      case 'tool_call':
+        return 'kind.harness';
+      case 'changed':
+      case 'file_changed':
+        return 'act.edit';
+      case 'link':
+        return 'act.external';
+      case 'question':
+        return 'kind.decision';
+      case 'answer_ack':
+        return 'state.check';
+      case 'gap':
+        return 'state.clock';
+      case 'model_differs':
+        return 'state.alert';
+      case 'text':
+      default:
+        return 'kind.document';
+    }
   }
 
   /**
@@ -835,251 +1142,232 @@
         />
       </div>
     {/if}
-    <!-- Path Navigation Header -->
-    <header class="plan-header" data-testid="plan-header">
-      <div class="plan-header__top">
-        <nav
-          class="plan-breadcrumb mono"
-          aria-label={$t('common.breadcrumb')}
-          data-testid="plan-breadcrumb"
-        >
-          <button
-            class="breadcrumb-link"
-            onclick={() => openProject(plan!.project.project_id)}
-            data-testid="breadcrumb-project"
-          >
-            {plan.project.display_name || plan.project.project_id}
-          </button>
-          {#if plan.epic}
-            <span class="breadcrumb-sep">›</span>
-            <button
-              class="breadcrumb-link"
-              onclick={() => openEpic(plan!.epic!.epic_id)}
-              data-testid="breadcrumb-epic"
-            >
-              {plan.epic.title || plan.epic.epic_id}
-            </button>
-          {/if}
-          <span class="breadcrumb-sep">›</span>
-          <span class="breadcrumb-current font-semibold" data-testid="breadcrumb-plan">
-            {plan.plan_id}
+    <ObjectPage>
+      <span slot="kind" data-testid="plan-kind"><KindMark kind="plan" /></span>
+      <span slot="title" data-testid="plan-title">{stripControlSequences(plan.title)}</span>
+      <span slot="id" data-testid="plan-id-chip"><Chip value={plan.plan_id} /></span>
+
+      <div slot="state" class="plan-state-line" data-testid="plan-state-line">
+        {#if plan.pull_request_number}
+          <span data-testid="plan-pr-chip">
+            <PrChip number={plan.pull_request_number} href={plan.pull_request_url ?? undefined} />
           </span>
-        </nav>
-
-        <div class="plan-header__actions">
-          <Button
-            variant="secondary"
-            onclick={() => navigateTo('designer', { projectId: plan!.project.project_id })}
-            data-testid="design-process-btn"
-            data-advisory={$t('designer.plan.open.title')}
+        {/if}
+        <span data-testid="plan-phase"><PhaseLabel phase={plan.current_phase} /></span>
+        <span data-testid="plan-state">
+          <StatusLabel
+            tone={stateTone(plan.phase_state)}
+            label={displayState('plan', plan.phase_state, $t)}
+          />
+        </span>
+        {#if plan.duration_seconds > 0}
+          <span class="plan-state__sep" aria-hidden="true">·</span>
+          <span class="plan-state__sentence" data-testid="plan-state-sentence"
+            >{stateSentence}</span
           >
-            {$t('designer.plan.open')}
-          </Button>
-          <Button
-            variant="secondary"
-            onclick={() => jumpToCurrentPosition(plan!)}
-            data-testid="jump-btn"
-            data-advisory={$t('plan.path.jump.title')}
-          >
-            {$t('plan.path.jump')}
-          </Button>
-          {#if plan.pull_request_number}
-            <a
-              href={plan.pull_request_url || '#'}
-              target="_blank"
-              rel="noreferrer"
-              class="pr-badge-link"
-              data-testid="pr-link"
-            >
-              #{plan.pull_request_number}
-            </a>
-          {/if}
-          <button
-            class="report-link-btn"
-            onclick={() => openReport(plan!.plan_id)}
-            data-testid="completion-report-link"
-            data-advisory={$t('report.action.details.title')}
-          >
-            {$t('report.action.details')}
-          </button>
-        </div>
-      </div>
-
-      <!-- Plan Title and Status Line -->
-      <div class="plan-headline">
-        <h1 class="plan-title" data-testid="plan-title">{plan.title}</h1>
-        <div class="plan-status-tags">
-          <span class="badge badge--phase" data-testid="plan-phase">
-            <WorkflowIcon id={phaseIconId(plan.current_phase)} size={16} />
-            {plan.current_phase}
-          </span>
-          <span class="badge badge--state badge--state-{plan.phase_state}" data-testid="plan-state">
-            {displayState('plan', plan.phase_state, $t)}
-          </span>
-          {#if plan.duration_seconds > 0}
-            <span class="duration-tag"
-              >{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span
-            >
-          {/if}
-        </div>
-      </div>
-
-      <!-- An Ended Plan -->
-      {#if ended}
-        <div class="ended-banner" data-testid="plan-ended">
-          <div class="ended-banner__text">
-            <span class="ended-outcome">
-              {#if ended.outcome}
-                {$t('plan.view.ended', {
-                  outcome: $t('overview.ended.outcome', { outcome: ended.outcome }),
-                })}
-              {:else}
-                {$t('plan.view.ended_none')}
-              {/if}
-            </span>
-            {#if ended.ended_at}
-              <span class="ended-time text-muted">
-                {$t('overview.ended.time', { time: formatEndedAt(ended.ended_at) })}
-              </span>
-            {/if}
-            {#if ended.reason}
-              <span class="ended-reason text-muted">
-                {$t('overview.ended.reason', { reason: ended.reason })}
-              </span>
-            {/if}
-          </div>
-          <button
-            class="report-link-btn"
-            onclick={() => openReport(plan!.plan_id)}
-            data-testid="ended-completion-report"
-            data-advisory={$t('report.completion.open.title')}
-          >
-            {$t('report.completion.open')}
-          </button>
-        </div>
-      {/if}
-
-      <!-- The plan's own actions, settings, holds, and chats -->
-      <WorkControlPanel
-        subjectId={plan.plan_id}
-        subjectKind="plan"
-        projectId={plan.project.project_id}
-        ended={Boolean(ended)}
-        pullRequestNumber={plan.pull_request_number ?? null}
-        onChanged={() => void loadPlanProcess(false)}
-      />
-
-      <!-- Tokens So Far -->
-      <div class="plan-tokens mono" data-testid="plan-tokens">
-        <span class="tokens-label">{$t('plan.view.tokens')}</span>
-        <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
-        {#if !plan.tokens_so_far.none_yet}
-          <button
-            class="tokens-toggle"
-            aria-expanded={showTokenBreakdown}
-            aria-controls="plan-token-breakdown"
-            onclick={toggleTokenBreakdown}
-            data-testid="tokens-toggle"
-          >
-            {showTokenBreakdown
-              ? $t('plan.view.tokens_detail_hide')
-              : $t('plan.view.tokens_detail')}
-          </button>
         {/if}
       </div>
 
-      {#if showTokenBreakdown}
-        <div class="token-breakdown" id="plan-token-breakdown" data-testid="token-breakdown">
-          {#if isLoadingBreakdown}
-            <div class="token-breakdown__empty">
-              <Spinner size="1rem" label={$t('plan.view.tokens_detail')} />
-            </div>
-          {:else if tokenBreakdown.byPhase.length === 0 && tokenBreakdown.byRole.length === 0}
-            <p class="token-breakdown__empty text-muted">
-              {$t('plan.view.tokens_detail_waiting')}
-            </p>
-          {:else}
-            {#if tokenBreakdown.byPhase.length > 0}
-              <section class="token-breakdown__group" data-testid="token-breakdown-phase">
-                <h3 class="token-breakdown__title">{$t('report.completion.by_phase')}</h3>
-                <table class="token-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{$t('report.completion.by_phase')}</th>
-                      <th scope="col">{$t('plan.tokens.col.input')}</th>
-                      <th scope="col">{$t('plan.tokens.col.cached')}</th>
-                      <th scope="col">{$t('plan.tokens.col.output')}</th>
-                      <th scope="col">{$t('plan.tokens.col.total')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each tokenBreakdown.byPhase as item (item.name)}
-                      <tr data-testid="token-phase-{item.name}">
-                        <th scope="row" class="mono">{item.name}</th>
-                        <td class="mono">{formatBreakdownValue(item.input)}</td>
-                        <td class="mono">{formatComponent(cachedOf(item))}</td>
-                        <td class="mono">{formatBreakdownValue(item.output)}</td>
-                        <td class="mono">{formatBreakdownValue(item.total)}</td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </section>
-            {/if}
+      <div slot="primary" class="plan-acts">
+        <!-- The plan's own actions, settings, holds, and chats -->
+        <WorkControlPanel
+          subjectId={plan.plan_id}
+          subjectKind="plan"
+          projectId={plan.project.project_id}
+          ended={Boolean(ended)}
+          pullRequestNumber={plan.pull_request_number ?? null}
+          onChanged={() => void loadPlanProcess(false)}
+        />
+      </div>
 
-            {#if tokenBreakdown.byRole.length > 0}
-              <section class="token-breakdown__group" data-testid="token-breakdown-role">
-                <h3 class="token-breakdown__title">{$t('report.completion.by_role')}</h3>
-                <table class="token-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">{$t('report.completion.by_role')}</th>
-                      <th scope="col">{$t('plan.tokens.col.input')}</th>
-                      <th scope="col">{$t('plan.tokens.col.cached')}</th>
-                      <th scope="col">{$t('plan.tokens.col.output')}</th>
-                      <th scope="col">{$t('plan.tokens.col.total')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {#each tokenBreakdown.byRole as item (item.name)}
-                      <tr data-testid="token-role-{item.name}">
-                        <th scope="row" class="mono">{item.name}</th>
-                        <td class="mono">{formatBreakdownValue(item.input)}</td>
-                        <td class="mono">{formatComponent(cachedOf(item))}</td>
-                        <td class="mono">{formatBreakdownValue(item.output)}</td>
-                        <td class="mono">{formatBreakdownValue(item.total)}</td>
-                      </tr>
-                    {/each}
-                  </tbody>
-                </table>
-              </section>
-            {/if}
+      <div slot="secondary" class="plan-head-links">
+        <Link href={designerHref} label={$t('designer.plan.open')} testid="design-process-link" />
+        {#if ended}
+          <Link
+            href={`/reports?plan=${encodeURIComponent(plan.plan_id)}`}
+            label={$t('report.action.details')}
+            testid="completion-report-link"
+          />
+        {/if}
+        {#if waiting && openDecisionId}
+          <Link
+            href={`/decisions/${encodeURIComponent(openDecisionId)}`}
+            label={$t('control.plan.decision')}
+            testid="plan-decision-link"
+          />
+        {/if}
+      </div>
+
+      <div slot="tabs" class="plan-tabstrip">
+        {#if waiting}
+          <div data-testid="plan-attention-strip">
+            <AttentionStrip message={$t('plan.view.waits_for_decision')} />
+          </div>
+        {/if}
+
+        {#if planOffTrack}
+          <div class="off-track-banner" data-testid="plan-off-track" role="alert">
+            <span class="warning-icon"><Icon name="state.alert" size={16} /></span>
+            <span class="off-track-msg">
+              {$t('plan.view.off_track', {
+                signal: displayState('signal', planOffTrack.signal, $t),
+              })}
+            </span>
+          </div>
+        {/if}
+
+        {#if queuedRevision}
+          <p class="plan-revision mono" data-testid="plan-revision-queued">
+            {$t('control.chat.revision_queued', {
+              applies: queuedRevision.applies,
+              plan: plan.plan_id,
+              task_id: queuedRevision.taskId ?? '',
+            })}
+          </p>
+        {/if}
+
+        {#if ended}
+          <div class="ended-banner" data-testid="plan-ended">
+            <div class="ended-banner__text">
+              <span class="ended-outcome">
+                {#if ended.outcome}
+                  {$t('plan.view.ended', {
+                    outcome: $t('overview.ended.outcome', { outcome: ended.outcome }),
+                  })}
+                {:else}
+                  {$t('plan.view.ended_none')}
+                {/if}
+              </span>
+              {#if ended.ended_at}
+                <span class="ended-time text-muted">
+                  {$t('overview.ended.time', { time: formatEndedAt(ended.ended_at) })}
+                </span>
+              {/if}
+              {#if ended.reason}
+                <span class="ended-reason text-muted">
+                  {$t('overview.ended.reason', { reason: ended.reason })}
+                </span>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Tokens So Far -->
+        <div class="plan-tokens mono" data-testid="plan-tokens">
+          <span class="tokens-label">{$t('plan.view.tokens')}</span>
+          <span class="tokens-value">{formatTokensLine(plan.tokens_so_far, $currentLocale)}</span>
+          {#if !plan.tokens_so_far.none_yet}
+            <button
+              class="tokens-toggle"
+              aria-expanded={showTokenBreakdown}
+              aria-controls="plan-token-breakdown"
+              onclick={toggleTokenBreakdown}
+              data-testid="tokens-toggle"
+            >
+              {showTokenBreakdown
+                ? $t('plan.view.tokens_detail_hide')
+                : $t('plan.view.tokens_detail')}
+            </button>
           {/if}
         </div>
-      {/if}
-      <!-- The size line of the change: it opens the Changes tab, and is absent before the first capture -->
-      {#if changeSize}
-        <div class="plan-change-size" data-testid="plan-change-size-row">
-          <span class="tokens-label">{$t('plan.change.so_far')}</span>
-          <button
-            type="button"
-            class="change-size-link mono"
-            data-testid="plan-change-size"
-            onclick={() => {
-              if (activeTab !== 'changes') {
-                selectObjectTab('changes');
-              }
-            }}
-          >
-            {changeText(changeSize)}
-          </button>
-        </div>
-      {/if}
-    </header>
 
-    <div class="plan-tabs">
-      <Tabs tabs={tabItems} active={activeTab} label={$t('plan.tabs')} onSelect={selectTab} />
-    </div>
+        {#if showTokenBreakdown}
+          <div class="token-breakdown" id="plan-token-breakdown" data-testid="token-breakdown">
+            {#if isLoadingBreakdown}
+              <div class="token-breakdown__empty">
+                <Spinner size="1rem" label={$t('plan.view.tokens_detail')} />
+              </div>
+            {:else if tokenBreakdown.byPhase.length === 0 && tokenBreakdown.byRole.length === 0}
+              <p class="token-breakdown__empty text-muted">
+                {$t('plan.view.tokens_detail_waiting')}
+              </p>
+            {:else}
+              {#if tokenBreakdown.byPhase.length > 0}
+                <section class="token-breakdown__group" data-testid="token-breakdown-phase">
+                  <h3 class="token-breakdown__title">{$t('report.completion.by_phase')}</h3>
+                  <table class="token-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{$t('report.completion.by_phase')}</th>
+                        <th scope="col">{$t('plan.tokens.col.input')}</th>
+                        <th scope="col">{$t('plan.tokens.col.cached')}</th>
+                        <th scope="col">{$t('plan.tokens.col.output')}</th>
+                        <th scope="col">{$t('plan.tokens.col.total')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each tokenBreakdown.byPhase as item (item.name)}
+                        <tr data-testid="token-phase-{item.name}">
+                          <th scope="row" class="mono">{item.name}</th>
+                          <td class="mono">{formatBreakdownValue(item.input)}</td>
+                          <td class="mono">{formatComponent(cachedOf(item))}</td>
+                          <td class="mono">{formatBreakdownValue(item.output)}</td>
+                          <td class="mono">{formatBreakdownValue(item.total)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </section>
+              {/if}
+
+              {#if tokenBreakdown.byRole.length > 0}
+                <section class="token-breakdown__group" data-testid="token-breakdown-role">
+                  <h3 class="token-breakdown__title">{$t('report.completion.by_role')}</h3>
+                  <table class="token-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">{$t('report.completion.by_role')}</th>
+                        <th scope="col">{$t('plan.tokens.col.input')}</th>
+                        <th scope="col">{$t('plan.tokens.col.cached')}</th>
+                        <th scope="col">{$t('plan.tokens.col.output')}</th>
+                        <th scope="col">{$t('plan.tokens.col.total')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {#each tokenBreakdown.byRole as item (item.name)}
+                        <tr data-testid="token-role-{item.name}">
+                          <th scope="row" class="mono">{item.name}</th>
+                          <td class="mono">{formatBreakdownValue(item.input)}</td>
+                          <td class="mono">{formatComponent(cachedOf(item))}</td>
+                          <td class="mono">{formatBreakdownValue(item.output)}</td>
+                          <td class="mono">{formatBreakdownValue(item.total)}</td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                </section>
+              {/if}
+            {/if}
+          </div>
+        {/if}
+        <!-- The size line of the change: it opens the Changes tab, and is absent before the first capture -->
+        {#if changeSize}
+          <div class="plan-change-size" data-testid="plan-change-size-row">
+            <span class="tokens-label">{$t('plan.change.so_far')}</span>
+            <button
+              type="button"
+              class="change-size-link mono"
+              data-testid="plan-change-size"
+              onclick={() => {
+                if (activeTab !== 'changes') {
+                  selectObjectTab('changes');
+                }
+              }}
+            >
+              {changeText(changeSize)}
+            </button>
+          </div>
+        {/if}
+
+        <Tabs tabs={tabItems} active={activeTab} label={$t('plan.tabs')} onSelect={selectTab} />
+      </div>
+
+    <div
+      class="plan-panel-host"
+      data-testid="plan-panel-host"
+      data-layout={wideColumn ? 'side' : 'stacked'}
+      bind:this={panelHost}
+    >
 
     {#if activeTab === 'changes' && changeSize}
       <div
@@ -1095,7 +1383,28 @@
           selectedFile={$runtimeStore.changeFile ?? null}
           onSelectFile={selectPlanChangeFile}
           reloadToken={changesReloadToken}
+          wide={wideColumn}
         />
+      </div>
+    {:else if activeTab === 'intent'}
+      <div
+        class="plan-intent-panel"
+        id="plan-panel-intent"
+        role="tabpanel"
+        aria-label={$t('intent.tab.title')}
+        data-testid="plan-intent-panel-tab"
+      >
+        {#if intentLoading}
+          <div class="plan-intent-panel__loading">
+            <Spinner size="1.5rem" label={$t('intent.tab.title')} />
+          </div>
+        {:else if !intentHasRecord}
+          <p class="text-muted" data-testid="plan-intent-none">{$t('intent.plan.none')}</p>
+        {:else}
+          <PlanIntentPanel planId={plan.plan_id} deliverables={intentDeliverables} />
+          <BuilderCheckList check={intentCheck} />
+          <OutlinePanel planId={plan.plan_id} />
+        {/if}
       </div>
     {:else}
       <!-- Two-Panel Main Layout -->
@@ -1111,6 +1420,17 @@
         aria-label={$t('plan.view.tree_label')}
         data-testid="process-tree"
       >
+        <div class="plan-tree-toolbar">
+          <Button
+            variant="ghost"
+            size="sm"
+            onclick={() => jumpToCurrentPosition(plan!)}
+            data-testid="jump-btn"
+            data-advisory={$t('plan.path.jump.title')}
+          >
+            {$t('plan.path.jump')}
+          </Button>
+        </div>
         {#snippet processNode(node: ProcessNode, level: 'root' | 'sub')}
           <div
             class="node-item {level === 'root'
@@ -1296,11 +1616,11 @@
 
               <!-- Activity Entries -->
               <div class="activity-entries">
-                {#if taskActivity.entries.length === 0}
+                {#if activityEntries.length === 0}
                   <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
                 {:else}
-                  {#each taskActivity.entries as entry, index}
-                    {@const label = dayLabel(taskActivity.entries, index)}
+                  {#each activityEntries as entry, index}
+                    {@const label = dayLabel(activityEntries, index)}
                     {#if label}
                       <div class="activity-day mono" data-testid="activity-day">{label}</div>
                     {/if}
@@ -1309,9 +1629,14 @@
                       data-testid="activity-entry"
                     >
                       <span class="entry-time mono">{entryClock(entry.timestamp)}</span>
-                      <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
-                        >{displayState('activity', entry.kind, $t)}</span
+                      <span
+                        class="entry-kind"
+                        data-testid="activity-kind"
+                        role="img"
+                        aria-label={displayState('activity', entry.kind, $t)}
                       >
+                        <Icon name={activityKindIcon(entry.kind)} size={16} />
+                      </span>
                       <div class="entry-body">
                         {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
                           <div class="tool-call mono">
@@ -1332,6 +1657,10 @@
                             {stripControlSequences(
                               entry.content || (entry.files && entry.files[0]) || '',
                             )}
+                          </div>
+                        {:else if entry.kind === 'link'}
+                          <div class="entry-content mono" data-model-text>
+                            {stripControlSequences(entry.tool_target)}
                           </div>
                         {:else if entry.kind === 'gap'}
                           <div class="activity-gap text-muted italic" data-model-text>
@@ -1379,6 +1708,8 @@
       </section>
       </div>
     {/if}
+    </div>
+    </ObjectPage>
   {/if}
 </div>
 </div>
@@ -2021,6 +2352,115 @@
   }
 
   /* Responsive */
+  .plan-state-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .plan-state__sep {
+    color: var(--color-text-muted);
+  }
+
+  .plan-state__sentence {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .plan-acts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .plan-head-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .plan-tabstrip {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  .plan-revision {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .plan-panel-host {
+    min-inline-size: 0;
+    min-block-size: 0;
+  }
+
+  .plan-intent-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+  }
+
+  .plan-intent-panel__loading {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-6);
+  }
+
+  .plan-tree-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding-block-end: var(--space-2);
+  }
+
+  /* Process: side by side while the object column is at least 720 px wide, stacked below it
+     (`plan-view-interaction.adoc#layout`). The width is the column's own, never the viewport's. */
+  .plan-panel-host[data-layout='side'] .plan-content {
+    flex-direction: row;
+  }
+
+  .plan-panel-host[data-layout='stacked'] .plan-content {
+    flex-direction: column;
+  }
+
+  .plan-panel-host[data-layout='side'] .plan-tree-panel {
+    flex: 0 0 320px;
+    min-width: 280px;
+    max-width: 360px;
+  }
+
+  .plan-panel-host[data-layout='side'] .plan-detail-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .plan-panel-host[data-layout='stacked'] .plan-tree-panel,
+  .plan-panel-host[data-layout='stacked'] .plan-detail-panel {
+    min-width: 0;
+    border-right: none;
+  }
+
+  .plan-panel-host[data-layout='stacked'] .plan-tree-panel {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .entry-kind {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    color: var(--color-text-secondary);
+  }
+
+  .plan-tabstrip .off-track-banner {
+    margin: 0;
+  }
+
   @media (max-width: 768px) {
     .plan-content {
       flex-direction: column;

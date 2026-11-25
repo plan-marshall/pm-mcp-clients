@@ -27,8 +27,7 @@
     "button": 6
   },
   "src/lib/views/PlanView.svelte": {
-    "a": 1,
-    "button": 9,
+    "button": 5,
     "outline: none": 1
   },
   "src/lib/views/ProcessDesigner.svelte": {
