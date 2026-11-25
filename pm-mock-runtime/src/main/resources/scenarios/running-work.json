@@ -1587,6 +1587,7 @@
                     "status": "done",
                     "duration_seconds": 180,
                     "tokens_so_far": 18000,
+                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-001/activity",
                     "outcome": "success"
                   },
                   {
@@ -1597,7 +1598,8 @@
                     "attempt": 1,
                     "status": "running",
                     "duration_seconds": 420,
-                    "tokens_so_far": 30000
+                    "tokens_so_far": 30000,
+                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-002/activity"
                   }
                 ]
               }
@@ -1611,6 +1613,58 @@
           "TASK-002"
         ],
         "duration_seconds": 600
+      }
+    },
+    "GET /api/v1/plans/storage-v2/tasks/TASK-001/activity": {
+      "representation": {
+        "task_id": "TASK-001",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 180,
+        "tokens_so_far": 18000,
+        "entries": [
+          {
+            "timestamp": "11:40:05",
+            "kind": "text",
+            "content": "Storage v2 baseline schema verified."
+          },
+          {
+            "timestamp": "11:41:20",
+            "kind": "answer_ack",
+            "content": "TASK-001 completed."
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/plans/storage-v2/tasks/TASK-002/activity": {
+      "representation": {
+        "task_id": "TASK-002",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 420,
+        "tokens_so_far": 30000,
+        "entries": [
+          {
+            "timestamp": "11:43:10",
+            "kind": "text",
+            "content": "Applying storage v2 index migration across checkpoints."
+          },
+          {
+            "timestamp": "11:44:02",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-mcp-core/src/main/java/…/StorageMigration.java",
+            "tool_failed": false
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
       }
     },
     "GET /api/v1/plans/session-log/process": {
