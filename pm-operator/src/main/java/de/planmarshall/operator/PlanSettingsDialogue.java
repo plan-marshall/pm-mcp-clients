@@ -31,7 +31,7 @@ import de.planmarshall.operator.dialogue.ChoicePrompt;
  * value of one aspect with its origin, a refused value asked again, a change that is too late, and
  * a change another client made first.
  *
- * <p>A refusal that names a code the catalogue knows is shown with that code's cause, never with
+ * <p>A refusal that names a code the catalogue knows is shown with that code's title, never with
  * the runtime's own words, and a refusal of the act itself (a coded {@code 409}: the plan has
  * ended, the team owns the value) ends the dialogue instead of asking the value again.
  *
@@ -226,7 +226,7 @@ final class PlanSettingsDialogue {
     }
 
     private void refused(ChosenValue chosen, String aspect, WorkActionsClient.SettingsAnswer answer) {
-        // A code the catalogue knows names the cause in the operator's language; an unknown one
+        // A code the catalogue knows names its text in the operator's language; an unknown one
         // keeps the reason the body carried, and a body without either names none.
         var reason = answer.refusalCode() != null
                             ? ErrorTexts.title(prompt.locale(), answer.refusalCode())

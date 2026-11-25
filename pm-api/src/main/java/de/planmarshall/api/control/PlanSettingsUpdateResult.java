@@ -64,19 +64,26 @@ public record PlanSettingsUpdateResult(
      */
     private static final String ERROR_KEY = "error";
 
+    /** The keys a settings result always carries, one of which every result body names. */
+    private static final String APPLIED_KEY = "applied";
+    private static final String CONFLICT_KEY = "conflict";
+
     /**
      * Reads the settings result an answer carries, when the body is one: a revision conflict or a
-     * change refused as too late. A coded refusal of the act carries no result — it names an
-     * {@code error} instead — so {@code null} says the caller must read the code the refusal names
-     * rather than a result.
+     * change refused as too late. A refusal of the act is no settings result — it names an
+     * {@code error} and carries neither {@code applied} nor {@code conflict} — so {@code null} says
+     * the caller must read the code the refusal names rather than a result.
      *
      * @param json the answer's body
-     * @return the result, or {@code null} when the body is no settings result
+     * @return the conflict or too-late result, or {@code null} when the body is no such result
      */
     public static PlanSettingsUpdateResult resultOrNull(String json) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(json));
-            if (map == null || map.containsKey(ERROR_KEY)) {
+            if (map == null || map.containsKey(ERROR_KEY)
+                                || !(map.containsKey(APPLIED_KEY) || map.containsKey(CONFLICT_KEY))) {
+                // A refusal names a code and carries no result; an applied result is no refusal to
+                // read, so it is not what this lookup describes.
                 return null;
             }
             var result = fromMap(map);

@@ -399,7 +399,7 @@ class ControlCommandTest {
 
     @ParameterizedTest(name = "status {0}")
     @ValueSource(ints = {403, 500})
-    @DisplayName("plan settings refusing a free-form value without a value code names no cause, on stderr")
+    @DisplayName("plan settings refusing a free-form value with a code the catalogue does not know names no cause, on stderr")
     void settingsChoicelessRefusedNamesNoCause(int status) throws Exception {
         var plan = planId();
         var setting = choiceless();

@@ -195,6 +195,9 @@ class ControlRecordsTest {
                             // a coded refusal is no settings result, whatever else the body carries
                             () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
                                                 "{\"error\":\"team_owned\",\"state\":\"ended\"}")),
+                            // a flat code with a state is still a refusal: it carries no result
+                            () -> assertNull(PlanSettingsUpdateResult.resultOrNull(
+                                                "{\"code\":\"team_owned\",\"state\":\"ended\"}")),
                             () -> assertNull(PlanSettingsUpdateResult.resultOrNull("{\"values\":[")),
                             () -> assertNull(PlanSettingsUpdateResult.resultOrNull("not json")));
     }

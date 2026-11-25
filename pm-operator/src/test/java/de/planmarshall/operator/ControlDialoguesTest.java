@@ -1180,7 +1180,7 @@ class ControlDialoguesTest {
     }
 
     @Test
-    @DisplayName("a coded 400 shows the catalogue's cause instead of the runtime's English, in German")
+    @DisplayName("a coded 400 shows the catalogue's text instead of the runtime's English, in German")
     void settingsCodedRefusalShowsTheCatalogueCause() throws Exception {
         var attempts = new AtomicInteger();
         serve((request, response) -> {
