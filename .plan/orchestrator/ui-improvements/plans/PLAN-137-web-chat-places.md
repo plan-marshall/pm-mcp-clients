@@ -118,65 +118,53 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 ## Claim Labels
 
 - OBSERVED: `DecisionView.svelte` keeps `chatOpen`, `chatBusyId`, `chatBusyToken`, `chatGeneration` and reacts to `decision.created`, `decision.opened`, and the chat close lines — read at `pm-web-app/src/lib/views/DecisionView.svelte:52-69,320-394,504,629`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: state exists (DecisionView chatDecisionId :92, chatOpen :94, chatBusy :102); decision.created exists nowhere; events opened :553, changed :569, answered :581, closed :620 (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: DecisionView chat state exists (chatDecisionId :92, chatOpen :94, chatBusy :102) but decision.created exists nowhere; events opened :553, changed :569, answered :581, closed :620 (3dea04b2)
 - OBSERVED: `ProjectOnboardingView.svelte` draws the setup question chat's turns itself (`chat-turn`, `chat_available`, `chatOffered`) — read at `pm-web-app/src/lib/views/ProjectOnboardingView.svelte:77,689`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectOnboardingView chatOpen :73, chatOffered :81, chat modal :661, chat-turn article :692; no template (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProjectOnboardingView chatOffered :106, drawer :946, turn article :968; sends via applyStep('chat') :578-586 (3dea04b2)
 - OBSERVED: `EpicView.svelte` renders `ChatPanel` for the review chat — read at `pm-web-app/src/lib/views/EpicView.svelte:973`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicView imports ChatPanel :10 and renders it for the review chat :1048-1063 outside any side column (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicView.svelte import :12, render :1109, on ObjectPage :724, no side column (3dea04b2)
 - OBSERVED: `StartView.svelte` renders `ChatPanel` with `entry?.chat_available` — read at `pm-web-app/src/lib/views/StartView.svelte:912,1116,1125`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView imports ChatPanel :27 and renders it :878 inside the sidePane snippet (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartView.svelte:902-920 sidePane, available :911; WizardPage side :925-928 (3dea04b2)
 - OBSERVED: `WizardPage.svelte` has the slots `steps`, default, `back`, `secondary`, `primary` and no side slot — read at `pm-web-app/src/lib/templates/WizardPage.svelte`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: WizardPage.svelte:15-22 has side/sideOpen/onHideSide and a side column; slots steps/back/secondary/primary hold (:124-139) (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: WizardPage.svelte:18-22 side/sideOpen/onHideSide and :145-150 SideColumn exist (3dea04b2)
 - OBSERVED: D6 fixed the side column on `TriagePage` and `WizardPage` (`side`, `sideOpen`, `onHideSide`, built by `PLAN-142`), none on `ObjectPage` and none in the chat plans; `open=` forms wait for `PLAN-143`; a decision's own chat is at `/decisions/{id}?chat=open` — read at `doc/design/web-app/components.adoc:361,374,381`, `doc/design/web-app/navigation.adoc:275-284,383-418`, `doc/design/web-app/chat.adoc:40,342` (`4a84f727`, D6 merged `8568b56e`)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: D6 text holds (see PLAN-135 claim 4); lines drifted (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: components.adoc:363,372,376; navigation.adoc:279-285; chat.adoc:40,73 (3dea04b2)
 - HYPOTHESIS: each place's view sits on `WizardPage` (the start, the decomposition, the project's setup step) or on `TriagePage` (a decision, the epic's review, ended work) at the then-current HEAD, so its `Chat` has a `side` to go into — confirm/refute at each view's template use (verify-at-outline; a place whose view is on neither stops and loops back for that place: no interim slot)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: only StartView (WizardPage :901) and DecisionView (TriagePage :1869, side=chatSide) sit on a template; ProjectOnboardingView, EpicView, ended-work chat and EpicDecompositionView do not; the spec says loop back (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: only StartView (WizardPage :925) and DecisionView (TriagePage :1869) sit on a template; ProjectOnboardingView none, EpicView ObjectPage :724, PlanView none (3dea04b2)
 - OBSERVED: the docs define no route for the decomposition draft's chat or for a review chat — read at `../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc:166-168,280`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: sibling docs runtime-model/01-processes-and-transport.adoc:168,280 (local HEAD feab6a6) name chat routes for plan, epic, entry, decision and ended work only; ChatRoutes.java has no review or decomposition builder (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatRoutes.java:27-28 leaves review/decomposition out; runtime-model/01-processes-and-transport.adoc:179,289-300 lists plan/epic/entry/decision/ended only (3dea04b2)
 - HYPOTHESIS: the decision answers are disabled while a chat is open at `DecisionView.svelte` ~1011, 1058, 1161 (lines from `plan-125-001.md`, 2026-11-09) — confirm/refute at `pm-web-app/src/lib/views/DecisionView.svelte` § `isChatting` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: isChatting DecisionView:781 disables the answers at :1160,:1288,:1688,:1755,:1807-1823 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: DecisionView.svelte:781 isChatting; disabled at :1160,1288,1688,1755,1807-1823 (3dea04b2)
 - HYPOTHESIS: the review chat ignores the item at `EpicView.svelte` ~472 and never ends on the server at ~506 (same source) — confirm/refute at `pm-web-app/src/lib/views/EpicView.svelte` § review chat (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicView.openReviewChat :604-613 reads getChat with no item; endReviewChat :642-645 only clears local state (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicView.svelte:655-658 getChat without item; :693-696 endReviewChat clears local state only (3dea04b2)
 - HYPOTHESIS: `EpicDecompositionView.svelte` and `DecompositionReviewView.svelte` have no chat today — confirm/refute at those files § chat (verify-at-outline)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: DecompositionReviewView has onChat :30 and a button :331 wired at StartView:1139 which opens the entry chat, not a draft-scoped chat; EpicDecompositionView has no chat (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: DecompositionReviewView.svelte:28,312 has an onChat button, wired StartView.svelte:1164 to chatOpen=true, which opens no chat; EpicDecompositionView has none (3dea04b2)
 - HYPOTHESIS: the web decision answer sends no `channel` — confirm/refute at `pm-web-app/src/lib/api/client.ts` § `answerDecision` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: answerDecision calls DecisionView:799,855,881,895 set no channel; DecisionAnswerPayload.channel optional (client.ts:1200) (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: DecisionView channel is read-side only (:494-606); DecisionAnswerPayload.channel optional (client.ts:1200) (3dea04b2)
 - Verify-first clause: re-read every view line above at the then-current HEAD (PLAN-45 is running and edits `views/`; PLAN-51, 53, 55, 58 and 59 may have landed since); a view already restructured by a landed plan is edited at its new lines.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; view lines re-read at 3dea04b2 (3dea04b2)
 
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/templates/WizardPage.svelte` — present at `1cc0e10e` (read only: its `side`, `sideOpen`, `onHideSide` are `PLAN-142`'s)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/EpicDecompositionView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/DecompositionReviewView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/DecisionView.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by this plan
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.test.ts` — present at `1cc0e10e`; deleted by this plan
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/startFixtures.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/decisions.spec.js` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/workspace.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/start.spec.js` — present at `1cc0e10e`
-- OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
-- OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/EpicView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/src/lib/views/DecompositionReviewView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -227,6 +215,25 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Claims 0, 4, 6 and 10 contradicted (`rescoped: yes`). Claim 0: the state exists (`DecisionView` `chatDecisionId :92`, `chatOpen :94`, `chatBusy :102`) but `decision.created` exists nowhere (events `:553,569,581,620`). Claim 4: `WizardPage.svelte:15-22` has `side`/`sideOpen`/`onHideSide`. Claim 6: only `StartView` (WizardPage `:901`) and `DecisionView` (TriagePage `:1869`) sit on a template; `ProjectOnboardingView`, `EpicView` (bare `ChatPanel`), the ended-work chat in `WorkControlPanel` and `EpicDecompositionView` do not: loop back for that place. Claim 10: `StartView:1139` wires `onChat` to the entry chat, not a draft-scoped chat.
 - D2 (and D3, D4) rest on the contract Open Item: `ChatRoutes` has no review or decomposition route builder and the mock has no such route. Parked; the spec has no "Unparked" section. PLAN-59 (`ProjectOnboardingView`) and PLAN-156 (`FindingsReviewModal`) are running and overlap.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claims 0, 4, 6, 10 contradicted: `DecisionView` holds chat state but `decision.created` exists nowhere (events `opened`/`changed`/`answered`/`closed`); `WizardPage` has a side column; only `StartView` (WizardPage) and `DecisionView` (TriagePage) sit on a template; `DecompositionReviewView` has an `onChat` button wired to a local flag that opens no chat.
+- **Split.** Feasible after PLAN-135/136: the start place (WizardPage already docked, `StartView.svelte:925-928`: swap the content to `Chat`, `chat=open`) and the decision place (TriagePage side, `DecisionView.svelte:1869-1877`: narrow `isChatting` to the reply/proposal rule, address `/decisions/{id}?chat=open`). **Held:** the setup place (no template), the decomposition and review chats (no runtime address: `ChatRoutes.java:27-28`, runtime-model `01-processes-and-transport.adoc:179,289-300`), the ended-work follow-up (the contract Open Item) and the final `ChatPanel` deletion (EpicView's review chat still uses the old client, `EpicView.svelte:655-696`).
+- The spec header cites `shared/project-onboarding.adoc`, which holds no chat text: the governing lines are `chat.adoc:31,34,40` and `decisions.adoc:135-142`.
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **This plan keeps the start's place (D1 without the project setup) and the decision's place (D3).** Moved to PLAN-193 `web-chat-held-places` (parked): D1's project-setup half, D2 (decomposition and review chats: no runtime address), D4 (ended work: the chat contract Open Item), D5 (`ChatPanel` and the old client go: after all places and PLAN-192).
+- D1 here: the start's chat in `WizardPage`'s side column (already docked, `StartView.svelte:925-928`): swap the content to `Chat` (PLAN-135), `sideOpen` from `chat=open`. D3: `Chat` in `TriagePage`'s side column beside the decision (`DecisionView.svelte:1869-1877`), `isChatting` narrowed to the reply/proposal rule, the address `/decisions/{id}?chat=open`. The browser check covers the start and a decision only. `ChatPanel` stays for the other places until PLAN-193.
+- Uses PLAN-194's fixtures where they exist; otherwise `/mock/broadcast`.
+- Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/views/ProjectOnboardingView.svelte, pm-web-app/src/lib/views/ProjectOnboardingView.test.ts, pm-web-app/src/lib/views/EpicDecompositionView.svelte, pm-web-app/src/lib/views/EpicDecompositionView.test.ts, pm-web-app/src/lib/views/DecompositionReviewView.svelte, pm-web-app/src/lib/views/DecompositionReviewView.test.ts, pm-web-app/src/lib/components/ChatPanel.svelte, pm-web-app/src/lib/components/ChatPanel.test.ts, pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java, pm-web-e2e/tests/control.spec.js, pm-web-e2e/tests/workspace.spec.js, pm-api/src/main/resources/messages/start.en.properties, pm-api/src/main/resources/messages/start.de.properties, pm-web-app/src/lib/components/FindingsReviewModal.svelte.
 
 ## Hand-Off Command
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import PlanSettingsModal from './PlanSettingsModal.svelte';
 import type { PlanSettingsRecord } from '../api/client';
 
@@ -45,14 +45,40 @@ describe('PlanSettingsModal component', () => {
     expect(screen.getByTestId('settings-origin-method')).toHaveTextContent('from the machine');
   });
 
-  it('calls onApply with the chosen value and the revision it was opened with', async () => {
+  it('keeps Save disabled until a field changes', async () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    const save = screen.getByTestId('settings-save');
+    expect(save).toBeDisabled();
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+
+    expect(save).not.toBeDisabled();
+  });
+
+  it('marks a field that changed', async () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    expect(screen.queryByTestId('settings-changed-landing')).toBeNull();
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+
+    expect(screen.getByTestId('settings-changed-landing')).toHaveTextContent('changed');
+    expect(screen.queryByTestId('settings-changed-method')).toBeNull();
+  });
+
+  it('applies every changed field with the revision it was opened with', async () => {
     const onApply = vi.fn();
     render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
 
     await fireEvent.change(screen.getByTestId('settings-value-landing'), {
       target: { value: 'landing.files' },
     });
-    await fireEvent.click(screen.getByTestId('settings-apply-landing'));
+    await fireEvent.click(screen.getByTestId('settings-save'));
 
     expect(onApply).toHaveBeenCalledTimes(1);
     expect(onApply).toHaveBeenCalledWith({
@@ -62,14 +88,132 @@ describe('PlanSettingsModal component', () => {
     });
   });
 
-  it('passes null when the plan value is removed in favour of the inherited one', async () => {
+  it('offers Use the inherited value for an own value and applies the removal', async () => {
     const onApply = vi.fn();
     render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
 
-    await fireEvent.change(screen.getByTestId('settings-value-landing'), { target: { value: '' } });
-    await fireEvent.click(screen.getByTestId('settings-apply-landing'));
+    expect(screen.queryByTestId('settings-inherit-landing')).toBeNull();
+    const inherit = screen.getByTestId('settings-inherit-role.implement');
+    expect(inherit).toHaveTextContent('Use the inherited value');
 
-    expect(onApply.mock.calls[0][0].value).toBeNull();
+    await fireEvent.click(inherit);
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    expect(onApply).toHaveBeenCalledWith({
+      aspect: 'role.implement',
+      value: null,
+      revision: 7,
+    });
+  });
+
+  it('applies the removal chosen through the select’s inherited option', async () => {
+    const onApply = vi.fn();
+    const ownValue: PlanSettingsRecord = {
+      plan_id: 'fix-relay',
+      revision: 7,
+      values: [
+        {
+          aspect: 'role.implement',
+          value: 'Claude Code - sonnet-5.5',
+          origin: 'plan',
+          choices: ['Claude Code - sonnet-5.5', 'Claude Code - opus-4.5'],
+        },
+      ],
+    };
+    render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings: ownValue, open: true, onApply },
+    });
+
+    await fireEvent.change(screen.getByTestId('settings-value-role.implement'), {
+      target: { value: '' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    expect(onApply).toHaveBeenCalledWith({
+      aspect: 'role.implement',
+      value: null,
+      revision: 7,
+    });
+  });
+
+  it('says Saved when the runtime applied the change', async () => {
+    const onApply = vi.fn().mockResolvedValue(true);
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    expect(await screen.findByText('Saved')).toBeInTheDocument();
+  });
+
+  it('says no Saved when the runtime refused the change', async () => {
+    const onApply = vi.fn().mockResolvedValue(false);
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    await waitFor(() => expect(onApply).toHaveBeenCalled());
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it('drops the discarded edit when the operator keeps the current value', async () => {
+    const onKeepCurrent = vi.fn();
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        conflict: {
+          aspect: 'landing',
+          currentValue: 'landing.main',
+          wantedValue: 'landing.files',
+          revision: 8,
+        },
+        onKeepCurrent,
+      },
+    });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    expect(screen.getByTestId('settings-save')).not.toBeDisabled();
+
+    await fireEvent.click(screen.getByTestId('settings-conflict-keep'));
+
+    expect(onKeepCurrent).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
+  });
+
+  it('does not keep an applied inherit pending', async () => {
+    const onApply = vi.fn().mockResolvedValue(true);
+    const { rerender } = render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings, open: true, onApply },
+    });
+
+    await fireEvent.click(screen.getByTestId('settings-inherit-role.implement'));
+    await fireEvent.click(screen.getByTestId('settings-save'));
+    await waitFor(() => expect(onApply).toHaveBeenCalled());
+
+    await rerender({
+      planId: 'fix-relay',
+      open: true,
+      settings: {
+        ...settings,
+        revision: 8,
+        values: settings.values.map((entry) =>
+          entry.aspect === 'role.implement'
+            ? { ...entry, value: 'Claude Code - opus-4.5', origin: 'machine' }
+            : entry,
+        ),
+      },
+    });
+
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
   });
 
   it('calls onClose', async () => {
@@ -131,7 +275,7 @@ describe('PlanSettingsModal component', () => {
     );
   });
 
-  it('reseeds the select when the runtime reports a newer revision', async () => {
+  it('reseeds the fields when the runtime reports a newer revision', async () => {
     const { rerender } = render(PlanSettingsModal, {
       props: { planId: 'fix-relay', settings, open: true },
     });
@@ -151,5 +295,6 @@ describe('PlanSettingsModal component', () => {
     });
 
     expect(screen.getByTestId('settings-value-landing')).toHaveValue('landing.main');
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
   });
 });

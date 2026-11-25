@@ -56,9 +56,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - HYPOTHESIS: selecting a task only sets local state and pushes no address — confirm/refute at `pm-web-app/src/lib/views/PlanView.svelte` § `selectTask` (verify-at-outline)
-  - verdict: corroborated | checked_at: 459eca7d8344c6d7035d5a14a7f6e99022264170 | by: ui-improvements/next | rescoped: n/a | evidence: PlanView.svelte:758-760 sets local state only (re-grounding sub-agent, 2026-11-25)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanView.svelte:758-760 selection is local; no navigation call (3dea04b2)
 - HYPOTHESIS: the route `/plans/{id}/tasks/{task}` exists and renders `PlanView` — confirm/refute at `pm-web-app/src/routes/plans/[id]/tasks/[task]/+page.svelte` (verify-at-outline)
-  - verdict: corroborated | checked_at: 459eca7d8344c6d7035d5a14a7f6e99022264170 | by: ui-improvements/next | rescoped: n/a | evidence: route renders PlanView through AppRouter (re-grounding sub-agent, 2026-11-25)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: routes/plans/[id]/tasks/[task]/+page.svelte:3-13; AppRouter.svelte:63-64; runtime.ts:1729-1733 (3dea04b2)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD (after `PLAN-55` and `PLAN-62` landed) and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -72,11 +72,26 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD 459eca7d
 - OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 459eca7d
 - OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at HEAD 459eca7d
+- OBSERVED: `pm-web-app/src/lib/navigation/chain.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/templates/columnWindow.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/components/UpLink.svelte` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/routes.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-55` (the plan on `ObjectPage` and its tabs), `PLAN-62` (the tree rows the list column shows). Not emitted before both land.
 - Overlaps with: `PLAN-55`, `PLAN-62` (same view; sequenced, not parallel)
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted. Needs PLAN-55 and PLAN-62 landed.
+- **D1** takes over from PLAN-62 D6: selecting a part in the tree closes the task by a push with that part's `node=` and without `follow=on`, and unsubscribes `subscribeTaskActivity` (`plan-view-interaction.adoc:20,67`).
+- **D2**: the off-track banner and badge render the old closed list; the design's signals are `repeating`, `no_progress`, `failing_again`, `edit_churn`, `agent_started` (`plan-view.adoc:165`, core model-work/03): test with a current signal, never `over_size`/`outside_footprint`; sequence after the `OffTrackSignal` change or rebase.
+- **D3** becomes a confirm-and-adjust pass (the design states the built form); include the seven-phase wireframe fix if PLAN-62 has not made it.
 
 ## Hand-Off Command
 

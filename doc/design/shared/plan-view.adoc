@@ -49,12 +49,14 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
 [#tabs]
 === The Tabs of the Web App
 
-In the web app the plan is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]). As the object column it shows the head above and three tabs below it; as a list column, while one of its tasks is open as the next level, it shows its compact head and the tree (link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]).
+In the web app the plan is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]). As the object column it shows the head above and three tabs below it; as a list column, while one of its tasks is open as the next level, it shows its compact head and the tree (link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]). The list-column form, with the task's own level and its activity column, belongs to `PLAN-190` (`web-plan-task-level`); the tree's rows, the narrative's content and _Jump to now_ belong to `PLAN-62`.
+
+* *The head*: `KindMark`, title, id chip, the pull request chip, the head links (_Process designer_, a waiting plan's _Open the decision_, an ended plan's _Completion report_), the phase and the state with the duration and the task's place in the tree (`execute · running · for 2 h 10 min · task 3 of 5`). The attention strip says what waits (`Waits for your decision`) and the plan-level off-track banner where the tree reports an off-track task; a revision queued in the chat says so (link:../shared/plan-view.adoc#chat-revision[Plan View, A Revision from the Chat]).
 
 * *Process* (the default): the levels of this document, the tree beside the narrative of the selected node.
 * *Intent*: the plan's intent record, its builder check and its outline (link:intent-and-outline.adoc#intent[Intent and Outline]); the narrative of `refine` and `outline` links to it. This is the one step from the head the intent design names.
 * *Changes*: the plan's changes (<<changes>>), absent before the first capture; the size line of the head is a link to it.
-* *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_), and the activity of a worker is the task's own level (<<worker>>).
+* *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_, a settings form with one _Save_ and a _changed_ mark per field), and the activity of a worker is the task's own level (<<worker>>; `PLAN-190`).
 * An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view: the tree and the changes in link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], the intent's sections in link:intent-and-outline.adoc#terminal[Intent and Outline, The Terminal].
 
 [#states]

@@ -49,19 +49,19 @@ Read first: `landings/PLAN-174.md` (L3-1, with its orchestrator note on the code
 ## Claim Labels
 
 - OBSERVED: `PlanCommand.put` computes `valueRefused` from status `422` and the code `invalid_value`, and `refusalLine` has one "does not fit" arm for it — read at `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java:1698,111,1745`
-  - verdict: corroborated | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: PlanCommand.java:1698 valueRefused = response.status() == 422 && INVALID_VALUE.equals(refusal.rawCode()); :111 the constant; :1745 the does_not_fit arm of refusalLine (origin/main fcf87728)
+  - verdict: corroborated | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: PlanCommand.java:1742 valueRefused, :115 constant, :1789-1790 arm, :1722 PutOutcome (moved +44 since fcf87728); unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - OBSERVED: the Runtime Model specification lists `400 invalid_arguments` and, among the `409` codes, `team_owned`, `base_branch_fixed` and `plan_ended`, and lists no `422` and no `invalid_value` — read at `../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc:233-241`
-  - verdict: corroborated | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: runtime-model/01-processes-and-transport.adoc:234 400 invalid_arguments; :237 409 list names team_owned, base_branch_fixed, plan_ended (and act_not_available, conflict); no 422 and no invalid_value in :233-241; ApiErrorCode has no invalid_value (git grep over pm-api/src/main, origin/main fcf87728)
+  - verdict: corroborated | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: plan-marshall-documentation runtime-model/01-processes-and-transport.adoc:248 (400) and :251 (409 list); no 422 or invalid_value; ApiErrorCode has no base_branch_fixed; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - OBSERVED: `invalid_value` on a `400` is named only in this repository's web design — read at `doc/design/web-app/machine-settings.adoc:214`
-  - verdict: corroborated | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep invalid_value at fcf87728: doc/design/web-app/machine-settings.adoc:214 ('invalid_value on a 400'); the only other hits are PlanCommand, ControlCommandTest and ledger files
+  - verdict: corroborated | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: machine-settings.adoc:214 is the only design hit; code PlanCommand.java:115, SettingsView.svelte:735; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - OBSERVED: the tests pin the invented pair — read at `pm-operator/src/test/java/de/planmarshall/operator/PlanCommandTest.java:1192,1235-1240` and `pm-operator/src/test/java/de/planmarshall/operator/ControlCommandTest.java:420-429`
-  - verdict: corroborated | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: ControlCommandTest.java:420 @DisplayName 'plan settings names a value that does not fit only on the runtime's ...'; PlanCommandTest.java:1192,1235-1240 per the PLAN-174 landing leaf (origin/main fcf87728)
+  - verdict: corroborated | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: ControlCommandTest.java:420-424; PlanCommandTest.java:1192,1235-1240; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - HYPOTHESIS: a coded `409` body (`team_owned`, `base_branch_fixed`, `plan_ended`) parsed by `PlanSettingsUpdateResult.fromJson` (`PlanCommand.java:1693`) ends on the neutral line with exit 1 and no cause — confirm/refute by running that parse on such a body in a test (verify-at-outline)
-  - verdict: unverifiable | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: PlanSettingsUpdateResult.fromJson on a coded 409 body (PlanCommand.java:1693) not run here; the lane and the leaf say the neutral line shows; settled at outline
+  - verdict: corroborated | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: by reading: PlanCommand.java:1736-1737 parses every 200/409 body with PlanSettingsUpdateResult.fromJson; a coded body reaches refused() :1712 -> control.settings.refused_set; same hole in WorkActionsClient.java:244-245; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - HYPOTHESIS: `PlanSettingsDialogue` (`:181`) and the one-shot can share one text per code — confirm/refute by reading `PlanSettingsDialogue.java` (verify-at-outline)
-  - verdict: unverifiable | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: PlanSettingsDialogue.java:181 names control.settings.too_late; whether one text per code serves both not read here; settled at outline
+  - verdict: contradicted | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: yes | evidence: dialogue and one-shot share no text today: PlanSettingsDialogue.java:223-230 prints control.settings.refused with the 400 body's reason (WorkActionsClient.java:246-251), no code; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 - Verify-first clause: before each deliverable re-read the named files at the then-current HEAD; PLAN-42 (deliverables 1, 2 and 6 edit `PlanCommand`, `PmOperator`, `ConfigCommand`, `ExitCodesTest`) lands first. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: fcf877285a08c0d442fc3f07bfcb5f5515088ea9 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; PLAN-42 staged
+  - verdict: unverifiable | checked_at: 163e2a49 | by: ui-improvements/next | rescoped: n/a | evidence: procedural; PLAN-42 not landed; unchanged at 163e2a49: #576 changed only control.{en,de}.properties (+3 keys appended), no anchor of this claim
 
 ## Expected Surface
 
@@ -75,12 +75,27 @@ Read first: `landings/PLAN-174.md` (L3-1, with its orchestrator note on the code
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ControlCommandTest.java` — present at HEAD fcf87728
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD fcf87728
 - OBSERVED: `doc/design/shared/work-actions-texts.adoc` — present at HEAD fcf87728
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/WorkActionsClient.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/resource/ApiErrorCode.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/error.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/error.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-174` (shipped, #533: the refusal parser and the stderr rule this plan builds on).
 - Overlaps with: `PLAN-42` (staged, emitted first: its deliverables 1, 2 and 6 edit `PlanCommand` regions more than 1200 lines away, `ConfigCommand`, `ExitCodesTest` and `PmOperator`; no textual conflict is expected, but the plan runs after it so that `PlanCommand` is read at the then-current HEAD), `PLAN-44`, `PLAN-48`, `PLAN-50`, `PLAN-63` (the CLI chain, staged: they also edit `PlanCommand`).
 - Adjacent to: the Runtime Model specification and the catalogue (`plan-marshall-documentation`, `pm-mcp-core`), the owners of the open code.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claim 5 contradicted: the dialogue and the one-shot share no text today (`PlanSettingsDialogue.java:223-230` prints `control.settings.refused` with the 400 body's reason; `WorkActionsClient.java:246-251` carries no code). Sharing needs `WorkActionsClient` to carry the code.
+- **D1**: per-code texts already exist in the error catalogue (`error.invalid_arguments/team_owned/plan_ended/act_not_available.*`, rendered by `RefusalRenderer` through `ErrorTexts`): route a coded 400/409 through `RefusalRenderer.render` after the "not one of" reason instead of five new `control.settings.refused.<code>` keys; add `BASE_BRANCH_FIXED` to `ApiErrorCode` with `error.base_branch_fixed.*` texts; fix the same coded-409 hole in `WorkActionsClient.java:244-250`. The specification lines moved to runtime-model `01-processes-and-transport.adoc:248,251`. Already done: stderr and exit 1 (PLAN-174 #533). Re-anchor (`PlanCommand.java` +44 lines).
+- The PLAN-42 ordering is soft (disjoint regions).
+- **At emit (2026-11-25, `origin/main` `163e2a49`):** claims re-stamped unchanged (`ui-improvements/next`); #576 (PLAN-55) appended three keys to `control.{en,de}.properties` and touched no other file of this surface. In flight beside this plan: PLAN-191 (no shared file), PLAN-194 (`control.{en,de}.properties`: both append keys, a rebase settles it) and PLAN-195 (no shared file). The parked PLAN-42 is not a precondition.
 
 ## Hand-Off Command
 

@@ -45,17 +45,18 @@ Run the design-system checks against the merged code and record the result. Ever
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/verification.adoc VD-V-01..10 :14-63; cross-cutting CC-V-06 :42, CC-V-07 :49 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/verification.adoc VD-V-01..10 :14-63; cross-cutting CC-V-06 :42, CC-V-07 :49 (3dea04b2)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 - HYPOTHESIS: the vocabulary lint runs in the build and can be read as a count per view — confirm/refute at `pm-web-app/eslint.config.js` § `vocabulary` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: the lint is pm-web-app/scripts/vocabulary-lint.mjs run by npm run lint (package.json:25), not eslint.config.js; PLAN-151 shipped (#495, hardened #507) (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/scripts/vocabulary-lint.mjs (npm run lint, package.json:25) prints a per-file table; baseline scripts/vocabulary-baseline.json non-empty (3dea04b2)
 
 ## Expected Surface
 
 
 - OBSERVED: `doc/claude_review/verification-results/verify-web-design-system.adoc` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `doc/claude_review/visual-design/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -77,6 +78,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 
 - Claim 2 contradicted: pm-web-app/eslint.config.js has no vocabulary rule or per-view count (only recommended rules, security, console); vocabulary lint is PLAN-151 not landed
 - The 2026-11-10 re-grounding says new claim bullets were added; none exist. The vocabulary lint (claim 2) is PLAN-151's, not landed.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; the vocabulary lint is `scripts/vocabulary-lint.mjs` (warning mode, baseline non-empty), not eslint.
+- VD-V-05b is defined in the amendment but missing from the Done-when: add it (it fails while the baseline is non-empty). VD-V-09's raw-hex/old-token lint does not exist (no stylelint): record "not verified" until PLAN-72 lands. Add `doc/claude_review/cross-cutting/analysis.adoc` (CC-V-06, CC-V-07) to the surface.
 
 ## Hand-Off Command
 

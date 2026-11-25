@@ -306,8 +306,8 @@ test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
     await page.getByTestId('epic-open-relay-reconnect-backoff').click();
     await expect(page.getByTestId('plan-view')).toBeVisible();
 
-    // The epic's head draws no Back (D6): the plan's own path leads back to its epic.
-    await page.locator('[data-testid="breadcrumb-epic"]').click();
+    // The epic's head draws no Back (D6): the top bar's path leads back to the epic.
+    await page.getByTestId('breadcrumb').getByRole('link', { name: /relay-hardening/i }).click();
     await expect(page.getByTestId('epic-view')).toBeVisible();
   });
 

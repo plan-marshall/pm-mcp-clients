@@ -2,10 +2,10 @@
   "id": "PLAN-182",
   "slug": "web-onboarding-contract-cut-back-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "#569",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-182-web-onboarding-contract-cut-back-residue",
+  "pr": "569",
+  "landing": "landings/PLAN-182.md",
   "seq": 182
 }

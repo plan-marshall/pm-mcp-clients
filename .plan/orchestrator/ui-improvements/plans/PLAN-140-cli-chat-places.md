@@ -92,23 +92,23 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 ## Claim Labels
 
 - OBSERVED: `AnswerCommand.java` offers no `h) chat` today (PLAN-124 removed the advertisement until the surface exists); `git grep -n chat -- AnswerCommand.java` finds one unrelated line — read at `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java contains no chat at all; 14-transcripts-decisions.adoc:17,:253 say the key is not advertised (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java contains no chat; 14-transcripts-decisions.adoc:17,253 (3dea04b2)
 - OBSERVED: `ReviewDialogue` has a `CHAT` decision and the key `chat` at its prompt — read at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java:106,120,175,201`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java case CHAT :106, enum Decision :120, key offered :181 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java:107 case CHAT, :121 enum, :182 offer (3dea04b2)
 - OBSERVED: `StartDialogue` handles `h` with `openChat()` and runs `ChatDialogue` — read at `pm-operator/src/main/java/de/planmarshall/operator/StartDialogue.java:247,672-682`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartDialogue key h calls openChat() (:298-300), defined :842, runs new ChatDialogue :854 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartDialogue.java:305-306 h opens openChat(); :849-863 runs ChatDialogue (3dea04b2)
 - OBSERVED: `ChatDialogue` ends the chat on an empty line — read at `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java:58-91`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.run :86-90 an empty answer calls endChat (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.java:86-90 empty answer calls endChat(entryId) (3dea04b2)
 - OBSERVED: the design says the decision chat's key is `operator.actions.key.chat` (`h`, `t`) and that without the surface it is not advertised — read at `doc/design/terminal-client/14-transcripts-decisions.adoc:17,195,253`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: 14-transcripts-decisions.adoc:195 operator.actions.key.chat (h and t), :17, :253; operator.en/de.properties:527 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 14-transcripts-decisions.adoc:195 key.chat h/t, :17, :253; operator.en.properties:525 (3dea04b2)
 - HYPOTHESIS: the review chat's item scope is not sent by the current client (the web one is the same) — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java` § `case CHAT` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java:107 WorkChatDialogue.run(... epic, epicId ...) sends the epic id only; EpicView.svelte:607 getChat(epic:id) does the same (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReviewDialogue.java:107-108 sends only the epic id; EpicView.svelte:658 getChat('epic:'+id) (3dea04b2)
 - HYPOTHESIS: `ActionMenus` and `ActionsMenu` already list a chat entry that runs `WorkChatDialogue` for plans and epics only — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionMenus.java:128-129,:244,:264 offer control.plan.chat; ActionSupport.chat :350-363 takes kind plan or epic (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActionMenus.java:132-138,255,275; ActionSupport.chat :382-399 plan|epic; OperatorActions.java:102; WorkActionDialogue.java:344 (3dea04b2)
 - HYPOTHESIS: `StartApi` carries the entry's chat routes and needs the B1 route builders — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartApi.java` § chat (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartApi uses ChatRoutes.entry for open :133, turn :149, page :173, accept :197, end :211; poll loop :157-160 ignores interrupt; no review or decomposition builder (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartApi uses ChatRoutes.entry (:133,:149,:173,:197,:211); poll loop :156-160 never checks interrupt; no review/decomposition builder in ChatRoutes.java (3dea04b2)
 - Verify-first clause: PLAN-123 (running) and PLAN-124 (landed) edit `AnswerCommand`; re-read the decision prompt at the then-current HEAD before scoping deliverable 1; the operator's answer to O10 is read before scoping deliverable 2.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-123 and PLAN-30 shipped (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; the O10 answer is not realized in the runtime specification (3dea04b2)
 
 ## Expected Surface
 
@@ -141,17 +141,6 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/control/ControlCataloguesTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartCodecTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartContractTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatScripts.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatProposalsTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatRevisionQueueTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatContextNarrativeTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatListenerAndResidueTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatProposal.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
@@ -159,6 +148,13 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActions.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EpicDecompositionDialogue.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartChatResourceTest.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/FollowUpProposalResourceTest.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/terminal-client/18-starting.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/terminal-client/28-chat.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -199,6 +195,26 @@ Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run
   because no role qualifies (a scenario flag or state read by `ChatRegistry`, answered with the contract's refusal), a scenario that
   uses it, and the terminal's line for it; keep the constant (or its B1 successor) — do not delete it with the old start-chat types. If
   the B1 contract has no refusal code for it, it belongs to the epic's chat contract Open Item: stop and ask.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted.
+- **D2** (review and decomposition chats) is out of the emit: the runtime specification names no address for them (runtime-model `01-processes-and-transport.adoc:179,293`; `ChatRoutes.java:15-26`); it stays blocked until it does. D1, D3, D4 and D5 stand without it.
+- **D3 Done-when** contradicts the shared design and the web app, which keep `start.chat.subject/waits/proposed/stored` (`shared/starting-work-texts.adoc:197-212`): delete `ChatDialogue.java` and only the terminal-only `start.chat.*` keys (`start.en.properties:238-252`); Done-when = `git grep -n ChatDialogue -- pm-operator pm-api` is empty. "No role qualifies" maps to `control.chat.unqualified` (`control.en.properties:250`), replacing `StartStateResource.CHAT_ROLE_UNQUALIFIED`.
+- **D1**: remove the decision-chat note (`14-transcripts-decisions.adoc:17,253`) and advertise the key; add `operator.decision.chat_wait` (documented `:451`, absent from the properties). Tests must not hard-code the decision kinds (the sanity-check question and the protected-path decision arrive, #578).
+- **D4** is mostly present (`ActionMenus.java:132-138,255,275`; `OperatorActions.java:102`): rescope to the row-menu and ended-view key tests and the views that lack the key.
+- **D-R134** (nine items, above the scope guard) becomes its own package ahead of PLAN-139; its item 6 stays "stop and ask". Merge rule as PLAN-138.
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **The amendment "PLAN-134 Landing Residue" (D-R134) moved to PLAN-194** `mock-chat-fixtures-and-residue`, which lands before PLAN-139 and this plan. It is not part of this plan any more; its mock and `pm-api` chat files leave the surface (`control.{en,de}.properties` stay for `control.chat.unqualified`). This plan follows PLAN-139 as before; the cycle is gone.
+- Removed from the Expected Surface (now the split plan's): pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatScripts.java, pm-mock-runtime/src/main/resources/scenarios/running-work.json, pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatProposalsTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatRevisionQueueTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatContextNarrativeTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatListenerAndResidueTest.java, pm-api/src/main/java/de/planmarshall/api/chat/ChatProposal.java, pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java.
 
 ## Hand-Off Command
 

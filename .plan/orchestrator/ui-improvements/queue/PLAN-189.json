@@ -2,10 +2,10 @@
   "id": "PLAN-189",
   "slug": "sonar-pm-operator-residue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-189-sonar-pm-operator-residue",
+  "pr": "571",
+  "landing": "landings/PLAN-189.md",
   "seq": 189
 }

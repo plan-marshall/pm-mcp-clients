@@ -59,9 +59,9 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: CLI-VD-V-01..07, CLI-UX-V-01..07, CLI-CC-V-01..08 present in verification.adoc; verify-cli-presentation.adoc absent (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: all 21 check ids exist in doc/claude_review/cli/{ux,visual-design,cross-cutting}/verification.adoc (3dea04b2)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-42/44/48/50 unlanded, PLAN-24 held (3dea04b2)
 
 ## Expected Surface
 
@@ -70,6 +70,7 @@ Run the presentation checks and the key-task walk of the terminal client against
 - OBSERVED: `doc/claude_review/cli/cross-cutting/analysis.adoc` — present at HEAD c4dc9bb4 (matrix of the former `PLAN-40` checks)
 - OBSERVED: `doc/claude_review/cli/ux/analysis.adoc` — present at HEAD c4dc9bb4 (matrix of the former `PLAN-56` checks)
 - OBSERVED: `doc/claude_review/cli/README.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/claude_review/README.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -80,6 +81,14 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. Keep HELD until PLAN-34, 44, 48, 50, 84 and 36 have landed (the checks would be `not verified`). CLI-UX-V-04 (`needs`, `NeedsCommandTest`) and V-06 (`--json` on every listing verb) assume verbs that do not exist yet (`needs`, `find`); the text of CLI-UX-V-05 ("help lists every verb") predates PLAN-97's 22-verb tree: re-read it against the tree. `doc/claude_review/verification-results/verify-cli-presentation.adoc` is created by this plan.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; it verifies PLAN-42/44/48/50, none landed, and PLAN-24 is held: CLI-CC-V-08 ends "not verified". CLI-UX-V-05 asserts the epic full screen the design still denies: amend it after the PLAN-42 decision. The running-work scenario has six phases; the seven-phase package changes it.
+- The spec's hand-off names the `plan-marshall` lane; the standing emit form is runbook only (2026-11-21): change at emit.
 
 ## Hand-Off Command
 

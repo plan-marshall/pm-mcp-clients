@@ -616,19 +616,28 @@
     }
   }
 
-  async function applySetting(payload: {
-    aspect: string;
-    value: string | null;
-    revision: number;
-  }): Promise<void> {
+  /**
+   * Applies one field's value.
+   *
+   * @param payload the aspect, the value and the revision the dialogue opened with
+   * @param preferCurrent whether to send the freshest revision the panel holds, for a form whose
+   *   earlier write already advanced it
+   * @returns whether the runtime applied it, so the dialogue says _Saved_ only then
+   */
+  async function applySetting(
+    payload: { aspect: string; value: string | null; revision: number },
+    preferCurrent = false,
+  ): Promise<boolean> {
     busy = true;
     settingsNotice = '';
+    let applied = false;
     try {
+      const revision = preferCurrent && settings ? settings.revision : payload.revision;
       const result = await apiClient.updatePlanSettings(
         subjectId,
         payload.aspect,
         payload.value,
-        payload.revision,
+        revision,
       );
       if (result.applied) {
         settingsConflict = null;
@@ -637,6 +646,7 @@
           plan: subjectId,
           version: result.revision,
         });
+        applied = true;
         onChanged();
       } else if (result.conflict) {
         settingsConflict = {
@@ -659,6 +669,7 @@
     } finally {
       busy = false;
     }
+    return applied;
   }
 
   async function keepCurrent(): Promise<void> {
@@ -1115,7 +1126,7 @@
   {busy}
   conflict={settingsConflict}
   notice={settingsNotice}
-  onApply={applySetting}
+  onApply={(payload) => applySetting(payload, true)}
   onApplyAgain={applySetting}
   onKeepCurrent={keepCurrent}
   onClose={() => (settingsOpen = false)}

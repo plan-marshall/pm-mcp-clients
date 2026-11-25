@@ -256,7 +256,7 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('settings-origin-landing')).toContainText('from the project');
 
     await page.getByTestId('settings-value-landing').selectOption('landing.main');
-    await page.getByTestId('settings-apply-landing').click();
+    await page.getByTestId('settings-save').click();
 
     await expect(page.getByTestId('settings-notice')).toContainText('is refused', {
       timeout: 5000,

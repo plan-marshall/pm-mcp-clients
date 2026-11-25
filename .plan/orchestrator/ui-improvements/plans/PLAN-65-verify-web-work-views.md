@@ -56,9 +56,9 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/verification.adoc UX-V-01..13 :58-131; use-cases UC-V-04,06,07,08,10; CC-V-08 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/verification.adoc UX-V-01..13 :58-131; use-cases/verification.adoc UC-V-04/06/07/08/10; CC-V-08 :55 (3dea04b2)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-49/53/58/59/60 shipped (3dea04b2)
 
 ## Expected Surface
 
@@ -84,6 +84,15 @@ status: `parked`; the orchestrator re-grounds this spec when it is restarted. Th
 - Its `doc/claude_review` checks (e.g. UX-V-01 bottom bar, UX-V-09 ended table, UX-V-12 settings redirect) are **re-grounded
   against `navigation.adoc` and the D1 `components.adoc` before it runs**.
 - It then checks hover, focus and the danger dialog (007) and the read-only chat (009).
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; PLAN-49/53/58/59/60 shipped.
+- UX-V-11 and UC-V-08 name shapes the reworked views no longer have (project cards with an overflow; "epic waits since"): re-word against `shared/project-explorer.adoc:43,96-106` and `shared/epic-view.adoc:34,76`; the `stale`/`unreadable` wait text is pending (PLAN-191).
+- UC-V-06: a plan tree has seven phases in the design (`shared/plan-view.adoc:44`); the mock and `PhaseLabel` draw six: emit after the seven-phase package or record the missing phase as a finding.
 
 ## Hand-Off Command
 
