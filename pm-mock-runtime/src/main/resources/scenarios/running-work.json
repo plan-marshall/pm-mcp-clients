@@ -6917,14 +6917,14 @@
       },
       "links": {}
     },
-    "plan55.ended": {
+    "process.ended-plan": {
       "representation": {
         "scope": {
           "kind": "workspace",
           "project_id": "pm-mcp-clients"
         },
         "state": {
-          "state_id": "plan55.ended"
+          "state_id": "process.ended-plan"
         },
         "facts": {
           "summary": "An ended plan, opened for the plan page's browser check",
