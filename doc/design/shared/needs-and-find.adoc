@@ -25,14 +25,14 @@ One list of every item of every `needs_operator` summary: a plan's decision or w
   ───────────────────────────────────────────────────────────────────────────
   decision  Drop the legacy endpoints
             pm-mcp-clients › relay-hardening › drop-legacy-api
-            waits since 15:05 · blocks: plan · answer it
+            waits since 15:05 · blocks the plan · answer it
   plan      Session log and generations                      [! needs a fix]
             pm-mcp-core › session-log
-            waits since 14:52 · blocks: plan · unlock the store
+            waits since 14:52 · blocks the plan · unlock the store
   machine                                                    [! credential]
-            waits since 09:00 · blocks no work · check the provider in the settings
+            waits since 09:00 · blocks nothing · check the provider in the settings
   machine                                                   [! cleanup due]
-            waits since yesterday 18:40 · blocks no work · open the cleanup
+            waits since yesterday 18:40 · blocks nothing · open the cleanup
 ----
 
 The first word of a row is the kind of the object the item belongs to, its kind mark; the bracket is the reason (`[…]`, in the web app a `ReasonBadge`).
@@ -51,10 +51,10 @@ The first word of a row is the kind of the object the item belongs to, its kind 
 [#blocks]
 === What It Blocks
 
-The contract carries the *kind* of the work an item blocks — `plan`, `epic`, or `project` — and nothing when it blocks no work; the question, the reason and the provider stay at the item's own place.
+The contract carries what an item blocks as one value of the runtime's closed list — `plan`, `epic`, `setup`, `entry`, `task`, or `nothing` — the same vocabulary a decision carries (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List], link:decisions.adoc[Decisions]); the question, the reason and the provider stay at the item's own place.
 
-* `blocks` absent: `blocks no work` (`overview.needs.blocks_nothing`), for the machine's own items and for a setup that holds nothing yet.
-* `blocks` present: `blocks: {what}`, `{what}` filled with the kind's word in the operator's language (`common.kind.plan`, `common.kind.epic`, `common.kind.project`), and the row's act opens that work.
+* `blocks` is `nothing`: `blocks nothing` (`decision.blocks.none`), for the machine's own items and for a setup that holds nothing yet.
+* Any other value: the decision's words for it in the operator's language (`decision.blocks.plan`, `decision.blocks.epic`, `decision.blocks.setup`, `decision.blocks.entry`, `decision.blocks.task`, link:decisions-texts.adoc[Decisions, Texts]), so a value has one word wherever it stands, and the row's act opens that work.
 
 [#find]
 == Going to Work by Name
@@ -115,14 +115,6 @@ Keys of the area `overview`, shared by both clients. A reason's word is the row'
 |`overview.needs.since`
 |waits since {time}
 |wartet seit {time}
-
-|`overview.needs.blocks`
-|blocks: {what}
-|blockiert: {what}
-
-|`overview.needs.blocks_nothing`
-|blocks no work
-|blockiert nichts
 
 |`overview.needs.more`
 |Show more
