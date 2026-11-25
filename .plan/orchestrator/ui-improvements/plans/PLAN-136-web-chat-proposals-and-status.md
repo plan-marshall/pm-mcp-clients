@@ -228,6 +228,13 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - **D4**: the overview row has its second line (`OverviewView.svelte:1072`); remove the "off-catalogue names replaced" and "listed for PLAN-55/62" bullets; add `plan.revision_queued` to the plan view's refresh events.
 - Still after PLAN-135.
 
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- The fixtures this plan's checks use (a plan decision chat with a revision proposal, the narrative) come from PLAN-194 (split out of PLAN-140's D-R134); until it lands, `/mock/broadcast`.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

@@ -149,37 +149,22 @@ Specification: `doc/design/web-app/chat.adoc` § `#everywhere`, `#placement`, `#
 - OBSERVED: `pm-web-app/src/lib/templates/WizardPage.svelte` — present at `1cc0e10e` (read only: its `side`, `sideOpen`, `onHideSide` are `PLAN-142`'s)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/ProjectOnboardingView.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/EpicDecompositionView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/views/DecompositionReviewView.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/DecisionView.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by this plan
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.test.ts` — present at `1cc0e10e`; deleted by this plan
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/startFixtures.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/decisions.spec.js` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/workspace.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/start.spec.js` — present at `1cc0e10e`
-- OBSERVED: `pm-api/src/main/resources/messages/start.en.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
-- OBSERVED: `pm-api/src/main/resources/messages/start.de.properties` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/EpicView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/src/lib/views/DecompositionReviewView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
-- OBSERVED: `pm-web-app/src/lib/views/EpicDecompositionView.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -239,6 +224,16 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - Claims 0, 4, 6, 10 contradicted: `DecisionView` holds chat state but `decision.created` exists nowhere (events `opened`/`changed`/`answered`/`closed`); `WizardPage` has a side column; only `StartView` (WizardPage) and `DecisionView` (TriagePage) sit on a template; `DecompositionReviewView` has an `onChat` button wired to a local flag that opens no chat.
 - **Split.** Feasible after PLAN-135/136: the start place (WizardPage already docked, `StartView.svelte:925-928`: swap the content to `Chat`, `chat=open`) and the decision place (TriagePage side, `DecisionView.svelte:1869-1877`: narrow `isChatting` to the reply/proposal rule, address `/decisions/{id}?chat=open`). **Held:** the setup place (no template), the decomposition and review chats (no runtime address: `ChatRoutes.java:27-28`, runtime-model `01-processes-and-transport.adoc:179,289-300`), the ended-work follow-up (the contract Open Item) and the final `ChatPanel` deletion (EpicView's review chat still uses the old client, `EpicView.svelte:655-696`).
 - The spec header cites `shared/project-onboarding.adoc`, which holds no chat text: the governing lines are `chat.adoc:31,34,40` and `decisions.adoc:135-142`.
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **This plan keeps the start's place (D1 without the project setup) and the decision's place (D3).** Moved to PLAN-193 `web-chat-held-places` (parked): D1's project-setup half, D2 (decomposition and review chats: no runtime address), D4 (ended work: the chat contract Open Item), D5 (`ChatPanel` and the old client go: after all places and PLAN-192).
+- D1 here: the start's chat in `WizardPage`'s side column (already docked, `StartView.svelte:925-928`): swap the content to `Chat` (PLAN-135), `sideOpen` from `chat=open`. D3: `Chat` in `TriagePage`'s side column beside the decision (`DecisionView.svelte:1869-1877`), `isChatting` narrowed to the reply/proposal rule, the address `/decisions/{id}?chat=open`. The browser check covers the start and a decision only. `ChatPanel` stays for the other places until PLAN-193.
+- Uses PLAN-194's fixtures where they exist; otherwise `/mock/broadcast`.
+- Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/views/ProjectOnboardingView.svelte, pm-web-app/src/lib/views/ProjectOnboardingView.test.ts, pm-web-app/src/lib/views/EpicDecompositionView.svelte, pm-web-app/src/lib/views/EpicDecompositionView.test.ts, pm-web-app/src/lib/views/DecompositionReviewView.svelte, pm-web-app/src/lib/views/DecompositionReviewView.test.ts, pm-web-app/src/lib/components/ChatPanel.svelte, pm-web-app/src/lib/components/ChatPanel.test.ts, pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java, pm-web-e2e/tests/control.spec.js, pm-web-e2e/tests/workspace.spec.js, pm-api/src/main/resources/messages/start.en.properties, pm-api/src/main/resources/messages/start.de.properties, pm-web-app/src/lib/components/FindingsReviewModal.svelte.
 
 ## Hand-Off Command
 
