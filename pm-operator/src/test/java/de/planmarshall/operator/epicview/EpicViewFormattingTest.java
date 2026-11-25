@@ -11,6 +11,7 @@ package de.planmarshall.operator.epicview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -39,13 +40,13 @@ class EpicViewFormattingTest {
 
     private static WorkRow row(String waitReason) {
         return new WorkRow(Generators.nonBlankStrings().next(), null, "staged", waitReason, null, null,
-                        List.of(), null, null, null, null, List.of(), List.of(), List.of());
+                            List.of(), null, null, null, null, List.of(), List.of(), List.of());
     }
 
     private static Stream<Arguments> closedReasons() {
         return Stream.of(EpicWaitReason.values())
-                        .filter(reason -> reason != EpicWaitReason.NONE)
-                        .map(reason -> Arguments.of(reason.value()));
+                            .filter(reason -> reason != EpicWaitReason.NONE)
+                            .map(reason -> Arguments.of(reason.value()));
     }
 
     @ParameterizedTest
@@ -55,7 +56,7 @@ class EpicViewFormattingTest {
         var text = EpicViewFormatting.waitText("en", row(reason), null, 3);
 
         assertFalse(text.isBlank(), "The reason '" + reason + "' must format to a line");
-        assertFalse(CAN_START.equals(text), "The reason '" + reason + "' must not read as can start");
+        assertNotEquals(CAN_START, text, "The reason '" + reason + "' must not read as can start");
     }
 
     @ParameterizedTest
@@ -63,7 +64,7 @@ class EpicViewFormattingTest {
     @DisplayName("every closed reason but none has its wait text in German too")
     void everyClosedReasonReadsItsOwnWaitInGerman(String reason) {
         assertFalse(EpicViewFormatting.waitText("de", row(reason), null, 3).isBlank(),
-                        "The reason '" + reason + "' must format to a line in German");
+                            "The reason '" + reason + "' must format to a line in German");
     }
 
     @Test
@@ -76,7 +77,7 @@ class EpicViewFormattingTest {
     @DisplayName("an unreadable row says its specification cannot be read, never that it can start")
     void unreadableRowSaysItsSpecificationCannotBeRead() {
         assertEquals("waits: its specification cannot be read",
-                        EpicViewFormatting.waitText("en", row("unreadable"), null, 3));
+                            EpicViewFormatting.waitText("en", row("unreadable"), null, 3));
     }
 
     @Test
