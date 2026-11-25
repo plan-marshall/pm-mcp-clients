@@ -2317,16 +2317,29 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     expect(screen.queryByTestId('outline-panel')).toBeNull();
   });
 
+  it('says the intent read failed instead of claiming refine wrote nothing', async () => {
+    vi.spyOn(apiClient, 'getPlanIntent').mockRejectedValue(new Error('503'));
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(await screen.findByTestId('error-state')).toBeInTheDocument();
+    expect(screen.queryByTestId('plan-intent-none')).toBeNull();
+  });
+
   it('lays the process side by side at a 720 px column and stacked at 719 px', async () => {
     render(PlanView);
     await screen.findByTestId('plan-title');
 
+    const column = screen.getByTestId('plan-view');
     const host = screen.getByTestId('plan-panel-host');
-    reportBox(host, 720, 600);
+    reportBox(column, 720, 600);
     await tick();
     expect(host).toHaveAttribute('data-layout', 'side');
 
-    reportBox(host, 719, 600);
+    reportBox(column, 719, 600);
     await tick();
     expect(host).toHaveAttribute('data-layout', 'stacked');
   });
@@ -2336,16 +2349,17 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     await screen.findByTestId('plan-title');
 
     await fireEvent.click(screen.getByTestId('plan-change-size'));
+    const column = screen.getByTestId('plan-view');
     const host = screen.getByTestId('plan-panel-host');
 
-    reportBox(host, 720, 600);
+    reportBox(column, 720, 600);
     await tick();
     expect(host).toHaveAttribute('data-layout', 'side');
     expect(screen.getByTestId('plan-changes').querySelector('.plan-changes__body')).toHaveClass(
       'plan-changes__body--wide',
     );
 
-    reportBox(host, 719, 600);
+    reportBox(column, 719, 600);
     await tick();
     expect(host).toHaveAttribute('data-layout', 'stacked');
     expect(screen.getByTestId('plan-changes').querySelector('.plan-changes__body')).not.toHaveClass(
@@ -2353,15 +2367,22 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     );
   });
 
-  it('drops file= when Changes becomes Process and restores the file from memory', async () => {    runtimeStore.update((state) => ({
+  it('drops file= when Changes becomes Process and restores the file from memory', async () => {
+    runtimeStore.update((state) => ({
       ...state,
       objectTab: 'changes',
       changeFile: 'pm-relay/src/main/java/Transport.java',
     }));
+    window.history.replaceState(
+      {},
+      '',
+      '/plans/fix-relay?tab=changes&file=pm-relay%2Fsrc%2Fmain%2Fjava%2FTransport.java',
+    );
 
     render(PlanView);
     await screen.findByTestId('plan-title');
     await screen.findByTestId('plan-changes');
+    expect(window.location.search).toContain('file=');
 
     const processTab = screen.getAllByRole('tab')[0];
     await fireEvent.click(processTab);

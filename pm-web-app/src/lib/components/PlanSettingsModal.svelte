@@ -43,11 +43,21 @@
   let saved = false;
 
   // A new revision is the runtime's value: reseed the fields, so a kept or applied change does not
-  // leave the operator's rejected value selected.
+  // leave the operator's rejected value selected. A field the operator changed and the runtime has
+  // not applied yet keeps its pending value, so a Save of several fields never loses one.
   $: if (settings && settings.revision !== seededRevision) {
     seededRevision = settings.revision;
-    chosen = Object.fromEntries(settings.values.map((entry) => [entry.aspect, entry.value ?? '']));
-    seeded = { ...chosen };
+    const server = Object.fromEntries(
+      settings.values.map((entry) => [entry.aspect, entry.value ?? '']),
+    );
+    const next: Record<string, string> = { ...server };
+    for (const [aspect, value] of Object.entries(chosen)) {
+      if (value !== (seeded[aspect] ?? '')) {
+        next[aspect] = value;
+      }
+    }
+    chosen = next;
+    seeded = server;
     saved = false;
   }
 
@@ -86,19 +96,19 @@
     const aspects = changedList;
     if (aspects.length === 0) return;
     saved = false;
-    const revision = settings.revision;
     let every = true;
     for (const aspect of aspects) {
       const applied = await onApply({
         aspect,
         value: chosen[aspect] === '' ? null : chosen[aspect],
-        revision,
+        revision: settings.revision,
       });
       if (applied !== true) {
+        // The dialog stops at the first refusal: its notice and the pending value stay put.
         every = false;
+        break;
       }
     }
-    // A refusal or a conflict is the runtime's answer; the dialogue says Saved only when none came.
     saved = every;
   }
 </script>

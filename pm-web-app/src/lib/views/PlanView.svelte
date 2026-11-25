@@ -43,6 +43,7 @@
     selectPlanChangeFile,
   } from '../stores/runtime';
   import { refreshesPlanProcess } from '../stores/refreshEvents';
+  import { refreshesIntentView } from '../components/intentEvents';
   import {
     dateOnRead,
     formatSplit,
@@ -57,6 +58,7 @@
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
+  import { PLAN_TABS } from '../routes';
   import { narrowLayout } from '../utils/narrowLayout';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -79,7 +81,8 @@
       showTokenBreakdown = false;
       queuedRevision = null;
       intentLoading = false;
-      intentLoaded = false;
+      intentError = null;
+      intentRequest += 1;
       intentHasRecord = false;
       intentCheck = null;
       intentDeliverables = [];
@@ -229,12 +232,16 @@
   /**
    * The open decision of the plan, read once the plan waits for one.
    *
-   * The head link opens it; a plan whose decisions cannot be read keeps the strip alone rather than
-   * a link to nowhere (`plan-view-interaction.adoc#layout`).
+   * The head link and the strip's wording both hang on it: a plan that waits for a hold or a
+   * credential gets no decision sentence, and a plan whose decisions cannot be read keeps no link
+   * to nowhere (`plan-view-interaction.adoc#layout`).
    */
   let openDecisionId = $state<string | null>(null);
+  /** The decision read that owns the link; a superseded answer never writes it. */
+  let decisionRequest = 0;
 
   async function loadOpenDecision(): Promise<void> {
+    const request = ++decisionRequest;
     if (!planId) {
       openDecisionId = null;
       return;
@@ -242,26 +249,33 @@
     const currentId = planId;
     try {
       const decisions = await apiClient.getDecisions({ plan: currentId });
-      if (currentId !== planId) {
+      if (request !== decisionRequest || currentId !== planId) {
         return;
       }
       const decision = decisions.find((entry) => entry.blocks === 'plan') ?? decisions[0] ?? null;
       openDecisionId = decision?.id ?? null;
     } catch {
+      if (request !== decisionRequest) {
+        return;
+      }
       openDecisionId = null;
     }
   }
 
   $effect(() => {
+    // `waiting` is read here so a plan that stops waiting drops the link and the strip.
     if (plan !== null && waiting) {
       void loadOpenDecision();
     } else {
+      decisionRequest += 1;
       openDecisionId = null;
     }
   });
 
   /** The queued revision the runtime reported for this plan, absent once it left the queue. */
   let queuedRevision = $state<{ applies: string; taskId: string | null } | null>(null);
+  /** Counts the queued-revision events, so a process response that predates one yields to it. */
+  let queuedRevisionEvent = 0;
 
   /**
    * Reads a queued revision as the wire carries it: the point it waits for and, where the point is
@@ -302,6 +316,7 @@
     if (payload.plan_id !== planId) {
       return;
     }
+    queuedRevisionEvent += 1;
     queuedRevision = queuedRevisionOf(payload.queued_revision);
   }
 
@@ -329,15 +344,15 @@
     return null;
   }
 
-  /** The width of the object column's panel host, as its own `ResizeObserver` reports it. */
+  /** The width of the object column itself, as its own `ResizeObserver` reports it. */
   let columnWidth = $state(0);
-  /** The host the tabs draw into; its width decides the side-by-side layout. */
-  let panelHost = $state<HTMLElement | null>(null);
+  /** The object column this view draws into; its width decides the side-by-side layout. */
+  let columnElement = $state<HTMLElement | null>(null);
   /** Whether the column is at least `720 px` wide, so Process and Changes stand side by side. */
   const wideColumn = $derived(columnWidth >= 720);
 
   $effect(() => {
-    const host = panelHost;
+    const host = columnElement;
     if (host === null) {
       return;
     }
@@ -350,45 +365,59 @@
 
   /** The intent record the Intent tab needs beyond what its own panel reads, and whether one exists. */
   let intentLoading = $state(false);
-  let intentLoaded = $state(false);
+  let intentError = $state<string | null>(null);
   let intentHasRecord = $state(false);
   let intentCheck = $state<BuilderCheckRecord | null>(null);
   let intentDeliverables = $state<OutlineDeliverableRecord[]>([]);
+  /** The intent read that owns the tab; a superseded answer never writes it. */
+  let intentRequest = 0;
 
   /**
-   * Reads the intent record once, for its builder check and its deliverables; the panels read
-   * their own records again, as the development page's fixture does.
+   * Reads the intent record for its builder check and its deliverables, and the outline for the
+   * deliverable labels; the panels read their own records again, as the development page's fixture
+   * does.
+   *
+   * The tab reads again whenever it is opened and whenever the runtime reports a change of the
+   * records, so a record refine writes while the tab is closed reaches it.
    */
   async function loadIntent(): Promise<void> {
-    if (!planId || intentLoaded || intentLoading) {
+    if (!planId) {
       return;
     }
+    const request = ++intentRequest;
     const currentId = planId;
     intentLoading = true;
+    intentError = null;
     try {
       const record = await apiClient.getPlanIntent(currentId);
-      if (currentId !== planId) {
+      if (request !== intentRequest || currentId !== planId) {
         return;
       }
       intentHasRecord = record !== null;
       intentCheck = record?.builder_check ?? null;
-    } catch {
-      intentHasRecord = false;
-      intentCheck = null;
-    } finally {
-      if (currentId === planId) {
-        intentLoading = false;
-        intentLoaded = true;
+    } catch (err: unknown) {
+      if (request !== intentRequest || currentId !== planId) {
+        return;
       }
+      // A failed read is not "refine wrote nothing": it says so and offers the read again.
+      intentError = errorCodeOf(err);
+      intentLoading = false;
+      return;
     }
     try {
       const outline = await apiClient.getPlanOutline(currentId);
-      if (currentId !== planId) {
+      if (request !== intentRequest || currentId !== planId) {
         return;
       }
       intentDeliverables = outline?.deliverables ?? [];
     } catch {
+      if (request !== intentRequest || currentId !== planId) {
+        return;
+      }
       intentDeliverables = [];
+    }
+    if (request === intentRequest && currentId === planId) {
+      intentLoading = false;
     }
   }
 
@@ -440,9 +469,13 @@
   /** The duration phrase of the head's state sentence, and the task's place where the tree has one. */
   const stateSentence = $derived(
     [
-      $t('plan.view.state_for', {
-        duration: formatDuration((plan?.duration_seconds ?? 0) * 1000, $currentLocale),
-      }),
+      ...((plan?.duration_seconds ?? 0) > 0
+        ? [
+            $t('plan.view.state_for', {
+              duration: formatDuration((plan?.duration_seconds ?? 0) * 1000, $currentLocale),
+            }),
+          ]
+        : []),
       ...(() => {
         const position = plan ? runningTaskPosition(plan.nodes) : null;
         return position
@@ -515,11 +548,14 @@
       if (refreshesPlanProcess(event)) {
         void loadPlanProcess(false);
       }
+      if (event === 'plan.revision_queued') {
+        applyQueuedRevision(data);
+      }
       if (event === 'plan.change_captured') {
         applyCapturedChange(data);
       }
-      if (event === 'plan.revision_queued') {
-        applyQueuedRevision(data);
+      if (refreshesIntentView(event) && activeTab === 'intent') {
+        void loadIntent();
       }
     });
     clockTimer = setInterval(() => {
@@ -563,6 +599,8 @@
     if (!planId) return;
     const currentId = planId;
     const gen = ++processLoadGeneration;
+    // A revision event that arrives while this read is in flight is newer than its answer.
+    const queuedEventsAtStart = queuedRevisionEvent;
     if (initial) isLoading = true;
     errorCode = null;
     try {
@@ -571,7 +609,9 @@
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
       // The resource carries the queued revision too, so a reload while one waits shows its line.
-      queuedRevision = queuedRevisionOf(res.queued_revision);
+      if (queuedRevisionEvent === queuedEventsAtStart) {
+        queuedRevision = queuedRevisionOf(res.queued_revision);
+      }
       runtimeStore.update((s) => ({ ...s, currentProcessTree: res }));
       if (previousPlanId !== null && previousPlanId !== res.plan_id) {
         // Another plan is open: the size the last capture announced belonged to the old one.
@@ -650,13 +690,8 @@
       return;
     }
     const named = $runtimeStore.objectTab;
-    if (
-      named !== null &&
-      named !== undefined &&
-      named !== 'process' &&
-      named !== 'intent' &&
-      named !== 'changes'
-    ) {
+    // The plan tabs are the router's own set, so a tab added there is never rewritten here.
+    if (typeof named === 'string' && !(PLAN_TABS as ReadonlyArray<string>).includes(named)) {
       selectObjectTab('process');
     }
   });
@@ -984,8 +1019,8 @@
    */
   function showsActivityRow(entry: ActivityEntry): boolean {
     if (entry.kind === 'link') {
-      const target = entry.tool_target ?? '';
-      return target.trim() !== '';
+      // The target the row renders is the cleaned text; a target that cleans away leaves no row.
+      return stripControlSequences(entry.tool_target).trim() !== '';
     }
     return true;
   }
@@ -1120,7 +1155,7 @@
       parentEpicId={plan?.plan_id === planId ? (plan?.epic?.epic_id ?? null) : null}
     />
   {/if}
-  <div class="plan-view" data-testid="plan-view">
+  <div class="plan-view" data-testid="plan-view" bind:this={columnElement}>
   {#if $narrowLayout && !isLoading && upParent?.kind && upParent.address}
     <div class="plan-view__up" data-testid="plan-view-up">
       <UpLink kind={upParent.kind} title={upParent.title} address={upParent.address} />
@@ -1169,7 +1204,7 @@
             label={displayState('plan', plan.phase_state, $t)}
           />
         </span>
-        {#if plan.duration_seconds > 0}
+        {#if stateSentence !== ''}
           <span class="plan-state__sep" aria-hidden="true">·</span>
           <span class="plan-state__sentence" data-testid="plan-state-sentence"
             >{stateSentence}</span
@@ -1208,7 +1243,7 @@
       </div>
 
       <div slot="tabs" class="plan-tabstrip">
-        {#if waiting}
+        {#if waiting && openDecisionId}
           <div data-testid="plan-attention-strip">
             <AttentionStrip message={$t('plan.view.waits_for_decision')} />
           </div>
@@ -1375,7 +1410,6 @@
       class="plan-panel-host"
       data-testid="plan-panel-host"
       data-layout={wideColumn ? 'side' : 'stacked'}
-      bind:this={panelHost}
     >
 
     {#if activeTab === 'changes' && changeSize}
@@ -1403,7 +1437,14 @@
         aria-label={$t('intent.tab.title')}
         data-testid="plan-intent-panel-tab"
       >
-        {#if intentLoading}
+        {#if intentError !== null}
+          <ErrorState
+            code={intentError}
+            actionLabel={$t('common.action.retry')}
+            onAct={() => void loadIntent()}
+            titleLevel={2}
+          />
+        {:else if intentLoading && !intentHasRecord}
           <div class="plan-intent-panel__loading">
             <Spinner size="1.5rem" label={$t('intent.tab.title')} />
           </div>
@@ -2327,13 +2368,6 @@
 
   .plan-panel-host[data-layout='stacked'] .plan-tree-panel {
     border-bottom: 1px solid var(--color-border);
-  }
-
-  .entry-kind {
-    display: inline-flex;
-    align-items: center;
-    flex-shrink: 0;
-    color: var(--color-text-secondary);
   }
 
   .plan-tabstrip .off-track-banner {
