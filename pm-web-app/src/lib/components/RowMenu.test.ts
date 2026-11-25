@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/sve
 import RowMenu, { type RowMenuItem } from './RowMenu.svelte';
 import { styleOf, rulesOf } from '../../test/templateStyle';
 import { contrastRatio } from '../../test/colourMetrics';
-import { parseThemes } from '../test/stylesheet';
+import { parseThemes, tokenOf } from '../test/stylesheet';
 
 describe('RowMenu component', () => {
   const sampleItems: RowMenuItem[] = [
@@ -296,7 +296,7 @@ describe('RowMenu component', () => {
       ['system dark', themes.mediaDark],
     ] as const) {
       expect(
-        contrastRatio(palette['--color-brand'], palette['--color-bg-subtle']),
+        contrastRatio(tokenOf(palette, '--color-brand'), tokenOf(palette, '--color-bg-subtle')),
         `focus cue contrast in the ${label} palette`,
       ).toBeGreaterThanOrEqual(3.0);
     }

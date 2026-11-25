@@ -18,7 +18,7 @@ export function stylesheetOf(componentPath: string): string {
 
 /**
  * @param css a stylesheet
- * @param opener the at-rule whose block is wanted, as written
+ * @param opener the at-rule or selector whose block is wanted, as written
  * @returns the block's content, braces matched
  */
 export function blockOf(css: string, opener: string): string {
@@ -60,7 +60,7 @@ export function declarations(block: string): Record<string, string> {
 
 /** The theme blocks of `tokens.css`, each read by its selector and keyed by declaration. */
 export interface ThemeBlocks {
-  /** The `:root` block: the shared declarations and the light palette as the default. */
+  /** The top-level `:root` block: the shared declarations and the light palette as the default. */
   root: Record<string, string>;
   /** The `[data-theme='light']` block. */
   light: Record<string, string>;
@@ -71,16 +71,36 @@ export interface ThemeBlocks {
 }
 
 /**
+ * @param block a declaration block
+ * @param name the custom property's name, with its leading `--`
+ * @returns its value, asserted present so a missing token fails by name rather than downstream
+ */
+export function tokenOf(block: Record<string, string>, name: string): string {
+  const value = block[name];
+  if (value === undefined) throw new Error(`no "${name}" declaration in the block`);
+  return value;
+}
+
+/**
  * Reads the four theme blocks of `tokens.css` by selector — never through the header comment, which
  * only describes them, so a restructured file still yields the blocks its rules declare.
  *
  * @param source the stylesheet
- * @returns the parsed themes, with the `:root` declaration as the light default
+ * @returns the parsed themes, with the top-level `:root` declaration as the light default
  */
 export function parseThemes(source: string): ThemeBlocks {
   const css = withoutComments(source);
+  // `:root` is declared more than once: the palette default at the top level and one inside each
+  // media block. The palette default is the TOP-LEVEL one, so the media blocks are dropped first
+  // rather than trusting the declaration order a restructure of the file could move.
+  const topLevel = withoutBlocks(
+    css,
+    '@media (prefers-color-scheme: dark)',
+    '@media (prefers-reduced-motion: reduce)',
+    '@media (max-width: 767px)',
+  );
   return {
-    root: declarations(blockOf(css, ':root')),
+    root: declarations(blockOf(topLevel, ':root')),
     light: declarations(blockOf(css, "[data-theme='light']")),
     dark: declarations(blockOf(css, "[data-theme='dark']")),
     mediaDark: declarations(blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root')),

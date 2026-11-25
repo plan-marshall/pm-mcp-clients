@@ -266,11 +266,15 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
 /**
  * Runs the contrast audit on the active page.
  *
+ * Module-private on purpose: a caller reaches it through `auditViewContrast`, which asserts the
+ * document paints the theme the audit names first. A direct measurement could pass under the wrong
+ * theme, which is the failure this module exists to remove.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @returns {Promise<{ all: Array<any>, failures: Array<any> }>}
  */
-export async function auditPageContrast(page, options = {}) {
+async function auditPageContrast(page, options = {}) {
   const elements = await page.evaluate(
     `(${IN_BROWSER_CONTRAST_ANALYZER})(${JSON.stringify(options)})`,
   );

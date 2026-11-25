@@ -7,7 +7,7 @@ import IconButton from './IconButton.svelte';
 import ButtonOnClickFixture from '../../test/fixtures/ButtonOnClickFixture.svelte';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 import { contrastRatio } from '../../test/colourMetrics';
-import { parseThemes } from '../test/stylesheet';
+import { parseThemes, tokenOf } from '../test/stylesheet';
 
 /**
  * The control components of VD-P-05: the four `Button` variants, its three sizes, the optional
@@ -279,11 +279,11 @@ describe('Button', () => {
 
     for (const [variant, foreground, background] of pairs) {
       expect(
-        contrastRatio(themes.light[foreground], themes.light[background]),
+        contrastRatio(tokenOf(themes.light, foreground), tokenOf(themes.light, background)),
         `${variant} contrast in the light theme`,
       ).toBeGreaterThanOrEqual(4.5);
       expect(
-        contrastRatio(themes.dark[foreground], themes.dark[background]),
+        contrastRatio(tokenOf(themes.dark, foreground), tokenOf(themes.dark, background)),
         `${variant} contrast in the dark theme`,
       ).toBeGreaterThanOrEqual(4.5);
     }
