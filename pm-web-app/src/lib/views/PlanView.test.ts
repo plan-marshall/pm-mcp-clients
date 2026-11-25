@@ -1939,6 +1939,63 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     expect(link).toHaveTextContent('Open the decision');
   });
 
+  it('does not take a decision that blocks another object for the plan wait', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([{ ...decision, blocks: 'epic' }]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await waitFor(() => expect(screen.queryByTestId('plan-decision-link')).toBeNull());
+    expect(screen.queryByTestId('plan-attention-strip')).toBeNull();
+  });
+
+  it('explains the head actions on hover', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const designer = screen.getByTestId('design-process-link');
+    expect(designer).toHaveAttribute('title');
+    expect(designer.getAttribute('title')).not.toBe('');
+    const link = await screen.findByTestId('plan-decision-link');
+    expect(link).toHaveAttribute('title');
+    expect(link.getAttribute('title')).not.toBe('');
+  });
+
+  it('keeps a plan’s decision off the next plan’s head', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockImplementation(async (id: string) =>
+      headPlan({
+        plan_id: id,
+        phase_state: 'waiting_for_you',
+        needs_operator: true,
+      }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await screen.findByTestId('plan-decision-link');
+
+    // The router reuses the view, and the next plan's decision read is still open: the previous
+    // plan's link must not stand in for it.
+    vi.spyOn(apiClient, 'getDecisions').mockReturnValue(new Promise(() => {}));
+    runtimeStore.update((state) => ({
+      ...state,
+      selectedPlanId: 'next-plan',
+      selectedPlanEnded: null,
+    }));
+
+    await waitFor(() => expect(apiClient.getPlanProcess).toHaveBeenCalledWith('next-plan'));
+    expect(screen.queryByTestId('plan-decision-link')).toBeNull();
+  });
+
   it('shows neither the attention strip nor the decision link on a running plan', async () => {
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
     vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
