@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
@@ -898,7 +899,7 @@ class OnboardingScenarioTest {
      * @return the entry id the link names
      */
     private static String entryIdOf(String continueLink) {
-        var matcher = java.util.regex.Pattern.compile("/entries/([^/]+)/").matcher(continueLink);
+        var matcher = Pattern.compile("/entries/([^/]+)/").matcher(continueLink);
         assertTrue(matcher.find(), "continue_link names an entry: " + continueLink);
         return matcher.group(1);
     }

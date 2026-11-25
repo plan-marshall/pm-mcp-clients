@@ -1718,7 +1718,7 @@ public final class PlanCommand implements Callable<Integer> {
          *                answer was a settings result
          */
         private record PutOutcome(PlanSettingsUpdateResult result,
-                        @Nullable OperatorRefusedException refusal) {
+        @Nullable OperatorRefusedException refusal) {
         }
 
         private PutOutcome put(int revision, String aspect, @Nullable String value) throws IOException {
