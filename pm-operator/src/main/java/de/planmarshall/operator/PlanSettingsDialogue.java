@@ -242,10 +242,12 @@ final class PlanSettingsDialogue {
      * @return the reason, never {@code null}
      */
     private String refusalReason(WorkActionsClient.SettingsAnswer answer) {
-        if (answer.refusalCode() != null) {
-            return ErrorTexts.title(prompt.locale(), answer.refusalCode());
+        var code = answer.refusalCode();
+        if (code != null) {
+            return ErrorTexts.title(prompt.locale(), code);
         }
-        return answer.refusalReason() != null ? answer.refusalReason() : "";
+        var reason = answer.refusalReason();
+        return reason != null ? reason : "";
     }
 
     private @Nullable ChosenValue askValue(String aspect, List<String> choices) {
