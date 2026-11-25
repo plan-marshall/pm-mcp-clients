@@ -47,6 +47,9 @@ public final class EpicViewFormatting {
     /** The rendered running count when the runtime does not say it. */
     public static final String UNKNOWN_COUNT = "?";
 
+    /** The wait text of a row that can start, named once because two branches read it. */
+    private static final String WAITS_NONE = "overview.epic.waits.none";
+
     private EpicViewFormatting() {
     }
 
@@ -114,13 +117,13 @@ public final class EpicViewFormatting {
         if (reason == null) {
             var raw = clean(row.waitReason());
             if (raw.isBlank()) {
-                return MessageCatalogue.format(locale, "overview.epic.waits.none", Map.of());
+                return MessageCatalogue.format(locale, WAITS_NONE, Map.of());
             }
             // A word outside the closed set is echoed, never read as a row that can start.
             return MessageCatalogue.format(locale, "overview.epic.waits.other", Map.of("reason", raw));
         }
         if (reason == EpicWaitReason.NONE) {
-            return MessageCatalogue.format(locale, "overview.epic.waits.none", Map.of());
+            return MessageCatalogue.format(locale, WAITS_NONE, Map.of());
         }
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.waitPlanId() != null ? row.waitPlanId() : row.planId()));
@@ -128,7 +131,7 @@ public final class EpicViewFormatting {
         params.put(RUNNING, running != null ? running : UNKNOWN_COUNT);
         params.put(SCOPE, scope);
         var key = switch (reason) {
-            case NONE -> "overview.epic.waits.none";
+            case NONE -> WAITS_NONE;
             case DEPENDENCY -> "overview.epic.waits.dependency";
             case LOCK -> "overview.epic.waits.lock";
             case SCOPE -> "overview.epic.waits.scope";
