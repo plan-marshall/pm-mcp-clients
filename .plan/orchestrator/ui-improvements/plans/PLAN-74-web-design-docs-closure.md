@@ -51,13 +51,13 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-13)`, `doc/claude_review/visual-design/plan.adoc#VD-S-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86 S-13; visual-design/plan.adoc:69 S-09; proposals.adoc:217 P-09 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:86-91; visual-design/plan.adoc:69-73; proposals.adoc:217 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): doc/design/web-app/components.adoc now exists (added by PLAN-35, 5650c41e), so the 'add components.adoc' part of the deliverables is already partly done and must be reworked as 'update'; README.adoc, brand-mark.adoc and theme-readability.adoc exist and changed since the anchor.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/design/web-app/components.adoc exists plus components-tags/-fields/-brand/-chat (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/design/web-app/components.adoc and components-*.adoc, linked README.adoc:22 (3dea04b2)
 - RESCOPE at outline (design audit 2026-11-02): no done/dropped list with PLAN ids in web-app/README (Z2); the web-app design status FINAL becomes AGREED (R7-3/R7-4), and the same rule covers the new web-app/components.adoc:15 FINAL.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: README:12, components.adoc:15, theme-readability:12, brand-mark:12 are AGREED (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: README.adoc:12 and theme-readability.adoc:12 read AGREED; no proposal-status list in README (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -68,6 +68,10 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/claude_review/visual-design/analysis.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/claude_review/use-cases/analysis.adoc` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/ux/proposals.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/claude_review/visual-design/proposals.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/claude_review/cross-cutting/proposals.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/claude_review/use-cases/proposals.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -100,6 +104,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
 
 - Stale body: D3 and D4 are DONE (`ddcab793`, PLAN-108 #362: `age` rule decided, wireframes rewritten; `components.adoc` holds no PLAN-100), D1 is dropped by the amendment. Only D2 (the proposal-status list) and setting the final status remain. Parked.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted. D1, D3 and D4 are done (`README.adoc:20-22` links; PLAN-108 #362); stays parked.
+- **D2** conflicts with the no-plan-ids rule of the design README: put the per-proposal status in `doc/claude_review/{ux,visual-design,cross-cutting,use-cases}/proposals.adoc` and set FINAL per document only when its package is done (`doc/design/README.adoc:20`).
 
 ## Hand-Off Command
 

@@ -43,11 +43,11 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/verification.adoc CC-V-01..05 :12-35 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cross-cutting/verification.adoc CC-V-01 :12 to CC-V-05 :35 (3dea04b2)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-76 shipped (ports 20290/20291 hold) (3dea04b2)
 - HYPOTHESIS: the text guard declares a view list that can be extended without changing the guard's rules — confirm/refute at `pm-web-e2e/tests/text-guard.spec.js` § `declared views` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: DECLARED_VIEWS (23) at pm-web-e2e/tests/theme-readability.spec.js:31; location drifted from text-guard.spec.js (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: the view list is DECLARED_VIEWS at pm-web-e2e/tests/theme-readability.spec.js:31, guarded at :1241-1254 (moved from text-guard.spec.js) (3dea04b2)
 
 ## Expected Surface
 
@@ -74,6 +74,16 @@ names are the design sessions' output, and a parked row is not in the disjointne
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - The 2026-11-10 re-grounding says new claim bullets were added to Claim Labels; none exist. View list now `DECLARED_VIEWS` (23) at `theme-readability.spec.js:31`.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; the text guard's view list moved to `DECLARED_VIEWS` in `pm-web-e2e/tests/theme-readability.spec.js:31` (guarded `:1241-1254`).
+- CC-V-01: the check's "How" uses `-Pintegration-tests`, which does not start Playwright: run `./mvnw verify -Pe2e -pl pm-web-e2e -am` and record the How as stale.
+- CC-V-04 (and PLAN-41 VD-V-03): delete the placement caveat; `README.adoc:426,487` name the rail foot and "This browser": check both places.
+- CC-V-02/V-03: enum coverage moves when `OffTrackSignal`, `EpicWaitReason` and the phase set change (`doc-review-2026-11-24-001` § 1, § 2): emit after those packages, or record the enum findings as transient.
 
 ## Hand-Off Command
 

@@ -53,11 +53,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 S-06; proposals.adoc:125-126 P-07 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:56-57; proposals.adoc:125-126 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand:45); --json on Status:58, Plans:44, System:70, Needs:45; fromMap no longer exists (NeedsOperatorKind.fromWireOrOther :89); needs becomes hardening (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: NeedsCommand exists with --json (NeedsCommand.java:45, pass-through :69-73); --json also in PmConsole.java:545; json/ test dir absent; plans --json delegates to status (PlansCommand.java:93,130-133) (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -87,6 +87,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/NeedsOneCountTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OverviewCommandTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorTest.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -134,6 +139,16 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Claim 1 contradicted (`rescoped: yes`): `NeedsCommand` EXISTS with `--json` (`NeedsCommand:45`); `--json` is on status, plans, system and needs; `fromMap` no longer exists (`NeedsOperatorKind.fromWireOrOther :89`). **`needs` becomes hardening**; still missing: questions, reports, projects `--list`, epic, plan, find. `plans --json` still delegates to the status (`PlansCommand:93,130-133`). `03-dialogues.adoc:276` ("no machine-readable output") contradicts `15-overview.adoc:20`.
 - Depends on PLAN-42 (staged); PLAN-174 (running) touches `Refusal*`, `ReportsCommand`, `ProjectsCommand`, `EpicCommand`, `PlanCommand`. Open decision: schema as wire pass-through or client envelope.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claim 1 contradicted: `needs` exists with `--json` as the runtime's body passed through (`NeedsCommand.java:45,69-73`, PLAN-36 #391); `--json` is on `status`, `plans`, `system`, `needs` and the console (`PmConsole.java:545`); `plans --json` delegates to `status` and is pinned that way (`PlansCommand.java:130-133`, `TuiCapabilityIT.java:353-363`).
+- **D1** (the `plans --json` bug) can ship alone.
+- **Operator decision**: `--json` = pass-through of the runtime's body (decided de facto). Amend `03-dialogues.adoc:276` ("no machine-readable output"), which contradicts `15-overview.adoc:20`. D2 shrinks to `plans`, `questions`, `reports`, `projects --list`, `epic <id>`, `plan <id>`, `find` and errors as JSON on stderr; field lists by reference to the resources.
+- **D3 schemas** must not freeze removed vocabulary: five off-track signals (no `over_size`/`outside_footprint`), 15 report kinds (no `epic.overlap_found`), wait reason `unreadable`, seven phases with `sanity-check` (#570): link the shared design's enumerations, never copy them; schema tests tolerate unknown values (`fromWireOrOther`). Held on PLAN-42.
 
 ## Hand-Off Command
 

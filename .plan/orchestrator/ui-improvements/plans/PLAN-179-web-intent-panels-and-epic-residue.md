@@ -82,31 +82,31 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 ## Claim Labels
 
 - OBSERVED: `EpicView` loads its epic in `onMount` only and renders `EpicIntentPanel` without a key — read at `pm-web-app/src/lib/views/EpicView.svelte:237-246,796`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: EpicView.svelte:237-246 onMount subscribes and calls loadEpic(true) once; :796 renders <EpicIntentPanel {epicId} /> and the file has no {#key} (origin/main 3ae8a305)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: EpicView.svelte:45-61 $effect reloads on epicId change and clears epic/resource/review (#542 43f0e416); :822 {#if resource} remounts EpicIntentPanel (:856) (3dea04b2)
 - OBSERVED: `EpicIntentPanel` loads in `onMount` and refetches on every event whose name `refreshesEpicIntentView` accepts, with no look at the payload — read at `pm-web-app/src/lib/components/EpicIntentPanel.svelte:51-58` and `pm-web-app/src/lib/components/intentEvents.ts:38-46`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: EpicIntentPanel.svelte:51-58 onMount load() and subscribeEvents -> refreshesEpicIntentView(event); intentEvents.ts:38-40 returns INTENT_EPIC_EVENTS.includes(event), name only (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: EpicIntentPanel.svelte:51-58; intentEvents.ts:38-40,46-48 match the name only (3dea04b2)
 - OBSERVED: `applyRoute` resets `objectTab` for every route, so PLAN-58 L3-2 is fixed — read at `pm-web-app/src/lib/stores/runtime.ts:1521`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: runtime.ts:1521 objectTab: null in the applyRoute update (PLAN-59 #538); also :217 initial and :1556 settings-only variant (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: runtime.ts:1714-1721 objectTab: null in applyRoute (3dea04b2)
 - OBSERVED: `BuilderCheckList.svelte` imports `apiClient` and uses it nowhere — read by `grep -c apiClient pm-web-app/src/lib/components/BuilderCheckList.svelte` (1)
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: BuilderCheckList.svelte: grep -c apiClient = 1, the import line (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: BuilderCheckList.svelte:4 imports apiClient, never uses it (3dea04b2)
 - OBSERVED: `OverSizeDistributionResource` builds the buckets through `IntentJson.readObjects`, which returns an empty list for an absent key — read at `pm-api/src/main/java/de/planmarshall/api/intent/OverSizeDistributionResource.java:188-192`, `IntentJson.java:317-320`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: OverSizeDistributionResource.java:188-192 IntentJson.readEach(IntentJson.readObjects(map, FIELD_BUCKETS), ...); readObjects' empty-list answer for an absent key is the PLAN-146 landing's re-read (IntentJson.java:317-320), not re-read here
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: OverSizeDistributionResource.java:189; IntentJson.java:317-320 absent key -> List.of(); moot once over_size is removed (3dea04b2)
 - OBSERVED: `OutlinePanel.test.ts` carries the out-of-order test at `:321-343` — read at `pm-web-app/src/lib/components/OutlinePanel.test.ts:319-324`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: OutlinePanel.test.ts:319-324 declares resolveFirst and resolveSecond around the out-of-order case; the test's non-failing nature is the PLAN-145 landing's reading, not re-run
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: OutlinePanel.test.ts:262-282 (file shrank to 284 lines in #566) (3dea04b2)
 - HYPOTHESIS: the event stream carries a subject (the plan or epic id) for `plan.revision_queued`, `epic.decomposition_changed` and `epic.register_changed` — confirm/refute at `pm-api`'s `EventName` and the event record, `pm-web-app/src/lib/api/client.ts` `subscribeEvents` (verify-at-outline; if absent, deliverable 2's first item keeps the name filter for that event)
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: EventName and the event record not re-read here; settled at outline
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: plan.revision_queued and phase.changed carry plan_id (06-event-catalogue.adoc:63,65); epic.register_changed / epic.decomposition_changed name no epic and are E-stream only, while the app subscribes /api/v1/events only (client.ts:4954-4984) (3dea04b2)
 - HYPOTHESIS: the `OverSizeChart` is not mounted on the project page's setup tab — confirm/refute by `git grep -n OverSizeChart -- pm-web-app/src` (verify-at-outline)
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep OverSizeChart over pm-web-app/src finds only the component, its test and routes/dev/components/+page.svelte:867; no ProjectExplorerView mount (origin/main 3ae8a305)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: premise gone: OverSizeChart.svelte and its test deleted by #566 (52aa9e4b); design dropped over_size (#570); over-size rows remain at ProjectExplorerView.svelte:1616-1637 (3dea04b2)
 - HYPOTHESIS: the Java and the TypeScript readers of the over-size body disagree on an absent `buckets` — confirm/refute at `OverSizeDistributionResource.java:191` and `pm-web-app/src/lib/api/client.ts` (`getOverSize`) (verify-at-outline)
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: client.ts has malformedRecord throws (:2527-2621) for the TS readers; getOverSize's own absent-buckets branch is read at outline
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: OverSizeDistributionResource.java:189 accepts an absent buckets; client.ts:2992 recordObjects throws; moot once removed (3dea04b2)
 - Verify-first clause: before each deliverable re-read the named files at the then-current HEAD; PLAN-144 (D0 and the Back removal), PLAN-176 (`ProjectExplorerView`), PLAN-85, 135 and 136 (`EpicView`, `routes.ts`) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: procedural verify-first clause; PLAN-144 running, PLAN-176 staged
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 - OBSERVED: both readers refuse a plan intent record whose `non_goals` is empty — read at `pm-api/src/main/java/de/planmarshall/api/intent/PlanIntentResource.java:454-458` and `pm-web-app/src/lib/api/client.ts:2715-2721,2819`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: PlanIntentResource.java:454-458 throws 'non_goals must not be empty'; client.ts:2819 recordRequiredObjects -> recordNonEmptyArray (:2715-2721); IntentContractTest.java:912-920 pins the refusal (origin/main 3ae8a305)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanIntentResource.java:454-457 refuses empty non_goals; client.ts:2830 recordNonEmptyArray (3dea04b2)
 - OBSERVED: the engine bounds `non_goals` at 0 to 20 and requires one on the deep lane only — read at `../pm-mcp-core/doc/specification/phase-workflows/01-planning-phases-1-2.adoc:463,480` and `pm-core/src/main/java/de/planmarshall/core/store/IntentRecord.java:37`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: phase-workflows/01-planning-phases-1-2.adoc:463 '0 to 20 ... at least one on the deep lane, none required on the light lane', :480 check 7; IntentRecord.java:37 same; intent-record-v1.schema.json:29 (pm-mcp-core cd05e7ab)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-core phase-workflows/01-planning-phases-1-2.adoc:432 (0 to 20, at least one on the deep lane), :449 (3dea04b2)
 - HYPOTHESIS: the engine writes an empty `non_goals` list as `[]` and not as an absent member, and the mock has a scenario record that can carry none — confirm/refute at `IntentCodec` in `pm-mcp-core` and `pm-mock-runtime/src/test/java/de/planmarshall/mock/IntentScenarioTest.java` (verify-at-outline; if the member is omitted, accept the absent member too)
-  - verdict: unverifiable | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: IntentCodec's empty-list write and IntentScenarioTest's scenario content not read here; settled at outline
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: IntentCodec and the scenario content not read; settle at outline (3dea04b2)
 
 ## Expected Surface
 
@@ -122,8 +122,6 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 - OBSERVED: `pm-web-app/src/lib/components/BuilderCheckList.test.ts` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/lib/components/intentEvents.ts` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/lib/components/intentEvents.test.ts` — present at HEAD 3ae8a305
-- OBSERVED: `pm-web-app/src/lib/components/OverSizeChart.svelte` — present at HEAD 3ae8a305
-- OBSERVED: `pm-web-app/src/lib/components/OverSizeChart.test.ts` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/lib/components/Tabs.svelte` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/lib/components/FindingsReviewModal.svelte` — present at HEAD 3ae8a305
@@ -132,10 +130,8 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.test.ts` — present at HEAD 3ae8a305
-- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/OverSizeDistributionResource.java` — present at HEAD 3ae8a305
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/intent/IntentJson.java` — present at HEAD 3ae8a305
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/intent/IntentJsonTest.java` — present at HEAD 3ae8a305
-- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/intent/OverSizeDistributionResourceTest.java` — absent at HEAD 3ae8a305; created by this plan
 - OBSERVED: `pm-api/src/main/resources/messages/intent.en.properties` — present at HEAD 3ae8a305
 - OBSERVED: `pm-api/src/main/resources/messages/intent.de.properties` — present at HEAD 3ae8a305
 - OBSERVED: `pm-web-e2e/tests/epic-view.spec.js` — present at HEAD 3ae8a305
@@ -146,12 +142,30 @@ The documents are the specification; read them first: `doc/design/web-app/epic-v
 - OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at HEAD 3ae8a305
 - OBSERVED: `doc/design/shared/intent-and-outline.adoc` — present at HEAD 3ae8a305
 - OBSERVED: `doc/design/shared/intent-and-outline-texts.adoc` — present at HEAD 3ae8a305
+- OBSERVED: `doc/design/shared/epic-view.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/README.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/shared/starting-work.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-58`, `PLAN-145`, `PLAN-146` (shipped); `PLAN-144` and `PLAN-176` (landed first: they edit `EpicView`, `ProjectExplorerView` and `runtime.ts`).
 - Overlaps with: `PLAN-135`, `PLAN-136`, `PLAN-137` (staged and parked: `EpicView.svelte`, `runtime.ts`), `PLAN-85` (`routes.ts`), `PLAN-178` (staged: no shared file). Sequenced after `PLAN-144` and `PLAN-176`.
 - Adjacent to: PLAN-55 and PLAN-62 (parked: the `{#key planId}` wrapping of the plan panels is their call, PLAN-145 L3-2), the engine's event subject (`pm-mcp-core`, a finding if absent).
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claims 0, 6, 7 contradicted: `EpicView` reloads on an epic change with a cleared resource and a generation guard (#542 `43f0e416`, `EpicView.svelte:45-61,300-336`); the plan events carry `plan_id` but `epic.register_changed`/`epic.decomposition_changed` name no epic and travel only on the epic stream, which the app does not subscribe to; `OverSizeChart` and its test were deleted by #566 and the design dropped the `over_size` distribution (#570).
+- **D3 is void and deleted** (chart, its labels, the fail-closed Java reader, the duplicate-role refusal, the mount). The `over_size` removal is its own package (`doc-review-2026-11-24-001` § 1); this plan does not edit those files. `OverSizeChart.svelte`, `OverSizeChart.test.ts` and `OverSizeDistributionResourceTest.java` leave the surface.
+- **D1** shrinks to what is open: the stale-banner retry as a busy-aware control (`EpicView.svelte:826-834`), `scopeKnown`/`nextPlan` from a stale resource (`:773,:776`), tab `id`s and `aria-labelledby` (`Tabs.svelte:126-135`), the `FindingsReviewModal` reset; a regression test of the existing reload effect is welcome. The wait reason lines (`:410-413`) are PLAN-191's: rebase.
+- **D2**: plan panels filter on the payload's `plan_id` (`phase.changed`, `plan.revision_queued`); for the epic panel the runtime-wide stream cannot deliver the two epic events: subscribe to the epic stream or refetch on `epic.row_changed`/`plan.revision_queued`, said in the PR.
+- **D2/D4 mount**: `PlanIntentPanel`, `OutlinePanel` and `BuilderCheckList` are mounted nowhere in the plan view; the Intent tab is PLAN-55's: depends on PLAN-55, or confine the browser check of the plan panels to the dev fixture and the epic view. D4 drops the chart items; the other tests-that-cannot-fail stay.
+- **D5 survives whole**; also the design line "At least one is required" (`intent-and-outline.adoc:104`), `doc/design/README.adoc:64`, `shared/starting-work.adoc`, `shared/epic-view.adoc`; decide absent vs `[]` (`IntentJson.java:317-320`).
+- **Order**: after PLAN-191, the `over_size`/`added_dependencies` removal package and PLAN-55; re-ground then.
+- Removed from the Expected Surface (void or replaced, see above): pm-web-app/src/lib/components/OverSizeChart.svelte, pm-web-app/src/lib/components/OverSizeChart.test.ts, pm-api/src/test/java/de/planmarshall/api/intent/OverSizeDistributionResourceTest.java, pm-api/src/main/java/de/planmarshall/api/intent/OverSizeDistributionResource.java.
 
 ## Hand-Off Command
 

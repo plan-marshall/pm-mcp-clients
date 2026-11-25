@@ -46,11 +46,11 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cross-cutting/verification.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: CC-V-01 :12; VD-V-06..10 :41-63; UX-V-13 :131 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting CC-V-01 :12; visual-design VD-V-06..10 :41-63; ux UX-V-13 :131 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): mobile.spec.js changed (PLAN-90 green e2e baseline); verify-web-final.adoc and visual.spec.js still absent (created by this plan, correct). Dependencies PLAN-72/73/74 not landed.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-web-final.adoc and tests/visual.spec.js absent; tests/mobile.spec.js present; PLAN-72/73/74 parked (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: verify-web-final.adoc and visual.spec.js absent; mobile.spec.js present; no stylelint (PLAN-72 not landed); text-guard baseline non-empty (PLAN-73 not landed) (3dea04b2)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -59,6 +59,9 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 - OBSERVED: `doc/claude_review/README.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/visual.spec.js` — absent at HEAD 1cc0e10e; created by this plan if the outline keeps it
 - OBSERVED: `pm-web-e2e/tests/mobile.spec.js` — present at HEAD 1cc0e10e
+- OBSERVED: `doc/claude_review/visual-design/analysis.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/claude_review/cross-cutting/analysis.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/claude_review/ux/analysis.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -71,6 +74,14 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions. **Hold.** It is re-grounded after D1–D4
 (its checks are rewritten against the AGREED documents of the design review and the shipped packages). Queue status:
 `parked`; the Expected Surface above is NOT widened now (a parked row is not in the disjointness gate population).
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; blocked on PLAN-72/73/74. The text-guard baseline is non-empty (ProcessDesigner, ProjectExplorerView), the token lint is absent, `visual.spec.js` does not exist: expect fail / not verified for those rows.
+- The verdicts move into the matrices `doc/claude_review/{visual-design,cross-cutting,ux}/analysis.adoc`: added to the surface.
 
 ## Hand-Off Command
 
