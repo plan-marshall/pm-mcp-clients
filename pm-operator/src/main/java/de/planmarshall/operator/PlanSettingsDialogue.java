@@ -226,16 +226,26 @@ final class PlanSettingsDialogue {
     }
 
     private void refused(ChosenValue chosen, String aspect, WorkActionsClient.SettingsAnswer answer) {
-        // A code the catalogue knows names its text in the operator's language; an unknown one
-        // keeps the reason the body carried, and a body without either names none.
-        var reason = answer.refusalCode() != null
-                            ? ErrorTexts.title(prompt.locale(), answer.refusalCode())
-                            : (answer.refusalReason() != null ? answer.refusalReason() : "");
         // Only an asking dialogue reaches a change it may repeat: the group, the aspect and the value
         // are asked first, so a refused value is asked again.
         prompt.line("control.settings.refused",
                             Map.of("value", chosen.value() != null ? chosen.value() : aspect,
-                                                "reason", reason));
+                                                "reason", refusalReason(answer)));
+    }
+
+    /**
+     * Why a refused value is refused: a code the catalogue knows names its text in the operator's
+     * language, a code it does not know keeps the reason the body carried, and a body without either
+     * names none.
+     *
+     * @param answer the runtime's answer
+     * @return the reason, never {@code null}
+     */
+    private String refusalReason(WorkActionsClient.SettingsAnswer answer) {
+        if (answer.refusalCode() != null) {
+            return ErrorTexts.title(prompt.locale(), answer.refusalCode());
+        }
+        return answer.refusalReason() != null ? answer.refusalReason() : "";
     }
 
     private @Nullable ChosenValue askValue(String aspect, List<String> choices) {
