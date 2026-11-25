@@ -638,6 +638,15 @@ final class StartRegistry {
     }
 
     /**
+     * @param entryId the entry's id
+     * @return how many sources the entry carries, or {@code 0} when no such entry is open
+     */
+    synchronized int sourceCount(String entryId) {
+        var entry = entries.get(entryId);
+        return entry == null ? 0 : entry.sources.size();
+    }
+
+    /**
      * Applies a description an entry's chat proposed and the operator accepted: it replaces the entry's
      * description, so the entry's state shows the new one as its description source.
      *

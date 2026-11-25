@@ -232,7 +232,7 @@ class ChatContextNarrativeTest {
         }
 
         @Test
-        @DisplayName("a role's reply names a hold and the act the operator may take, where scripted")
+        @DisplayName("a role's reply names the act the operator may take without a synthetic hold")
         void replyNamesAHoldAndAnAct() throws Exception {
             var routes = ChatRoutes.plan(PLAN);
             try (var runtime = ordered(CHAT_STATE)) {
@@ -243,8 +243,8 @@ class ChatContextNarrativeTest {
 
                 var reply = read(runtime, routes).turns().stream()
                         .filter(turn -> turn.kind() == TurnKind.MESSAGE && !turn.isOperator()).toList().getLast();
-                assertAll("the later reply names a hold and an act",
-                        () -> assertTrue(reply.refs().stream().anyMatch(ref -> ref.kind() == RefKind.HOLD)),
+                assertAll("the later reply names an act without a synthetic H-1 hold",
+                        () -> assertFalse(reply.refs().stream().anyMatch(ref -> ref.kind() == RefKind.HOLD)),
                         () -> assertTrue(reply.refs().stream().anyMatch(ref -> ref.kind() == RefKind.ACT
                                 && "pause".equals(ref.act())
                                 && new ChatSubject(Objects.requireNonNull(ref.subject()).kind(), PLAN)

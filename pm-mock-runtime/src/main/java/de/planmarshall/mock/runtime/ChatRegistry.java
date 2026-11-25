@@ -200,6 +200,11 @@ final class ChatRegistry {
     private static final String EVENT_PLAN_PAUSED = "plan.paused";
     private static final String EVENT_PLAN_CANCELLED = "plan.cancelled";
     private static final String EVENT_EPIC_STARTED = "epic.started";
+    private static final String EVENT_EPIC_ROW_CHANGED = "epic.row_changed";
+    private static final String EVENT_EPIC_AUTO_CHANGED = "epic.auto_changed";
+    private static final String EVENT_SOURCE_ADDED = "source.added";
+    private static final String EVENT_SOURCE_REMOVED = "source.removed";
+    private static final String EVENT_SOURCE_FLAGGED = "source.flagged";
     private static final String LINE_PREFIX = "chat.line.";
     private static final String KEY_ID = "id";
     private static final String KEY_PLAN_ID = "plan_id";
@@ -225,6 +230,7 @@ final class ChatRegistry {
     private static final String ARG_INSTANCE_VERSION = "instance_version";
     private static final String SCOPE_PLAN = "plan";
     private static final String SCOPE_EPIC = "epic";
+    private static final String SCOPE_ENTRY = "entry";
     private static final String PLAN_PREFIX = "plan ";
     private static final String OUTCOME_DONE = "done";
     private static final String OUTCOME_FAILED = "failed";
@@ -857,8 +863,19 @@ final class ChatRegistry {
             }
             case EVENT_SCOPE_ENDED -> {
                 var outcome = JsonTree.string(payload, ARG_OUTCOME);
-                endWork(ChatSubjectKind.PLAN, JsonTree.string(payload, KEY_PLAN_ID), outcome);
-                endWork(ChatSubjectKind.EPIC, JsonTree.string(payload, KEY_EPIC_ID), outcome);
+                var planId = JsonTree.string(payload, KEY_PLAN_ID);
+                if (planId == null) {
+                    planId = scopedId(payload, SCOPE_PLAN);
+                }
+                var epicId = JsonTree.string(payload, KEY_EPIC_ID);
+                if (epicId == null) {
+                    epicId = scopedId(payload, SCOPE_EPIC);
+                }
+                if ("merged".equals(outcome) && planId != null) {
+                    narratePrMerged(planId, payload);
+                }
+                endWork(ChatSubjectKind.PLAN, planId, outcome);
+                endWork(ChatSubjectKind.EPIC, epicId, outcome);
             }
             case EVENT_ENTRY_ABANDONED -> {
                 // The entry's transcript goes with its source directory: abandoning deletes it.
@@ -982,7 +999,10 @@ final class ChatRegistry {
      * @return the subject and its line, or {@code null} where the catalogue holds none
      */
     private @Nullable Narrative narrative(String event, Map<String, Object> payload) {
-        var subject = planOrEpic(payload);
+        if (!EVENT_ACTIVITY_CHANGED.equals(event) && payload.containsKey(INTERNAL_KEY)) {
+            return null;
+        }
+        var subject = subjectOf(event, payload);
         if (subject == null) {
             return null;
         }
@@ -1004,6 +1024,11 @@ final class ChatRegistry {
             case EVENT_ACTIVITY_CHANGED, EVENT_PLAN_PAUSED, EVENT_PLAN_RESUMED ->
                 activityLine(event, payload, at);
             case EVENT_INSTANCE_CHANGED -> versionLine(payload, at);
+            case EVENT_EPIC_ROW_CHANGED -> rowChangedLine(payload, at);
+            case EVENT_EPIC_AUTO_CHANGED -> autoChangedLine(payload, at);
+            case EVENT_SOURCE_ADDED -> sourceAddedLine(payload, at);
+            case EVENT_SOURCE_REMOVED -> sourceRemovedLine(payload, at);
+            case EVENT_SOURCE_FLAGGED -> sourceFlaggedLine(payload, at);
             default -> null;
         };
         return line == null ? null : new Narrative(subject, line);
@@ -1042,10 +1067,17 @@ final class ChatRegistry {
 
     /**
      * @param payload the event's payload
-     * @return the plan or the epic the event is about: the id its payload names, else the subject its
-     *         declared scope names, else its {@code subject} record
+     * @return the plan, epic, or entry the event is about: the id its payload names, else the subject
+     *         its declared scope names, else its {@code decision} record
      */
-    private static @Nullable ChatSubject planOrEpic(Map<String, Object> payload) {
+    private static @Nullable ChatSubject subjectOf(String event, Map<String, Object> payload) {
+        if (event.startsWith("epic.")) {
+            var epicId = JsonTree.string(payload, KEY_EPIC_ID);
+            if (epicId == null) {
+                epicId = scopedId(payload, SCOPE_EPIC);
+            }
+            return epicId == null ? null : new ChatSubject(ChatSubjectKind.EPIC, epicId);
+        }
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
         if (planId == null) {
             planId = scopedId(payload, SCOPE_PLAN);
@@ -1060,14 +1092,111 @@ final class ChatRegistry {
         if (epicId != null) {
             return new ChatSubject(ChatSubjectKind.EPIC, epicId);
         }
-        // decision.opened names the decision whole, its subject "plan <id>" among the members.
+        var entryId = JsonTree.string(payload, KEY_ENTRY_ID);
+        if (entryId == null) {
+            entryId = scopedId(payload, SCOPE_ENTRY);
+        }
+        if (entryId != null) {
+            return new ChatSubject(ChatSubjectKind.ENTRY, entryId);
+        }
+        // decision.opened names the decision whole, its plan field or subject ("plan <id>" / "epic <id>") among the members.
         var decision = JsonTree.asObject(payload.get(KEY_DECISION));
-        var decisionSubject = decision == null ? null : JsonTree.string(decision, "subject");
-        if (decisionSubject != null && decisionSubject.startsWith(PLAN_PREFIX)) {
-            return new ChatSubject(ChatSubjectKind.PLAN,
-                    decisionSubject.substring(PLAN_PREFIX.length()).trim());
+        if (decision != null) {
+            var decisionPlan = JsonTree.string(decision, SCOPE_PLAN);
+            if (decisionPlan != null && !decisionPlan.isBlank()) {
+                return new ChatSubject(ChatSubjectKind.PLAN, decisionPlan);
+            }
+            var decisionSubject = JsonTree.string(decision, "subject");
+            if (decisionSubject != null && decisionSubject.startsWith(PLAN_PREFIX)) {
+                return new ChatSubject(ChatSubjectKind.PLAN,
+                        decisionSubject.substring(PLAN_PREFIX.length()).trim());
+            }
+            if (decisionSubject != null && decisionSubject.startsWith("epic ")) {
+                return new ChatSubject(ChatSubjectKind.EPIC,
+                        decisionSubject.substring("epic ".length()).trim());
+            }
         }
         return null;
+    }
+
+    private void narratePrMerged(String planId, Map<String, Object> payload) {
+        var number = JsonTree.integer(payload, "pull_request_number");
+        if (number == null) {
+            number = JsonTree.integer(payload, "number");
+        }
+        if (number == null) {
+            number = facts.pullRequestNumber(planId);
+        }
+        if (number == null) {
+            return;
+        }
+        var prLine = line("pr_merged", Map.of("number", number), List.of(), Instant.now().toString());
+        var subject = new ChatSubject(ChatSubjectKind.PLAN, planId);
+        List<ChatEvent> mergedEvents;
+        synchronized (this) {
+            var events = new ArrayList<ChatEvent>();
+            for (var chat : chats.values()) {
+                if (takesNarrative(chat, subject)) {
+                    events.addAll(addLine(chat, prLine));
+                }
+            }
+            mergedEvents = List.copyOf(events);
+        }
+        mergedEvents.forEach(broadcaster);
+    }
+
+    private static @Nullable NarrativeLine rowChangedLine(Map<String, Object> payload, String at) {
+        var planId = JsonTree.string(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            planId = JsonTree.string(payload, KEY_ID);
+        }
+        if (planId == null || planId.isBlank()) {
+            return null;
+        }
+        var status = Objects.requireNonNullElse(JsonTree.string(payload, ARG_STATUS), "running");
+        return switch (status) {
+            case "staged" -> line("row_staged", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
+            case "running" -> line("row_started", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
+            case "landed" -> line("row_landed", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
+            case "cancelled" -> line("row_cancelled", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
+            case "failed" -> line("row_failed", args2(SCOPE_PLAN, planId, ARG_OUTCOME,
+                    Objects.requireNonNullElse(JsonTree.string(payload, ARG_OUTCOME), "failed")),
+                    ref(RefKind.PLAN, planId), at);
+            default -> null;
+        };
+    }
+
+    private static NarrativeLine autoChangedLine(Map<String, Object> payload, String at) {
+        var enabled = Boolean.TRUE.equals(payload.get("auto_start"))
+                || "on".equals(JsonTree.string(payload, KEY_STATE))
+                || Boolean.TRUE.equals(payload.get("enabled"));
+        return line("auto_changed", args(KEY_STATE, enabled ? "on" : "off"), List.of(), at);
+    }
+
+    private static NarrativeLine sourceAddedLine(Map<String, Object> payload, String at) {
+        return line("source_added", args("source", sourceLabel(payload, "kind", "source", "title")), List.of(), at);
+    }
+
+    private static NarrativeLine sourceRemovedLine(Map<String, Object> payload, String at) {
+        return line("source_removed", args("source", sourceLabel(payload, "source", "kind", "title")), List.of(), at);
+    }
+
+    private static NarrativeLine sourceFlaggedLine(Map<String, Object> payload, String at) {
+        var source = sourceLabel(payload, "source", "kind", "title");
+        var reason = Objects.requireNonNullElse(JsonTree.string(payload, ARG_REASON),
+                Objects.requireNonNullElse(JsonTree.string(payload, "verdict"), "flagged"));
+        return line("source_flagged", args2("source", source, ARG_REASON, reason), List.of(), at);
+    }
+
+    private static String sourceLabel(Map<String, Object> payload, String... keys) {
+        for (var key : keys) {
+            var value = JsonTree.string(payload, key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        var id = JsonTree.string(payload, "source_id");
+        return id != null && !id.isBlank() ? id : "source";
     }
 
     /**
@@ -1341,6 +1470,15 @@ final class ChatRegistry {
         events.add(revisionQueued(planId, null));
         events.add(activityChanged(planId, facts.activity(planId), null));
         events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.APPLIED, null));
+        var instancePayload = new LinkedHashMap<String, Object>();
+        instancePayload.put(KEY_PLAN_ID, planId);
+        instancePayload.put(ARG_INSTANCE_VERSION, current + 1);
+        instancePayload.put(ARG_CAUSE, "chat");
+        instancePayload.put(ARG_REASON, "chat");
+        instancePayload.put("origin", origin.toMap());
+        instancePayload.put(INTERNAL_KEY, true);
+        events.add(new ChatEvent(EVENT_INSTANCE_CHANGED, new EventScope(EventScopeKind.PLAN, planId, null),
+                instancePayload));
         events.addAll(narrateVersion(planId, current + 1));
         return events;
     }

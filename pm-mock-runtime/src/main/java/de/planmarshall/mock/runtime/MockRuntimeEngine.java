@@ -545,6 +545,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_TASKS = "chat.knows.tasks";
     private static final String KNOWS_PHASE = "chat.knows.phase";
     private static final String KNOWS_VERSION = "chat.knows.version";
+    private static final String KNOWS_ROWS = "chat.knows.rows";
+    private static final String KNOWS_ITEMS = "chat.knows.items";
+    private static final String KNOWS_SOURCES = "chat.knows.sources";
     private static final String KNOWS_ARG_COUNT = "count";
     private static final String KNOWS_ARG_PHASE = "phase";
     private static final String KNOWS_ARG_VERSION = "version";
@@ -1190,10 +1193,40 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         return switch (subject.kind()) {
             case PLAN -> planKnows(subject.id());
-            case EPIC -> List.of(MessageText.of(KNOWS_DESCRIPTION));
-            case ENTRY -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            case EPIC -> epicKnows(subject.id());
+            case ENTRY -> entryKnows(subject.id());
             default -> List.of();
         };
+    }
+
+    private List<MessageText> epicKnows(String epicId) {
+        EpicResource epic;
+        int rows = 0;
+        synchronized (controlLock) {
+            epic = controlEpics.get(epicId);
+            if (epic != null) {
+                rows = epic.workstreams().stream().mapToInt(w -> w.rows().size()).sum();
+            }
+        }
+        if (rows == 0) {
+            synchronized (decompositionLock) {
+                var cut = decompositions.get(epicId);
+                if (cut != null) {
+                    rows = cut.workstreams().stream().mapToInt(w -> w.stagedPlans().size()).sum();
+                }
+            }
+        }
+        var items = epic == null ? 0 : epic.findings().open() + epic.watches().open();
+        return List.of(
+                MessageText.of(KNOWS_DESCRIPTION),
+                new MessageText(KNOWS_ROWS, Map.of(KNOWS_ARG_COUNT, rows)),
+                new MessageText(KNOWS_ITEMS, Map.of(KNOWS_ARG_COUNT, items)));
+    }
+
+    private List<MessageText> entryKnows(String entryId) {
+        return List.of(
+                MessageText.of(KNOWS_DESCRIPTION),
+                new MessageText(KNOWS_SOURCES, Map.of(KNOWS_ARG_COUNT, startRegistry.sourceCount(entryId))));
     }
 
     /**
@@ -1349,6 +1382,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (controlLock) {
             planQueuedRevisions.remove(planId);
         }
+    }
+
+    @Override
+    public @Nullable Integer pullRequestNumber(String planId) {
+        var detail = planDetail(planId);
+        return detail == null ? null : JsonTree.integer(detail, "pull_request_number");
     }
 
     /**
