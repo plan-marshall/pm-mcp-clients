@@ -4300,8 +4300,8 @@ export class ApiClient {
   }
 
   /**
-   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (design
-   * `intent-and-outline.adoc`, The `over_size` Distribution).
+   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (the
+   * `OverSizeDistributionsResource` of `pm-api`).
    *
    * @param projectId the project
    * @returns the roles' distributions, or `null` where the runtime has no such record; a project it

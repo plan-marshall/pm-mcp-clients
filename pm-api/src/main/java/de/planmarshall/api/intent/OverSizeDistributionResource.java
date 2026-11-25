@@ -24,8 +24,7 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * The distribution of a role's plan-task tokens against their predicted size, and the share the
- * proposed {@code over_size} multiple would have flagged (Model Work, A Worker Off Track; design
- * <em>Intent and Outline</em>).
+ * proposed {@code over_size} multiple would have flagged (Model Work, A Worker Off Track).
  * <p>
  * The operator changes a role's {@code over_size} multiple and needs to see what that would have
  * done: the buckets are the tasks' spent tokens as a multiple of each task's own prediction, and
@@ -33,8 +32,7 @@ import de.planmarshall.api.json.JsonTree;
  * client never recomputes a bucket; it shows the runtime's distribution and flags only the buckets
  * that carry a change. Without a proposal the runtime serves the distribution under the multiple in
  * force and no flagged comparison, so nothing is flagged and {@link #flagsMore()} is {@code false}.
- * A role without measured tasks carries no bucket at all, which a client shows as its empty text
- * rather than drawing a zero bar.
+ * A role without measured tasks carries no bucket at all.
  *
  * @param projectId       the project whose role is measured
  * @param role            the role whose multiple is changed

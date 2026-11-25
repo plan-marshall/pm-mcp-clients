@@ -170,7 +170,7 @@ class IntentCatalogueTest {
     }
 
     @Test
-    @DisplayName("should format the outline's deliverables, files, dependencies, and the missing ones")
+    @DisplayName("should format the outline's deliverables, files, depends-on, and the missing ones")
     void shouldFormatTheOutline() {
         assertEquals("1 \u00b7 Reconnect the relay",
                 format("en", "intent.outline.deliverable", Map.of("number", 1, "title", "Reconnect the relay")));
