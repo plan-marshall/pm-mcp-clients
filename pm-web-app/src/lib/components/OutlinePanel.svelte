@@ -119,26 +119,6 @@
         })
       : $t('intent.outline.missing_deliverable', { number: deliverableNumber });
   }
-
-  /**
-   * @param dependency the added dependency
-   * @returns its line, with no placeholder left where the record names no version
-   */
-  function dependencyLine(dependency: {
-    name: string;
-    version?: string;
-    justification: string;
-    deliverable: number;
-  }): string {
-    // With no version the message would keep a double space where the version stands; only that
-    // first gap is collapsed, so a justification's own spacing survives as it stands.
-    return $t('intent.outline.dependency', {
-      coordinates: safe(dependency.name),
-      version: dependency.version === undefined ? '' : safe(dependency.version),
-      deliverable: dependency.deliverable,
-      justification: safe(dependency.justification),
-    }).replace('  ', ' ');
-  }
 </script>
 
 {#if errorCode !== null}
@@ -239,19 +219,6 @@
           </li>
         {/each}
       </ul>
-
-      {#if record.added_dependencies.length > 0}
-        <h3 class="outline-panel__title" data-testid="outline-dependencies">
-          {$t('intent.outline.dependencies')}
-        </h3>
-        <ul class="outline-dependencies">
-          {#each record.added_dependencies as dependency, index (index)}
-            <li class="outline-dependency" data-testid={`outline-dependency-${index}`}>
-              {dependencyLine(dependency)}
-            </li>
-          {/each}
-        </ul>
-      {/if}
     {/if}
   </section>
 {/if}
@@ -266,8 +233,7 @@
     color: var(--color-text-primary);
   }
 
-  .outline-panel__head,
-  .outline-panel__title {
+  .outline-panel__head {
     margin: 0;
     font-size: var(--text-base);
     line-height: var(--line-height-base);
@@ -278,15 +244,8 @@
     color: var(--color-text-secondary);
   }
 
-  .outline-panel__title {
-    margin-block-start: var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: 600;
-  }
-
   .outline-deliverables,
-  .outline-files,
-  .outline-dependencies {
+  .outline-files {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -336,8 +295,7 @@
   .outline-file__intent,
   .outline-deliverable__depends,
   .outline-deliverable__satisfies,
-  .outline-deliverable__verification,
-  .outline-dependency {
+  .outline-deliverable__verification {
     color: var(--color-text-secondary);
   }
 
@@ -345,9 +303,5 @@
   .outline-deliverable__satisfies,
   .outline-deliverable__verification {
     margin: 0;
-  }
-
-  .outline-dependency {
-    overflow-wrap: anywhere;
   }
 </style>
