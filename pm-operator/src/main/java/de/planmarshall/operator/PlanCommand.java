@@ -111,8 +111,6 @@ public final class PlanCommand implements Callable<Integer> {
     private static final String KEY_COUNT = "count";
     private static final String KEY_STATE_ROW = "state";
     private static final String KEY_ASPECT = "aspect";
-    /** The code with which the runtime refuses a submitted settings value itself. */
-    private static final String INVALID_VALUE = "invalid_value";
     private static final String PHASE = "phase";
     private static final String GLYPH_CHECK = "\u2713 ";
     private static final String FMT_ACTIVITY_ROW = "  %s  %-9s  %s%n";
@@ -1693,7 +1691,7 @@ public final class PlanCommand implements Callable<Integer> {
                         out.flush();
                         return 0;
                     }
-                    return refused(out, aspect, value, again.valueRefused());
+                    return refused(out, aspect, value, again.refusal());
                 }
                 if (noInput) {
                     // The --no-input stop prints the state and the option that answers it on stdout.
@@ -1709,17 +1707,18 @@ public final class PlanCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
-            return refused(out, aspect, value, outcome.valueRefused());
+            return refused(out, aspect, value, outcome.refusal());
         }
 
         /**
          * The runtime's answer to one write of a setting.
          *
-         * @param result       the write's result; a refusal is neither applied nor a conflict
-         * @param valueRefused whether the runtime refused the submitted value itself: status 422 with
-         *                     the code {@code invalid_value}
+         * @param result  the write's result; a refusal is neither applied nor a conflict
+         * @param refusal the runtime's coded refusal of the submitted value, or {@code null} when the
+         *                answer was a settings result
          */
-        private record PutOutcome(PlanSettingsUpdateResult result, boolean valueRefused) {
+        private record PutOutcome(PlanSettingsUpdateResult result,
+                        @Nullable OperatorRefusedException refusal) {
         }
 
         private PutOutcome put(int revision, String aspect, @Nullable String value) throws IOException {
@@ -1733,63 +1732,94 @@ public final class PlanCommand implements Callable<Integer> {
             payload.put("revision", revision);
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + SETTINGS_SUFFIX;
             var response = context.runtime(true).send(HttpRequest.json("PUT", endpoint, JsonTree.write(payload)));
-            if (response.status() == 200 || response.status() == 409) {
-                return new PutOutcome(PlanSettingsUpdateResult.fromJson(response.bodyText()), false);
+            if (response.status() == 200) {
+                return new PutOutcome(PlanSettingsUpdateResult.fromJson(response.bodyText()), null);
             }
-            // Only the runtime's own code says the value itself was refused; every other answer
-            // leaves the cause unknown.
-            var refusal = new OperatorRefusedException("plan settings " + planId, response);
-            var valueRefused = response.status() == 422 && INVALID_VALUE.equals(refusal.rawCode());
-            return new PutOutcome(new PlanSettingsUpdateResult(false, false, revision, null, null), valueRefused);
+            if (response.status() == 409) {
+                var answer = settingsAnswer(response);
+                if (answer != null) {
+                    return new PutOutcome(answer, null);
+                }
+            }
+            // Every other answer is the runtime's own refusal: the code it sent decides the cause the
+            // catalogue renders, and a code the catalogue does not know keeps the neutral line.
+            return new PutOutcome(new PlanSettingsUpdateResult(false, false, revision, null, null),
+                                new OperatorRefusedException("plan settings " + planId, response));
         }
 
-        private int refused(PrintWriter out, String aspect, @Nullable String value, boolean valueRefused) {
-            var line = refusalLine(aspect, value, valueRefused);
-            // A refused setting is a failure of the one-shot verb: its line goes to stderr.
+        /**
+         * Reads a {@code 409} answer that is a settings result rather than a coded refusal: a
+         * revision conflict, or a change refused as too late.
+         *
+         * @param response the runtime's answer
+         * @return the settings result, or {@code null} when the body carries no result — a coded
+         *         refusal of the act, which the caller renders from its code
+         */
+        private @Nullable PlanSettingsUpdateResult settingsAnswer(HttpResponse response) {
+            try {
+                var result = PlanSettingsUpdateResult.fromJson(response.bodyText());
+                return result.conflict() || result.restoreState() != null ? result : null;
+            } catch (IOException _) {
+                // The body is no settings result: it is a coded refusal of the act.
+                return null;
+            }
+        }
+
+        private int refused(PrintWriter out, String aspect, @Nullable String value,
+                            @Nullable OperatorRefusedException refusal) {
+            // A refused setting is a failure of the one-shot verb: its lines go to stderr.
             out.flush();
             var err = spec.commandLine().getErr();
-            err.println(line);
+            var reason = choiceReason(aspect, value);
+            if (reason != null) {
+                err.println(reason);
+            }
+            if (refusal != null && refusal.code() != null) {
+                RefusalRenderer.render(err, context.locale(), refusal);
+            } else if (reason == null) {
+                err.println(neutralLine(aspect, value));
+            }
             err.flush();
             return 1;
         }
 
         /**
-         * Words a refused change. A cause is named only where it is known. A removal gets the line
-         * {@code control.settings.refused_remove}, which names the setting and no cause. For a
-         * submitted value the settings are read again: a value outside the choices the runtime names
-         * for the setting is refused as "not one of" them. A value among the choices gets the line
-         * {@code control.settings.refused_set}, which names the setting and the value and no cause,
-         * since the refusal may have any other. Otherwise "the value does not fit" is named only when
-         * the runtime refused the value itself (status 422 with the code {@code invalid_value});
-         * every other refusal of a value — an unknown setting, a setting without choices, a re-read
-         * that fails, a refusal with another status or code — gets the same neutral
-         * {@code control.settings.refused_set} line.
+         * The "not one of the choices" line of a refusal. The settings are read again, so a value
+         * outside the choices the runtime names for the setting is named as such; that reason comes
+         * first, before any cause the runtime's own code adds.
          *
-         * @param aspect       the setting
-         * @param value        the submitted value, {@code null} for a removal
-         * @param valueRefused whether the runtime answered the write with 422 {@code invalid_value}
-         * @return the refusal line in the operator's language
+         * @param aspect the setting
+         * @param value  the submitted value, {@code null} for a removal
+         * @return the line, or {@code null} for a removal, a setting without choices, an unknown
+         *         setting, a value among the choices, and a re-read that fails
          */
-        private String refusalLine(String aspect, @Nullable String value, boolean valueRefused) {
+        private @Nullable String choiceReason(String aspect, @Nullable String value) {
+            if (value == null) {
+                return null;
+            }
+            var choices = rereadChoices(aspect);
+            if (choices.isEmpty() || choices.contains(value)) {
+                return null;
+            }
+            var locale = context.locale();
+            var reason = MessageCatalogue.format(locale, "control.settings.refused.not_a_choice",
+                                Map.of("choices", String.join(", ", choices)));
+            return MessageCatalogue.format(locale, "control.settings.refused",
+                                Map.of(KEY_VALUE, value, KEY_REASON, reason));
+        }
+
+        /**
+         * Words a refusal that names no cause it could know: the setting and the value for a write,
+         * the setting alone for a removal.
+         *
+         * @param aspect the setting
+         * @param value  the submitted value, {@code null} for a removal
+         * @return the neutral line in the operator's language
+         */
+        private String neutralLine(String aspect, @Nullable String value) {
             var locale = context.locale();
             if (value == null) {
                 return MessageCatalogue.format(locale, "control.settings.refused_remove", Map.of(KEY_ASPECT, aspect));
-            }
-            var choices = rereadChoices(aspect);
-            var amongTheChoices = false;
-            if (!choices.isEmpty()) {
-                if (!choices.contains(value)) {
-                    var reason = MessageCatalogue.format(locale, "control.settings.refused.not_a_choice",
-                                        Map.of("choices", String.join(", ", choices)));
-                    return MessageCatalogue.format(locale, "control.settings.refused",
-                                        Map.of(KEY_VALUE, value, KEY_REASON, reason));
-                }
-                amongTheChoices = true;
-            }
-            if (valueRefused && !amongTheChoices) {
-                var reason = MessageCatalogue.format(locale, "control.settings.refused.does_not_fit", Map.of());
-                return MessageCatalogue.format(locale, "control.settings.refused",
-                                    Map.of(KEY_VALUE, value, KEY_REASON, reason));
             }
             return MessageCatalogue.format(locale, "control.settings.refused_set",
                                 Map.of(KEY_ASPECT, aspect, KEY_VALUE, value));

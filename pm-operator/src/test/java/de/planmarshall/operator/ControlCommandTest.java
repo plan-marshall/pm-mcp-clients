@@ -35,6 +35,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 /**
@@ -416,9 +417,33 @@ class ControlCommandTest {
         );
     }
 
+    @ParameterizedTest(name = "{0} {1} names its cause")
+    @CsvSource({
+                        "400, invalid_arguments, The request was not accepted",
+                        "409, team_owned, The team owns this value",
+                        "409, base_branch_fixed, The base branch is fixed",
+                        "409, plan_ended, The plan has ended"
+    })
+    @DisplayName("plan settings names the cause of every code the runtime sent, on stderr")
+    void settingsCodedRefusalNamesTheCause(int status, String refusalCode, String cause) throws Exception {
+        var plan = planId();
+        var setting = choiceless();
+        serveRefusingWrite(plan, status, "{\"error\":\"" + refusalCode + "\"}", setting);
+        var value = Generators.letterStrings(3, 8).next().toLowerCase(Locale.ROOT);
+
+        int code = execute("plan", "settings", plan, "--set", setting.aspect() + "=" + value);
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains(cause), err.toString()),
+                            () -> assertFalse(err.toString().contains("is refused; nothing changed"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
     @Test
-    @DisplayName("plan settings names a value that does not fit only on the runtime's invalid_value, on stderr")
-    void settingsInvalidValueNamesTheCause() throws Exception {
+    @DisplayName("plan settings names no cause a status 422 would add of its own, on stderr")
+    void settingsStatus422IsNoLongerSpecial() throws Exception {
         var plan = planId();
         var setting = choiceless();
         serveRefusingWrite(plan, 422, "{\"code\":\"invalid_value\"}", setting);
@@ -426,10 +451,45 @@ class ControlCommandTest {
 
         int code = execute("plan", "settings", plan, "--set", setting.aspect() + "=" + value);
 
-        var refused = value + " is refused: the value does not fit";
+        var refused = setting.aspect() + " = " + value + " is refused; nothing changed.";
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(err.toString().lines().anyMatch(refused::equals), err.toString()),
+                            () -> assertFalse(err.toString().contains("does not fit"), err.toString()),
+                            () -> assertFalse(out.toString().contains("is refused"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("plan settings --yes refuses the retried write with the cause the runtime sent, on stderr")
+    void settingsRetriedWriteNamesTheCause() throws Exception {
+        var plan = planId();
+        var revision = Generators.integers(2, 90).next();
+        var puts = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if (("/api/v1/plans/" + plan + "/settings").equals(request.target())
+                                && "GET".equals(request.method())) {
+                response.json(200, settingsJson(plan, revision, landing()));
+            } else if (("/api/v1/plans/" + plan + "/settings").equals(request.target())) {
+                if (puts.incrementAndGet() == 1) {
+                    response.json(409, """
+                                        {"applied":false,"conflict":true,"revision":%d,"current_value":"method.test-first"}
+                                        """.formatted(revision + 1));
+                } else {
+                    response.send(409, "application/json", "{\"error\":\"team_owned\"}");
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "settings", plan, "--set", "method=method.tests-after", "--yes");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertEquals(2, puts.get()),
+                            () -> assertTrue(err.toString().contains("The team owns this value"), err.toString()),
+                            () -> assertFalse(err.toString().contains("is refused; nothing changed"), err.toString()),
                             () -> assertFalse(out.toString().contains("is refused"), out.toString())
         );
     }

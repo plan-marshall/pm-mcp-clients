@@ -52,7 +52,7 @@ class ApiContractTest {
             // 409
             "act_not_available", "conflict", "already_answered", "onboarding_incomplete",
             "aspect_owned", "lifecycle_closed", "scope_active", "release_landing_pending",
-            "axis_bound", "team_owned", "plan_ended", "already_consumed", "not_waivable",
+            "axis_bound", "team_owned", "plan_ended", "base_branch_fixed", "already_consumed", "not_waivable",
             "raise_out_of_range", "position_not_contained", "enrolment_root_conflict",
             "project_store_root_mismatch", "enrolment_tampered", "enrolment_insecure",
             "enrolment_invalid", "harness_version_unsupported", "web_listener_conflict",

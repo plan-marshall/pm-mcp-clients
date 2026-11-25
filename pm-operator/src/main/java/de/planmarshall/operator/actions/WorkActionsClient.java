@@ -34,6 +34,7 @@ import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -242,7 +243,10 @@ public final class WorkActionsClient {
             return new SettingsAnswer(PlanSettingsUpdateResult.fromJson(response.bodyText()), null);
         }
         if (response.status() == 409) {
-            return new SettingsAnswer(PlanSettingsUpdateResult.fromJson(response.bodyText()), null);
+            var result = settingsAnswer(response);
+            if (result != null) {
+                return new SettingsAnswer(result, null);
+            }
         }
         if (response.status() == 400) {
             var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
@@ -251,6 +255,24 @@ public final class WorkActionsClient {
                                 reason != null ? reason : "");
         }
         throw new OperatorRefusedException("plan settings", response);
+    }
+
+    /**
+     * Reads a {@code 409} answer that is a settings result rather than a coded refusal: a revision
+     * conflict, or a change refused as too late.
+     *
+     * @param response the runtime's answer
+     * @return the settings result, or {@code null} when the body carries no result — a coded
+     *         refusal of the act, which the caller surfaces through its code
+     */
+    private static @Nullable PlanSettingsUpdateResult settingsAnswer(HttpResponse response) {
+        try {
+            var result = PlanSettingsUpdateResult.fromJson(response.bodyText());
+            return result.conflict() || result.restoreState() != null ? result : null;
+        } catch (IOException _) {
+            // The body is no settings result: it is a coded refusal of the act.
+            return null;
+        }
     }
 
     /**
