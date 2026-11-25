@@ -61,11 +61,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-07`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09` — read at `doc/claude_review/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52 S-07; proposals.adoc:102-103 P-09 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:52-55; proposals.adoc:102-111 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Baseline text-guard-baseline.json and textGuard.js still exist (CC-S-07 says delete the baseline); baseline is non-empty (e.g. EpicView de foreign-word paused, DecisionView de raw-enum ci_check) and was last touched by 9890d74b/5f9e60da; many views listed as touched changed since the anchor, so the amount of residue should be re-counted at outline.
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: text-guard baseline is non-empty but smaller: only ProcessDesigner (17) and ProjectExplorerView (4) remain; EpicView and DecisionView are empty (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: text-guard-baseline.json: EpicView (:16-19) and DecisionView (:28-31) are empty; only ProcessDesigner (de 9, en 8) and ProjectExplorerView (4) remain (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -80,6 +80,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/designer.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/designer.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -110,6 +112,14 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
 
 - Claim 1 contradicted (`rescoped: yes`, same deliverable, smaller residue): the text-guard baseline is non-empty but only `ProcessDesigner` (de 9 + en 8) and `ProjectExplorerView` (2+2: `de.cuioss`, `github.com`) remain; `EpicView` and `DecisionView` are empty, so the cited examples are stale. `CompletionReportView` still has no `data-model-text`; `PlanView` has 4. Parked behind PLAN-70.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claim 1 contradicted: the baseline holds only `ProcessDesigner` (de 9, en 8) and `ProjectExplorerView` (4: `de.cuioss`, `github.com`); `EpicView` and `DecisionView` are empty.
+- **D1** = empty the two remaining views; decide narrow-or-allow per element for the host-shaped ids and the designer's unit ids (their texts come from `designer.*.properties`); mark the plan view's tool-name/tool-target spans as model text (`PlanView.svelte:1317-1321`). The PLAN-70 dependency is a file overlap (`theme-readability.spec.js`), not a content one.
 
 ## Hand-Off Command
 

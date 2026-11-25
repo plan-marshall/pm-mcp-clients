@@ -114,27 +114,27 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 ## Claim Labels
 
 - OBSERVED: the terminal posts `payload.put("message", message)` to `…/chat/turns` and expects status `200` — read at `pm-operator/src/main/java/de/planmarshall/operator/actions/WorkActionsClient.java:318-330`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: WorkActionsClient.chatTurn :338-349 posts ChatTurnRequest(text, client_turn_id) to routes.turns() and expects 202 ChatTurnAccepted (PLAN-161 #429); D1 wire half done; the id is drawn fresh per call (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: WorkActionsClient.java:339-350 posts ChatTurnRequest(text, client_turn_id) to routes.turns() and expects 202 ChatTurnAccepted (PLAN-161 #429); the id is a fresh UUID per call (:342) (3dea04b2)
 - OBSERVED: `plan chat --message` posts to `…/chat` and prints the raw body — read at `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java:347-361`; `PlanCommand.java:811-831`; `EpicCommand.java:574-594`
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: the message flag still exists (PlanCommand:977, EpicCommand:725); ActionSupport.chat :354 prints chatTurn(...).toJson() via the turns route; O8 removal still to do (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: the --message still exists (PlanCommand.java:1089, EpicCommand.java:736) but ActionSupport.java:387-388 prints chatTurn(..).toJson() through the turns route, not .../chat (3dea04b2)
 - OBSERVED: the design lists `plan chat <plan_id>` and `epic chat <epic_id>` with no `--message` and says chats are dialogues — read at `doc/design/terminal-client/19-actions.adoc:27,39,47`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: 19-actions.adoc:27,:39 list plan chat and epic chat with no message flag; :47,:401 call chats dialogues (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: 19-actions.adoc:27,39 list plan/epic chat with no flag; :49 the chat is a dialogue; :403 (3dea04b2)
 - OBSERVED: the start chat ends on an empty line (`api.endChat`) — read at `pm-operator/src/main/java/de/planmarshall/operator/ChatDialogue.java:58-91`; the plan and epic chat ends the dialogue on a blank message — read at `WorkChatDialogue.java` § `execute`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue:86-87 empty answer calls endChat; WorkChatDialogue.execute :168-171 blank line prints chat.kept and returns without end (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatDialogue.java:86-87 empty answer ends the chat; WorkChatDialogue.java:160-161 blank prints chat.kept and leaves (3dea04b2)
 - OBSERVED: no stream, no stop key, and no step lines in `WorkChatDialogue` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue has no stream, stop key or step lines; it polls awaitReply (WorkActionsClient:395-413) (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue has no SseReader/stop/step; the reply is polled by WorkActionsClient.awaitReply :396-413 (3dea04b2)
 - OBSERVED: `PmConsole` pushes events above the prompt with `reader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole uses reader.printAbove at :747,:889; class doc :53 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole.java:746,888 printAbove / printAboveOrHold (3dea04b2)
 - OBSERVED: `StartPrompt` wraps a JLine `LineReader` (`askRaw`, `askInline`, `reader()`) — read at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java:138,155,217`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt askRaw :141, askInline :158, reader() :220 build on a JLine LineReader (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.java:189 askRaw, :206 askInline, :268 reader(), :249-257 read(LineReader) (3dea04b2)
 - HYPOTHESIS: the dialogues in `pm-operator` can read a plan's, an epic's and a workspace's event stream through `pm-api`'s `SseReader` and `UnixSocketHttpClient` without a new dependency — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/http/SseReader.java` and `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java` § event stream (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: HttpExchange.events() :80 returns an SseReader; PmConsole:682 uses it; no new dependency; the mock serves plan and epic streams (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: HttpExchange.java:80 events() returns SseReader; PmConsole.java:681 uses it; the mock serves plan/epic/entry/workspace streams (MockRuntimeEngine.java:8367-8375) (3dea04b2)
 - HYPOTHESIS: a typed line `s` or `q` while the reply writes can be read with the JLine `LineReader` and `printAbove` in one thread pair without a raw-key mode — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: thread behaviour of readLine with printAbove is a runtime property (StartPrompt.read :201) (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: readLine with printAbove threads is a runtime property (StartPrompt.java:249); O9 makes input line based (3dea04b2)
 - HYPOTHESIS: the `operator.actions.chat.*` set of `22-texts-actions.adoc` is 21 keys and none of them but `operator.actions.chat.{you,accept,reject…}` exists — confirm/refute at `doc/design/terminal-client/22-texts-actions.adoc` and `pm-api/src/main/resources/messages/operator.en.properties:341-360` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: 22-texts-actions.adoc lists 21 keys; operator.en.properties has chat.you, this_item, accept, reject, accepted, follow_up, no_input, key.chat; the rest absent (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: 22-texts-actions.adoc lists 12 operator.actions.chat* keys (:48-92) plus 6 of PLAN-139 (:224-244); operator.en.properties:360-381 already has head, scope.*, answers, kept, applied, no_proposal, read_only, proposed, follow_up_started (3dea04b2)
 - Verify-first clause: re-read every file above at the then-current HEAD (PLAN-123, running, edits `PlanCommand` and `AnswerCommand`; PLAN-30, 42, 44, 48 touch `ActionSupport`, `EpicCommand`, `PmConsole`); the operator's answers to O8 and O9 are read before scoping deliverables 1 and 3.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-123 and PLAN-30 shipped (3dea04b2)
 
 ## Expected Surface
 
@@ -163,6 +163,9 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WorkChatDialogueTest.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ReviewDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `doc/Traceability.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/ChoicePrompt.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/shared/work-actions.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -217,6 +220,19 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Claims 0 and 1 contradicted (`rescoped: yes`). Claim 0: **D1's wire half is DONE**: `WorkActionsClient.chatTurn :338-349` posts `ChatTurnRequest(text, client_turn_id)` to `routes.turns()` and expects 202 `ChatTurnAccepted` (PLAN-161 #429); the id is drawn fresh per call, so a repeat is never sent. Claim 1: `--message` still exists (`PlanCommand:977`, `EpicCommand:725`) and `ActionSupport.chat :354` prints `chatTurn(...).toJson()`; the O8 removal is still to do (tests that drive it and break on removal are now in the surface).
 - Stale: the Objective says an empty line "ends" the plan or epic chat; `WorkChatDialogue` only leaves (`chat.kept`, `:168-171`). D4's last bullet says Enter "opens `plan add`" although the runtime accept already opens the start (double start; the PLAN-161 residue asks to re-design D4). PLAN-139 owns `older_command`, `no_older`, `changes_command`, `lines_folded`, `open_hint`, `nothing_to_open`, which D5's "every key of 22-texts-actions" also names. PLAN-174 (running) overlaps. Staged behind PLAN-42, 44, 48.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claims 0, 1, 9 contradicted: the terminal already posts `ChatTurnRequest(text, client_turn_id)` to the turns route and expects 202 (PLAN-161 #429, `WorkActionsClient.java:339-350`); `--message` still exists and prints the turns answer; the chat key set is larger than the spec counts (`22-texts-actions.adoc:48-92,224-244`; `operator.en.properties:360-381`).
+- **D1**: the wire half is done. Keep: remove `--message` (exit 2, unknown option); open the chat (POST) before the first turn; keep one `client_turn_id` per message for the automatic retry, or drop that test clause (the id is drawn fresh per call, `:342`). Fold the `awaitReply` residue (`:396-413`, `WorkChatDialogue.java:194-198`) into D3.
+- **D2**: the key to remove is `operator.actions.chat_end`, the design's replacement is `operator.actions.chat_leave` (`22-texts-actions.adoc:48`); remove `chat.kept` too.
+- **D3**: one design sentence first in `19-actions.adoc:444` (s+Enter stops, q+Enter leaves, any other line is held and offered next).
+- **D4**: the ended-work Enter accepts through the runtime and then prints `control.chat.follow_up.opened` and leaves (core state-catalogue `#chat`, runtime-model `01:300`); no second `plan add`; correct `19-actions.adoc:482` and `shared/work-actions.adoc:468` first. A plan in `sanity-check` is outside the revision window (core phase-workflows/08 `:133`, 09): state it in the D4 tests; no client code. Already done: Enter accepts, `r)` rejects, the applies text, "proposes no change yet" once (`WorkChatDialogue.java:166-347`).
+- Standing constraints: the merge rule is `CLAUDE.md`'s (the lane merges its own PR once the gates hold), not "only on the operator's word".
+- Overlaps the removal and seven-phase packages of `doc-review-2026-11-24-001` (`operator.*.properties`, `phase.name.*`): rebase on them.
 
 ## Hand-Off Command
 

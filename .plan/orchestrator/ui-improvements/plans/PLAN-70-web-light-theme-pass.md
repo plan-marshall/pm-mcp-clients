@@ -44,21 +44,21 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-07`, `doc/claude_review/visual-design/findings.adoc#VD-F-10` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:58 VD-S-07; findings.adoc:100-101 VD-F-10 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:58-61; findings.adoc:100-105 (3dea04b2)
 - Re-grounded note (2026-10-30, operator request): `PLAN-85` (`web-theme-in-browser-settings`) moves the theme control from the rail foot and the More sheet to the pairing page and a new Settings view "This browser"; the storage stays `localStorage` `pm_theme`. The contrast audit's theme switch (`helpers/contrast.js` `setTheme`, `theme-readability.spec.js`) keeps working if it sets the storage; a check of this plan that "chooses" a theme through the rail control uses the new places or sets the storage.
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: PLAN-85 option A keeps theme in the rail and More sheet (NavRail:195, BottomBar:209); README.adoc:424; the new places instruction is moot (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: option A keeps both controls in the rail and More sheet (README.adoc:150,156,426; NavRail.svelte:195-211; BottomBar.svelte:209-229); the instruction is moot (3dea04b2)
 - Re-grounded note at HEAD bf8ddb31 (2026-10-31): `web-standards-conformance` (PLAN-80, shipped, PR #281) changed `helpers/contrast.js` (a bounded quiet-frame wait) and `theme-readability.spec.js`, and its run reports that the contrast matrix calls `setTheme` before `page.goto` while `app.html` re-derives `data-theme` from a `localStorage.pm_theme` nothing writes, so the "dark" half of the audit may audit the light theme. Before this plan's light pass relies on the audit, it asserts that `document.documentElement.dataset.theme` equals the theme the test requested, in both themes, and reports any audit that ran under the wrong one. A light-theme verdict from a matrix that cannot show dark is not a verdict.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: same facts as PLAN-85 claim 6: the dark half of the matrix can audit light (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-19 sets only data-theme; theme-readability.spec.js:664/667 setTheme before goto; no dataset.theme assertion (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): The wrong-theme concern is partly still live: helpers/contrast.js setTheme sets data-theme on documentElement after navigation and waits for transitions, but theme-readability.spec.js has no assertion that dataset.theme equals the requested theme, so the spec's planned assertion is still due; PLAN-37 axe-core (c5bfb1ca) also changed these files.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: no data-theme or dataset.theme assertion in theme-readability.spec.js or contrast.js (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: same evidence at 3dea04b2 (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause; not settleable by reading (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 - OBSERVED: tokens.css:5 names both [data-theme='light'] and [data-theme='dark'] in its header comment and :9 opens :root, so Button.test.ts:167-173 blockOf resolves both themes to :root — read at `pm-web-app/src/styles/tokens.css` :5-9 and `pm-web-app/src/lib/components/Button.test.ts` § `blockOf` at 1cc0e10e
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.test.ts:285-292 strips comments before blockOf so light and dark resolve to tokens.css:200 and :244; no palettes-differ assertion exists, fold bullet 1 half done (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.test.ts:287-288 strips comments, blockOf :291-297 reads per theme (:314-315); the palettes-differ guard is still absent (3dea04b2)
 - HYPOTHESIS: RowMenu.test.ts ~285-310 asserts hex values read by a regex that is true by construction and never reads bg-subtle or the prefers-color-scheme block — confirm/refute at `pm-web-app/src/lib/components/RowMenu.test.ts` (verify-at-outline)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: RowMenu.test.ts ~271-343 computes ratios (>=3.0) with no pinned hex; only tautological toMatch lines remain; reads bg-surface and bg-raised, not bg-subtle or the media block (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: RowMenu.test.ts:271-338 computes ratios (>=3.0) and pins no hex; it still does not read bg-subtle or the media block (3dea04b2)
 - HYPOTHESIS: some pair of Button's 4.5:1 table fails in the real dark palette — confirm/refute by running the corrected test (verify-at-outline)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.test.ts:244-331 table asserts >=4.5 in both themes with real blocks on a green main (#406); ratios not recomputed (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.test.ts:247-335 asserts all 5 pairs >=4.5 in both themes; tokens.css unchanged except --state-slot-width (3dea04b2)
 
 ## Expected Surface
 
@@ -70,6 +70,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/components/Button.test.ts` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
 - OBSERVED: `pm-web-app/src/lib/components/RowMenu.test.ts` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
+- OBSERVED: `pm-web-app/src/lib/views/theme.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -104,6 +105,16 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Claims 1, 5, 6 and 7 contradicted (`rescoped: yes`). Claim 1: PLAN-85's option A keeps the theme in the rail and the More sheet, so the "new places" instruction is moot. Claim 5: `Button.test.ts:285-292` strips comments before `blockOf` (done, #406), but no palettes-differ assertion exists. Claim 6: `RowMenu.test.ts` ~271-343 computes ratios with no pinned hex (done, #394); it reads `bg-surface`/`bg-raised`, not `bg-subtle` or the media block. Claim 7: `Button.test.ts:244-331` asserts >=4.5 in both themes on a green main (ratios not recomputed).
 - Still due: the palettes-differ guard, mutation evidence, the `setTheme` assertion (`contrast.js:14-17` sets only `data-theme`, so the dark audit can run light), the whole light pass and the design record. Parked behind PLAN-59, 62, 85, 154, 156; PLAN-72 restructures `tokens.css` and overlaps.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claims 1, 5, 6, 7 contradicted: option A keeps the controls in the rail and More sheet (the "new places" instruction is moot); `Button.test.ts` strips comments and reads per theme, `RowMenu.test.ts` computes ratios and pins no hex, and all five Button pairs assert ≥ 4.5:1 in both themes.
+- **D1 gains** the clause PLAN-85 option A assigned here and nobody carried: `setTheme` writes `pm_theme` in the page origin (or sets the theme after `goto`) and every audited test asserts `document.documentElement.dataset.theme` equals the requested theme (test-first with a mutation run).
+- **Residue fold**: still due — the palettes-differ guard (put it in `tokens.test.ts` beside `parseThemes`, `:354-368`), the mutation evidence, `RowMenu` reading the real light block and `bg-subtle`/the media block; `blockOf` exists three times: reuse one reader. This test-only slice has no dependency and may be emitted early.
+- **D2 / design record**: `theme-readability.adoc:17` ("in the header") and `:208` (`MachineSettingsView`) are stale: fix both. Sequence against `doc/plans/ui-rule-catalogue.adoc` and PLAN-73 (all edit `theme-readability.spec.js`/`contrast.js`).
 
 ## Hand-Off Command
 

@@ -65,25 +65,25 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 ## Claim Labels
 
 - OBSERVED: the theme is stored in `localStorage` under `pm_theme` with `light`, `dark`, `system`, and `app.html` reads it in an inline script before the first paint — read at `pm-web-app/src/lib/theme.ts` and `pm-web-app/src/app.html` at HEAD 07104678
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 pm_theme (read :57, write :76); app.html:20 reads it in an inline script before first paint (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme.ts:20 key, :57 read, :76 write; app.html:16-36 reads pm_theme before first paint (3dea04b2)
 - OBSERVED: the choice stands in the rail foot (`NavRail.svelte`, fieldset `theme-choice`) and, on a phone, in the More sheet (`BottomBar.svelte`); `+layout.svelte` holds `themeChoice` and calls `writeThemeChoice` — read at HEAD 07104678; `doc/design/web-app/README.adoc` § Light and Dark Themes (line 374) and the rail description (line 171) say so
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:187-195 language toggle and theme-choice fieldset; BottomBar sheet :202-230; +layout.svelte:210,287-288; README.adoc:150,156,424 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:184-211; BottomBar.svelte:196-231; +layout.svelte:210,286-290; README.adoc:150,156,426 (3dea04b2)
 - OBSERVED: `PairingView.svelte`, `RevokedView.svelte`, `SettingsView.svelte` (devices, `/settings`) and `MachineSettingsView.svelte` (`/settings/machine`) exist; `nav.ts` has a Settings destination — read at HEAD 07104678
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: MachineSettingsView.svelte no longer exists (PLAN-60 #457); /settings/machine redirects to ?tab=setup (routes.ts:728); option A already narrows the scope (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: MachineSettingsView.svelte is gone; /settings/machine replaced by ?tab=setup (routes.ts:761-765); PairingView, RevokedView, SettingsView exist (3dea04b2)
 - OBSERVED: the language choice is stored in local storage under `pm_locale` and is offered in the rail foot and the More sheet beside the theme — stays stored as it is; its control moves with the theme control
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:8 pm_locale; language toggle in NavRail.svelte:187 and BottomBar sheet :202 and frame bar :245 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: i18n/index.ts:8 pm_locale; NavRail.svelte:184-193; BottomBar.svelte:199-207,242-250 (3dea04b2)
 - HYPOTHESIS: `PairingView` and `RevokedView` render without the frame, so the control has to be mounted by the views themselves (`PLAN-39` kept the frame controls on such pages) — confirm/refute at the two views and `AppShell.svelte` (verify-at-outline)
-  - verdict: contradicted | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:354-361 renders RevokedView, PairingView, ListenerOffView and OnboardingView inside AppShell; BottomBar frame fallback :243 carries both controls; option A dropped this deliverable (origin/main 7b60cec0)
+  - verdict: contradicted | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: yes | evidence: +layout.svelte:336-390 renders RevokedView/PairingView inside AppShell; AppShell.svelte:35,45 always mounts NavRail and BottomBar; BottomBar.svelte:234-273 frame fallback carries both controls (3dea04b2)
 - HYPOTHESIS: `helpers/contrast.js` `setTheme` sets the theme through the page's control or storage, and other e2e specs click the rail's theme control — search `pm-web-e2e/tests` for the control's test ids and `pm_theme` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-17 setTheme sets only the data-theme attribute; chrome.spec.js:104-114 and workspace.spec.js:73-76 assert the theme after clicking the rail control (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: contrast.js:14-19 setTheme sets only data-theme; chrome.spec.js and workspace.spec.js assert through the rail control (3dea04b2)
 - OBSERVED (reported by the run of PLAN-80, not verified here): the contrast matrix of `theme-readability.spec.js` calls `setTheme` (`helpers/contrast.js`) before `page.goto`, and `app.html` re-derives `data-theme` from `localStorage.pm_theme`, which nothing writes — so the "dark" audit may run under the light theme. This plan changes where the choice is made and the helpers that set it: it makes `setTheme` set `pm_theme` in the page's origin before the app loads (or choose through the control on the pairing page) and asserts `document.documentElement.dataset.theme` equals the requested theme in every audited test, so no audit passes under the wrong theme.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js calls setTheme after pair() and before page.goto at :664,:745 and about 18 more places; nothing writes pm_theme; no dataset.theme assertion (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: theme-readability.spec.js:664 setTheme then :667 page.goto; no dataset.theme assertion (3dea04b2)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-60` (the one settings view), `PLAN-70` (light theme pass), `PLAN-16` (locale switch) and `PLAN-37` (accessibility baseline) edit the same files. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-60 landed (#457) (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-60 landed (#457) (3dea04b2)
 - OBSERVED: `RevokedView` resolves its reason from `device`, `terminal`, `others`, `self`, `idle`, `device_revoked` and `device_expired`, and the wire sends only the last two — read at `pm-web-app/src/lib/views/RevokedView.svelte:25-75` (3ae8a305) and `runtime.ts:55-60,745-755`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: resolveReason branches device, terminal, others, self, idle plus device_revoked and device_expired (RevokedView.svelte at origin/main 3ae8a305); the wire's two values are the PLAN-157 landing's re-read (runtime.ts:745-755, client.ts:5200-5208)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RevokedView.svelte:20-76 invented reason keys; runtime.ts:66-71 RevokedInfo drops the channel; 06-event-catalogue.adoc:26 stream.closed carries channel+device+time (3dea04b2)
 - OBSERVED: the `shellGone` guard stands at `+layout.svelte:257` and `layout.test.ts:105` is the only test that names it — read by `git grep -n shellGone -- pm-web-app/src`
-  - verdict: corroborated | checked_at: 3ae8a305f6424f9b53c15ce81547ca675f6f9946 | by: ui-improvements/analyze | rescoped: n/a | evidence: git grep shellGone finds +layout.svelte:247,249,257 and layout.test.ts:105 only (origin/main 3ae8a305); the revert behaviour of the test is the landing's reading, not re-run
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: +layout.svelte:247,249,257 shellGone; only routes/layout.test.ts names it (3dea04b2)
 
 ## Expected Surface
 
@@ -91,8 +91,6 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 
 - OBSERVED: `pm-web-app/src/lib/shell/BottomBar.svelte` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD 1cc0e10e (tab host; owned by PLAN-60 / PLAN-45)
-- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.svelte` — absent at HEAD 1cc0e10e; created by this plan
-- OBSERVED: `pm-web-app/src/lib/views/BrowserSettingsView.test.ts` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-api/src/main/resources/messages/settings.en.properties` — present at HEAD 1cc0e10e
@@ -112,6 +110,9 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 - OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
 - OBSERVED: `pm-web-app/src/routes/layout.test.ts` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
 - OBSERVED: `doc/design/web-app/entry.adoc` — present at HEAD 3ae8a305 (folded D3, 2026-11-23)
+- OBSERVED: `doc/design/web-app/machine-settings.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-e2e/tests/brand-s12-screenshots.spec.js` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -152,6 +153,18 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 ## Folded from the PLAN-157 landing 2026-11-23 (analyze, operator)
 
 The operator chose (decision 2, proposal 1) to fold the layer-3 findings of PLAN-157 (#535) into this plan as deliverable 3. **A correction of the proposal's premise:** the Expected Surface of this plan does NOT hold the entry views (option A of 2026-11-10 took them out; only the Write-Boundary list below still names them), so the fold widens the surface by the nine paths added above; the wire-value work of the entry pages is unrelated to the theme tab and can move to another plan on the operator's word. PLAN-85 was NOT re-grounded at this fold beyond the two new claims: its older claims (surface touched by PLAN-59, 156 and 157: `routes.ts`, `SettingsView.svelte`, `chrome.spec.js`, `runtime.ts`) are re-read before the emit, and the plan emits after PLAN-144 lands.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- Claims 2, 4 contradicted: `MachineSettingsView.svelte` is gone (`/settings/machine` → `?tab=setup`); the pairing and revoked views render inside `AppShell`, which always mounts the rail and the bottom bar (`+layout.svelte:336-390`, `AppShell.svelte:35,45`).
+- **D1 is deleted** (option A, 2026-11-10: both controls stay in the rail foot and the More sheet, `README.adoc:150,156,426`); `ThemeChoice.svelte`, `LocaleSwitch.svelte` and `BrowserSettingsView.svelte` leave the surface. The `setTheme`/`pm_theme`/`dataset.theme` bullet moves to PLAN-70 D1.
+- **D2** becomes the tab `browser` of the one `SettingsView` (`README.adoc:426,487,494`): add it to `SETTINGS_TABS`/`TAB_KEYS`, the panel (with `RadioGroup`), the `replaceLegacyAddress` rule for `/settings/browser`, texts `web.settings.browser.*`, and `machine-settings.adoc:60` (sixth tab). Drop `browser-settings.adoc`. Delete the Done-when "no document still says the control stands in the rail foot or More sheet" (the design requires it); replace by "`README.adoc:426,487` match the tab as built". State who owns this browser's dictation choice (`web.voice.browser_choice`): if the voice package has not landed, the tab ships theme and language only.
+- **Operator decision before emit**: which duplicate toggle in `BottomBar` goes. Proposal: keep the More sheet toggle, make the frame-bar controls (`BottomBar.svelte:234-273`) the documented pre-pairing place, and fix `README.adoc:426`'s "no rail" sentence.
+- **D3 RevokedView**: the wire carries channel, device and time for `device_revoked`/`device_expired` (`06-event-catalogue.adoc:26`); `RevokedInfo` drops the channel (`runtime.ts:66-71`) and the view resolves invented reason keys. Carry the channel and derive "in the terminal" / "from device X"; amend the rows of `entry.adoc:84-100` the wire cannot tell apart ("all other devices", "idle"); no test fed with invented keys.
+- Removed from the Expected Surface (void or replaced, see above): pm-web-app/src/lib/views/BrowserSettingsView.svelte, pm-web-app/src/lib/views/BrowserSettingsView.test.ts.
 
 ## Hand-Off Command
 

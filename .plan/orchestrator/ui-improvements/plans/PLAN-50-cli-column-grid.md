@@ -48,15 +48,14 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 S-04; proposals.adoc:76,112; findings.adoc:72 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:40-41; proposals.adoc:76-77,112-113; findings.adoc:72-73 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: no RowLayout anywhere; layout/ = OperatorLayout + package-info only; system/ has SystemView, SystemLevel, SystemFormatting (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: no RowLayout; layout/package-info.java:11 is the installation layout; system/ has SystemView, SystemLevel, SystemFormatting (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
-- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/layout/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiRow.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/planview/` — present at HEAD c4dc9bb4
@@ -71,6 +70,10 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at `cc0d62af` (added by the cleanup of 2026-11-10)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/RowLayout.java` — absent at `dc811fb3`; created by this plan (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewFormatting.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/epicview/EpicViewFormatting.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/projects/ProjectsExplorerLevel.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -113,6 +116,17 @@ Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improve
 Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`, origin/main `7b60cec0`; sibling repos read at their local refs only). Contradicted claims are stamped `rescoped: yes` with the corrections below; read before the outline:
 
 - Stale: the Expected Surface names `layout/` (installation layout); `RowLayout` belongs in `tui/`. Repeats still present: `plan.leaf.task` `{status} · {outcome}` (`plan_view.en.properties:33`) and "{done} of {total} tasks done" (`:32`); the system view's double "not measured" is fixed (#299). Design conflict on the need/state column widths (`15-overview`) unresolved. Depends on PLAN-44 (staged).
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted.
+- **Design amendment first**: the width conflict (need 14, cut to 12, state 12, state words longer, the wireframes put the state in the facts area; 80 columns undefined, `15-overview.adoc:61-90`). Needs PLAN-44's styled-segment row model (`TuiRow` is one plain string).
+- **Surface**: `RowLayout` belongs in `tui/` (`layout/` is the installation layout): struck from the surface; the epic and project rows (`EpicViewFormatting`, `ProjectsExplorerLevel`) use the grid. PLAN-191 (running) renames the `stale` wait reason in `EpicViewFormatting`: sequence after it.
+- D2 partly done (PLAN-26 #299: one "not measured" in the system view); still open: `plan.leaf.task`, the doubled "tasks done" (`PlanViewLevel.java:576,625`), the doubled report age (`ReportsLevel.java:190-206`).
+- Removed from the Expected Surface (void or replaced, see above): pm-operator/src/main/java/de/planmarshall/operator/layout/.
 
 ## Hand-Off Command
 

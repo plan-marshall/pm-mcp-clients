@@ -46,16 +46,17 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/cross-cutting/plan.adoc:58-59 S-06; proposals.adoc:97 P-05; doc/plans has no proof-of-presence file (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:58-61; proposals.adoc:97-98 (3dea04b2)
 - HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: documentation origin/main ref (local): doc/later-improvements.adoc:17-26 L-1 deferred; requirements/08-security.adoc:57,60,164 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: later-improvements.adoc:17-24 L-1 deferred; roadmap.adoc:206 no milestone; clients 02-operator-channel.adoc:140 item 3 (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `doc/plans/proof-of-presence.adoc` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `doc/specification/cli-and-security/02-operator-channel.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -76,6 +77,14 @@ This section supersedes the spec text and earlier notes where they differ.
 - Gap if ever emitted: the ADR has no home (the documentation repository has no ADR directory for the product's own
   decisions); name the path or record the decision in the L-1 entry.
 - Disposition: stays HELD (the operator's), re-ground again when the L-1 milestone is planned.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; stays held (L-1 deferred, no milestone).
+- If ever emitted: the ADR goes to `pm-mcp-clients` `doc/adr/` (ADR 001; plan-marshall-documentation has no ADR directory), and D2 also changes `doc/specification/cli-and-security/02-operator-channel.adoc:140` item 3 (the client specifications moved here on 2026-11-18).
 
 ## Hand-Off Command
 

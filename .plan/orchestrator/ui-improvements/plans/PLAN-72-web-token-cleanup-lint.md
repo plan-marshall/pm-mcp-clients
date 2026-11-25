@@ -46,11 +46,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-08`, `doc/claude_review/visual-design/proposals.adoc#VD-P-02` — read at `doc/claude_review/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63 S-08; proposals.adoc:28 P-02 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:63-67; proposals.adoc:28; README.adoc:52 stylelint decision (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Many listed components/views now exist or were changed by PLAN-25/35/43 and PLAN-90 (ErrorState, Skeleton, DataTable, Dialog, Tabs, Toast, Chip, etc.); tokens.css still carries the old aliases (line 100), no stylelint dependency yet (package.json), a styles/tokens.test.ts exists. Scope unchanged but the alias sweep now covers more files.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css:129 old token names removed in VD-S-08; tokens.test.ts:170 ALIASES; no stylelint in package.json/pom/eslint (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: tokens.css:131-157 26 aliases; tokens.test.ts:164-191,474-478; no stylelint in package.json (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -66,6 +66,13 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/.stylelintrc.json` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `pm-web-app/src/test/stylelint-fixture.svelte` — absent at HEAD 1cc0e10e; created by this plan
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
+- OBSERVED: `pm-web-app/scripts/vocabulary-lint.mjs` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/scripts/vocabulary-baseline.json` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/shell/` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/templates/` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/routes/` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/styles/base.css` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/styles/choice-screen.css` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -99,6 +106,16 @@ row is not in the disjointness gate population). When restarted:
 Verdicts persisted per claim at `dc811fb3` (`corpus set-verdict`, by `ui-improvements/cleanup`). Read before the outline:
 
 - Already done: `--color-success-subtle` has its own value (25137445, #427). Aliases now at `tokens.css:113+`, `ALIASES` at `tokens.test.ts:137`.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; after PLAN-70.
+- **D2**: the operator's decision is recorded (stylelint in the Maven build, `README.adoc:52`); raw-hex and unknown-token scans exist as vitest scans (`tokens.test.ts`, `theme-readability.adoc:185,199`) and the vocabulary lint runs in warning mode with a baseline. D2 = stylelint with the raw-colour and old-token rules wired into `pm-web-app/pom.xml`; decide whether the `tokens.test.ts` scan is deleted or kept. Switching the vocabulary lint to `--error` and its missing rules is a separate follow-up.
+- **D1**: removing the aliases also removes `tokens.test.ts:163-191,474-478` and `theme-readability.adoc:117-119,196`: name them in the Done-when. `--color-success-subtle` already has its own value (#427): drop that line.
+- The "any view" scope covers `src/lib/shell/`, `src/lib/templates/`, `src/routes/`, `src/styles/base.css`, `src/styles/choice-screen.css` and `src/lib/views/onboarding/screens.css` too.
 
 ## Hand-Off Command
 

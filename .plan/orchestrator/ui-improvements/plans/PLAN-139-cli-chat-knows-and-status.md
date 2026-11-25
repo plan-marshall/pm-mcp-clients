@@ -101,19 +101,19 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 ## Claim Labels
 
 - OBSERVED: `PlanViewLevel`, `PlanViewFormatting`, `OverviewFormatting` exist in `planview/` and `overview/` and are edited by PLAN-123 (running) — read at `pm-operator/src/main/java/de/planmarshall/operator/planview/PlanViewLevel.java`, `.../overview/OverviewFormatting.java`; the PLAN-123 surface in `queue-view.md`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel, PlanViewFormatting, OverviewFormatting, ProjectWorkLevel exist; PLAN-123 is shipped (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PlanViewLevel, PlanViewFormatting, OverviewFormatting, ProjectWorkLevel exist; PLAN-123 shipped (3dea04b2)
 - OBSERVED: the terminal has no chat that follows a stream and no `o`, `older` or `changes` — read at `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` § `execute`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue.java:173 client.chatTurn; no older/changes/o/knows/folded keys/stream-follow in operator main (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: WorkChatDialogue has no stream-following chat and no o/older/changes (3dea04b2)
 - OBSERVED: events are pushed above the prompt by the console with `LineReader.printAbove` — read at `pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java:652,788`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: reader.printAbove at PmConsole:747, printAboveOrHold :887-889 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: PmConsole.java:746,888 (3dea04b2)
 - HYPOTHESIS: a dialogue can print a `–` line above its prompt through the same `LineReader` it asks with, without `PmConsole` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `reader()` (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.reader() :220 returns the JLine LineReader; printAbove works only while a readLine is active (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: StartPrompt.java:268 reader() returns the dialogue's LineReader; 04-console.adoc:322-331 (3dea04b2)
 - HYPOTHESIS: the plan view and the overview row get `queued_revision` from the resources PLAN-132 extends, so no new route is read — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/overview/ActivePlanSummary.java` after PLAN-132 (verify-at-outline)
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: queued_revision on ActivePlanSummary:45-46,68; ProcessTree:45-46,67; operator main does not use it (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ActivePlanSummary.java:45-46,66,175-196; ProcessTree.java:45-46,65; QueuedRevision.java:34; pm-operator does not read it yet (3dea04b2)
 - HYPOTHESIS: pre-filling a line editor buffer for a starter is possible with `LineReader.readLine(prompt, null, buffer)` — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` § `read` (verify-at-outline)
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: JLine is 4.5.0 (pm-operator/pom.xml:16) not 3; the jar API cannot be settled by reading sources (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: JLine 4.5.0 API (pm-operator/pom.xml:16) not settleable by reading the tree (3dea04b2)
 - Verify-first clause: re-read the files above at the then-current HEAD (PLAN-123, 44 and 50 touch `planview/` and `overview/`); PLAN-138 and PLAN-134 must have landed.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-138 is staged so the precondition is not met (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural; PLAN-138 not landed (3dea04b2)
 
 ## Expected Surface
 
@@ -140,6 +140,9 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiKeyRegistry.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/ActionMenus.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -154,6 +157,18 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 ## Re-Grounding at Restart
 
 Re-read every named file at the then-current HEAD; settle the HYPOTHESES; re-run `corpus surfaces`; list which of PLAN-123, 44, 50 landed.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted; PLAN-138 has not landed, so the verify-first precondition is unmet.
+- **D3**: the cause key `chat.ended.ended_by` exists nowhere; the cause texts are `control.chat.ended_elsewhere`, `subject_ended`, `entry_closed` (`control.en.properties:289-292`).
+- **D5**: the shared knows/starter/folded/revision texts exist (`control.en.properties:243-333`); only six `operator.actions.chat.*` keys are new (`older_command`, `no_older`, `changes_command`, `lines_folded`, `nothing_to_open`, `open_hint`, `22-texts-actions.adoc:224-244`).
+- **D1**: the knows line prints a phase name; `phase.name.*` has six values and no `sanity-check` — depend on the seven-phase package or test with a generic phase.
+- **Dependency cycle**: it needs PLAN-140's D-R134 mock fixtures while PLAN-140 follows it. Cut D-R134 into its own package ahead of PLAN-139 (PLAN-140 allows the split); until then drive events through `/mock/broadcast`.
+- Overlaps the off-track/over_size removal package (`PlanViewFormatting`, `PlanViewFormattingTest:145`). Merge rule as PLAN-138.
 
 ## Hand-Off Command
 

@@ -76,11 +76,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:29-30,50-51; proposals.adoc P-01 :9, P-02 :64, P-05 :120 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: visual-design/plan.adoc:29-30,50-51; proposals.adoc:9,64,120 (3dea04b2)
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
-  - verdict: corroborated | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: tui/ has no Style.java, Glyphs.java, StyleTest, GlyphsTest or RawEscapeGuardTest; only raw ESC[ literals TuiKeyRegistry:124-125 (origin/main 7b60cec0)
+  - verdict: corroborated | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: no Style.java/Glyphs.java or their tests in tui/; raw ESC[ only TuiKeyRegistry.java:124-125 (3dea04b2)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
-  - verdict: unverifiable | checked_at: 7b60cec09d9fdc70b91b143dd7e396a00f6fbb1d | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural verify-first clause (origin/main 7b60cec0)
+  - verdict: unverifiable | checked_at: 3dea04b2419b7f1f164a7694f4b9aa445965e710 | by: ui-improvements/cleanup | rescoped: n/a | evidence: procedural (3dea04b2)
 
 ## Expected Surface
 
@@ -136,6 +136,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StartRenderer.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/ChoicePrompt.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/TerminalTitle.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/TerminalSanitizer.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -188,6 +193,16 @@ Verdicts persisted per claim by `ui-improvements/cleanup` (`corpus set-verdict`,
 
 - Stale body: **D4 (AnsiScreen cell attributes) is DONE**: `tui/AnsiScreen.java:50` `CellStyle(bold,dim,reverse,colour)` and `ScreenCaptureIT:158` writes `.attrs.txt` (PLAN-02 #232); drop it at outline. The design conflict `03-dialogues.adoc:320-322` ("line drawing keeps the terminal's line set") against the spec's "no byte above 0x7F" is still unresolved.
 - Declared surface understated: the glyph-literal files (`CredentialsCommand`, `DecomposeCommand`, `EpicDecompositionDialogue`, `RefusalRenderer`, `StartRenderer`, `WorkActionDialogue`, `dialogue/ChoicePrompt`) were added where each resolves to one file.
+
+
+## Re-Grounding 2026-11-25
+
+Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions spot-checked by the orchestrator) at `3dea04b2`, against the code and the design and specification changes since 2026-11-15: #570 (`20f971fe`: `over_size`, `epic.overlap_found`, `stale`→`unreadable`, the phase `sanity-check`), pm-mcp-core #607/#614 and plan-marshall-documentation #201/#202 ("observe facts instead of predicting them", two rounds), clients #578 (protected project configuration waits for the operator's decision) and the inbox messages `doc-review-2026-11-17-001` and `doc-review-2026-11-24-001`. **This section binds over the body where they differ.**
+
+- No claim contradicted. D4 is done (PLAN-02 #232: `AnsiScreen.CellStyle`, `.attrs.txt` captures): drop it.
+- **Five operator decisions** are still open and come before the emit: ASCII of the check mark (`ok` vs `+`); line drawing vs "no byte above 0x7F"; kind tints vs the five roles; the greeting wording; `console.colour` has no definition (the engine schema has no `console.*` key; `TuiScreenDriver.java:214-228` reads `console.full_screen` itself) — `03-dialogues.adoc:320-322,349`, `shared/plan-view.adoc:66-71`, `15-overview.adoc:54`. Then a design amendment.
+- Split proposed: 44a (`Style`, `Glyphs`, the raw-escape guard) and 44b (roles, brand line, the styled-segment row model PLAN-50 needs). The guard must state what the OSC literals of `TerminalTitle.java:23` and `TerminalSanitizer.java:43` do.
+- The new dialogues of #578 and `doc-review-2026-11-24-001` § 3 (sanity-check question, protected-path decision) need the roles once designed: record it, no change now. Runs after PLAN-42.
 
 ## Hand-Off Command
 
