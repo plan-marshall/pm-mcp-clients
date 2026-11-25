@@ -184,6 +184,13 @@ class ReportRecordsTest {
         assertEquals(List.of("rep-0142"), parsed.items().stream().map(ReportItem::id)
                         .map(Object::toString).toList(),
                 "one item of a retired kind never hides the rest of the list");
+
+        // The bare-array form some runtimes serve takes the same path.
+        var bare = ReportsPage.fromJson(JsonTree.write(List.of(retiredItem, good.toMap())));
+        assertEquals(List.of("rep-0142"), bare.items().stream().map(ReportItem::id)
+                        .map(Object::toString).toList(),
+                "a bare array keeps its readable report");
+        assertEquals(1, bare.unreadCount());
     }
 
     @Test

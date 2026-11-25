@@ -170,7 +170,7 @@ public record ReportsPage(
             var items = new ArrayList<ReportItem>(list.size());
             for (var elem : list) {
                 var obj = JsonTree.asObject(elem);
-                if (obj != null) {
+                if (obj != null && isKnownKind(obj)) {
                     items.add(ReportItem.fromMap(obj));
                 }
             }
