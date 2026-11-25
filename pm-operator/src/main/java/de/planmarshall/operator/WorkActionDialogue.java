@@ -53,6 +53,8 @@ final class WorkActionDialogue {
     private static final String ACTION_ABORT = "abort";
     private static final String ACTION_CANCEL = "cancel";
     private static final String ACTION_ABANDON = "abandon";
+    private static final String ACTION_FINDINGS = "findings";
+    private static final String ACTION_WATCHES = "watches";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", ACTION_ABORT, "end_plan", "cancel_epic", "show_pr",
                         "give_up_removal");
@@ -177,8 +179,10 @@ final class WorkActionDialogue {
             case "auto" -> auto(epic);
             case "common_files" -> commonFiles();
             case "decompose" -> decompose(epic);
-            case "findings" -> ReviewDialogue.run(context, out, id, "findings", !prompt.asks());
-            case "watches" -> ReviewDialogue.run(context, out, id, "watches", !prompt.asks());
+            case ACTION_FINDINGS ->
+                ReviewDialogue.run(context, out, id, ReviewDialogue.REGISTER_FINDINGS, !prompt.asks());
+            case ACTION_WATCHES ->
+                ReviewDialogue.run(context, out, id, ReviewDialogue.REGISTER_WATCHES, !prompt.asks());
             case "archive" -> archive();
             default -> {
                 prompt.line("operator.actions.refused",

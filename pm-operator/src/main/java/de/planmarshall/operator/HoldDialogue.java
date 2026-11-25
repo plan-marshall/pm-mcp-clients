@@ -108,8 +108,7 @@ final class HoldDialogue {
         var hold = select(holds, holdId);
         // The menu's act belongs to the hold it named: once that hold is gone, or the hold that holds
         // now does not offer the act, the act is asked, never sent to another hold unseen.
-        String chosen = preselectedAct != null && (holdId == null || hold.holdId().equals(holdId))
-                            && hold.offers(preselectedAct) ? preselectedAct : null;
+        String chosen = preselectedActFor(hold, holdId);
         while (true) {
             show(hold);
             var act = chosen != null ? chosen : askAct(hold);
@@ -117,27 +116,42 @@ final class HoldDialogue {
             if (act == null) {
                 return 0;
             }
-            if (ACT_SHOW_PR.equals(act)) {
-                showPullRequest(hold);
-                continue;
+            var outcome = applyAct(hold, act);
+            var nextHold = outcome.nextHold();
+            if (nextHold == null) {
+                return outcome.exitCode();
             }
-            var reason = confirm(hold, act);
-            if (reason == null) {
-                return 0;
-            }
-            var result = resolve(hold, act, reason);
-            if (result == null) {
-                return 1;
-            }
-            if (result.released()) {
-                return released(act, result);
-            }
-            var next = afterStillHeld(hold, result);
-            if (next == null) {
-                return 0;
-            }
-            hold = next;
+            hold = nextHold;
         }
+    }
+
+    private @Nullable String preselectedActFor(HoldRecord hold, @Nullable String holdId) {
+        if (preselectedAct == null || !hold.offers(preselectedAct)) {
+            return null;
+        }
+        return holdId == null || hold.holdId().equals(holdId) ? preselectedAct : null;
+    }
+
+    private StepOutcome applyAct(HoldRecord hold, String act) throws IOException {
+        if (ACT_SHOW_PR.equals(act)) {
+            showPullRequest(hold);
+            return new StepOutcome(0, hold);
+        }
+        var reason = confirm(hold, act);
+        if (reason == null) {
+            return new StepOutcome(0, null);
+        }
+        var result = resolve(hold, act, reason);
+        if (result == null) {
+            return new StepOutcome(1, null);
+        }
+        if (result.released()) {
+            return new StepOutcome(released(act, result), null);
+        }
+        return new StepOutcome(0, afterStillHeld(hold, result));
+    }
+
+    private record StepOutcome(int exitCode, @Nullable HoldRecord nextHold) {
     }
 
     private @Nullable HoldResolutionResult resolve(HoldRecord hold, String act, String reason) {

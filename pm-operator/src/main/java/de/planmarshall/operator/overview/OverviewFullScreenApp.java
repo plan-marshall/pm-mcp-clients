@@ -1103,7 +1103,7 @@ public final class OverviewFullScreenApp {
         return interrupted.get();
     }
 
-    private void openActions() {
+    void openActions() {
         var lvl = stack.level();
         var selected = stack.selected();
         if (lvl == null || selected == null) {
@@ -1370,144 +1370,6 @@ public final class OverviewFullScreenApp {
         return overview != null && selected != null ? overview.needsItemOf(selected.id()) : null;
     }
 
-    /** Opens what waits for the operator in the selected row, or jumps to the next waiting row. */
-    private void openWhatWaits() {
-        var lvl = stack.level();
-        var selected = stack.selected();
-        if (lvl == null || selected == null) {
-            return;
-        }
-        var kind = lvl.kind();
-        var selectedId = selected.id();
-
-        if (kind == TuiLevel.Kind.OVERVIEW) {
-            openOverviewWait(selectedId);
-            return;
-        }
-
-        if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
-            openProjectWait(selectedId);
-            return;
-        }
-
-        if (kind == TuiLevel.Kind.EPIC) {
-            openEpicRowWait(selectedId);
-            return;
-        }
-
-        if (kind == TuiLevel.Kind.PLAN) {
-            openPlanLevelWait();
-        }
-        // No other level binds ! (TuiKeyRegistry), so there is nothing else to open here.
-    }
-
-    /**
-     * Opens what waits in a row of the overview's root, or jumps to the next waiting row.
-     *
-     * @param selectedId the selected row's id
-     */
-    private void openOverviewWait(String selectedId) {
-        var needsItem = selectedNeedsItem();
-        if (needsItem != null) {
-            openNeedsItemAct(needsItem);
-            return;
-        }
-        var cached = cachedProjects.get();
-        if (cached != null) {
-            var project = cached.projects().stream().filter(p -> p.projectId().equals(selectedId)).findFirst().orElse(null);
-            if (project != null && project.setupNeedsOperator()) {
-                runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
-                return;
-            }
-        }
-        jumpToNextWaitingRow();
-    }
-
-    /**
-     * Opens what waits in a row of a project's plans or epics, or jumps to the next waiting row.
-     *
-     * @param selectedId the selected row's id
-     */
-    private void openProjectWait(String selectedId) {
-        var detail = currentProjectDetail.get();
-        if (detail != null) {
-            var plan = detail.plans().stream().filter(p -> p.planId().equals(selectedId)).findFirst().orElse(null);
-            if (plan != null && OverviewFormatting.needsOperator(plan)) {
-                openPlanWaitAct(plan.planId());
-                return;
-            }
-            var epic = detail.epics().stream().filter(e -> e.epicId().equals(selectedId)).findFirst().orElse(null);
-            if (epic != null && OverviewFormatting.needsOperator(epic)) {
-                openEpicWaitAct(epic.epicId());
-                return;
-            }
-        }
-        jumpToNextWaitingRow();
-    }
-
-    /**
-     * Opens what waits in a row of an epic's view, the row's plan, or jumps to the next waiting row.
-     *
-     * @param selectedId the selected row's id
-     */
-    private void openEpicRowWait(String selectedId) {
-        var view = currentEpicView.get();
-        if (view != null) {
-            var planId = view.planIdOf(selectedId);
-            if (planId != null) {
-                openPlanWaitAct(planId);
-                return;
-            }
-        }
-        jumpToNextWaitingRow();
-    }
-
-    /** Opens what waits in the plan level shown, or jumps to the next waiting row. */
-    private void openPlanLevelWait() {
-        var view = currentPlanView.get();
-        if (view != null) {
-            openPlanWaitAct(view.planId());
-            return;
-        }
-        jumpToNextWaitingRow();
-    }
-
-    private void openPlanWaitAct(String planId) {
-        try {
-            var hold = actionsClient().hold(planId);
-            if (hold != null) {
-                runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
-                return;
-            }
-        } catch (IOException _) {
-            // proceed to decisions
-        }
-        try {
-            var openDecision = actionsClient().openDecision(planId);
-            if (openDecision != null && !openDecision.isBlank()) {
-                String decision = openDecision;
-                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision));
-                return;
-            }
-        } catch (IOException _) {
-            // best effort
-        }
-        openActions();
-    }
-
-    private void openEpicWaitAct(String epicId) {
-        try {
-            var resource = actionsClient().epic(epicId);
-            if (resource.findings().open() > 0) {
-                runVerb("epic", "findings", epicId);
-                return;
-            }
-        } catch (IOException _) {
-            // best effort
-        }
-        openActions();
-    }
-
     /**
      * Replaces what runs a verb the view hands off, so a test observes the exact words without a
      * runtime behind every verb.
@@ -1527,23 +1389,6 @@ public final class OverviewFullScreenApp {
                                 && "add".equals(args[1]));
             return start && code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
         });
-    }
-
-    private void jumpToNextWaitingRow() {
-        var rows = stack.rows();
-        int size = rows.size();
-        if (size <= 1) {
-            return;
-        }
-        int currentIdx = stack.selectedIndex();
-        for (int i = 1; i <= size; i++) {
-            int candidateIdx = (currentIdx + i) % size;
-            var row = rows.get(candidateIdx);
-            if (row.needsOperator()) {
-                stack.select(row.id());
-                return;
-            }
-        }
     }
 
     /**
@@ -2534,6 +2379,164 @@ public final class OverviewFullScreenApp {
         public void filter(String text) {
             synchronized (OverviewFullScreenApp.this) {
                 stack.filter(text);
+            }
+        }
+
+        /** Opens what waits for the operator in the selected row, or jumps to the next waiting row. */
+        private void openWhatWaits() {
+            var lvl = stack.level();
+            var selected = stack.selected();
+            if (lvl == null || selected == null) {
+                return;
+            }
+            var kind = lvl.kind();
+            var selectedId = selected.id();
+
+            if (kind == TuiLevel.Kind.OVERVIEW) {
+                openOverviewWait(selectedId);
+                return;
+            }
+
+            if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+                openProjectWait(selectedId);
+                return;
+            }
+
+            if (kind == TuiLevel.Kind.EPIC) {
+                openEpicRowWait(selectedId);
+                return;
+            }
+
+            if (kind == TuiLevel.Kind.PLAN) {
+                openPlanLevelWait();
+            }
+            // No other level binds ! (TuiKeyRegistry), so there is nothing else to open here.
+        }
+
+        /**
+         * Opens what waits in a row of the overview's root, or jumps to the next waiting row.
+         *
+         * @param selectedId the selected row's id
+         */
+        private void openOverviewWait(String selectedId) {
+            var needsItem = selectedNeedsItem();
+            if (needsItem != null) {
+                openNeedsItemAct(needsItem);
+                return;
+            }
+            var cached = cachedProjects.get();
+            if (cached != null) {
+                var project = cached.projects().stream().filter(p -> p.projectId().equals(selectedId))
+                                    .findFirst().orElse(null);
+                if (project != null && project.setupNeedsOperator()) {
+                    runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
+                    return;
+                }
+            }
+            jumpToNextWaitingRow();
+        }
+
+        /**
+         * Opens what waits in a row of a project's plans or epics, or jumps to the next waiting row.
+         *
+         * @param selectedId the selected row's id
+         */
+        private void openProjectWait(String selectedId) {
+            var detail = currentProjectDetail.get();
+            if (detail != null) {
+                var plan = detail.plans().stream().filter(p -> p.planId().equals(selectedId))
+                                    .findFirst().orElse(null);
+                if (plan != null && OverviewFormatting.needsOperator(plan)) {
+                    openPlanWaitAct(plan.planId());
+                    return;
+                }
+                var epic = detail.epics().stream().filter(e -> e.epicId().equals(selectedId))
+                                    .findFirst().orElse(null);
+                if (epic != null && OverviewFormatting.needsOperator(epic)) {
+                    openEpicWaitAct(epic.epicId());
+                    return;
+                }
+            }
+            jumpToNextWaitingRow();
+        }
+
+        /**
+         * Opens what waits in a row of an epic's view, the row's plan, or jumps to the next waiting row.
+         *
+         * @param selectedId the selected row's id
+         */
+        private void openEpicRowWait(String selectedId) {
+            var view = currentEpicView.get();
+            if (view != null) {
+                var planId = view.planIdOf(selectedId);
+                if (planId != null) {
+                    openPlanWaitAct(planId);
+                    return;
+                }
+            }
+            jumpToNextWaitingRow();
+        }
+
+        /** Opens what waits in the plan level shown, or jumps to the next waiting row. */
+        private void openPlanLevelWait() {
+            var view = currentPlanView.get();
+            if (view != null) {
+                openPlanWaitAct(view.planId());
+                return;
+            }
+            jumpToNextWaitingRow();
+        }
+
+        private void openPlanWaitAct(String planId) {
+            try {
+                var hold = actionsClient().hold(planId);
+                if (hold != null) {
+                    runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
+                    return;
+                }
+            } catch (IOException _) {
+                // proceed to decisions
+            }
+            try {
+                var openDecision = actionsClient().openDecision(planId);
+                if (openDecision != null && !openDecision.isBlank()) {
+                    String decision = openDecision;
+                    runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision));
+                    return;
+                }
+            } catch (IOException _) {
+                // best effort
+            }
+            openActions();
+        }
+
+        private void openEpicWaitAct(String epicId) {
+            try {
+                var resource = actionsClient().epic(epicId);
+                if (resource.findings().open() > 0) {
+                    runVerb("epic", "findings", epicId);
+                    return;
+                }
+            } catch (IOException _) {
+                // best effort
+            }
+            openActions();
+        }
+
+        private void jumpToNextWaitingRow() {
+            var rows = stack.rows();
+            int size = rows.size();
+            if (size <= 1) {
+                return;
+            }
+            int currentIdx = stack.selectedIndex();
+            for (int i = 1; i <= size; i++) {
+                int candidateIdx = (currentIdx + i) % size;
+                var row = rows.get(candidateIdx);
+                if (row.needsOperator()) {
+                    stack.select(row.id());
+                    return;
+                }
             }
         }
 
