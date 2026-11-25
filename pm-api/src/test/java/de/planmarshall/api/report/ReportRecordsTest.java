@@ -163,6 +163,30 @@ class ReportRecordsTest {
     }
 
     @Test
+    void shouldLeaveOutAStoredReportWhoseKindTheContractNoLongerKnows() throws Exception {
+        var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var good = new ReportItem("rep-0142", new ReportFrom("pm-mcp-clients", null, null),
+                ReportKind.PLAN_ENDED, "fix-relay ended", Map.of(), null, created, null, null,
+                null, null, null);
+        var retired = new ReportFrom("pm-mcp-clients", null, null).toMap();
+        var retiredItem = new LinkedHashMap<String, Object>(Map.of(
+                "id", "rep-0141",
+                "kind", "epic.overlap_found",
+                "from", retired,
+                "subject", "relay-cursor-order and relay-docs changed 3 files in common",
+                "created_at", created.toString()));
+        var page = new LinkedHashMap<String, Object>();
+        page.put("items", List.of(retiredItem, good.toMap()));
+        page.put("unread_count", 2);
+
+        var parsed = ReportsPage.fromMap(page);
+
+        assertEquals(List.of("rep-0142"), parsed.items().stream().map(ReportItem::id)
+                        .map(Object::toString).toList(),
+                "one item of a retired kind never hides the rest of the list");
+    }
+
+    @Test
     void shouldRoundTripReadReportsRequestsAndResponses() throws Exception {
         var reportId1 = Generators.nonBlankStrings().next();
         var reportId2 = Generators.nonBlankStrings().next();

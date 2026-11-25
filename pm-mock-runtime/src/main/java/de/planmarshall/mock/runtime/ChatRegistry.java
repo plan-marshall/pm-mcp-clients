@@ -992,7 +992,7 @@ final class ChatRegistry {
             case EVENT_TASK_ENDED -> taskEndedLine(payload, at);
             case EVENT_DECISION_OPENED -> new NarrativeLine(
                     LINE_PREFIX + "decision_opened", args2(KEY_ID, decisionId(payload), ARG_BLOCKS,
-                    blocksThePlan(payload) ? "yes" : "no"),
+                    blocksOf(payload)),
                     ref(RefKind.DECISION, decisionId(payload)), at);
             case EVENT_DECISION_ANSWERED -> decisionAnsweredLine(payload, at);
             case EVENT_DECISION_CLOSED -> new NarrativeLine(
@@ -1217,15 +1217,16 @@ final class ChatRegistry {
 
     /**
      * @param payload the event's payload
-     * @return whether a decision the line names blocks the plan
+     * @return the blocker the line names, as the payload states it ({@code no} when it names none),
+     *         so the catalogue's select can name the place the decision blocks
      */
-    private static boolean blocksThePlan(Map<String, Object> payload) {
+    private static String blocksOf(Map<String, Object> payload) {
         var blocks = JsonTree.string(payload, ARG_BLOCKS);
         if (blocks == null) {
             var decision = JsonTree.asObject(payload.get(KEY_DECISION));
             blocks = decision == null ? null : JsonTree.string(decision, ARG_BLOCKS);
         }
-        return blocks != null && !blocks.isBlank() && !"no".equals(blocks);
+        return blocks == null || blocks.isBlank() ? "no" : blocks;
     }
 
     private static NarrativeLine line(String name, Map<String, Object> args, List<TurnRef> refs, String at) {
