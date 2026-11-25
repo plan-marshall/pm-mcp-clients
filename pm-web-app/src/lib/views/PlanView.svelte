@@ -58,7 +58,7 @@
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
-  import { PLAN_TABS } from '../routes';
+  import { PLAN_TABS, type PlanTab } from '../routes';
   import { narrowLayout } from '../utils/narrowLayout';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -80,6 +80,8 @@
       isLoadingBreakdown = false;
       showTokenBreakdown = false;
       queuedRevision = null;
+      openDecision = null;
+      decisionRequest += 1;
       intentLoading = false;
       intentError = null;
       intentRequest += 1;
@@ -137,73 +139,57 @@
   /** The size of the plan's change: the event's figures, else the process resource's. */
   const changeSize = $derived<ChangeSizeRecord | null>(changeFromEvent ?? plan?.change ?? null);
 
+  /** The tab a plan opens on when the address names none. */
+  const DEFAULT_TAB: PlanTab = 'process';
+
   /**
    * The plan's tab the address names, or the default one the address omits.
    *
    * The plan carries the tab set of D6: Process (the default), Intent and Changes
    * (`plan-view-interaction.adoc#addresses`).
    */
-  const activeTab = $derived<'process' | 'intent' | 'changes'>(
-    $runtimeStore.objectTab === 'changes'
-      ? 'changes'
-      : $runtimeStore.objectTab === 'intent'
-        ? 'intent'
-        : 'process',
+  const activeTab = $derived<PlanTab>(
+    PLAN_TABS.find((tab) => tab === $runtimeStore.objectTab) ?? DEFAULT_TAB,
   );
 
   /**
    * @param tab a tab of this view
    * @returns the id of its panel while that tab is the shown one, and none for the others
    */
-  function panelIdOf(tab: 'process' | 'intent' | 'changes'): string | undefined {
+  function panelIdOf(tab: PlanTab): string | undefined {
     // Only the shown tab has a panel in the document, so only it may name one.
     return tab === activeTab ? `plan-panel-${tab}` : undefined;
   }
 
+  /** The catalogue key of each plan tab; the set itself is the router's `PLAN_TABS`. */
+  const TAB_LABEL_KEYS: Record<PlanTab, string> = {
+    process: 'plan.tab.process',
+    intent: 'plan.tab.intent',
+    changes: 'plan.tab.changes',
+  };
+
   /**
-   * The tabs of the plan's column: Process and Intent always, Changes from the first capture —
-   * the same condition as the size line's (`plan-view-interaction.adoc#layout`).
+   * The tabs of the plan's column, in the router's order: every plan tab, except Changes before
+   * the first capture — the same condition as the size line's
+   * (`plan-view-interaction.adoc#layout`).
    */
   const tabItems = $derived<TabItem[]>(
-    changeSize === null
-      ? [
-          {
-            id: 'process',
-            label: $t('plan.tab.process'),
-            panelId: panelIdOf('process'),
-          },
-          {
-            id: 'intent',
-            label: $t('plan.tab.intent'),
-            panelId: panelIdOf('intent'),
-          },
-        ]
-      : [
-          {
-            id: 'process',
-            label: $t('plan.tab.process'),
-            panelId: panelIdOf('process'),
-          },
-          {
-            id: 'intent',
-            label: $t('plan.tab.intent'),
-            panelId: panelIdOf('intent'),
-          },
-          {
-            id: 'changes',
-            label: $t('plan.tab.changes'),
-            panelId: panelIdOf('changes'),
-          },
-        ],
+    PLAN_TABS.filter((tab) => tab !== 'changes' || changeSize !== null).map((tab) => ({
+      id: tab,
+      label: $t(TAB_LABEL_KEYS[tab]),
+      panelId: panelIdOf(tab),
+    })),
   );
 
   /**
    * @param tab the tab a person chose
    */
   function selectTab(tab: string): void {
-    selectObjectTab(
-      tab === 'changes' ? 'changes' : tab === 'intent' ? 'intent' : 'process',
-    );
+    // The Tabs component emits the ids this view gave it, so the tab is one of the router's set.
+    const known = PLAN_TABS.find((entry) => entry === tab);
+    if (known) {
+      selectObjectTab(known);
+    }
   }
 
   /**
@@ -236,14 +222,25 @@
    * credential gets no decision sentence, and a plan whose decisions cannot be read keeps no link
    * to nowhere (`plan-view-interaction.adoc#layout`).
    */
-  let openDecisionId = $state<string | null>(null);
+  let openDecision = $state<{ planId: string; id: string } | null>(null);
   /** The decision read that owns the link; a superseded answer never writes it. */
   let decisionRequest = 0;
+
+  /**
+   * The decision's id, when the link belongs to the plan on screen.
+   *
+   * The router reuses this view across plans, and a decision read that started for the previous
+   * plan can land before the new plan's own read: the plan id kept beside the id keeps that
+   * answer off the new plan's head.
+   */
+  const openDecisionId = $derived(
+    openDecision !== null && openDecision.planId === planId ? openDecision.id : null,
+  );
 
   async function loadOpenDecision(): Promise<void> {
     const request = ++decisionRequest;
     if (!planId) {
-      openDecisionId = null;
+      openDecision = null;
       return;
     }
     const currentId = planId;
@@ -252,13 +249,15 @@
       if (request !== decisionRequest || currentId !== planId) {
         return;
       }
-      const decision = decisions.find((entry) => entry.blocks === 'plan') ?? decisions[0] ?? null;
-      openDecisionId = decision?.id ?? null;
+      // Only a decision that blocks the plan is the plan's wait; one blocking an epic or a
+      // project is not this page's.
+      const decision = decisions.find((entry) => entry.blocks === 'plan') ?? null;
+      openDecision = decision ? { planId: currentId, id: decision.id } : null;
     } catch {
       if (request !== decisionRequest) {
         return;
       }
-      openDecisionId = null;
+      openDecision = null;
     }
   }
 
@@ -268,7 +267,7 @@
       void loadOpenDecision();
     } else {
       decisionRequest += 1;
-      openDecisionId = null;
+      openDecision = null;
     }
   });
 
@@ -395,6 +394,11 @@
       }
       intentHasRecord = record !== null;
       intentCheck = record?.builder_check ?? null;
+      if (record === null) {
+        // Nothing exists, so no outline read can change the tab; the empty state stands at once.
+        intentLoading = false;
+        return;
+      }
     } catch (err: unknown) {
       if (request !== intentRequest || currentId !== planId) {
         return;
@@ -582,7 +586,9 @@
   });
 
   $effect(() => {
-    if (selectedTaskId && planId) {
+    // The feed lives in the Process tab: another tab hides the inspector and ends its stream,
+    // while the selection stays so returning to Process reads the same task again.
+    if (selectedTaskId && planId && activeTab === 'process') {
       void loadTaskActivity(planId, selectedTaskId);
     } else {
       activityLoadGeneration += 1;
@@ -1225,11 +1231,17 @@
       </div>
 
       <div slot="secondary" class="plan-head-links">
-        <Link href={designerHref} label={$t('designer.plan.open')} testid="design-process-link" />
+        <Link
+          href={designerHref}
+          label={$t('designer.plan.open')}
+          advisory={$t('designer.plan.open.title')}
+          testid="design-process-link"
+        />
         {#if ended}
           <Link
             href={`/reports?plan=${encodeURIComponent(plan.plan_id)}`}
             label={$t('report.action.details')}
+            advisory={$t('report.action.details.title')}
             testid="completion-report-link"
           />
         {/if}
@@ -1237,6 +1249,7 @@
           <Link
             href={`/decisions/${encodeURIComponent(openDecisionId)}`}
             label={$t('control.plan.decision')}
+            advisory={$t('control.plan.decision.title')}
             testid="plan-decision-link"
           />
         {/if}
@@ -1456,7 +1469,7 @@
           <OutlinePanel planId={plan.plan_id} />
         {/if}
       </div>
-    {:else}
+    {:else if activeTab === 'process'}
       <!-- Two-Panel Main Layout -->
       <div
         class="plan-content"
@@ -2316,7 +2329,29 @@
   }
 
   .plan-panel-host {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
     min-inline-size: 0;
+    min-block-size: 0;
+  }
+
+  /* The template's body carries the panels, so the column's height must reach them: each pane
+     keeps its own scroll while they stand side by side (`plan-view-interaction.adoc#layout`). */
+  .plan-view :global(.object-page) {
+    flex: 1 1 auto;
+    min-block-size: 0;
+  }
+
+  .plan-view :global(.object-page__body) {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-block-size: 0;
+  }
+
+  .plan-panel-host[data-layout='side'] .plan-content {
+    flex: 1 1 auto;
     min-block-size: 0;
   }
 

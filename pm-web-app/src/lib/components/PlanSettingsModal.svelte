@@ -41,6 +41,8 @@
   let seededRevision: number | null = null;
   /** Whether the last Save went through, for the form's own `Saved` line. */
   let saved = false;
+  /** The fields this Save already applied; their server value is the answer, not a pending edit. */
+  let appliedAspects: ReadonlySet<string> = new Set();
 
   // A new revision is the runtime's value: reseed the fields, so a kept or applied change does not
   // leave the operator's rejected value selected. A field the operator changed and the runtime has
@@ -52,13 +54,15 @@
     );
     const next: Record<string, string> = { ...server };
     for (const [aspect, value] of Object.entries(chosen)) {
-      if (value !== (seeded[aspect] ?? '')) {
+      if (!appliedAspects.has(aspect) && value !== (seeded[aspect] ?? '')) {
         next[aspect] = value;
       }
     }
     chosen = next;
     seeded = server;
     saved = false;
+    // The applied writes are in the new server values, so they are no pending choice any more.
+    appliedAspects = new Set();
   }
 
   function groupFor(aspect: string): string {
@@ -88,6 +92,23 @@
   }
 
   /**
+   * Keeps the value another client wrote, as the conflict dialogue offers: the field's pending
+   * edit goes, so a later Save cannot write the value the operator just discarded.
+   */
+  function keep(): void {
+    if (!conflict) {
+      onKeepCurrent();
+      return;
+    }
+    // The value now in force is the server's answer for this field: the edit stops being a
+    // change, so the shared Save has nothing left to send for it.
+    chosen = { ...chosen, [conflict.aspect]: conflict.currentValue };
+    seeded = { ...seeded, [conflict.aspect]: conflict.currentValue };
+    saved = false;
+    onKeepCurrent();
+  }
+
+  /**
    * Applies every changed field with the revision the dialogue opened with, then says it saved.
    * The runtime answers each field on its own, so a conflict names the field it belongs to.
    */
@@ -96,6 +117,7 @@
     const aspects = changedList;
     if (aspects.length === 0) return;
     saved = false;
+    appliedAspects = new Set();
     let every = true;
     for (const aspect of aspects) {
       const applied = await onApply({
@@ -108,6 +130,7 @@
         every = false;
         break;
       }
+      appliedAspects = new Set([...appliedAspects, aspect]);
     }
     saved = every;
   }
@@ -143,7 +166,7 @@
               type="button"
               data-testid="settings-conflict-keep"
               disabled={busy}
-              on:click={() => onKeepCurrent()}
+              on:click={() => keep()}
             >
               {$t('control.settings.keep_current')}
             </button>

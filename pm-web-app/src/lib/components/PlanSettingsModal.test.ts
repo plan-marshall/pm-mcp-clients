@@ -161,6 +161,61 @@ describe('PlanSettingsModal component', () => {
     expect(screen.queryByText('Saved')).toBeNull();
   });
 
+  it('drops the discarded edit when the operator keeps the current value', async () => {
+    const onKeepCurrent = vi.fn();
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        conflict: {
+          aspect: 'landing',
+          currentValue: 'landing.main',
+          wantedValue: 'landing.files',
+          revision: 8,
+        },
+        onKeepCurrent,
+      },
+    });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    expect(screen.getByTestId('settings-save')).not.toBeDisabled();
+
+    await fireEvent.click(screen.getByTestId('settings-conflict-keep'));
+
+    expect(onKeepCurrent).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
+  });
+
+  it('does not keep an applied inherit pending', async () => {
+    const onApply = vi.fn().mockResolvedValue(true);
+    const { rerender } = render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings, open: true, onApply },
+    });
+
+    await fireEvent.click(screen.getByTestId('settings-inherit-role.implement'));
+    await fireEvent.click(screen.getByTestId('settings-save'));
+    await waitFor(() => expect(onApply).toHaveBeenCalled());
+
+    await rerender({
+      planId: 'fix-relay',
+      open: true,
+      settings: {
+        ...settings,
+        revision: 8,
+        values: settings.values.map((entry) =>
+          entry.aspect === 'role.implement'
+            ? { ...entry, value: 'Claude Code - opus-4.5', origin: 'machine' }
+            : entry,
+        ),
+      },
+    });
+
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
+  });
+
   it('calls onClose', async () => {
     const onClose = vi.fn();
     render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onClose } });
