@@ -195,9 +195,6 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/lib/components/ChatTurn.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatMarkdown.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by PLAN-137
-- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at `1cc0e10e`
-- OBSERVED: `pm-web-app/src/lib/templates/TriagePage.svelte` — present at `1cc0e10e` (read only: its `side`, `sideOpen`, `onHideSide` are `PLAN-142`'s)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `1cc0e10e`
@@ -206,7 +203,6 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at `1cc0e10e`; holds the `web.chat.*` keys
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/chat.spec.js` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
@@ -300,6 +296,15 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - **D4**: the Compose contract lives at `components-fields.adoc#compose` (`:135-140`), not `components.adoc`; the empty-label-with-`ariaLabel` half is done (`Compose.svelte:204`, `Compose.test.ts:335`); keep `label=''` without `ariaLabel` and the empty-value `onsend` contract, each with a failing test.
 - **D5 cannot dock**: there is no side column on the plan or epic page. Per the verify-first clause the plan stops before D5; emit D1–D4 as this plan and split D5 off until a template carries a side column on those pages (re-decide against `components.adoc:365-376`, `navigation.adoc:279-285,414-415`). `chat.adoc:342` and `navigation.adoc:415` still say "waits for PLAN-142/143": reword to landed in this PR.
 - The removal packages of `doc-review-2026-11-24-001` (over_size, added_dependencies) edit `client.ts`; PLAN-191 edits `EpicView.svelte:412-413`: sequence or rebase, no rescope.
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **Deliverable 5 moved to PLAN-192** `web-chat-on-plan-and-epic-pages` (parked until a template gives the plan and epic pages a side column). This plan is D1–D4: the chat client, store and stream, `ChatMarkdown`, `ChatTurn`, `Chat`; `Chat` is mounted on `/dev/components` and, through PLAN-137, on the start and decision places. The `WorkControlPanel` replacement and `chat.spec.js` go with D5.
+- Its Done-whens and browser checks of D5 do not apply here.
+- Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/components/WorkControlPanel.svelte, pm-web-app/src/lib/components/WorkControlPanel.test.ts, pm-web-e2e/tests/chat.spec.js, pm-web-app/src/lib/templates/TriagePage.svelte.
 
 ## Hand-Off Command
 

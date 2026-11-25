@@ -170,6 +170,13 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - **Dependency cycle**: it needs PLAN-140's D-R134 mock fixtures while PLAN-140 follows it. Cut D-R134 into its own package ahead of PLAN-139 (PLAN-140 allows the split); until then drive events through `/mock/broadcast`.
 - Overlaps the off-track/over_size removal package (`PlanViewFormatting`, `PlanViewFormattingTest:145`). Merge rule as PLAN-138.
 
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **Depends on PLAN-194** `mock-chat-fixtures-and-residue` (the narrative and knows fixtures, split out of PLAN-140's D-R134); until it lands, drive the events through `/mock/broadcast`. The PLAN-140 dependency for the fixtures is gone.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

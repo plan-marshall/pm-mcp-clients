@@ -141,17 +141,6 @@ Specification: `doc/design/terminal-client/14-transcripts-decisions.adoc` § `#t
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/control/ControlCataloguesTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartCodecTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/start/StartContractTest.java` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatScripts.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatProposalsTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatRevisionQueueTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatContextNarrativeTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatListenerAndResidueTest.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/chat/ChatProposal.java` — present at `7adb56c2` (D-R134)
-- OBSERVED: `pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.en.properties` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-api/src/main/resources/messages/control.de.properties` — present at `7adb56c2` (D-R134)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkChatDialogue.java` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
@@ -218,6 +207,14 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - **D1**: remove the decision-chat note (`14-transcripts-decisions.adoc:17,253`) and advertise the key; add `operator.decision.chat_wait` (documented `:451`, absent from the properties). Tests must not hard-code the decision kinds (the sanity-check question and the protected-path decision arrive, #578).
 - **D4** is mostly present (`ActionMenus.java:132-138,255,275`; `OperatorActions.java:102`): rescope to the row-menu and ended-view key tests and the views that lack the key.
 - **D-R134** (nine items, above the scope guard) becomes its own package ahead of PLAN-139; its item 6 stays "stop and ask". Merge rule as PLAN-138.
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **The amendment "PLAN-134 Landing Residue" (D-R134) moved to PLAN-194** `mock-chat-fixtures-and-residue`, which lands before PLAN-139 and this plan. It is not part of this plan any more; its mock and `pm-api` chat files leave the surface (`control.{en,de}.properties` stay for `control.chat.unqualified`). This plan follows PLAN-139 as before; the cycle is gone.
+- Removed from the Expected Surface (now the split plan's): pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatScripts.java, pm-mock-runtime/src/main/resources/scenarios/running-work.json, pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatProposalsTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatRevisionQueueTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatContextNarrativeTest.java, pm-mock-runtime/src/test/java/de/planmarshall/mock/ChatListenerAndResidueTest.java, pm-api/src/main/java/de/planmarshall/api/chat/ChatProposal.java, pm-api/src/test/java/de/planmarshall/api/chat/ChatMessageKeysTest.java.
 
 ## Hand-Off Command
 

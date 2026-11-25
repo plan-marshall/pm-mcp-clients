@@ -68,8 +68,6 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/helpers/contrast.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD 1cc0e10e
-- OBSERVED: `pm-web-app/src/lib/components/Button.test.ts` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
-- OBSERVED: `pm-web-app/src/lib/components/RowMenu.test.ts` — present at `1cc0e10e` (added by the residue fold of 2026-11-10)
 - OBSERVED: `pm-web-app/src/lib/views/theme.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
 ## Dependencies and Sequencing
@@ -115,6 +113,14 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - **D1 gains** the clause PLAN-85 option A assigned here and nobody carried: `setTheme` writes `pm_theme` in the page origin (or sets the theme after `goto`) and every audited test asserts `document.documentElement.dataset.theme` equals the requested theme (test-first with a mutation run).
 - **Residue fold**: still due — the palettes-differ guard (put it in `tokens.test.ts` beside `parseThemes`, `:354-368`), the mutation evidence, `RowMenu` reading the real light block and `bg-subtle`/the media block; `blockOf` exists three times: reuse one reader. This test-only slice has no dependency and may be emitted early.
 - **D2 / design record**: `theme-readability.adoc:17` ("in the header") and `:208` (`MachineSettingsView`) are stale: fix both. Sequence against `doc/plans/ui-rule-catalogue.adoc` and PLAN-73 (all edit `theme-readability.spec.js`/`contrast.js`).
+
+
+## Split 2026-11-25
+
+On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
+
+- **The "Residue Fold 2026-11-10" deliverable 4 (the contrast unit tests read the theme they name) and the `dataset.theme` clause of the Re-Grounding 2026-11-25 moved to PLAN-195** `web-contrast-tests-read-their-theme`, which runs before this plan. This plan keeps the light pass (D1: retune tokens on the evidence PLAN-195's tests give) and the design record (D2). `Button.test.ts` and `RowMenu.test.ts` leave the surface.
+- Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/components/Button.test.ts, pm-web-app/src/lib/components/RowMenu.test.ts.
 
 ## Hand-Off Command
 
