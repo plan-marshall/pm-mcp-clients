@@ -13,11 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -29,8 +32,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
@@ -113,7 +119,7 @@ class ChatRegistryRaceTest {
                 "missing assistant reply turn_id");
         postTurnsDone.countDown();
 
-        var stopOut = new java.io.ByteArrayOutputStream();
+        var stopOut = new ByteArrayOutputStream();
         var stopReq = new MockHttpRequest("POST", routes.stop(replyTurnId), Map.of(),
                 "{}".getBytes(StandardCharsets.UTF_8), System.nanoTime());
         var stopResp = new MockHttpResponse(stopOut);
@@ -122,12 +128,16 @@ class ChatRegistryRaceTest {
             try {
                 if (stopReady.await(2, TimeUnit.SECONDS)) {
                     barrier.await(500, TimeUnit.MILLISECONDS);
-                    java.util.concurrent.locks.LockSupport.parkNanos((round % 12) * 30_000L);
+                    LockSupport.parkNanos((round % 12) * 30_000L);
                 }
                 assertTrue(registry.handle(stopReq, stopResp), "stop path not handled");
                 return parseResult(stopOut);
-            } catch (Throwable t) {
-                uncaught.compareAndSet(null, t);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                uncaught.compareAndSet(null, e);
+                return new HttpResult(500, Map.of());
+            } catch (BrokenBarrierException | TimeoutException | IOException e) {
+                uncaught.compareAndSet(null, e);
                 return new HttpResult(500, Map.of());
             }
         }, stopExecutor);
@@ -207,7 +217,7 @@ class ChatRegistryRaceTest {
 
     private static HttpResult send(ChatRegistry registry, String method, String path, String jsonBody)
             throws Exception {
-        var out = new java.io.ByteArrayOutputStream();
+        var out = new ByteArrayOutputStream();
         var request = new MockHttpRequest(method, path, Map.of(),
                 jsonBody.getBytes(StandardCharsets.UTF_8), System.nanoTime());
         var response = new MockHttpResponse(out);
@@ -215,7 +225,7 @@ class ChatRegistryRaceTest {
         return parseResult(out);
     }
 
-    private static HttpResult parseResult(java.io.ByteArrayOutputStream out) throws Exception {
+    private static HttpResult parseResult(ByteArrayOutputStream out) throws Exception {
         var raw = out.toString(StandardCharsets.UTF_8);
         var split = raw.indexOf(HEADER_SEPARATOR);
         var head = raw.substring(0, split);
@@ -331,16 +341,13 @@ class ChatRegistryRaceTest {
                     stopReady.countDown();
                     try {
                         barrier.await(500, TimeUnit.MILLISECONDS);
-                    } catch (Exception _) {
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    } catch (BrokenBarrierException | TimeoutException _) {
                         // Continue running the scheduled step if the stop thread did not meet at the barrier.
                     }
                 }
-                try {
-                    return callable.call();
-                } catch (Throwable t) {
-                    uncaught.compareAndSet(null, t);
-                    throw t;
-                }
+                return callable.call();
             };
             var future = delegate.schedule(wrapped, delayMicros, TimeUnit.MICROSECONDS);
             scheduled.add(future);

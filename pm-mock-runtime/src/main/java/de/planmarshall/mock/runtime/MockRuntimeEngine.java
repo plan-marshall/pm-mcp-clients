@@ -10855,8 +10855,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return encodedEntryId(name.isBlank() ? "new-project" : name);
     }
 
-    private static final java.util.regex.Pattern ENTRY_ID_PATTERN =
-            java.util.regex.Pattern.compile("/entries/([^/]+)/");
+    private static final Pattern ENTRY_ID_PATTERN =
+            Pattern.compile("/entries/([^/]+)/");
 
     /**
      * The identity an entry proposes for its run: the checkout's own name, as the design derives it

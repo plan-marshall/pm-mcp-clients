@@ -12,18 +12,22 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -188,7 +192,7 @@ class ChatNarrativeCompletenessTest {
                             () -> assertEquals(2, Objects.requireNonNull(JsonTree.integer(seenInstance,
                                     "instance_version")).intValue()),
                             () -> assertEquals("chat", seenInstance.get("cause")),
-                            () -> assertTrue(seenInstance.get("origin") instanceof Map<?, ?>),
+                            () -> assertInstanceOf(Map.class, seenInstance.get("origin")),
                             () -> assertEquals(1, versionLines.size()));
                 }
             }
@@ -322,7 +326,7 @@ class ChatNarrativeCompletenessTest {
                         }
                     }
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 }
             }).get(5, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
@@ -342,7 +346,7 @@ class ChatNarrativeCompletenessTest {
                         }
                         var data = JsonTree.asObject(JsonTree.parse(seen.data()));
                         if (data != null && "notice".equals(JsonTree.string(data, "kind"))) {
-                            var payload = new java.util.LinkedHashMap<>(data);
+                            var payload = new LinkedHashMap<>(data);
                             payload.remove("event");
                             payload.remove("at");
                             payload.remove("scope");
@@ -350,7 +354,7 @@ class ChatNarrativeCompletenessTest {
                         }
                     }
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 }
             }).get(5, TimeUnit.SECONDS);
         } catch (TimeoutException e) {

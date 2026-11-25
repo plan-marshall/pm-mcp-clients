@@ -16,14 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
-import org.jspecify.annotations.Nullable;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -52,9 +57,6 @@ import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 /**
  * Verifies D4 revision-lifecycle invariants across all five outcomes ({@code decision}, {@code apply},
@@ -279,7 +281,7 @@ class ChatRevisionOrderTest {
             var decisionRoutes = ChatRoutes.planDecision(PLAN_SESSION, "Q-902");
             var planRoutes = ChatRoutes.plan(PLAN_SESSION);
             try (var runtime = ordered(withSeededRevisionChat("decision", PLAN_SESSION + "/Q-902", "decision",
-                    "replan"))) {
+                         "replan"))) {
                 var planProposal = producePlanProposal(runtime, planRoutes);
                 answer(runtime, planRoutes.accept(), planProposal);
 
@@ -321,7 +323,7 @@ class ChatRevisionOrderTest {
             var decisionRoutes = ChatRoutes.planDecision(PLAN_SESSION, "Q-903");
             var planRoutes = ChatRoutes.plan(PLAN_SESSION);
             try (var runtime = ordered(withSeededRevisionChat("decision", PLAN_SESSION + "/Q-903", "decision",
-                    "replan"))) {
+                         "replan"))) {
                 var planProposal = producePlanProposal(runtime, planRoutes);
                 answer(runtime, planRoutes.accept(), planProposal);
 
@@ -329,8 +331,8 @@ class ChatRevisionOrderTest {
                 var decisionProposal = Objects.requireNonNull(decisionChat.proposal());
                 var conflict = post(runtime, BROADCAST, JsonTree.write(Map.of("event", ChatProposalEvent.EVENT_NAME,
                         "data", new ChatProposalEvent(decisionChat.id(), decisionProposal.turnId(),
-                                decisionProposal.replyTurnId(), ProposalKind.REVISION, ProposalState.ACCEPTED, null)
-                                .toMap())));
+                        decisionProposal.replyTurnId(), ProposalKind.REVISION, ProposalState.ACCEPTED, null)
+                        .toMap())));
                 assertEquals(409, conflict.status(), conflict.bodyText());
 
                 var afterBroadcast = read(runtime, decisionRoutes);
@@ -401,7 +403,7 @@ class ChatRevisionOrderTest {
 
     private static List<RecordedEvent> collectUntilEvent(SseReader reader, Predicate<RecordedEvent> stop)
             throws Exception {
-        var collected = java.util.Collections.synchronizedList(new ArrayList<RecordedEvent>());
+        var collected = Collections.synchronizedList(new ArrayList<RecordedEvent>());
         try {
             CompletableFuture.runAsync(() -> {
                 try {
@@ -416,8 +418,8 @@ class ChatRevisionOrderTest {
                             return;
                         }
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
                 }
             }).get(5, TimeUnit.SECONDS);
         } catch (TimeoutException e) {
@@ -429,7 +431,7 @@ class ChatRevisionOrderTest {
 
     private static List<RecordedEvent> collectUntilEventCount(SseReader reader, String name, int targetCount)
             throws Exception {
-        var collected = java.util.Collections.synchronizedList(new ArrayList<RecordedEvent>());
+        var collected = Collections.synchronizedList(new ArrayList<RecordedEvent>());
         var count = new int[1];
         try {
             CompletableFuture.runAsync(() -> {
@@ -445,8 +447,8 @@ class ChatRevisionOrderTest {
                             count[0]++;
                         }
                     }
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
                 }
             }).get(5, TimeUnit.SECONDS);
         } catch (TimeoutException e) {

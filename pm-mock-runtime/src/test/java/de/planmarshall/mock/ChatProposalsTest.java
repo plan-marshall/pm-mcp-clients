@@ -231,7 +231,7 @@ class ChatProposalsTest {
                         .filter(ws -> ws.stagedPlans().stream()
                                 .anyMatch(plan -> "relay-cursor-order".equals(plan.planId())
                                         && ws.stagedPlans().stream()
-                                                .anyMatch(other -> "relay-token-rotation".equals(other.planId()))))
+                                        .anyMatch(other -> "relay-token-rotation".equals(other.planId()))))
                         .findFirst().orElse(null);
                 assertAll("rows after is applied to the decomposition",
                         () -> assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state()),

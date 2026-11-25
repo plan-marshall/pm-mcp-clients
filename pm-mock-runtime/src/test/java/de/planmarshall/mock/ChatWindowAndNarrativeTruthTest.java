@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -222,7 +223,7 @@ class ChatWindowAndNarrativeTruthTest {
         chat.put("scope", "decision");
         chat.put("state", "chat.read-back");
         chat.put("context", Map.of("knows", List.of(Map.of("key", "chat.knows.decision",
-                "args", Map.of("id", subjectId.substring(subjectId.indexOf('/') + 1)))),
+                        "args", Map.of("id", subjectId.substring(subjectId.indexOf('/') + 1)))),
                 "as_of", "2026-10-14T10:00:00Z"));
         var proposal = new LinkedHashMap<String, Object>();
         proposal.put("turn_id", turnPrefix + "3");

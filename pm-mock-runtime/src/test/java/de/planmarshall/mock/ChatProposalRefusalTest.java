@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -36,6 +37,7 @@ import de.planmarshall.api.chat.ChatStatus;
 import de.planmarshall.api.chat.ChatTurnAccepted;
 import de.planmarshall.api.chat.ChatTurnRequest;
 import de.planmarshall.api.chat.ProposalAnswerRequest;
+import de.planmarshall.api.chat.ProposalState;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -114,13 +116,13 @@ class ChatProposalRefusalTest {
         var proposal = Objects.requireNonNull(refused.proposal());
         var body = new ProposalAnswerRequest(original.turnId()).toJson();
         assertAll("refused proposal still allows reject and refuses accept",
-                () -> assertEquals(de.planmarshall.api.chat.ProposalState.REFUSED, proposal.state()),
+                () -> assertEquals(ProposalState.REFUSED, proposal.state()),
                 () -> assertNotNull(proposal.finding()),
                 () -> assertEquals(409, post(runtime, routes.accept(), body).status()));
 
         var rejected = answer(runtime, routes.reject(), original);
         assertAll("rejected after refusal",
-                () -> assertEquals(de.planmarshall.api.chat.ProposalState.REJECTED,
+                () -> assertEquals(ProposalState.REJECTED,
                         Objects.requireNonNull(rejected.proposal()).state()),
                 () -> assertNull(Objects.requireNonNull(rejected.proposal()).finding()),
                 () -> assertEquals(ChatStatus.TURN, rejected.state()));

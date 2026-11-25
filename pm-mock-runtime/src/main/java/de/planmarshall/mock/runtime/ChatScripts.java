@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 
 
-import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatScopeKind;
@@ -24,6 +23,7 @@ import de.planmarshall.api.chat.ProposalKind;
 import de.planmarshall.api.chat.RefKind;
 import de.planmarshall.api.chat.TurnFormat;
 import de.planmarshall.api.chat.TurnRef;
+import lombok.experimental.UtilityClass;
 
 /**
  * The scripted conversation of a chat of the mock runtime, one per subject kind: what the role answers

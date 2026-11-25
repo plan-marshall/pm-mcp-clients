@@ -17,8 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -36,6 +38,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatEndedEvent;
+import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatProposalEvent;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
@@ -63,9 +66,6 @@ import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A second device played through {@code POST /mock/broadcast}: a chat event names its chat by
@@ -385,7 +385,7 @@ class ChatBroadcastTest {
                 .get("facts")).get("runtime")).get("control");
         var chats = (List<Object>) control.get("chats");
         var fixRelay = (Map<String, Object>) chats.getFirst();
-        ((Map<String, Object>) fixRelay.get("proposal")).remove(de.planmarshall.api.chat.ChatProposal.FIELD_APPLIES);
+        ((Map<String, Object>) fixRelay.get("proposal")).remove(ChatProposal.FIELD_APPLIES);
         var states = new LinkedHashMap<>(base.states());
         states.put(stateId, new StateDefinition(representation, state.links(), state.events(), state.auto(),
                 state.chatFailures()));
