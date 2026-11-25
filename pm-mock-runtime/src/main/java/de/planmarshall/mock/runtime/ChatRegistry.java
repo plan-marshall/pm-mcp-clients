@@ -1286,6 +1286,7 @@ final class ChatRegistry {
                     queuedBaseVersions.remove(planId);
                     facts.clearRevision(planId);
                     events.add(revisionQueued(planId, null));
+                    events.add(activityChanged(planId, facts.activity(planId), null));
                     events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.LAPSED, null));
                 }
                 events.addAll(lapseOpenRevisions(planId));
@@ -1322,6 +1323,7 @@ final class ChatRegistry {
         if (base != null && base != current) {
             facts.clearRevision(planId);
             events.add(revisionQueued(planId, null));
+            events.add(activityChanged(planId, facts.activity(planId), null));
             events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.REFUSED,
                     MessageText.of(FINDING_CHECK_FAILED)));
             return events;
@@ -1331,6 +1333,7 @@ final class ChatRegistry {
             // The plan moved on between the check and the application: the revision is refused.
             facts.clearRevision(planId);
             events.add(revisionQueued(planId, null));
+            events.add(activityChanged(planId, facts.activity(planId), null));
             events.addAll(proposalOfChat(queued.chatId(), queued.turnId(), ProposalState.REFUSED,
                     MessageText.of(FINDING_CHECK_FAILED)));
             return events;
@@ -1504,6 +1507,7 @@ final class ChatRegistry {
                 facts.revisionChatEnded(planId);
                 events.add(revisionQueued(planId, new QueuedRevision(queued.chatId(), queued.turnId(),
                         queued.subject(), false, queued.applies())));
+                events.add(activityChanged(planId, facts.activity(planId), null));
             }
         }
         return List.copyOf(events);

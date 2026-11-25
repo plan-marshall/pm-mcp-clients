@@ -87,6 +87,7 @@ import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
+import de.planmarshall.api.decision.DecisionScope;
 import de.planmarshall.api.decision.InterpretationType;
 import de.planmarshall.api.decomposition.CheckSeverity;
 import de.planmarshall.api.decomposition.DecompositionCheckFinding;
@@ -1280,7 +1281,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             decision = openDecisions.get(questionId);
         }
         if (decision != null) {
-            return "plan".equals(decision.scope())
+            return DecisionScope.PLAN == decision.scope()
                     ? Objects.requireNonNullElse(extractPlan(decision), candidate)
                     : null;
         }
