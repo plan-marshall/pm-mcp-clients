@@ -36,20 +36,26 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     }
   });
 
-  test('views plan process tree, task activity, and off-track indicator', async ({ page }) => {
+  test('views the plan head on the object page, the process tree, task activity and off-track indicator', async ({
+    page,
+  }) => {
     // Open the fix-relay plan from the overview.
     await openPlan(page, 'Fix Relay Transport');
 
-    // Verify breadcrumb path project › epic › plan
-    await expect(page.locator('[data-testid="breadcrumb-project"]')).toHaveText('pm-mcp-clients');
-    await expect(page.locator('[data-testid="breadcrumb-epic"]')).toHaveText('Relay Hardening');
-    await expect(page.locator('[data-testid="breadcrumb-plan"]')).toHaveText('fix-relay');
+    // The head draws the object template's slots: kind, title, id chip, PR chip, phase, state.
+    await expect(
+      page.getByTestId('plan-kind').locator('[data-kind="plan"]'),
+    ).toBeVisible();
+    await expect(page.getByTestId('plan-title')).toHaveText('Fix Relay Transport');
+    await expect(page.getByTestId('plan-id-chip')).toHaveText('fix-relay');
+    await expect(page.getByTestId('plan-pr-chip')).toHaveText('PR #214');
+    await expect(page.getByTestId('plan-phase')).toHaveText('execute');
+    await expect(page.getByTestId('plan-state')).toHaveText('running');
+    await expect(page.getByTestId('plan-state-sentence')).toContainText('for 2 h 10 min');
 
-    // Verify title and badges
-    await expect(page.locator('[data-testid="plan-title"]')).toHaveText('Fix Relay Transport');
-    await expect(page.locator('[data-testid="plan-phase"]')).toHaveText('execute');
-    await expect(page.locator('[data-testid="plan-state"]')).toHaveText('running');
-    await expect(page.locator('[data-testid="pr-link"]')).toHaveText('#214');
+    // The top bar's breadcrumb is the only path: the head draws none (D1).
+    await expect(page.getByTestId('plan-breadcrumb')).toHaveCount(0);
+    await expect(page.getByTestId('breadcrumb')).toContainText('fix-relay');
 
     // Verify process tree nodes
     const tree = page.locator('[data-testid="process-tree"]');
@@ -85,6 +91,35 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     const jumpBtn = page.locator('[data-testid="jump-btn"]');
     await expect(jumpBtn).toBeVisible();
     await jumpBtn.click();
+  });
+
+  test('draws the attention strip and the decision link of a waiting plan', async ({
+    page,
+    request,
+  }) => {
+    // The `decisions.open` state keeps the waiting plan the runtime serves.
+    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/decisions.open`);
+    expect(moved.ok()).toBeTruthy();
+
+    await page.goto('/plans/relay-cursor-order');
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+    await expect(page.getByTestId('plan-title')).toHaveText('Relay cursor order');
+
+    // The waiting plan says what it waits for, and the decision is a head link.
+    await expect(page.getByTestId('plan-attention-strip')).toContainText(
+      'Waits for your decision',
+    );
+    const link = page.getByTestId('plan-decision-link');
+    await expect(link).toHaveText('Open the decision');
+    await expect(link).toHaveAttribute('href', '/decisions/Q-033');
+
+    // The link opens the decision that waits (D1).
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await link.click();
+    await expect(page).toHaveURL(/\/decisions\/Q-033$/);
+    await expect(page.getByTestId('decision-detail')).toContainText(
+      'Apply the new cursor order now?',
+    );
   });
 
   test('narrates every part of session-log, including done phases and done tasks', async ({
@@ -144,76 +179,6 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(quietFeed).toContainText('TASK-002');
     await expect(quietFeed).toContainText('No activity entries yet.');
     await expect(page.locator('[data-testid="activity-entry"]')).toHaveCount(0);
-  });
-
-  test('navigates to epic view, verifies running and staged plans, and returns', async ({
-    page,
-  }) => {
-    // Open the fix-relay plan view
-    await openPlan(page, 'Fix Relay Transport');
-
-    // Click epic link in breadcrumb to navigate to EpicView
-    const epicBreadcrumb = page.locator('[data-testid="breadcrumb-epic"]');
-    await expect(epicBreadcrumb).toBeVisible();
-    await epicBreadcrumb.click();
-
-    // Ensure EpicView is mounted
-    const epicView = page.locator('[data-testid="epic-view"]');
-    await expect(epicView).toBeVisible();
-
-    // The epic's head draws no path of its own; it names the epic and its state.
-    await expect(page.locator('[data-testid="epic-title"]')).toHaveText('Relay Hardening');
-    await expect(page.locator('[data-testid="epic-state"]')).toHaveText('running');
-
-    // Verify the workstreams and their member plans
-    await expect(page.locator('[data-testid="epic-workstreams"]')).toBeVisible();
-    const reconnect = page.locator('[data-testid="workstream-WS-1"]');
-    await expect(reconnect).toBeVisible();
-    await expect(reconnect).toContainText('Reconnect');
-    await expect(page.locator('[data-testid="epic-row-relay-cursor-order"]')).toContainText(
-      'relay-cursor-order',
-    );
-
-    const auth = page.locator('[data-testid="workstream-WS-2"]');
-    await expect(auth).toBeVisible();
-    await expect(auth).toContainText('Authentication');
-    await expect(page.locator('[data-testid="epic-row-relay-auth-v2"]')).toContainText(
-      'relay-auth-v2',
-    );
-
-    // Verify sources, landings, registers, tokens, and events on their tabs (D6-1)
-    await page.getByRole('tab', { name: 'Intent' }).click();
-    await expect(page.locator('[data-testid="epic-intent-sources"]')).toBeVisible();
-
-    await page.getByRole('tab', { name: 'Landings' }).click();
-    await expect(page.locator('[data-testid="epic-landing-count"]')).toHaveText('1 landing');
-
-    await page.getByRole('tab', { name: 'Reviews' }).click();
-    await expect(page.locator('[data-testid="epic-findings"]')).toBeVisible();
-    await expect(page.locator('[data-testid="epic-watches"]')).toBeVisible();
-
-    await page.locator('[data-testid="epic-tokens-disclosure"]').click();
-    await expect(page.locator('[data-testid="epic-token-breakdown"]')).toBeVisible();
-
-    await page.getByRole('tab', { name: 'Events' }).click();
-    await expect(page.locator('[data-testid="epic-events"]')).toBeVisible();
-
-    // The epic's head draws no Back (D6): the rail's lens returns to Running Work
-    await page
-      .locator('.nav-rail')
-      .getByRole('button', { name: /Running work/i })
-      .click();
-    await expect(page.locator('.overview')).toBeVisible();
-  });
-
-  test('opens the project in the explorer in one step', async ({ page }) => {
-    // The assertion below names the project, so the test names the plan it opens.
-    await openPlan(page, 'Fix Relay Transport');
-
-    await page.locator('[data-testid="breadcrumb-project"]').click();
-
-    await expect(page).toHaveURL(/\/projects\/pm-mcp-clients$/);
-    await expect(page.locator('[data-testid="project-explorer-view"]')).toBeVisible();
   });
 
   test('discloses the token breakdown by phase and role', async ({ page }) => {

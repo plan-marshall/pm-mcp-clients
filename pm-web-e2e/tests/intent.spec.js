@@ -42,6 +42,32 @@ test.describe('The plan intent and outline panels', () => {
     await expect(page.locator('.app-header__machine')).toContainText('Machine: mock-machine');
   });
 
+  test('opens the Intent tab of a plan from its address', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/plans/fix-relay?tab=intent');
+
+    // The address opens the tab, and the tab list reports it as selected.
+    await expect(page.getByTestId('plan-panel-host')).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Intent' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    // The three panels stand in the order the design names: the intent, the builder check, the outline.
+    await expect(page.getByTestId('plan-intent-panel')).toBeVisible();
+    await expect(page.getByTestId('builder-check')).toBeVisible();
+    await expect(page.getByTestId('outline-panel')).toBeVisible();
+    const order = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll(
+          '[data-testid="plan-intent-panel"], [data-testid="builder-check"], [data-testid="outline-panel"]',
+        ),
+      ).map((element) => element.getAttribute('data-testid')),
+    );
+    expect(order).toEqual(['plan-intent-panel', 'builder-check', 'outline-panel']);
+    await expect(page.getByTestId('intent-head')).toContainText('Intent · fix-relay');
+  });
+
   test('draws the intent, the builder check and the outline in English', async ({ page }) => {
     await openFixtureIn(page, 'en');
     const light = page.getByTestId(FIXTURE).first();

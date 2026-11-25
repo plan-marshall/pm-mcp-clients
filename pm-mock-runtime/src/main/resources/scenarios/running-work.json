@@ -2999,6 +2999,46 @@
                 "delivered_at": "2026-10-16T15:02:00Z",
                 "is_waiver": false,
                 "project": "pm-mcp-clients"
+              },
+              {
+                "id": "Q-033",
+                "revision": 1,
+                "title": "Apply the cursor order now?",
+                "subject": "plan relay-cursor-order",
+                "scope": "plan",
+                "asking_phase": "execute",
+                "asking_role": "implement",
+                "blocks": "plan",
+                "reversibility": "reversible",
+                "description": "The cursor order of the relay waits for the operator.",
+                "parts": [
+                  {
+                    "part_id": "1",
+                    "question": "Apply the new cursor order now?",
+                    "answer_type": "one_option",
+                    "options": [
+                      {
+                        "key": "1",
+                        "label": "Apply it now",
+                        "tradeoff_description": "The next task reads the new order"
+                      },
+                      {
+                        "key": "2",
+                        "label": "Wait for the next plan",
+                        "tradeoff_description": "The current order stays"
+                      }
+                    ],
+                    "recommendation": "1",
+                    "recommendation_rationale": "The order is ready and the plan waits.",
+                    "recommending_role": "implement",
+                    "allow_own_words": true,
+                    "allow_note": false
+                  }
+                ],
+                "delivered_at": "2026-10-16T15:55:00Z",
+                "is_waiver": false,
+                "plan": "relay-cursor-order",
+                "project": "pm-mcp-clients"
               }
             ],
             "decompositions": [
