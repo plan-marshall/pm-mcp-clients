@@ -184,6 +184,7 @@ class ReportRecordsTest {
         assertEquals(List.of("rep-0142"), parsed.items().stream().map(ReportItem::id)
                         .map(Object::toString).toList(),
                 "one item of a retired kind never hides the rest of the list");
+        assertEquals(2, parsed.unreadCount(), "the count stays the runtime's own figure");
 
         // The bare-array form some runtimes serve takes the same path.
         var bare = ReportsPage.fromJson(JsonTree.write(List.of(retiredItem, good.toMap())));
