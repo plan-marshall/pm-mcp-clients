@@ -307,7 +307,7 @@ test.describe('Epic page (UC-PLN-5, UX-P-10)', () => {
     await expect(page.getByTestId('plan-view')).toBeVisible();
 
     // The epic's head draws no Back (D6): the top bar's path leads back to the epic.
-    await page.getByTestId('breadcrumb').getByRole('link', { name: /Relay Hardening/ }).click();
+    await page.getByTestId('breadcrumb').getByRole('link', { name: /relay-hardening/i }).click();
     await expect(page.getByTestId('epic-view')).toBeVisible();
   });
 

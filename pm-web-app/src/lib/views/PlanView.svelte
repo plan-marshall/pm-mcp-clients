@@ -83,7 +83,6 @@
       intentHasRecord = false;
       intentCheck = null;
       intentDeliverables = [];
-      columnWidth = 0;
       void loadPlanProcess(true);
     } else if (current && lastLoadedPlanId === null) {
       lastLoadedPlanId = current;
@@ -172,7 +171,7 @@
           },
           {
             id: 'intent',
-            label: $t('intent.tab.title'),
+            label: $t('plan.tab.intent'),
             panelId: panelIdOf('intent'),
           },
         ]
@@ -184,7 +183,7 @@
           },
           {
             id: 'intent',
-            label: $t('intent.tab.title'),
+            label: $t('plan.tab.intent'),
             panelId: panelIdOf('intent'),
           },
           {
@@ -265,6 +264,31 @@
   let queuedRevision = $state<{ applies: string; taskId: string | null } | null>(null);
 
   /**
+   * Reads a queued revision as the wire carries it: the point it waits for and, where the point is
+   * a task boundary, that task.
+   *
+   * @param value the revision (`queued_revision` of the resource or of its event)
+   * @returns the point and the task, or `null` when nothing waits
+   */
+  function queuedRevisionOf(value: unknown): { applies: string; taskId: string | null } | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const applies = (value as Record<string, unknown>).applies;
+    if (!applies || typeof applies !== 'object') {
+      return null;
+    }
+    const key = textOf((applies as Record<string, unknown>).key) ?? '';
+    const args = (applies as Record<string, unknown>).args;
+    const taskId =
+      args && typeof args === 'object' ? textOf((args as Record<string, unknown>).task_id) : null;
+    return {
+      applies: key === 'chat.applies.on_start' ? 'on_start' : 'after_task',
+      taskId,
+    };
+  }
+
+  /**
    * Applies a `plan.revision_queued` of this plan: the chat revision it queued, and the point it
    * waits for. A payload without a `queued_revision` says the revision left the queue.
    *
@@ -278,24 +302,7 @@
     if (payload.plan_id !== planId) {
       return;
     }
-    const revision = payload.queued_revision;
-    if (!revision || typeof revision !== 'object') {
-      queuedRevision = null;
-      return;
-    }
-    const applies = (revision as Record<string, unknown>).applies;
-    if (!applies || typeof applies !== 'object') {
-      queuedRevision = null;
-      return;
-    }
-    const key = textOf((applies as Record<string, unknown>).key) ?? '';
-    const args = (applies as Record<string, unknown>).args;
-    const taskId =
-      args && typeof args === 'object' ? textOf((args as Record<string, unknown>).task_id) : null;
-    queuedRevision = {
-      applies: key === 'chat.applies.on_start' ? 'on_start' : 'after_task',
-      taskId,
-    };
+    queuedRevision = queuedRevisionOf(payload.queued_revision);
   }
 
   /**
@@ -563,6 +570,8 @@
       if (gen !== processLoadGeneration) return;
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
+      // The resource carries the queued revision too, so a reload while one waits shows its line.
+      queuedRevision = queuedRevisionOf(res.queued_revision);
       runtimeStore.update((s) => ({ ...s, currentProcessTree: res }));
       if (previousPlanId !== null && previousPlanId !== res.plan_id) {
         // Another plan is open: the size the last capture announced belonged to the old one.
@@ -2329,15 +2338,5 @@
 
   .plan-tabstrip .off-track-banner {
     margin: 0;
-  }
-
-  @media (max-width: 768px) {
-    .plan-content {
-      flex-direction: column;
-    }
-    .plan-tree-panel {
-      border-right: none;
-      border-bottom: 1px solid var(--color-border);
-    }
   }
 </style>

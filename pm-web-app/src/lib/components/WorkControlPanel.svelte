@@ -616,13 +616,20 @@
     }
   }
 
+  /**
+   * Applies one field's value.
+   *
+   * @param payload the aspect, the value and the revision the dialogue opened with
+   * @returns whether the runtime applied it, so the dialogue says _Saved_ only then
+   */
   async function applySetting(payload: {
     aspect: string;
     value: string | null;
     revision: number;
-  }): Promise<void> {
+  }): Promise<boolean> {
     busy = true;
     settingsNotice = '';
+    let applied = false;
     try {
       const result = await apiClient.updatePlanSettings(
         subjectId,
@@ -637,6 +644,7 @@
           plan: subjectId,
           version: result.revision,
         });
+        applied = true;
         onChanged();
       } else if (result.conflict) {
         settingsConflict = {
@@ -659,6 +667,7 @@
     } finally {
       busy = false;
     }
+    return applied;
   }
 
   async function keepCurrent(): Promise<void> {

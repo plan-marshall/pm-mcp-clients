@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import PlanSettingsModal from './PlanSettingsModal.svelte';
 import type { PlanSettingsRecord } from '../api/client';
 
@@ -104,6 +104,61 @@ describe('PlanSettingsModal component', () => {
       value: null,
       revision: 7,
     });
+  });
+
+  it('applies the removal chosen through the select’s inherited option', async () => {
+    const onApply = vi.fn();
+    const ownValue: PlanSettingsRecord = {
+      plan_id: 'fix-relay',
+      revision: 7,
+      values: [
+        {
+          aspect: 'role.implement',
+          value: 'Claude Code - sonnet-5.5',
+          origin: 'plan',
+          choices: ['Claude Code - sonnet-5.5', 'Claude Code - opus-4.5'],
+        },
+      ],
+    };
+    render(PlanSettingsModal, {
+      props: { planId: 'fix-relay', settings: ownValue, open: true, onApply },
+    });
+
+    await fireEvent.change(screen.getByTestId('settings-value-role.implement'), {
+      target: { value: '' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    expect(onApply).toHaveBeenCalledWith({
+      aspect: 'role.implement',
+      value: null,
+      revision: 7,
+    });
+  });
+
+  it('says Saved when the runtime applied the change', async () => {
+    const onApply = vi.fn().mockResolvedValue(true);
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    expect(await screen.findByText('Saved')).toBeInTheDocument();
+  });
+
+  it('says no Saved when the runtime refused the change', async () => {
+    const onApply = vi.fn().mockResolvedValue(false);
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true, onApply } });
+
+    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    await waitFor(() => expect(onApply).toHaveBeenCalled());
+    expect(screen.queryByText('Saved')).toBeNull();
   });
 
   it('calls onClose', async () => {

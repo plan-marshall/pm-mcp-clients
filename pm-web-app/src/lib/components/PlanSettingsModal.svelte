@@ -25,12 +25,12 @@
     aspect: string;
     value: string | null;
     revision: number;
-  }) => void | Promise<void> = () => {};
+  }) => void | boolean | Promise<void | boolean> = () => {};
   export let onApplyAgain: (payload: {
     aspect: string;
     value: string | null;
     revision: number;
-  }) => void | Promise<void> = () => {};
+  }) => void | boolean | Promise<void | boolean> = () => {};
   export let onKeepCurrent: () => void = () => {};
   export let onClose: () => void = () => {};
 
@@ -87,14 +87,19 @@
     if (aspects.length === 0) return;
     saved = false;
     const revision = settings.revision;
+    let every = true;
     for (const aspect of aspects) {
-      await onApply({
+      const applied = await onApply({
         aspect,
         value: chosen[aspect] === '' ? null : chosen[aspect],
         revision,
       });
+      if (applied !== true) {
+        every = false;
+      }
     }
-    saved = true;
+    // A refusal or a conflict is the runtime's answer; the dialogue says Saved only when none came.
+    saved = every;
   }
 </script>
 

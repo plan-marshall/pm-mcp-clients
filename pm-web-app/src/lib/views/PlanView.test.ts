@@ -210,12 +210,17 @@ describe('PlanView component', () => {
   });
 
   it('shows the phase icon on the phase label and the process-tree phase header', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      current_phase: 'refine',
+    });
+
     render(PlanView);
 
     const label = await screen.findByTestId('plan-phase');
-    expect(label).toHaveTextContent('execute');
+    expect(label).toHaveTextContent('refine');
     expect(label.querySelector('.workflow-icon')?.getAttribute('style')).toContain(
-      workflowIconUrl('phase.execute'),
+      workflowIconUrl('phase.refine'),
     );
     expect(
       screen.getByTestId('node-execute').querySelector('.workflow-icon')?.getAttribute('style'),
@@ -2012,6 +2017,27 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     );
     expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent('after TASK-003');
   });
+
+  it('shows the queued revision the plan resource carries after a reload', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        queued_revision: {
+          chat_id: 'chat-1',
+          turn_id: 'turn-1',
+          subject: { kind: 'plan', id: 'fix-relay' },
+          chat_open: true,
+          applies: { key: 'chat.applies.on_start' },
+        },
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent(
+      'applies when fix-relay starts again',
+    );
+  });
 });
 
 describe('PlanView activity rows (PLAN-55 D3)', () => {
@@ -2327,8 +2353,7 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     );
   });
 
-  it('drops file= when Changes becomes Process and restores the file from memory', async () => {
-    runtimeStore.update((state) => ({
+  it('drops file= when Changes becomes Process and restores the file from memory', async () => {    runtimeStore.update((state) => ({
       ...state,
       objectTab: 'changes',
       changeFile: 'pm-relay/src/main/java/Transport.java',
@@ -2347,5 +2372,18 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     await fireEvent.click(changesTab);
     await waitFor(() => expect(get(runtimeStore).objectTab).toBe('changes'));
     expect(get(runtimeStore).changeFile).toBe('pm-relay/src/main/java/Transport.java');
+  });
+
+  it('opens Process and replaces an address that names a tab of another object', async () => {
+    // `access` is a settings tab: no tab of this view, so Process stands in and the address is rewritten.
+    runtimeStore.update((state) => ({ ...state, objectTab: 'access' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=access');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await waitFor(() => expect(get(runtimeStore).objectTab).toBe('process'));
+    expect(window.location.search).not.toContain('tab=access');
+    expect(screen.queryByTestId('plan-changes')).toBeNull();
   });
 });

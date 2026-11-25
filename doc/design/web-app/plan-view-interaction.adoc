@@ -140,7 +140,7 @@ narrative inherits the same trust boundary as the existing activity feed
 [#texts]
 == Texts
 
-Keys of the area `plan`; English and German carry every key. The label of the Intent tab is `intent.tab.title` (link:../shared/intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]).
+Keys of the area `plan`; English and German carry every key. The label of the Intent tab is `plan.tab.intent`; the intent panel's own head is `intent.tab.title` (link:../shared/intent-and-outline-texts.adoc#texts[Intent and Outline, Texts]).
 
 [cols="3,4,4",options="header"]
 |===
@@ -149,6 +149,10 @@ Keys of the area `plan`; English and German carry every key. The label of the In
 |`plan.tab.process`
 |Process
 |Prozess
+
+|`plan.tab.intent`
+|Intent
+|Absicht
 
 |`plan.tab.changes`
 |Changes
@@ -161,6 +165,14 @@ Keys of the area `plan`; English and German carry every key. The label of the In
 |`plan.view.waits_for_decision`
 |Waits for your decision
 |Wartet auf deine Entscheidung
+
+|`plan.view.state_for`
+|for {duration}
+|seit {duration}
+
+|`plan.view.task_position`
+|task {n} of {m}
+|Aufgabe {n} von {m}
 
 |`plan.node.select`
 |Inspect this part
