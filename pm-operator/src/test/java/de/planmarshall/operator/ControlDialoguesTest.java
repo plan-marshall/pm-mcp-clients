@@ -1055,6 +1055,29 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("the watches action opens the watches review")
+    void workActionWatches() throws Exception {
+        var server = fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS.replace("{\"action\":\"next\",\"available\":true},",
+                                    "{\"action\":\"watches\",\"available\":true},"
+                                                        + "{\"action\":\"next\",\"available\":true},"));
+            } else if (path.contains("/review")) {
+                response.json(200, REVIEW_KEPT.replace("\"register\":\"findings\"", "\"register\":\"watches\""));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("y\n");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "watches", false,
+                            new WorkActionDialogue.ActContext(EpicResource.fromJson(EPIC), null)));
+        assertTrue(server.requests().stream().anyMatch(req -> req.target().contains("register=watches")),
+                            server.requests().toString());
+        assertTrue(out.toString().contains("written to the ledger"), out.toString());
+    }
+
+    @Test
     @DisplayName("the remaining review proposals are accepted once")
     void reviewRemaining() throws Exception {
         var two = REVIEW.replace("\"total\":1", "\"total\":2").replace("]}", "," +

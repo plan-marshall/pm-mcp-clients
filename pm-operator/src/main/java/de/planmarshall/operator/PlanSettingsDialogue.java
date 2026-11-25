@@ -173,8 +173,9 @@ final class PlanSettingsDialogue {
             if (result.applied()) {
                 return applied(chosen, aspect, result);
             }
-            if (result.restoreState() != null) {
-                return tooLate(result.restoreState());
+            var restoreState = result.restoreState();
+            if (restoreState != null) {
+                return tooLate(restoreState);
             }
             if (result.conflict()) {
                 var next = conflict(aspect, settings, chosen, result);
@@ -198,7 +199,7 @@ final class PlanSettingsDialogue {
         return 0;
     }
 
-    private int tooLate(@Nullable String state) {
+    private int tooLate(String state) {
         prompt.line("control.settings.too_late", Map.of("plan", planId, "position", state));
         return 0;
     }

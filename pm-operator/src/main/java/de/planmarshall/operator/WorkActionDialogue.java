@@ -177,8 +177,10 @@ final class WorkActionDialogue {
             case "auto" -> auto(epic);
             case "common_files" -> commonFiles();
             case "decompose" -> decompose(epic);
-            case "findings" -> ReviewDialogue.run(context, out, id, "findings", !prompt.asks());
-            case "watches" -> ReviewDialogue.run(context, out, id, "watches", !prompt.asks());
+            case "findings" ->
+                ReviewDialogue.run(context, out, id, ReviewDialogue.REGISTER_FINDINGS, !prompt.asks());
+            case "watches" ->
+                ReviewDialogue.run(context, out, id, ReviewDialogue.REGISTER_WATCHES, !prompt.asks());
             case "archive" -> archive();
             default -> {
                 prompt.line("operator.actions.refused",

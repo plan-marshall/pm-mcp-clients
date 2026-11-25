@@ -40,6 +40,7 @@ import picocli.CommandLine.Spec;
 @Command(name = "lesson", description = "Verify a lesson's premise before a plan starts from it.",
                     subcommands = {LessonSourceCommand.CheckCommand.class})
 @OperatorVerb
+@SuppressWarnings("java:S1075")
 public final class LessonSourceCommand implements Callable<Integer> {
 
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";

@@ -39,8 +39,8 @@ final class ReviewDialogue {
 
     private static final String STATE_ID = "control.review";
     private static final String COUNT_PARAM = "count";
-    private static final String REGISTER_FINDINGS = "findings";
-    private static final String REGISTER_WATCHES = "watches";
+    static final String REGISTER_FINDINGS = "findings";
+    static final String REGISTER_WATCHES = "watches";
     private static final String REGISTER_FIELD = "register";
 
     private final OperatorContext context;

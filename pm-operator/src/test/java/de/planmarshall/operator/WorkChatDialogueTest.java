@@ -22,6 +22,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -104,5 +105,60 @@ class WorkChatDialogueTest {
                             () -> assertEquals(0, server.requests().stream()
                                                                     .filter(recorded -> !"GET".equals(recorded.method())).count(),
                                                 "nothing is sent: " + server.requests()));
+    }
+
+    @Test
+    @DisplayName("turns without a proposal print the no-proposal notice once")
+    void noProposalNoticePrintedOnceAcrossTurns() throws Exception {
+        var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+        var msg1 = Generators.letterStrings(6, 10).next();
+        var msg2 = Generators.letterStrings(6, 10).next();
+        var reply1 = Generators.letterStrings(6, 10).next();
+        var reply2 = Generators.letterStrings(6, 10).next();
+        var posts = new AtomicInteger();
+        var base = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                            + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                            + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},";
+        var t1 = chatTurnJson("T-1", "operator", msg1, "2026-10-16T10:01:00Z");
+        var t2 = chatTurnJson("T-2", "replan", reply1, "2026-10-16T10:01:05Z");
+        var t3 = chatTurnJson("T-3", "operator", msg2, "2026-10-16T10:02:00Z");
+        var t4 = chatTurnJson("T-4", "replan", reply2, "2026-10-16T10:02:05Z");
+        var initial = base + "\"turns\":[]}";
+        var afterFirst = base + "\"turns\":[" + t1 + "," + t2 + "]}";
+        var afterSecond = base + "\"turns\":[" + t1 + "," + t2 + "," + t3 + "," + t4 + "]}";
+        fixture.start((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+                int post = posts.get();
+                response.json(200, post == 0 ? initial : (post == 1 ? afterFirst : afterSecond));
+            } else if (path.endsWith("/chat/turns")) {
+                int post = posts.incrementAndGet();
+                response.json(202, "{\"turn_id\":\"" + (post == 1 ? "T-1" : "T-3") + "\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type(msg1 + "\n" + msg2 + "\n\n");
+        virtual.endOfInput();
+        var out = new StringWriter();
+
+        var followUp = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+        var text = out.toString();
+        var notice = subject + " proposes no change yet";
+        var firstIdx = text.indexOf(notice);
+        assertAll(
+                            () -> assertNull(followUp),
+                            () -> assertTrue(text.contains(reply1), text),
+                            () -> assertTrue(text.contains(reply2), text),
+                            () -> assertTrue(firstIdx >= 0, text),
+                            () -> assertEquals(-1, text.indexOf(notice, firstIdx + notice.length()), text),
+                            () -> assertTrue(text.contains("The chat is kept with " + subject), text));
+    }
+
+    private static String chatTurnJson(String id, String author, String text, String at) {
+        return "{\"turn_id\":\"" + id + "\",\"kind\":\"message\",\"author\":\"" + author
+                            + "\",\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\""
+                            + text + "\",\"steps\":[],\"refs\":[],\"at\":\"" + at + "\"}";
     }
 }

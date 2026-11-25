@@ -98,10 +98,7 @@ final class WorkChatDialogue {
         var dialogue = new WorkChatDialogue(context, out, chat.subject().kind().wireValue(), chat.subject().id(),
                             false, true);
         boolean endedChat = chat.scope() == ChatScopeKind.ARCHIVE;
-        dialogue.showHead(chat, endedChat);
-        for (var turn : chat.turns()) {
-            dialogue.showTurn(turn);
-        }
+        dialogue.showTranscript(chat, endedChat);
         var proposal = chat.proposal();
         if (proposal != null && chat.hasProposal()) {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), endedChat
@@ -125,38 +122,54 @@ final class WorkChatDialogue {
     private @Nullable String execute() throws IOException {
         var chat = client.chat(kind, subjectId);
         boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
-        showHead(chat, endedChat);
-        for (var turn : chat.turns()) {
-            showTurn(turn);
-        }
+        showTranscript(chat, endedChat);
         var seen = lastTurnId(chat);
         boolean saidNoProposal = false;
         while (true) {
             if (chat.hasProposal()) {
-                var next = answerProposal(chat, endedChat, seen);
-                if (next == null) {
+                chat = answerProposal(chat, endedChat, seen);
+                if (chat == null) {
                     return null;
                 }
-                chat = next;
                 seen = lastTurnId(chat);
-            } else {
-                var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
-                                    Map.of()) + StartPrompt.SUFFIX, STATE_ID,
-                                    MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end", Map.of()),
-                                    subjectId);
-                if (message.isBlank()) {
-                    prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
-                    return null;
-                }
-                chat = client.chatTurn(kind, subjectId, message);
-                showNewTurns(chat, seen);
-                seen = lastTurnId(chat);
-                if (!chat.hasProposal() && !saidNoProposal) {
-                    prompt.line("operator.actions.chat.no_proposal", Map.of(KEY_SUBJECT, subjectId));
-                    saidNoProposal = true;
-                }
+                continue;
             }
+            var message = askMessage();
+            if (message == null) {
+                return null;
+            }
+            chat = client.chatTurn(kind, subjectId, message);
+            showNewTurns(chat, seen);
+            seen = lastTurnId(chat);
+            saidNoProposal = reportNoProposalOnce(chat, saidNoProposal);
         }
+    }
+
+    private void showTranscript(ChatResource chat, boolean endedChat) {
+        showHead(chat, endedChat);
+        for (var turn : chat.turns()) {
+            showTurn(turn);
+        }
+    }
+
+    private @Nullable String askMessage() {
+        var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
+                            Map.of()) + StartPrompt.SUFFIX, STATE_ID,
+                            MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end", Map.of()),
+                            subjectId);
+        if (message.isBlank()) {
+            prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+            return null;
+        }
+        return message;
+    }
+
+    private boolean reportNoProposalOnce(ChatResource chat, boolean saidNoProposal) {
+        if (!chat.hasProposal() && !saidNoProposal) {
+            prompt.line("operator.actions.chat.no_proposal", Map.of(KEY_SUBJECT, subjectId));
+            return true;
+        }
+        return saidNoProposal;
     }
 
     /**
