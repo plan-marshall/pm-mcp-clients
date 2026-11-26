@@ -87,7 +87,8 @@
           {
             "kind": "cleanup_due",
             "link": "/api/v1/system/cleanup",
-            "since": "2026-10-15T08:00:00Z"
+            "since": "2026-10-15T08:00:00Z",
+            "blocks": "nothing"
           },
           {
             "kind": "decision",
@@ -151,7 +152,7 @@
               "title": "pm-mcp-clients"
             },
             "since": "2026-10-16T15:45:00Z",
-            "blocks": "project"
+            "blocks": "setup"
           },
           {
             "kind": "decision",
@@ -170,7 +171,8 @@
           {
             "kind": "decision",
             "link": "/api/v1/decisions/Q-016",
-            "since": "2026-10-16T16:02:00Z"
+            "since": "2026-10-16T16:02:00Z",
+            "blocks": "nothing"
           },
           {
             "kind": "waiver",
@@ -189,7 +191,8 @@
           {
             "kind": "credential",
             "link": "/api/v1/credentials/github",
-            "since": "2026-10-16T09:00:00Z"
+            "since": "2026-10-16T09:00:00Z",
+            "blocks": "nothing"
           },
           {
             "kind": "condition",
@@ -212,7 +215,8 @@
               "id": "plan-marshall",
               "title": "plan-marshall"
             },
-            "since": "2026-10-16T14:20:00Z"
+            "since": "2026-10-16T14:20:00Z",
+            "blocks": "nothing"
           },
           {
             "kind": "findings",
@@ -2972,7 +2976,7 @@
                 "scope": "machine",
                 "asking_phase": "settings",
                 "asking_role": "settings",
-                "blocks": "none",
+                "blocks": "nothing",
                 "reversibility": "reversible",
                 "description": "The machine's notification setting asks once.",
                 "parts": [
@@ -4183,12 +4187,14 @@
                   {
                     "kind": "cleanup_due",
                     "link": "/api/v1/system/cleanup",
-                    "since": "2026-10-15T08:00:00Z"
+                    "since": "2026-10-15T08:00:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "credential",
                     "link": "/api/v1/credentials/github",
-                    "since": "2026-10-16T09:00:00Z"
+                    "since": "2026-10-16T09:00:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "setup",
@@ -4197,7 +4203,8 @@
                       "id": "plan-marshall",
                       "title": "plan-marshall"
                     },
-                    "since": "2026-10-16T14:20:00Z"
+                    "since": "2026-10-16T14:20:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "findings",
@@ -4492,12 +4499,14 @@
                   {
                     "kind": "cleanup_due",
                     "link": "/api/v1/system/cleanup",
-                    "since": "2026-10-15T08:00:00Z"
+                    "since": "2026-10-15T08:00:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "credential",
                     "link": "/api/v1/credentials/github",
-                    "since": "2026-10-16T09:00:00Z"
+                    "since": "2026-10-16T09:00:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "setup",
@@ -4506,7 +4515,8 @@
                       "id": "plan-marshall",
                       "title": "plan-marshall"
                     },
-                    "since": "2026-10-16T14:20:00Z"
+                    "since": "2026-10-16T14:20:00Z",
+                    "blocks": "nothing"
                   },
                   {
                     "kind": "findings",
@@ -7322,7 +7332,7 @@
                 "scope": "machine",
                 "asking_phase": "settings",
                 "asking_role": "settings",
-                "blocks": "none",
+                "blocks": "nothing",
                 "reversibility": "reversible",
                 "description": "The machine's notification setting asks once.",
                 "parts": [
@@ -7720,7 +7730,7 @@
                 "scope": "machine",
                 "asking_phase": "settings",
                 "asking_role": "settings",
-                "blocks": "none",
+                "blocks": "nothing",
                 "reversibility": "reversible",
                 "description": "The machine's notification setting asks once.",
                 "parts": [

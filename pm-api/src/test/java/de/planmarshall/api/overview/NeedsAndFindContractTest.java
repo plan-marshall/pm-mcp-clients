@@ -12,9 +12,11 @@ package de.planmarshall.api.overview;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.MachineApiPaths;
+import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 
@@ -116,18 +119,52 @@ class NeedsAndFindContractTest {
         }
 
         @Test
-        @DisplayName("leaves the place and the blocked work out where the item has none")
+        @DisplayName("leaves the place out where the item has none, and keeps what it blocks")
         void itemWithoutPlace() throws Exception {
             var item = new NeedsOperatorItem(NeedsOperatorKind.CREDENTIAL, "/api/v1/credentials/github",
-                    null, null, null, null, null);
+                    null, null, null, null, "nothing");
 
             var map = item.toMap();
             assertFalse(map.containsKey("project"));
             assertFalse(map.containsKey("epic"));
             assertFalse(map.containsKey("plan"));
             assertFalse(map.containsKey("since"));
-            assertFalse(map.containsKey("blocks"));
+            assertEquals("nothing", map.get("blocks"));
             assertEquals(item, NeedsOperatorItem.fromJson(item.toJson()));
+        }
+
+        @Test
+        @DisplayName("round-trips every value of the one vocabulary, never absent")
+        void blocksVocabularyRoundTrip() throws Exception {
+            for (var value : List.of("plan", "epic", "setup", "entry", "task", "nothing")) {
+                var item = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-007",
+                        null, null, null, null, value);
+
+                var again = NeedsOperatorItem.fromJson(item.toJson());
+
+                assertEquals(value, again.blocks());
+                assertEquals(value,
+                        JsonTree.string(JsonTree.asObject(JsonTree.parse(item.toJson())), "blocks"));
+            }
+        }
+
+        @Test
+        @DisplayName("refuses an item without blocks instead of reading it as one that blocks nothing")
+        void blocksIsRequired() {
+            var map = new LinkedHashMap<String, Object>();
+            map.put("kind", "credential");
+
+            assertThrows(JsonFormatException.class, () -> NeedsOperatorItem.fromMap(map));
+        }
+
+        @Test
+        @DisplayName("reads a value outside the vocabulary as other, never as blocking nothing")
+        void unknownBlocks() throws Exception {
+            var map = new LinkedHashMap<String, Object>();
+            map.put("kind", "credential");
+            map.put("blocks", "project");
+
+            assertEquals("other", NeedsOperatorItem.fromMap(map).blocks());
         }
 
         @Test

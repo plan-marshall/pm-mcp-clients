@@ -144,7 +144,7 @@ class DecisionsScenarioTest {
                                 .blocks());
 
                 // A non-blocking question names no scope it holds.
-                assertEquals("none",
+                assertEquals("nothing",
                         DecisionEnvelope.fromJson(get(runtime, "/api/v1/decisions/Q-016").bodyText())
                                 .blocks());
                 assertNull(DecisionEnvelope.fromJson(get(runtime, "/api/v1/decisions/Q-016").bodyText())
