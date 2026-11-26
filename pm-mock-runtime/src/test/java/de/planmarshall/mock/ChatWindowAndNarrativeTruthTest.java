@@ -155,8 +155,8 @@ class ChatWindowAndNarrativeTruthTest {
     @DisplayName("fixture validation rejects a decision chat whose subject prefix disagrees with the decision's plan")
     void mismatchedDecisionChatBindingRejected() {
         var scenario = withMismatchedDecisionChat(PLAN, "other-plan", "Q-" + Generators.integers(100, 999).next());
-        assertThrows(IllegalStateException.class,
-                () -> MockRuntime.start(MockRuntimeConfig.builder().initialScenario(scenario).build()));
+        var config = MockRuntimeConfig.builder().initialScenario(scenario).build();
+        assertThrows(IllegalStateException.class, () -> MockRuntime.start(config));
     }
 
     @Test

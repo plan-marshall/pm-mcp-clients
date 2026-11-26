@@ -219,6 +219,8 @@ final class ChatRegistry {
     private static final String KEY_SCOPE = "scope";
     private static final String KEY_DECISION = "decision";
     private static final String KEY_KIND = "kind";
+    private static final String KEY_SOURCE = "source";
+    private static final String KEY_TITLE = "title";
     private static final String ARG_CHANNEL = "channel";
     private static final String ARG_DEVICE = "device";
     private static final String ARG_REASON = "reason";
@@ -853,31 +855,18 @@ final class ChatRegistry {
         if (event.startsWith(CHAT_EVENT_PREFIX)) {
             return;
         }
+        closeChatsForEvent(event, payload);
+        var events = new ArrayList<ChatEvent>();
+        recordEndedTask(event, payload);
+        events.addAll(revisionAtBoundary(event, payload));
+        events.addAll(narrate(event, payload));
+        publishEvents(events);
+    }
+
+    private void closeChatsForEvent(String event, Map<String, Object> payload) {
         switch (event) {
-            case EVENT_DECISION_ANSWERED -> {
-                var answeredDecision = decisionId(payload);
-                if (answeredDecision != null) {
-                    endWhere(subject -> subject.kind() == ChatSubjectKind.DECISION
-                                    && subject.id().endsWith("/" + answeredDecision),
-                            ChatEndedEvent.EndedBy.ANSWERED_ELSEWHERE);
-                }
-            }
-            case EVENT_SCOPE_ENDED -> {
-                var outcome = JsonTree.string(payload, ARG_OUTCOME);
-                var planId = JsonTree.string(payload, KEY_PLAN_ID);
-                if (planId == null) {
-                    planId = scopedId(payload, SCOPE_PLAN);
-                }
-                var epicId = JsonTree.string(payload, KEY_EPIC_ID);
-                if (epicId == null) {
-                    epicId = scopedId(payload, SCOPE_EPIC);
-                }
-                if ("merged".equals(outcome) && planId != null) {
-                    narratePrMerged(planId, payload);
-                }
-                endWork(ChatSubjectKind.PLAN, planId, outcome);
-                endWork(ChatSubjectKind.EPIC, epicId, outcome);
-            }
+            case EVENT_DECISION_ANSWERED -> closeDecisionChats(payload);
+            case EVENT_SCOPE_ENDED -> closeScopeEndedChats(payload);
             case EVENT_ENTRY_ABANDONED -> {
                 // The entry's transcript goes with its source directory: abandoning deletes it.
                 var entryId = JsonTree.string(payload, KEY_ENTRY_ID);
@@ -896,11 +885,30 @@ final class ChatRegistry {
                 // no chat ends with any other event
             }
         }
-        var events = new ArrayList<ChatEvent>();
-        recordEndedTask(event, payload);
-        events.addAll(revisionAtBoundary(event, payload));
-        events.addAll(narrate(event, payload));
-        publishEvents(events);
+    }
+
+    private void closeDecisionChats(Map<String, Object> payload) {
+        var answeredDecision = decisionId(payload);
+        if (answeredDecision != null) {
+            endWhere(subject -> subject.kind() == ChatSubjectKind.DECISION
+                            && subject.id().endsWith("/" + answeredDecision),
+                    ChatEndedEvent.EndedBy.ANSWERED_ELSEWHERE);
+        }
+    }
+
+    private void closeScopeEndedChats(Map<String, Object> payload) {
+        var outcome = JsonTree.string(payload, ARG_OUTCOME);
+        var planId = firstNonNull(JsonTree.string(payload, KEY_PLAN_ID), scopedId(payload, SCOPE_PLAN));
+        var epicId = firstNonNull(JsonTree.string(payload, KEY_EPIC_ID), scopedId(payload, SCOPE_EPIC));
+        if ("merged".equals(outcome) && planId != null) {
+            narratePrMerged(planId, payload);
+        }
+        endWork(ChatSubjectKind.PLAN, planId, outcome);
+        endWork(ChatSubjectKind.EPIC, epicId, outcome);
+    }
+
+    private static @Nullable String firstNonNull(@Nullable String primary, @Nullable String fallback) {
+        return primary != null ? primary : fallback;
     }
 
     /**
@@ -1076,49 +1084,44 @@ final class ChatRegistry {
      */
     private static @Nullable ChatSubject subjectOf(String event, Map<String, Object> payload) {
         if (event.startsWith("epic.")) {
-            var epicId = JsonTree.string(payload, KEY_EPIC_ID);
-            if (epicId == null) {
-                epicId = scopedId(payload, SCOPE_EPIC);
-            }
+            var epicId = firstNonNull(JsonTree.string(payload, KEY_EPIC_ID), scopedId(payload, SCOPE_EPIC));
             return epicId == null ? null : new ChatSubject(ChatSubjectKind.EPIC, epicId);
         }
-        var planId = JsonTree.string(payload, KEY_PLAN_ID);
-        if (planId == null) {
-            planId = scopedId(payload, SCOPE_PLAN);
-        }
+        var scoped = scopedSubject(payload);
+        return scoped != null ? scoped : decisionSubject(payload);
+    }
+
+    private static @Nullable ChatSubject scopedSubject(Map<String, Object> payload) {
+        var planId = firstNonNull(JsonTree.string(payload, KEY_PLAN_ID), scopedId(payload, SCOPE_PLAN));
         if (planId != null) {
             return new ChatSubject(ChatSubjectKind.PLAN, planId);
         }
-        var epicId = JsonTree.string(payload, KEY_EPIC_ID);
-        if (epicId == null) {
-            epicId = scopedId(payload, SCOPE_EPIC);
-        }
+        var epicId = firstNonNull(JsonTree.string(payload, KEY_EPIC_ID), scopedId(payload, SCOPE_EPIC));
         if (epicId != null) {
             return new ChatSubject(ChatSubjectKind.EPIC, epicId);
         }
-        var entryId = JsonTree.string(payload, KEY_ENTRY_ID);
-        if (entryId == null) {
-            entryId = scopedId(payload, SCOPE_ENTRY);
-        }
-        if (entryId != null) {
-            return new ChatSubject(ChatSubjectKind.ENTRY, entryId);
-        }
+        var entryId = firstNonNull(JsonTree.string(payload, KEY_ENTRY_ID), scopedId(payload, SCOPE_ENTRY));
+        return entryId == null ? null : new ChatSubject(ChatSubjectKind.ENTRY, entryId);
+    }
+
+    private static @Nullable ChatSubject decisionSubject(Map<String, Object> payload) {
         // decision.opened names the decision whole, its plan field or subject ("plan <id>" / "epic <id>") among the members.
         var decision = JsonTree.asObject(payload.get(KEY_DECISION));
-        if (decision != null) {
-            var decisionPlan = JsonTree.string(decision, SCOPE_PLAN);
-            if (decisionPlan != null && !decisionPlan.isBlank()) {
-                return new ChatSubject(ChatSubjectKind.PLAN, decisionPlan);
-            }
-            var decisionSubject = JsonTree.string(decision, "subject");
-            if (decisionSubject != null && decisionSubject.startsWith(PLAN_PREFIX)) {
-                return new ChatSubject(ChatSubjectKind.PLAN,
-                        decisionSubject.substring(PLAN_PREFIX.length()).trim());
-            }
-            if (decisionSubject != null && decisionSubject.startsWith("epic ")) {
-                return new ChatSubject(ChatSubjectKind.EPIC,
-                        decisionSubject.substring("epic ".length()).trim());
-            }
+        if (decision == null) {
+            return null;
+        }
+        var decisionPlan = JsonTree.string(decision, SCOPE_PLAN);
+        if (decisionPlan != null && !decisionPlan.isBlank()) {
+            return new ChatSubject(ChatSubjectKind.PLAN, decisionPlan);
+        }
+        var decisionSubject = JsonTree.string(decision, "subject");
+        if (decisionSubject != null && decisionSubject.startsWith(PLAN_PREFIX)) {
+            return new ChatSubject(ChatSubjectKind.PLAN,
+                    decisionSubject.substring(PLAN_PREFIX.length()).trim());
+        }
+        if (decisionSubject != null && decisionSubject.startsWith("epic ")) {
+            return new ChatSubject(ChatSubjectKind.EPIC,
+                    decisionSubject.substring("epic ".length()).trim());
         }
         return null;
     }
@@ -1167,8 +1170,8 @@ final class ChatRegistry {
             case "running" -> line("row_started", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
             case "landed" -> line("row_landed", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
             case "cancelled" -> line("row_cancelled", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
-            case "failed" -> line("row_failed", args2(SCOPE_PLAN, planId, ARG_OUTCOME,
-                    Objects.requireNonNullElse(JsonTree.string(payload, ARG_OUTCOME), "failed")),
+            case OUTCOME_FAILED -> line("row_failed", args2(SCOPE_PLAN, planId, ARG_OUTCOME,
+                    Objects.requireNonNullElse(JsonTree.string(payload, ARG_OUTCOME), OUTCOME_FAILED)),
                     ref(RefKind.PLAN, planId), at);
             default -> null;
         };
@@ -1182,18 +1185,20 @@ final class ChatRegistry {
     }
 
     private static NarrativeLine sourceAddedLine(Map<String, Object> payload, String at) {
-        return line("source_added", args("source", sourceLabel(payload, "kind", "source", "title")), List.of(), at);
+        return line("source_added", args(KEY_SOURCE, sourceLabel(payload, KEY_KIND, KEY_SOURCE, KEY_TITLE)),
+                List.of(), at);
     }
 
     private static NarrativeLine sourceRemovedLine(Map<String, Object> payload, String at) {
-        return line("source_removed", args("source", sourceLabel(payload, "source", "kind", "title")), List.of(), at);
+        return line("source_removed", args(KEY_SOURCE, sourceLabel(payload, KEY_SOURCE, KEY_KIND, KEY_TITLE)),
+                List.of(), at);
     }
 
     private static NarrativeLine sourceFlaggedLine(Map<String, Object> payload, String at) {
-        var source = sourceLabel(payload, "source", "kind", "title");
+        var source = sourceLabel(payload, KEY_SOURCE, KEY_KIND, KEY_TITLE);
         var reason = Objects.requireNonNullElse(JsonTree.string(payload, ARG_REASON),
                 Objects.requireNonNullElse(JsonTree.string(payload, "verdict"), "flagged"));
-        return line("source_flagged", args2("source", source, ARG_REASON, reason), List.of(), at);
+        return line("source_flagged", args2(KEY_SOURCE, source, ARG_REASON, reason), List.of(), at);
     }
 
     private static String sourceLabel(Map<String, Object> payload, String... keys) {

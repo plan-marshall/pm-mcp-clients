@@ -535,7 +535,7 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a proposal in each state round-trips, a refused one with its finding")
-        void eachState() throws Exception {
+        void eachState() {
             for (var state : ProposalState.values()) {
                 var proposal = proposal(state);
                 assertAll(state.wireValue(),

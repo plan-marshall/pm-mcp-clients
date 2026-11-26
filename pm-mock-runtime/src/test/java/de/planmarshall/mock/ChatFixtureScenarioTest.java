@@ -90,35 +90,41 @@ class ChatFixtureScenarioTest {
                     () -> assertEquals(List.of("chat.knows.description", "chat.knows.tasks",
                                     "chat.knows.phase", "chat.knows.version"),
                             knowsKeys(runningPlanChat)),
-
-                    () -> assertEquals(ChatSubjectKind.DECISION, decisionChat.subject().kind()),
-                    () -> assertEquals("fix-relay/Q-007", decisionChat.subject().id()),
-                    () -> assertEquals(ChatScopeKind.DECISION, decisionChat.scope()),
-                    () -> assertEquals(ChatStatus.READ_BACK, decisionChat.state()),
-                    () -> assertTrue(decisionChat.hasProposal(), "decision chat carries an open proposal"),
-                    () -> assertEquals(ProposalKind.REVISION,
-                            Objects.requireNonNull(decisionChat.proposal()).kind()),
-                    () -> assertTrue(Objects.requireNonNull(decisionChat.proposal()).isOpen()),
-                    () -> assertTrue(knowsKeys(decisionChat).contains("chat.knows.decision"),
-                            "decision chat knows its decision"),
-                    () -> assertTrue(knowsKeys(decisionChat).contains("chat.knows.version"),
-                            "decision chat knows its plan version"),
-
+                    () -> assertDecisionFixture(decisionChat),
                     () -> assertEquals("ended", endedActions.state()),
                     () -> assertEquals(ChatScopeKind.ARCHIVE, endedChat.scope()),
                     () -> assertEquals(List.of("chat.knows.other"), knowsKeys(endedChat)),
-
-                    () -> assertEquals(ChatScopeKind.EPIC, epicChat.scope()),
-                    () -> assertEquals(List.of("chat.knows.description", "chat.knows.rows", "chat.knows.items"),
-                            knowsKeys(epicChat)),
-                    () -> assertChatHasNarrativeLines(epicChat,
-                            List.of("chat.line.row_started", "chat.line.auto_changed")),
-
-                    () -> assertEquals(ChatScopeKind.ENTRY, entryChat.scope()),
-                    () -> assertEquals(List.of("chat.knows.description", "chat.knows.sources"),
-                            knowsKeys(entryChat)),
-                    () -> assertChatHasNarrativeLines(entryChat, List.of("chat.line.source_added")));
+                    () -> assertEpicAndEntryFixtures(epicChat, entryChat));
         }
+    }
+
+    private static void assertDecisionFixture(ChatResource decisionChat) {
+        assertAll("decision chat fixture",
+                () -> assertEquals(ChatSubjectKind.DECISION, decisionChat.subject().kind()),
+                () -> assertEquals("fix-relay/Q-007", decisionChat.subject().id()),
+                () -> assertEquals(ChatScopeKind.DECISION, decisionChat.scope()),
+                () -> assertEquals(ChatStatus.READ_BACK, decisionChat.state()),
+                () -> assertTrue(decisionChat.hasProposal(), "decision chat carries an open proposal"),
+                () -> assertEquals(ProposalKind.REVISION,
+                        Objects.requireNonNull(decisionChat.proposal()).kind()),
+                () -> assertTrue(Objects.requireNonNull(decisionChat.proposal()).isOpen()),
+                () -> assertTrue(knowsKeys(decisionChat).contains("chat.knows.decision"),
+                        "decision chat knows its decision"),
+                () -> assertTrue(knowsKeys(decisionChat).contains("chat.knows.version"),
+                        "decision chat knows its plan version"));
+    }
+
+    private static void assertEpicAndEntryFixtures(ChatResource epicChat, ChatResource entryChat) {
+        assertAll("epic and entry fixtures",
+                () -> assertEquals(ChatScopeKind.EPIC, epicChat.scope()),
+                () -> assertEquals(List.of("chat.knows.description", "chat.knows.rows", "chat.knows.items"),
+                        knowsKeys(epicChat)),
+                () -> assertChatHasNarrativeLines(epicChat,
+                        List.of("chat.line.row_started", "chat.line.auto_changed")),
+                () -> assertEquals(ChatScopeKind.ENTRY, entryChat.scope()),
+                () -> assertEquals(List.of("chat.knows.description", "chat.knows.sources"),
+                        knowsKeys(entryChat)),
+                () -> assertChatHasNarrativeLines(entryChat, List.of("chat.line.source_added")));
     }
 
     private static List<String> knowsKeys(ChatResource chat) {

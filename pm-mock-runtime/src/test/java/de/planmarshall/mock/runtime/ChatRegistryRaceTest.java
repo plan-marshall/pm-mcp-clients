@@ -104,7 +104,7 @@ class ChatRegistryRaceTest {
         var scheduled = new CopyOnWriteArrayList<ScheduledFuture<?>>();
 
         var timingScheduler = new BarrierScheduler(delegate, scheduled, postTurnsDone, lastInitialTask, raceArmed,
-                stopReady, barrier, uncaught);
+                stopReady, barrier);
         var registry = new ChatRegistry(events::add, _ -> false, new EventTiming(MockTiming.REALISTIC, timingScheduler),
                 _ -> {
                 }, stubFacts());
@@ -283,10 +283,12 @@ class ChatRegistryRaceTest {
 
             @Override
             public void queueRevision(String planId, QueuedRevision revision) {
+                // Intentionally unused by the replaced-worker vs stop race stub.
             }
 
             @Override
             public void revisionChatEnded(String planId) {
+                // Intentionally unused by the replaced-worker vs stop race stub.
             }
 
             @Override
@@ -296,6 +298,7 @@ class ChatRegistryRaceTest {
 
             @Override
             public void clearRevision(String planId) {
+                // Intentionally unused by the replaced-worker vs stop race stub.
             }
         };
     }
@@ -316,11 +319,10 @@ class ChatRegistryRaceTest {
         private final AtomicBoolean raceArmed;
         private final CountDownLatch stopReady;
         private final CyclicBarrier barrier;
-        private final AtomicReference<Throwable> uncaught;
 
         BarrierScheduler(ScheduledExecutorService delegate, List<ScheduledFuture<?>> scheduled,
                 CountDownLatch postTurnsDone, AtomicReference<Callable<?>> lastInitialTask, AtomicBoolean raceArmed,
-                CountDownLatch stopReady, CyclicBarrier barrier, AtomicReference<Throwable> uncaught) {
+                CountDownLatch stopReady, CyclicBarrier barrier) {
             this.delegate = delegate;
             this.scheduled = scheduled;
             this.postTurnsDone = postTurnsDone;
@@ -328,7 +330,6 @@ class ChatRegistryRaceTest {
             this.raceArmed = raceArmed;
             this.stopReady = stopReady;
             this.barrier = barrier;
-            this.uncaught = uncaught;
         }
 
         @Override

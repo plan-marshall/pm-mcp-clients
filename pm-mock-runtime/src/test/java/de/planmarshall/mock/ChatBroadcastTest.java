@@ -340,7 +340,12 @@ class ChatBroadcastTest {
                             Objects.requireNonNull(read(runtime, planRoutes).proposal()).state()));
         }
 
-        // 4. Broadcast ACCEPTED on a revision proposal with null applies: refused invalid_arguments (no uncaught NPE).
+        assertMissingAppliesRefused();
+        assertRefusedProposalAcceptsReject();
+    }
+
+    private void assertMissingAppliesRefused() throws Exception {
+        // Broadcast ACCEPTED on a revision proposal with null applies: refused invalid_arguments (no uncaught NPE).
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                      .initialScenario(withoutAppliesOnFixRelayProposal()).timing(MockTiming.ORDERED).build())) {
             var planRoutes = ChatRoutes.plan(SEEDED_PROPOSAL_PLAN);
@@ -352,8 +357,10 @@ class ChatBroadcastTest {
                     .toMap());
             assertRefused(missingApplies, 400, INVALID_ARGUMENTS);
         }
+    }
 
-        // 5. Broadcast REJECTED on a REFUSED proposal moves it cleanly to REJECTED.
+    private void assertRefusedProposalAcceptsReject() throws Exception {
+        // Broadcast REJECTED on a REFUSED proposal moves it cleanly to REJECTED.
         try (var runtime = ordered()) {
             var routes = ChatRoutes.plan(id());
             var opened = openChat(runtime, routes);
