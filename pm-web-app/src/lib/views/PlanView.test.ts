@@ -2708,7 +2708,9 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     await waitFor(() => expect(get(runtimeStore).objectTab).toBe('changes'));
     expect(get(runtimeStore).changeFile).toBe('pm-relay/src/main/java/Transport.java');
     // The address carries the file the tab shows, not only the memory of the view.
-    expect(window.location.search).toContain('file=');
+    expect(new URL(window.location.href).searchParams.get('file')).toBe(
+      'pm-relay/src/main/java/Transport.java',
+    );
   });
 
   it('starts the Intent tab in its loading state before the first read answers', async () => {

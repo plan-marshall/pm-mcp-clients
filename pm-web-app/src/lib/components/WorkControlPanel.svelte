@@ -652,13 +652,18 @@
       if (result.applied) {
         settingsConflict = null;
         settingsFormRevision = result.revision;
-        settings = await apiClient.getPlanSettings(subjectId);
+        applied = true;
+        onChanged();
+        // The write stands even if the refresh that follows fails; the next open reads again.
+        try {
+          settings = await apiClient.getPlanSettings(subjectId);
+        } catch {
+          // Nothing to report here: the field was applied, and the dialogs re-read on open.
+        }
         settingsNotice = $t('control.settings.applies', {
           plan: subjectId,
           version: result.revision,
         });
-        applied = true;
-        onChanged();
       } else if (result.conflict) {
         settingsFormRevision = result.revision;
         settingsConflict = {

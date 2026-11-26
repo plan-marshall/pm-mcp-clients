@@ -127,12 +127,15 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(page).toHaveURL(/\/plans\/drop-legacy-api$/);
     await expect(page.getByTestId('decision-detail')).toHaveCount(0);
 
-    // A reload of the `open=` address closes back to the plan, the entry having nothing to return to.
-    await page.goto('/plans/drop-legacy-api?open=decision:Q-009');
-    await expect(page.getByTestId('decision-detail')).toBeVisible();
-    await page.getByTestId('plan-in-place-close').click();
-    await expect(page).toHaveURL(/\/plans\/drop-legacy-api$/);
-    await expect(page.getByTestId('decision-detail')).toHaveCount(0);
+    // A reload of the `open=` address closes back to the plan, the entry having nothing to return
+    // to: a fresh page, so the plan's own entry is not behind it.
+    const freshPage = await page.context().newPage();
+    await freshPage.goto('/plans/drop-legacy-api?open=decision:Q-009');
+    await expect(freshPage.getByTestId('decision-detail')).toBeVisible();
+    await freshPage.getByTestId('plan-in-place-close').click();
+    await expect(freshPage).toHaveURL(/\/plans\/drop-legacy-api$/);
+    await expect(freshPage.getByTestId('decision-detail')).toHaveCount(0);
+    await freshPage.close();
   });
 
   test('narrates every part of session-log, including done phases and done tasks', async ({

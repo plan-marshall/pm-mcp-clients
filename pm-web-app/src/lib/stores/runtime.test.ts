@@ -1950,4 +1950,18 @@ describe('an object opened in place', () => {
     expect(get(runtimeStore).selectedPlanId).toBe('next-plan');
     expect(get(runtimeStore).openObject).toBeNull();
   });
+
+  it('does not carry a plan’s file into the next plan', () => {
+    runtimeStore.set(
+      makeRuntimeState({
+        currentRoute: 'plan',
+        selectedPlanId: 'fix-relay',
+        changeFile: 'pm-relay/pom.xml',
+      }),
+    );
+
+    openPlanView('next-plan');
+
+    expect(get(runtimeStore).changeFile).toBeNull();
+  });
 });

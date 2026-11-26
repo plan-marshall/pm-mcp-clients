@@ -183,7 +183,10 @@ describe('the Changes list’s width in the wide plan column', () => {
     const rule = wideRule();
     expect(rule).not.toBe('');
     const columns = /grid-template-columns:\s*([^;]+);/.exec(rule)?.[1]?.trim() ?? '';
-    // The list's own track is the design's 280–360 px band; the hunks take every remaining pixel.
-    expect(columns).toMatch(/clamp\(\s*280px\s*,[^,]+,\s*360px\s*\)\s+minmax\(\s*0\s*,\s*1fr\s*\)/);
+    // The list's own track is the design's 280–360 px band, its preferred width the designed 30 %;
+    // the hunks take every remaining pixel.
+    expect(columns).toMatch(
+      /clamp\(\s*280px\s*,\s*30%\s*,\s*360px\s*\)\s+minmax\(\s*0\s*,\s*1fr\s*\)/,
+    );
   });
 });

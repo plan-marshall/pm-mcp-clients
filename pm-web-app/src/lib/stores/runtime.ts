@@ -1722,6 +1722,10 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // An object opened in place belongs to the address it was opened from: a push to another
     // route never carries it, so the next view cannot show the previous caller's decision.
     openObject: null,
+    // A file and a node belong to the plan they were selected in: another plan's Changes tab never
+    // opens with the previous plan's file.
+    changeFile: null,
+    phaseNode: null,
     ...(route === 'start'
       ? {
           startProjectId: params.projectId ?? s.startProjectId ?? null,

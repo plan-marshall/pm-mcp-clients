@@ -229,6 +229,8 @@
   let openDecision = $state<{ planId: string; id: string } | null>(null);
   /** The decision read that owns the link; a superseded answer never writes it. */
   let decisionRequest = 0;
+  /** Whether the last decision read failed, so a process refresh retries it. */
+  let decisionReadFailed = $state(false);
 
   /**
    * The decision's id, when the link belongs to the plan on screen.
@@ -257,11 +259,13 @@
       // project is not this page's.
       const decision = decisions.find((entry) => entry.blocks === 'plan') ?? null;
       openDecision = decision ? { planId: currentId, id: decision.id } : null;
+      decisionReadFailed = false;
     } catch {
       if (request !== decisionRequest) {
         return;
       }
       openDecision = null;
+      decisionReadFailed = true;
     }
   }
 
@@ -567,6 +571,13 @@
 
   /** Whether this document opened the in-place object by a push of its own, so Back closes it. */
   let inPlacePushed = $state(false);
+  /** Set while a close runs, so two close paths of one update never move the history twice. */
+  let closingInPlace = false;
+
+  // A new in-place object opens the next close again.
+  $effect(() => {
+    if ($runtimeStore.openObject !== null) closingInPlace = false;
+  });
 
   /**
    * Opens one object in place beside the plan by a push of this document, so the history's back
@@ -577,9 +588,10 @@
    */
   function openInPlace(kind: 'decision' | 'completion-report', id: string | null): void {
     if (id === null) return;
-    inPlacePushed = true;
     runtimeStore.update((s) => ({ ...s, openObject: { kind, id } }));
-    writeAddress({ ...planAddress(), open: { kind, id } }, 'push');
+    // Only an address the writer actually pushed is closed by Back; one the bar already shows
+    // leaves no entry of its own, so its close replaces the address.
+    inPlacePushed = writeAddress({ ...planAddress(), open: { kind, id } }, 'push');
   }
 
   /**
@@ -588,6 +600,8 @@
    * to go back to (`navigation.adoc#url`).
    */
   function closeInPlace(): void {
+    if (closingInPlace) return;
+    closingInPlace = true;
     if (inPlacePushed) {
       inPlacePushed = false;
       window.history.back();
@@ -652,8 +666,24 @@
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       // The runtime stream's events that change a plan's process (`EventName`).
+      // A decision of this plan opening, changing or leaving re-reads the head's link while the plan
+      // waits (or while its own decision stands beside it): the wait alone does not change.
+      if (
+        (event === 'decision.opened' ||
+          event === 'decision.changed' ||
+          event === 'decision.answered' ||
+          event === 'decision.closed') &&
+        (waiting || openDecision !== null)
+      ) {
+        void loadOpenDecision();
+      }
       if (refreshesPlanProcess(event)) {
         void loadPlanProcess(false);
+        // A read that failed is retried by the next process refresh, so a transient failure never
+        // leaves a waiting plan without its link.
+        if (decisionReadFailed && waiting) {
+          void loadOpenDecision();
+        }
       }
       if (event === 'plan.revision_queued') {
         applyQueuedRevision(data);
@@ -1905,9 +1935,15 @@
       </header>
       <div class="plan-view-object__body">
         {#if inPlaceDecisionId !== null}
-          <DecisionView inPlace={{ id: inPlaceDecisionId, onClose: closeInPlace }} />
+          {#key inPlaceDecisionId}
+            <DecisionView
+              inPlace={{ id: inPlaceDecisionId, planId, onClose: closeInPlace }}
+            />
+          {/key}
         {:else if inPlaceReportId !== null}
-          <CompletionReportView planId={inPlaceReportId} titleLevel={2} />
+          {#key inPlaceReportId}
+            <CompletionReportView planId={inPlaceReportId} titleLevel={2} />
+          {/key}
         {/if}
       </div>
     </aside>

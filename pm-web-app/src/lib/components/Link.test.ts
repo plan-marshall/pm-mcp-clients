@@ -111,7 +111,8 @@ describe('Link', () => {
     render(Link, { props: { href: '/plans/fix-relay', label: 'Open', onactivate } });
     const link = screen.getByRole('link', { name: 'Open' });
 
-    await fireEvent.click(link);
+    // The plain click is cancelled: the caller's push is the only navigation.
+    expect(await fireEvent.click(link)).toBe(false);
     expect(onactivate).toHaveBeenCalledTimes(1);
     expect(link).toHaveAttribute('href', '/plans/fix-relay');
 

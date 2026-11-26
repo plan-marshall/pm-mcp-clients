@@ -54,6 +54,8 @@
   interface DecisionInPlace {
     /** The decision the column shows. */
     id: string;
+    /** The plan whose head opened it: a decision of another plan is not this column's. */
+    planId: string;
     /** Closes the column: the history's back, or the caller's address when the entry was loaded. */
     onClose: () => void;
   }
@@ -404,19 +406,18 @@
     if (active === null || isLoading || decisions.length === 0) return;
     if (decisions.some((dec) => dec.id === active)) return;
     if (!seenIds.has(active)) return;
-    if (inPlace) {
-      inPlace.onClose();
-      return;
-    }
+    // In place the effect above owns the close, so the two never move the history in one update.
+    if (inPlace) return;
     closeDetail();
   });
 
-  // An in-place address that names no open decision — stale, answered elsewhere, or of another plan —
-  // has nothing to show: it closes back to the caller instead of leaving a skeleton that never
-  // resolves (`plan-view-interaction.adoc#changes`'s rule, applied to this address).
+  // An in-place address that names no open decision of this plan — stale, answered elsewhere, or of
+  // another plan — has nothing to show: it closes back to the caller instead of leaving a skeleton
+  // that never resolves (`plan-view-interaction.adoc#changes`'s rule, applied to this address). A
+  // failed read is not a missing decision: it keeps the column open and shows the error.
   $effect(() => {
-    if (!inPlace || isLoading) return;
-    if (decisions.some((dec) => dec.id === inPlace.id)) return;
+    if (!inPlace || isLoading || loadError !== null) return;
+    if (decisions.some((dec) => dec.id === inPlace.id && dec.plan === inPlace.planId)) return;
     inPlace.onClose();
   });
 
@@ -1900,9 +1901,20 @@
 
 <div class="decisions-view">
   {#if inPlace && activeDecision === null}
-    <div class="decisions-view__in-place" data-testid="decision-in-place">
-      <Skeleton shape="card" rows={3} label={$t('decisions.list.title')} />
-    </div>
+    {#if loadError !== null}
+      <div class="decisions-view__in-place" data-testid="decision-in-place">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => void loadDecisions()}
+          titleLevel={2}
+        />
+      </div>
+    {:else if isLoading}
+      <div class="decisions-view__in-place" data-testid="decision-in-place">
+        <Skeleton shape="card" rows={3} label={$t('decisions.list.title')} />
+      </div>
+    {/if}
   {:else}
     <TriagePage
       {levels}
