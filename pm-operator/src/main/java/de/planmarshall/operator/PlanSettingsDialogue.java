@@ -21,6 +21,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ErrorTexts;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
@@ -29,6 +30,10 @@ import de.planmarshall.operator.dialogue.ChoicePrompt;
  * {@code plan-settings.apply}, UC-CTL-5): the aspects grouped as the settings group them, the
  * value of one aspect with its origin, a refused value asked again, a change that is too late, and
  * a change another client made first.
+ *
+ * <p>A refusal that names a code the catalogue knows is shown with that code's title, never with
+ * the runtime's own words, and a refusal of the act itself (a coded {@code 409}: the plan has
+ * ended, the team owns the value) ends the dialogue instead of asking the value again.
  *
  * <p>The revision travels with the change: the dialogue keeps the revision it opened the settings
  * with, and on a conflict it offers to apply the operator's choice again against the current one or
@@ -217,16 +222,36 @@ final class PlanSettingsDialogue {
                                 Map.of("plan", planId, "version", again.result().revision()));
             return null;
         }
+        if (!again.result().conflict() && again.result().restoreState() == null) {
+            // The retry is refused again: it names its cause before the value is asked once more.
+            refused(chosen, aspect, again);
+        }
         return new PlanSettingsRecord(planId, again.result().revision(), settings.values());
     }
 
     private void refused(ChosenValue chosen, String aspect, WorkActionsClient.SettingsAnswer answer) {
-        var reason = answer.refusalReason() != null ? answer.refusalReason() : "";
-        // Only an asking dialogue reaches a change: the group, the aspect and the value are asked
-        // first, so a refused value is asked again.
+        // Only an asking dialogue reaches a change it may repeat: the group, the aspect and the value
+        // are asked first, so a refused value is asked again.
         prompt.line("control.settings.refused",
                             Map.of("value", chosen.value() != null ? chosen.value() : aspect,
-                                                "reason", reason));
+                                                "reason", refusalReason(answer)));
+    }
+
+    /**
+     * Why a refused value is refused: a code the catalogue knows names its text in the operator's
+     * language, a code it does not know keeps the reason the body carried, and a body without either
+     * names none.
+     *
+     * @param answer the runtime's answer
+     * @return the reason, never {@code null}
+     */
+    private String refusalReason(WorkActionsClient.SettingsAnswer answer) {
+        var code = answer.refusalCode();
+        if (code != null) {
+            return ErrorTexts.title(prompt.locale(), code);
+        }
+        var reason = answer.refusalReason();
+        return reason != null ? reason : "";
     }
 
     private @Nullable ChosenValue askValue(String aspect, List<String> choices) {

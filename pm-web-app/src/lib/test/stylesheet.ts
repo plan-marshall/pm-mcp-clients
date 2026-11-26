@@ -2,7 +2,8 @@ import fs from 'node:fs';
 
 /**
  * Readers of a component's stylesheet, for the tests of a rule jsdom does not apply: a container
- * query, a media query, or the display a rule sets at the top level.
+ * query, a media query, or the display a rule sets at the top level — and the one reader of the
+ * theme blocks of `tokens.css`, so every test that measures the palette reads the same rules.
  */
 
 /**
@@ -17,7 +18,7 @@ export function stylesheetOf(componentPath: string): string {
 
 /**
  * @param css a stylesheet
- * @param opener the at-rule whose block is wanted, as written
+ * @param opener the at-rule or selector whose block is wanted, as written
  * @returns the block's content, braces matched
  */
 export function blockOf(css: string, opener: string): string {
@@ -33,6 +34,91 @@ export function blockOf(css: string, opener: string): string {
     }
   }
   throw new Error(`unbalanced "${opener}" block`);
+}
+
+/**
+ * @param css a stylesheet
+ * @param opener the selector whose top-level block is wanted, as written
+ * @returns the block's content of the occurrence at nesting depth 0, so a `:root` inside a media
+ *   query is never mistaken for the top-level one
+ */
+export function topLevelBlockOf(css: string, opener: string): string {
+  let depth = 0;
+  for (let i = 0; i < css.length; i += 1) {
+    const char = css[i];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && css.startsWith(opener, i)) {
+      return blockOf(css.slice(i), opener);
+    }
+  }
+  throw new Error(`no top-level "${opener}" block`);
+}
+
+/**
+ * @param css a stylesheet
+ * @returns the stylesheet without its comments, so a commented-out declaration never counts
+ */
+export function withoutComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '');
+}
+
+/**
+ * @param block a declaration block
+ * @returns every custom property the block declares, keyed by its name
+ */
+export function declarations(block: string): Record<string, string> {
+  const found: Record<string, string> = {};
+  const pattern = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(block)) !== null) {
+    found[match[1]] = match[2].trim();
+  }
+  return found;
+}
+
+/** The theme blocks of `tokens.css`, each read by its selector and keyed by declaration. */
+export interface ThemeBlocks {
+  /** The top-level `:root` block: the shared declarations and the light palette as the default. */
+  root: Record<string, string>;
+  /** The `[data-theme='light']` block. */
+  light: Record<string, string>;
+  /** The `[data-theme='dark']` block. */
+  dark: Record<string, string>;
+  /** The `:root` block inside `@media (prefers-color-scheme: dark)`. */
+  mediaDark: Record<string, string>;
+}
+
+/**
+ * @param block a declaration block
+ * @param name the custom property's name, with its leading `--`
+ * @returns its value, asserted present so a missing token fails by name rather than downstream
+ */
+export function tokenOf(block: Record<string, string>, name: string): string {
+  const value = block[name];
+  if (value === undefined) throw new Error(`no "${name}" declaration in the block`);
+  return value;
+}
+
+/**
+ * Reads the four theme blocks of `tokens.css` by selector — never through the header comment, which
+ * only describes them, so a restructured file still yields the blocks its rules declare.
+ *
+ * @param source the stylesheet
+ * @returns the parsed themes, with the top-level `:root` declaration as the light default
+ */
+export function parseThemes(source: string): ThemeBlocks {
+  const css = withoutComments(source);
+  return {
+    // The palette default is the TOP-LEVEL `:root`; the media blocks each declare their own, and
+    // selecting by nesting depth keeps them out without a list of blocks to keep in step.
+    root: declarations(topLevelBlockOf(css, ':root')),
+    light: declarations(blockOf(css, "[data-theme='light']")),
+    dark: declarations(blockOf(css, "[data-theme='dark']")),
+    mediaDark: declarations(blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root')),
+  };
 }
 
 /**

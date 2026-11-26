@@ -60,20 +60,58 @@ public record PlanSettingsUpdateResult(
     }
 
     /**
+     * The key under which a refusal body names the code it was answered with.
+     */
+    private static final String ERROR_KEY = "error";
+
+    /** The wire keys of a settings result. */
+    private static final String APPLIED_KEY = "applied";
+    private static final String CONFLICT_KEY = "conflict";
+    private static final String REVISION_KEY = "revision";
+    private static final String CURRENT_VALUE_KEY = "current_value";
+    private static final String STATE_KEY = "state";
+
+    /**
+     * Reads the settings result an answer carries, when the body is one: a revision conflict or a
+     * change refused as too late. A refusal of the act is no settings result — it names an
+     * {@code error} and carries neither {@code applied} nor {@code conflict} — so {@code null} says
+     * the caller must read the code the refusal names rather than a result.
+     *
+     * @param json the answer's body
+     * @return the conflict or too-late result, or {@code null} when the body is no such result
+     */
+    public static PlanSettingsUpdateResult resultOrNull(String json) {
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(json));
+            if (map == null || map.containsKey(ERROR_KEY)
+                    || !(map.containsKey(APPLIED_KEY) || map.containsKey(CONFLICT_KEY))) {
+                // A refusal names a code and carries no result; an applied result is no refusal to
+                // read, so it is not what this lookup describes.
+                return null;
+            }
+            var result = fromMap(map);
+            return result.conflict() || result.restoreState() != null ? result : null;
+        } catch (IOException _) {
+            // Not a settings result at all: the answer is the runtime's refusal.
+            return null;
+        }
+    }
+
+    /**
      * Converts to JSON tree map.
      *
      * @return map representation
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-        map.put("applied", applied);
-        map.put("conflict", conflict);
-        map.put("revision", revision);
+        map.put(APPLIED_KEY, applied);
+        map.put(CONFLICT_KEY, conflict);
+        map.put(REVISION_KEY, revision);
         if (currentValue != null) {
-            map.put("current_value", currentValue);
+            map.put(CURRENT_VALUE_KEY, currentValue);
         }
         if (restoreState != null) {
-            map.put("state", restoreState);
+            map.put(STATE_KEY, restoreState);
         }
         return map;
     }
@@ -95,13 +133,13 @@ public record PlanSettingsUpdateResult(
      */
     public static PlanSettingsUpdateResult fromMap(Map<String, Object> map) {
         Objects.requireNonNull(map, "map");
-        var revision = JsonTree.integer(map, "revision");
+        var revision = JsonTree.integer(map, REVISION_KEY);
         return new PlanSettingsUpdateResult(
-                Boolean.TRUE.equals(JsonTree.bool(map, "applied")),
-                Boolean.TRUE.equals(JsonTree.bool(map, "conflict")),
+                Boolean.TRUE.equals(JsonTree.bool(map, APPLIED_KEY)),
+                Boolean.TRUE.equals(JsonTree.bool(map, CONFLICT_KEY)),
                 revision != null ? revision : 0,
-                JsonTree.string(map, "current_value"),
-                JsonTree.string(map, "state")
+                JsonTree.string(map, CURRENT_VALUE_KEY),
+                JsonTree.string(map, STATE_KEY)
         );
     }
 
