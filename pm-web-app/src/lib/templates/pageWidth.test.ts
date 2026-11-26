@@ -167,3 +167,23 @@ describe('the page width belongs to the template', () => {
     ]);
   });
 });
+
+describe('the Changes list’s width in the wide plan column', () => {
+  const CHANGES = path.resolve(__dirname, '../components/PlanChanges.svelte');
+
+  /**
+   * @returns the declarations of the wide two-column rule
+   */
+  function wideRule(): string {
+    const source = fs.readFileSync(CHANGES, 'utf-8');
+    return /\.plan-changes__body--wide\s*\{([^}]*)\}/.exec(source)?.[1] ?? '';
+  }
+
+  it('bounds the list at 280–360 px and gives the hunks the rest', () => {
+    const rule = wideRule();
+    expect(rule).not.toBe('');
+    const columns = /grid-template-columns:\s*([^;]+);/.exec(rule)?.[1]?.trim() ?? '';
+    // The list's own track is the design's 280–360 px band; the hunks take every remaining pixel.
+    expect(columns).toMatch(/clamp\(\s*280px\s*,[^,]+,\s*360px\s*\)\s+minmax\(\s*0\s*,\s*1fr\s*\)/);
+  });
+});

@@ -483,7 +483,8 @@
    * hunks below the list (`plan-view-interaction.adoc#layout`).
    */
   .plan-changes__body--wide {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    /* The list is the design's 280–360 px band; the hunks take every remaining pixel. */
+    grid-template-columns: clamp(280px, 30%, 360px) minmax(0, 1fr);
     align-items: start;
   }
 
