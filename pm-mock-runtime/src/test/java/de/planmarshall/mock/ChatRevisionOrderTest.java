@@ -97,7 +97,7 @@ class ChatRevisionOrderTest {
                 assertEquals(ProposalState.ACCEPTED, Objects.requireNonNull(accepted.proposal()).state(),
                         () -> "unexpected proposal state: " + accepted.proposal());
 
-                var acceptEvents = collectUntilEventCount(reader, "activity.changed", 1);
+                var acceptEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_RELAY);
                 assertOrderedNames(acceptEvents,
                         event -> "chat.proposal".equals(event.name())
                                 && "accepted".equals(JsonTree.string(event.data(), "state")),
@@ -117,9 +117,7 @@ class ChatRevisionOrderTest {
 
                 broadcast(runtime, "decision.answered",
                         Map.of("id", "Q-007", "channel", "web", "device", "dev-1"));
-                var closeEvents = collectUntilEvent(reader,
-                        e -> "activity.changed".equals(e.name())
-                                && PLAN_RELAY.equals(JsonTree.string(e.data(), "plan_id")));
+                var closeEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_RELAY);
                 assertOrderedNames(closeEvents,
                         event -> "chat.ended".equals(event.name())
                                 && "answered_elsewhere".equals(JsonTree.string(event.data(), "ended_by")),
@@ -146,7 +144,7 @@ class ChatRevisionOrderTest {
                 try (var stream = openStream(runtime, planEventsPath(PLAN_SESSION))) {
                     var reader = stream.events();
                     answer(runtime, routes.accept(), proposal);
-                    var queuedEvents = collectUntilEventCount(reader, "activity.changed", 1);
+                    var queuedEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_SESSION);
                     assertOrderedNames(queuedEvents,
                             e -> "chat.proposal".equals(e.name())
                                     && "accepted".equals(JsonTree.string(e.data(), "state")),
@@ -158,9 +156,7 @@ class ChatRevisionOrderTest {
 
                     broadcast(runtime, "task.ended",
                             Map.of("plan_id", PLAN_SESSION, "task_id", "TASK-4", "status", "done"));
-                    var applyEvents = collectUntilEvent(reader,
-                            e -> "chat.proposal".equals(e.name())
-                                    && "applied".equals(JsonTree.string(e.data(), "state")));
+                    var applyEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_SESSION);
                     assertOrderedNames(applyEvents,
                             e -> "plan.revision_queued".equals(e.name()) && e.data().get("queued_revision") == null,
                             e -> "activity.changed".equals(e.name())
@@ -190,9 +186,7 @@ class ChatRevisionOrderTest {
                     broadcast(runtime, "task.ended",
                             Map.of("plan_id", PLAN_SESSION, "task_id", "TASK-4", "status", "done"));
 
-                    var refuseEvents = collectUntilEvent(reader,
-                            e -> "chat.proposal".equals(e.name())
-                                    && "refused".equals(JsonTree.string(e.data(), "state")));
+                    var refuseEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_SESSION);
                     assertOrderedNames(refuseEvents,
                             e -> "plan.revision_queued".equals(e.name()) && e.data().get("queued_revision") == null,
                             e -> "activity.changed".equals(e.name())
@@ -223,9 +217,7 @@ class ChatRevisionOrderTest {
 
                     broadcast(runtime, "scope.ended",
                             Map.of("scope", Map.of("kind", "plan", "id", PLAN_SESSION), "outcome", "done"));
-                    var lapseEvents = collectUntilEvent(reader,
-                            e -> "chat.proposal".equals(e.name())
-                                    && "lapsed".equals(JsonTree.string(e.data(), "state")));
+                    var lapseEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_SESSION);
                     assertOrderedNames(lapseEvents,
                             e -> "chat.ended".equals(e.name())
                                     && "subject_ended".equals(JsonTree.string(e.data(), "ended_by")),
@@ -253,9 +245,7 @@ class ChatRevisionOrderTest {
                     collectUntilEventCount(reader, "activity.changed", 1);
 
                     assertEquals(200, post(runtime, routes.end(), "{}").status());
-                    var endEvents = collectUntilEvent(reader,
-                            e -> "activity.changed".equals(e.name())
-                                    && PLAN_SESSION.equals(JsonTree.string(e.data(), "plan_id")));
+                    var endEvents = collectLifecycleThroughSentinel(runtime, reader, PLAN_SESSION);
                     assertOrderedNames(endEvents,
                             e -> "chat.ended".equals(e.name())
                                     && "operator".equals(JsonTree.string(e.data(), "ended_by")),
@@ -479,6 +469,13 @@ class ChatRevisionOrderTest {
                     + collected.stream().map(RecordedEvent::name).toList(), e);
         }
         return List.copyOf(collected);
+    }
+
+    private static List<RecordedEvent> collectLifecycleThroughSentinel(MockRuntime runtime, SseReader reader,
+            String planId) throws Exception {
+        broadcast(runtime, "phase.changed", Map.of("plan_id", planId, "new_phase", "execute"));
+        return collectUntilEvent(reader,
+                e -> "phase.changed".equals(e.name()) && planId.equals(JsonTree.string(e.data(), "plan_id")));
     }
 
     private static final Set<String> LIFECYCLE_EVENTS = Set.of("chat.proposal", "chat.ended",

@@ -957,6 +957,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final MockConfigRoutes configRoutes = new MockConfigRoutes();
 
     private final Object controlLock = new Object();
+    /** Serializes plan-end progress recording with internal activity delivery so no stale activity lands after end. */
+    private final Object activityDeliveryLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
     private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
     private final Map<String, String> controlPlanEpics = new LinkedHashMap<>();
@@ -1121,7 +1123,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 .toList();
         var byPlanId = stagedPlansById(cut);
         var matchedIds = requestedIds.stream().filter(byPlanId::containsKey).distinct().toList();
-        var allPlanIdTokens = !requestedIds.isEmpty() && requestedIds.stream().allMatch(MockRuntimeEngine::isPlanIdToken);
+        var allPlanIdTokens = looksLikePlanIdList(after, requestedIds);
         if (allPlanIdTokens && (matchedIds.isEmpty() || matchedIds.size() < requestedIds.stream().distinct().count())
                 || matchedIds.stream().anyMatch(id -> {
             var target = byPlanId.get(id);
@@ -1150,14 +1152,28 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         return byPlanId;
     }
 
-    private static boolean isPlanIdToken(String token) {
-        var firstHyphen = token.indexOf('-');
-        if (firstHyphen <= 0 || firstHyphen >= token.length() - 1 || token.contains("--")) {
+    private static boolean looksLikePlanIdList(String after, List<String> requestedIds) {
+        if (requestedIds.isEmpty() || !requestedIds.stream().allMatch(MockRuntimeEngine::isIdentifierToken)) {
+            return false;
+        }
+        if (after.indexOf(',') >= 0) {
+            var commaParts = Arrays.stream(after.split(",", -1))
+                    .map(String::strip)
+                    .filter(part -> !part.isEmpty())
+                    .count();
+            return commaParts == requestedIds.size();
+        }
+        return requestedIds.stream().allMatch(token -> token.indexOf('-') >= 0 || token.indexOf('_') >= 0);
+    }
+
+    private static boolean isIdentifierToken(String token) {
+        if (token.isEmpty() || token.startsWith("-") || token.endsWith("-")
+                || token.startsWith("_") || token.endsWith("_") || token.contains("--")) {
             return false;
         }
         for (var i = 0; i < token.length(); i++) {
             var ch = token.charAt(i);
-            var allowed = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-';
+            var allowed = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_';
             if (!allowed) {
                 return false;
             }
@@ -2513,24 +2529,54 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             return;
         }
-        if (EventName.ACTIVITY_CHANGED.wire().equals(event)) {
-            var payload = payloadOf(data);
-            if (payload.containsKey(INTERNAL_KEY) && !STATE_ENDED.equals(stringMember(payload, KEY_ACTIVITY))) {
-                var planId = stringMember(payload, KEY_PLAN_ID);
-                if (planId != null) {
-                    synchronized (controlLock) {
-                        if (STATE_ENDED.equals(planActivities.get(planId))) {
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-        deliverEvent(event, data);
         var payload = payloadOf(data);
+        if (!deliverOrderedEvent(event, data, payload)) {
+            return;
+        }
         recordEndedWork(event, payload);
-        recordPlanProgress(event, payload);
+        if (!isTerminalPlanEvent(event)) {
+            recordPlanProgress(event, payload);
+        }
         chatRegistry.observe(event, payload);
+    }
+
+    private boolean deliverOrderedEvent(String event, Object data, Map<String, Object> payload) {
+        var terminal = isTerminalPlanEvent(event);
+        var delayedActivity = isInternalNonEndedActivity(event, payload);
+        if (!terminal && !delayedActivity) {
+            deliverEvent(event, data);
+            return true;
+        }
+        synchronized (activityDeliveryLock) {
+            if (delayedActivity && isPlanEnded(stringMember(payload, KEY_PLAN_ID))) {
+                return false;
+            }
+            if (terminal) {
+                recordPlanProgress(event, payload);
+            }
+            deliverEvent(event, data);
+            return true;
+        }
+    }
+
+    private static boolean isTerminalPlanEvent(String event) {
+        return EventName.SCOPE_ENDED.wire().equals(event) || PlanControlEvent.EVENT_CANCELLED.equals(event);
+    }
+
+    private static boolean isInternalNonEndedActivity(String event, Map<String, Object> payload) {
+        return EventName.ACTIVITY_CHANGED.wire().equals(event)
+                && payload.containsKey(INTERNAL_KEY)
+                && !STATE_ENDED.equals(stringMember(payload, KEY_ACTIVITY));
+    }
+
+    private boolean isPlanEnded(@Nullable String planId) {
+        if (planId == null) {
+            return false;
+        }
+        synchronized (controlLock) {
+            return STATE_ENDED.equals(planActivities.get(planId))
+                    || STATE_ENDED.equals(controlPlanStates.get(planId));
+        }
     }
 
     /**
@@ -2576,10 +2622,22 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
             }
         } else {
-            var activity = activityOf(event, payload);
-            if (activity != null && (!STATE_ENDED.equals(planActivities.get(planId))
-                    || !EventName.ACTIVITY_CHANGED.wire().equals(event))) {
-                planActivities.put(planId, activity);
+            recordActivityOf(event, payload, planId);
+        }
+    }
+
+    private void recordActivityOf(String event, Map<String, Object> payload, String planId) {
+        var activity = activityOf(event, payload);
+        if (activity == null) {
+            return;
+        }
+        var terminal = STATE_ENDED.equals(planActivities.get(planId))
+                || STATE_ENDED.equals(controlPlanStates.get(planId));
+        if (!terminal || STATE_ENDED.equals(activity)) {
+            planActivities.put(planId, activity);
+            if (STATE_ENDED.equals(activity)) {
+                controlPlanStates.put(planId, STATE_ENDED);
+                controlPlanPausePoints.remove(planId);
             }
         }
     }
@@ -5992,7 +6050,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private WorkActions buildPlanActions(String planId) {
-        var state = controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
+        var state = STATE_ENDED.equals(planActivities.get(planId))
+                ? STATE_ENDED
+                : controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         var epicId = controlPlanEpics.get(planId);
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
@@ -6481,7 +6541,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         published.add(Map.entry(PlanControlEvent.EVENT_RESUMED,
                 new PlanControlEvent(PlanControlEvent.EVENT_RESUMED, planId, ACTIVITY_RUNNING, null, null).toMap()));
         published.add(Map.entry("epic.row_changed",
-                Map.of(KEY_EPIC_ID, epicId, KEY_PLAN_ID, planId, KEY_STATUS, ACTIVITY_RUNNING)));
+                Map.of(EventEnvelope.FIELD_SCOPE, new EventScope(EventScopeKind.EPIC, epicId, null).toMap(),
+                        KEY_EPIC_ID, epicId, KEY_PLAN_ID, planId, KEY_STATUS, ACTIVITY_RUNNING)));
     }
 
     /**
@@ -12225,6 +12286,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
+        var explicit = entry.plan();
+        if (explicit != null && !explicit.isBlank()) {
+            return explicit.strip();
+        }
         var sub = entry.subject();
         if (sub.startsWith("plan ")) {
             return sub.substring("plan ".length()).trim();

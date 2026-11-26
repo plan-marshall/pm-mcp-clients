@@ -491,6 +491,16 @@ class ChatProposalsTest {
                 LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
                         MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
             }
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(withEpicRowsProposal("missing, unknown", false))
+                         .timing(MockTiming.ORDERED).build())) {
+                var before = decomposition(runtime);
+                var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded rows proposal");
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(before, decomposition(runtime), "comma-separated single-word unknown IDs fell back to no open row");
+            }
         }
     }
 

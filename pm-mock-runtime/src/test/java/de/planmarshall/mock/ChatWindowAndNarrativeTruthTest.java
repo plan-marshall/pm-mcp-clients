@@ -126,6 +126,12 @@ class ChatWindowAndNarrativeTruthTest {
                     () -> assertEquals(409,
                             post(runtime, decisionRoutes.accept(),
                                     new ProposalAnswerRequest(decisionProposal.turnId()).toJson()).status()));
+
+            var pauseAfterEnd = post(runtime, "/api/v1/plans/" + PLAN + "/actions/pause", "{}");
+            assertAll("ended plan stays ended and rejects control pause",
+                    () -> assertEquals(409, pauseAfterEnd.status(), pauseAfterEnd.bodyText()),
+                    () -> assertEquals("ended", runtime.engine().activity(PLAN)),
+                    () -> assertFalse(runtime.engine().revisionWindowOpen(PLAN)));
         }
     }
 
