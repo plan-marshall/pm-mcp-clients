@@ -535,11 +535,15 @@ class ChatReadModelTest {
 
         @Test
         @DisplayName("a proposal in each state round-trips, a refused one with its finding")
-        void eachState() throws Exception {
+        void eachState() {
             for (var state : ProposalState.values()) {
                 var proposal = proposal(state);
-                assertEquals(proposal, ChatProposal.fromJson(proposal.toJson()), state.wireValue());
-                assertEquals(state == ProposalState.OPEN, proposal.isOpen());
+                assertAll(state.wireValue(),
+                        () -> assertEquals(proposal, ChatProposal.fromJson(proposal.toJson())),
+                        () -> assertEquals(state == ProposalState.OPEN, proposal.isOpen()),
+                        () -> assertEquals(state == ProposalState.OPEN, proposal.isOpen(true)),
+                        () -> assertEquals(state == ProposalState.OPEN || state == ProposalState.REFUSED,
+                                proposal.isOpen(false)));
             }
         }
 

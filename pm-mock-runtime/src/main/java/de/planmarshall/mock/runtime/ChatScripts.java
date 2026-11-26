@@ -50,7 +50,6 @@ final class ChatScripts {
     private static final String ARG_CHECK = "check";
     private static final String ARG_TASK_ID = "task_id";
     private static final String TASK_ID = "TASK-4";
-    private static final String HOLD_ID = "H-1";
     private static final String ACT_PAUSE = "pause";
 
     private static final String RICH_TEXT = """
@@ -135,9 +134,9 @@ final class ChatScripts {
     }
 
     /**
-     * The reply to every later message: a short answer that names, of a plan that still runs, a hold and
-     * the act the operator may take instead ({@code state-catalogue.adoc#chat-names-acts}: the role names
-     * an act, never performs one). Ended work names no act, since its archive offers none.
+     * The reply to every later message: a short answer that names, of a plan that still runs, the act
+     * the operator may take ({@code state-catalogue.adoc#chat-names-acts}: the role names an act,
+     * never performs one). Ended work names no act, since its archive offers none.
      *
      * @param subject   the kind of the chat's subject
      * @param subjectId the id of the chat's subject
@@ -146,8 +145,7 @@ final class ChatScripts {
      */
     private static Reply laterReply(ChatSubjectKind subject, String subjectId, ChatScopeKind scope) {
         var refs = subject == ChatSubjectKind.PLAN && scope != ChatScopeKind.ARCHIVE
-                ? List.of(TurnRef.of(RefKind.HOLD, HOLD_ID),
-                TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
+                ? List.of(TurnRef.ofAct(ACT_PAUSE, new ChatSubject(ChatSubjectKind.PLAN, subjectId)))
                 : List.<TurnRef>of();
         return new Reply(LATER_TEXT, TurnFormat.MARKDOWN, false, List.of(), refs, null);
     }

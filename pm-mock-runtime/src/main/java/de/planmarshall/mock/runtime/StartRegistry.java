@@ -584,14 +584,22 @@ final class StartRegistry {
      * @return the entry's new representation, or {@code null} for an unknown entry
      * @throws ActRefused if the entry does not offer the act, or the act is refused
      */
-    synchronized @Nullable StartStateResource act(String entryId, String linkId, Map<String, Object> body)
+    @Nullable
+    StartStateResource act(String entryId, String linkId, Map<String, Object> body) throws ActRefused {
+        var outcome = actLocked(entryId, linkId, body);
+        outcome.events().forEach(broadcaster);
+        return outcome.representation();
+    }
+
+    private synchronized ActOutcome actLocked(String entryId, String linkId, Map<String, Object> body)
             throws ActRefused {
         var entry = entries.get(entryId);
         if (entry == null) {
-            return null;
+            return new ActOutcome(null, List.of());
         }
+        var events = new ArrayList<StartEvent>();
         if ("abandon".equals(linkId)) {
-            return abandon(entry);
+            return new ActOutcome(abandon(entry, events), List.copyOf(events));
         }
         if (linkId.startsWith("remove:")) {
             removeSource(entry, linkId.substring("remove:".length()));
@@ -600,7 +608,7 @@ final class StartRegistry {
         } else if (linkId.startsWith("accept:")) {
             acceptSource(entry, linkId.substring("accept:".length()), body);
         } else if (linkId.startsWith("adopt:")) {
-            adopt(entry, linkId.substring("adopt:".length()));
+            adopt(entry, linkId.substring("adopt:".length()), events);
         } else if (linkId.startsWith("choose:")) {
             chooseRecipe(entry, linkId.substring("choose:".length()));
         } else if (linkId.startsWith("documents_mode:")) {
@@ -614,7 +622,7 @@ final class StartRegistry {
                     entry.state = entry.recipes.isEmpty() ? STATE_SOURCES : STATE_RECIPE;
                 case StartStateResource.LINK_START -> continueToReady(entry);
                 case "back" -> back(entry);
-                case "create" -> create(entry, body);
+                case "create" -> create(entry, body, events);
                 case "set" -> setParameters(entry, body);
                 case "retry" -> retryAdoption(entry);
                 case "new" -> {
@@ -625,7 +633,10 @@ final class StartRegistry {
             }
         }
         refresh(entry);
-        return representation(entry);
+        return new ActOutcome(representation(entry), List.copyOf(events));
+    }
+
+    private record ActOutcome(@Nullable StartStateResource representation, List<StartEvent> events) {
     }
 
     /**
@@ -635,6 +646,15 @@ final class StartRegistry {
     synchronized boolean isEpicEntry(String entryId) {
         var entry = entries.get(entryId);
         return entry != null && entry.kind.epic();
+    }
+
+    /**
+     * @param entryId the entry's id
+     * @return how many sources the entry carries, or {@code 0} when no such entry is open
+     */
+    synchronized int sourceCount(String entryId) {
+        var entry = entries.get(entryId);
+        return entry == null ? 0 : entry.sources.size();
     }
 
     /**
@@ -1013,7 +1033,7 @@ final class StartRegistry {
         entry.state = STATE_READY;
     }
 
-    private void create(StartEntry entry, Map<String, Object> body) {
+    private void create(StartEntry entry, Map<String, Object> body, List<StartEvent> events) {
         var title = JsonTree.string(body, KEY_TITLE);
         if (title != null && !title.isBlank()) {
             entry.title = title.strip();
@@ -1024,7 +1044,7 @@ final class StartRegistry {
         var idKey = entry.kind.epic() ? KEY_EPIC_ID : KEY_PLAN_ID;
         var event = entry.kind.epic() ? EVENT_EPIC_STARTED : EVENT_PLAN_STARTED;
         var name = entry.title != null ? entry.title : "";
-        broadcaster.accept(new StartEvent(event, Map.of(idKey, entry.planId, KEY_PROJECT_ID,
+        events.add(new StartEvent(event, Map.of(idKey, entry.planId, KEY_PROJECT_ID,
                 entry.projectId, KEY_TITLE, name, KEY_ENTRY_ID, entry.entryId)));
     }
 
@@ -1042,8 +1062,8 @@ final class StartRegistry {
         return slug(title);
     }
 
-    private StartStateResource abandon(StartEntry entry) {
-        broadcaster.accept(new StartEvent(EVENT_ENTRY_ABANDONED, Map.of(KEY_ENTRY_ID, entry.entryId,
+    private StartStateResource abandon(StartEntry entry, List<StartEvent> events) {
+        events.add(new StartEvent(EVENT_ENTRY_ABANDONED, Map.of(KEY_ENTRY_ID, entry.entryId,
                 KEY_PROJECT_ID, entry.projectId)));
         var representation = representation(entry);
         entries.remove(entry.entryId);
@@ -1056,7 +1076,7 @@ final class StartRegistry {
      * <em>Back</em> and <em>Abandon</em> (design <em>Starting Work</em>, adopting an epic from
      * elsewhere), so the act answers the entry in that state.
      */
-    private void adopt(StartEntry entry, String epicId) throws ActRefused {
+    private void adopt(StartEntry entry, String epicId, List<StartEvent> events) throws ActRefused {
         var offered = !entry.created && entry.adoptable.stream().anyMatch(epic -> epic.epicId().equals(epicId));
         if (!offered) {
             throw new ActRefused("act_not_available", "No adoptable epic with the id " + epicId);
@@ -1071,7 +1091,7 @@ final class StartRegistry {
         entry.title = entry.adoptable.stream().filter(epic -> epic.epicId().equals(epicId))
                 .map(AdoptableEpic::title).findFirst().orElse(epicId);
         entry.created = true;
-        broadcaster.accept(new StartEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, epicId,
+        events.add(new StartEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, epicId,
                 KEY_PROJECT_ID, entry.projectId, KEY_TITLE, entry.title, KEY_ENTRY_ID, entry.entryId)));
     }
 

@@ -20,6 +20,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -86,6 +87,7 @@ import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
+import de.planmarshall.api.decision.DecisionScope;
 import de.planmarshall.api.decision.InterpretationType;
 import de.planmarshall.api.decomposition.CheckSeverity;
 import de.planmarshall.api.decomposition.DecompositionCheckFinding;
@@ -416,6 +418,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_ACTIVITY = "activity";
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
+    private static final String KEY_AUTO_START = "auto_start";
+    private static final String PATH_CONTROL_CHATS = "facts.runtime.control.chats";
     private static final String KEY_PILOT = "pilot";
     /** The build environment a run was captured with (`captured_at`, `source`, `variables`). */
     private static final String KEY_CAPTURED_AT = "captured_at";
@@ -543,6 +547,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KNOWS_TASKS = "chat.knows.tasks";
     private static final String KNOWS_PHASE = "chat.knows.phase";
     private static final String KNOWS_VERSION = "chat.knows.version";
+    private static final String KNOWS_ROWS = "chat.knows.rows";
+    private static final String KNOWS_ITEMS = "chat.knows.items";
+    private static final String KNOWS_SOURCES = "chat.knows.sources";
     private static final String KNOWS_ARG_COUNT = "count";
     private static final String KNOWS_ARG_PHASE = "phase";
     private static final String KNOWS_ARG_VERSION = "version";
@@ -950,6 +957,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private final MockConfigRoutes configRoutes = new MockConfigRoutes();
 
     private final Object controlLock = new Object();
+    /** Serializes plan-end progress recording with internal activity delivery so no stale activity lands after end. */
+    private final Object activityDeliveryLock = new Object();
     private final Map<String, String> controlPlanStates = new LinkedHashMap<>();
     private final Map<String, String> controlPlanPausePoints = new LinkedHashMap<>();
     private final Map<String, String> controlPlanEpics = new LinkedHashMap<>();
@@ -980,6 +989,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private final Object decompositionLock = new Object();
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
+    /** Lock-free snapshot of staged plan counts per epic so {@code epicKnows} avoids {@code decompositionLock}. */
+    private final ConcurrentHashMap<String, Integer> decompositionRowCounts = new ConcurrentHashMap<>();
 
     /** Every chat of the mock, on the routes {@link de.planmarshall.api.chat.ChatRoutes} builds. */
     private final ChatRegistry chatRegistry;
@@ -1054,22 +1065,189 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void applyChatProposal(ChatRegistry.AppliedProposal applied) {
         var subject = applied.subject();
-        var changed = true;
+        boolean changed;
         if (subject.kind() == ChatSubjectKind.ENTRY && applied.kind() == ProposalKind.DESCRIPTION) {
             changed = startRegistry.applyDescription(subject.id(), applied.after());
         } else if (applied.kind() == ProposalKind.FOLLOW_UP) {
             changed = startRegistry.openFollowUp(subject.id(), applied.after());
         } else if (subject.kind() == ChatSubjectKind.EPIC
                 && (applied.kind() == ProposalKind.ROWS || applied.kind() == ProposalKind.DRAFT)) {
-            synchronized (decompositionLock) {
-                changed = decompositions.computeIfPresent(subject.id(), (epicId, cut) -> new EpicDecomposition(
-                        cut.epicId(), cut.status(), cut.revision() + 1, cut.workstreams(), cut.findings())) != null;
-            }
+            changed = applyEpicDecompositionChange(subject, applied.kind(), applied.after());
+        } else {
+            changed = true;
         }
         if (!changed) {
             LOGGER.warn(MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED, applied.kind().wireValue(),
                     subject.kind().wireValue(), subject.id());
         }
+    }
+
+    private boolean applyEpicDecompositionChange(ChatSubject subject, ProposalKind kind, @Nullable String after) {
+        if (after == null || after.isBlank()) {
+            return false;
+        }
+        synchronized (decompositionLock) {
+            var current = decompositions.get(subject.id());
+            var updated = current == null ? null : applyEpicChatChange(current, kind, after.strip());
+            if (updated == null) {
+                return false;
+            }
+            setDecomposition(subject.id(), updated);
+            return true;
+        }
+    }
+
+    private void setDecomposition(String epicId, EpicDecomposition cut) {
+        decompositions.put(epicId, cut);
+        var rowCount = cut.workstreams().stream().mapToInt(w -> w.stagedPlans().size()).sum();
+        decompositionRowCounts.put(epicId, rowCount);
+    }
+
+    private void clearDecompositions() {
+        decompositions.clear();
+        decompositionRowCounts.clear();
+    }
+
+    private static @Nullable EpicDecomposition applyEpicChatChange(EpicDecomposition cut, ProposalKind kind,
+            String after) {
+        if (kind == ProposalKind.ROWS) {
+            return applyEpicRowsChange(cut, after);
+        }
+        return applyEpicDraftChange(cut, after);
+    }
+
+    private static @Nullable EpicDecomposition applyEpicRowsChange(EpicDecomposition cut, String after) {
+        var requestedIds = Arrays.stream(after.split("[,\\s]+"))
+                .map(String::strip)
+                .filter(token -> !token.isEmpty())
+                .toList();
+        var byPlanId = stagedPlansById(cut);
+        var matchedIds = requestedIds.stream().filter(byPlanId::containsKey).distinct().toList();
+        var allPlanIdTokens = looksLikePlanIdList(after, requestedIds);
+        if (allPlanIdTokens && (matchedIds.isEmpty() || matchedIds.size() < requestedIds.stream().distinct().count())
+                || matchedIds.stream().anyMatch(id -> {
+            var target = byPlanId.get(id);
+            return target.isLocked() || target.isDropped();
+        })) {
+            return null;
+        }
+        if (matchedIds.isEmpty()) {
+            var openId = firstOpenPlanId(cut);
+            var changed = openId != null
+                    ? applyRewrite(cut, openId, after)
+                    : applyAdd(cut, new DecompositionInstructRequest(null, after, InstructAction.ADD));
+            return new EpicDecomposition(changed.epicId(), changed.status(), cut.revision() + 1,
+                    changed.workstreams(), DecompositionValidator.validate(changed.workstreams()));
+        }
+        return reorderMatchedRows(cut, byPlanId, matchedIds);
+    }
+
+    private static Map<String, StagedPlanRecord> stagedPlansById(EpicDecomposition cut) {
+        var byPlanId = new LinkedHashMap<String, StagedPlanRecord>();
+        for (var workstream : cut.workstreams()) {
+            for (var plan : workstream.stagedPlans()) {
+                byPlanId.put(plan.planId(), plan);
+            }
+        }
+        return byPlanId;
+    }
+
+    private static boolean looksLikePlanIdList(String after, List<String> requestedIds) {
+        if (requestedIds.isEmpty() || !requestedIds.stream().allMatch(MockRuntimeEngine::isIdentifierToken)) {
+            return false;
+        }
+        if (after.indexOf(',') >= 0) {
+            var commaParts = Arrays.stream(after.split(",", -1))
+                    .map(String::strip)
+                    .filter(part -> !part.isEmpty())
+                    .count();
+            return commaParts == requestedIds.size();
+        }
+        return requestedIds.stream().allMatch(token -> token.indexOf('-') >= 0 || token.indexOf('_') >= 0);
+    }
+
+    private static boolean isIdentifierToken(String token) {
+        if (token.isEmpty() || token.startsWith("-") || token.endsWith("-")
+                || token.startsWith("_") || token.endsWith("_") || token.contains("--")) {
+            return false;
+        }
+        for (var i = 0; i < token.length(); i++) {
+            var ch = token.charAt(i);
+            var allowed = (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '-' || ch == '_';
+            if (!allowed) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static EpicDecomposition reorderMatchedRows(EpicDecomposition cut, Map<String, StagedPlanRecord> byPlanId,
+            List<String> matchedIds) {
+        var matchedSet = Set.copyOf(matchedIds);
+        var firstTarget = matchedIds.getFirst();
+        var updated = new ArrayList<WorkstreamRecord>();
+        for (var workstream : cut.workstreams()) {
+            var plans = new ArrayList<StagedPlanRecord>();
+            var inserted = false;
+            for (var plan : workstream.stagedPlans()) {
+                if (plan.planId().equals(firstTarget)) {
+                    for (var id : matchedIds) {
+                        var candidate = byPlanId.get(id);
+                        plans.add(new StagedPlanRecord(candidate.planId(), candidate.title(), candidate.objective(),
+                                candidate.expectedSurface(), candidate.dependencies(),
+                                StagedPlanRecord.STATUS_CHANGED, candidate.origin()));
+                    }
+                    inserted = true;
+                } else if (!matchedSet.contains(plan.planId())) {
+                    plans.add(plan);
+                }
+            }
+            if (!inserted) {
+                plans.removeIf(plan -> matchedSet.contains(plan.planId()));
+            }
+            updated.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                    workstream.order(), plans));
+        }
+        return new EpicDecomposition(cut.epicId(), DecompositionState.READ_BACK, cut.revision() + 1,
+                updated, DecompositionValidator.validate(updated));
+    }
+
+    private static EpicDecomposition applyEpicDraftChange(EpicDecomposition cut, String after) {
+        var workstreams = new ArrayList<WorkstreamRecord>();
+        var splitDone = false;
+        var nextOrder = 1;
+        for (var workstream : cut.workstreams()) {
+            if (!splitDone && workstream.stagedPlans().size() >= 2) {
+                var head = workstream.stagedPlans().subList(0, 1);
+                var tail = workstream.stagedPlans().subList(1, workstream.stagedPlans().size());
+                workstreams.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                        nextOrder++, head));
+                workstreams.add(new WorkstreamRecord(nextWorkstreamId(cut.workstreams(), workstreams),
+                        workstream.name() + " (split)", after, nextOrder++, tail));
+                splitDone = true;
+            } else {
+                workstreams.add(new WorkstreamRecord(workstream.id(), workstream.name(), workstream.description(),
+                        nextOrder++, workstream.stagedPlans()));
+            }
+        }
+        if (!splitDone) {
+            workstreams.add(new WorkstreamRecord(nextWorkstreamId(cut.workstreams(), workstreams),
+                    WORKSTREAM_NEW_WORK, after, nextOrder, List.of()));
+        }
+        return new EpicDecomposition(cut.epicId(), DecompositionState.READ_BACK, cut.revision() + 1,
+                workstreams, DecompositionValidator.validate(workstreams));
+    }
+
+    private static String nextWorkstreamId(List<WorkstreamRecord> existing, List<WorkstreamRecord> current) {
+        var used = new HashSet<String>();
+        existing.forEach(ws -> used.add(ws.id()));
+        current.forEach(ws -> used.add(ws.id()));
+        var index = used.size() + 1;
+        String candidate;
+        do {
+            candidate = "WS-" + index++;
+        } while (used.contains(candidate));
+        return candidate;
     }
 
     /**
@@ -1086,10 +1264,35 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         return switch (subject.kind()) {
             case PLAN -> planKnows(subject.id());
-            case EPIC -> List.of(MessageText.of(KNOWS_DESCRIPTION));
-            case ENTRY -> List.of(MessageText.of(KNOWS_DESCRIPTION));
+            case EPIC -> epicKnows(subject.id());
+            case ENTRY -> entryKnows(subject.id());
             default -> List.of();
         };
+    }
+
+    private List<MessageText> epicKnows(String epicId) {
+        EpicResource epic;
+        int rows = 0;
+        synchronized (controlLock) {
+            epic = controlEpics.get(epicId);
+            if (epic != null) {
+                rows = epic.workstreams().stream().mapToInt(w -> w.rows().size()).sum();
+            }
+        }
+        if (rows == 0) {
+            rows = decompositionRowCounts.getOrDefault(epicId, 0);
+        }
+        var items = epic == null ? 0 : epic.findings().open() + epic.watches().open();
+        return List.of(
+                MessageText.of(KNOWS_DESCRIPTION),
+                new MessageText(KNOWS_ROWS, Map.of(KNOWS_ARG_COUNT, rows)),
+                new MessageText(KNOWS_ITEMS, Map.of(KNOWS_ARG_COUNT, items)));
+    }
+
+    private List<MessageText> entryKnows(String entryId) {
+        return List.of(
+                MessageText.of(KNOWS_DESCRIPTION),
+                new MessageText(KNOWS_SOURCES, Map.of(KNOWS_ARG_COUNT, startRegistry.sourceCount(entryId))));
     }
 
     /**
@@ -1130,7 +1333,8 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public boolean revisionWindowOpen(String planId) {
         synchronized (controlLock) {
-            if (STATE_ENDED.equals(controlPlanStates.get(planId))) {
+            if (STATE_ENDED.equals(controlPlanStates.get(planId))
+                    || STATE_ENDED.equals(planActivities.get(planId))) {
                 return false;
             }
         }
@@ -1153,6 +1357,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     @Override
     public String activity(String planId) {
         synchronized (controlLock) {
+            var tracked = planActivities.get(planId);
+            if (tracked != null) {
+                return tracked;
+            }
             return controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         }
     }
@@ -1166,10 +1374,30 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return null;
         }
         var slash = subject.id().indexOf('/');
-        if (slash <= 0) {
+        if (slash <= 0 || slash == subject.id().length() - 1) {
             return null;
         }
         var candidate = subject.id().substring(0, slash);
+        var questionId = subject.id().substring(slash + 1);
+        DecisionEnvelope decision;
+        synchronized (decisionsLock) {
+            decision = openDecisions.get(questionId);
+        }
+        if (decision != null) {
+            if (DecisionScope.PLAN != decision.scope()) {
+                return null;
+            }
+            var plan = Objects.requireNonNullElse(extractPlan(decision), candidate);
+            return candidate.equals(plan) ? plan : null;
+        }
+        synchronized (controlLock) {
+            if (controlEpics.containsKey(candidate)) {
+                return null;
+            }
+        }
+        if (startRegistry.find(candidate) != null) {
+            return null;
+        }
         // Only a decision about a plan names one: machine/, project/, epic/ and entry/ decisions do not.
         return planDetail(candidate) == null ? null : candidate;
     }
@@ -1226,6 +1454,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         synchronized (controlLock) {
             planQueuedRevisions.remove(planId);
         }
+    }
+
+    @Override
+    public @Nullable Integer pullRequestNumber(String planId) {
+        var detail = planDetail(planId);
+        return detail == null ? null : JsonTree.integer(detail, KEY_PULL_REQUEST);
     }
 
     /**
@@ -2295,11 +2529,54 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             return;
         }
-        deliverEvent(event, data);
         var payload = payloadOf(data);
+        if (!deliverOrderedEvent(event, data, payload)) {
+            return;
+        }
         recordEndedWork(event, payload);
-        recordPlanProgress(event, payload);
+        if (!isTerminalPlanEvent(event)) {
+            recordPlanProgress(event, payload);
+        }
         chatRegistry.observe(event, payload);
+    }
+
+    private boolean deliverOrderedEvent(String event, Object data, Map<String, Object> payload) {
+        var terminal = isTerminalPlanEvent(event);
+        var delayedActivity = isInternalNonEndedActivity(event, payload);
+        if (!terminal && !delayedActivity) {
+            deliverEvent(event, data);
+            return true;
+        }
+        synchronized (activityDeliveryLock) {
+            if (delayedActivity && isPlanEnded(stringMember(payload, KEY_PLAN_ID))) {
+                return false;
+            }
+            if (terminal) {
+                recordPlanProgress(event, payload);
+            }
+            deliverEvent(event, data);
+            return true;
+        }
+    }
+
+    private static boolean isTerminalPlanEvent(String event) {
+        return EventName.SCOPE_ENDED.wire().equals(event) || PlanControlEvent.EVENT_CANCELLED.equals(event);
+    }
+
+    private static boolean isInternalNonEndedActivity(String event, Map<String, Object> payload) {
+        return EventName.ACTIVITY_CHANGED.wire().equals(event)
+                && payload.containsKey(INTERNAL_KEY)
+                && !STATE_ENDED.equals(stringMember(payload, KEY_ACTIVITY));
+    }
+
+    private boolean isPlanEnded(@Nullable String planId) {
+        if (planId == null) {
+            return false;
+        }
+        synchronized (controlLock) {
+            return STATE_ENDED.equals(planActivities.get(planId))
+                    || STATE_ENDED.equals(controlPlanStates.get(planId));
+        }
     }
 
     /**
@@ -2312,6 +2589,12 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void recordPlanProgress(String event, Map<String, Object> payload) {
         var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId == null && EventName.SCOPE_ENDED.wire().equals(event)) {
+            var scope = scopeOf(event, payload);
+            if (scope.kind() == EventScopeKind.PLAN && scope.id() != null) {
+                planId = scope.id();
+            }
+        }
         if (planId == null) {
             return;
         }
@@ -2333,15 +2616,28 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             if (phase != null) {
                 planPhases.put(planId, phase);
             }
-        } else if (EventName.INSTANCE_CHANGED.wire().equals(event)) {
+        } else if (EventName.INSTANCE_CHANGED.wire().equals(event) && !payload.containsKey(INTERNAL_KEY)) {
             var version = JsonTree.integer(payload, KEY_INSTANCE_VERSION);
             if (version != null) {
                 planAppliedVersions.put(planId, version - baseInstanceVersion(planId));
             }
         } else {
-            var activity = activityOf(event, payload);
-            if (activity != null) {
-                planActivities.put(planId, activity);
+            recordActivityOf(event, payload, planId);
+        }
+    }
+
+    private void recordActivityOf(String event, Map<String, Object> payload, String planId) {
+        var activity = activityOf(event, payload);
+        if (activity == null) {
+            return;
+        }
+        var terminal = STATE_ENDED.equals(planActivities.get(planId))
+                || STATE_ENDED.equals(controlPlanStates.get(planId));
+        if (!terminal || STATE_ENDED.equals(activity)) {
+            planActivities.put(planId, activity);
+            if (STATE_ENDED.equals(activity)) {
+                controlPlanStates.put(planId, STATE_ENDED);
+                controlPlanPausePoints.remove(planId);
             }
         }
     }
@@ -2365,7 +2661,11 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             return stringMember(payload, KEY_ACTIVITY);
         }
         if (PlanControlEvent.EVENT_PAUSED.equals(event)) {
-            return ACTIVITY_PAUSING;
+            var state = stringMember(payload, KEY_STATE);
+            if (state == null) {
+                state = stringMember(payload, KEY_ACTIVITY);
+            }
+            return ACTIVITY_PAUSING.equals(state) ? ACTIVITY_PAUSING : ACTIVITY_PAUSED;
         }
         if (PlanControlEvent.EVENT_RESUMED.equals(event)) {
             return ACTIVITY_RUNNING;
@@ -2387,13 +2687,20 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         if (!EventName.SCOPE_ENDED.wire().equals(event)) {
             return;
         }
-        var projectId = scopeOf(event, payload).projectId();
+        var scope = scopeOf(event, payload);
+        var projectId = scope.projectId();
         var outcome = stringMember(payload, CONST_OUTCOME);
         var planId = stringMember(payload, KEY_PLAN_ID);
+        if (planId == null && scope.kind() == EventScopeKind.PLAN) {
+            planId = scope.id();
+        }
         if (planId != null) {
             startRegistry.endWork(EntryKind.PLAN, planId, projectId, outcome);
         }
         var epicId = stringMember(payload, KEY_EPIC_ID);
+        if (epicId == null && scope.kind() == EventScopeKind.EPIC) {
+            epicId = scope.id();
+        }
         if (epicId != null) {
             startRegistry.endWork(EntryKind.EPIC, epicId, projectId, outcome);
         }
@@ -4058,7 +4365,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var state = JsonTree.string(epic, KEY_STATE);
             epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
-            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
+            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get(KEY_AUTO_START)));
             var scope = JsonTree.integer(epic, "scope");
             if (scope != null) {
                 // An epic whose control entry omits the scope keeps its resource's scope.
@@ -4107,14 +4414,14 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var chats = new ArrayList<ChatResource>();
         var subjects = new HashSet<ChatSubject>();
         var ids = new HashSet<String>();
-        for (var chat : fixtureObjects(control, "chats", "facts.runtime.control.chats")) {
-            var read = readFixture(() -> ChatResource.fromMap(chat), "facts.runtime.control.chats");
+        for (var chat : fixtureObjects(control, "chats", PATH_CONTROL_CHATS)) {
+            var read = readFixture(() -> ChatResource.fromMap(chat), PATH_CONTROL_CHATS);
             if (!subjects.add(read.subject())) {
-                throw new IllegalStateException("Malformed facts.runtime.control.chats: the subject "
+                throw new IllegalStateException("Malformed " + PATH_CONTROL_CHATS + ": the subject "
                         + read.subject().kind().wireValue() + " '" + read.subject().id() + "' has two chats");
             }
             if (!ids.add(read.id())) {
-                throw new IllegalStateException("Malformed facts.runtime.control.chats: the chat id '"
+                throw new IllegalStateException("Malformed " + PATH_CONTROL_CHATS + ": the chat id '"
                         + read.id() + "' is named twice");
             }
             chats.add(read);
@@ -4164,13 +4471,17 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private static void validateFixtureMembers(Map<String, Object> fixture) {
         var control = fixtureObject(fixture, FIXTURE_CONTROL);
+        List<ChatResource> chats = List.of();
         if (control != null) {
             readControlSeed(control);
-            readChatSeeds(control);
+            chats = readChatSeeds(control);
         }
+        var decisionsById = new LinkedHashMap<String, DecisionEnvelope>();
         for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
-            readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
+            var decision = readFixture(() -> DecisionEnvelope.fromMap(entry), "facts.runtime.decisions");
+            decisionsById.put(decision.id(), decision);
         }
+        validateDecisionChatBindings(chats, decisionsById);
         for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
             readFixture(() -> EpicDecomposition.fromMap(cut), "facts.runtime.decompositions");
         }
@@ -4197,6 +4508,33 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (fixture.containsKey(FIXTURE_DEVICES)) {
             readFixture(() -> DeviceListResource.fromTree(fixture.get(FIXTURE_DEVICES)), "facts.runtime.devices");
+        }
+    }
+
+    private static void validateDecisionChatBindings(List<ChatResource> chats,
+            Map<String, DecisionEnvelope> decisionsById) {
+        for (var chat : chats) {
+            if (chat.subject().kind() == ChatSubjectKind.DECISION) {
+                validateDecisionChatBinding(chat.subject().id(), decisionsById);
+            }
+        }
+    }
+
+    private static void validateDecisionChatBinding(String subjectId, Map<String, DecisionEnvelope> decisionsById) {
+        var slash = subjectId.indexOf('/');
+        if (slash <= 0 || slash == subjectId.length() - 1) {
+            return;
+        }
+        var subjectPlan = subjectId.substring(0, slash);
+        var questionId = subjectId.substring(slash + 1);
+        var decision = decisionsById.get(questionId);
+        if (decision != null && decision.scope() == DecisionScope.PLAN) {
+            var decisionPlan = extractPlan(decision);
+            if (decisionPlan != null && !subjectPlan.equals(decisionPlan)) {
+                throw new IllegalStateException("Malformed " + PATH_CONTROL_CHATS + ": decision chat '"
+                        + subjectId + "' names plan '" + subjectPlan + "', but decision '" + questionId
+                        + "' names plan '" + decisionPlan + "'");
+            }
         }
     }
 
@@ -4548,7 +4886,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
      */
     private void initDefaultDecomposition() {
         synchronized (decompositionLock) {
-            decompositions.clear();
+            clearDecompositions();
             seedDecompositions(startRuntimeFixture());
             if (decompositions.isEmpty()) {
                 // The start scenarios have no decomposition of their own: a started epic shows the
@@ -4563,7 +4901,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         for (var cut : fixtureObjects(fixture, FIXTURE_DECOMPOSITIONS)) {
             var decomposition = readFixture(() -> EpicDecomposition.fromMap(cut),
                     "facts.runtime.decompositions");
-            decompositions.put(decomposition.epicId(), decomposition);
+            setDecomposition(decomposition.epicId(), decomposition);
         }
     }
 
@@ -4673,22 +5011,26 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void handleCheckDecomposition(MockHttpResponse response, String projectId, String epicId)
             throws IOException {
+        EpicDecomposition updated;
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
-                return;
+                updated = null;
+            } else {
+                var findings = DecompositionValidator.validate(current.workstreams());
+                var status = findings.isEmpty() ? DecompositionState.REVIEW : DecompositionState.CHECK;
+                updated = new EpicDecomposition(epicId, status, current.revision(), current.workstreams(), findings);
+                setDecomposition(epicId, updated);
             }
-            var findings = DecompositionValidator.validate(current.workstreams());
-            var status = findings.isEmpty() ? DecompositionState.REVIEW : DecompositionState.CHECK;
-            var updated = new EpicDecomposition(epicId, status, current.revision(), current.workstreams(),
-                    findings);
-            decompositions.put(epicId, updated);
-            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, status.wireValue()));
-            response.json(200, updated.toMap());
         }
+        if (updated == null) {
+            response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
+                    KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
+            return;
+        }
+        broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, updated.status().wireValue()));
+        response.json(200, updated.toMap());
     }
 
     private void handleInstructDecomposition(MockHttpRequest request, MockHttpResponse response, String projectId,
@@ -4703,30 +5045,40 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     "The instruction could not be read"));
             return;
         }
+        var missingDecomposition = false;
+        var missingScope = false;
+        EpicDecomposition updated = null;
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
-                return;
-            }
-            EpicDecomposition updated;
-            if (instruct.action() == InstructAction.ADD) {
+                missingDecomposition = true;
+            } else if (instruct.action() == InstructAction.ADD) {
                 updated = applyAdd(current, instruct);
+                setDecomposition(epicId, updated);
             } else {
                 var targetId = instruct.planId() != null ? instruct.planId() : firstOpenPlanId(current);
                 if (targetId == null || current.plan(targetId) == null) {
-                    response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
-                            KEY_MESSAGE, "No plan to change: " + instruct.planId()));
-                    return;
+                    missingScope = true;
+                } else {
+                    updated = applyRewrite(current, targetId, instruct.instruction());
+                    setDecomposition(epicId, updated);
                 }
-                updated = applyRewrite(current, targetId, instruct.instruction());
             }
-            decompositions.put(epicId, updated);
-            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, updated.status().wireValue()));
-            response.json(200, updated.toMap());
         }
+        if (missingDecomposition) {
+            response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
+                    KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
+            return;
+        }
+        if (missingScope) {
+            response.json(404, Map.of(KEY_ERROR, ERR_SCOPE_NOT_FOUND,
+                    KEY_MESSAGE, "No plan to change: " + instruct.planId()));
+            return;
+        }
+        var built = Objects.requireNonNull(updated);
+        broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS, built.status().wireValue()));
+        response.json(200, built.toMap());
     }
 
     private static EpicDecomposition applyRewrite(EpicDecomposition current, String planId, String instruction) {
@@ -4808,35 +5160,47 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
 
     private void handleCommitDecomposition(MockHttpResponse response, String projectId, String epicId)
             throws IOException {
+        var missing = false;
+        List<DecompositionCheckFinding> blockedFindings = null;
+        EpicDecomposition committed = null;
         synchronized (decompositionLock) {
             var current = decompositions.get(epicId);
             if (current == null) {
-                response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
-                        KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
-                return;
+                missing = true;
+            } else {
+                var findings = DecompositionValidator.validate(current.workstreams());
+                if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
+                    blockedFindings = findings;
+                } else {
+                    var revision = current.revision() + 1;
+                    committed = new EpicDecomposition(epicId, DecompositionState.COMMIT, revision,
+                            current.workstreams(), findings);
+                    setDecomposition(epicId, committed);
+                }
             }
-            var findings = DecompositionValidator.validate(current.workstreams());
-            if (findings.stream().anyMatch(finding -> finding.severity() == CheckSeverity.ERROR)) {
-                // Agree is not offered while a check fails (design "Starting Work", the decomposition)
-                response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_PROJECT_ID, projectId,
-                        KEY_EPIC_ID, epicId, FIELD_FINDINGS,
-                        findings.stream().map(DecompositionCheckFinding::toMap).toList()));
-                return;
-            }
-            var revision = current.revision() + 1;
-            var committed = new EpicDecomposition(epicId, DecompositionState.COMMIT, revision,
-                    current.workstreams(), findings);
-            decompositions.put(epicId, committed);
-            var launchable = committed.stagedPlanCount();
-            broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
-                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS,
-                    DecompositionState.COMMIT.wireValue()));
-            broadcastEvent(EVENT_EPIC_LAUNCHABLE, Map.of(KEY_EVENT, EVENT_EPIC_LAUNCHABLE,
-                    KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_PLANS, launchablePlanIds(committed),
-                    KEY_COUNT, launchable));
-            response.json(200, new DecompositionCommitResult(DecompositionCommitResult.STATUS_COMMITTED,
-                    revision, launchable).toMap());
         }
+        if (missing) {
+            response.json(404, Map.of(KEY_ERROR, decompositionMissingCode(epicId),
+                    KEY_MESSAGE, MESSAGE_NO_DECOMPOSITION + epicId, KEY_PROJECT_ID, projectId));
+            return;
+        }
+        if (blockedFindings != null) {
+            // Agree is not offered while a check fails (design "Starting Work", the decomposition)
+            response.json(409, Map.of(KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(), KEY_PROJECT_ID, projectId,
+                    KEY_EPIC_ID, epicId, FIELD_FINDINGS,
+                    blockedFindings.stream().map(DecompositionCheckFinding::toMap).toList()));
+            return;
+        }
+        var committedResult = Objects.requireNonNull(committed);
+        var launchable = committedResult.stagedPlanCount();
+        broadcastEvent(EVENT_DECOMPOSITION_UPDATED, Map.of(KEY_EVENT, EVENT_DECOMPOSITION_UPDATED,
+                KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_STATUS,
+                DecompositionState.COMMIT.wireValue()));
+        broadcastEvent(EVENT_EPIC_LAUNCHABLE, Map.of(KEY_EVENT, EVENT_EPIC_LAUNCHABLE,
+                KEY_EPIC_ID, epicId, KEY_PROJECT_ID, projectId, KEY_PLANS, launchablePlanIds(committedResult),
+                KEY_COUNT, launchable));
+        response.json(200, new DecompositionCommitResult(DecompositionCommitResult.STATUS_COMMITTED,
+                committedResult.revision(), launchable).toMap());
     }
 
     private static List<String> launchablePlanIds(EpicDecomposition decomposition) {
@@ -5264,7 +5628,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
-        body.put("auto_start", parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
+        body.put(KEY_AUTO_START, parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
         broadcastEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
         response.json(201, body);
     }
@@ -5686,7 +6050,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private WorkActions buildPlanActions(String planId) {
-        var state = controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
+        var state = STATE_ENDED.equals(planActivities.get(planId))
+                ? STATE_ENDED
+                : controlPlanStates.getOrDefault(planId, ACTIVITY_RUNNING);
         var epicId = controlPlanEpics.get(planId);
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
@@ -6043,7 +6409,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var answer = new LinkedHashMap<String, Object>();
             switch (action) {
-                case ACTION_AUTO -> applyAuto(epicId, actionRequest);
+                case ACTION_AUTO -> applyAuto(epicId, actionRequest, published);
                 case ACTION_COMMON_FILES -> {
                     var value = actionRequest.extra().get(KEY_COUNT);
                     if (value instanceof Number number) {
@@ -6174,6 +6540,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         controlPlanEpics.put(planId, epicId);
         published.add(Map.entry(PlanControlEvent.EVENT_RESUMED,
                 new PlanControlEvent(PlanControlEvent.EVENT_RESUMED, planId, ACTIVITY_RUNNING, null, null).toMap()));
+        published.add(Map.entry("epic.row_changed",
+                Map.of(EventEnvelope.FIELD_SCOPE, new EventScope(EventScopeKind.EPIC, epicId, null).toMap(),
+                        KEY_EPIC_ID, epicId, KEY_PLAN_ID, planId, KEY_STATUS, ACTIVITY_RUNNING)));
     }
 
     /**
@@ -6338,19 +6707,27 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                 row.deliverables(), row.surface(), row.dependencies());
     }
 
-    private void applyAuto(String epicId, PlanActionRequest actionRequest) {
+    private void applyAuto(String epicId, PlanActionRequest actionRequest,
+            List<Map.Entry<String, Object>> published) {
         var enabled = actionRequest.extra().get(FIELD_ENABLED);
+        var autoChanged = false;
         if (enabled instanceof Boolean flag) {
             controlEpicAuto.put(epicId, flag);
+            autoChanged = true;
         } else {
             var mode = actionRequest.extra().get("mode");
             if (mode != null) {
                 controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
+                autoChanged = true;
             }
         }
         var commonFiles = actionRequest.extra().get(ACTION_COMMON_FILES);
         if (commonFiles instanceof Number number) {
             controlEpicOverlap.put(epicId, number.intValue());
+        }
+        if (autoChanged) {
+            published.add(Map.entry("epic.auto_changed",
+                    Map.of(KEY_EPIC_ID, epicId, KEY_AUTO_START, controlEpicAuto.getOrDefault(epicId, true))));
         }
     }
 
@@ -11911,6 +12288,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
+        var explicit = entry.plan();
+        if (explicit != null && !explicit.isBlank()) {
+            return explicit.strip();
+        }
         var sub = entry.subject();
         if (sub.startsWith("plan ")) {
             return sub.substring("plan ".length()).trim();
@@ -12540,6 +12921,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             summary.put(KEY_PROJECT, projectId);
         }
         summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
+        if (row.pullRequestNumber() != null) {
+            summary.put(KEY_PULL_REQUEST, row.pullRequestNumber());
+        }
         summary.put(KEY_PHASE, PHASE_EXECUTE);
         summary.put(KEY_STATE, planStateOf(rowStatusOf(epicId, row)));
         return summary;

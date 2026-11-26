@@ -121,4 +121,12 @@ interface ChatFacts {
      * @param planId the plan's id
      */
     void clearRevision(String planId);
+
+    /**
+     * @param planId the plan's id
+     * @return the pull request number recorded on the plan, or {@code null} when none
+     */
+    default @Nullable Integer pullRequestNumber(String planId) {
+        return null;
+    }
 }
