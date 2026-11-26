@@ -59,9 +59,17 @@
     testid?: string;
     /** The hover explanation, already localized; the label alone does not explain the action. */
     advisory?: string;
+    /**
+     * Whether following the link loads the document again (`data-sveltekit-reload`).
+     *
+     * An address that only a fresh load adopts — one that carries an object opened in place, which
+     * the store reads at mount — needs this, because a client-side change of the same route's query
+     * would leave the view as it is.
+     */
+    reload?: boolean;
   }
 
-  let { href, label, look = 'text', icon, testid, advisory }: Props = $props();
+  let { href, label, look = 'text', icon, testid, advisory, reload = false }: Props = $props();
 
   /** The address that was checked and is rendered: the one without the white space around it. */
   const address = $derived(href.trim());
@@ -73,6 +81,7 @@
     href={address}
     class="link link--{look}"
     data-testid={testid}
+    data-sveltekit-reload={reload ? '' : undefined}
     title={advisory}
   >
     {#if icon}<span class="link__icon">{@render icon()}</span>{/if}

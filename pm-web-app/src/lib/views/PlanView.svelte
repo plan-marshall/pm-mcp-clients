@@ -1321,6 +1321,7 @@
             label={$t('report.action.details')}
             advisory={$t('report.action.details.title')}
             testid="completion-report-link"
+            reload={true}
           />
         {/if}
         {#if waiting && openDecisionId}
@@ -1329,6 +1330,7 @@
             label={$t('control.plan.decision')}
             advisory={$t('control.plan.decision.title')}
             testid="plan-decision-link"
+            reload={true}
           />
         {/if}
       </div>

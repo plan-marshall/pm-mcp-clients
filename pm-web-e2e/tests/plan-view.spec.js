@@ -105,21 +105,34 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
     await expect(page.getByTestId('plan-title')).toHaveText('Drop the legacy endpoints');
 
-    // The waiting plan says what it waits for, and the decision is a head link.
+    // The waiting plan says what it waits for, and the decision is a head link that opens it in
+    // place beside the plan.
     await expect(page.getByTestId('plan-attention-strip')).toContainText(
       'Waits for your decision',
     );
     const link = page.getByTestId('plan-decision-link');
     await expect(link).toHaveText('Open the decision');
-    await expect(link).toHaveAttribute('href', '/decisions/Q-009');
+    await expect(link).toHaveAttribute('href', '/plans/drop-legacy-api?open=decision:Q-009');
 
-    // The link opens the decision that waits (D1).
+    // The link opens the decision that waits in place, and the history's back returns to the plan.
     await page.setViewportSize({ width: 1440, height: 900 });
     await link.click();
-    await expect(page).toHaveURL(/\/decisions\/Q-009$/);
+    await expect(page).toHaveURL(/\/plans\/drop-legacy-api\?open=decision:Q-009$/);
+    await expect(page.getByTestId('plan-view')).toBeVisible();
     await expect(page.getByTestId('decision-detail')).toContainText(
       'Delete the published v1 endpoints from the release branch?',
     );
+
+    await page.goBack();
+    await expect(page).toHaveURL(/\/plans\/drop-legacy-api$/);
+    await expect(page.getByTestId('decision-detail')).toHaveCount(0);
+
+    // A reload of the `open=` address closes back to the plan, the entry having nothing to return to.
+    await page.goto('/plans/drop-legacy-api?open=decision:Q-009');
+    await expect(page.getByTestId('decision-detail')).toBeVisible();
+    await page.getByTestId('plan-in-place-close').click();
+    await expect(page).toHaveURL(/\/plans\/drop-legacy-api$/);
+    await expect(page.getByTestId('decision-detail')).toHaveCount(0);
   });
 
   test('narrates every part of session-log, including done phases and done tasks', async ({
