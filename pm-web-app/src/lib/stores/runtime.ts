@@ -2181,7 +2181,14 @@ export function selectObjectTab(tab: ObjectTab): void {
   if (!current) {
     return;
   }
-  writeAddress(switchTab(current, tab), 'replace');
+  const next = switchTab(current, tab);
+  // The Changes tab writes the file it shows, so a return to it carries `file=` in the address
+  // rather than only in the view's memory (`plan-view-interaction.adoc#addresses`).
+  if (tab === 'changes') {
+    const remembered = get(runtimeStore).changeFile;
+    if (remembered) next.file = remembered;
+  }
+  writeAddress(next, 'replace');
 }
 
 /**

@@ -287,10 +287,14 @@
               {$t('intent.criteria.satisfied_by', { deliverables: '' })}
               {#each criterion.satisfies as criterionNumber, index (criterionNumber)}
                 {#if index > 0},
-                {/if}<Link
-                  href={deliverableHref(criterionNumber)}
-                  label={deliverableLabel(criterionNumber)}
-                />
+                {/if}{#if deliverableHref(criterionNumber).startsWith('#')}<a
+                    class="intent-criterion__deliverable"
+                    href={deliverableHref(criterionNumber)}
+                    >{deliverableLabel(criterionNumber)}</a
+                  >{:else}<Link
+                    href={deliverableHref(criterionNumber)}
+                    label={deliverableLabel(criterionNumber)}
+                  />{/if}
               {/each}
             {/if}
           </p>
@@ -482,6 +486,16 @@
     flex: 1 1 100%;
     margin: 0;
     color: var(--color-text-secondary);
+  }
+
+  .intent-criterion__deliverable {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  .intent-criterion__deliverable:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
   }
 
   /* The model's own calls stand apart from the operator's: quieter, never on the same ground. */

@@ -86,6 +86,7 @@
       openDecision = null;
       decisionRequest += 1;
       intentLoading = false;
+      intentSettled = false;
       intentError = null;
       intentRequest += 1;
       intentHasRecord = false;
@@ -374,6 +375,13 @@
 
   /** The intent record the Intent tab needs beyond what its own panel reads, and whether one exists. */
   let intentLoading = $state(false);
+  /**
+   * Whether the Intent read answered at least once for this plan.
+   *
+   * The tab's first paint happens before its effect starts the read, so it must not say "not
+   * written yet" in that moment; it waits in its loading state until the first answer arrives.
+   */
+  let intentSettled = $state(false);
   let intentError = $state<string | null>(null);
   let intentHasRecord = $state(false);
   let intentCheck = $state<BuilderCheckRecord | null>(null);
@@ -407,6 +415,7 @@
       if (record === null) {
         // Nothing exists, so no outline read can change the tab; the empty state stands at once.
         intentLoading = false;
+        intentSettled = true;
         return;
       }
     } catch (err: unknown) {
@@ -416,6 +425,7 @@
       // A failed read is not "refine wrote nothing": it says so and offers the read again.
       intentError = errorCodeOf(err);
       intentLoading = false;
+      intentSettled = true;
       return;
     }
     try {
@@ -432,6 +442,7 @@
     }
     if (request === intentRequest && currentId === planId) {
       intentLoading = false;
+      intentSettled = true;
     }
   }
 
@@ -1532,14 +1543,18 @@
             onAct={() => void loadIntent()}
             titleLevel={2}
           />
-        {:else if intentLoading && !intentHasRecord}
-          <div class="plan-intent-panel__loading">
+        {:else if !intentSettled || (intentLoading && !intentHasRecord)}
+          <div class="plan-intent-panel__loading" data-testid="plan-intent-loading">
             <Spinner size="1.5rem" label={$t('intent.tab.title')} />
           </div>
         {:else if !intentHasRecord}
           <p class="text-muted" data-testid="plan-intent-none">{$t('intent.plan.none')}</p>
         {:else}
-          <PlanIntentPanel planId={plan.plan_id} deliverables={intentDeliverables} />
+          <PlanIntentPanel
+            planId={plan.plan_id}
+            deliverables={intentDeliverables}
+            deliverableHref={(number) => `#deliverable-${number}`}
+          />
           <BuilderCheckList check={intentCheck} />
           <OutlinePanel planId={plan.plan_id} />
         {/if}

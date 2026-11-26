@@ -2670,6 +2670,79 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     await fireEvent.click(changesTab);
     await waitFor(() => expect(get(runtimeStore).objectTab).toBe('changes'));
     expect(get(runtimeStore).changeFile).toBe('pm-relay/src/main/java/Transport.java');
+    // The address carries the file the tab shows, not only the memory of the view.
+    expect(window.location.search).toContain('file=');
+  });
+
+  it('starts the Intent tab in its loading state before the first read answers', async () => {
+    let answer: ((value: PlanIntentRecord | null) => void) | undefined;
+    vi.spyOn(apiClient, 'getPlanIntent').mockReturnValue(
+      new Promise<PlanIntentRecord | null>((resolve) => {
+        answer = resolve;
+      }),
+    );
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(await screen.findByTestId('plan-intent-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('plan-intent-none')).toBeNull();
+
+    answer?.(intentRecord);
+    await screen.findByTestId('plan-intent-panel');
+    expect(screen.queryByTestId('plan-intent-loading')).toBeNull();
+  });
+
+  it('links a criterion’s deliverable to the outline’s fragment target', async () => {
+    vi.spyOn(apiClient, 'getPlanIntent').mockResolvedValue({
+      ...intentRecord,
+      criteria: [{ id: 'C-1', text: 'The tab loads first', satisfies: [2] }],
+    });
+    vi.spyOn(apiClient, 'getPlanOutline').mockResolvedValue({
+      ...outlineRecord,
+      deliverables: [
+        {
+          number: 2,
+          title: 'Intent tab',
+          intent_gloss: 'The tab loads first.',
+          affected_files: [],
+          depends_on: [],
+          satisfies: [],
+        },
+      ],
+    });
+    runtimeStore.update((state) => ({ ...state, objectTab: 'intent' }));
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const row = await screen.findByTestId('criterion-deliverables-C-1');
+    const link = row.querySelector('a');
+    expect(link).not.toBeNull();
+    expect(link).toHaveAttribute('href', '#deliverable-2');
+  });
+
+  it('stops the activity feed when Intent hides the inspector and restarts it on Process', async () => {
+    runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
+    const unsubscribe = vi.fn();
+    const subscribe = vi
+      .spyOn(apiClient, 'subscribeTaskActivity')
+      .mockReturnValue(unsubscribe);
+
+    render(PlanView);
+    await screen.findByTestId('activity-feed');
+    expect(subscribe).toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Intent/ }));
+    await waitFor(() => expect(unsubscribe).toHaveBeenCalled());
+    expect(screen.queryByTestId('activity-feed')).toBeNull();
+
+    await fireEvent.click(screen.getByRole('tab', { name: /Process/ }));
+    await screen.findByTestId('activity-feed');
+    expect(subscribe).toHaveBeenCalledTimes(2);
   });
 
   it('opens Process and replaces an address that names a tab of another object', async () => {
