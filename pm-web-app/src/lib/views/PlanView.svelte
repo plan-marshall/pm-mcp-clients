@@ -575,7 +575,13 @@
 
   // A new in-place object opens the next close again.
   $effect(() => {
-    if ($runtimeStore.openObject !== null) closingInPlace = false;
+    if ($runtimeStore.openObject !== null) {
+      closingInPlace = false;
+    } else {
+      // No object is open: a flag from an earlier push must not make a later, loaded object close
+      // by Back.
+      inPlacePushed = false;
+    }
   });
 
   /**

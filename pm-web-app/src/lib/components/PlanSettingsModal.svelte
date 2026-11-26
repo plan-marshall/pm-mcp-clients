@@ -134,6 +134,9 @@
         every = false;
         break;
       }
+      // The field is the server's now: its baseline moves with it even when the record could not be
+      // re-read, so a later Save never resends a write that already landed.
+      seeded = { ...seeded, [aspect]: chosen[aspect] ?? '' };
       appliedAspects = new Set([...appliedAspects, aspect]);
     }
     saved = every;
@@ -157,14 +160,18 @@
             {$t('control.settings.conflict_title')}
           </h3>
           <p>
-            {$t('control.settings.conflict', { value: displaySettingChoice(conflict.currentValue) })}
+            {$t('control.settings.conflict', {
+              value: displaySettingChoice(conflict.currentValue, $t),
+            })}
           </p>
           <dl class="settings-modal__conflict-facts">
             <dt>{$t('control.settings.yours')}</dt>
-            <dd data-testid="settings-conflict-yours">{displaySettingChoice(conflict.wantedValue)}</dd>
+            <dd data-testid="settings-conflict-yours">
+              {displaySettingChoice(conflict.wantedValue, $t)}
+            </dd>
             <dt>{$t('control.settings.origin', { origin: 'plan' })}</dt>
             <dd data-testid="settings-conflict-current">
-              {displaySettingChoice(conflict.currentValue)}
+              {displaySettingChoice(conflict.currentValue, $t)}
             </dd>
           </dl>
           <div class="settings-modal__conflict-actions">
@@ -207,7 +214,7 @@
                     {#if entry.choices && entry.choices.length > 0}
                       <SelectField
                         id={`settings-value-${entry.aspect}`}
-                        label={displaySettingAspect(entry.aspect)}
+                        label={displaySettingAspect(entry.aspect, $t)}
                         value={chosen[entry.aspect] ?? ''}
                         options={[
                           ...(entry.origin === 'plan'
@@ -215,7 +222,7 @@
                             : []),
                           ...entry.choices.map((choice) => ({
                             value: choice,
-                            label: displaySettingChoice(choice),
+                            label: displaySettingChoice(choice, $t),
                           })),
                         ]}
                         testid={`settings-value-${entry.aspect}`}
@@ -226,9 +233,11 @@
                         }}
                       />
                     {:else}
-                      <span class="settings-modal__aspect">{displaySettingAspect(entry.aspect)}</span>
+                      <span class="settings-modal__aspect"
+                        >{displaySettingAspect(entry.aspect, $t)}</span
+                      >
                       <span class="settings-modal__value mono" data-testid={`settings-value-${entry.aspect}`}
-                        >{displaySettingChoice(chosen[entry.aspect])}</span
+                        >{displaySettingChoice(chosen[entry.aspect], $t)}</span
                       >
                     {/if}
                   </div>

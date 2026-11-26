@@ -593,6 +593,9 @@
         } else {
           decisions = [dec, ...decisions];
           seenIds.add(dec.id);
+          // A list read still in flight predates this event: read again so its answer cannot drop
+          // the decision the event just added.
+          if (isLoading) void loadDecisions();
         }
       } else {
         void loadDecisions();
@@ -605,6 +608,7 @@
         } else {
           decisions = [revised, ...decisions];
           seenIds.add(revised.id);
+          if (isLoading) void loadDecisions();
         }
       } else {
         void loadDecisions();
