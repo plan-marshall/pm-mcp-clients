@@ -744,7 +744,7 @@ describe('PlanView component', () => {
 
     expect(screen.getByTestId('completion-report-link')).toHaveAttribute(
       'href',
-      '/reports?plan=fix-relay',
+      '/plans/fix-relay?mode=ended&open=completion-report:fix-relay',
     );
   });
 
@@ -1935,7 +1935,7 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
       ),
     );
     const link = await screen.findByTestId('plan-decision-link');
-    expect(link).toHaveAttribute('href', '/decisions/Q-007');
+    expect(link).toHaveAttribute('href', '/plans/fix-relay?open=decision:Q-007');
     expect(link).toHaveTextContent('Open the decision');
   });
 
@@ -2094,6 +2094,226 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     expect(screen.getByTestId('plan-revision-queued')).toHaveTextContent(
       'applies when fix-relay starts again',
     );
+  });
+
+  it('opens the waiting decision in place on the plan address', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const link = await screen.findByTestId('plan-decision-link');
+    expect(link).toHaveAttribute('href', '/plans/fix-relay?open=decision:Q-007');
+    expect(link.getAttribute('href')).not.toContain('/decisions/');
+  });
+
+  it('opens the completion report in place on the plan address', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    runtimeStore.update((state) => ({
+      ...state,
+      selectedPlanEnded: {
+        plan_id: 'fix-relay',
+        outcome: 'merged',
+        ended_at: '2026-10-16T11:20:00Z',
+      },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const link = screen.getByTestId('completion-report-link');
+    expect(link).toHaveAttribute(
+      'href',
+      '/plans/fix-relay?mode=ended&open=completion-report:fix-relay',
+    );
+  });
+
+  it('renders the attention strip in the object page’s attention slot', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const strip = await screen.findByTestId('plan-attention-strip');
+    expect(screen.getByTestId('object-page-attention')).toContainElement(strip);
+  });
+
+  it('renders the ended banner in the object page’s attention slot', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    runtimeStore.update((state) => ({
+      ...state,
+      selectedPlanEnded: { plan_id: 'fix-relay', outcome: 'merged', ended_at: '2026-10-16T11:20:00Z' },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('object-page-attention')).toContainElement(
+      screen.getByTestId('plan-ended'),
+    );
+  });
+
+  it('renders the off-track banner in the object page’s attention slot', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        nodes: [
+          {
+            node_id: 'execute',
+            title: 'execute',
+            kind: 'phase',
+            state: 'running',
+            run_count: 1,
+            current_run: 1,
+            duration_seconds: 1500,
+            sub_nodes: [],
+            leaf_tasks: [
+              {
+                task_id: 'TASK-003',
+                role: 'implement',
+                harness: 'claude',
+                model: 'sonnet',
+                attempt: 1,
+                status: 'running',
+                duration_seconds: 360,
+                tokens_so_far: 48000,
+                off_track: { signal: 'repeating', action: 'shown', value: 5, threshold: 5 },
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('object-page-attention')).toContainElement(
+      screen.getByTestId('plan-off-track'),
+    );
+  });
+
+  it('renders the queued-revision line in the object page’s attention slot', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        queued_revision: {
+          chat_id: 'chat-1',
+          turn_id: 'turn-1',
+          subject: { kind: 'plan', id: 'fix-relay' },
+          chat_open: true,
+          applies: { key: 'chat.applies.on_start' },
+        },
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('object-page-attention')).toContainElement(
+      screen.getByTestId('plan-revision-queued'),
+    );
+  });
+
+  it('renders the state line as phrasing content inside the template’s span', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const state = screen.getByTestId('object-page-state');
+    expect(state.querySelector('div')).toBeNull();
+  });
+
+  it('says the running leaf task’s place in the head’s sentence', async () => {
+    const tasks = [1, 2, 3, 4, 5].map((n) => ({
+      task_id: `TASK-00${n}`,
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      status: n === 3 ? 'running' : 'done',
+      duration_seconds: 60,
+      tokens_so_far: 1000,
+    }));
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({
+        nodes: [
+          {
+            node_id: 'execute',
+            title: 'execute',
+            kind: 'phase',
+            state: 'running',
+            run_count: 1,
+            current_run: 1,
+            duration_seconds: 1500,
+            sub_nodes: [],
+            leaf_tasks: tasks,
+          },
+        ],
+      }),
+    );
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-state-sentence')).toHaveTextContent('task 3 of 5');
+  });
+
+  it('shows no task for a queued revision whose applies key is unknown', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await waitFor(() => expect(onEvent).toBeDefined());
+
+    onEvent?.('plan.revision_queued', {
+      plan_id: 'fix-relay',
+      queued_revision: {
+        chat_id: 'chat-1',
+        turn_id: 'turn-1',
+        subject: { kind: 'plan', id: 'fix-relay' },
+        chat_open: true,
+        applies: { key: 'chat.applies.whenever', args: { task_id: 'TASK-003' } },
+      },
+    });
+
+    const line = await screen.findByTestId('plan-revision-queued');
+    expect(line).not.toHaveTextContent('after');
+    expect(line).not.toHaveTextContent('TASK-003');
+  });
+
+  it('reads the waiting plan’s decision once across two process refreshes', async () => {
+    const getDecisions = vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+    const getPlanProcess = vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await screen.findByTestId('plan-decision-link');
+    expect(getDecisions).toHaveBeenCalledTimes(1);
+
+    onEvent?.('activity.changed');
+    await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(2));
+    onEvent?.('activity.changed');
+    await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(3));
+
+    expect(getDecisions).toHaveBeenCalledTimes(1);
   });
 });
 

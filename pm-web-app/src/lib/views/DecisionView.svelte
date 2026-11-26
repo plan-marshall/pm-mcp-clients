@@ -50,6 +50,16 @@
 
   const NOTIFY_KEY = 'pm_decision_notify';
 
+  /** An in-place rendering of one decision: the object alone, beside its plan (`open=decision:{id}`). */
+  interface DecisionInPlace {
+    /** The decision the column shows. */
+    id: string;
+    /** Closes the column: the history's back, or the caller's address when the entry was loaded. */
+    onClose: () => void;
+  }
+
+  let { inPlace = null }: { inPlace?: DecisionInPlace | null } = $props();
+
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
@@ -200,16 +210,18 @@
     if (activeDecision === null) {
       return [list];
     }
-    return [
-      list,
-      {
-        key: `decision:${activeDecision.id}`,
-        kind: 'decision',
-        title: displayTitle(activeDecision),
-        href: `/decisions/${encodeURIComponent(activeDecision.id)}`,
-        state: '',
-      },
-    ];
+    const decisionLevel: Level = {
+      key: `decision:${activeDecision.id}`,
+      kind: 'decision',
+      title: displayTitle(activeDecision),
+      href: `/decisions/${encodeURIComponent(activeDecision.id)}`,
+      state: '',
+    };
+    // In place the decision is the whole chain: no list column stands beside it.
+    if (inPlace) {
+      return [decisionLevel];
+    }
+    return [list, decisionLevel];
   });
 
   /**
@@ -217,6 +229,7 @@
    * (`navigation.adoc#missing`), so the object column never stands beside a list that lost it.
    */
   const pinned = $derived.by<PinnedRow | null>(() => {
+    if (inPlace) return null;
     const active = activeDecision;
     if (active === null) return null;
     if (matchingDecisions.some((dec) => dec.id === active.id)) return null;
@@ -356,7 +369,7 @@
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
-    const requested = $runtimeStore.selectedDecisionId ?? null;
+    const requested = inPlace?.id ?? $runtimeStore.selectedDecisionId ?? null;
     activeId = requested;
     syncedRouteDecision = requested;
     await loadDecisions();
@@ -373,6 +386,8 @@
   // The route is the address: a header visit to Decisions, the browser's Back, and a decision the
   // palette opened all move the store, and the object column follows it.
   $effect(() => {
+    // In place the address is the caller's, not a decision's: the column follows the prop alone.
+    if (inPlace) return;
     const route = $runtimeStore.currentRoute;
     if (route !== 'decisions' && route !== 'decision') return;
     const routeDecision = $runtimeStore.selectedDecisionId ?? null;
@@ -389,6 +404,10 @@
     if (active === null || isLoading || decisions.length === 0) return;
     if (decisions.some((dec) => dec.id === active)) return;
     if (!seenIds.has(active)) return;
+    if (inPlace) {
+      inPlace.onClose();
+      return;
+    }
     closeDetail();
   });
 
@@ -1221,6 +1240,11 @@
    * @param intent whether the change pushes or replaces the history entry
    */
   function selectDecision(id: string | null, intent: 'push' | 'replace'): void {
+    if (inPlace) {
+      // The column belongs to the caller's address: an answer or a close leaves it, it writes none.
+      inPlace.onClose();
+      return;
+    }
     activeId = id;
     if (id === null) {
       syncedRouteDecision = null;
@@ -1866,16 +1890,22 @@
 {/snippet}
 
 <div class="decisions-view">
-  <TriagePage
-    {levels}
-    label={$t('decisions.list.title')}
-    column={listColumn}
-    object={activeDecision === null ? undefined : objectColumn}
-    {pinned}
-    side={chatOpen ? chatSide : undefined}
-    sideOpen={chatOpen}
-    onHideSide={closeChatPanel}
-  />
+  {#if inPlace && activeDecision === null}
+    <div class="decisions-view__in-place" data-testid="decision-in-place">
+      <Skeleton shape="card" rows={3} label={$t('decisions.list.title')} />
+    </div>
+  {:else}
+    <TriagePage
+      {levels}
+      label={$t('decisions.list.title')}
+      column={listColumn}
+      object={activeDecision === null ? undefined : objectColumn}
+      {pinned}
+      side={chatOpen ? chatSide : undefined}
+      sideOpen={chatOpen}
+      onHideSide={closeChatPanel}
+    />
+  {/if}
 </div>
 
 <style>

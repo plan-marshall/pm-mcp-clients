@@ -58,7 +58,10 @@
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
-  import { PLAN_TABS, type PlanTab } from '../routes';
+  import { formatAddress, PLAN_TABS, type Address, type PlanTab } from '../routes';
+  import { openedFromOutside, writeAddress } from '../navigation/history';
+  import CompletionReportView from './CompletionReportView.svelte';
+  import DecisionView from './DecisionView.svelte';
   import { narrowLayout } from '../utils/narrowLayout';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -262,8 +265,10 @@
   }
 
   $effect(() => {
-    // `waiting` is read here so a plan that stops waiting drops the link and the strip.
-    if (plan !== null && waiting) {
+    // Only the wait itself (and the plan) re-reads the decision: a process reload that leaves the
+    // plan waiting keeps the link, so a refresh never adds a read of its own.
+    const currentId = planId;
+    if (currentId !== '' && waiting) {
       void loadOpenDecision();
     } else {
       decisionRequest += 1;
@@ -295,10 +300,15 @@
     const args = (applies as Record<string, unknown>).args;
     const taskId =
       args && typeof args === 'object' ? textOf((args as Record<string, unknown>).task_id) : null;
-    return {
-      applies: key === 'chat.applies.on_start' ? 'on_start' : 'after_task',
-      taskId,
-    };
+    // Only a point the wire names is a point: an unknown key names no task, never a task boundary
+    // with an empty id that the line would render as "applies after ".
+    if (key === 'chat.applies.on_start') {
+      return { applies: 'on_start', taskId: null };
+    }
+    if (key === 'chat.applies.after_task') {
+      return { applies: 'after_task', taskId };
+    }
+    return { applies: 'unknown', taskId: null };
   }
 
   /**
@@ -493,6 +503,59 @@
   const designerHref = $derived(
     plan ? `/designer?project=${encodeURIComponent(plan.project.project_id)}` : '',
   );
+
+  /**
+   * The plan's own address as the head writes it back: the plan, its mode and the shown tab.
+   *
+   * @returns the caller's address, without the object an in-place column opens
+   */
+  function planAddress(): Address {
+    const address: Address = { route: 'plan', planId };
+    if (ended) address.mode = 'ended';
+    if (activeTab !== DEFAULT_TAB) address.tab = activeTab;
+    return address;
+  }
+
+  /** The head link that opens the waiting decision in place beside the plan. */
+  const decisionHref = $derived(
+    openDecisionId === null
+      ? ''
+      : (formatAddress({ ...planAddress(), open: { kind: 'decision', id: openDecisionId } }) ?? ''),
+  );
+
+  /** The head link that opens the ended plan's completion report in place beside it. */
+  const completionHref = $derived(
+    ended
+      ? (formatAddress({
+          ...planAddress(),
+          open: { kind: 'completion-report', id: planId },
+        }) ?? '')
+      : '',
+  );
+
+  /** The decision the address opens in place beside the plan, when it names one. */
+  const inPlaceDecisionId = $derived(
+    $runtimeStore.openObject?.kind === 'decision' ? $runtimeStore.openObject.id : null,
+  );
+
+  /** The completion report the address opens in place beside the plan, when it names one. */
+  const inPlaceReportId = $derived(
+    $runtimeStore.openObject?.kind === 'completion-report' ? $runtimeStore.openObject.id : null,
+  );
+
+  /**
+   * Closes the object opened in place: the history's back when the app pushed the entry, a
+   * replacing write to the caller's address when the address was loaded with `open=`
+   * (`navigation.adoc#url`).
+   */
+  function closeInPlace(): void {
+    if (openedFromOutside()) {
+      runtimeStore.update((s) => ({ ...s, openObject: null }));
+      writeAddress(planAddress(), 'replace');
+      return;
+    }
+    window.history.back();
+  }
 
   let tokenBreakdown: {
     byPhase: TokenBreakdownItem[];
@@ -1153,7 +1216,11 @@
   }
 </script>
 
-<div class="plan-view-layout" data-testid="plan-view-layout">
+<div
+  class="plan-view-layout"
+  class:plan-view-layout--with-object={inPlaceDecisionId !== null || inPlaceReportId !== null}
+  data-testid="plan-view-layout"
+>
   {#if planProjectId}
     <WorkListColumn
       projectId={planProjectId}
@@ -1197,7 +1264,7 @@
       <span slot="title" data-testid="plan-title">{stripControlSequences(plan.title)}</span>
       <span slot="id" data-testid="plan-id-chip"><Chip value={plan.plan_id} /></span>
 
-      <div slot="state" class="plan-state-line" data-testid="plan-state-line">
+      <span slot="state" class="plan-state-line" data-testid="plan-state-line">
         {#if plan.pull_request_number}
           <span data-testid="plan-pr-chip">
             <PrChip number={plan.pull_request_number} href={plan.pull_request_url ?? undefined} />
@@ -1216,7 +1283,7 @@
             >{stateSentence}</span
           >
         {/if}
-      </div>
+      </span>
 
       <div slot="primary" class="plan-acts">
         <!-- The plan's own actions, settings, holds, and chats -->
@@ -1239,7 +1306,7 @@
         />
         {#if ended}
           <Link
-            href={`/reports?plan=${encodeURIComponent(plan.plan_id)}`}
+            href={completionHref}
             label={$t('report.action.details')}
             advisory={$t('report.action.details.title')}
             testid="completion-report-link"
@@ -1247,7 +1314,7 @@
         {/if}
         {#if waiting && openDecisionId}
           <Link
-            href={`/decisions/${encodeURIComponent(openDecisionId)}`}
+            href={decisionHref}
             label={$t('control.plan.decision')}
             advisory={$t('control.plan.decision.title')}
             testid="plan-decision-link"
@@ -1255,7 +1322,7 @@
         {/if}
       </div>
 
-      <div slot="tabs" class="plan-tabstrip">
+      <div slot="attention" class="plan-attention">
         {#if waiting && openDecisionId}
           <div data-testid="plan-attention-strip">
             <AttentionStrip message={$t('plan.view.waits_for_decision')} />
@@ -1274,13 +1341,19 @@
         {/if}
 
         {#if queuedRevision}
-          <p class="plan-revision mono" data-testid="plan-revision-queued">
-            {$t('control.chat.revision_queued', {
-              applies: queuedRevision.applies,
-              plan: plan.plan_id,
-              task_id: queuedRevision.taskId ?? '',
-            })}
-          </p>
+          {#if queuedRevision.applies === 'unknown'}
+            <p class="plan-revision mono" data-testid="plan-revision-queued">
+              {$t('control.chat.revision_queued_unscheduled')}
+            </p>
+          {:else}
+            <p class="plan-revision mono" data-testid="plan-revision-queued">
+              {$t('control.chat.revision_queued', {
+                applies: queuedRevision.applies,
+                plan: plan.plan_id,
+                task_id: queuedRevision.taskId ?? '',
+              })}
+            </p>
+          {/if}
         {/if}
 
         {#if ended}
@@ -1308,7 +1381,9 @@
             </div>
           </div>
         {/if}
+      </div>
 
+      <div slot="tabs" class="plan-tabstrip">
         <!-- Tokens So Far -->
         <div class="plan-tokens mono" data-testid="plan-tokens">
           <span class="tokens-label">{$t('plan.view.tokens')}</span>
@@ -1775,6 +1850,22 @@
     </ObjectPage>
   {/if}
 </div>
+  {#if inPlaceDecisionId !== null || inPlaceReportId !== null}
+    <aside class="plan-view-object" data-testid="plan-in-place">
+      <header class="plan-view-object__head">
+        <Button variant="ghost" size="sm" onclick={closeInPlace} data-testid="plan-in-place-close">
+          {$t('common.action.close')}
+        </Button>
+      </header>
+      <div class="plan-view-object__body">
+        {#if inPlaceDecisionId !== null}
+          <DecisionView inPlace={{ id: inPlaceDecisionId, onClose: closeInPlace }} />
+        {:else if inPlaceReportId !== null}
+          <CompletionReportView planId={inPlaceReportId} titleLevel={2} />
+        {/if}
+      </div>
+    </aside>
+  {/if}
 </div>
 
 <style>
@@ -2405,7 +2496,48 @@
     border-bottom: 1px solid var(--color-border);
   }
 
-  .plan-tabstrip .off-track-banner {
+  .plan-attention .off-track-banner {
     margin: 0;
+  }
+
+  .plan-attention {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  /* The object opened in place beside the plan: its own column, its own scroll. */
+  .plan-view-object {
+    flex: 0 0 auto;
+    inline-size: min(560px, 45vw);
+    min-inline-size: 0;
+    max-block-size: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-inline-start: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+  }
+
+  .plan-view-object__head {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-2) var(--space-3) 0;
+  }
+
+  .plan-view-object__body {
+    min-inline-size: 0;
+    padding: var(--space-2) var(--space-3) var(--space-4);
+  }
+
+  /* A phone has room for one column: the object takes the space the plan leaves (`navigation.adoc#window`). */
+  @media (max-width: 767px) {
+    .plan-view-object {
+      inline-size: 100vw;
+    }
+
+    .plan-view-layout--with-object .plan-view {
+      display: none;
+    }
   }
 </style>
