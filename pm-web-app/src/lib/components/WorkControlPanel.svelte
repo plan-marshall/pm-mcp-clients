@@ -665,7 +665,8 @@
           version: result.revision,
         });
       } else if (result.conflict) {
-        settingsFormRevision = result.revision;
+        // The token keeps the revision of the last successful write: an ordinary Save after a
+        // conflict is refused again until the operator resolves it, and Apply again carries its own.
         settingsConflict = {
           aspect: payload.aspect,
           currentValue: result.current_value ?? '',

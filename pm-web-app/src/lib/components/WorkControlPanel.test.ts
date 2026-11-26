@@ -808,6 +808,26 @@ describe('WorkControlPanel component', () => {
     expect(screen.getByTestId('settings-notice')).not.toHaveTextContent('is refused');
   });
 
+  it('does not advance the form token on a conflict, so another Save is refused again', async () => {
+    const update = vi
+      .spyOn(apiClient, 'updatePlanSettings')
+      .mockResolvedValue({ applied: false, conflict: true, revision: 8, current_value: 'landing.main' });
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-settings'));
+    await fireEvent.change(await screen.findByTestId('settings-value-landing'), {
+      target: { value: 'landing.files' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+    expect(await screen.findByTestId('settings-conflict')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('settings-save'));
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+    // The second ordinary Save still carries the last successful revision, never the conflict's.
+    expect(update.mock.calls[1][3]).toBe(7);
+  });
+
   it('shows a conflict and applies the same change against the current revision', async () => {    vi.spyOn(apiClient, 'updatePlanSettings').mockResolvedValueOnce({
       applied: false,
       conflict: true,
