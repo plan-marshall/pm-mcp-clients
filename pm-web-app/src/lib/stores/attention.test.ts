@@ -145,9 +145,9 @@ describe('the attention store', () => {
   it('maps every wire spelling of a kind to the one the client reads', async () => {
     servePages(
       pageOf([
-        { kind: 'waiver_request' },
-        { kind: 'operator_wait' },
-        { kind: 'something_new' },
+        { kind: 'waiver_request', blocks: 'nothing' },
+        { kind: 'operator_wait', blocks: 'nothing' },
+        { kind: 'something_new', blocks: 'nothing' },
       ]),
     );
 
@@ -199,7 +199,7 @@ describe('the attention store', () => {
     servePages(
       pageOf([
         itemOf('decision', { plan: { id: 'a', title: 'A' } }),
-        { kind: 'report', link: '/api/v1/reports/7' },
+        { kind: 'report', link: '/api/v1/reports/7', blocks: 'nothing' },
       ]),
     );
 
