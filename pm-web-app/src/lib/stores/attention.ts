@@ -62,8 +62,8 @@ export interface AttentionItem {
   plan: NeedsOperatorLocation | null;
   /** When it started to wait, or `null` when the runtime measures none. */
   since: string | null;
-  /** What it blocks, or `null` when it blocks no work. */
-  blocks: string | null;
+  /** What it blocks: one value of the one vocabulary (`plan`, `epic`, `setup`, `entry`, `task`, `nothing`). */
+  blocks: string;
 }
 
 /** The state of the one list of what waits. */
@@ -140,7 +140,7 @@ function itemOf(item: NeedsOperatorItem): AttentionItem | null {
     epic: item.epic ?? null,
     plan: item.plan ?? null,
     since: item.since ?? null,
-    blocks: item.blocks ?? null,
+    blocks: item.blocks ?? '',
   };
 }
 

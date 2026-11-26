@@ -581,8 +581,7 @@ public final class ConsoleNotice {
     private static @Nullable String summaryOf(String locale, Map<String, Object> source) {
         var blocks = stringOf(source, "blocks");
         if (blocks != null) {
-            var key = "decision.blocks." + blocks;
-            return MessageCatalogue.hasKey(locale, key) ? MessageCatalogue.format(locale, key, Map.of()) : blocks;
+            return DecisionBlockWords.text(locale, blocks);
         }
         return firstText(source, source, "summary", "title", null);
     }

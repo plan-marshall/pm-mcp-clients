@@ -49,7 +49,7 @@ function itemOf(kind: AttentionKind, overrides: Partial<AttentionItem> = {}): At
     epic: null,
     plan: null,
     since: null,
-    blocks: null,
+    blocks: 'nothing',
     ...overrides,
   };
 }

@@ -238,9 +238,11 @@ class NeedsItemCommandsTest {
     @Test
     @DisplayName("renders what an item blocks in the operator's words, never the wire token")
     void blocksAreCatalogueWords() {
-        assertEquals(Map.of("en", "blocks: plan", "de", "blockiert: Plan"),
+        assertEquals(Map.of("en", "blocks the plan", "de", "blockiert den Plan"),
                             Map.of("en", OverviewFormatting.formatNeedsItemBlocks("plan", "en"),
                                                 "de", OverviewFormatting.formatNeedsItemBlocks("plan", "de")));
+        assertEquals("blocks nothing", OverviewFormatting.formatNeedsItemBlocks("nothing", "en"));
+        assertEquals("unknown", OverviewFormatting.formatNeedsItemBlocks("landing-train", "en"));
     }
 
     @ParameterizedTest(name = "{0} names its kind in both languages")
