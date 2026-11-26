@@ -66,7 +66,6 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/styles/tokens.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 1cc0e10e
-- OBSERVED: `pm-web-e2e/tests/helpers/contrast.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/lib/views/theme.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 
@@ -122,6 +121,26 @@ On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of
 - **The "Residue Fold 2026-11-10" deliverable 4 (the contrast unit tests read the theme they name) and the `dataset.theme` clause of the Re-Grounding 2026-11-25 moved to PLAN-195** `web-contrast-tests-read-their-theme`, which runs before this plan. This plan keeps the light pass (D1: retune tokens on the evidence PLAN-195's tests give) and the design record (D2). `Button.test.ts` and `RowMenu.test.ts` leave the surface.
 - Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/components/Button.test.ts, pm-web-app/src/lib/components/RowMenu.test.ts.
 
+## Re-Grounding 2026-11-26 (at `da3cafdf`)
+
+Re-read by a read-only sub-agent against origin/main `da3cafdf` (after #588 `51e3bcc9`, PLAN-195); `theme.test.ts:223-239`, `theme-readability.adoc:17` and the absence of `MachineSettingsView.svelte` re-read by the orchestrator. Operator decision 2026-11-26: "verify, retune on evidence". **This section binds over the body and every earlier amendment where they differ.**
+
+- **Done by PLAN-195, no longer this plan's:** the palettes-differ guard (`tokens.test.ts:355-361`); `setTheme` writes `pm_theme` and `assertTheme` runs before every audit (`contrast.js:21-24,41,69,295`); one theme reader `pm-web-app/src/lib/test/stylesheet.ts` (`parseThemes` :112, `tokenOf` :99); `RowMenu.test.ts:289-302` reads `--color-bg-subtle` in light, dark and system-dark; the mutation and test-first evidence (`landings/PLAN-195.md:20-21`).
+- **No light pair fails today** by computation from `tokens.css:84-112`: every pair `tokens.test.ts` measures holds (lowest text 4.51 danger on diff-removed, dot 3.44 neutral on bg-rail, tint 4.52 kind-plan on brand-subtle); `CONTRAST_ALLOWLIST` is empty (`theme-readability.spec.js:589`). VD-F-10's facts (`#f8fafc`, "the same blue") describe the pre-v2 palette.
+- **D1 (verify; retune only on evidence)** is now three items:
+  - (a) Replace the invented literals of `theme.test.ts:223-239` (dark `rgb(96,165,250)` on `rgb(19,27,46)`, light `rgb(37,99,235)` on white) with the real pair `--color-primary` → `--color-brand` on `--color-bg-surface`, read through `parseThemes`/`tokenOf` in both themes. Alternatively delete the block as a duplicate of `tokens.test.ts:215` and say why in the PR. A mutation run shows the test reads `tokens.css` (PLAN-195 L3-1).
+  - (b) Light review of every rail route, the start page `/` included, and of the Design Review 2026-11-06 visuals, with `theme-readability.spec.js` green in light. Record before/after screenshots per route.
+  - (c) Change a token ONLY for a failure the review or a test evidences. The named candidate to MEASURE first is the field border: `--control-border` (= `--color-border-strong`, `tokens.css:62`) against `--control-bg` is about 1.57:1 (light) and 1.74:1 (dark), below WCAG 1.4.11's 3:1, and no test checks it. If measured below 3:1, add a failing non-text-contrast test in `tokens.test.ts`, then retune in both themes. Every changed light value changes in both `:root` (`tokens.css:84-127`) and `[data-theme='light']` (`:205-237`) and in `COLOUR_TOKENS` (`tokens.test.ts:62-93`). No evidenced failure means no token change, and the PR says "light confirmed unchanged".
+- **D2 (design record):**
+  - `theme-readability.adoc:17` "chosen in the header": the theme is chosen at the rail foot and in the More sheet (`NavRail.svelte:195-211`, `BottomBar.svelte:209`).
+  - `:208`: drop `MachineSettingsView` (removed by #457) and name the 23 `DECLARED_VIEWS` (`theme-readability.spec.js:31-55`).
+  - `:71`: success on success-subtle at 4.5:1, as tested (`tokens.test.ts:231`). PLAN-72's spec also claims this line; it is taken here.
+  - `:202-203`: what `theme.test.ts` asserts after D1(a).
+  - Record the tuned values, or "light confirmed unchanged".
+- **Surface:** `pm-web-e2e/tests/helpers/contrast.js` leaves (done by PLAN-195). `theme-readability.spec.js` stays only for a check D1(c) adds; otherwise it is run, not edited.
+- **Dependencies:** the body's list is shipped except PLAN-62 and PLAN-85 (staged) and the chat packages; the operator's emit word of 2026-11-26 waives the Design Review gate for this verify-first pass. Overlaps under the 5-file rule, none blocking: PLAN-72, PLAN-73 (parked), PLAN-136 (staged); no running plan touches the surface.
+- Ports stay `20700`/`20701`; start the mock with `./pm-mock-runtime/start.sh` as `AGENTS.md` § Ports says.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
@@ -142,7 +161,6 @@ sole sanctioned write mechanism are stated in
 - OBSERVED: `pm-web-app/src/styles/tokens.css` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-app/src/styles/tokens.test.ts` — present at HEAD 1cc0e10e
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD 1cc0e10e
-- OBSERVED: `pm-web-e2e/tests/helpers/contrast.js` — present at HEAD 1cc0e10e
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD 1cc0e10e
 
 ## Residue Fold 2026-11-10 (Amendment)
