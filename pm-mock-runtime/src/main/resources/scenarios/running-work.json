@@ -1534,6 +1534,139 @@
         ]
       }
     },
+    "GET /api/v1/plans/storage-v2/process": {
+      "representation": {
+        "plan_id": "storage-v2",
+        "title": "Storage v2 schema migration",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute.storage \u00b7 TASK-002",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 48000,
+          "input": 42000,
+          "output": 6000,
+          "floor": false,
+          "tasks_total": 3,
+          "tasks_measured": 2,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 600,
+            "sub_nodes": [
+              {
+                "node_id": "execute.storage",
+                "title": "execute.storage",
+                "kind": "tasks",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 600,
+                "sub_nodes": [],
+                "leaf_tasks": [
+                  {
+                    "task_id": "TASK-001",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "duration_seconds": 180,
+                    "tokens_so_far": 18000,
+                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-001/activity",
+                    "outcome": "success"
+                  },
+                  {
+                    "task_id": "TASK-002",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "running",
+                    "duration_seconds": 420,
+                    "tokens_so_far": 30000,
+                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-002/activity"
+                  }
+                ]
+              }
+            ],
+            "leaf_tasks": []
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "execute.storage",
+          "TASK-002"
+        ],
+        "duration_seconds": 600
+      }
+    },
+    "GET /api/v1/plans/storage-v2/tasks/TASK-001/activity": {
+      "representation": {
+        "task_id": "TASK-001",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 180,
+        "tokens_so_far": 18000,
+        "entries": [
+          {
+            "timestamp": "11:40:05",
+            "kind": "text",
+            "content": "Storage v2 baseline schema verified."
+          },
+          {
+            "timestamp": "11:41:20",
+            "kind": "answer_ack",
+            "content": "TASK-001 completed."
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/plans/storage-v2/tasks/TASK-002/activity": {
+      "representation": {
+        "task_id": "TASK-002",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 420,
+        "tokens_so_far": 30000,
+        "entries": [
+          {
+            "timestamp": "11:43:10",
+            "kind": "text",
+            "content": "Applying storage v2 index migration across checkpoints."
+          },
+          {
+            "timestamp": "11:44:02",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-mcp-core/src/main/java/…/StorageMigration.java",
+            "tool_failed": false
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
     "GET /api/v1/plans/session-log/process": {
       "representation": {
         "plan_id": "session-log",
@@ -1837,7 +1970,7 @@
                 },
                 {
                   "plan_id": "storage-v2",
-                  "state": "waiting"
+                  "state": "running"
                 },
                 {
                   "plan_id": "docs-typo",
@@ -2414,6 +2547,18 @@
                     "knows": [
                       {
                         "key": "chat.knows.description"
+                      },
+                      {
+                        "key": "chat.knows.rows",
+                        "args": {
+                          "count": 7
+                        }
+                      },
+                      {
+                        "key": "chat.knows.items",
+                        "args": {
+                          "count": 5
+                        }
                       }
                     ],
                     "as_of": "2026-10-14T10:00:00Z"
@@ -2450,6 +2595,41 @@
                       ],
                       "refs": [],
                       "at": "2026-10-14T10:00:00Z"
+                    },
+                    {
+                      "turn_id": "T-0010",
+                      "kind": "notice",
+                      "author": "decompose",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:05:00Z",
+                      "lines": [
+                        {
+                          "key": "chat.line.row_started",
+                          "args": {
+                            "plan": "relay-cursor-order"
+                          },
+                          "refs": [
+                            {
+                              "kind": "plan",
+                              "id": "relay-cursor-order"
+                            }
+                          ],
+                          "at": "2026-10-14T10:04:00Z"
+                        },
+                        {
+                          "key": "chat.line.auto_changed",
+                          "args": {
+                            "state": "on"
+                          },
+                          "refs": [],
+                          "at": "2026-10-14T10:05:00Z"
+                        }
+                      ]
                     }
                   ]
                 },
@@ -2563,6 +2743,313 @@
                       ],
                       "refs": [],
                       "at": "2026-10-14T10:00:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "C-0005",
+                  "subject": {
+                    "kind": "decision",
+                    "id": "fix-relay/Q-007"
+                  },
+                  "role": {
+                    "name": "replan",
+                    "model": "sonnet"
+                  },
+                  "scope": "decision",
+                  "state": "chat.read-back",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.decision",
+                        "args": {
+                          "id": "Q-007"
+                        }
+                      },
+                      {
+                        "key": "chat.knows.description"
+                      },
+                      {
+                        "key": "chat.knows.tasks",
+                        "args": {
+                          "count": 3
+                        }
+                      },
+                      {
+                        "key": "chat.knows.phase",
+                        "args": {
+                          "phase": "execute"
+                        }
+                      },
+                      {
+                        "key": "chat.knows.version",
+                        "args": {
+                          "version": 1
+                        }
+                      }
+                    ],
+                    "as_of": "2026-10-14T10:02:00Z"
+                  },
+                  "proposal": {
+                    "turn_id": "T-0013",
+                    "reply_turn_id": "T-0012",
+                    "kind": "revision",
+                    "summary": "bound retries before TASK-003 ends",
+                    "applies": {
+                      "key": "chat.applies.after_task",
+                      "args": {
+                        "task_id": "TASK-003"
+                      }
+                    },
+                    "before": "TASK-003  backoff retry loop",
+                    "after": "TASK-003  backoff retry loop capped at 5 attempts",
+                    "state": "open"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0011",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Should the retry cap be part of TASK-003?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:01:00Z"
+                    },
+                    {
+                      "turn_id": "T-0012",
+                      "kind": "message",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "Yes, a 5-attempt cap keeps Q-007 consistent after TASK-003.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-14T10:02:00Z"
+                    },
+                    {
+                      "turn_id": "T-0013",
+                      "kind": "proposal",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "bound retries before TASK-003 ends",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-14T10:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "C-0006",
+                  "subject": {
+                    "kind": "plan",
+                    "id": "storage-v2"
+                  },
+                  "role": {
+                    "name": "replan",
+                    "model": "sonnet"
+                  },
+                  "scope": "plan",
+                  "state": "chat.turn",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      },
+                      {
+                        "key": "chat.knows.tasks",
+                        "args": {
+                          "count": 3
+                        }
+                      },
+                      {
+                        "key": "chat.knows.phase",
+                        "args": {
+                          "phase": "execute"
+                        }
+                      },
+                      {
+                        "key": "chat.knows.version",
+                        "args": {
+                          "version": 1
+                        }
+                      }
+                    ],
+                    "as_of": "2026-10-16T12:00:00Z"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0014",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Where does storage-v2 stand?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-16T11:50:00Z"
+                    },
+                    {
+                      "turn_id": "T-0015",
+                      "kind": "message",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "TASK-002 is running in execute after TASK-001 passed.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the plan's tasks"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-16T11:51:00Z"
+                    },
+                    {
+                      "turn_id": "T-0016",
+                      "kind": "notice",
+                      "author": "replan",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-16T12:00:00Z",
+                      "lines": [
+                        {
+                          "key": "chat.line.phase_changed",
+                          "args": {
+                            "phase": "execute"
+                          },
+                          "refs": [],
+                          "at": "2026-10-16T11:40:00Z"
+                        },
+                        {
+                          "key": "chat.line.task_ended",
+                          "args": {
+                            "task_id": "TASK-001",
+                            "outcome": "done"
+                          },
+                          "refs": [
+                            {
+                              "kind": "task",
+                              "id": "TASK-001"
+                            }
+                          ],
+                          "at": "2026-10-16T11:45:00Z"
+                        },
+                        {
+                          "key": "chat.line.pr_merged",
+                          "args": {
+                            "number": 198
+                          },
+                          "refs": [],
+                          "at": "2026-10-16T12:00:00Z"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "C-0007",
+                  "subject": {
+                    "kind": "entry",
+                    "id": "ent-running"
+                  },
+                  "role": {
+                    "name": "refine",
+                    "model": "sonnet"
+                  },
+                  "scope": "entry",
+                  "state": "chat.turn",
+                  "context": {
+                    "knows": [
+                      {
+                        "key": "chat.knows.description"
+                      },
+                      {
+                        "key": "chat.knows.sources",
+                        "args": {
+                          "count": 2
+                        }
+                      }
+                    ],
+                    "as_of": "2026-10-16T12:10:00Z"
+                  },
+                  "turns": [
+                    {
+                      "turn_id": "T-0017",
+                      "kind": "message",
+                      "author": "operator",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "Are the sources sufficient to refine the description?",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-16T12:08:00Z"
+                    },
+                    {
+                      "turn_id": "T-0018",
+                      "kind": "message",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "markdown",
+                      "untrusted": false,
+                      "model": "sonnet",
+                      "text": "Yes, both the description and the local changes are stored.",
+                      "steps": [
+                        {
+                          "key": "chat.step.read",
+                          "args": {
+                            "target": "the entry's sources"
+                          }
+                        }
+                      ],
+                      "refs": [],
+                      "at": "2026-10-16T12:09:00Z"
+                    },
+                    {
+                      "turn_id": "T-0019",
+                      "kind": "notice",
+                      "author": "refine",
+                      "status": "complete",
+                      "format": "plain",
+                      "untrusted": false,
+                      "text": "",
+                      "steps": [],
+                      "refs": [],
+                      "at": "2026-10-16T12:10:00Z",
+                      "lines": [
+                        {
+                          "key": "chat.line.source_added",
+                          "args": {
+                            "source": "local_changes"
+                          },
+                          "refs": [],
+                          "at": "2026-10-16T12:10:00Z"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -3758,7 +4245,45 @@
                 "state": "unavailable",
                 "reason": "the captured commit 4c1d7e0 is no longer in the repository"
               }
-            ]
+            ],
+            "start": {
+              "project_id": "pm-mcp-clients",
+              "kind": "plan",
+              "state": "start.sources",
+              "landing": "landing.pull-request",
+              "documents_mode": "ask",
+              "lessons_available": true,
+              "local_changes": true,
+              "epic_auto_start": true,
+              "epic_auto_start_origin": "machine",
+              "parallelization_scope": 1,
+              "overlap_max_files": 0,
+              "title": "Running-work start entry",
+              "entry_id": "ent-running",
+              "sources": [
+                {
+                  "source_id": "src-description-1",
+                  "kind": "description",
+                  "reference": "Keep the relay cursor persisted cleanly across restarts",
+                  "state": "stored",
+                  "trust": "trusted"
+                },
+                {
+                  "source_id": "src-local-1",
+                  "kind": "local_changes",
+                  "reference": "2 files changed",
+                  "state": "stored",
+                  "trust": "trusted"
+                }
+              ],
+              "ended_work": [
+                {
+                  "subject_id": "docs-typo",
+                  "subject_kind": "plan",
+                  "outcome": "cancelled"
+                }
+              ]
+            }
           }
         },
         "links": []
