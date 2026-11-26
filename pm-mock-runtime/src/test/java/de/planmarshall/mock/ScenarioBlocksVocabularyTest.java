@@ -11,7 +11,6 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
@@ -24,6 +23,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +58,7 @@ class ScenarioBlocksVocabularyTest {
 
     @Test
     @DisplayName("every decision of every scenario carries a value of the vocabulary")
-    void decisionsCarryTheVocabulary() throws IOException {
+    void decisionsCarryTheVocabulary() throws Exception {
         var offenders = new ArrayList<String>();
         var read = new ArrayList<String>();
         for (var file : scenarioFiles()) {
@@ -77,7 +78,7 @@ class ScenarioBlocksVocabularyTest {
 
     @Test
     @DisplayName("every needs-operator item of every scenario carries a value of the vocabulary")
-    void needsOperatorItemsCarryTheVocabulary() throws IOException {
+    void needsOperatorItemsCarryTheVocabulary() throws Exception {
         var offenders = new ArrayList<String>();
         var read = new ArrayList<String>();
         for (var file : scenarioFiles()) {
@@ -102,7 +103,7 @@ class ScenarioBlocksVocabularyTest {
 
     @Test
     @DisplayName("reads the scenarios the mock serves")
-    void scenariosAreRead() throws IOException {
+    void scenariosAreRead() throws Exception {
         if (scenarioFiles().isEmpty()) {
             fail("no scenario was found below " + SCENARIOS.toAbsolutePath());
         }
