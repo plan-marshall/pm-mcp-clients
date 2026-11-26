@@ -2,10 +2,10 @@
   "id": "PLAN-191",
   "slug": "epic-wait-unreadable-and-overlap-found",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-191-epic-wait-unreadable-and-overlap-found",
+  "pr": "582",
+  "landing": "landings/PLAN-191.md",
   "seq": 191
 }

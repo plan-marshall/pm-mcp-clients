@@ -2,10 +2,10 @@
   "id": "PLAN-195",
   "slug": "web-contrast-tests-read-their-theme",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-195-web-contrast-tests-read-their-theme",
+  "pr": "588",
+  "landing": "landings/PLAN-195.md",
   "seq": 195
 }
