@@ -96,6 +96,9 @@ public enum ApiErrorCode {
     /** An act on an ended plan. */
     PLAN_ENDED("plan_ended", 409),
 
+    /** A change of a plan's base branch after its worktree was created. */
+    BASE_BRANCH_FIXED("base_branch_fixed", 409),
+
     /** A waiver whose item was already consumed. */
     ALREADY_CONSUMED("already_consumed", 409),
 

@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -41,6 +42,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.actions.WorkActionsClient;
@@ -1153,6 +1155,64 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("a coded 409 ends the settings dialogue with the cause the runtime sent")
+    void settingsCodedConflictEndsTheDialogue() throws Exception {
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                response.send(409, "application/json", "{\"error\":\"team_owned\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("1\n1\nq\n");
+
+        var refusal = assertThrows(OperatorRefusedException.class,
+                            () -> PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
+
+        assertAll(
+                            () -> assertEquals(ApiErrorCode.TEAM_OWNED, refusal.code()),
+                            () -> assertTrue(RefusalRenderer.linesOf("en", refusal).get(0)
+                                                                    .contains("The team owns this value"),
+                                                RefusalRenderer.linesOf("en", refusal).toString()));
+    }
+
+    @Test
+    @DisplayName("a coded 400 shows the catalogue's text instead of the runtime's English, in German")
+    void settingsCodedRefusalShowsTheCatalogueCause() throws Exception {
+        var attempts = new AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                if (attempts.getAndIncrement() == 0) {
+                    response.json(400, "{\"error\":\"invalid_arguments\","
+                                        + "\"reason\":\"the base branch is protected\"}");
+                } else {
+                    response.json(200, PlanSettingsUpdateResult.applied(8).toJson());
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "de_DE.UTF-8");
+        var german = new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                            virtual::terminal, null);
+        virtual.type("1\n1\n2\n1\n");
+
+        assertEquals(0, PlanSettingsDialogue.run(german, new PrintWriter(out), "p", "plan-defaults", false));
+
+        var text = out.toString();
+        assertAll(
+                            () -> assertTrue(text.contains("Die Anfrage wurde nicht angenommen"), text),
+                            () -> assertFalse(text.contains("the base branch is protected"), text));
+    }
+
+    @Test
     @DisplayName("a conflict applied again writes the value")
     void settingsConflictApplyAgain() throws Exception {
         var attempts = new AtomicInteger();
@@ -1173,6 +1233,39 @@ class ControlDialoguesTest {
         virtual.type("1\n2\n\n");
         assertEquals(0, PlanSettingsDialogue.run(context, new PrintWriter(out), "p", "plan-defaults", false));
         assertTrue(out.toString().contains("version becomes 9"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a retry after a conflict that is refused names its cause, in German")
+    void settingsRetryRefusedNamesTheCause() throws Exception {
+        var attempts = new AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                switch (attempts.getAndIncrement()) {
+                    case 0 -> response.json(409, PlanSettingsUpdateResult.conflict(8, "landing.main").toJson());
+                    case 1 -> response.json(400, "{\"error\":\"invalid_arguments\",\"reason\":\"nope\"}");
+                    default -> response.json(200, PlanSettingsUpdateResult.applied(9).toJson());
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "de_DE.UTF-8");
+        var german = new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                            virtual::terminal, null);
+        virtual.type("1\n2\n\n1\n");
+
+        assertEquals(0, PlanSettingsDialogue.run(german, new PrintWriter(out), "p", "plan-defaults", false));
+
+        var text = out.toString();
+        assertAll(
+                            () -> assertTrue(text.contains("Die Anfrage wurde nicht angenommen"), text),
+                            () -> assertFalse(text.contains("nope"), text),
+                            () -> assertTrue(text.contains("die Version des Plans wird 9"), text));
     }
 
     @Test

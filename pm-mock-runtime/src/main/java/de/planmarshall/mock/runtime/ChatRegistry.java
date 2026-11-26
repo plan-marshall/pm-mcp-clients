@@ -1216,6 +1216,10 @@ final class ChatRegistry {
     }
 
     /**
+     * The word a decision line selects its text by: the decision's own {@code blocks} value —
+     * {@code plan}, {@code epic}, {@code setup}, {@code entry} or {@code task} — or {@code no}
+     * where the decision blocks nothing, which the catalogue renders as no text at all.
+     *
      * @param payload the event's payload
      * @return the blocker the line names, as the payload states it ({@code no} when it names none),
      *         so the catalogue's select can name the place the decision blocks

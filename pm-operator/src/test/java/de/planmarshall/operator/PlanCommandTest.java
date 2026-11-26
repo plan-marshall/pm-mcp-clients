@@ -1189,7 +1189,7 @@ class PlanCommandTest {
          * @param choices the choices the runtime names for the aspect
          */
         private void serveRefusingSettings(List<String> choices) throws IOException {
-            serveRefusingSettings(choices, 422, "{\"code\":\"invalid_value\"}");
+            serveRefusingSettings(choices, 400, "{\"error\":\"refused\"}");
         }
 
         /**
@@ -1218,27 +1218,47 @@ class PlanCommandTest {
         }
 
         @Test
-        @DisplayName("a refused value that fits no rule is refused in German")
-        void refusedValueThatDoesNotFit() throws Exception {
-            serveRefusingSettings(List.of());
+        @DisplayName("a value the runtime refuses with 400 invalid_arguments names the cause it sent, in German")
+        void refusedInvalidArgumentsNamesItsCause() throws Exception {
+            serveRefusingSettings(List.of(), 400, "{\"error\":\"invalid_arguments\"}");
 
             int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
 
             assertAll(
                                 () -> assertEquals(1, code, out.toString()),
-                                () -> assertTrue(err.toString().contains(value + " wird abgelehnt: der Wert passt nicht"),
+                                () -> assertTrue(err.toString().contains("Die Anfrage wurde nicht angenommen"),
                                                     err.toString()),
-                                () -> assertFalse(err.toString().contains("the value does not fit"), err.toString()),
-                                () -> assertFalse(err.toString().contains("is refused"), err.toString()));
+                                () -> assertFalse(err.toString().contains("The request was not accepted"),
+                                                    err.toString()),
+                                () -> assertFalse(err.toString().contains("wird abgelehnt; nichts wurde geändert."),
+                                                    err.toString()),
+                                () -> assertFalse(err.toString().contains("der Wert passt nicht"), err.toString()));
         }
 
-        @ParameterizedTest(name = "status {0}, code invalid_value: {1}")
-        @CsvSource({"403, false", "422, false", "400, true"})
-        @DisplayName("a value refused without status 422 and the code invalid_value together names no cause in German")
-        void refusedFreeFormValueNamesNoCause(int status, boolean valueCode) throws Exception {
-            // letters only: another code never equals invalid_value
-            var refusalCode = valueCode ? "invalid_value" : Generators.letterStrings(5, 10).next().toLowerCase();
-            serveRefusingSettings(List.of(), status, "{\"code\":\"" + refusalCode + "\"}");
+        @ParameterizedTest(name = "409 {0} names its cause in German")
+        @CsvSource({
+                            "team_owned, Der Wert gehört dem Team",
+                            "base_branch_fixed, Der Basis-Branch ist festgelegt",
+                            "plan_ended, Der Plan ist beendet"
+        })
+        @DisplayName("a coded 409 refusal names the cause the runtime sent, in German")
+        void codedConflictNamesItsCause(String refusalCode, String cause) throws Exception {
+            serveRefusingSettings(List.of(), 409, "{\"error\":\"" + refusalCode + "\"}");
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(err.toString().contains(cause), err.toString()),
+                                () -> assertFalse(err.toString().contains("wird abgelehnt; nichts wurde geändert."),
+                                                    err.toString()),
+                                () -> assertFalse(err.toString().contains("The "), err.toString()));
+        }
+
+        @Test
+        @DisplayName("a 422 with any code is no longer special, in German")
+        void status422IsNoLongerSpecial() throws Exception {
+            serveRefusingSettings(List.of(), 422, "{\"code\":\"invalid_value\"}");
 
             int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
 
@@ -1250,9 +1270,32 @@ class PlanCommandTest {
                                 () -> assertFalse(err.toString().contains("is refused"), err.toString()));
         }
 
+        @Test
+        @DisplayName("a coded refusal keeps the not-one-of reason first and names the cause after it, in German")
+        void codedRefusalKeepsTheChoiceReasonFirst() throws Exception {
+            var first = "first-" + Generators.letterStrings(3, 6).next().toLowerCase();
+            var second = "second-" + Generators.letterStrings(3, 6).next().toLowerCase();
+            serveRefusingSettings(List.of(first, second), 400, "{\"error\":\"invalid_arguments\"}");
+
+            int code = executeWithLocale("de", "plan", "settings", planId, "--set", aspect + "=" + value);
+
+            var lines = err.toString().lines().toList();
+            var choiceReason = "wird abgelehnt: er ist keiner von " + first + ", " + second;
+            assertAll(
+                                () -> assertEquals(1, code, out.toString()),
+                                () -> assertTrue(lines.stream().anyMatch(line -> line.endsWith(choiceReason)),
+                                                    err.toString()),
+                                () -> assertTrue(lines.indexOf(lines.stream()
+                                                    .filter(line -> line.endsWith(choiceReason)).findFirst()
+                                                    .orElseThrow())
+                                                    < lines.indexOf(lines.stream()
+                                                    .filter(line -> line.endsWith("Die Anfrage wurde nicht angenommen"))
+                                                    .findFirst().orElseThrow()), err.toString()));
+        }
+
         /**
-         * Serves the plan's settings once, refuses every write without the runtime's value code and
-         * answers every further read of the settings with the given handler.
+         * Serves the plan's settings once, refuses every write with a code the catalogue does not
+         * know and answers every further read of the settings with the given handler.
          *
          * @param reread the answer to the read that explains the refusal
          */
