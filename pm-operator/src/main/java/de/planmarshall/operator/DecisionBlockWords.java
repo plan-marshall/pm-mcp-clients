@@ -11,10 +11,10 @@ package de.planmarshall.operator;
 
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.overview.NeedsOperatorItem;
 
 /**
  * The one mapping from a wire {@code blocks} value to the decision's own words, shared by every
@@ -31,9 +31,6 @@ public final class DecisionBlockWords {
 
     private static final String UNKNOWN_KEY = "common.unknown";
 
-    /** The values whose key spells the value itself; {@code nothing} has a key of its own. */
-    private static final Set<String> WORDED_VALUES = Set.of("plan", "epic", "setup", "entry", "task");
-
     private DecisionBlockWords() {
     }
 
@@ -41,12 +38,12 @@ public final class DecisionBlockWords {
      * @param wire the wire value of {@code blocks}, or {@code null} where a legacy payload names none
      * @return the catalogue key of the decision's word for it
      */
-    public static String keyOf(@Nullable String wire) {
+    private static String keyOf(@Nullable String wire) {
         var value = wire == null ? "" : wire.trim().toLowerCase(Locale.ROOT);
         if ("nothing".equals(value)) {
             return NOTHING_KEY;
         }
-        return WORDED_VALUES.contains(value) ? PREFIX + value : UNKNOWN_KEY;
+        return NeedsOperatorItem.BLOCKS_VALUES.contains(value) ? PREFIX + value : UNKNOWN_KEY;
     }
 
     /**

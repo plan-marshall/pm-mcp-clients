@@ -29,5 +29,6 @@ const UNKNOWN_KEY = 'common.unknown';
  * @returns the word the view shows for it
  */
 export function blockWordText(blocks: string, translate: Translate): string {
-  return translate(BLOCK_KEYS[blocks.trim().toLowerCase()] ?? UNKNOWN_KEY);
+  const value = blocks.trim().toLowerCase();
+  return translate(Object.hasOwn(BLOCK_KEYS, value) ? BLOCK_KEYS[value] : UNKNOWN_KEY);
 }

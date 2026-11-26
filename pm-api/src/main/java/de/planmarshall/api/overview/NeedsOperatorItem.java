@@ -62,9 +62,11 @@ public record NeedsOperatorItem(
      */
     public static final String BLOCKS_OTHER = "other";
 
+    private static final String BLOCKS_KEY = "blocks";
+
     public NeedsOperatorItem {
         Objects.requireNonNull(kind, "kind");
-        Objects.requireNonNull(blocks, "blocks");
+        Objects.requireNonNull(blocks, BLOCKS_KEY);
     }
 
     /**
@@ -88,7 +90,7 @@ public record NeedsOperatorItem(
         if (since != null) {
             map.put("since", since.toString());
         }
-        map.put("blocks", blocks);
+        map.put(BLOCKS_KEY, blocks);
         return map;
     }
 
@@ -133,7 +135,7 @@ public record NeedsOperatorItem(
      * @throws JsonFormatException when the item carries no {@code blocks}
      */
     private static String blocksOf(Map<String, Object> map) throws JsonFormatException {
-        var wire = JsonTree.string(map, "blocks");
+        var wire = JsonTree.string(map, BLOCKS_KEY);
         if (wire == null || wire.isBlank()) {
             throw new JsonFormatException("Missing blocks in NeedsOperatorItem");
         }

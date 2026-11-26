@@ -132,15 +132,23 @@ describe('InboxView component', () => {
         plan: { id: 'relay-metrics', title: 'Relay metrics' },
         blocks: 'landing-train',
       }),
+      itemOf({
+        kind: 'condition',
+        link: '/api/v1/plans/session-log',
+        plan: { id: 'session-log', title: 'Session log' },
+        blocks: 'constructor',
+      }),
     ]);
 
     render(InboxView);
 
     const rows = screen.getAllByTestId('inbox-row');
     expect(within(rows[0]).getByTestId('inbox-detail')).toHaveTextContent('blocks nothing');
-    // A value outside the vocabulary shows the unknown word, never a raw key or a plan claim.
+    // A value outside the vocabulary shows the unknown word, never a raw key or a plan claim; an
+    // inherited object property is no key either.
     expect(within(rows[1]).getByTestId('inbox-detail')).toHaveTextContent('unknown');
     expect(within(rows[1]).getByTestId('inbox-detail')).not.toHaveTextContent('blocks the plan');
+    expect(within(rows[2]).getByTestId('inbox-detail')).toHaveTextContent('unknown');
   });
 
   it('offers the act of each place as a button, and the due cleanup opens the cleanup job', () => {
