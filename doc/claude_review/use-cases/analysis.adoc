@@ -30,13 +30,14 @@ production (link:proposals.adoc#documents[Proposals, Changes to the Use-Case Doc
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
 |Onboard a Machine
-|`partial`
-|Flow and steps present; the full navigation is open before the machine is onboarded (UC-F-01).
+|`conforms`
+|Flow and steps present; no navigation before the machine is onboarded and no step marked on the mode screen
+(UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
 |Onboard Automatically
-|`partial`
-|Result table present; no change link per step (UC-F-02).
+|`conforms`
+|Result table present with a change link per aspect (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]
 |Choose the Languages
@@ -55,23 +56,24 @@ production (link:proposals.adoc#documents[Proposals, Changes to the Use-Case Doc
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]
 |Assign Models to the Roles
-|`partial`
-|Defaults only; no review of departures, no change per role, no steward (UC-F-07).
+|`conforms`
+|Grouped by phase, departures marked, an advisory and a change per role, steward accept or reject, an empty role
+assignable (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]
 |Choose Where Credentials Are Kept
-|`partial`
-|Choice and recommendation present; no statement of what protects a secret (UC-F-08).
+|`conforms`
+|Choice, recommendation, and both protection lines per option (UC-V-05; the mock reports no values).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-8[UC-ONB-8]
 |Choose the Providers of the Machine
-|`partial`
-|Failure shows cause and fix; no action to fix the credential; wrong label (UC-F-09).
+|`conforms`
+|The label "Provider", the cause and the fix, and the three acts including the credential entry (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
 |Choose How Plans Run by Default
-|`deviates`
-|Raw unit ids, no meaning per axis, no way to change a value (UC-F-10).
+|`conforms`
+|Plain names, one sentence per axis, and a choice per variant (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
 |Change the Machine's Settings
@@ -192,7 +194,13 @@ UC-F-18).
 |Summary, details, selection, three answers present; raw kinds and duplicated words (UC-F-41).
 |===
 
-Totals: 5 `conforms`, 20 `partial`, 3 `deviates`, 1 `missing`, 10 `not verified`.
+Totals: 11 `conforms`, 15 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
+
+Six rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web Onboarding]
+(`UC-V-05`): the five `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-6, UC-ONB-7 and UC-ONB-8, and UC-ONB-9 from
+`deviates`. Three onboarding rows stay where the mock could not clear them: UC-ONB-4 (`harness.none` does not carry
+the per-harness failure facts UC-F-05 asks for), UC-ONB-5 (the recommendation is not in the mock), and UC-ONB-10 (the
+conflict notice is not reachable through the mock).
 
 [#gaps]
 == Main Gaps
