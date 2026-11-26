@@ -42,8 +42,8 @@ import de.planmarshall.api.json.JsonTree;
 class ReportRecordsTest {
 
     @Test
-    void shouldVerifyAll16ReportKinds() {
-        assertEquals(16, ReportKind.values().length);
+    void shouldVerifyAll15ReportKinds() {
+        assertEquals(15, ReportKind.values().length);
         for (ReportKind kind : ReportKind.values()) {
             assertEquals(kind, ReportKind.fromValue(kind.value()));
             assertEquals(kind, ReportKind.fromValue(kind.name()));
@@ -51,6 +51,8 @@ class ReportRecordsTest {
             assertFalse(kind.value().isBlank());
         }
         assertThrows(IllegalArgumentException.class, () -> ReportKind.fromValue("unknown.kind"));
+        assertThrows(IllegalArgumentException.class, () -> ReportKind.fromValue("epic.overlap_found"),
+                "the retired report kind resolves to no constant");
     }
 
     @Test
@@ -158,6 +160,38 @@ class ReportRecordsTest {
         assertEquals(1, parsedArray.items().size());
         assertEquals(1, parsedArray.unreadCount());
         assertFalse(parsedArray.hasOlder());
+    }
+
+    @Test
+    void shouldLeaveOutAStoredReportWhoseKindTheContractNoLongerKnows() throws Exception {
+        var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var good = new ReportItem("rep-0142", new ReportFrom("pm-mcp-clients", null, null),
+                ReportKind.PLAN_ENDED, "fix-relay ended", Map.of(), null, created, null, null,
+                null, null, null);
+        var retired = new ReportFrom("pm-mcp-clients", null, null).toMap();
+        var retiredItem = new LinkedHashMap<String, Object>(Map.of(
+                "id", "rep-0141",
+                "kind", "epic.overlap_found",
+                "from", retired,
+                "subject", "relay-cursor-order and relay-docs changed 3 files in common",
+                "created_at", created.toString()));
+        var page = new LinkedHashMap<String, Object>();
+        page.put("items", List.of(retiredItem, good.toMap()));
+        page.put("unread_count", 2);
+
+        var parsed = ReportsPage.fromMap(page);
+
+        assertEquals(List.of("rep-0142"), parsed.items().stream().map(ReportItem::id)
+                        .map(Object::toString).toList(),
+                "one item of a retired kind never hides the rest of the list");
+        assertEquals(2, parsed.unreadCount(), "the count stays the runtime's own figure");
+
+        // The bare-array form some runtimes serve takes the same path.
+        var bare = ReportsPage.fromJson(JsonTree.write(List.of(retiredItem, good.toMap())));
+        assertEquals(List.of("rep-0142"), bare.items().stream().map(ReportItem::id)
+                        .map(Object::toString).toList(),
+                "a bare array keeps its readable report");
+        assertEquals(1, bare.unreadCount());
     }
 
     @Test

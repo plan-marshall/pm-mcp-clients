@@ -1217,9 +1217,8 @@ final class ChatRegistry {
 
     /**
      * @param payload the event's payload
-     * @return the block the decision names — {@code plan}, {@code epic}, {@code setup},
-     *   {@code entry} or {@code task} — or an empty string when it blocks nothing, so the
-     *   catalogue's selector falls through to its {@code other {}} branch
+     * @return the blocker the line names, as the payload states it ({@code no} when it names none),
+     *         so the catalogue's select can name the place the decision blocks
      */
     private static String blocksOf(Map<String, Object> payload) {
         var blocks = JsonTree.string(payload, ARG_BLOCKS);
@@ -1227,7 +1226,7 @@ final class ChatRegistry {
             var decision = JsonTree.asObject(payload.get(KEY_DECISION));
             blocks = decision == null ? null : JsonTree.string(decision, ARG_BLOCKS);
         }
-        return blocks == null ? "" : blocks;
+        return blocks == null || blocks.isBlank() ? "no" : blocks;
     }
 
     private static NarrativeLine line(String name, Map<String, Object> args, List<TurnRef> refs, String at) {
