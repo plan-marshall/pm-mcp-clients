@@ -155,6 +155,22 @@ class ChatTextsCatalogueTest {
     }
 
     @Test
+    @DisplayName("a decision that blocks the plan names the plan in the catalogue's decision_opened line")
+    void decisionOpenedNamesTheBlocker() {
+        var opened = "control.chat.line.decision_opened";
+        var id = Generators.letterStrings(3, 12).next();
+
+        assertAll(
+                () -> assertEquals(id + " opened: blocks the plan",
+                        MessageCatalogue.format("en", opened, Map.of("id", id, "blocks", "plan"))),
+                () -> assertEquals(id + " gestellt: blockiert den Plan",
+                        MessageCatalogue.format("de", opened, Map.of("id", id, "blocks", "plan"))),
+                () -> assertEquals(id + " opened",
+                        MessageCatalogue.format("en", opened, Map.of("id", id, "blocks", "no")),
+                        "a decision that blocks nothing shows no label"));
+    }
+
+    @Test
     @DisplayName("the control packs hold no control.chat.* key the table does not name")
     void noControlChatKeyBeyondTheTable() throws Exception {
         var tableKeys = new TreeSet<String>();

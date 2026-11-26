@@ -5,6 +5,8 @@ import { tick } from 'svelte';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import RowMenu, { type RowMenuItem } from './RowMenu.svelte';
 import { styleOf, rulesOf } from '../../test/templateStyle';
+import { contrastRatio } from '../../test/colourMetrics';
+import { parseThemes, tokenOf } from '../test/stylesheet';
 
 describe('RowMenu component', () => {
   const sampleItems: RowMenuItem[] = [
@@ -281,60 +283,23 @@ describe('RowMenu component', () => {
     const focusRules = rulesOf(style, '.row-menu__item:focus:not(:disabled)');
     expect(focusRules.join(';')).toContain('outline: none');
 
-    // Read real tokens from tokens.css
+    // Read the real theme blocks from tokens.css: the light palette, the dark palette, and the
+    // system-dark block the app follows while the choice is `system`.
     const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');
+    const themes = parseThemes(tokensCss);
 
-    // Parse hex colors for rgb conversion
-    const hexToRgb = (hex: string) => {
-      const clean = hex.replace('#', '').trim();
-      return {
-        r: parseInt(clean.slice(0, 2), 16),
-        g: parseInt(clean.slice(2, 4), 16),
-        b: parseInt(clean.slice(4, 6), 16),
-      };
-    };
-
-    const lum = (c: { r: number; g: number; b: number }) => {
-      const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
-        v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4),
-      );
-      return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
-    };
-
-    // Extract light brand & surface from :root or [data-theme='light']
-    const lightBrandMatch = tokensCss.match(/--color-brand:\s*(#[0-9a-fA-F]{6})/);
-    expect(lightBrandMatch).not.toBeNull();
-    const lightSurfaceMatch = tokensCss.match(/--color-bg-surface:\s*(#[0-9a-fA-F]{6})/);
-    expect(lightSurfaceMatch).not.toBeNull();
-
-    const lightBrand = hexToRgb(lightBrandMatch![1]);
-    const lightSurface = hexToRgb(lightSurfaceMatch![1]);
-    // The ratio is computed from the palette the tokens declare; no literal hex is pinned, so a
-    // retune that keeps the cue stays green.
-    expect(lightBrandMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(lightSurfaceMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
-
-    const lightContrast =
-      (Math.max(lum(lightBrand), lum(lightSurface)) + 0.05) /
-      (Math.min(lum(lightBrand), lum(lightSurface)) + 0.05);
-    expect(lightContrast).toBeGreaterThanOrEqual(3.0);
-
-    // Extract dark brand & surface from [data-theme='dark'] or @media (prefers-color-scheme: dark)
-    const darkSection = tokensCss.slice(tokensCss.lastIndexOf("[data-theme='dark']"));
-    const darkBrandMatch = darkSection.match(/--color-brand:\s*(#[0-9a-fA-F]{6})/);
-    expect(darkBrandMatch).not.toBeNull();
-    const darkSurfaceMatch = darkSection.match(/--color-bg-raised:\s*(#[0-9a-fA-F]{6})/);
-    expect(darkSurfaceMatch).not.toBeNull();
-
-    const darkBrand = hexToRgb(darkBrandMatch![1]);
-    const darkSurface = hexToRgb(darkSurfaceMatch![1]);
-    expect(darkBrandMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
-    expect(darkSurfaceMatch![1]).toMatch(/^#[0-9a-fA-F]{6}$/);
-
-    const darkContrast =
-      (Math.max(lum(darkBrand), lum(darkSurface)) + 0.05) /
-      (Math.min(lum(darkBrand), lum(darkSurface)) + 0.05);
-    expect(darkContrast).toBeGreaterThanOrEqual(3.0);
+    // The focus-visible cue is a 2 px brand outline on the subtle fill the row keeps under it, so
+    // the pair the 3:1 rule measures is brand against bg-subtle, in each palette that can paint it.
+    for (const [label, palette] of [
+      ['light', themes.light],
+      ['dark', themes.dark],
+      ['system dark', themes.mediaDark],
+    ] as const) {
+      expect(
+        contrastRatio(tokenOf(palette, '--color-brand'), tokenOf(palette, '--color-bg-subtle')),
+        `focus cue contrast in the ${label} palette`,
+      ).toBeGreaterThanOrEqual(3.0);
+    }
   });
 
   it('measures 44px min-block-size on phone viewports (D2b)', () => {
