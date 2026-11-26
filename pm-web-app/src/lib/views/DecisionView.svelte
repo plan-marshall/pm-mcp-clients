@@ -1504,6 +1504,16 @@
       aria-label={displayTitle(activeDecision)}
       onkeydown={onDetailKeydown}
     >
+      {#if inPlace && errorMessage}
+        <!-- A failed act's explanation stands in the object column when it is alone: an in-place
+             column has no list beside it to carry the message. -->
+        <div class="error-banner" role="alert" data-testid="decision-action-error">
+          <p>{errorMessage}</p>
+          <Button variant="secondary" size="sm" onclick={() => void loadDecisions()}
+            >{$t('common.action.retry')}</Button
+          >
+        </div>
+      {/if}
       {@render outcomeLine()}
       {#if activeDecision.is_waiver}
         {@render waiverDetail(activeDecision)}
