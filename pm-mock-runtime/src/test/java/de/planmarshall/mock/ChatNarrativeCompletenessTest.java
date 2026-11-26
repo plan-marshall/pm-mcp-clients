@@ -152,7 +152,7 @@ class ChatNarrativeCompletenessTest {
                         () -> assertEquals(List.of("chat.line.decision_opened"),
                                 lines.stream().map(NarrativeLine::key).toList()),
                         () -> assertEquals(envelope.id(), lines.getFirst().args().get("id")),
-                        () -> assertEquals("yes", lines.getFirst().args().get("blocks")));
+                        () -> assertEquals("plan", lines.getFirst().args().get("blocks")));
             }
         }
 
