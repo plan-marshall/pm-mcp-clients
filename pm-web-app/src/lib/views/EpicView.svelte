@@ -409,8 +409,8 @@
         return $t('epic.views.wait.scope', { plan: row.plan_id });
       case 'overlap':
         return $t('epic.views.wait.overlap', { plan: row.plan_id, other });
-      case 'stale':
-        return $t('epic.views.wait.stale', { plan: row.plan_id });
+      case 'unreadable':
+        return $t('epic.views.wait.unreadable', { plan: row.plan_id });
       case 'held':
         return $t('epic.views.wait.held', { plan: row.plan_id });
       default:

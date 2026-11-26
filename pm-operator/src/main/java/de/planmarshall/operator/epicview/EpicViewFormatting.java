@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicTokens;
+import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.RegisterSummary;
 import de.planmarshall.api.control.TokenFigure;
 import de.planmarshall.api.control.WorkRow;
@@ -45,6 +46,9 @@ public final class EpicViewFormatting {
 
     /** The rendered running count when the runtime does not say it. */
     public static final String UNKNOWN_COUNT = "?";
+
+    /** The wait text of a row that can start, named once because two branches read it. */
+    private static final String WAITS_NONE = "overview.epic.waits.none";
 
     private EpicViewFormatting() {
     }
@@ -110,20 +114,30 @@ public final class EpicViewFormatting {
      */
     public static String waitText(String locale, WorkRow row, @Nullable Integer running, int scope) {
         var reason = row.waits();
-        if (reason == null || "none".equals(reason.value())) {
-            return MessageCatalogue.format(locale, "overview.epic.waits.none", Map.of());
+        if (reason == null) {
+            var raw = clean(row.waitReason());
+            if (raw.isBlank()) {
+                return MessageCatalogue.format(locale, WAITS_NONE, Map.of());
+            }
+            // A word outside the closed set is echoed, never read as a row that can start.
+            return MessageCatalogue.format(locale, "overview.epic.waits.other", Map.of("reason", raw));
+        }
+        if (reason == EpicWaitReason.NONE) {
+            return MessageCatalogue.format(locale, WAITS_NONE, Map.of());
         }
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.waitPlanId() != null ? row.waitPlanId() : row.planId()));
         params.put("lock", clean(row.waitPlanId() != null ? row.waitPlanId() : ""));
         params.put(RUNNING, running != null ? running : UNKNOWN_COUNT);
         params.put(SCOPE, scope);
-        var key = switch (reason.value()) {
-            case "dependency" -> "overview.epic.waits.dependency";
-            case "lock" -> "overview.epic.waits.lock";
+        var key = switch (reason) {
+            case NONE -> WAITS_NONE;
+            case DEPENDENCY -> "overview.epic.waits.dependency";
+            case LOCK -> "overview.epic.waits.lock";
             case SCOPE -> "overview.epic.waits.scope";
-            case "overlap" -> "overview.epic.waits.overlap";
-            default -> "overview.epic.waits.none";
+            case OVERLAP -> "overview.epic.waits.overlap";
+            case UNREADABLE -> "overview.epic.waits.unreadable";
+            case HELD -> "overview.epic.waits.held";
         };
         return MessageCatalogue.format(locale, key, params);
     }
@@ -136,22 +150,22 @@ public final class EpicViewFormatting {
     public static String waitReasonLine(String locale, WorkRow row) {
         var reason = row.waits();
         if (reason == null) {
-            // No wait is a row that can start (WorkRow#waits), as waitText and nextLaunchable read it.
+            // No closed reason to name: a row that can start, or a word this contract does not
+            // know, which waitText echoes rather than reads as "can start".
             return "";
         }
         var other = clean(row.waitPlanId() != null ? row.waitPlanId() : "");
-        var key = reason.value();
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.planId()));
         params.put("other", other);
-        var message = switch (key) {
-            case "dependency" -> "operator.actions.epic.reason.dependency";
-            case "lock" -> "operator.actions.epic.reason.lock";
+        var message = switch (reason) {
+            case NONE -> null;
+            case DEPENDENCY -> "operator.actions.epic.reason.dependency";
+            case LOCK -> "operator.actions.epic.reason.lock";
             case SCOPE -> "operator.actions.epic.reason.scope";
-            case "overlap" -> "operator.actions.epic.reason.overlap";
-            case "stale" -> "operator.actions.epic.reason.stale";
+            case OVERLAP -> "operator.actions.epic.reason.overlap";
+            case UNREADABLE -> "operator.actions.epic.reason.unreadable";
             case HELD -> "operator.actions.epic.reason.held";
-            default -> null;
         };
         return message == null ? "" : MessageCatalogue.format(locale, message, params);
     }

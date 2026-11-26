@@ -40,6 +40,7 @@ public record ReportsPage(
         int olderCount
 ) {
     private static final String FIELD_ITEMS = "items";
+    private static final String FIELD_KIND = "kind";
     private static final String FIELD_UNREAD_COUNT = "unread_count";
     private static final String FIELD_OLDEST_UNREAD_TIME = "oldest_unread_time";
     private static final String FIELD_HAS_OLDER = "has_older";
@@ -109,13 +110,26 @@ public record ReportsPage(
             var parsedItems = new ArrayList<ReportItem>(list.size());
             for (var elem : list) {
                 var obj = JsonTree.asObject(elem);
-                if (obj != null) {
+                if (obj != null && isKnownKind(obj)) {
                     parsedItems.add(ReportItem.fromMap(obj));
                 }
             }
             return parsedItems;
         }
         return List.of();
+    }
+
+    /**
+     * Whether the item names a kind this contract knows. A report stored by a runtime that still
+     * emitted a since-retired kind is left out, so one such item never hides the whole list; an item
+     * that names no kind reads as the parser's own default, {@code plan.ended}.
+     *
+     * @param item the report item's map
+     * @return {@code true} when the item can be read
+     */
+    private static boolean isKnownKind(Map<String, Object> item) {
+        var kind = JsonTree.string(item, FIELD_KIND);
+        return kind == null || ReportKind.knows(kind);
     }
 
     private static int parseCount(@Nullable Object obj, String field, int defaultValue) throws IOException {
@@ -156,7 +170,7 @@ public record ReportsPage(
             var items = new ArrayList<ReportItem>(list.size());
             for (var elem : list) {
                 var obj = JsonTree.asObject(elem);
-                if (obj != null) {
+                if (obj != null && isKnownKind(obj)) {
                     items.add(ReportItem.fromMap(obj));
                 }
             }
