@@ -13,8 +13,8 @@ decision, start a plan from a description, and clean up. The app falls short in 
 
 . *The variations are mostly there, not all of them.* The onboarding shows the change link, the steward, the field
   for a harness that cannot list its models, the two protection lines, the fix action, the phase grouping and the
-  meaning of each plan default. What remains absent is the advice's recommendation on `catalogue.select` and the
-  machine settings' conflict notice.
+  meaning of each plan default. What the mock does not feed, and the walk therefore leaves `not verified`, is the
+  advice's recommendation on `catalogue.select` and the machine settings' conflict notice — both are drawn.
 . *Raw data still reaches the operator.* The onboarding's generic card with the state id is gone: every onboarding
   state has a screen, and `entry.*` lands on the fallback that names `pm-operator`. What remains is a raw error code on
   a refused request (`plan_not_found`).
@@ -85,9 +85,10 @@ assignable (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
 |Change the Machine's Settings
-|`partial`
-|Aspects and consents present; one settings place with its tabs (UC-F-11 is fixed). The conflict notice is not shown
-(UC-F-12): the mock's `settings.conflict` state does not reach the page, and the notice exists for a conflicting save.
+|`conforms`
+|Aspects and consents present; one settings place with its tabs (UC-F-11). The conflict notice is drawn on that page
+when a save conflicts (UC-F-12); the mock's `settings.conflict` state does not feed it, so the clause is
+`not verified`.
 
 |link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 |Enter and Connect
@@ -205,17 +206,16 @@ UC-F-18).
 |Summary, details, selection, three answers present; raw kinds and duplicated words (UC-F-41).
 |===
 
-Totals: 13 `conforms`, 13 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
+Totals: 14 `conforms`, 12 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
 
-Eight rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web
-Onboarding] (`UC-V-05`): the seven `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-3, UC-ONB-5, UC-ONB-6, UC-ONB-7 and
-UC-ONB-8, and UC-ONB-9 from `deviates`. Three rows stay where the walk could not clear them: UC-ONB-4 (`harness.none`
-does not carry the per-harness failure facts UC-F-05 asks for, and the engine catalogue puts them in
-`harness.blocked`), UC-ONB-10 (the conflict notice is not drawn on the machine settings page), and UC-ENT-1 (the web
-app shows no listener screen, by the operator's decision). The rule the walk applied: a change the client draws but
-the mock does not feed is a `not verified` clause and does not hold a row open; a change the client does not draw at
-the place the check walks, or a screen that contradicts the check's row, keeps it open. UC-F-03 is retired by this
-walk.
+Nine rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web
+Onboarding] (`UC-V-05`): the eight `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-3, UC-ONB-5, UC-ONB-6, UC-ONB-7,
+UC-ONB-8 and UC-ONB-10, and UC-ONB-9 from `deviates`. Two rows stay where the walk could not clear them: UC-ONB-4
+(`harness.none` does not carry the per-harness failure facts UC-F-05 asks for, and the engine catalogue puts them in
+`harness.blocked`), and UC-ENT-1 (the web app shows no listener screen, by the operator's decision). The rule the walk
+applied: a change the client draws but the mock does not feed is a `not verified` clause and does not hold a row open;
+a screen that contradicts the check's row, or a use case the client answers in another client by decision, keeps it
+open. UC-F-03 is retired by this walk.
 
 [#gaps]
 == Main Gaps
@@ -226,8 +226,8 @@ walk.
 . *Actions not derived from the state.* The use cases say "actions by state" (principle `actions-by-state` of
   `06-controlling-work.adoc`). The app has fixed button sets per view (link:proposals.adoc#UC-P-02[UC-P-02]).
 . *The variations of the onboarding.* Most are visible now (`UC-V-05`): the change link, the steward, the model-id
-  field, the protection lines, the fix action, the phase grouping. What remains absent is the advice's recommendation
-  and the machine settings' conflict notice.
+  field, the protection lines, the fix action, the phase grouping. What the mock does not feed, and the walk leaves
+  `not verified`, is the advice's recommendation and the machine settings' conflict notice.
 . *The plan's intent and the phase workflow.* UC-PLN-1 drills from a phase to its workflow, taken and not taken.
   The app stops at the phase (link:proposals.adoc#UC-P-04[UC-P-04]).
 . *Feedback after an act.* The decision answer reports the wrong channel and an index instead of the option

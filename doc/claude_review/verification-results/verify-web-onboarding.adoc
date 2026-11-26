@@ -213,17 +213,18 @@ screen, as designed.
 |Settings (UC-ONB-10)
 |`pass`, one clause `not verified`
 |One settings place: `/settings` with the tabs Setup, Access, Credentials, Consents, Retention (Process designer is the
-page's own button, not a tab); `/settings/machine` resolves into it. The conflict notice is *not verified*: the walk at
-`settings.conflict` shows the settings place without a notice — the mock's state does not reach the page (the note on
-`UC-F-12` says so). The notice itself exists for a conflicting save (`PlanSettingsModal.svelte:150-152`,
-`WorkControlPanel.svelte:1127`) and its unit tests cover it.
+page's own button, not a tab); `/settings/machine` resolves into it. The conflict notice is drawn on that page when a
+save conflicts — the current value, the value "yours", keep, and "Apply mine again"
+(`SettingsView.svelte:1072-1088`). It is *not verified* from the mock: the walk at `settings.conflict` shows the
+settings place without a notice, because the mock's state does not feed a conflicting save (the note on `UC-F-12` says
+so). The unit tests cover the dialog.
 |===
 
 [#matrices]
 == The Verdict Matrices
 
-The checks prove eight rows of link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis]. Seven move from `partial`
-and one from `deviates` to `conforms`:
+The walk and the code prove nine rows of link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis]. Eight move from
+`partial` and one from `deviates` to `conforms`:
 
 |===
 |Use case |Before |After |Why
@@ -253,16 +254,19 @@ recommendation, so that clause is `not verified`
 
 |UC-ONB-9 (Choose How Plans Run by Default)
 |`deviates` |`conforms` |UC-F-10: plain names, a sentence per axis, and a choice per variant
+
+|UC-ONB-10 (Change the Machine's Settings)
+|`partial` |`conforms` |UC-F-11: one settings place. UC-F-12: the machine settings page draws the conflict notice with
+the current value, the value "yours", keep, and apply again (`SettingsView.svelte:1072-1088`, fed by
+`SettingsView.svelte:721-731`); the mock's `settings.conflict` state does not feed it, so that clause is `not verified`
 |===
 
-Three rows stay, and the rule that separates them from the eight above is the one this walk applied. A change the
-client draws but the mock does not feed is a `not verified` clause and does not hold the row open — this is
-`catalogue.select`'s recommendation, `store.choose`'s protection values, and `defaults.review`'s missing-provider
-variant. A change the client does not draw at the place the check walks keeps the row open — this is the machine
-settings' conflict notice, which the client implements for a *plan's* settings only
-(`PlanSettingsModal.svelte:150-152`, `WorkControlPanel.svelte:1127`), not for the machine's settings page. A screen
-whose content contradicts the check's row keeps the row open — this is `harness.none`, where the engine catalogue and
-the proposal disagree.
+Two rows stay, and the rule that separates them from the nine above is the one this walk applied. A change the client
+draws but the mock does not feed is a `not verified` clause and does not hold the row open — this is
+`catalogue.select`'s recommendation, `store.choose`'s protection values, `defaults.review`'s missing-provider variant,
+and the machine settings' conflict notice. A screen whose content contradicts the check's row keeps the row open — this
+is `harness.none`, where the engine catalogue and the proposal disagree. A use case the client answers in another
+client by the operator's decision keeps its row open here — this is `UC-ENT-1`.
 
 `UC-F-03` is retired by this walk: the recorded interface language is adopted, and a browser's own choice overrides it.
 
@@ -270,13 +274,10 @@ the proposal disagree.
 does not show the per-harness failure facts UC-F-05 asks for (they live in `harness.blocked`/`harness.probe-failed`,
 and the engine catalogue puts them there).
 
-**UC-ONB-10** stays `partial`: one settings place now, the conflict notice is not drawn on the machine settings page
-and the mock's state does not reach it either.
-
 **UC-ENT-1** stays `partial`: the web app shows no listener screen at all, by the operator's decision of 2026-11-10;
 it shows the fallback, and the matrix row still grades the web app's showing of the use case.
 
-Totals: 13 `conforms`, 13 `partial`, 2 `deviates`, 1 `missing`, and 10 `not verified` (39 use cases), against
+Totals: 14 `conforms`, 12 `partial`, 2 `deviates`, 1 `missing`, and 10 `not verified` (39 use cases), against
 5, 20, 3, 1, and 10 before.
 
 [#results]
