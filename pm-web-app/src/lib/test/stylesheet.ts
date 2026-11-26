@@ -38,6 +38,27 @@ export function blockOf(css: string, opener: string): string {
 
 /**
  * @param css a stylesheet
+ * @param opener the selector whose top-level block is wanted, as written
+ * @returns the block's content of the occurrence at nesting depth 0, so a `:root` inside a media
+ *   query is never mistaken for the top-level one
+ */
+export function topLevelBlockOf(css: string, opener: string): string {
+  let depth = 0;
+  for (let i = 0; i < css.length; i += 1) {
+    const char = css[i];
+    if (char === '{') {
+      depth += 1;
+    } else if (char === '}') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && css.startsWith(opener, i)) {
+      return blockOf(css.slice(i), opener);
+    }
+  }
+  throw new Error(`no top-level "${opener}" block`);
+}
+
+/**
+ * @param css a stylesheet
  * @returns the stylesheet without its comments, so a commented-out declaration never counts
  */
 export function withoutComments(css: string): string {
@@ -90,17 +111,10 @@ export function tokenOf(block: Record<string, string>, name: string): string {
  */
 export function parseThemes(source: string): ThemeBlocks {
   const css = withoutComments(source);
-  // `:root` is declared more than once: the palette default at the top level and one inside each
-  // media block. The palette default is the TOP-LEVEL one, so the media blocks are dropped first
-  // rather than trusting the declaration order a restructure of the file could move.
-  const topLevel = withoutBlocks(
-    css,
-    '@media (prefers-color-scheme: dark)',
-    '@media (prefers-reduced-motion: reduce)',
-    '@media (max-width: 767px)',
-  );
   return {
-    root: declarations(blockOf(topLevel, ':root')),
+    // The palette default is the TOP-LEVEL `:root`; the media blocks each declare their own, and
+    // selecting by nesting depth keeps them out without a list of blocks to keep in step.
+    root: declarations(topLevelBlockOf(css, ':root')),
     light: declarations(blockOf(css, "[data-theme='light']")),
     dark: declarations(blockOf(css, "[data-theme='dark']")),
     mediaDark: declarations(blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root')),

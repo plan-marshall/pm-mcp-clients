@@ -154,7 +154,10 @@ class ChatContextNarrativeTest {
                         () -> assertTrue(notices.getFirst().lines().get(3).refs().stream()
                                 .anyMatch(ref -> ref.kind() == RefKind.HOLD), "the hold is referenced"),
                         () -> assertTrue(notices.getFirst().lines().get(2).refs().stream()
-                                .anyMatch(ref -> ref.kind() == RefKind.DECISION), "the decision is referenced"));
+                                .anyMatch(ref -> ref.kind() == RefKind.DECISION), "the decision is referenced"),
+                        () -> assertEquals(Map.of(KEY_ID, "Q-9", KEY_BLOCKS, "plan"),
+                                notices.getFirst().lines().get(2).args(),
+                                "the line sends the kind of block, so the catalogue can name it"));
             }
         }
 
