@@ -222,6 +222,10 @@ final class PlanSettingsDialogue {
                                 Map.of("plan", planId, "version", again.result().revision()));
             return null;
         }
+        if (!again.result().conflict() && again.result().restoreState() == null) {
+            // The retry is refused again: it names its cause before the value is asked once more.
+            refused(chosen, aspect, again);
+        }
         return new PlanSettingsRecord(planId, again.result().revision(), settings.values());
     }
 

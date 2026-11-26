@@ -1236,6 +1236,39 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("a retry after a conflict that is refused names its cause, in German")
+    void settingsRetryRefusedNamesTheCause() throws Exception {
+        var attempts = new AtomicInteger();
+        serve((request, response) -> {
+            var path = request.target();
+            if (path.endsWith("/settings") && "GET".equals(request.method())) {
+                response.json(200, SETTINGS);
+            } else if (path.endsWith("/settings")) {
+                switch (attempts.getAndIncrement()) {
+                    case 0 -> response.json(409, PlanSettingsUpdateResult.conflict(8, "landing.main").toJson());
+                    case 1 -> response.json(400, "{\"error\":\"invalid_arguments\",\"reason\":\"nope\"}");
+                    default -> response.json(200, PlanSettingsUpdateResult.applied(9).toJson());
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "de_DE.UTF-8");
+        var german = new OperatorContext(env, fixture.base().getParent(), true, ClientEnvironment.capture(env),
+                            virtual::terminal, null);
+        virtual.type("1\n2\n\n1\n");
+
+        assertEquals(0, PlanSettingsDialogue.run(german, new PrintWriter(out), "p", "plan-defaults", false));
+
+        var text = out.toString();
+        assertAll(
+                            () -> assertTrue(text.contains("Die Anfrage wurde nicht angenommen"), text),
+                            () -> assertFalse(text.contains("nope"), text),
+                            () -> assertTrue(text.contains("die Version des Plans wird 9"), text));
+    }
+
+    @Test
     @DisplayName("the group is asked when the verb names none")
     void settingsGroupAsked() throws Exception {
         serve((request, response) -> {
