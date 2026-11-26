@@ -150,9 +150,17 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |{origin, select, plan {from the plan} project {from the project} team {from the team} machine {from the machine} derived {derived} other {shipped default}}
 |{origin, select, plan {vom Plan} project {vom Projekt} team {vom Team} machine {von der Maschine} derived {abgeleitet} other {mitgelieferte Vorgabe}}
 
-|`control.settings.use_inherited`
-|Use the {level, select, project {project's} other {machine's}} value
-|Nimm den Wert {level, select, project {des Projekts} other {der Maschine}}
+|`control.settings.drop_own`
+|Use the inherited value
+|Nimm den geerbten Wert
+
+|`control.settings.changed`
+|changed
+|geändert
+
+|`control.settings.saved`
+|Saved
+|Gespeichert
 
 |`control.settings.applies`
 |Applies where {plan} next reads it; the plan's version becomes {version}.
@@ -169,6 +177,30 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.settings.epic_told`
 |{epic} is told of a change
 |{epic} wird über eine Änderung informiert
+
+|`control.settings.close`
+|Close
+|Schließe die Einstellungen
+
+|`control.settings.conflict`
+|Changed meanwhile: it is now {value}. Yours was not applied.
+|Inzwischen geändert: jetzt {value}. Deine Änderung wurde nicht angewendet.
+
+|`control.settings.conflict_title`
+|Changed in two clients at once
+|In zwei Clients gleichzeitig geändert
+
+|`control.settings.yours`
+|Yours
+|Deins
+
+|`control.settings.apply_again`
+|Apply mine again
+|Wende meins erneut an
+
+|`control.settings.keep_current`
+|Keep the current value
+|Behalte den aktuellen Wert
 
 |`control.epic.next`
 |Next plan: {plan}

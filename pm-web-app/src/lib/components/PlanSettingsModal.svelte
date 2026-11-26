@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import type { PlanSettingsRecord } from '../api/client';
+  import { displaySettingAspect, displaySettingChoice } from '../display';
   import SelectField from './SelectField.svelte';
   import Button from './Button.svelte';
   import FormStatus from './FormStatus.svelte';
@@ -162,19 +163,19 @@
             <dd data-testid="settings-conflict-current">{conflict.currentValue}</dd>
           </dl>
           <div class="settings-modal__conflict-actions">
-            <button
-              type="button"
-              data-testid="settings-conflict-keep"
+            <Button
+              variant="secondary"
               disabled={busy}
-              on:click={() => keep()}
+              data-testid="settings-conflict-keep"
+              onclick={() => keep()}
             >
               {$t('control.settings.keep_current')}
-            </button>
-            <button
-              type="button"
-              data-testid="settings-conflict-apply-again"
+            </Button>
+            <Button
+              variant="primary"
               disabled={busy}
-              on:click={() =>
+              data-testid="settings-conflict-apply-again"
+              onclick={() =>
                 onApplyAgain({
                   aspect: conflict.aspect,
                   value: conflict.wantedValue === '' ? null : conflict.wantedValue,
@@ -182,7 +183,7 @@
                 })}
             >
               {$t('control.settings.apply_again')}
-            </button>
+            </Button>
           </div>
         </div>
       {/if}
@@ -201,13 +202,16 @@
                     {#if entry.choices && entry.choices.length > 0}
                       <SelectField
                         id={`settings-value-${entry.aspect}`}
-                        label={entry.aspect}
+                        label={displaySettingAspect(entry.aspect)}
                         value={chosen[entry.aspect] ?? ''}
                         options={[
                           ...(entry.origin === 'plan'
                             ? [{ value: '', label: $t('control.settings.drop_own') }]
                             : []),
-                          ...entry.choices.map((choice) => ({ value: choice, label: choice })),
+                          ...entry.choices.map((choice) => ({
+                            value: choice,
+                            label: displaySettingChoice(choice),
+                          })),
                         ]}
                         testid={`settings-value-${entry.aspect}`}
                         disabled={busy}
@@ -217,7 +221,7 @@
                         }}
                       />
                     {:else}
-                      <span class="settings-modal__aspect">{entry.aspect}</span>
+                      <span class="settings-modal__aspect">{displaySettingAspect(entry.aspect)}</span>
                       <span class="settings-modal__value mono" data-testid={`settings-value-${entry.aspect}`}
                         >{chosen[entry.aspect]}</span
                       >
@@ -257,7 +261,13 @@
               id="settings-saved"
             />
             <div class="settings-modal__actions">
-              <Button variant="ghost" onclick={() => onClose()}> {$t('control.settings.close')} </Button>
+              <Button
+                variant="ghost"
+                data-testid="settings-close-button"
+                onclick={() => onClose()}
+              >
+                {$t('control.settings.close')}
+              </Button>
               <Button
                 variant="primary"
                 type="submit"
@@ -269,12 +279,6 @@
             </div>
           </div>
         </form>
-
-        <div class="settings-modal__close">
-          <button type="button" data-testid="settings-close-button" on:click={() => onClose()}>
-            {$t('control.settings.close')}
-          </button>
-        </div>
       {:else}
         <p class="settings-modal__empty">…</p>
       {/if}
@@ -340,12 +344,6 @@
     margin-inline-start: auto;
   }
 
-  .settings-modal__close {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: var(--space-2);
-  }
-
   .settings-modal__changed {
     color: var(--color-attention-text);
     font-size: var(--text-xs);
@@ -388,18 +386,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-  }
-
-  .settings-modal__conflict-actions button {
-    min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-  }
-
-  .settings-modal__close button {
-    min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
   }
 
   @media (max-width: 480px) {

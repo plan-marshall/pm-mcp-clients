@@ -610,6 +610,7 @@
     settingsNotice = '';
     try {
       settings = await apiClient.getPlanSettings(subjectId);
+      settingsFormRevision = settings.revision;
       settingsOpen = true;
     } catch (err: unknown) {
       failure = $t('control.action.failed', { reason: reasonOf(err) });
@@ -617,22 +618,31 @@
   }
 
   /**
+   * The revision the dialogue's own last applied answer carried.
+   *
+   * Each field of one Save writes against this, never against the freshest revision the panel
+   * holds: a write by someone else that lands between two of the dialogue's fields then yields the
+   * conflict instead of being overwritten without one.
+   */
+  let settingsFormRevision = $state<number | null>(null);
+
+  /**
    * Applies one field's value.
    *
    * @param payload the aspect, the value and the revision the dialogue opened with
-   * @param preferCurrent whether to send the freshest revision the panel holds, for a form whose
-   *   earlier write already advanced it
+   * @param fromForm whether the write is one of the settings dialogue's own fields, which send the
+   *   revision of the dialogue's last applied answer rather than a freshly read one
    * @returns whether the runtime applied it, so the dialogue says _Saved_ only then
    */
   async function applySetting(
     payload: { aspect: string; value: string | null; revision: number },
-    preferCurrent = false,
+    fromForm = false,
   ): Promise<boolean> {
     busy = true;
     settingsNotice = '';
     let applied = false;
     try {
-      const revision = preferCurrent && settings ? settings.revision : payload.revision;
+      const revision = fromForm ? (settingsFormRevision ?? payload.revision) : payload.revision;
       const result = await apiClient.updatePlanSettings(
         subjectId,
         payload.aspect,
@@ -641,6 +651,7 @@
       );
       if (result.applied) {
         settingsConflict = null;
+        settingsFormRevision = result.revision;
         settings = await apiClient.getPlanSettings(subjectId);
         settingsNotice = $t('control.settings.applies', {
           plan: subjectId,
@@ -649,6 +660,7 @@
         applied = true;
         onChanged();
       } else if (result.conflict) {
+        settingsFormRevision = result.revision;
         settingsConflict = {
           aspect: payload.aspect,
           currentValue: result.current_value ?? '',
@@ -676,6 +688,7 @@
     settingsConflict = null;
     try {
       settings = await apiClient.getPlanSettings(subjectId);
+      settingsFormRevision = settings.revision;
     } catch {
       // Keeping the current value needs no further read; the next open reads it again.
     }

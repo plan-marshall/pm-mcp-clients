@@ -224,6 +224,41 @@ describe('PlanSettingsModal component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps exactly one Close control', () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    expect(screen.getAllByRole('button', { name: /close/i })).toHaveLength(1);
+  });
+
+  it('draws the conflict’s acts as design-system buttons', () => {
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        conflict: {
+          aspect: 'landing',
+          currentValue: 'landing.main',
+          wantedValue: 'landing.files',
+          revision: 8,
+        },
+      },
+    });
+
+    expect(screen.getByTestId('settings-conflict-keep')).toHaveClass('btn');
+    expect(screen.getByTestId('settings-conflict-apply-again')).toHaveClass('btn');
+  });
+
+  it('labels a field and its options through the display layer', () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    expect(screen.getByLabelText('Landing')).toHaveValue('landing.pull-request');
+    expect(screen.queryByLabelText('landing')).toBeNull();
+    expect(screen.getByRole('option', { name: 'Pull request' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'landing.pull-request' })).toBeNull();
+    expect(screen.getByText('Role implement')).toBeInTheDocument();
+  });
+
   it('shows a value another client changed first, with both choices', async () => {
     const onApplyAgain = vi.fn();
     const onKeepCurrent = vi.fn();

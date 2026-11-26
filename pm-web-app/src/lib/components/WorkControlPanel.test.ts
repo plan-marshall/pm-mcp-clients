@@ -719,8 +719,61 @@ describe('WorkControlPanel component', () => {
     expect(update.mock.calls[1][2]).toBe('method.tests-after');
   });
 
-  it('shows a conflict and applies the same change against the current revision', async () => {
-    vi.spyOn(apiClient, 'updatePlanSettings').mockResolvedValueOnce({
+  it('sends the second write with the dialogue’s own last answer, so a foreign write between them conflicts', async () => {
+    const twoFields: PlanSettingsRecord = {
+      plan_id: 'fix-relay',
+      revision: 7,
+      values: [
+        {
+          aspect: 'landing',
+          value: 'landing.pull-request',
+          origin: 'project',
+          choices: ['landing.pull-request', 'landing.main'],
+        },
+        {
+          aspect: 'method',
+          value: 'method.test-first',
+          origin: 'machine',
+          choices: ['method.test-first', 'method.tests-after'],
+        },
+      ],
+    };
+    // The panel's fresh read sees revision 9: another client wrote between the two fields.
+    vi.spyOn(apiClient, 'getPlanSettings')
+      .mockResolvedValueOnce(twoFields)
+      .mockResolvedValue({
+        ...twoFields,
+        revision: 9,
+        values: twoFields.values.map((entry) =>
+          entry.aspect === 'method' ? { ...entry, value: 'method.tests-after' } : entry,
+        ),
+      });
+    // A server like the runtime's: the revision it holds decides, not the one the panel read.
+    const update = vi
+      .spyOn(apiClient, 'updatePlanSettings')
+      .mockImplementation(async (_plan, _aspect, _value, revision) =>
+        revision === 7
+          ? { applied: true, conflict: false, revision: 8 }
+          : { applied: false, conflict: true, revision: 9, current_value: 'method.tests-after' },
+      );
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-settings'));
+    await fireEvent.change(await screen.findByTestId('settings-value-landing'), {
+      target: { value: 'landing.main' },
+    });
+    await fireEvent.change(screen.getByTestId('settings-value-method'), {
+      target: { value: 'method.tests-after' },
+    });
+    await fireEvent.click(screen.getByTestId('settings-save'));
+
+    await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
+    expect(update.mock.calls[1][3]).toBe(8);
+    expect(await screen.findByTestId('settings-conflict')).toBeInTheDocument();
+  });
+
+  it('shows a conflict and applies the same change against the current revision', async () => {    vi.spyOn(apiClient, 'updatePlanSettings').mockResolvedValueOnce({
       applied: false,
       conflict: true,
       revision: 8,
