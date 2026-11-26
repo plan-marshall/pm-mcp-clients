@@ -60,29 +60,42 @@
     /** The hover explanation, already localized; the label alone does not explain the action. */
     advisory?: string;
     /**
-     * Whether following the link loads the document again (`data-sveltekit-reload`).
+     * A same-document action the link performs instead of navigating.
      *
-     * An address that only a fresh load adopts — one that carries an object opened in place, which
-     * the store reads at mount — needs this, because a client-side change of the same route's query
-     * would leave the view as it is.
+     * A plain left click is taken over (the default is prevented) and this runs; the `href` stays
+     * for a middle click, a keyboard follow and assistive technology. A caller uses it where the
+     * address change is the app's own (an object opened in place beside its caller).
      */
-    reload?: boolean;
+    onactivate?: () => void;
   }
 
-  let { href, label, look = 'text', icon, testid, advisory, reload = false }: Props = $props();
+  let { href, label, look = 'text', icon, testid, advisory, onactivate }: Props = $props();
 
   /** The address that was checked and is rendered: the one without the white space around it. */
   const address = $derived(href.trim());
   const known = $derived(isAppPath(address));
+  /** A fragment of this document: the in-page target an outline criterion links to. */
+  const fragment = $derived(/^#[^\s]+$/.test(address));
+
+  /**
+   * @param event the click on the anchor
+   */
+  function activate(event: MouseEvent): void {
+    if (!onactivate || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    event.preventDefault();
+    onactivate();
+  }
 </script>
 
-{#if known}
+{#if known || fragment}
   <a
     href={address}
     class="link link--{look}"
     data-testid={testid}
-    data-sveltekit-reload={reload ? '' : undefined}
     title={advisory}
+    onclick={activate}
   >
     {#if icon}<span class="link__icon">{@render icon()}</span>{/if}
     <span class="link__label">{label}</span>

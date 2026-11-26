@@ -279,10 +279,12 @@ describe('PlanSettingsModal component', () => {
     });
 
     expect(screen.getByTestId('settings-conflict')).toHaveTextContent(
-      'Changed meanwhile: it is now landing.main. Yours was not applied.',
+      'Changed meanwhile: it is now Main branch. Yours was not applied.',
     );
-    expect(screen.getByTestId('settings-conflict-yours')).toHaveTextContent('landing.files');
-    expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('landing.main');
+    expect(screen.getByTestId('settings-conflict-yours')).toHaveTextContent(
+      'Files in the checkout',
+    );
+    expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('Main branch');
 
     await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));
     expect(onApplyAgain).toHaveBeenCalledWith({

@@ -2315,6 +2315,43 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
 
     expect(getDecisions).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the decision opened in place beside the plan, and closes back to it', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
+      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
+    );
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
+    runtimeStore.update((s) => ({ ...s, openObject: { kind: 'decision', id: 'Q-007' } }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-in-place')).toContainElement(
+      await screen.findByTestId('decision-detail'),
+    );
+
+    await fireEvent.click(screen.getByTestId('plan-in-place-close'));
+    await waitFor(() => expect(get(runtimeStore).openObject).toBeNull());
+    expect(screen.queryByTestId('decision-detail')).toBeNull();
+    expect(screen.queryByTestId('plan-in-place')).toBeNull();
+  });
+
+  it('renders the completion report opened in place beside the plan', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
+      plan_id: 'fix-relay',
+    } as unknown as PlanCompletionReport);
+    runtimeStore.update((s) => ({
+      ...s,
+      openObject: { kind: 'completion-report', id: 'fix-relay' },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('plan-in-place')).toBeInTheDocument();
+    await waitFor(() => expect(document.querySelector('.completion-report')).not.toBeNull());
+  });
 });
 
 describe('PlanView activity rows (PLAN-55 D3)', () => {

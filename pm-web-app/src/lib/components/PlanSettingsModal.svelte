@@ -110,8 +110,9 @@
   }
 
   /**
-   * Applies every changed field with the revision the dialogue opened with, then says it saved.
-   * The runtime answers each field on its own, so a conflict names the field it belongs to.
+   * Applies every changed field with the revision the dialogue's last applied answer carried, then
+   * says it saved. The runtime answers each field on its own, so a conflict names the field it
+   * belongs to.
    */
   async function save(): Promise<void> {
     if (!settings) return;
@@ -154,13 +155,15 @@
             {$t('control.settings.conflict_title')}
           </h3>
           <p>
-            {$t('control.settings.conflict', { value: conflict.currentValue })}
+            {$t('control.settings.conflict', { value: displaySettingChoice(conflict.currentValue) })}
           </p>
           <dl class="settings-modal__conflict-facts">
             <dt>{$t('control.settings.yours')}</dt>
-            <dd data-testid="settings-conflict-yours">{conflict.wantedValue}</dd>
+            <dd data-testid="settings-conflict-yours">{displaySettingChoice(conflict.wantedValue)}</dd>
             <dt>{$t('control.settings.origin', { origin: 'plan' })}</dt>
-            <dd data-testid="settings-conflict-current">{conflict.currentValue}</dd>
+            <dd data-testid="settings-conflict-current">
+              {displaySettingChoice(conflict.currentValue)}
+            </dd>
           </dl>
           <div class="settings-modal__conflict-actions">
             <Button
@@ -223,7 +226,7 @@
                     {:else}
                       <span class="settings-modal__aspect">{displaySettingAspect(entry.aspect)}</span>
                       <span class="settings-modal__value mono" data-testid={`settings-value-${entry.aspect}`}
-                        >{chosen[entry.aspect]}</span
+                        >{displaySettingChoice(chosen[entry.aspect])}</span
                       >
                     {/if}
                   </div>

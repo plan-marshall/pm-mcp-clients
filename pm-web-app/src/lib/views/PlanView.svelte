@@ -59,7 +59,7 @@
   import { displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
   import { formatAddress, PLAN_TABS, type Address, type PlanTab } from '../routes';
-  import { openedFromOutside, writeAddress } from '../navigation/history';
+  import { writeAddress } from '../navigation/history';
   import CompletionReportView from './CompletionReportView.svelte';
   import DecisionView from './DecisionView.svelte';
   import { narrowLayout } from '../utils/narrowLayout';
@@ -516,7 +516,8 @@
   );
 
   /**
-   * The plan's own address as the head writes it back: the plan, its mode and the shown tab.
+   * The plan's own address as the head writes it back: the plan, its mode, the shown tab and the
+   * selections the tab carries, so opening an object in place returns to exactly the caller.
    *
    * @returns the caller's address, without the object an in-place column opens
    */
@@ -524,6 +525,16 @@
     const address: Address = { route: 'plan', planId };
     if (ended) address.mode = 'ended';
     if (activeTab !== DEFAULT_TAB) address.tab = activeTab;
+    if (activeTab === 'process' && $runtimeStore.phaseNode) {
+      address.node = $runtimeStore.phaseNode;
+    }
+    if (activeTab === 'changes' && $runtimeStore.changeFile) {
+      address.file = $runtimeStore.changeFile;
+    }
+    if ($runtimeStore.chatOpen) {
+      address.chat = true;
+      if ($runtimeStore.chatTurn) address.turn = $runtimeStore.chatTurn;
+    }
     return address;
   }
 
@@ -554,18 +565,36 @@
     $runtimeStore.openObject?.kind === 'completion-report' ? $runtimeStore.openObject.id : null,
   );
 
+  /** Whether this document opened the in-place object by a push of its own, so Back closes it. */
+  let inPlacePushed = $state(false);
+
   /**
-   * Closes the object opened in place: the history's back when the app pushed the entry, a
-   * replacing write to the caller's address when the address was loaded with `open=`
-   * (`navigation.adoc#url`).
+   * Opens one object in place beside the plan by a push of this document, so the history's back
+   * closes it (`navigation.adoc#url`).
+   *
+   * @param kind the object's kind
+   * @param id the object's id
+   */
+  function openInPlace(kind: 'decision' | 'completion-report', id: string | null): void {
+    if (id === null) return;
+    inPlacePushed = true;
+    runtimeStore.update((s) => ({ ...s, openObject: { kind, id } }));
+    writeAddress({ ...planAddress(), open: { kind, id } }, 'push');
+  }
+
+  /**
+   * Closes the object opened in place: the history's back when this document pushed it, a replacing
+   * write to the caller's address otherwise — an address that was loaded with `open=` has nothing
+   * to go back to (`navigation.adoc#url`).
    */
   function closeInPlace(): void {
-    if (openedFromOutside()) {
-      runtimeStore.update((s) => ({ ...s, openObject: null }));
-      writeAddress(planAddress(), 'replace');
+    if (inPlacePushed) {
+      inPlacePushed = false;
+      window.history.back();
       return;
     }
-    window.history.back();
+    runtimeStore.update((s) => ({ ...s, openObject: null }));
+    writeAddress(planAddress(), 'replace');
   }
 
   let tokenBreakdown: {
@@ -1321,7 +1350,7 @@
             label={$t('report.action.details')}
             advisory={$t('report.action.details.title')}
             testid="completion-report-link"
-            reload={true}
+            onactivate={() => openInPlace('completion-report', planId)}
           />
         {/if}
         {#if waiting && openDecisionId}
@@ -1330,7 +1359,7 @@
             label={$t('control.plan.decision')}
             advisory={$t('control.plan.decision.title')}
             testid="plan-decision-link"
-            reload={true}
+            onactivate={() => openInPlace('decision', openDecisionId)}
           />
         {/if}
       </div>
@@ -2550,7 +2579,7 @@
   /* A phone has room for one column: the object takes the space the plan leaves (`navigation.adoc#window`). */
   @media (max-width: 767px) {
     .plan-view-object {
-      inline-size: 100vw;
+      inline-size: 100%;
     }
 
     .plan-view-layout--with-object .plan-view {

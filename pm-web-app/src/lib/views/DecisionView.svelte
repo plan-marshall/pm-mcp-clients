@@ -411,6 +411,15 @@
     closeDetail();
   });
 
+  // An in-place address that names no open decision — stale, answered elsewhere, or of another plan —
+  // has nothing to show: it closes back to the caller instead of leaving a skeleton that never
+  // resolves (`plan-view-interaction.adoc#changes`'s rule, applied to this address).
+  $effect(() => {
+    if (!inPlace || isLoading) return;
+    if (decisions.some((dec) => dec.id === inPlace.id)) return;
+    inPlace.onClose();
+  });
+
   /** Reads the permission the operator gave once, if any. */
   function readNotifyPreference(): void {
     try {

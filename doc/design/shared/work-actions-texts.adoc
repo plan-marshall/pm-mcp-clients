@@ -202,6 +202,38 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Keep the current value
 |Behalte den aktuellen Wert
 
+|`control.aspect.landing`
+|Landing
+|Landung
+
+|`control.aspect.method`
+|Method
+|Methode
+
+|`control.aspect.asking`
+|Asking
+|Rückfragen
+
+|`control.aspect.posture`
+|Posture
+|Haltung
+
+|`control.aspect.base`
+|Base branch
+|Basiszweig
+
+|`control.aspect.role`
+|Role {name}
+|Rolle {name}
+
+|`control.aspect.integration`
+|Integration {name}
+|Integration {name}
+
+|`control.aspect.provider`
+|Provider {name}
+|Provider {name}
+
 |`control.epic.next`
 |Next plan: {plan}
 |Starte den nächsten Plan: {plan}
