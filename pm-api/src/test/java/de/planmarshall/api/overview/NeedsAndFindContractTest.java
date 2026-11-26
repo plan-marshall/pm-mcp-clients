@@ -168,6 +168,15 @@ class NeedsAndFindContractTest {
         }
 
         @Test
+        @DisplayName("no longer carries the retired words of what an item blocks")
+        void retiredBlockKeysAreAbsent() {
+            for (var locale : List.of("en", "de")) {
+                assertFalse(MessageCatalogue.hasKey(locale, "overview.needs.blocks"));
+                assertFalse(MessageCatalogue.hasKey(locale, "overview.needs.blocks_nothing"));
+            }
+        }
+
+        @Test
         @DisplayName("round-trips a page of items")
         void pageRoundTrip() throws Exception {
             var item = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, "/api/v1/plans/relay-metrics",

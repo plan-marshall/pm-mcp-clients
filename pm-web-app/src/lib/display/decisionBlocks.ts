@@ -25,17 +25,9 @@ const UNKNOWN_KEY = 'common.unknown';
 
 /**
  * @param blocks the wire value of `blocks`
- * @returns the catalogue key of the decision's word for it
- */
-export function blockWordKeyOf(blocks: string): string {
-  return BLOCK_KEYS[blocks.trim()] ?? UNKNOWN_KEY;
-}
-
-/**
- * @param blocks the wire value of `blocks`
  * @param translate the catalogue look-up (`$t`) a template passes, so the word follows a locale switch
  * @returns the word the view shows for it
  */
 export function blockWordText(blocks: string, translate: Translate): string {
-  return translate(blockWordKeyOf(blocks));
+  return translate(BLOCK_KEYS[blocks.trim().toLowerCase()] ?? UNKNOWN_KEY);
 }

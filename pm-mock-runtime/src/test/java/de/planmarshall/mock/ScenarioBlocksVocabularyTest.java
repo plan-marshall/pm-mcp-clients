@@ -66,7 +66,9 @@ class ScenarioBlocksVocabularyTest {
             for (var decision : find(load(file), ScenarioBlocksVocabularyTest::isDecision)) {
                 read.add(name + " " + decision.get(FIELD_ID));
                 var blocks = JsonTree.string(decision, FIELD_BLOCKS);
-                if (!VOCABULARY.contains(blocks)) {
+                if (blocks == null) {
+                    offenders.add(name + " " + decision.get(FIELD_ID) + ": absent");
+                } else if (!VOCABULARY.contains(blocks)) {
                     offenders.add(name + " " + decision.get(FIELD_ID) + ": " + blocks);
                 }
             }
@@ -175,12 +177,12 @@ class ScenarioBlocksVocabularyTest {
 
     /**
      * @param decision an object
-     * @return whether it is a decision envelope, which a scenario serves under {@code decisions}
+     * @return whether it is a decision envelope, whether or not it carries {@code blocks}: a missing
+     *         value is one of the offenders the caller reports
      */
     private static boolean isDecision(Map<String, Object> decision) {
         return decision.get(FIELD_SCOPE) instanceof String
-                && decision.get(FIELD_REVERSIBILITY) instanceof String
-                && decision.containsKey(FIELD_BLOCKS);
+                && decision.get(FIELD_REVERSIBILITY) instanceof String;
     }
 
     /**

@@ -375,12 +375,15 @@ class OverviewFormattingTest {
         // What it blocks, in the decision's own words, nothing through decision.blocks.none.
         assertEquals("blocks nothing", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "en"));
         assertEquals("blockiert nichts", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "de"));
+        assertEquals("blocks nothing", OverviewFormatting.formatNeedsItemBlocks(itemProj.blocks(), "fr"));
         assertEquals("unknown", OverviewFormatting.formatNeedsItemBlocks("other-plan", "en"));
         assertEquals("unbekannt", OverviewFormatting.formatNeedsItemBlocks("other-plan", "de"));
         assertEquals("blockiert den Plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "de"));
         assertEquals("blocks the plan", OverviewFormatting.formatNeedsItemBlocks(itemPlan.blocks(), "en"));
         assertEquals("blocks the epic", OverviewFormatting.formatNeedsItemBlocks(itemEpic.blocks(), "en"));
         assertEquals("blocks the project's setup", OverviewFormatting.formatNeedsItemBlocks("setup", "en"));
+        assertEquals("blockiert die Einrichtung des Projekts",
+                OverviewFormatting.formatNeedsItemBlocks("setup", "de"));
         assertEquals("blocks the start", OverviewFormatting.formatNeedsItemBlocks("entry", "en"));
         assertEquals("blocks one task; the plan goes on", OverviewFormatting.formatNeedsItemBlocks("task", "en"));
     }
