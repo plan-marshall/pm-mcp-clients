@@ -1164,10 +1164,10 @@ final class ChatRegistry {
         if (planId == null || planId.isBlank()) {
             return null;
         }
-        var status = Objects.requireNonNullElse(JsonTree.string(payload, ARG_STATUS), "running");
+        var status = Objects.requireNonNullElse(JsonTree.string(payload, ARG_STATUS), ACTIVITY_RUNNING);
         return switch (status) {
             case "staged" -> line("row_staged", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
-            case "running" -> line("row_started", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
+            case ACTIVITY_RUNNING -> line("row_started", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
             case "landed" -> line("row_landed", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
             case "cancelled" -> line("row_cancelled", args(SCOPE_PLAN, planId), ref(RefKind.PLAN, planId), at);
             case OUTCOME_FAILED -> line("row_failed", args2(SCOPE_PLAN, planId, ARG_OUTCOME,
@@ -1209,7 +1209,7 @@ final class ChatRegistry {
             }
         }
         var id = JsonTree.string(payload, "source_id");
-        return id != null && !id.isBlank() ? id : "source";
+        return id != null && !id.isBlank() ? id : KEY_SOURCE;
     }
 
     /**

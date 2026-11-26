@@ -418,6 +418,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String KEY_ACTIVITY = "activity";
     private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
+    private static final String KEY_AUTO_START = "auto_start";
     private static final String PATH_CONTROL_CHATS = "facts.runtime.control.chats";
     private static final String KEY_PILOT = "pilot";
     /** The build environment a run was captured with (`captured_at`, `source`, `variables`). */
@@ -4306,7 +4307,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
             var state = JsonTree.string(epic, KEY_STATE);
             epicStates.put(epicId, state != null ? state : ACTIVITY_RUNNING);
-            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
+            epicAuto.put(epicId, Boolean.TRUE.equals(epic.get(KEY_AUTO_START)));
             var scope = JsonTree.integer(epic, "scope");
             if (scope != null) {
                 // An epic whose control entry omits the scope keeps its resource's scope.
@@ -5569,7 +5570,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
-        body.put("auto_start", parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
+        body.put(KEY_AUTO_START, parsed.autoStart() != null ? parsed.autoStart() : Boolean.TRUE);
         broadcastEvent(EVENT_EPIC_STARTED, Map.of(KEY_EPIC_ID, id, KEY_LABEL, title, KEY_PROJECT_ID, projectId));
         response.json(201, body);
     }
@@ -6665,7 +6666,7 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         }
         if (autoChanged) {
             published.add(Map.entry("epic.auto_changed",
-                    Map.of(KEY_EPIC_ID, epicId, "auto_start", controlEpicAuto.getOrDefault(epicId, true))));
+                    Map.of(KEY_EPIC_ID, epicId, KEY_AUTO_START, controlEpicAuto.getOrDefault(epicId, true))));
         }
     }
 
