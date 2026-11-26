@@ -15,10 +15,9 @@ decision, start a plan from a description, and clean up. The app falls short in 
   for a harness that cannot list its models, the two protection lines, the fix action, the phase grouping and the
   meaning of each plan default. What remains absent is the advice's recommendation on `catalogue.select` and the
   machine settings' conflict notice.
-. *Raw data still reaches the operator where no screen is designed.* The onboarding's generic card with the state id
-  is gone: every onboarding state has a screen, and `entry.*` lands on the fallback that names `pm-operator`. What
-  remains is a raw error code on a refused request (`plan_not_found`) and the runtime's English state summary as a
-  card heading on a German screen.
+. *Raw data still reaches the operator.* The onboarding's generic card with the state id is gone: every onboarding
+  state has a screen, and `entry.*` lands on the fallback that names `pm-operator`. What remains is a raw error code on
+  a refused request (`plan_not_found`).
 . *Actions are not offered by state.* The system view offers stop, restart, and upgrade while the runtime drains. The
   plan view offers a completion report for a plan that still runs.
 
@@ -59,8 +58,9 @@ follows the engine catalogue and shows the install hints, and the per-harness ca
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]
 |Choose the Models for the Work
-|`partial`
-|Selection present; no advice shown (UC-F-06).
+|`conforms`
+|Selection present; the recommendation block and the "recommended" marker are drawn, and a harness that cannot list
+its models gets a field (UC-V-05). The mock carries no recommendation, so that clause is `not verified`.
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]
 |Assign Models to the Roles
@@ -92,9 +92,9 @@ assignable (UC-V-05).
 |link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 |Enter and Connect
 |`partial`
-|Pairing works; the listener state has no web screen by the operator's decision and lands on the fallback, which names
-`pm-operator` and prints no state id (UC-V-03). The LAN URL and the QR code are the terminal's, so the web app shows
-neither.
+|Pairing works. The web app shows no listener screen at all, by the operator's decision, so the listener state lands on
+the fallback that names `pm-operator` and prints no state id (UC-V-03); the LAN URL and the QR code are the
+terminal's. The row stays open because the web app shows no listener screen.
 
 |link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
 |Manage Paired Devices
@@ -205,22 +205,24 @@ UC-F-18).
 |Summary, details, selection, three answers present; raw kinds and duplicated words (UC-F-41).
 |===
 
-Totals: 12 `conforms`, 14 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
+Totals: 13 `conforms`, 13 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
 
-Seven rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web
-Onboarding] (`UC-V-05`): the six `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-3, UC-ONB-6, UC-ONB-7 and UC-ONB-8, and
-UC-ONB-9 from `deviates`. Four rows stay where the walk could not clear them: UC-ONB-4 (`harness.none` does not carry
-the per-harness failure facts UC-F-05 asks for), UC-ONB-5 (the recommendation is not in the mock), UC-ONB-10 (the
-conflict notice is not reachable through the mock), and UC-ENT-1 (the listener states are the terminal's by decision).
-The rule the walk applied: a row moves when the change `UC-P-03` names is visible on the screen; a change drawn
-nowhere keeps its row open.
+Eight rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web
+Onboarding] (`UC-V-05`): the seven `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-3, UC-ONB-5, UC-ONB-6, UC-ONB-7 and
+UC-ONB-8, and UC-ONB-9 from `deviates`. Three rows stay where the walk could not clear them: UC-ONB-4 (`harness.none`
+does not carry the per-harness failure facts UC-F-05 asks for, and the engine catalogue puts them in
+`harness.blocked`), UC-ONB-10 (the conflict notice is not drawn on the machine settings page), and UC-ENT-1 (the web
+app shows no listener screen, by the operator's decision). The rule the walk applied: a change the client draws but
+the mock does not feed is a `not verified` clause and does not hold a row open; a change the client does not draw at
+the place the check walks, or a screen that contradicts the check's row, keeps it open. UC-F-03 is retired by this
+walk.
 
 [#gaps]
 == Main Gaps
 
 . *The generic state card.* The onboarding no longer falls back to it: every state has a screen and `entry.*` shows the
-  terminal fallback (`UC-V-02`). What remains is the runtime's `summary` as the card heading, English on a German
-  screen, because the summary is runtime text shown as delivered (`UC-V-05`).
+  terminal fallback (`UC-V-02`). The English state summary that still heads some cards on a German screen is the
+  runtime's text, shown as delivered — a mock/engine observation, not the app's (`UC-V-05`).
 . *Actions not derived from the state.* The use cases say "actions by state" (principle `actions-by-state` of
   `06-controlling-work.adoc`). The app has fixed button sets per view (link:proposals.adoc#UC-P-02[UC-P-02]).
 . *The variations of the onboarding.* Most are visible now (`UC-V-05`): the change link, the steward, the model-id

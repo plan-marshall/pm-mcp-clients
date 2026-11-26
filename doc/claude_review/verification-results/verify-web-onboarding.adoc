@@ -222,8 +222,8 @@ page's own button, not a tab); `/settings/machine` resolves into it. The conflic
 [#matrices]
 == The Verdict Matrices
 
-The checks prove seven rows of link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis]. Six move from `partial` and
-one from `deviates` to `conforms`:
+The checks prove eight rows of link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis]. Seven move from `partial`
+and one from `deviates` to `conforms`:
 
 |===
 |Use case |Before |After |Why
@@ -236,6 +236,11 @@ one from `deviates` to `conforms`:
 
 |UC-ONB-3 (Choose the Languages)
 |`partial` |`conforms` |UC-F-03: after the record step the next screen is German; a browser's own choice still wins
+
+|UC-ONB-5 (Choose the Models for the Work)
+|`partial` |`conforms` |UC-F-06: the recommendation block and the "recommended" marker are drawn
+(`ModelsChoice.svelte:320-323,378-379`), and a field per harness that cannot list its models; the mock carries no
+recommendation, so that clause is `not verified`
 
 |UC-ONB-6 (Assign Models to the Roles)
 |`partial` |`conforms` |UC-F-07: grouping, departures, advisory and change per role, steward accept/reject, empty role
@@ -250,25 +255,28 @@ one from `deviates` to `conforms`:
 |`deviates` |`conforms` |UC-F-10: plain names, a sentence per axis, and a choice per variant
 |===
 
-Four rows stay. The rule that separates them from the seven above is the one this walk applied: a row moves when the
-change `UC-P-03` names is *visible on the screen*; a row stays when the change itself is not shown, whatever the cause.
-`store.choose` moves because both protection lines are drawn (the mock fills them with "not reported"), and
-`defaults.review` moves because the name, the meaning and the choice are drawn (no variant in the mock needs a missing
-provider). `catalogue.select` does not move because the recommendation the row asks for is drawn nowhere; the settings
-place does not move because the conflict notice is drawn nowhere. A mock data gap inside a drawn change is a
-`not verified` clause; a change that is not drawn at all keeps its use case open. The four that stay:
+Three rows stay, and the rule that separates them from the eight above is the one this walk applied. A change the
+client draws but the mock does not feed is a `not verified` clause and does not hold the row open — this is
+`catalogue.select`'s recommendation, `store.choose`'s protection values, and `defaults.review`'s missing-provider
+variant. A change the client does not draw at the place the check walks keeps the row open — this is the machine
+settings' conflict notice, which the client implements for a *plan's* settings only
+(`PlanSettingsModal.svelte:150-152`, `WorkControlPanel.svelte:1127`), not for the machine's settings page. A screen
+whose content contradicts the check's row keeps the row open — this is `harness.none`, where the engine catalogue and
+the proposal disagree.
+
+`UC-F-03` is retired by this walk: the recorded interface language is adopted, and a browser's own choice overrides it.
 
 **UC-ONB-4** stays `partial`: the monogram and the token line are fixed and the state id is gone, but `harness.none`
-does not show the per-harness failure facts UC-F-05 asks for (they live in `harness.blocked`/`harness.probe-failed`).
+does not show the per-harness failure facts UC-F-05 asks for (they live in `harness.blocked`/`harness.probe-failed`,
+and the engine catalogue puts them there).
 
-**UC-ONB-5** stays `partial`: the recommendation is not visible — the mock carries none.
+**UC-ONB-10** stays `partial`: one settings place now, the conflict notice is not drawn on the machine settings page
+and the mock's state does not reach it either.
 
-**UC-ONB-10** stays `partial`: one settings place now, the conflict notice is not reachable through the mock.
+**UC-ENT-1** stays `partial`: the web app shows no listener screen at all, by the operator's decision of 2026-11-10;
+it shows the fallback, and the matrix row still grades the web app's showing of the use case.
 
-**UC-ENT-1** stays `partial`: the listener states are answered by the terminal by decision; the web app shows the
-fallback, and the matrix row still grades the web app's showing of the use case.
-
-Totals: 12 `conforms`, 14 `partial`, 2 `deviates`, 1 `missing`, and 10 `not verified` (39 use cases), against
+Totals: 13 `conforms`, 13 `partial`, 2 `deviates`, 1 `missing`, and 10 `not verified` (39 use cases), against
 5, 20, 3, 1, and 10 before.
 
 [#results]
@@ -302,12 +310,13 @@ The messages are `rb-71-verify-web-onboarding-001` and `rb-71-verify-web-onboard
   ("The onboarding state could not be loaded."), which was never needed as evidence because the pass reached every
   screen.
 
-* *Auto-advancing states cannot be held.* Seventeen states carry an `auto` block and advance within 100 to 300 ms
+* *Auto-advancing states cannot be held.* Seventeen states carry an `auto` block and advance between 250 and 900 ms
   (`auto.scan`, `harness.probe`, `harness.enrol`, `harness.install-profile`, `catalogue.models`, `catalogue.advise`,
   `catalogue.record`, `roles.validate`, `store.check`, `store.record`, `github.check`, `providers.verify`,
-  `providers.record`, `defaults.validate`, `defaults.record`, `settings.record`, `wait.check`); `harness.probe-failed`
-  additionally carries timed events but stays. A reload after the jump shows the state that followed; the walk records
-  both, and the working screen itself is not screenshotable this way. Every other state was captured as itself.
+  `providers.record`, `defaults.validate`, `defaults.record`, `settings.record` at 250 to 300 ms, and `wait.check` at
+  900 ms); `harness.probe-failed` additionally fires its events at 100 and 200 ms but stays. A reload after the jump
+  shows the state that followed; the walk records both, and the working screen itself is not screenshotable this way.
+  Every other state was captured as itself.
 
 * *The German arms show the mock's English summaries as the card heading.* The interface chrome, the buttons, the
   labels and the step bar are German; nine screens carry the state's `facts.summary` as their heading and the mock's
