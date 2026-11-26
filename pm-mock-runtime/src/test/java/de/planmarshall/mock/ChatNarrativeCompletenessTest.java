@@ -108,6 +108,22 @@ class ChatNarrativeCompletenessTest {
         }
 
         @Test
+        @DisplayName("epic-row-only plan preserves pull_request_number when scope.ended omits it")
+        void epicRowPrNumberUsedWhenMergeOmitsNumber() throws Exception {
+            var routes = ChatRoutes.plan("relay-reconnect-backoff");
+            try (var runtime = ordered(CONTROL_EPIC_STATE)) {
+                open(runtime, routes);
+                broadcast(runtime, "scope.ended", Map.of(
+                        "scope", Map.of("kind", "plan", "id", "relay-reconnect-backoff"),
+                        "outcome", "merged"));
+
+                var lines = allNoticeLines(read(runtime, routes));
+                assertEquals(List.of("chat.line.pr_merged"), lines.stream().map(NarrativeLine::key).toList());
+                assertEquals(211, intArg(lines.getFirst().args().get("number")));
+            }
+        }
+
+        @Test
         @DisplayName("merged plan emits pr_merged line even when scope.ended interrupts a streaming reply")
         void prMergedEmittedWhenScopeEndsDuringReply() throws Exception {
             var routes = ChatRoutes.plan(PLAN);
@@ -308,6 +324,26 @@ class ChatNarrativeCompletenessTest {
                 assertEquals(List.of("chat.line.source_added", "chat.line.source_removed", "chat.line.source_flagged"),
                         lastLines.subList(lastLines.size() - 3, lastLines.size()).stream()
                                 .map(NarrativeLine::key).toList());
+            }
+        }
+
+        @Test
+        @DisplayName("epic auto and next control actions emit epic.auto_changed and epic.row_changed lines")
+        void epicControlActionsEmitAutoAndRowNarrativeLines() throws Exception {
+            var routes = ChatRoutes.epic(EPIC);
+            try (var runtime = ordered(CONTROL_EPIC_STATE)) {
+                open(runtime, routes);
+
+                var autoOff = post(runtime, "/api/v1/epics/" + EPIC + "/actions/auto",
+                        JsonTree.write(Map.of("enabled", false)));
+                assertEquals(200, autoOff.status(), autoOff.bodyText());
+                var nextStarted = post(runtime, "/api/v1/epics/" + EPIC + "/actions/next", "{}");
+                assertEquals(200, nextStarted.status(), nextStarted.bodyText());
+
+                var keys = allNoticeLines(read(runtime, routes)).stream().map(NarrativeLine::key).toList();
+                assertAll("epic control actions emit narrative lines",
+                        () -> assertTrue(keys.contains("chat.line.auto_changed"), () -> "missing auto_changed in " + keys),
+                        () -> assertTrue(keys.contains("chat.line.row_started"), () -> "missing row_started in " + keys));
             }
         }
 

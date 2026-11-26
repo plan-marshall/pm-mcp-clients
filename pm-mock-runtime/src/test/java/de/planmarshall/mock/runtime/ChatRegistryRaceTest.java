@@ -147,7 +147,7 @@ class ChatRegistryRaceTest {
         }, stopExecutor);
 
         var stopResult = stopFuture.get(5, TimeUnit.SECONDS);
-        drainScheduled(scheduled);
+        drainScheduled(scheduled, delegate);
 
         assertNull(uncaught.get(), "round " + round + " threw on scheduler/stop thread");
         assertTrue(stopResult.status() == 200 || stopResult.status() == 409,
@@ -165,10 +165,11 @@ class ChatRegistryRaceTest {
         return false;
     }
 
-    private static void drainScheduled(List<ScheduledFuture<?>> scheduled) throws Exception {
+    private static void drainScheduled(List<ScheduledFuture<?>> scheduled, ScheduledExecutorService delegate)
+            throws Exception {
         for (var i = 0; i < scheduled.size(); i++) {
             var future = scheduled.get(i);
-            if (!future.isDone() && !future.isCancelled()) {
+            if (!future.isCancelled()) {
                 try {
                     future.get(5, TimeUnit.SECONDS);
                 } catch (CancellationException _) {
@@ -176,6 +177,8 @@ class ChatRegistryRaceTest {
                 }
             }
         }
+        // Drain any callback that had already begun executing on the single-threaded scheduler when cancelled.
+        delegate.submit(() -> null).get(5, TimeUnit.SECONDS);
     }
 
     private static void assertNoReplayAfterStopCompletion(List<ChatEvent> events, String turnId, int round) {

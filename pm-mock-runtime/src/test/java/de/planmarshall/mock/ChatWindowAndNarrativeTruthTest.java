@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -108,6 +109,9 @@ class ChatWindowAndNarrativeTruthTest {
             var planProposal = Objects.requireNonNull(read(runtime, planRoutes).proposal());
             assertEquals(200, post(runtime, planRoutes.accept(),
                     new ProposalAnswerRequest(planProposal.turnId()).toJson()).status());
+            var queued = Objects.requireNonNull(runtime.engine().queuedRevision(PLAN),
+                    "accepted revision must queue on the plan");
+            assertEquals(planProposal.turnId(), queued.turnId());
 
             var decisionProposal = Objects.requireNonNull(read(runtime, decisionRoutes).proposal());
             broadcast(runtime, "scope.ended", Map.of("plan_id", PLAN, "outcome", "merged",
@@ -138,12 +142,21 @@ class ChatWindowAndNarrativeTruthTest {
                             "device", Generators.letterStrings(4, 10).next()));
 
             var lines = noticeLines(read(runtime, routes));
-            assertAll("pausing and paused are both narrated in order",
+            assertAll("pausing and paused are both narrated in order and engine records paused",
+                    () -> assertEquals("paused", runtime.engine().activity(PLAN)),
                     () -> assertEquals(List.of("chat.line.plan_pausing", "chat.line.plan_paused"),
                             lines.stream().map(NarrativeLine::key).toList()),
                     () -> assertEquals("task", String.valueOf(lines.get(0).args().get("point"))),
                     () -> assertEquals("web", String.valueOf(lines.get(1).args().get("channel"))));
         }
+    }
+
+    @Test
+    @DisplayName("fixture validation rejects a decision chat whose subject prefix disagrees with the decision's plan")
+    void mismatchedDecisionChatBindingRejected() {
+        var scenario = withMismatchedDecisionChat(PLAN, "other-plan", "Q-" + Generators.integers(100, 999).next());
+        assertThrows(IllegalStateException.class,
+                () -> MockRuntime.start(MockRuntimeConfig.builder().initialScenario(scenario).build()));
     }
 
     @Test
@@ -195,6 +208,24 @@ class ChatWindowAndNarrativeTruthTest {
     }
 
     @SuppressWarnings("unchecked")
+    private static Scenario withMismatchedDecisionChat(String chatPlanId, String decisionPlanId, String questionId) {
+        var base = new ScenarioRegistry().resolve(StandardScenarios.RUNNING_WORK);
+        var stateId = base.start();
+        var state = Objects.requireNonNull(base.state(stateId));
+        var representation = (Map<String, Object>) copy(state.representation());
+        var runtimeNode = (Map<String, Object>) ((Map<String, Object>) representation.get("facts")).get("runtime");
+        var control = (Map<String, Object>) runtimeNode.get("control");
+        ((List<Object>) runtimeNode.get("decisions")).add(scopedDecision(questionId, "plan", decisionPlanId));
+        ((List<Object>) control.get("chats")).add(decisionRevisionChat("C-mismatch", chatPlanId + "/" + questionId,
+                "Tm-"));
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, state.links(), state.events(), state.auto(),
+                state.chatFailures()));
+        return new Scenario(base.formatVersion(), base.name(), base.description(), stateId, base.pairingCode(),
+                base.routes(), states);
+    }
+
+    @SuppressWarnings("unchecked")
     private static Scenario withPlanDecisionRevision(String planId, String questionId) {
         var base = new ScenarioRegistry().resolve(StandardScenarios.RUNNING_WORK);
         var stateId = base.start();
@@ -219,7 +250,7 @@ class ChatWindowAndNarrativeTruthTest {
         var representation = (Map<String, Object>) copy(state.representation());
         var runtime = (Map<String, Object>) ((Map<String, Object>) representation.get("facts")).get("runtime");
         var decisions = (List<Object>) runtime.get("decisions");
-        decisions.add(nonPlanDecision("Q-91", "epic", sharedId));
+        decisions.add(scopedDecision("Q-91", "epic", sharedId));
         var start = new LinkedHashMap<String, Object>();
         start.put("project_id", "pm-mcp-clients");
         start.put("kind", "plan");
@@ -238,7 +269,7 @@ class ChatWindowAndNarrativeTruthTest {
                 base.routes(), states);
     }
 
-    private static Map<String, Object> nonPlanDecision(String id, String scope, String subjectId) {
+    private static Map<String, Object> scopedDecision(String id, String scope, String subjectId) {
         var decision = new LinkedHashMap<String, Object>();
         decision.put("id", id);
         decision.put("revision", 1);

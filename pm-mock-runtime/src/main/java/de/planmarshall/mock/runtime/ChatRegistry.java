@@ -238,6 +238,7 @@ final class ChatRegistry {
     private static final String ACTIVITY_PAUSING = "pausing";
     private static final String ACTIVITY_PAUSED = "paused";
     private static final String ACTIVITY_RUNNING = "running";
+    private static final String STATE_ENDED = "ended";
     /** A member the registry marks its own announcements with, which never reaches the wire. */
     private static final String INTERNAL_KEY = "$internal";
 
@@ -414,7 +415,7 @@ final class ChatRegistry {
         if (outcome == null) {
             return false;
         }
-        outcome.events().forEach(broadcaster);
+        publishEvents(outcome.events());
         if (outcome.then() != null) {
             outcome.then().run();
         }
@@ -899,7 +900,7 @@ final class ChatRegistry {
         recordEndedTask(event, payload);
         events.addAll(revisionAtBoundary(event, payload));
         events.addAll(narrate(event, payload));
-        events.forEach(broadcaster);
+        publishEvents(events);
     }
 
     /**
@@ -914,6 +915,9 @@ final class ChatRegistry {
             return;
         }
         var planId = JsonTree.string(payload, KEY_PLAN_ID);
+        if (planId == null) {
+            planId = scopedId(payload, SCOPE_PLAN);
+        }
         var taskId = JsonTree.string(payload, KEY_TASK_ID);
         if (planId != null && taskId != null) {
             synchronized (this) {
@@ -1146,7 +1150,7 @@ final class ChatRegistry {
             }
             mergedEvents = List.copyOf(events);
         }
-        mergedEvents.forEach(broadcaster);
+        publishEvents(mergedEvents);
     }
 
     private static @Nullable NarrativeLine rowChangedLine(Map<String, Object> payload, String at) {
@@ -1612,19 +1616,43 @@ final class ChatRegistry {
         synchronized (this) {
             endedWork.put(subject, outcome);
         }
-        endWhere(subject::equals, ChatEndedEvent.EndedBy.SUBJECT_ENDED);
+        // scope.ended clears the queued revision right afterwards in revisionAtBoundary, so avoid
+        // emitting a transient chat_open=false plan.revision_queued before clearing it to null.
+        endWhere(subject::equals, ChatEndedEvent.EndedBy.SUBJECT_ENDED, false);
     }
 
     private void endWhere(Predicate<ChatSubject> subjects, ChatEndedEvent.EndedBy endedBy) {
+        endWhere(subjects, endedBy, true);
+    }
+
+    private void endWhere(Predicate<ChatSubject> subjects, ChatEndedEvent.EndedBy endedBy,
+            boolean preserveQueuedRevision) {
         var events = new ArrayList<ChatEvent>();
         synchronized (this) {
             for (var chat : chats.values()) {
                 if (subjects.test(chat.subject) && !chat.state.isEnded()) {
-                    events.addAll(endChat(chat, ChatStatus.END, endedBy));
+                    events.addAll(endChat(chat, ChatStatus.END, endedBy, preserveQueuedRevision));
                 }
             }
         }
-        events.forEach(broadcaster);
+        publishEvents(events);
+    }
+
+    /**
+     * Publishes events to the wire, skipping any stale non-{@code ended} {@code activity.changed}
+     * captured before {@code scope.ended} closed the plan.
+     */
+    private void publishEvents(List<ChatEvent> events) {
+        for (var event : events) {
+            if (EVENT_ACTIVITY_CHANGED.equals(event.name())
+                    && !STATE_ENDED.equals(JsonTree.string(event.data(), KEY_ACTIVITY))) {
+                var planId = JsonTree.string(event.data(), KEY_PLAN_ID);
+                if (planId != null && STATE_ENDED.equals(facts.activity(planId))) {
+                    continue;
+                }
+            }
+            broadcaster.accept(event);
+        }
     }
 
     /**
@@ -1637,6 +1665,11 @@ final class ChatRegistry {
      *         revision the chat proposed
      */
     private List<ChatEvent> endChat(Chat chat, ChatStatus state, ChatEndedEvent.EndedBy endedBy) {
+        return endChat(chat, state, endedBy, true);
+    }
+
+    private List<ChatEvent> endChat(Chat chat, ChatStatus state, ChatEndedEvent.EndedBy endedBy,
+            boolean preserveQueuedRevision) {
         chat.cancelPlay();
         // An ended chat has no transcript to write the held narrative into.
         chat.heldLines.clear();
@@ -1648,7 +1681,7 @@ final class ChatRegistry {
         events.add(new ChatEvent(ChatEndedEvent.EVENT_NAME, streamOf(chat),
                 new ChatEndedEvent(chat.id, endedBy, null, null).toMap()));
         var planId = chat.planId;
-        if (planId != null) {
+        if (preserveQueuedRevision && planId != null) {
             var queued = facts.queuedRevision(planId);
             if (queued != null && queued.chatId().equals(chat.id)) {
                 facts.revisionChatEnded(planId);

@@ -353,6 +353,20 @@ class ChatProposalsTest {
                                                 && String.valueOf(source.reference()).contains(planId)),
                                 "the start follows the plan"));
             }
+            var scopedPlanId = id();
+            var scopedRoutes = ChatRoutes.endedPlan(scopedPlanId);
+            try (var runtime = ordered(FOLLOW_UP_STATE)) {
+                endAtRunTime(runtime, Map.of(KEY_OUTCOME, "merged",
+                        KEY_SCOPE, Map.of(KEY_KIND, "plan", KEY_ID, scopedPlanId, KEY_PROJECT_ID, PROJECT)));
+                assertEquals(ChatScopeKind.ARCHIVE, openChat(runtime, scopedRoutes).scope());
+                var proposal = proposeAt(runtime, scopedRoutes, 2, ProposalKind.FOLLOW_UP);
+
+                var accepted = answer(runtime, scopedRoutes.accept(), proposal);
+
+                assertEquals(ProposalState.APPLIED, Objects.requireNonNull(accepted.proposal()).state());
+                var started = startState(runtime, FOLLOW_UP_ENTRY).entry();
+                assertEquals(PROJECT, started.projectId());
+            }
         }
 
         @Test
@@ -431,7 +445,7 @@ class ChatProposalsTest {
         void blankEpicRowsAfter() throws Exception {
             var routes = ChatRoutes.epic(EPIC_ID);
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                         .initialScenario(withBlankEpicRowsProposal()).timing(MockTiming.ORDERED).build())) {
+                         .initialScenario(withEpicRowsProposal(" ", false)).timing(MockTiming.ORDERED).build())) {
                 var before = decomposition(runtime);
                 var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded rows proposal");
 
@@ -442,30 +456,79 @@ class ChatProposalsTest {
                         MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
             }
         }
+
+        @Test
+        @DisplayName("keeps locked rows untouched when named by a rows proposal")
+        void lockedEpicRowsDoNotMutateDecomposition() throws Exception {
+            var routes = ChatRoutes.epic(EPIC_ID);
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(withEpicRowsProposal("relay-cursor-order", true))
+                         .timing(MockTiming.ORDERED).build())) {
+                var before = decomposition(runtime);
+                var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded rows proposal");
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(before, decomposition(runtime), "locked row target changed nothing");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
+
+        @Test
+        @DisplayName("refuses unknown ID lists without rewriting open rows")
+        void unknownEpicRowsIdListDoesNotRewriteOpenRow() throws Exception {
+            var routes = ChatRoutes.epic(EPIC_ID);
+            try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                         .initialScenario(withEpicRowsProposal("nonexistent-plan-1, nonexistent-plan-2", false))
+                         .timing(MockTiming.ORDERED).build())) {
+                var before = decomposition(runtime);
+                var proposal = Objects.requireNonNull(read(runtime, routes).proposal(), "the seeded rows proposal");
+
+                answer(runtime, routes.accept(), proposal);
+
+                assertEquals(before, decomposition(runtime), "unknown plan ID list fell back to no open row");
+                LogAsserts.assertSingleLogMessagePresentContaining(TestLogLevel.WARN,
+                        MockRuntimeLogMessages.WARN.CHAT_PROPOSAL_NOT_APPLIED.resolveIdentifierString());
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private static Scenario withBlankEpicRowsProposal() {
+    private static Scenario withEpicRowsProposal(String after, boolean lockTarget) {
         var base = new ScenarioRegistry().resolve(StandardScenarios.RUNNING_WORK);
         var stateId = base.start();
         var state = Objects.requireNonNull(base.state(stateId));
         var representation = (Map<String, Object>) copy(state.representation());
-        var control = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) representation
-                .get("facts")).get("runtime")).get("control");
+        var runtimeNode = (Map<String, Object>) ((Map<String, Object>) representation.get("facts")).get("runtime");
+        if (lockTarget) {
+            var decompositions = (List<Object>) runtimeNode.get("decompositions");
+            var firstCut = (Map<String, Object>) decompositions.getFirst();
+            var workstreams = (List<Object>) firstCut.get("workstreams");
+            var firstWs = (Map<String, Object>) workstreams.getFirst();
+            var staged = (List<Object>) firstWs.get("staged_plans");
+            for (var item : staged) {
+                var plan = (Map<String, Object>) item;
+                if ("relay-cursor-order".equals(plan.get("plan_id"))) {
+                    plan.put("status", StagedPlanRecord.STATUS_LOCKED);
+                }
+            }
+        }
+        var control = (Map<String, Object>) runtimeNode.get("control");
         var chats = (List<Object>) control.get("chats");
         var epicChat = (Map<String, Object>) chats.get(1);
         var proposal = new LinkedHashMap<String, Object>();
         proposal.put("turn_id", "T-9203");
         proposal.put("reply_turn_id", "T-0005");
         proposal.put("kind", "rows");
-        proposal.put("summary", "blank rows");
-        proposal.put("after", " ");
+        proposal.put("summary", "rows edit");
+        proposal.put("after", after);
         proposal.put("state", "open");
         epicChat.put("state", "chat.read-back");
         epicChat.put("proposal", proposal);
         var turns = new ArrayList<>((List<Object>) epicChat.get("turns"));
         turns.add(Map.of("turn_id", "T-9203", "kind", "proposal", "author", "decompose", "status", "complete",
-                "format", "plain", "untrusted", false, "text", "blank rows", "steps", List.of(), "refs", List.of(),
+                "format", "plain", "untrusted", false, "text", "rows edit", "steps", List.of(), "refs", List.of(),
                 "at", "2026-10-14T10:06:00Z"));
         epicChat.put("turns", turns);
         var states = new LinkedHashMap<>(base.states());

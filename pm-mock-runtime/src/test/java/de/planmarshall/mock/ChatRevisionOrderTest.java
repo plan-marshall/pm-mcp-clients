@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -226,6 +227,8 @@ class ChatRevisionOrderTest {
                             e -> "chat.proposal".equals(e.name())
                                     && "lapsed".equals(JsonTree.string(e.data(), "state")));
                     assertOrderedNames(lapseEvents,
+                            e -> "chat.ended".equals(e.name())
+                                    && "subject_ended".equals(JsonTree.string(e.data(), "ended_by")),
                             e -> "plan.revision_queued".equals(e.name()) && e.data().get("queued_revision") == null,
                             e -> "activity.changed".equals(e.name())
                                     && PLAN_SESSION.equals(JsonTree.string(e.data(), "plan_id")),
@@ -267,6 +270,26 @@ class ChatRevisionOrderTest {
                             () -> assertNotNull(queued),
                             () -> assertEquals(Boolean.FALSE, Objects.requireNonNull(queued).get("chat_open")));
                 }
+            }
+        }
+
+        @Test
+        @DisplayName("scoped task.ended records the ended task and refuses a late revision for that boundary")
+        void scopedTaskEndedRefusesLateRevision() throws Exception {
+            var routes = ChatRoutes.plan(PLAN_SESSION);
+            try (var runtime = ordered(CHAT_STATE)) {
+                var proposal = producePlanProposal(runtime, routes);
+                broadcast(runtime, "task.ended", Map.of(
+                        "scope", Map.of("kind", "plan", "id", PLAN_SESSION),
+                        "task_id", "TASK-4",
+                        "status", "done"));
+
+                var refused = answer(runtime, routes.accept(), proposal);
+
+                assertEquals(ProposalState.REFUSED, Objects.requireNonNull(refused.proposal()).state());
+                assertNull(planRow(runtime, PROJECT_CORE, PLAN_SESSION).get("queued_revision"));
+                var rejected = answer(runtime, routes.reject(), proposal);
+                assertEquals(ProposalState.REJECTED, Objects.requireNonNull(rejected.proposal()).state());
             }
         }
     }
@@ -458,20 +481,21 @@ class ChatRevisionOrderTest {
         return List.copyOf(collected);
     }
 
+    private static final Set<String> LIFECYCLE_EVENTS = Set.of("chat.proposal", "chat.ended",
+            "plan.revision_queued", "activity.changed");
+
     @SafeVarargs
     private static void assertOrderedNames(List<RecordedEvent> events, Predicate<RecordedEvent>... matchers) {
-        var cursor = 0;
+        var lifecycle = events.stream().filter(event -> LIFECYCLE_EVENTS.contains(event.name())).toList();
+        assertEquals(matchers.length, lifecycle.size(),
+                () -> "unexpected lifecycle event sequence: "
+                        + lifecycle.stream().map(RecordedEvent::name).toList());
         for (var i = 0; i < matchers.length; i++) {
-            var found = false;
-            while (cursor < events.size()) {
-                var candidate = events.get(cursor++);
-                if (matchers[i].test(candidate)) {
-                    found = true;
-                    break;
-                }
-            }
-            assertTrue(found, "missing expected event #" + i + " after earlier events in "
-                    + events.stream().map(RecordedEvent::name).toList());
+            final var index = i;
+            var candidate = lifecycle.get(index);
+            assertTrue(matchers[index].test(candidate),
+                    () -> "lifecycle event #" + index + " mismatch in "
+                            + lifecycle.stream().map(RecordedEvent::name).toList());
         }
     }
 
@@ -510,15 +534,6 @@ class ChatRevisionOrderTest {
                             return plan;
                         }
                     }
-                }
-            }
-        }
-        if (body.get("plans") instanceof List<?> plans) {
-            for (var planObj : plans) {
-                var plan = JsonTree.asObject(planObj);
-                if (plan != null && (planId.equals(JsonTree.string(plan, "plan_id"))
-                        || planId.equals(JsonTree.string(plan, "id")))) {
-                    return plan;
                 }
             }
         }
