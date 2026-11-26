@@ -332,6 +332,56 @@ describe('EpicView component', () => {
     );
   });
 
+  it('names an unreadable wait and a held wait, never reading either as can start', async () => {
+    // A wait reason the epic's resource names, so the row must show it rather than "can start".
+    const resource: EpicResource = {
+      ...mockResource,
+      workstreams: [
+        {
+          ...mockResource.workstreams[0],
+          rows: [
+            ...mockResource.workstreams[0].rows,
+            {
+              plan_id: 'relay-spec-docs',
+              title: 'Spec docs',
+              status: 'staged',
+              wait_reason: 'unreadable',
+            },
+            {
+              plan_id: 'relay-held-docs',
+              title: 'Held docs',
+              status: 'staged',
+              wait_reason: 'held',
+            },
+            {
+              // The retired reason: the client knows no case for it, so it draws no wait at all.
+              plan_id: 'relay-stale-docs',
+              title: 'Stale docs',
+              status: 'staged',
+              wait_reason: 'stale',
+              wait_since: '2026-10-16T09:48:00Z',
+            },
+          ],
+        },
+      ],
+    };
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(resource);
+    render(EpicView);
+
+    expect(await screen.findByTestId('wait-relay-spec-docs')).toHaveTextContent(
+      'relay-spec-docs waits: its specification cannot be read',
+    );
+    expect(screen.getByTestId('wait-relay-held-docs')).toHaveTextContent(
+      'relay-held-docs waits: held',
+    );
+    expect(screen.getByTestId('wait-relay-spec-docs')).not.toHaveTextContent('can start');
+    expect(screen.getByTestId('wait-relay-held-docs')).not.toHaveTextContent('can start');
+    // No `stale` case is left: the retired reason draws no wait, not even the old fresh-cut line.
+    expect(await screen.findByTestId('epic-row-relay-stale-docs')).toBeInTheDocument();
+    expect(screen.queryByTestId('wait-relay-stale-docs')).not.toBeInTheDocument();
+    expect(screen.queryByText(/waits for a fresh cut/)).not.toBeInTheDocument();
+  });
+
   it('counts the landings from the shipped rows it lists, not from the served figure', async () => {
     vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
     render(EpicView);

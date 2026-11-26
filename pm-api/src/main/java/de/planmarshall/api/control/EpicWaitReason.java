@@ -17,7 +17,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>A staged row is either {@code can start} ({@link #NONE}) or waits for one of these reasons;
  * an {@code overlap} names the running plan it waits for and the files in common, a
- * {@code dependency} the staged plan that must land first, and {@code scope} a full place.
+ * {@code dependency} the staged plan that must land first, {@code scope} a full place,
+ * {@code unreadable} a claim section of the row's specification that cannot be read, and
+ * {@code held} a row the epic holds.
  */
 public enum EpicWaitReason {
     NONE("none"),
@@ -25,7 +27,7 @@ public enum EpicWaitReason {
     LOCK("lock"),
     SCOPE("scope"),
     OVERLAP("overlap"),
-    STALE("stale"),
+    UNREADABLE("unreadable"),
     HELD("held");
 
     private final String value;

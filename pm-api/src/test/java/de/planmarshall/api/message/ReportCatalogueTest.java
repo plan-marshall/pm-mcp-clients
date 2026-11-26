@@ -70,6 +70,18 @@ class ReportCatalogueTest {
     }
 
     @Test
+    void shouldCarryNoSubjectKeyForTheRetiredOverlapFoundKind() {
+        var en = MessageCatalogue.getMessages("en", "reports");
+        var de = MessageCatalogue.getMessages("de", "reports");
+
+        assertAll(
+                () -> assertFalse(en.containsKey("report.subject.epic_overlap_found"),
+                        "the retired kind's subject text is removed"),
+                () -> assertFalse(de.containsKey("report.subject.epic_overlap_found"),
+                        "the retired kind's subject text is removed in German too"));
+    }
+
+    @Test
     void shouldContainAllSpecificationKeys() {
         var en = MessageCatalogue.getMessages("en", "reports");
 

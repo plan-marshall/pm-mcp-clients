@@ -5,14 +5,43 @@
  * DOM ancestors, font-size/font-weight threshold classification, and automated page audits.
  */
 
+import { expect } from '@playwright/test';
+
 /**
- * Sets the theme explicitly on the document element.
+ * Asserts that the document paints the theme the audit names, before anything is measured on it.
+ *
+ * The theme is applied from `pm_theme` by `app.html`'s inline script and then by the theme module,
+ * so an audit that sets only the attribute is overwritten by the next document load. A measurement
+ * taken under another theme is not a measurement of this one, so the mismatch stops the run here
+ * instead of passing with the wrong colours.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'light' | 'dark'} theme
+ */
+export async function assertTheme(page, theme) {
+  const applied = await page.evaluate(() => document.documentElement.dataset.theme);
+  expect(applied, `the ${theme} audit would measure the document's ${applied} theme`).toBe(theme);
+}
+
+/**
+ * Sets the theme explicitly on the document element, and stores it for the next load.
+ *
+ * Writing `pm_theme` before `page.goto` is what makes the theme survive the navigation: `app.html`
+ * re-derives `data-theme` from that key before the first paint, so a document opened later boots in
+ * the requested theme instead of the system one.
  *
  * @param {import('@playwright/test').Page} page
  * @param {'light' | 'dark'} theme
  */
 export async function setTheme(page, theme) {
   await page.evaluate((t) => {
+    // The choice belongs to the browser, not to this document: the inline script of `app.html`
+    // reads it again on every load, which is what carries the theme across the next `page.goto`.
+    try {
+      window.localStorage.setItem('pm_theme', t);
+    } catch {
+      // A storage that refuses the write still lets this document show the theme.
+    }
     document.documentElement.setAttribute('data-theme', t);
     // The quiet-frame count is per call: a previous call must not count for this one.
     window.__themeTransitionSettled = false;
@@ -37,6 +66,7 @@ export async function setTheme(page, theme) {
     undefined,
     { polling: 'raf', timeout: 5000 },
   );
+  await assertTheme(page, theme);
 }
 
 /**
@@ -236,11 +266,15 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
 /**
  * Runs the contrast audit on the active page.
  *
+ * Module-private on purpose: a caller reaches it through `auditViewContrast`, which asserts the
+ * document paints the theme the audit names first. A direct measurement could pass under the wrong
+ * theme, which is the failure this module exists to remove.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {object} [options]
  * @returns {Promise<{ all: Array<any>, failures: Array<any> }>}
  */
-export async function auditPageContrast(page, options = {}) {
+async function auditPageContrast(page, options = {}) {
   const elements = await page.evaluate(
     `(${IN_BROWSER_CONTRAST_ANALYZER})(${JSON.stringify(options)})`,
   );
@@ -258,6 +292,7 @@ export async function auditPageContrast(page, options = {}) {
  * @returns {Promise<{ all: Array<any>, failures: Array<any> }>}
  */
 export async function auditViewContrast(page, testInfo, { view, theme, viewport }, options = {}) {
+  await assertTheme(page, theme);
   const { all, failures } = await auditPageContrast(page, options);
   if (failures.length > 0) {
     console.error(`Contrast failures in ${view} (${theme}, ${viewport.name}):`, failures);

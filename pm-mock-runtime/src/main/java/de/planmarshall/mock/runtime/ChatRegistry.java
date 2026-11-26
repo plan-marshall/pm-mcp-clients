@@ -220,7 +220,6 @@ final class ChatRegistry {
     private static final String ARG_POINT = "point";
     private static final String ARG_CAUSE = "cause";
     private static final String ARG_BLOCKS = "blocks";
-    private static final String BLOCKS_NONE = "none";
     private static final String ARG_NEW_PHASE = "new_phase";
     private static final String ARG_INSTANCE_VERSION = "instance_version";
     private static final String SCOPE_PLAN = "plan";
@@ -1218,11 +1217,12 @@ final class ChatRegistry {
 
     /**
      * The word a decision line selects its text by: the decision's own {@code blocks} value —
-     * {@code plan}, {@code epic}, {@code setup}, {@code entry} or {@code task} — or {@code none}
+     * {@code plan}, {@code epic}, {@code setup}, {@code entry} or {@code task} — or {@code no}
      * where the decision blocks nothing, which the catalogue renders as no text at all.
      *
      * @param payload the event's payload
-     * @return the word the catalogue selects by
+     * @return the blocker the line names, as the payload states it ({@code no} when it names none),
+     *         so the catalogue's select can name the place the decision blocks
      */
     private static String blocksOf(Map<String, Object> payload) {
         var blocks = JsonTree.string(payload, ARG_BLOCKS);
@@ -1230,7 +1230,7 @@ final class ChatRegistry {
             var decision = JsonTree.asObject(payload.get(KEY_DECISION));
             blocks = decision == null ? null : JsonTree.string(decision, ARG_BLOCKS);
         }
-        return blocks != null && !blocks.isBlank() ? blocks : BLOCKS_NONE;
+        return blocks == null || blocks.isBlank() ? "no" : blocks;
     }
 
     private static NarrativeLine line(String name, Map<String, Object> args, List<TurnRef> refs, String at) {

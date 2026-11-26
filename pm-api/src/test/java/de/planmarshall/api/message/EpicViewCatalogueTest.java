@@ -20,6 +20,8 @@ import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.planmarshall.api.control.EpicWaitReason;
+
 /**
  * Verifies the texts of the epic view (UC-PLN-5, design {@code epic-view.adoc#texts}): the keys the
  * shared layout needs exist in both languages, and every parameterized text formats as the design
@@ -57,12 +59,8 @@ class EpicViewCatalogueTest {
                 "overview.epic.counts.abandoned",
                 "overview.epic.counts.held",
                 "overview.epic.status",
-                "overview.epic.waits.dependency",
-                "overview.epic.waits.lock",
-                "overview.epic.waits.scope",
-                "overview.epic.waits.overlap",
                 "overview.epic.waits.overlap_files",
-                "overview.epic.waits.none",
+                "overview.epic.waits.other",
                 "overview.epic.mode",
                 "overview.epic.event.landed",
                 "overview.epic.event.ended_held",
@@ -70,7 +68,6 @@ class EpicViewCatalogueTest {
                 "overview.epic.event.ended_left",
                 "overview.epic.event.started",
                 "overview.epic.event.can_start",
-                "overview.epic.event.overlap_found",
                 "overview.epic.event.through",
                 "overview.epic.event.mode",
                 "overview.epic.sources",
@@ -110,6 +107,12 @@ class EpicViewCatalogueTest {
             assertNotNull(de.get(key), "Value for '" + key + "' must not be null");
             assertFalse(en.get(key).isBlank(), "Value for '" + key + "' must not be blank in English");
             assertFalse(de.get(key).isBlank(), "Value for '" + key + "' must not be blank in German");
+        }
+        // One overview wait text per closed reason: a reason added to the enum forces its key.
+        for (var reason : EpicWaitReason.values()) {
+            var key = "overview.epic.waits." + reason.value();
+            assertTrue(en.containsKey(key), "Key '" + key + "' must exist in the English epic view texts");
+            assertTrue(de.containsKey(key), "Key '" + key + "' must exist in the German epic view texts");
         }
     }
 
@@ -159,6 +162,20 @@ class EpicViewCatalogueTest {
         assertEquals("the row's own status",
                 MessageCatalogue.format("en", "overview.epic.status", Map.of("status", "the row's own status")));
 
+        assertEquals("1 file in common with relay-auth-v2: pm-api/src/A.java",
+                MessageCatalogue.format("en", "overview.epic.waits.overlap_files",
+                        Map.of("files", 1, "plan", "relay-auth-v2", "paths", "pm-api/src/A.java")));
+        assertEquals("2 gemeinsame Dateien mit relay-auth-v2: a, b",
+                MessageCatalogue.format("de", "overview.epic.waits.overlap_files",
+                        Map.of("files", 2, "plan", "relay-auth-v2", "paths", "a, b")));
+
+        assertEquals("automatic", MessageCatalogue.format("en", "overview.epic.mode", Map.of("mode", "automatic")));
+        assertEquals("von Hand", MessageCatalogue.format("de", "overview.epic.mode", Map.of("mode", "manual")));
+    }
+
+    @Test
+    @DisplayName("should format a wait text for every reason the design names")
+    void shouldFormatAWaitTextForEveryReason() {
         assertEquals("waits: overlap with relay-auth-v2",
                 MessageCatalogue.format("en", "overview.epic.waits.overlap", Map.of("plan", "relay-auth-v2")));
         assertEquals("wartet: Überschneidung mit relay-auth-v2",
@@ -169,17 +186,20 @@ class EpicViewCatalogueTest {
                 MessageCatalogue.format("en", "overview.epic.waits.lock", Map.of("lock", "landing-a")));
         assertEquals("waits for a free place: 3 of 3 taken",
                 MessageCatalogue.format("en", "overview.epic.waits.scope", Map.of("running", 3, "scope", 3)));
+
+        assertEquals("waits: its specification cannot be read",
+                MessageCatalogue.format("en", "overview.epic.waits.unreadable", Map.of()));
+        assertEquals("wartet: seine Spezifikation ist nicht lesbar",
+                MessageCatalogue.format("de", "overview.epic.waits.unreadable", Map.of()));
+        assertEquals("waits: held", MessageCatalogue.format("en", "overview.epic.waits.held", Map.of()));
+        assertEquals("wartet: zurückgehalten", MessageCatalogue.format("de", "overview.epic.waits.held", Map.of()));
+
+        // A word outside the closed set is echoed, and a row that waits for nothing can start.
+        assertEquals("waits: waiting for a place",
+                MessageCatalogue.format("en", "overview.epic.waits.other", Map.of("reason", "waiting for a place")));
+        assertEquals("wartet: waiting for a place",
+                MessageCatalogue.format("de", "overview.epic.waits.other", Map.of("reason", "waiting for a place")));
         assertEquals("can start", MessageCatalogue.format("en", "overview.epic.waits.none", Map.of()));
-
-        assertEquals("1 file in common with relay-auth-v2: pm-api/src/A.java",
-                MessageCatalogue.format("en", "overview.epic.waits.overlap_files",
-                        Map.of("files", 1, "plan", "relay-auth-v2", "paths", "pm-api/src/A.java")));
-        assertEquals("2 gemeinsame Dateien mit relay-auth-v2: a, b",
-                MessageCatalogue.format("de", "overview.epic.waits.overlap_files",
-                        Map.of("files", 2, "plan", "relay-auth-v2", "paths", "a, b")));
-
-        assertEquals("automatic", MessageCatalogue.format("en", "overview.epic.mode", Map.of("mode", "automatic")));
-        assertEquals("von Hand", MessageCatalogue.format("de", "overview.epic.mode", Map.of("mode", "manual")));
     }
 
     @Test
@@ -213,9 +233,8 @@ class EpicViewCatalogueTest {
                         Map.of("plan", "relay-token-store", "running", 2, "scope", 3)));
         assertEquals("can start now: relay-token-store",
                 MessageCatalogue.format("en", "overview.epic.event.can_start", Map.of("plans", "relay-token-store")));
-        assertEquals("relay-cursor-order and relay-docs changed 3 files in common",
-                MessageCatalogue.format("en", "overview.epic.event.overlap_found",
-                        Map.of("plan", "relay-cursor-order", "other", "relay-docs", "files", 3)));
+        assertFalse(epicTexts("en").containsKey("overview.epic.event.overlap_found"),
+                "the retired report kind's event text is removed");
         assertEquals("relay-hardening is through: the completion review is ready",
                 MessageCatalogue.format("en", "overview.epic.event.through",
                         Map.of("epic", "relay-hardening", "review", "ready")));
@@ -263,12 +282,15 @@ class EpicViewCatalogueTest {
     @DisplayName("should keep the wait reason texts for every closed reason")
     void shouldKeepAWaitTextForEveryClosedReason() {
         var en = epicTexts("en");
-        String[] reasons = {"dependency", "lock", "scope", "overlap", "stale", "held"};
-        for (String reason : reasons) {
-            var key = "epic.views.wait." + reason;
-            assertTrue(en.containsKey(key), "A wait text for the closed reason '" + reason + "' must exist");
+        for (var reason : EpicWaitReason.values()) {
+            if (reason == EpicWaitReason.NONE) {
+                continue;
+            }
+            var key = "epic.views.wait." + reason.value();
+            assertTrue(en.containsKey(key), "A wait text for the closed reason '" + reason.value() + "' must exist");
             var formatted = MessageCatalogue.format("en", key, Map.of("plan", "relay-docs", "other", "relay-auth-v2"));
-            assertFalse(formatted.isBlank(), "The wait text for '" + reason + "' must format to a line");
+            assertFalse(formatted.isBlank(), "The wait text for '" + reason.value() + "' must format to a line");
         }
+        assertFalse(en.containsKey("epic.views.wait.stale"), "The retired wait text must be gone");
     }
 }

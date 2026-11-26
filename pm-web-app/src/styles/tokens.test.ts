@@ -3,6 +3,7 @@ import { LAYER_TOKENS as SHARED_LAYER_TOKENS } from './layers';
 import fs from 'fs';
 import path from 'path';
 import { contrastRatio, deltaE00, hueDistance, toOklch } from '../test/colourMetrics';
+import { blockOf, declarations, parseThemes, withoutComments } from '../lib/test/stylesheet';
 
 /**
  * The design system v2 contract of `tokens.css` (VD-P-02, VD-P-03, VD-P-04).
@@ -288,83 +289,11 @@ function belowMinimum<T extends { value: number }>(rows: readonly T[], minimum: 
 }
 
 /**
- * @param css the stylesheet
- * @returns the stylesheet without its comments, so a commented-out declaration never counts
- */
-function withoutComments(css: string): string {
-  return css.replace(/\/\*[\s\S]*?\*\//g, '');
-}
-
-/**
- * @param source the stylesheet
- * @param openIndex the index of the opening brace
- * @returns the block's content, braces matched
- */
-function matchBraces(source: string, openIndex: number): string {
-  let depth = 0;
-  for (let i = openIndex; i < source.length; i += 1) {
-    if (source[i] === '{') {
-      depth += 1;
-    } else if (source[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return source.slice(openIndex + 1, i);
-    }
-  }
-  throw new Error('Unbalanced braces in tokens.css');
-}
-
-/**
- * @param source the stylesheet
- * @param opener the at-rule or selector whose block is wanted
- * @returns the block's content
- */
-function blockOf(source: string, opener: string): string {
-  const at = source.indexOf(opener);
-  if (at < 0) throw new Error(`tokens.css has no "${opener}" block`);
-  const brace = source.indexOf('{', at + opener.length);
-  return matchBraces(source, brace);
-}
-
-/**
- * @param block a declaration block
- * @returns every custom property the block declares, keyed by its name
- */
-function declarations(block: string): Record<string, string> {
-  const found: Record<string, string> = {};
-  const pattern = /(--[a-zA-Z0-9_-]+)\s*:\s*([^;]+);/g;
-  let match: RegExpExecArray | null;
-  while ((match = pattern.exec(block)) !== null) {
-    found[match[1]] = match[2].trim();
-  }
-  return found;
-}
-
-/**
  * @param block a declaration block
  * @returns the names of the custom properties the block declares
  */
 function declaredNames(block: string): Set<string> {
   return new Set(Object.keys(declarations(block)));
-}
-
-/**
- * @param source the stylesheet
- * @returns the parsed themes, with the `:root` declaration as the light default
- */
-function parseThemes(source: string): {
-  root: Record<string, string>;
-  light: Record<string, string>;
-  dark: Record<string, string>;
-  mediaDark: Record<string, string>;
-} {
-  const css = withoutComments(source);
-  const root = declarations(blockOf(css, ':root'));
-  const light = declarations(blockOf(css, "[data-theme='light']"));
-  const dark = declarations(blockOf(css, "[data-theme='dark']"));
-  const mediaDark = declarations(
-    blockOf(blockOf(css, '@media (prefers-color-scheme: dark)'), ':root'),
-  );
-  return { root, light, dark, mediaDark };
 }
 
 /**
@@ -421,6 +350,14 @@ describe('tokens.css: the design system v2 contract', () => {
       expect(themes.light[token]?.toLowerCase()).toBe(values.light.toLowerCase());
       expect(themes.dark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
       expect(themes.mediaDark[token]?.toLowerCase()).toBe(values.dark.toLowerCase());
+    });
+
+    it('keeps the dark palette distinct from the light one for every theme-varying colour', () => {
+      const repeated = Object.keys(COLOUR_TOKENS).filter(
+        (token) => themes.dark[token]?.toLowerCase() === themes.light[token]?.toLowerCase(),
+      );
+
+      expect(repeated, 'a dark colour token repeats its light value').toEqual([]);
     });
 
     it('keeps the set of theme-varying tokens identical in light, dark and the system-dark block', () => {
