@@ -181,7 +181,8 @@ describe('PlanSettingsModal component', () => {
     await fireEvent.change(screen.getByTestId('settings-value-landing'), {
       target: { value: 'landing.files' },
     });
-    expect(screen.getByTestId('settings-save')).not.toBeDisabled();
+    // A conflict is the operator's decision: Save stays disabled until Keep current or Apply again.
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
 
     await fireEvent.click(screen.getByTestId('settings-conflict-keep'));
 
@@ -285,6 +286,8 @@ describe('PlanSettingsModal component', () => {
       'Files in the checkout',
     );
     expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('Main branch');
+    // Save is the operator's to resolve: neither Keep current nor Apply again has been chosen.
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
 
     await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));
     expect(onApplyAgain).toHaveBeenCalledWith({

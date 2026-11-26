@@ -2352,6 +2352,30 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     expect(screen.getByTestId('plan-in-place')).toBeInTheDocument();
     await waitFor(() => expect(document.querySelector('.completion-report')).not.toBeNull());
   });
+
+  it('opens the completion report in place when its head link is activated', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
+      plan_id: 'fix-relay',
+    } as unknown as PlanCompletionReport);
+    runtimeStore.update((s) => ({
+      ...s,
+      selectedPlanEnded: { plan_id: 'fix-relay', outcome: 'merged', ended_at: '2026-10-16T11:20:00Z' },
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    await fireEvent.click(screen.getByTestId('completion-report-link'));
+
+    await waitFor(() =>
+      expect(get(runtimeStore).openObject).toEqual({
+        kind: 'completion-report',
+        id: 'fix-relay',
+      }),
+    );
+    expect(screen.getByTestId('plan-in-place')).toBeInTheDocument();
+  });
 });
 
 describe('PlanView activity rows (PLAN-55 D3)', () => {

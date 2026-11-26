@@ -808,7 +808,7 @@ describe('WorkControlPanel component', () => {
     expect(screen.getByTestId('settings-notice')).not.toHaveTextContent('is refused');
   });
 
-  it('does not advance the form token on a conflict, so another Save is refused again', async () => {
+  it('keeps Save out of a conflict, so a second Save cannot overwrite the foreign value', async () => {
     const update = vi
       .spyOn(apiClient, 'updatePlanSettings')
       .mockResolvedValue({ applied: false, conflict: true, revision: 8, current_value: 'landing.main' });
@@ -822,10 +822,12 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('settings-save'));
     expect(await screen.findByTestId('settings-conflict')).toBeInTheDocument();
 
-    await fireEvent.click(screen.getByTestId('settings-save'));
+    // Save stays out of the conflict: only the operator's choice moves it on.
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
+    await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));
     await waitFor(() => expect(update).toHaveBeenCalledTimes(2));
-    // The second ordinary Save still carries the last successful revision, never the conflict's.
-    expect(update.mock.calls[1][3]).toBe(7);
+    // Apply again carries the conflict's own revision, never the form's token.
+    expect(update.mock.calls[1][3]).toBe(8);
   });
 
   it('shows a conflict and applies the same change against the current revision', async () => {    vi.spyOn(apiClient, 'updatePlanSettings').mockResolvedValueOnce({

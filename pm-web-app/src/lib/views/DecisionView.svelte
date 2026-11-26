@@ -78,6 +78,8 @@
   let activeId = $state<string | null>(null);
   /** The route value the view last synced, so it follows the address and does not fight it. */
   let syncedRouteDecision: string | null | undefined;
+  /** The decisions read that owns the list; a superseded answer never writes it. */
+  let decisionsRequest = 0;
 
   /** The line the last answer produced: the form's `FormStatus`, not a toast. */
   let outcome = $state<{ tone: 'neutral' | 'success' | 'danger'; text: string } | null>(null);
@@ -701,6 +703,7 @@
    *   successful answer reconciles the list and is not news about that failure
    */
   async function loadDecisions(keepBanner = false) {
+    const request = ++decisionsRequest;
     isLoading = true;
     loadError = null;
     // A reload answers for the act the banner reported too: the act's failure is no longer news.
@@ -709,14 +712,18 @@
       errorOwner = null;
     }
     try {
-      decisions = await apiClient.getDecisions();
+      const loaded = await apiClient.getDecisions();
+      // A response an older read started is dropped: a newer list already answers this view.
+      if (request !== decisionsRequest) return;
+      decisions = loaded;
       for (const dec of decisions) seenIds.add(dec.id);
       hasShownDecisions = true;
       void refreshDecisionsCount();
     } catch (err: unknown) {
+      if (request !== decisionsRequest) return;
       loadError = errorCodeOf(err);
     } finally {
-      isLoading = false;
+      if (request === decisionsRequest) isLoading = false;
     }
   }
 

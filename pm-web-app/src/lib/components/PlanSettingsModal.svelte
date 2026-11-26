@@ -116,6 +116,8 @@
    */
   async function save(): Promise<void> {
     if (!settings) return;
+    // A conflict is the operator's decision: Save stays out of it until Keep current or Apply again.
+    if (conflict) return;
     const aspects = changedList;
     if (aspects.length === 0) return;
     saved = false;
@@ -274,7 +276,7 @@
               <Button
                 variant="primary"
                 type="submit"
-                disabled={busy || changedList.length === 0}
+                disabled={busy || conflict !== null || changedList.length === 0}
                 data-testid="settings-save"
               >
                 {$t('common.action.save')}

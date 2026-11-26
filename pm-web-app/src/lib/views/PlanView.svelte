@@ -39,6 +39,7 @@
   } from '../api/client';
   import {
     runtimeStore,
+    addressOfState,
     selectObjectTab,
     selectPlanChangeFile,
   } from '../stores/runtime';
@@ -520,25 +521,16 @@
   );
 
   /**
-   * The plan's own address as the head writes it back: the plan, its mode, the shown tab and the
-   * selections the tab carries, so opening an object in place returns to exactly the caller.
+   * The caller's address: the store's own address for this plan, without the object opened in
+   * place — its mode, tab, node, file, chat and lens context included, so a close returns to
+   * exactly where the plan was opened from.
    *
-   * @returns the caller's address, without the object an in-place column opens
+   * @returns the caller's address
    */
-  function planAddress(): Address {
-    const address: Address = { route: 'plan', planId };
+  function callerAddress(): Address {
+    const address: Address = { ...addressOfState($runtimeStore) };
+    delete address.open;
     if (ended) address.mode = 'ended';
-    if (activeTab !== DEFAULT_TAB) address.tab = activeTab;
-    if (activeTab === 'process' && $runtimeStore.phaseNode) {
-      address.node = $runtimeStore.phaseNode;
-    }
-    if (activeTab === 'changes' && $runtimeStore.changeFile) {
-      address.file = $runtimeStore.changeFile;
-    }
-    if ($runtimeStore.chatOpen) {
-      address.chat = true;
-      if ($runtimeStore.chatTurn) address.turn = $runtimeStore.chatTurn;
-    }
     return address;
   }
 
@@ -546,14 +538,15 @@
   const decisionHref = $derived(
     openDecisionId === null
       ? ''
-      : (formatAddress({ ...planAddress(), open: { kind: 'decision', id: openDecisionId } }) ?? ''),
+      : (formatAddress({ ...callerAddress(), open: { kind: 'decision', id: openDecisionId } }) ??
+        ''),
   );
 
   /** The head link that opens the ended plan's completion report in place beside it. */
   const completionHref = $derived(
     ended
       ? (formatAddress({
-          ...planAddress(),
+          ...callerAddress(),
           open: { kind: 'completion-report', id: planId },
         }) ?? '')
       : '',
@@ -564,9 +557,15 @@
     $runtimeStore.openObject?.kind === 'decision' ? $runtimeStore.openObject.id : null,
   );
 
-  /** The completion report the address opens in place beside the plan, when it names one. */
+  /**
+   * The completion report the address opens in place beside this plan, when it names one: another
+   * plan's report is not this page's object.
+   */
   const inPlaceReportId = $derived(
-    $runtimeStore.openObject?.kind === 'completion-report' ? $runtimeStore.openObject.id : null,
+    $runtimeStore.openObject?.kind === 'completion-report' &&
+      $runtimeStore.openObject.id === planId
+      ? $runtimeStore.openObject.id
+      : null,
   );
 
   /** Whether this document opened the in-place object by a push of its own, so Back closes it. */
@@ -591,7 +590,7 @@
     runtimeStore.update((s) => ({ ...s, openObject: { kind, id } }));
     // Only an address the writer actually pushed is closed by Back; one the bar already shows
     // leaves no entry of its own, so its close replaces the address.
-    inPlacePushed = writeAddress({ ...planAddress(), open: { kind, id } }, 'push');
+    inPlacePushed = writeAddress({ ...callerAddress(), open: { kind, id } }, 'push');
   }
 
   /**
@@ -608,7 +607,7 @@
       return;
     }
     runtimeStore.update((s) => ({ ...s, openObject: null }));
-    writeAddress(planAddress(), 'replace');
+    writeAddress(callerAddress(), 'replace');
   }
 
   let tokenBreakdown: {
@@ -666,16 +665,20 @@
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       // The runtime stream's events that change a plan's process (`EventName`).
-      // A decision of this plan opening, changing or leaving re-reads the head's link while the plan
-      // waits (or while its own decision stands beside it): the wait alone does not change.
+      // A decision of this plan opening, changing or leaving re-reads the head's link. A decision
+      // that opens for this plan is read even before the process reports the wait; one that leaves
+      // matters while the plan waits or while its own decision stands beside it.
       if (
-        (event === 'decision.opened' ||
-          event === 'decision.changed' ||
-          event === 'decision.answered' ||
-          event === 'decision.closed') &&
-        (waiting || openDecision !== null)
+        event === 'decision.opened' ||
+        event === 'decision.changed' ||
+        event === 'decision.answered' ||
+        event === 'decision.closed'
       ) {
-        void loadOpenDecision();
+        const payload = data as { plan?: unknown } | null;
+        const namesThisPlan = typeof payload?.plan === 'string' && payload.plan === planId;
+        if (namesThisPlan || waiting || openDecision !== null) {
+          void loadOpenDecision();
+        }
       }
       if (refreshesPlanProcess(event)) {
         void loadPlanProcess(false);
