@@ -383,7 +383,7 @@ class OverviewFormattingTest {
         assertEquals("blocks the epic", OverviewFormatting.formatNeedsItemBlocks(itemEpic.blocks(), "en"));
         assertEquals("blocks the project's setup", OverviewFormatting.formatNeedsItemBlocks("setup", "en"));
         assertEquals("blockiert die Einrichtung des Projekts",
-                OverviewFormatting.formatNeedsItemBlocks("setup", "de"));
+                            OverviewFormatting.formatNeedsItemBlocks("setup", "de"));
         assertEquals("blocks the start", OverviewFormatting.formatNeedsItemBlocks("entry", "en"));
         assertEquals("blocks one task; the plan goes on", OverviewFormatting.formatNeedsItemBlocks("task", "en"));
     }
