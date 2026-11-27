@@ -231,6 +231,15 @@ describe('PlanSettingsModal component', () => {
     expect(screen.getAllByRole('button', { name: /close/i })).toHaveLength(1);
   });
 
+  it('keeps a Close when the settings read failed', async () => {
+    const onClose = vi.fn();
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings: null, open: true, onClose } });
+
+    const close = screen.getByTestId('settings-close-button');
+    await fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('draws the conflict’s acts as design-system buttons', () => {
     render(PlanSettingsModal, {
       props: {

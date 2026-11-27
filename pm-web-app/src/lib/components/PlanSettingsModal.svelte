@@ -298,7 +298,14 @@
           </div>
         </form>
       {:else}
+        <!-- The read that fills the dialogue failed: its Close still stands, so the operator can
+             leave it without reloading the page. -->
         <p class="settings-modal__empty">…</p>
+        <div class="settings-modal__actions">
+          <Button variant="ghost" data-testid="settings-close-button" onclick={() => onClose()}>
+            {$t('control.settings.close')}
+          </Button>
+        </div>
       {/if}
     </div>
   </div>
