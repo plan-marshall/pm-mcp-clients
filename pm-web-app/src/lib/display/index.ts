@@ -94,6 +94,31 @@ export function displayState(
   return word(`state.${kind}.${aliased}`, STATE_UNKNOWN_KEY, lookup);
 }
 
+/** The reasons the runtime gives for a part it left out of the plan (`PruneReason`). */
+const PRUNE_REASONS: ReadonlySet<string> = new Set(['lane_choice', 'unneeded_step', 'not_in_plan']);
+
+/**
+ * Names why the process left a part out of the plan, through `plan.prune.<reason>`.
+ *
+ * The reasons are the runtime's closed list; a reason outside it, or none, reads as the unknown
+ * word, so a raw reason never reaches the operator.
+ *
+ * @param reason the prune reason the node carries
+ * @param translate the catalogue look-up a template passes (`$t`)
+ * @returns the reason's word
+ */
+export function displayPruneReason(
+  reason: string | null | undefined,
+  translate?: Translate,
+): string {
+  const lookup = translator(translate);
+  const normalized = (reason ?? '').trim().toLowerCase();
+  if (!PRUNE_REASONS.has(normalized)) {
+    return lookup(STATE_UNKNOWN_KEY);
+  }
+  return word(`plan.prune.${normalized}`, STATE_UNKNOWN_KEY, lookup);
+}
+
 /** The three texts of an error, as the operator reads them. */
 export interface DisplayErrorText {
   /** What happened. */
@@ -250,4 +275,3 @@ export function formatChangeSize(
     unplanned: size.unplanned ?? 0,
   });
 }
-

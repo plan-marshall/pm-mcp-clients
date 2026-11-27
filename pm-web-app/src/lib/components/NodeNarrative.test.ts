@@ -48,7 +48,7 @@ describe('NodeNarrative component', () => {
     current_run: 1,
     duration_seconds: 1800,
     waits_for: 'Q-031',
-    prune_reason: 'the land lane',
+    prune_reason: 'lane_choice',
     sub_nodes: [
       {
         node_id: 'execute.session-log',
@@ -102,7 +102,59 @@ describe('NodeNarrative component', () => {
     expect(screen.getByTestId('node-narrative-duration')).toHaveTextContent('30 min');
     expect(screen.getByTestId('node-narrative-waits')).toHaveTextContent('Q-031');
     expect(screen.getByTestId('node-narrative-prune')).toHaveTextContent('the land lane');
+    expect(screen.getByTestId('node-narrative-prune')).not.toHaveTextContent('lane_choice');
     expect(screen.getByTestId('node-narrative')).toHaveTextContent('2 runs');
+  });
+
+  it('draws the kind as an icon named by the kind word, as the tree does', () => {
+    render(NodeNarrative, {
+      props: { node: execute, plan, onSelectTask: vi.fn(), onSelectNode: vi.fn() },
+    });
+
+    const kind = screen.getByTestId('node-narrative-kind');
+    expect(kind.querySelector('[data-workflow-icon="phase.execute"]')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Phase' })).toBeInTheDocument();
+    expect(kind.textContent?.trim()).toBe('');
+  });
+
+  it('names a prune reason outside the closed list with the unknown word, never raw', () => {
+    render(NodeNarrative, {
+      props: {
+        node: { ...donePhase, prune_reason: 'not_a_reason' },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    expect(screen.getByTestId('node-narrative-prune')).toHaveTextContent('unknown');
+    expect(screen.getByTestId('node-narrative-prune')).not.toHaveTextContent('not_a_reason');
+  });
+
+  it('names a task status through the catalogue, and an unknown one with the unknown word', () => {
+    render(NodeNarrative, {
+      props: {
+        node: {
+          ...execute,
+          leaf_tasks: [
+            { ...execute.leaf_tasks[0], status: 'running' },
+            { ...execute.leaf_tasks[1], status: 'hyperdrive' },
+          ],
+        },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    const statusOf = (taskId: string): string | undefined =>
+      screen
+        .getByTestId(`node-child-task-${taskId}`)
+        .querySelector('.child-task__status')
+        ?.textContent?.trim();
+    expect(statusOf('TASK-001')).toBe('running');
+    expect(statusOf('TASK-002')).toBe('unknown');
+    expect(screen.getByTestId('node-child-task-TASK-002')).not.toHaveTextContent('hyperdrive');
   });
 
   it('says one run in the singular', () => {
@@ -125,7 +177,7 @@ describe('NodeNarrative component', () => {
     expect(first).toHaveTextContent('implement');
     expect(first).toHaveTextContent('claude sonnet');
     expect(first).toHaveTextContent('attempt 1');
-    expect(first).toHaveTextContent('done');
+    expect(first.querySelector('.child-task__status')?.textContent?.trim()).toBe('done');
     expect(first).toHaveTextContent('4 min');
     expect(first).toHaveTextContent('22 k');
     expect(screen.getByTestId('node-child-task-activity-TASK-001')).toHaveTextContent(
@@ -207,7 +259,7 @@ describe('NodeNarrative component', () => {
     const unsafe: ProcessNode = {
       ...donePhase,
       title: '\u001b[31minit\u001b[0m',
-      prune_reason: '\u001b[33mthe land lane\u001b[0m',
+      prune_reason: '\u001b[33mlane_choice\u001b[0m',
       waits_for: '\u001b[36mQ-031\u001b[0m',
     };
 
@@ -216,7 +268,8 @@ describe('NodeNarrative component', () => {
     });
 
     expect(screen.getByTestId('node-narrative-title').textContent).toBe('init');
-    expect(screen.getByTestId('node-narrative-prune').textContent).toContain('the land lane');
+    // A reason garbled by control sequences is no reason of the closed list: it reads as unknown.
+    expect(screen.getByTestId('node-narrative-prune').textContent).toContain('unknown');
     expect(screen.getByTestId('node-narrative-prune').textContent).not.toContain('\u001b');
     expect(screen.getByTestId('node-narrative-waits').textContent).toContain('Q-031');
     expect(screen.getByTestId('node-narrative-waits').textContent).not.toContain('\u001b');

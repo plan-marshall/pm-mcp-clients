@@ -3,9 +3,10 @@
   import type { LeafTask, ProcessNode, ProcessTree } from '../api/client';
   import { formatDuration, formatTokens } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
-  import { displayState } from '../display';
+  import { getNodeKindIcon, getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import { displayPruneReason, displayState } from '../display';
   import Icon from './Icon.svelte';
+  import WorkflowIcon from './WorkflowIcon.svelte';
 
   interface Props {
     node: ProcessNode;
@@ -46,7 +47,13 @@
       <h3 class="node-narrative__title font-semibold" data-testid="node-narrative-title">
         {stripControlSequences(node.title)}
       </h3>
-      <span class="node-narrative__kind">{displayState('node_kind', node.kind, $t)}</span>
+      <span class="node-narrative__kind" data-testid="node-narrative-kind"
+        ><WorkflowIcon
+          id={getNodeKindIcon(node)}
+          size={16}
+          label={displayState('node_kind', node.kind, $t)}
+        /></span
+      >
       <span class="node-narrative__state" data-testid="node-narrative-state">
         {getNodeStateText(node, $t)}
       </span>
@@ -71,7 +78,7 @@
     {#if node.prune_reason}
       <p class="node-narrative__detail" data-testid="node-narrative-prune">
         <span class="node-narrative__label">{$t('plan.node.prune_reason')}</span>
-        <span>{stripControlSequences(node.prune_reason)}</span>
+        <span>{displayPruneReason(node.prune_reason, $t)}</span>
       </p>
     {/if}
   </header>
@@ -106,7 +113,7 @@
               {$t('plan.node.attempt', { attempt: task.attempt })}
             </span>
             <span class="child-task__status badge badge--state badge--state-{task.status}"
-              >{task.status}</span
+              >{displayState('task', task.status, $t)}</span
             >
             {#if task.duration_seconds > 0}
               <span class="child-task__duration mono">
@@ -192,9 +199,9 @@
   }
 
   .node-narrative__kind {
-    font-size: var(--text-xs);
+    display: inline-flex;
+    align-items: center;
     color: var(--color-text-muted);
-    font-weight: 500;
   }
 
   .node-narrative__state,

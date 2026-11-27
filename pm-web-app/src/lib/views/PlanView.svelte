@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import IconButton from '../components/IconButton.svelte';
   import NodeNarrative from '../components/NodeNarrative.svelte';
   import Spinner from '../components/Spinner.svelte';
   import Tabs, { type TabItem } from '../components/Tabs.svelte';
@@ -21,7 +22,6 @@
   import StatusLabel from '../components/StatusLabel.svelte';
   import AttentionStrip from '../components/AttentionStrip.svelte';
   import Link from '../components/Link.svelte';
-  import { phaseIconId } from '../icons/workflowIcons';
   import {
     apiClient,
     type ProcessTree,
@@ -56,8 +56,13 @@
     type Locale,
   } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
-  import { displayState, formatChangeSize } from '../display';
+  import {
+    getNodeDisplayName,
+    getNodeKindIcon,
+    getNodeStateIcon,
+    getNodeStateText,
+  } from '../utils/processNode';
+  import { displayPruneReason, displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
   import { formatAddress, PLAN_TABS, type Address, type PlanTab } from '../routes';
   import { writeAddress } from '../navigation/history';
@@ -648,16 +653,17 @@
   /** Every node the process omitted from the tree, at any depth. */
   let prunedNodes = $derived(collectNotInPlan(plan?.nodes ?? []));
 
-  /** The distinct reasons of the omitted nodes, shown once in the pruned group. */
-  let prunedReason = $derived(
-    [
-      ...new Set(
-        prunedNodes
-          .map((node) => node.prune_reason)
-          .filter((reason): reason is string => Boolean(reason)),
-      ),
-    ].join(' · '),
-  );
+  /**
+   * The distinct reasons of the omitted nodes, shown once in the pruned group through the
+   * catalogue's words, never as the raw reason.
+   */
+  let prunedReasons = $derived([
+    ...new Set(
+      prunedNodes
+        .map((node) => node.prune_reason)
+        .filter((reason): reason is string => Boolean(reason)),
+    ),
+  ]);
 
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
@@ -1064,7 +1070,9 @@
       }
     }
     // The app renders in the browser only (`ssr = false` in the root layout).
-    const el = document.querySelector('.node-item--running, .node-item--waiting');
+    const el = document.querySelector(
+      '.node-item--running, .node-item--waiting_for_operator, .node-item--waiting_for_you, .node-item--waiting',
+    );
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
@@ -1647,15 +1655,14 @@
         data-testid="process-tree"
       >
         <div class="plan-tree-toolbar">
-          <Button
-            variant="ghost"
+          <IconButton
+            icon="nav.running"
             size="sm"
+            label={$t('plan.path.jump')}
+            advisory={$t('plan.path.jump.title')}
             onclick={() => jumpToCurrentPosition(plan!)}
             data-testid="jump-btn"
-            data-advisory={$t('plan.path.jump.title')}
-          >
-            {$t('plan.path.jump')}
-          </Button>
+          />
         </div>
         {#snippet processNode(node: ProcessNode, level: 'root' | 'sub')}
           <div
@@ -1665,30 +1672,34 @@
             data-testid="node-{node.node_id}"
           >
             <div class="node-row {isNodeSelected(node.node_id) ? 'node-row--selected' : ''}">
-              <button
-                type="button"
-                class="toggle-btn"
-                onclick={() => toggleNode(node.node_id)}
-                aria-label={level === 'root'
-                  ? $t('plan.view.toggle_node')
-                  : $t('plan.view.toggle_sub_node')}
-                data-advisory={level === 'root'
-                  ? $t('plan.view.toggle_node.title')
-                  : $t('plan.view.toggle_sub_node.title')}
-                aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
-                data-testid="toggle-node-{node.node_id}"
-              >
-                <span class="node-glyph"
-                  ><Icon name={getNodeStateIcon(node.state)} size={16} /></span
+              <!-- Only a node with something to open has a toggle; a leaf keeps the place free. -->
+              {#if hasChildren(node)}
+                <button
+                  type="button"
+                  class="toggle-btn"
+                  onclick={() => toggleNode(node.node_id)}
+                  aria-label={level === 'root'
+                    ? $t('plan.view.toggle_node')
+                    : $t('plan.view.toggle_sub_node')}
+                  data-advisory={level === 'root'
+                    ? $t('plan.view.toggle_node.title')
+                    : $t('plan.view.toggle_sub_node.title')}
+                  aria-expanded={Boolean(expandedNodes[node.node_id])}
+                  data-testid="toggle-node-{node.node_id}"
                 >
-                <span class="toggle-icon">
-                  {#if hasChildren(node)}
-                    {expandedNodes[node.node_id] ? '▾' : '▸'}
-                  {:else}
-                    &nbsp;
-                  {/if}
-                </span>
-              </button>
+                  <span class="toggle-icon" aria-hidden="true"
+                    >{expandedNodes[node.node_id] ? '▾' : '▸'}</span
+                  >
+                </button>
+              {:else}
+                <span class="toggle-spacer" aria-hidden="true"></span>
+              {/if}
+              <span
+                class="node-glyph"
+                aria-hidden="true"
+                data-testid="node-state-icon-{node.node_id}"
+                ><Icon name={getNodeStateIcon(node.state)} size={16} /></span
+              >
 
               <button
                 type="button"
@@ -1699,15 +1710,14 @@
                 data-advisory={$t('plan.node.select.title')}
                 data-testid="select-node-{node.node_id}"
               >
-                {#if level === 'root' && node.kind === 'phase'}
-                  <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
-                {/if}
-                <span class="node-kind-badge"
-                  >{level === 'sub'
-                    ? `↳ ${displayState('node_kind', node.kind, $t)}`
-                    : displayState('node_kind', node.kind, $t)}</span
+                <span class="node-kind-icon" data-testid="node-kind-{node.node_id}"
+                  ><WorkflowIcon
+                    id={getNodeKindIcon(node)}
+                    size={16}
+                    label={displayState('node_kind', node.kind, $t)}
+                  /></span
                 >
-                <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
+                <span class="node-title font-semibold">{getNodeDisplayName(node, $t)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
                 {#if node.duration_seconds > 0}
                   <span class="node-duration"
@@ -1779,8 +1789,8 @@
                 {$t('plan.not_in_plan.group')}: {prunedNodes
                   .map((node) => stripControlSequences(node.title))
                   .join(', ')}
-                {#if prunedReason}
-                  ({stripControlSequences(prunedReason)})
+                {#if prunedReasons.length > 0}
+                  ({prunedReasons.map((reason) => displayPruneReason(reason, $t)).join(' · ')})
                 {/if}
               </span>
             </div>
@@ -2226,14 +2236,28 @@
   }
 
   .node-glyph {
-    font-family: monospace;
-    font-weight: bold;
+    display: inline-flex;
+    justify-content: center;
     width: 1.2rem;
-    text-align: center;
   }
 
   .toggle-icon {
     font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  /* A leaf has no toggle; the spacer keeps its state icon in line with its siblings'. */
+  .toggle-spacer {
+    display: inline-block;
+    width: 0.8rem;
+  }
+
+  /* A step the process did not take stays readable, muted, with its state word kept. */
+  .node-item--not_taken > .node-row {
+    color: var(--color-text-muted);
+  }
+
+  .node-item--not_taken > .node-row .node-state-text {
     color: var(--color-text-muted);
   }
 
@@ -2245,10 +2269,10 @@
     font-size: var(--text-sm);
   }
 
-  .node-kind-badge {
-    font-size: var(--text-xs);
+  .node-kind-icon {
+    display: inline-flex;
+    align-items: center;
     color: var(--color-text-muted);
-    font-weight: 500;
   }
 
   .node-state-text {
