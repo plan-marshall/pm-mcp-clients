@@ -571,7 +571,7 @@ class ConsoleNoticeTest {
         }
 
         @Test
-        @DisplayName("shows a channel, a blocking kind and a recommendation without a catalogue text as sent")
+        @DisplayName("shows a channel and a recommendation, and words a block value without a catalogue text as unknown")
         void valuesWithoutCatalogueText() {
             var answered = ConsoleNotice.fromEventMap("en", "decision.answered", Map.of(
                                 "id", "Q-007", "answer", "Rebase", "channel", "mobile"));
@@ -590,7 +590,7 @@ class ConsoleNoticeTest {
                                 () -> assertEquals("– Q-007 was answered in the mobile: Rebase. Nothing was sent from here.",
                                                     answered),
                                 () -> assertNotNull(question),
-                                () -> assertTrue(question.contains("◆ Question Q-008 · epic storage-v2 · landing-train"), question),
+                                () -> assertTrue(question.contains("◆ Question Q-008 · epic storage-v2 · unknown"), question),
                                 () -> assertTrue(question.contains("Recommended: rebase"), question),
                                 () -> assertNull(noAnswerChannel)
             );

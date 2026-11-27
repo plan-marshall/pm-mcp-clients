@@ -81,6 +81,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/web-app/plan-view-interaction.adoc` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/running-work.json` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/display/index.ts` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/display/index.test.ts` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/navigation/history.ts` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/navigation/history.test.ts` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -133,12 +138,66 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - Emit only after PLAN-55 (#576) lands; re-ground then.
 - Removed from the Expected Surface (void or replaced, see above): pm-web-app/src/lib/components/RowLink.svelte.
 
+## Re-Grounding 2026-11-27 (at `aa0ca871`)
+
+Re-read by a read-only sub-agent against `3dea04b2..aa0ca871` (#576 PLAN-55, #594 PLAN-196). `NodeNarrative`, `processNode`, `workflowIcons` and `PhaseLabel` are unchanged; the key claims were spot-checked by the orchestrator. **This section binds over the body and every earlier section where they differ.** Size: medium. Emitted as a `/plan-marshall` plan; the lane-only wording of the Standing Constraints applies to that plan in kind.
+
+- **D1: keep.**
+  - **Leaf toggle:** a leaf renders no toggle button.
+    - Today every node renders one (`PlanView.svelte:1667-1690`): a leaf gets `&nbsp;` (`:1687-1689`) and `aria-expanded` is undefined (`:1678`); `hasChildren` is at `:1296`.
+    - Keep the state icon, which sits inside that button today (`:1681-1683`).
+  - **Kind badge:**
+    - Draw the kind with its icon instead of the word (`displayState('node_kind')`, `:1705-1709`).
+    - The mock titles carry the kind ("phase execute"), so a row reads "Phase phase execute". Strip the kind word from the row name.
+    - Amend `plan-view.adoc:119` to agree with `:131`.
+  - **Jump to now:**
+    - It is still a text `Button` (`:1649-1658`). Make it an `IconButton` with the label `plan.path.jump`.
+    - The UI icon set has no locate icon. Reuse one, or add an `act.*` SVG together with its row in `workflow-visual-language.adoc`; decide at outline.
+    - Fix the selector at `:1067`: `.node-item--waiting` misses the class `node-item--waiting_for_operator` (`:1664`).
+    - The e2e asserts the scroll; today it only clicks (`plan-view.spec.js:91-93`).
+  - **Taken / not taken:**
+    - Today a `not_taken` child has no muted style and the default `state.dot` icon (`processNode.ts:28`); its word exists (`:62`).
+    - No scenario carries a `not_taken` step, and the phases have no sub-steps. Add them to `running-work.json` `process.phase.*` (at least `process.phase.execute`, `:5785`).
+    - Make `not_taken` children muted.
+  - **Prune reason:**
+    - The reason reaches the screen through `plan.prune.*` (`plan_view.*.properties:79-81`).
+    - Today it is the raw `lane_choice` (`PlanView.svelte:651-660,1775-1789`; `NodeNarrative.svelte:71-76`). This fails the standing no-raw-enum rule on `process.pruned-lane`.
+    - Also fix the raw `{task.status}` at `NodeNarrative.svelte:108-109`.
+  - **`sanity-check`:**
+    - Test-first: a `sanity-check` node renders its title, state word and `workflow.default` without error.
+    - `PhaseLabel` draws nothing for an unknown phase, so the 11-25 claim "raw phase in the header" is stale.
+    - Add no catalogue key and no icon row (`workflow-visual-language.adoc:51` still lists six phases).
+  - **Wireframe:** fix the six-phase wireframe at `plan-view.adoc:24-29` by adding `sanity-check` between execute and finalize.
+- **D6: rescoped.**
+  - Done and tested: the key is dropped on Intent and Changes (`routes.ts:597-602,721`, `history.ts:291-296`, `routes.test.ts:313-333`, `history.test.ts:173-186`).
+  - Owed:
+    - Selecting a node writes `node=` by a replace, through a store setter beside `selectPlanChangeFile` (`runtime.ts:2209`). Today `selectNode` (`PlanView.svelte:1264-1266`) writes nothing.
+    - A load with `node=` selects that node. Today `PlanView` never reads `phaseNode`.
+    - `selectObjectTab('process')` writes the remembered node back, as it does `file=` (`runtime.ts:2193-2197`, PLAN-196).
+    - Mind that `applyRoute` clears `phaseNode` on every push (`runtime.ts:1728`).
+  - Done-when: "absent on Intent/Changes, restored on return to Process, and a load with `node=` selects it" (test-first; `runtime.test.ts` and `PlanView.test.ts`).
+- **D2: keep, narrowed.**
+  - For refine and outline, `NodeNarrative` shows an _Intent_ link (`intent.tab.title`) that replaces the address with `tab=intent` and drops `node=` (`plan-view-interaction.adoc:88`). Nothing of it exists yet.
+  - The run count and duration are already shown (`NodeNarrative.svelte:53-62`).
+- **D3:** stays deleted.
+- **Done-whens:**
+  - D1's e2e "taken and not-taken steps on `process.phase.*`" depends on the new fixture.
+  - "intent.ready shows the three parts" stays struck (it belongs to PLAN-55).
+  - The browser check on `process.pruned-lane` now requires the prune reason to come through the catalogue.
+  - Every browser shot is taken after the last commit that changes rendering. PLAN-55 and PLAN-196 both missed this. Re-take the shots after each such commit, and list their times against that commit in the PR.
+- **Overlap:**
+  - PLAN-135 (running) shares `runtime.ts` and `runtime.test.ts`, with adjacent setter regions near `:2185-2215`. That is 2 files, under the rule; whichever merges second rebases.
+  - PLAN-70 (running) shares none.
+- **Surface:**
+  - Added (lines below): `running-work.json`, `display/index.ts` and its test, `navigation/history.ts` and its test.
+  - Only if needed: `icons/uiIcons.ts`, `icons/ui/act-*.svg`, `workflow-visual-language.adoc`, `plan_view.{en,de}.properties`.
+
 ## Hand-Off Command
 
-Lane: `runbook` (run with opencode).
+Lane: `plan-marshall` (medium; operator 2026-11-27).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-62-web-plan-phase-workflows.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-62-web-plan-phase-workflows.md"
 ```
 
 ## Write-Boundary

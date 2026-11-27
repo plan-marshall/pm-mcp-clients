@@ -231,13 +231,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private void printQuestionDetail(PrintWriter out, DecisionEnvelope envelope, String locale) {
         // blocks and reversibility are never null in an envelope, and every reversibility has its text.
-        var blocksKey = "decision.blocks." + envelope.blocks().toLowerCase(Locale.ROOT);
-        String blocksMsg;
-        if (MessageCatalogue.hasKey(blocksKey)) {
-            blocksMsg = getMessage(locale, blocksKey);
-        } else {
-            blocksMsg = getMessage(locale, "decision.blocks.plan");
-        }
+        var blocksMsg = DecisionBlockWords.text(locale, envelope.blocks());
         var revMsg = getMessage(locale, "decision.reversibility." + envelope.reversibility().value());
 
         var headerKey = envelope.askingPhase() != null && !envelope.askingPhase().isBlank()

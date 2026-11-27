@@ -181,7 +181,8 @@ describe('PlanSettingsModal component', () => {
     await fireEvent.change(screen.getByTestId('settings-value-landing'), {
       target: { value: 'landing.files' },
     });
-    expect(screen.getByTestId('settings-save')).not.toBeDisabled();
+    // A conflict is the operator's decision: Save stays disabled until Keep current or Apply again.
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
 
     await fireEvent.click(screen.getByTestId('settings-conflict-keep'));
 
@@ -224,6 +225,50 @@ describe('PlanSettingsModal component', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps exactly one Close control', () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    expect(screen.getAllByRole('button', { name: /close/i })).toHaveLength(1);
+  });
+
+  it('keeps a Close when the settings read failed', async () => {
+    const onClose = vi.fn();
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings: null, open: true, onClose } });
+
+    const close = screen.getByTestId('settings-close-button');
+    await fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws the conflict’s acts as design-system buttons', () => {
+    render(PlanSettingsModal, {
+      props: {
+        planId: 'fix-relay',
+        settings,
+        open: true,
+        conflict: {
+          aspect: 'landing',
+          currentValue: 'landing.main',
+          wantedValue: 'landing.files',
+          revision: 8,
+        },
+      },
+    });
+
+    expect(screen.getByTestId('settings-conflict-keep')).toHaveClass('btn');
+    expect(screen.getByTestId('settings-conflict-apply-again')).toHaveClass('btn');
+  });
+
+  it('labels a field and its options through the display layer', () => {
+    render(PlanSettingsModal, { props: { planId: 'fix-relay', settings, open: true } });
+
+    expect(screen.getByLabelText('Landing')).toHaveValue('landing.pull-request');
+    expect(screen.queryByLabelText('landing')).toBeNull();
+    expect(screen.getByRole('option', { name: 'Pull request' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'landing.pull-request' })).toBeNull();
+    expect(screen.getByText('Role implement')).toBeInTheDocument();
+  });
+
   it('shows a value another client changed first, with both choices', async () => {
     const onApplyAgain = vi.fn();
     const onKeepCurrent = vi.fn();
@@ -244,10 +289,14 @@ describe('PlanSettingsModal component', () => {
     });
 
     expect(screen.getByTestId('settings-conflict')).toHaveTextContent(
-      'Changed meanwhile: it is now landing.main. Yours was not applied.',
+      'Changed meanwhile: it is now Main branch. Yours was not applied.',
     );
-    expect(screen.getByTestId('settings-conflict-yours')).toHaveTextContent('landing.files');
-    expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('landing.main');
+    expect(screen.getByTestId('settings-conflict-yours')).toHaveTextContent(
+      'Files in the checkout',
+    );
+    expect(screen.getByTestId('settings-conflict-current')).toHaveTextContent('Main branch');
+    // Save is the operator's to resolve: neither Keep current nor Apply again has been chosen.
+    expect(screen.getByTestId('settings-save')).toBeDisabled();
 
     await fireEvent.click(screen.getByTestId('settings-conflict-apply-again'));
     expect(onApplyAgain).toHaveBeenCalledWith({

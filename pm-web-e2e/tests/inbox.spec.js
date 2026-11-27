@@ -45,12 +45,16 @@ test.describe('The start page: what waits', () => {
     expect(shown).toEqual(served.map((item) => item.kind));
     expect(shown.length).toBeGreaterThan(5);
 
-    // Blocking first: no item without a `blocks` value stands above one that has it, and
-    // everything below the first free item blocks nothing.
-    const firstFree = served.findIndex((item) => !item.blocks);
+    // Every item carries one value of the one vocabulary; blocking first: no item that blocks
+    // nothing stands above one that blocks work, and everything below the first free item blocks
+    // nothing.
+    expect(served.every((item) => typeof item.blocks === 'string' && item.blocks.length > 0)).toBe(
+      true,
+    );
+    const firstFree = served.findIndex((item) => item.blocks === 'nothing');
     expect(firstFree).toBeGreaterThan(0);
-    expect(served.slice(0, firstFree).every((item) => Boolean(item.blocks))).toBe(true);
-    expect(served.slice(firstFree).every((item) => !item.blocks)).toBe(true);
+    expect(served.slice(0, firstFree).every((item) => item.blocks !== 'nothing')).toBe(true);
+    expect(served.slice(firstFree).every((item) => item.blocks === 'nothing')).toBe(true);
 
     // A decision carries no reason badge; every other kind names its reason.
     const decision = page.locator('[data-testid="inbox-row"][data-kind="decision"]').first();
@@ -58,7 +62,7 @@ test.describe('The start page: what waits', () => {
     const held = page.locator('[data-testid="inbox-row"][data-kind="held"]').first();
     await expect(held.locator('.reason-badge')).toContainText('held');
     await expect(held.getByTestId('inbox-detail')).toContainText('waits since');
-    await expect(held.getByTestId('inbox-detail')).toContainText('blocks: plan');
+    await expect(held.getByTestId('inbox-detail')).toContainText('blocks the plan');
   });
 
   test('opens the place of each act', async ({ page }) => {

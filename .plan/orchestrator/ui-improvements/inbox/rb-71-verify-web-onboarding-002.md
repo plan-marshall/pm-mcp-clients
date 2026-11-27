@@ -4,8 +4,8 @@ sender_id=rb-71-verify-web-onboarding
 epic=ui-improvements
 kind=finding
 created=2026-11-26T07:46:07Z
-revision=3
-amended=2026-11-26T10:28:10Z
+revision=5
+amended=2026-11-27T16:15:47Z
 
 # Finding: `UC-V-05` fails on the `harness.none` row of `UC-P-03`
 
@@ -35,15 +35,18 @@ as the install hints and names the per-harness cause and fix under `harness.bloc
 (`harness.probe-failed`: name, cause, fix). Either the check's row or the state's contract has to move; the screen
 follows the catalogue.
 
-**Two further clauses are `not verified`, with their reason:**
+**Three further clauses are `not verified`, with their reason:**
 
 - `catalogue.select`: the advice's recommendation preselected and marked "recommended" is not in the mock — the state
   carries no advice and no recommendation. The text field per harness that cannot list its models is present.
+- `defaults.review`: "variants that need a missing provider disabled with the reason" is drawn by the client
+  (`DefaultsScreen.svelte:151-191`) but no state in the mock carries an unavailable variant.
 - Settings (`UC-ONB-10`): one settings place is present (`/settings` with its tabs; `/settings/machine` resolves into
-  it). The conflict notice is drawn on that page when a save conflicts — the current value, the value "yours", keep,
-  and "Apply mine again" (`SettingsView.svelte:1072-1088`, fed by `SettingsView.svelte:721-731`). It is not verified
-  from the mock: the walk at `settings.conflict` shows the settings place without a notice, because the mock's state
-  does not feed a conflicting save (the note on `UC-F-12` says so). The unit tests cover the dialog.
+  it). The conflict notice is drawn on that page when a save conflicts — "Changed meanwhile", the current value, "Your
+  value", "Keep the current value", and "Apply yours again" (`SettingsView.svelte:1072-1088`, fed by
+  `SettingsView.svelte:721-731`; the proposal says "Apply mine again"). It is not verified from the mock: the walk at
+  `settings.conflict` shows the settings place without a notice, because the mock's state does not feed a conflicting
+  save (the note on `UC-F-12` says so). The unit tests cover the dialog.
 
 **Also stale (not a failure of the app):** `UC-V-03`'s text asks for the LAN URL, the QR code and the fingerprint
 inside the settings frame. `entry.*` states have no web screen (operator decision 2026-11-10,

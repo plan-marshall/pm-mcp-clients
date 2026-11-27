@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
+  import { blockWordText } from '../display/decisionBlocks';
   import Button from '../components/Button.svelte';
   import Chip from '../components/Chip.svelte';
   import CountBadge from '../components/CountBadge.svelte';
@@ -50,6 +51,18 @@
 
   const NOTIFY_KEY = 'pm_decision_notify';
 
+  /** An in-place rendering of one decision: the object alone, beside its plan (`open=decision:{id}`). */
+  interface DecisionInPlace {
+    /** The decision the column shows. */
+    id: string;
+    /** The plan whose head opened it: a decision of another plan is not this column's. */
+    planId: string;
+    /** Closes the column: the history's back, or the caller's address when the entry was loaded. */
+    onClose: () => void;
+  }
+
+  let { inPlace = null }: { inPlace?: DecisionInPlace | null } = $props();
+
   let decisions = $state<DecisionEnvelope[]>([]);
   let isLoading = $state(true);
   let errorMessage = $state('');
@@ -66,6 +79,8 @@
   let activeId = $state<string | null>(null);
   /** The route value the view last synced, so it follows the address and does not fight it. */
   let syncedRouteDecision: string | null | undefined;
+  /** The decisions read that owns the list; a superseded answer never writes it. */
+  let decisionsRequest = 0;
 
   /** The line the last answer produced: the form's `FormStatus`, not a toast. */
   let outcome = $state<{ tone: 'neutral' | 'success' | 'danger'; text: string } | null>(null);
@@ -200,16 +215,18 @@
     if (activeDecision === null) {
       return [list];
     }
-    return [
-      list,
-      {
-        key: `decision:${activeDecision.id}`,
-        kind: 'decision',
-        title: displayTitle(activeDecision),
-        href: `/decisions/${encodeURIComponent(activeDecision.id)}`,
-        state: '',
-      },
-    ];
+    const decisionLevel: Level = {
+      key: `decision:${activeDecision.id}`,
+      kind: 'decision',
+      title: displayTitle(activeDecision),
+      href: `/decisions/${encodeURIComponent(activeDecision.id)}`,
+      state: '',
+    };
+    // In place the decision is the whole chain: no list column stands beside it.
+    if (inPlace) {
+      return [decisionLevel];
+    }
+    return [list, decisionLevel];
   });
 
   /**
@@ -217,6 +234,7 @@
    * (`navigation.adoc#missing`), so the object column never stands beside a list that lost it.
    */
   const pinned = $derived.by<PinnedRow | null>(() => {
+    if (inPlace) return null;
     const active = activeDecision;
     if (active === null) return null;
     if (matchingDecisions.some((dec) => dec.id === active.id)) return null;
@@ -237,7 +255,7 @@
    * @returns whether it blocks its subject, which the list orders first
    */
   function isBlocking(dec: DecisionEnvelope): boolean {
-    return dec.blocks !== '' && dec.blocks !== 'none' && dec.blocks !== 'task';
+    return dec.blocks !== '' && dec.blocks !== 'nothing' && dec.blocks !== 'task';
   }
 
   /**
@@ -281,7 +299,7 @@
    * @returns the one line under the row: the path, what it blocks, how reversible it is, since when
    */
   function rowDetail(dec: DecisionEnvelope): string {
-    const pieces = [pathOf(dec), $t(`decision.blocks.${dec.blocks}`)];
+    const pieces = [pathOf(dec), blockWordText(dec.blocks, $t)];
     pieces.push($t(`decision.reversibility.${dec.reversibility}`));
     if (dec.delivered_at) {
       pieces.push(
@@ -314,7 +332,7 @@
       dec.asking_phase,
       dec.asking_role,
       dec.blocks,
-      $t(`decision.blocks.${dec.blocks}`),
+      blockWordText(dec.blocks, $t),
       dec.reversibility,
       $t(`decision.reversibility.${dec.reversibility}`),
       dec.description,
@@ -356,7 +374,7 @@
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
-    const requested = $runtimeStore.selectedDecisionId ?? null;
+    const requested = inPlace?.id ?? $runtimeStore.selectedDecisionId ?? null;
     activeId = requested;
     syncedRouteDecision = requested;
     await loadDecisions();
@@ -373,6 +391,8 @@
   // The route is the address: a header visit to Decisions, the browser's Back, and a decision the
   // palette opened all move the store, and the object column follows it.
   $effect(() => {
+    // In place the address is the caller's, not a decision's: the column follows the prop alone.
+    if (inPlace) return;
     const route = $runtimeStore.currentRoute;
     if (route !== 'decisions' && route !== 'decision') return;
     const routeDecision = $runtimeStore.selectedDecisionId ?? null;
@@ -389,7 +409,19 @@
     if (active === null || isLoading || decisions.length === 0) return;
     if (decisions.some((dec) => dec.id === active)) return;
     if (!seenIds.has(active)) return;
+    // In place the effect above owns the close, so the two never move the history in one update.
+    if (inPlace) return;
     closeDetail();
+  });
+
+  // An in-place address that names no open decision of this plan — stale, answered elsewhere, or of
+  // another plan — has nothing to show: it closes back to the caller instead of leaving a skeleton
+  // that never resolves (`plan-view-interaction.adoc#changes`'s rule, applied to this address). A
+  // failed read is not a missing decision: it keeps the column open and shows the error.
+  $effect(() => {
+    if (!inPlace || isLoading || loadError !== null) return;
+    if (decisions.some((dec) => dec.id === inPlace.id && dec.plan === inPlace.planId)) return;
+    inPlace.onClose();
   });
 
   /** Reads the permission the operator gave once, if any. */
@@ -562,6 +594,9 @@
         } else {
           decisions = [dec, ...decisions];
           seenIds.add(dec.id);
+          // A list read still in flight predates this event: read again so its answer cannot drop
+          // the decision the event just added.
+          if (isLoading) void loadDecisions();
         }
       } else {
         void loadDecisions();
@@ -574,6 +609,7 @@
         } else {
           decisions = [revised, ...decisions];
           seenIds.add(revised.id);
+          if (isLoading) void loadDecisions();
         }
       } else {
         void loadDecisions();
@@ -672,6 +708,7 @@
    *   successful answer reconciles the list and is not news about that failure
    */
   async function loadDecisions(keepBanner = false) {
+    const request = ++decisionsRequest;
     isLoading = true;
     loadError = null;
     // A reload answers for the act the banner reported too: the act's failure is no longer news.
@@ -680,14 +717,18 @@
       errorOwner = null;
     }
     try {
-      decisions = await apiClient.getDecisions();
+      const loaded = await apiClient.getDecisions();
+      // A response an older read started is dropped: a newer list already answers this view.
+      if (request !== decisionsRequest) return;
+      decisions = loaded;
       for (const dec of decisions) seenIds.add(dec.id);
       hasShownDecisions = true;
       void refreshDecisionsCount();
     } catch (err: unknown) {
+      if (request !== decisionsRequest) return;
       loadError = errorCodeOf(err);
     } finally {
-      isLoading = false;
+      if (request === decisionsRequest) isLoading = false;
     }
   }
 
@@ -1221,6 +1262,11 @@
    * @param intent whether the change pushes or replaces the history entry
    */
   function selectDecision(id: string | null, intent: 'push' | 'replace'): void {
+    if (inPlace) {
+      // The column belongs to the caller's address: an answer or a close leaves it, it writes none.
+      inPlace.onClose();
+      return;
+    }
     activeId = id;
     if (id === null) {
       syncedRouteDecision = null;
@@ -1470,6 +1516,16 @@
       aria-label={displayTitle(activeDecision)}
       onkeydown={onDetailKeydown}
     >
+      {#if inPlace && errorMessage}
+        <!-- A failed act's explanation stands in the object column when it is alone: an in-place
+             column has no list beside it to carry the message. -->
+        <div class="error-banner" role="alert" data-testid="decision-action-error">
+          <p>{errorMessage}</p>
+          <Button variant="secondary" size="sm" onclick={() => void loadDecisions()}
+            >{$t('common.action.retry')}</Button
+          >
+        </div>
+      {/if}
       {@render outcomeLine()}
       {#if activeDecision.is_waiver}
         {@render waiverDetail(activeDecision)}
@@ -1500,7 +1556,7 @@
     </div>
     <p class="decision-head__path" data-testid="decision-path">{pathOf(dec)}</p>
     <p class="decision-head__why">
-      {$t(`decision.blocks.${dec.blocks}`)} · {$t(`decision.reversibility.${dec.reversibility}`)}
+      {blockWordText(dec.blocks, $t)} · {$t(`decision.reversibility.${dec.reversibility}`)}
     </p>
   </header>
 {/snippet}
@@ -1866,16 +1922,33 @@
 {/snippet}
 
 <div class="decisions-view">
-  <TriagePage
-    {levels}
-    label={$t('decisions.list.title')}
-    column={listColumn}
-    object={activeDecision === null ? undefined : objectColumn}
-    {pinned}
-    side={chatOpen ? chatSide : undefined}
-    sideOpen={chatOpen}
-    onHideSide={closeChatPanel}
-  />
+  {#if inPlace && activeDecision === null}
+    {#if loadError !== null}
+      <div class="decisions-view__in-place" data-testid="decision-in-place">
+        <ErrorState
+          code={loadError}
+          actionLabel={$t('common.action.retry')}
+          onAct={() => void loadDecisions()}
+          titleLevel={2}
+        />
+      </div>
+    {:else if isLoading}
+      <div class="decisions-view__in-place" data-testid="decision-in-place">
+        <Skeleton shape="card" rows={3} label={$t('decisions.list.title')} />
+      </div>
+    {/if}
+  {:else}
+    <TriagePage
+      {levels}
+      label={$t('decisions.list.title')}
+      column={listColumn}
+      object={activeDecision === null ? undefined : objectColumn}
+      {pinned}
+      side={chatOpen ? chatSide : undefined}
+      sideOpen={chatOpen}
+      onHideSide={closeChatPanel}
+    />
+  {/if}
 </div>
 
 <style>
