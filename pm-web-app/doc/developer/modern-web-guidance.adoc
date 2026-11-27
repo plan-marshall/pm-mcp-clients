@@ -1,0 +1,69 @@
+= Modern Web Guidance for the Web App
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../../README.md[pm-web-app] » Modern Web Guidance
+
+Modern Web Guidance is Google's skill pack that steers a coding agent toward current web-platform features (native
+dialogs and popovers, anchor positioning, container queries, form validation) instead of older patterns. This page says
+how an operator uses it while working on `pm-web-app` and `pm-web-e2e`, how to install it, and what was found when it
+was read. It is a local tool of the person who works on the web app: it is no dependency of this repository, changes
+nothing in the build, and is no skill of PM-MCP. The pack is licensed `Apache-2.0`; its name is a trademark of its
+owner, so nothing of ours carries it.
+
+== Install
+
+Version read and checked: `modern-web-guidance@1.0.2` (repository commit `2b4aa13`, 2026-11-23), npm integrity
+`sha512-ksFBCdzMl5xxf7wuF7XQbudQ6El1e2VrO0WzcH/U29NYGNzu0EZjtojkfwzFBSnmenDyl7QIwPCgYvfEmZHr+w=`
+(`npm view modern-web-guidance@1.0.2 dist.integrity`).
+
+. Switch the telemetry off first. It is on by default, runs in a detached background process, and sends the search
+  queries the agent writes (they name the feature being built), the guide ids and the agent's name. Put
+  `export DISABLE_TELEMETRY=1` in the shell profile of the account that starts the agent.
+. Install the skill for Claude Code:
++
+[source,shell]
+----
+claude plugin marketplace add GoogleChrome/modern-web-guidance
+claude plugin install modern-web-guidance@googlechrome
+----
++
+The vendor's own wizard, `npx modern-web-guidance@latest install`, runs a second download (`npx skills add`) and is not
+needed.
+. Allow only the one command the skill runs, `npx -y modern-web-guidance@latest *`, never a bare `npx *`.
+. The skill runs `@latest` on every call, so the code that runs is whatever the vendor published last. To run exactly the
+  version checked above, run the commands yourself with `@1.0.2` (`npx modern-web-guidance@1.0.2 search "<query>"`), or
+  copy the skill directory into your user skill directory and replace `@latest` by `@1.0.2` (keep the `LICENSE` and say
+  in the file that it was changed).
+. Do not run `set-allow-volatile-features` or `set-allow-origin-trials`: they write a `.mwgrc` file at the repository
+  root. Never commit one.
+
+== How It Is Used Here
+
+* A guide is a pattern for plain HTML, CSS and JavaScript. The web app is Svelte; adapt the pattern, never paste it, and
+  never let a guide add a dependency.
+* The rules of this repository win over a guide: the Web Standards of `CLAUDE.md` (no `innerHTML`, no sanitizer without
+  the operator's decision) and the design of the web app (for example, a hover advisory is the native `title` and the
+  web app adds no popover or hover card, link:../../../doc/design/web-app/interaction-affordances.adoc[Interaction
+  Affordances]).
+* `legacy-scan` is an audit, run once by the operator on a scratch copy: it reports patterns that a native feature
+  could replace, each with a rubric to check by hand. It fixes nothing. A change that follows is made through a work
+  package, never in passing.
+* A guide does not replace the objective checks of the web app (contrast, overflow, touch targets). The vendor's own
+  dashboard says its accessibility check is no WCAG audit.
+
+== What Was Found
+
+The analysis is link:../../../../plan-marshall-documentation/doc/articles/modern-web-guidance.adoc[Google Modern Web
+Guidance 1.0] in `plan-marshall-documentation`. In short:
+
+* The skill text is a command line (`npx -y ...@latest`); 70 of its 211 guides also contain `npx`. A skill like this
+  cannot be an extension skill of PM-MCP, whose checker refuses command lines. Taking such a pack into PM-MCP waits for
+  the intake of Milestone 14.
+* The effect figures (88 % of automated checks passed guided against 56 % unguided; one adopter 60.8 % to 94.0 %) are the
+  vendor's and an adopter's own, not reproduced.
+* The web app has no native `<dialog>`: 8 files carry a hand-built `role="dialog"` (a search of `src`). Whether that is
+  a decision or a gap depends on a browser-support target that the web app does not declare yet; that is an open
+  question of the operator (`web-browser-support-target`,
+  link:../../../../plan-marshall-documentation/doc/discussions/open-questions.adoc[Open Questions]).

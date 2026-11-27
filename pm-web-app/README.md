@@ -144,6 +144,11 @@ The TypeScript project covers `src`, `test`, and `vite.config.ts`. `eslint.confi
 
 ---
 
+## Developer Documentation
+
+* [Modern Web Guidance for the web app](doc/developer/modern-web-guidance.adoc): the use and the safe install of Google's
+  web-platform skill pack in a session of the web app, with what was found when it was read.
+
 ## End-to-End Testing (`pm-web-e2e`)
 
 Playwright end-to-end tests for the web interface reside in the sibling module `pm-web-e2e`.
