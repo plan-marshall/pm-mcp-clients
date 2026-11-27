@@ -6,7 +6,11 @@
   import { getNodeKindIcon, getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayPruneReason, displayState } from '../display';
   import Icon from './Icon.svelte';
+  import Link from './Link.svelte';
   import WorkflowIcon from './WorkflowIcon.svelte';
+  import { formatAddress } from '../routes';
+  import { currentAddress, switchTab } from '../navigation/history';
+  import { selectObjectTab } from '../stores/runtime';
 
   interface Props {
     node: ProcessNode;
@@ -35,6 +39,21 @@
     }
     return tasks;
   }
+
+  /** The parts of the process whose result the Intent tab shows: refine writes it, outline extends it. */
+  const INTENT_NODES: ReadonlySet<string> = new Set(['refine', 'outline']);
+
+  /**
+   * The address of the plan's Intent tab: the open address with the tab switched, which drops
+   * `node=`; the plan's own address with that tab when the bar names no address of the app.
+   */
+  let intentHref = $derived(
+    INTENT_NODES.has(node.node_id)
+      ? (formatAddress(
+          switchTab(currentAddress() ?? { route: 'plan', planId: plan.plan_id }, 'intent'),
+        ) ?? '')
+      : '',
+  );
 
   let childTasks = $derived(collectLeafTasks(node));
   let subNodes = $derived((node.sub_nodes ?? []).filter((child) => child.state !== 'not_in_plan'));
@@ -69,6 +88,16 @@
       {/if}
     </div>
 
+    {#if intentHref}
+      <p class="node-narrative__detail" data-testid="node-narrative-intent">
+        <Link
+          href={intentHref}
+          label={$t('intent.tab.title')}
+          testid="node-intent-link"
+          onactivate={() => selectObjectTab('intent')}
+        />
+      </p>
+    {/if}
     {#if node.waits_for}
       <p class="node-narrative__detail" data-testid="node-narrative-waits">
         <span class="node-narrative__label">{$t('plan.node.waits_for')}</span>

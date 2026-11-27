@@ -1,7 +1,10 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import NodeNarrative from './NodeNarrative.svelte';
 import type { ProcessNode, ProcessTree } from '../api/client';
+import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 describe('NodeNarrative component', () => {
   const plan: ProcessTree = {
@@ -253,6 +256,68 @@ describe('NodeNarrative component', () => {
       'This part has no task-level activity. Its state and duration are shown above.',
     );
     expect(screen.queryByTestId('node-child-tasks')).not.toBeInTheDocument();
+  });
+
+  describe('the link to the plan’s intent', () => {
+    beforeEach(() => {
+      runtimeStore.set(makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'session-log' }));
+      window.history.replaceState({}, '', '/plans/session-log?node=refine');
+    });
+
+    it.each(['refine', 'outline'])('leads from %s to the Intent tab without node=', (nodeId) => {
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: nodeId, title: nodeId },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+
+      const link = screen.getByTestId('node-intent-link');
+      expect(link).toHaveTextContent('Intent');
+      const href = new URL(link.getAttribute('href') ?? '', 'http://app.invalid');
+      expect(href.pathname).toBe('/plans/session-log');
+      expect(href.searchParams.get('tab')).toBe('intent');
+      expect(href.searchParams.has('node')).toBe(false);
+    });
+
+    it.each(['init', 'plan', 'execute', 'finalize', 'execute.session-log'])(
+      'is absent from %s',
+      (nodeId) => {
+        render(NodeNarrative, {
+          props: {
+            node: { ...donePhase, node_id: nodeId, title: nodeId },
+            plan,
+            onSelectTask: vi.fn(),
+            onSelectNode: vi.fn(),
+          },
+        });
+
+        expect(screen.queryByTestId('node-intent-link')).not.toBeInTheDocument();
+      },
+    );
+
+    it('selects the Intent tab and replaces the address with tab=intent, without node=', async () => {
+      const push = vi.spyOn(window.history, 'pushState');
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: 'refine', title: 'refine' },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+
+      await fireEvent.click(screen.getByTestId('node-intent-link'));
+
+      expect(get(runtimeStore).objectTab).toBe('intent');
+      const address = new URLSearchParams(window.location.search);
+      expect(address.get('tab')).toBe('intent');
+      expect(address.has('node')).toBe(false);
+      expect(push).not.toHaveBeenCalled();
+      push.mockRestore();
+    });
   });
 
   it('strips control sequences from every free-text field it shows', () => {

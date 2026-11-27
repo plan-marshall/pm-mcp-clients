@@ -42,6 +42,7 @@
     addressOfState,
     selectObjectTab,
     selectPlanChangeFile,
+    selectPlanNode,
   } from '../stores/runtime';
   import { refreshesPlanProcess } from '../stores/refreshEvents';
   import { refreshesIntentView } from '../components/intentEvents';
@@ -791,9 +792,15 @@
         expandedNodes = initExpanded;
       }
 
-      // Keep the inspected subject while it still exists; otherwise fall back deliberately, so a
-      // refresh never leaves the inspector on an item the tree no longer shows.
-      if (res.nodes && !isSelectionValid(res.nodes, selection)) {
+      // A load whose address names a node the tree shows opens on that node, ahead of the default
+      // order (`plan-view-interaction.adoc#addresses`).
+      const addressed = initial && res.nodes ? addressedNode(res.nodes) : null;
+      if (addressed !== null) {
+        selection = { kind: 'node', nodeId: addressed };
+        selectPlanNode(addressed);
+      } else if (res.nodes && !isSelectionValid(res.nodes, selection)) {
+        // Keep the inspected subject while it still exists; otherwise fall back deliberately, so a
+        // refresh never leaves the inspector on an item the tree no longer shows.
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
@@ -943,6 +950,15 @@
       return { kind: 'node', nodeId: firstNode.node_id };
     }
     return null;
+  }
+
+  /**
+   * @param nodes the process tree
+   * @returns the node the address names (`node=`), when the tree shows it, or `null`
+   */
+  function addressedNode(nodes: ProcessNode[]): string | null {
+    const named = $runtimeStore.phaseNode ?? null;
+    return findNode(nodes, named) !== null ? named : null;
   }
 
   /**
@@ -1269,8 +1285,15 @@
     selection = { kind: 'task', taskId };
   }
 
+  /**
+   * Inspects a node and writes it into the address as `node=`, by a replace; a task selection
+   * writes no node.
+   *
+   * @param nodeId the node a row body or the narrative's outline selected
+   */
   function selectNode(nodeId: string) {
     selection = { kind: 'node', nodeId };
+    selectPlanNode(nodeId);
   }
 
   function isNodeSelected(nodeId: string): boolean {

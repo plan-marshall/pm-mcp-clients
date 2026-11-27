@@ -1672,6 +1672,69 @@ describe('PlanView’s Changes tab', () => {
     vi.spyOn(apiClient, 'getPlanChangeFile').mockResolvedValue(transportFile);
   });
 
+  describe('the node in the address', () => {
+    /** @returns the `node=` the address bar names, or `null` */
+    function nodeInAddress(): string | null {
+      return new URLSearchParams(window.location.search).get('node');
+    }
+
+    it('opens on the node a load names with node=', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=execute');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'node');
+      expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('execute');
+      expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('falls back to the default selection when node= names no node the tree shows', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'no-such-node' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=no-such-node');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'task');
+      expect(screen.getByTestId('task-TASK-003')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('writes the selected node as node= by a replace, and a task selection writes none', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      const push = vi.spyOn(window.history, 'pushState');
+
+      await fireEvent.click(screen.getByTestId('task-TASK-003'));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+
+      expect(nodeInAddress()).toBe('execute');
+      expect(window.location.pathname).toBe('/plans/fix-relay');
+      expect(push).not.toHaveBeenCalled();
+      push.mockRestore();
+    });
+
+    it('drops node= on Intent and Changes and writes it back on Process', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+      expect(nodeInAddress()).toBe('execute');
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Intent' }));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Changes' }));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Process' }));
+      expect(nodeInAddress()).toBe('execute');
+      expect(await screen.findByTestId('node-narrative-title')).toHaveTextContent('execute');
+    });
+  });
+
   it('shows no Changes tab and no size line before the first capture', async () => {
     // Arrange
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithoutCapture());

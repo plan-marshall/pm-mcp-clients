@@ -168,6 +168,12 @@ export interface RuntimeState {
   /** The node of the plan's phase tree and the file of its changes, as the address names them. */
   phaseNode?: string | null;
   changeFile?: string | null;
+  /**
+   * The process node last selected in the open plan, kept apart from `phaseNode` because a push
+   * clears that field: a return to Process writes it back as `node=`. It names its plan, so a node
+   * of another plan is never written into this plan's address.
+   */
+  rememberedNode?: { planId: string; nodeId: string } | null;
   /** Whether the chat stands as a side column, and the turn it scrolls to. */
   chatOpen?: boolean;
   chatTurn?: string | null;
@@ -237,6 +243,7 @@ const initialState: RuntimeState = {
   openObject: null,
   phaseNode: null,
   changeFile: null,
+  rememberedNode: null,
   chatOpen: false,
   chatTurn: null,
   lens: null,
@@ -2147,7 +2154,12 @@ export async function withdrawConsent(
 }
 
 export function openPlanView(planId: string, taskId?: string | null): void {
-  runtimeStore.update((s) => ({ ...s, selectedPlanEnded: null }));
+  runtimeStore.update((s) => ({
+    ...s,
+    selectedPlanEnded: null,
+    // Another plan's node is no node of this plan.
+    rememberedNode: s.rememberedNode?.planId === planId ? s.rememberedNode : null,
+  }));
   // The plan the operator selected is the object the remembered place keeps.
   writeRememberedPlace({ ...readRememberedPlace(), planId, epicId: null });
   // A task is a level of its own and takes the path; a plan without a task keeps the plan path.
@@ -2195,6 +2207,11 @@ export function selectObjectTab(tab: ObjectTab): void {
     const remembered = get(runtimeStore).changeFile;
     if (remembered) next.file = remembered;
   }
+  // The Process tab writes the node it shows back the same way, so a return to it carries `node=`.
+  if (tab === 'process') {
+    const remembered = rememberedNodeOf(current);
+    if (remembered) next.node = remembered;
+  }
   writeAddress(next, 'replace');
 }
 
@@ -2233,6 +2250,46 @@ export function setChatTurn(turnId: string | null): void {
     return;
   }
   writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
+/**
+ * @param address the address of the open object
+ * @returns the node remembered for the plan the address names, or `null` for another object
+ */
+function rememberedNodeOf(address: Address): string | null {
+  const remembered = get(runtimeStore).rememberedNode;
+  if (!remembered || address.route !== 'plan' || address.planId !== remembered.planId) {
+    return null;
+  }
+  return remembered.nodeId;
+}
+
+/**
+ * Selects a node of the plan's process, or drops the node when a caller passes `null`, and writes
+ * it into the address on the Process tab.
+ *
+ * A node is a selection inside the tab, so it replaces the entry rather than pushing one: Back
+ * leaves the plan rather than walking through its nodes (`navigation.adoc#url`). The node is also
+ * remembered for the open plan, so a return to Process from Intent or Changes writes it back.
+ *
+ * @param nodeId the node's id, or `null` when nothing is selected
+ */
+export function selectPlanNode(nodeId: string | null): void {
+  const current = currentAddress();
+  const planId = current?.route === 'plan' ? (current.planId ?? null) : null;
+  runtimeStore.update((s) => ({
+    ...s,
+    phaseNode: nodeId,
+    rememberedNode: nodeId && planId ? { planId, nodeId } : null,
+  }));
+  if (current === null || current.route !== 'plan') {
+    return;
+  }
+  const address: Address = switchTab(current, 'process');
+  if (nodeId) {
+    address.node = nodeId;
+  }
+  writeAddress(address, 'replace');
 }
 
 /**
