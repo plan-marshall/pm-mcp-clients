@@ -96,7 +96,9 @@ reads every state of `pm-mock-runtime`'s `onboarding.json` and fails for one no 
 `screens.registry.test.ts:29-84`). The Chrome walk covered all 92 states of the scenario at 1440 × 900, `en`, dark
 (`.plan/temp/screens/sweep-<state>-en-dark-1440.png`) and the 11 UC-P-03 screens in the eight arms
 (`.plan/temp/screens/matrix-<state>-<locale>-<theme>-<width>.png`). No rendered text contains a state id of the
-scenario: the walk searched every page's `innerText` for all 92 ids and found none. *Fails as written* on its regex
+scenario in the 75 states the walk captured *as themselves*: the scan searched each page's `innerText` for all 92
+ids and found none. The 17 states that advance by themselves were scanned as the state that followed (see
+<<residue,Residue>>), so the state-id clause is `not verified` for those 17 screens. *Fails as written* on its regex
 clause: three texts that match `/[a-z]+\.[a-z-]+/` sit outside a code block —
 `docs.anthropic.com/en/docs/claude-code/setup` and `opencode.ai/docs/` on `harness.none`, in
 `<span class="harness-install__hint mono">` (not a `<code>` element; `.plan/temp/screens/harness-none-hints-en-dark-1440.png`);
@@ -105,8 +107,9 @@ and the placeholder `e.g. anthropic/claude-sonnet-4-6` of the model-id field on 
 `.plan/temp/screens/matrix-catalogue.select-en-dark-1440.png`).
 |The three texts are install hints and an example model id, not state ids, but the check excludes only *code blocks*.
 The defect is the element or the wording, not the content. The text-node scan cannot see a `placeholder` attribute;
-the screenshot review is what found the third text, so the "no state id" result is proven for text nodes across all
-92 states and read off the screenshots, not by an attribute sweep.
+the screenshot review is what found the third text. The "no state id" result therefore holds for text nodes in the 75
+states captured as themselves, is read off the screenshots for the attribute case, and is `not verified` for the 17
+auto-advancing screens.
 
 |link:../use-cases/verification.adoc[UC-V-03]
 |`pass`
@@ -295,9 +298,9 @@ the catalogue text of `UC-P-03`'s `catalogue.select` row.
 . *`UC-V-05`* — `harness.none` does not show the per-harness name, path, failed check, answer, and fix that the
 `UC-P-03` row asks for; the state carries the install hints and the engine's catalogue puts the per-harness cause
 and fix under `harness.blocked`. Either the check's row or the state's contract has to move. The same message
-records two clauses that could not be verified in the mock (the advice's recommendation on `catalogue.select`, the
-conflict notice on the settings place) and the stale `UC-V-03` text. Plans concerned: PLAN-66 (D5, `harness.none`),
-and the review documents for the two stale rows.
+records the clauses that could not be verified in the mock (the advice's recommendation on `catalogue.select`, the
+conflict notice on the settings place, and the unavailable-provider variant on `defaults.review`) and the stale
+`UC-V-03` text. Plans concerned: PLAN-66 (D5, `harness.none`), and the review documents for the two stale rows.
 
 The messages are `rb-71-verify-web-onboarding-001` and `rb-71-verify-web-onboarding-002`. Nothing was fixed here.
 
@@ -309,8 +312,9 @@ The messages are `rb-71-verify-web-onboarding-001` and `rb-71-verify-web-onboard
   (`MockRuntimeEngine.java:3059-3087` keeps the offering state per request key). A walk that visits `entry.onboarding`
   in the middle therefore cannot draw any later screen. This run walked all 92 states, left `entry.onboarding` last,
   and restarted the mock between passes. The consequence for the check: no state id leaked even in the error card
-  ("The onboarding state could not be loaded."), which was never needed as evidence because the pass reached every
-  screen.
+  ("The onboarding state could not be loaded."). What the walk does not provide is a view of the 17 auto-advancing
+  screens as themselves — the reload lands after their advance — so `UC-V-02`'s state-id clause is `not verified` for
+  those 17 and proven for the 75 captured as themselves.
 
 * *Auto-advancing states cannot be held.* Seventeen states carry an `auto` block and advance between 250 and 900 ms
   (`auto.scan`, `harness.probe`, `harness.enrol`, `harness.install-profile`, `catalogue.models`, `catalogue.advise`,
