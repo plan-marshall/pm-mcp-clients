@@ -5822,6 +5822,51 @@
                             "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-001/activity"
                           }
                         ]
+                      },
+                      {
+                        "node_id": "execute.remediation",
+                        "title": "remediation.ci-failure",
+                        "kind": "sub_workflow",
+                        "state": "not_taken",
+                        "run_count": 0,
+                        "current_run": 0,
+                        "duration_seconds": 0,
+                        "sub_nodes": [],
+                        "leaf_tasks": []
+                      },
+                      {
+                        "node_id": "execute.verify",
+                        "title": "Verify the change",
+                        "kind": "sub_workflow",
+                        "state": "planned",
+                        "run_count": 0,
+                        "current_run": 0,
+                        "duration_seconds": 0,
+                        "sub_nodes": [
+                          {
+                            "node_id": "execute.verify.module-tests",
+                            "title": "Run the module tests",
+                            "kind": "state",
+                            "state": "planned",
+                            "run_count": 0,
+                            "current_run": 0,
+                            "duration_seconds": 0,
+                            "sub_nodes": [],
+                            "leaf_tasks": []
+                          },
+                          {
+                            "node_id": "execute.verify.integration-tests",
+                            "title": "Run the integration tests",
+                            "kind": "state",
+                            "state": "not_taken",
+                            "run_count": 0,
+                            "current_run": 0,
+                            "duration_seconds": 0,
+                            "sub_nodes": [],
+                            "leaf_tasks": []
+                          }
+                        ],
+                        "leaf_tasks": []
                       }
                     ],
                     "leaf_tasks": []
