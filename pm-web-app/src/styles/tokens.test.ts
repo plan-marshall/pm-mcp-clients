@@ -1036,8 +1036,11 @@ describe('tokens.css: static scans over the source tree', () => {
     ];
     return selector.split(',').some((rawPart) => {
       const part = rawPart.trim();
-      if (!part || STATE_MARKERS.some((marker) => part.includes(marker))) return false;
-      const compound = part.split(/[\s>+~]+/).pop() ?? '';
+      const positivePart = part.replace(/:not\([^)]*\)/gi, '').trim();
+      if (!positivePart || STATE_MARKERS.some((marker) => positivePart.includes(marker))) {
+        return false;
+      }
+      const compound = positivePart.split(/[\s>+~]+/).pop() ?? '';
       const dotParts = compound.split('.');
       const tagPart = dotParts[0].split('[')[0].toLowerCase();
       const clsParts = dotParts.slice(1).map((c) => c.split('[')[0]);
@@ -1047,14 +1050,27 @@ describe('tokens.css: static scans over the source tree', () => {
   }
 
   function isBorderlessDeclaration(decl: string): boolean {
+    const ZERO_WIDTH_RE = /^0(?:\.0+)?(?:[a-z%]+)?$/;
     const colon = decl.indexOf(':');
+    const prop = (colon === -1 ? '' : decl.slice(0, colon)).trim().toLowerCase();
     const value = (colon === -1 ? decl : decl.slice(colon + 1)).trim().toLowerCase();
-    return value
-      .split(/\s+/)
-      .some(
-        (part) =>
-          part === 'none' || part === 'transparent' || /^0(?:\.0+)?(?:[a-z%]+)?$/.test(part),
-      );
+    const tokens = value.split(/\s+/).filter(Boolean);
+    if (prop === 'border-color' || /^border-(?:top|right|bottom|left)-color$/.test(prop)) {
+      return tokens.length > 0 && tokens.every((part) => part === 'transparent');
+    }
+    return tokens.some(
+      (part) => part === 'none' || part === 'transparent' || ZERO_WIDTH_RE.test(part),
+    );
+  }
+
+  function collectBorderDeclarations(ruleBody: string): string[] {
+    const declarations: string[] = [];
+    const borderRegex = /(?:^|;)\s*(border(?:-(?:top|right|bottom|left))?(?:-color)?\s*:\s*[^;]+)/gi;
+    let bm: RegExpExecArray | null;
+    while ((bm = borderRegex.exec(ruleBody)) !== null) {
+      declarations.push(bm[1].trim());
+    }
+    return declarations;
   }
 
   it('derives all active bordered inputs and selects from Svelte sources and requires --control-border', () => {
@@ -1078,10 +1094,7 @@ describe('tokens.css: static scans over the source tree', () => {
       const relPath = path.relative(libDir, file);
       for (const rule of collectStyleRules(styleMatch[1])) {
         if (!selectorTargetsControl(rule.selector, classes, tags)) continue;
-        const borderRegex = /(?:^|;)\s*(border(?:-color)?\s*:\s*[^;]+)/gi;
-        let bm: RegExpExecArray | null;
-        while ((bm = borderRegex.exec(rule.body)) !== null) {
-          const decl = bm[1].trim();
+        for (const decl of collectBorderDeclarations(rule.body)) {
           if (isBorderlessDeclaration(decl)) continue;
           inspected.push({ file: relPath, selector: rule.selector });
           if (!STRONG_BORDER_TOKENS.some((tok) => decl.includes(tok))) {
@@ -1095,12 +1108,33 @@ describe('tokens.css: static scans over the source tree', () => {
     expect(violations).toEqual([]);
   });
 
-  it('flags non-zero decimal border widths instead of skipping them as zero-width', () => {
+  it('flags non-zero decimal widths, partial transparent border-color, negated disabled, and side-specific overrides', () => {
     expect(isBorderlessDeclaration('border: none')).toBe(true);
     expect(isBorderlessDeclaration('border: 0')).toBe(true);
     expect(isBorderlessDeclaration('border: 0px solid var(--color-border)')).toBe(true);
     expect(isBorderlessDeclaration('border-color: transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border-color: transparent transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border-bottom-color: transparent')).toBe(true);
     expect(isBorderlessDeclaration('border: 0.0625rem solid var(--color-border)')).toBe(false);
     expect(isBorderlessDeclaration('border: 0.5px solid var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border-color: transparent var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border-bottom-color: var(--color-border)')).toBe(false);
+
+    const classes = new Set(['field-input']);
+    const tags = new Set(['input']);
+    expect(selectorTargetsControl('input:not(:disabled)', classes, tags)).toBe(true);
+    expect(selectorTargetsControl('.field-input:not([disabled])', classes, tags)).toBe(true);
+    expect(selectorTargetsControl('input:disabled', classes, tags)).toBe(false);
+    expect(selectorTargetsControl('input:not(:disabled):hover', classes, tags)).toBe(false);
+
+    expect(
+      collectBorderDeclarations(
+        'border: 1px solid var(--control-border); border-bottom-color: var(--color-border); border-width: 1px; border-style: solid; border-left: 2px solid var(--color-border)',
+      ),
+    ).toEqual([
+      'border: 1px solid var(--control-border)',
+      'border-bottom-color: var(--color-border)',
+      'border-left: 2px solid var(--color-border)',
+    ]);
   });
 });
