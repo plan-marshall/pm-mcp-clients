@@ -89,6 +89,19 @@
   /** Drops the plan's own value, so the field reads the inherited one again. */
   function inherit(aspect: string): void {
     chosen = { ...chosen, [aspect]: '' };
+    markEdited(aspect);
+  }
+
+  /**
+   * Marks a field the operator changed: its earlier applied marker goes, so a reseed after a refresh
+   * keeps the new, unapplied edit instead of taking the server value for an applied one.
+   *
+   * @param aspect the aspect the operator edited
+   */
+  function markEdited(aspect: string): void {
+    if (appliedAspects.has(aspect)) {
+      appliedAspects = new Set([...appliedAspects].filter((entry) => entry !== aspect));
+    }
     saved = false;
   }
 
@@ -235,7 +248,7 @@
                         disabled={busy}
                         onchange={(value) => {
                           chosen = { ...chosen, [entry.aspect]: value };
-                          saved = false;
+                          markEdited(entry.aspect);
                         }}
                       />
                     {:else}
