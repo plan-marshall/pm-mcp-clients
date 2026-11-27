@@ -116,7 +116,7 @@ describe('Link', () => {
     await fireEvent.click(screen.getByRole('link', { name: 'Intent tab' }));
 
     expect(window.location.hash).toBe('#deliverable-2');
-    expect(window.history.length).toBe(lengthBefore);
+    expect(window.history).toHaveLength(lengthBefore);
     target.remove();
   });
 
