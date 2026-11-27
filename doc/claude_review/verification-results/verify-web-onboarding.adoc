@@ -136,8 +136,9 @@ is German (`document.documentElement.lang` `en` → `de`;
 `lang2-after-nochoice-en-dark-1440.png`). Of the eleven screens of `UC-P-03`, ten show the change; see
 <<variations,The Variations>>. *Fails as written* on `harness.none`: the screen shows the install hints, not "name,
 path, the check that failed, the answer received, and the fix" per harness.
-|The header and language clauses pass in every arm. The `harness.none` clause is the failure; two further clauses
-cannot be seen in the mock (the catalogue advice, the settings conflict) and are `not verified` with their reason.
+|The header and language clauses pass in every arm. The `harness.none` clause is the failure; three further clauses
+cannot be seen in the mock (the catalogue advice, the settings conflict, the unavailable-provider variant) and are
+`not verified` with their reason.
 
 |===
 
