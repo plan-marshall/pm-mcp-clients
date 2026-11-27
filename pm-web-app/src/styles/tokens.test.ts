@@ -1046,6 +1046,17 @@ describe('tokens.css: static scans over the source tree', () => {
     });
   }
 
+  function isBorderlessDeclaration(decl: string): boolean {
+    const colon = decl.indexOf(':');
+    const value = (colon === -1 ? decl : decl.slice(colon + 1)).trim().toLowerCase();
+    return value
+      .split(/\s+/)
+      .some(
+        (part) =>
+          part === 'none' || part === 'transparent' || /^0(?:\.0+)?(?:[a-z%]+)?$/.test(part),
+      );
+  }
+
   it('derives all active bordered inputs and selects from Svelte sources and requires --control-border', () => {
     const libDir = path.resolve(__dirname, '../lib');
     const svelteFiles = walkFiles(libDir, ['.svelte']);
@@ -1071,7 +1082,7 @@ describe('tokens.css: static scans over the source tree', () => {
         let bm: RegExpExecArray | null;
         while ((bm = borderRegex.exec(rule.body)) !== null) {
           const decl = bm[1].trim();
-          if (/\b(?:none|0|transparent)\b/i.test(decl)) continue;
+          if (isBorderlessDeclaration(decl)) continue;
           inspected.push({ file: relPath, selector: rule.selector });
           if (!STRONG_BORDER_TOKENS.some((tok) => decl.includes(tok))) {
             violations.push({ file: relPath, selector: rule.selector, declaration: decl });
@@ -1082,5 +1093,14 @@ describe('tokens.css: static scans over the source tree', () => {
 
     expect(inspected.length).toBeGreaterThanOrEqual(14);
     expect(violations).toEqual([]);
+  });
+
+  it('flags non-zero decimal border widths instead of skipping them as zero-width', () => {
+    expect(isBorderlessDeclaration('border: none')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0px solid var(--color-border)')).toBe(true);
+    expect(isBorderlessDeclaration('border-color: transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0.0625rem solid var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border: 0.5px solid var(--color-border)')).toBe(false);
   });
 });
