@@ -99,7 +99,6 @@ public final class OperatorActions {
                         throws IOException {
         // The dialogue accepts the follow-up on the runtime, which opens the start and names no way
         // to the entry: it says so and nothing is started a second time here (PLAN-161, D2).
-        WorkChatDialogue.run(context, out, kind, id, true, false);
-        return 0;
+        return WorkChatDialogue.run(context, out, kind, id, true, false);
     }
 }

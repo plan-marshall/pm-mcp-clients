@@ -83,7 +83,8 @@ class WorkChatDialogueTest {
     @DisplayName("an input the proposal does not offer is answered, and q leaves with nothing sent")
     void unofferedInputAtTheProposal() throws Exception {
         FakeRuntimeServer server = fixture.start((request, response) -> {
-            if ("GET".equals(request.method()) && request.target().endsWith("/chat")) {
+            if (("GET".equals(request.method()) || "POST".equals(request.method()))
+                                && request.target().endsWith("/chat")) {
                 response.json(200, CHAT_PROPOSAL);
             } else {
                 response.send(500, null, "");
@@ -94,17 +95,19 @@ class WorkChatDialogueTest {
         virtual.endOfInput();
         var out = new StringWriter();
 
-        var followUp = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false);
+        var exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false);
 
         var text = out.toString();
         assertAll(
-                            () -> assertNull(followUp),
+                            () -> assertEquals(0, exitCode),
                             () -> assertTrue(text.contains(input + " is not offered here: r, q, ?"), text),
                             () -> assertTrue(text.contains("Nothing more is explained here"), text),
                             () -> assertFalse(text.contains("is kept with"), text),
                             () -> assertEquals(0, server.requests().stream()
-                                                                    .filter(recorded -> !"GET".equals(recorded.method())).count(),
-                                                "nothing is sent: " + server.requests()));
+                                                                    .filter(recorded -> !"GET".equals(recorded.method())
+                                                                                        && !"POST".equals(recorded.method()))
+                                                                    .count(),
+                                                "nothing else is sent: " + server.requests()));
     }
 
     @Test
@@ -128,7 +131,7 @@ class WorkChatDialogueTest {
         var afterSecond = base + "\"turns\":[" + t1 + "," + t2 + "," + t3 + "," + t4 + "]}";
         fixture.start((request, response) -> {
             var path = request.target();
-            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+            if (path.endsWith("/chat") && ("GET".equals(request.method()) || "POST".equals(request.method()))) {
                 int post = posts.get();
                 response.json(200, post == 0 ? initial : (post == 1 ? afterFirst : afterSecond));
             } else if (path.endsWith("/chat/turns")) {
@@ -142,13 +145,13 @@ class WorkChatDialogueTest {
         virtual.endOfInput();
         var out = new StringWriter();
 
-        var followUp = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+        var exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
 
         var text = out.toString();
         var notice = subject + " proposes no change yet";
         var firstIdx = text.indexOf(notice);
         assertAll(
-                            () -> assertNull(followUp),
+                            () -> assertEquals(0, exitCode),
                             () -> assertTrue(text.contains(reply1), text),
                             () -> assertTrue(text.contains(reply2), text),
                             () -> assertTrue(firstIdx >= 0, text),

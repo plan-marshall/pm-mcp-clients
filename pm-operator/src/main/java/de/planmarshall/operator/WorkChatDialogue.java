@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.chat.ChatProposal;
@@ -67,10 +68,10 @@ final class WorkChatDialogue {
      * @param subjectId the subject
      * @param ended     {@code true} for the read-only chat about ended work
      * @param noInput   whether the verb may ask nothing
-     * @return the follow-up description of an ended-work chat, or {@code null}
+     * @return the dialogue's exit code ({@code 0}, {@link StartDialogue#EXIT_MISSING_INPUT})
      * @throws IOException on transport failure
      */
-    static @Nullable String run(OperatorContext context, PrintWriter out, String kind, String subjectId,
+    static int run(OperatorContext context, PrintWriter out, String kind, String subjectId,
                         boolean ended, boolean noInput) throws IOException {
         var dialogue = new WorkChatDialogue(context, out, kind, subjectId, ended, noInput);
         try {
@@ -78,11 +79,11 @@ final class WorkChatDialogue {
         } catch (StartPrompt.MissingInputException _) {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), "operator.actions.chat.no_input", Map.of()));
             out.flush();
-            return null;
+            return StartDialogue.EXIT_MISSING_INPUT;
         } catch (StartPrompt.StartLeftException _) {
             // The chat is one of the view's other dialogues (04-console.adoc#console-dialogue-handoff):
             // q and Ctrl+C both leave it back to the view, and nothing is sent.
-            return null;
+            return 0;
         }
     }
 
@@ -119,8 +120,11 @@ final class WorkChatDialogue {
         out.flush();
     }
 
-    private @Nullable String execute() throws IOException {
-        var chat = client.chat(kind, subjectId);
+    private int execute() throws IOException {
+        if (!prompt.asks()) {
+            throw new StartPrompt.MissingInputException(STATE_ID, "turn", subjectId);
+        }
+        var chat = client.openChat(kind, subjectId);
         boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
         showTranscript(chat, endedChat);
         var seen = lastTurnId(chat);
@@ -129,19 +133,38 @@ final class WorkChatDialogue {
             if (chat.hasProposal()) {
                 chat = answerProposal(chat, endedChat, seen);
                 if (chat == null) {
-                    return null;
+                    return 0;
                 }
                 seen = lastTurnId(chat);
                 continue;
             }
             var message = askMessage();
             if (message == null) {
-                return null;
+                return 0;
             }
-            chat = client.chatTurn(kind, subjectId, message);
+            var updated = sendTurn(message);
+            if (updated == null) {
+                continue;
+            }
+            chat = updated;
             showNewTurns(chat, seen);
             seen = lastTurnId(chat);
             saidNoProposal = reportNoProposalOnce(chat, saidNoProposal);
+        }
+    }
+
+    private @Nullable ChatResource sendTurn(String message) throws IOException {
+        var clientTurnId = UUID.randomUUID().toString();
+        while (true) {
+            try {
+                return client.chatTurn(kind, subjectId, message, clientTurnId);
+            } catch (IOException failure) {
+                prompt.raw(OperatorRefusedException.screenText(failure, prompt.locale()));
+                var retryTitle = MessageCatalogue.format(prompt.locale(), "common.action.retry", Map.of()) + "?";
+                if (!new ChoicePrompt(prompt, STATE_ID).title(retryTitle).askConsent()) {
+                    return null;
+                }
+            }
         }
     }
 

@@ -113,13 +113,12 @@ class OperatorGateScopeTest {
     /** The act verbs of the client: each of them sends or changes something. */
     static List<Arguments> actVerbs() {
         var description = "description-" + Generators.integers(100, 999).next();
-        var message = "message-" + Generators.integers(100, 999).next();
         var reason = "reason-" + Generators.integers(100, 999).next();
         var pullRequest = String.valueOf(Generators.integers(1, 9_999).next());
         return asArguments(
                             new String[]{"answer", "Q-007"},
                             new String[]{"plan", "add", "--project", "pm-mcp-clients", "--description", description},
-                            new String[]{"plan", "chat", "fix-relay", "--message", message},
+                            new String[]{"plan", "chat", "fix-relay"},
                             new String[]{"plan", "pause", "fix-relay"},
                             new String[]{"plan", "start", "fix-relay"},
                             new String[]{"plan", "cancel", "fix-relay", "--reason", reason},
@@ -130,7 +129,7 @@ class OperatorGateScopeTest {
                             new String[]{"epic", "add", "--project", "pm-mcp-clients", "--description", description},
                             new String[]{"epic", "archive", "relay-hardening"},
                             new String[]{"epic", "cancel", "relay-hardening", "--reason", reason},
-                            new String[]{"epic", "chat", "relay-hardening", "--message", message},
+                            new String[]{"epic", "chat", "relay-hardening"},
                             new String[]{"epic", "decompose", "relay-hardening"},
                             new String[]{"epic", "review", "relay-hardening", "--agree"},
                             new String[]{"epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",

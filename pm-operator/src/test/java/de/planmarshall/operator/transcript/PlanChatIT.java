@@ -44,16 +44,9 @@ import com.fasterxml.jackson.core.JsonFactory;
 import picocli.CommandLine;
 
 /**
- * A plan chat turn end to end on a real pseudo-terminal (PLAN-161, D3): {@code plan chat <id>
- * --message} posts a B1 {@code …/chat/turns} body carrying the client's own {@code client_turn_id}
- * beside the message, and renders the transcript it read while the role's reply was being written.
- *
- * <p>The runtime behind this case is a fake that keeps every request it received, so the turn's
- * body is read back and both the message and the {@code client_turn_id} it carries are asserted,
- * not only the count of turns: the mock machine of the dialogue harness records the bodies of
- * decision answers alone, and a chat turn is not one of those. The old-shape refusal itself — a
- * body without the id drawing no reply — is the mock runtime's contract, proven where the mock
- * defines it; this case proves what the client puts on the wire.
+ * A plan chat turn end to end on a real pseudo-terminal (PLAN-138, D1): {@code plan chat <id>}
+ * opens the dialogue via {@code POST …/chat}, posts a B1 {@code …/chat/turns} body carrying the
+ * client's own {@code client_turn_id} beside the message, and renders the reply it read.
  */
 @EnableGeneratorController
 @DisplayName("pm-operator plan chat turn against the recording runtime")
@@ -93,12 +86,18 @@ class PlanChatIT {
         var message = "message-" + Generators.letterStrings(6, 12).next();
         var turnBodies = new CopyOnWriteArrayList<String>();
         writeLiveRecord();
+        var emptyChat = """
+                            {"id":"C-1","subject":{"kind":"plan","id":"fix-relay"},
+                             "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[]}
+                            """;
         fixture.start((request, response) -> {
             if ("POST".equals(request.method()) && request.target().endsWith("/chat/turns")) {
                 turnBodies.add(request.bodyText());
                 response.json(202, "{\"turn_id\":\"T-1\"}");
             } else if (request.target().endsWith("/chat")) {
-                response.json(200, chatJson(message));
+                response.json(200, "POST".equals(request.method()) && turnBodies.isEmpty()
+                                    ? emptyChat : chatJson(message));
             } else {
                 response.send(404, null, "");
             }
@@ -111,11 +110,14 @@ class PlanChatIT {
         environment.put("TERM", "xterm-256color");
         environment.put("PATH", "/usr/bin:/bin");
         environment.put("XDG_STATE_HOME", tempDir.resolve("xdg-state").toString());
-        try (var session = PtySession.start(binary.with("plan", "chat", "fix-relay", "--message", message),
+        try (var session = PtySession.start(binary.with("plan", "chat", "fix-relay"),
                                  environment, Path.of("").toAbsolutePath(), 120, 30)) {
+            assertTrue(session.awaitText("fix-relay", DialogueHarness.TIMEOUT), session.rawOutput());
+            session.send(message + "\n");
+            assertTrue(session.awaitText(REPLY, DialogueHarness.TIMEOUT), session.screenText());
+            session.send("\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
             assertEquals(0, session.exitCode(), session.rawOutput());
-            assertTrue(session.screenText().contains(REPLY), session.screenText());
         }
 
         assertEquals(1, turnBodies.size(), "expected one chat turn, got " + turnBodies);

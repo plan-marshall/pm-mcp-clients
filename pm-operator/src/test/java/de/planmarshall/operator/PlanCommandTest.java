@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -32,10 +34,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
+import org.jline.terminal.impl.DumbTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -756,6 +760,11 @@ class PlanCommandTest {
     @DisplayName("plan chat communicates with plan")
     void planChat() throws Exception {
         var answered = new AtomicBoolean();
+        var emptyChat = """
+                            {"id":"C-1","subject":{"kind":"plan","id":"p-001"},
+                             "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[]}
+                            """;
         var chat = """
                             {"id":"C-1","subject":{"kind":"plan","id":"p-001"},
                              "role":{"name":"replan","model":"sonnet"},"scope":"plan","state":"chat.turn",
@@ -773,14 +782,20 @@ class PlanCommandTest {
                 answered.set(true);
                 response.json(202, "{\"turn_id\":\"T-1\"}");
             } else if ("/api/v1/plans/p-001/chat".equals(request.target())) {
-                response.json(200, chat);
+                response.json(200, "POST".equals(request.method()) ? emptyChat : chat);
             } else {
                 response.send(404, null, "");
             }
         });
+        var typed = "hello plan\n\n".getBytes(StandardCharsets.UTF_8);
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(typed), new ByteArrayOutputStream()),
+                            null);
 
-        int code = execute("plan", "chat", "p-001", "--message", "hello plan");
-        assertEquals(0, code);
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                            "plan", "chat", "p-001");
+        assertEquals(0, code, err.toString());
         assertTrue(answered.get(), "the message was not sent as a chat turn");
         // The reply the runtime wrote is printed; the operator's own message is not the proof.
         assertTrue(out.toString().contains("the chat answered from the runtime"), out.toString());
@@ -1440,6 +1455,120 @@ class PlanCommandTest {
                                 () -> assertEquals(0, code, err.toString()),
                                 () -> assertTrue(out.toString().contains("2 nicht gemessen"), out.toString()),
                                 () -> assertFalse(out.toString().contains("not measured"), out.toString()));
+        }
+    }
+
+    @Nested
+    @DisplayName("plan chat (D1 wire contract)")
+    class PlanChatWire {
+
+        @Test
+        @DisplayName("plan chat rejects --message with exit code 2")
+        void rejectsMessageFlag() {
+            var planId = Generators.letterStrings(5, 10).next().toLowerCase();
+            var msg = Generators.letterStrings(5, 10).next();
+
+            int code = execute("plan", "chat", planId, "--message", msg);
+
+            assertEquals(2, code, err.toString());
+        }
+
+        @Test
+        @DisplayName("plan chat --no-input refuses with exit code 3 and operator.actions.chat.no_input")
+        void noInputRefuses() {
+            var planId = Generators.letterStrings(5, 10).next().toLowerCase();
+
+            int code = execute("plan", "chat", planId, "--no-input");
+
+            assertAll(
+                                () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, code, out + "\n" + err),
+                                () -> assertTrue(out.toString().contains("--no-input"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("plan chat opens an unseeded plan chat on running-work via POST")
+        void opensUnseededPlanChatOnRunningWork() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var environment = new HashMap<String, String>();
+                environment.put(MachinePaths.ENV_BASE, runtime.base().toString());
+                var self = ProcessHandle.current();
+                var start = self.info().startInstant().orElseThrow();
+                Files.writeString(runtime.paths().runtimeRecord(),
+                                    "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}",
+                                    StandardCharsets.UTF_8);
+                var context = new OperatorContext(environment, tempDir, true,
+                                    ClientEnvironment.capture(environment),
+                                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]),
+                                                        new ByteArrayOutputStream()),
+                                    null);
+
+                int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                    "plan", "chat", "relay-auth-v2");
+
+                assertAll(
+                                    () -> assertEquals(0, code, err.toString()),
+                                    () -> assertTrue(out.toString().contains("relay-auth-v2"), out.toString()));
+            }
+        }
+
+        @Test
+        @DisplayName("retry after a failed turn POST reuses the same client_turn_id")
+        void retryReusesClientTurnId() throws Exception {
+            var planId = Generators.letterStrings(5, 10).next().toLowerCase();
+            var text = Generators.letterStrings(6, 12).next();
+            var turnIds = new ArrayList<String>();
+            var chatJson = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + planId + "\"},"
+                                + "\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var repliedJson = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + planId + "\"},"
+                                + "\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[{\"turn_id\":\"T-1\",\"kind\":\"message\",\"author\":\"operator\","
+                                + "\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,"
+                                + "\"text\":\"" + text + "\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:00Z\"},"
+                                + "{\"turn_id\":\"T-2\",\"kind\":\"message\",\"author\":\"replan\","
+                                + "\"status\":\"complete\",\"format\":\"markdown\",\"untrusted\":false,\"model\":\"sonnet\","
+                                + "\"text\":\"ok\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:01Z\"}]}";
+            var attempts = new java.util.concurrent.atomic.AtomicInteger();
+            var opened = new AtomicBoolean();
+            fixture.start((request, response) -> {
+                var target = request.target();
+                if (("/api/v1/plans/" + planId + "/chat").equals(target) && "POST".equals(request.method())) {
+                    opened.set(true);
+                    response.json(201, chatJson);
+                } else if (("/api/v1/plans/" + planId + "/chat").equals(target) && "GET".equals(request.method())) {
+                    response.json(200, attempts.get() >= 2 ? repliedJson : chatJson);
+                } else if (("/api/v1/plans/" + planId + "/chat/turns").equals(target)
+                                    && "POST".equals(request.method())) {
+                    var parsed = JsonTree.parse(request.bodyText());
+                    if (parsed instanceof Map<?, ?> map && map.get("client_turn_id") instanceof String id) {
+                        turnIds.add(id);
+                    }
+                    if (attempts.incrementAndGet() == 1) {
+                        response.json(500, "{\"error\":\"internal_error\"}");
+                    } else {
+                        response.json(202, "{\"turn_id\":\"T-1\"}");
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var typed = (text + "\ny\n").getBytes(StandardCharsets.UTF_8);
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(typed), new ByteArrayOutputStream()),
+                                null);
+
+            int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                "plan", "chat", planId);
+
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(opened.get(), "chat should be opened via POST"),
+                                () -> assertEquals(2, turnIds.size(), "expected two POST attempts: " + turnIds),
+                                () -> assertEquals(turnIds.get(0), turnIds.get(1),
+                                                    "retry must keep the same client_turn_id: " + turnIds));
         }
     }
 }

@@ -23,7 +23,6 @@ import de.planmarshall.api.control.ArchiveCheckLine;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.epicview.EpicViewFormatting;
@@ -341,28 +340,7 @@ final class WorkActionDialogue {
 
 
     private int chat(@Nullable EpicResource epic) throws IOException {
-        var description = WorkChatDialogue.run(context, out, kind, id, false, !prompt.asks());
-        if (description != null) {
-            startFollowUp(description, epic);
-        }
-        return 0;
-    }
-
-    private void startFollowUp(String description, @Nullable EpicResource epic) {
-        var project = epic != null ? epic.projectId() : null;
-        prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.follow_up_started",
-                            Map.of("description", OutputSafety.stripControlSequences(description))));
-        var answers = new StartAnswers().withDescription(description);
-        if (project != null) {
-            answers.withProject(project);
-        }
-        try {
-            // The view shows one stream, so the dialogue's refusals stay where everything else is.
-            StartDialogue.run(context, out, out, EntryKind.PLAN, answers);
-        } catch (IOException refused) {
-            prompt.raw(OutputSafety.stripControlSequences(
-                                OperatorRefusedException.screenText(refused, prompt.locale())));
-        }
+        return WorkChatDialogue.run(context, out, kind, id, false, !prompt.asks());
     }
 
     private int next(@Nullable EpicResource epic) throws IOException {

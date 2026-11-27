@@ -1084,9 +1084,8 @@ public final class PlanCommand implements Callable<Integer> {
         @Parameters(index = "0", description = "Plan ID")
         String planId = "";
 
-        @Option(names = "--message", description = "Message to send")
-        @Nullable
-        String message;
+        @Option(names = "--no-input", description = "Ask nothing")
+        boolean noInput;
 
         ChatCommand(OperatorContext context) {
             this.context = context;
@@ -1094,7 +1093,7 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            return ActionSupport.chat(context, spec, KIND, planId, message);
+            return ActionSupport.chat(context, spec, KIND, planId, noInput);
         }
     }
 

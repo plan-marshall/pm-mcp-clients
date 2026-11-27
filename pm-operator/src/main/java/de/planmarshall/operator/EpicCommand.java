@@ -733,9 +733,8 @@ public final class EpicCommand implements Callable<Integer> {
         @Parameters(index = "0", description = "Epic ID")
         String epicId = "";
 
-        @Option(names = "--message", description = "Message to send")
-        @Nullable
-        String message;
+        @Option(names = "--no-input", description = "Ask nothing")
+        boolean noInput;
 
         ChatCommand(OperatorContext context) {
             this.context = context;
@@ -743,7 +742,7 @@ public final class EpicCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            return ActionSupport.chat(context, spec, KIND, epicId, message);
+            return ActionSupport.chat(context, spec, KIND, epicId, noInput);
         }
     }
 

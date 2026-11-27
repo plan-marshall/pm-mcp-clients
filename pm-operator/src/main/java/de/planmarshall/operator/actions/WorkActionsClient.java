@@ -330,12 +330,25 @@ public final class WorkActionsClient {
     }
 
     /**
-     * Sends the operator's message on the chat's turns and follows the reply until its turn ends.
+     * Opens or returns the chat for a plan or an epic ({@code POST …/chat}).
      *
-     * <p>The message carries the client's own {@code client_turn_id}, drawn once per message: the
-     * runtime records the turn and answers {@code 202 turn_id} before the role writes, and a repeat
-     * with the same id records nothing again. The reply is followed by its turn id and status, never
-     * by a count of turns, because the transcript is paged and the reply is written into it.
+     * @param kind the subject kind ({@code plan} or {@code epic})
+     * @param id   the subject id
+     * @return the chat, opened if it did not exist yet
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource openChat(String kind, String id) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.chat(), "{}"));
+        if (response.status() != 200 && response.status() != 201) {
+            throw new OperatorRefusedException(kind + CHAT, response);
+        }
+        return ChatResource.fromJson(response.bodyText());
+    }
+
+    /**
+     * Sends the operator's message on the chat's turns and follows the reply until its turn ends.
      *
      * @param kind    the subject kind
      * @param id      the subject id
@@ -344,9 +357,25 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ChatResource chatTurn(String kind, String id, String message) throws IOException {
+        return chatTurn(kind, id, message, UUID.randomUUID().toString());
+    }
+
+    /**
+     * Sends the operator's message with a caller-supplied {@code client_turn_id} so retries reuse
+     * the same id and the runtime deduplicates repeats.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @return the chat after the reply, or as it stands when the wait runs out
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource chatTurn(String kind, String id, String message, String clientTurnId)
+                        throws IOException {
         context.gate().verifyAct();
         var routes = chatRoutes(kind, id);
-        var request = new ChatTurnRequest(message, UUID.randomUUID().toString());
+        var request = new ChatTurnRequest(message, clientTurnId);
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", routes.turns(), JsonTree.write(request.toMap())));
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
