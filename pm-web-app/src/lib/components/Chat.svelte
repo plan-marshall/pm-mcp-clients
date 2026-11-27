@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount, untrack, type Snippet } from 'svelte';
+  import { translateChatMessage } from '../chat/messages';
   import { createChatStore, type ChatStore, type ChatStoreState } from '../chat/store';
   import type { ChatScopeKind, ChatSubject, ChatTarget, MessageText, TurnRef } from '../chat/types';
   import { formatTime } from '../display/format';
@@ -14,6 +15,7 @@
     subject: ChatTarget & { title?: string };
     scope?: ChatScopeKind;
     archive?: boolean;
+    turnId?: string | null;
     opener?: HTMLElement | null;
     localDevice?: string | null;
     onhide?: () => void;
@@ -27,6 +29,7 @@
     subject,
     scope = 'plan',
     archive = false,
+    turnId = null,
     opener = null,
     localDevice = null,
     onhide,
@@ -223,7 +226,7 @@
   }
 
   async function handleSend(text: string): Promise<void> {
-    if (tooLong || !text.trim()) return;
+    if (tooLong || chatState.sending || !text.trim()) return;
     dismissedRefToken = null;
     await activeStore.send(text);
   }
@@ -260,13 +263,22 @@
       .find((turn) => turn.author !== 'operator' && turn.status !== 'streaming');
     if (completed && completed.turn_id !== previousCompletedId) {
       previousCompletedId = completed.turn_id;
-      announcement = completed.text || $t('control.chat.stopped');
+      if (completed.status === 'stopped' && !completed.text) {
+        announcement = $t('control.chat.stopped');
+      } else if (completed.kind === 'notice' && !completed.text && completed.lines?.length) {
+        const first = completed.lines[0];
+        announcement = translateChatMessage($t, { key: first.key, args: first.args });
+      } else {
+        announcement = completed.text;
+      }
     }
   });
 
   onMount(() => {
     if (ownedStore) {
-      void ownedStore.connect();
+      void ownedStore.connect({ turnId });
+    } else if (turnId) {
+      void activeStore.loadToTurn(turnId);
     }
     focusComposer();
   });
@@ -353,6 +365,7 @@
         hasOlder={chatState.hasOlder}
         loadingOlder={chatState.loadingOlder}
         {announcement}
+        focusTurnId={turnId}
         onloadolder={() => activeStore.loadOlder()}
         onretry={(clientTurnId) => activeStore.retryTurn(clientTurnId)}
         onedit={(clientTurnId) => {
@@ -401,10 +414,10 @@
     <Compose
       bind:this={composeRef}
       bind:value={() => chatState.draft, (next) => activeStore.setDraft(next)}
-      label={$t('control.chat.message')}
+      ariaLabel={$t('control.chat.message')}
       sendLabel={$t('control.chat.send')}
       placeholder={$t('control.chat.example', { scope: effectiveScope })}
-      disabled={tooLong}
+      disabled={tooLong || chatState.sending}
       disabledReason={tooLong ? $t('control.chat.too_long') : undefined}
       stop={streamingTurn ? { label: $t('control.chat.stop'), onstop: handleStop } : null}
       onsend={(text) => void handleSend(text)}

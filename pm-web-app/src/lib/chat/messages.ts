@@ -53,11 +53,11 @@ export function translateChatMessage(translate: ChatTranslator, message: Message
   }
   if (key.startsWith(KNOWS_PREFIX)) {
     const item = args?.item ?? key.slice(KNOWS_PREFIX.length);
-    return translate('control.chat.knows.item', { item: String(item) });
+    return translate('control.chat.knows.item', { ...args, item: String(item) });
   }
   if (key.startsWith(APPLIES_PREFIX)) {
     const applies = args?.applies ?? key.slice(APPLIES_PREFIX.length);
-    return translate('control.chat.revision_queued', { applies: String(applies) });
+    return translate('control.chat.revision_queued', { ...args, applies: String(applies) });
   }
   if (key.startsWith(STEP_PREFIX)) {
     return translate(`control.${key}`, args);

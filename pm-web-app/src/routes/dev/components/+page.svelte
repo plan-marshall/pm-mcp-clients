@@ -979,10 +979,12 @@
           <EscapingKeyForm />
         </Card>
 
+      </div>
+
+      <div class="dev__stack" data-testid="chat-fixture">
         <Card title={$t('control.chat.title', { subject: 'fix-relay', role: 'planner' })}>
           <ChatFixture />
         </Card>
-
       </div>
 
       <div class="dev__stack">

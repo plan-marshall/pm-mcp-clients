@@ -45,10 +45,11 @@ export interface ChatStoreState {
 }
 
 export interface ChatStore extends Readable<ChatStoreState> {
-  connect: () => Promise<void>;
+  connect: (options?: { turnId?: string | null }) => Promise<void>;
   disconnect: () => void;
   openNew: () => Promise<ChatResource | null>;
   loadOlder: () => Promise<void>;
+  loadToTurn: (turnId: string) => Promise<boolean>;
   setDraft: (text: string) => void;
   send: (overrideText?: string) => Promise<void>;
   retryTurn: (clientTurnId: string) => Promise<void>;
@@ -127,14 +128,7 @@ function mergeServerAndPending(
 }
 
 function oldestServerTurnId(chat: ChatResource): string | null {
-  if (chat.before === null) {
-    return null;
-  }
-  if (chat.before && chat.turns.length > 0) {
-    // Server populates `before` when an older page exists (either cursor or first turn id).
-    return chat.turns[0].turn_id;
-  }
-  return null;
+  return chat.before ?? null;
 }
 
 /**
@@ -310,7 +304,7 @@ export function createChatStore(
       nextTurns.push({
         turn_id: payload.turn_id,
         kind: payload.kind,
-        author: payload.kind === 'notice' ? state.chat.role.name : state.chat.role.name,
+        author: state.chat.role.name,
         status: payload.status,
         format: 'plain',
         untrusted: payload.untrusted,
@@ -345,12 +339,20 @@ export function createChatStore(
       void refreshFromReset();
       return;
     }
+    const nextProposalState = payload.state;
+    const nextChatState =
+      nextProposalState !== 'open' && state.chat.state === 'chat.read-back'
+        ? nextProposalState === 'accepted'
+          ? 'chat.apply'
+          : 'chat.open'
+        : state.chat.state;
     patch({
       chat: {
         ...state.chat,
+        state: nextChatState,
         proposal: {
           ...current,
-          state: payload.state,
+          state: nextProposalState,
           finding: payload.finding ?? null,
         },
       },
@@ -413,6 +415,38 @@ export function createChatStore(
     return opened;
   }
 
+  async function loadPagesUntilTurn(turnId: string, seq: number): Promise<boolean> {
+    while (seq === readSeq && !state.turns.some((turn) => turn.turn_id === turnId)) {
+      const cursor = state.oldestTurnId;
+      if (!cursor) {
+        return false;
+      }
+      patch({ loadingOlder: true });
+      try {
+        const page = await readChat(target, cursor);
+        if (seq !== readSeq) return false;
+        const existingIds = new Set(state.turns.map((turn) => turn.turn_id));
+        const olderTurns = page.turns.filter((turn) => !existingIds.has(turn.turn_id));
+        const nextCursor = oldestServerTurnId(page);
+        patch({
+          turns: [...olderTurns, ...state.turns],
+          hasOlder: nextCursor !== null && page.turns.length > 0,
+          oldestTurnId: page.turns.length > 0 ? nextCursor : null,
+          loadingOlder: false,
+        });
+        if (!nextCursor || nextCursor === cursor || page.turns.length === 0) {
+          break;
+        }
+      } catch (error) {
+        if (seq === readSeq) {
+          patch({ loadingOlder: false, error });
+        }
+        return false;
+      }
+    }
+    return state.turns.some((turn) => turn.turn_id === turnId);
+  }
+
   async function postWithTurnId(text: string, clientTurnId: string): Promise<void> {
     patch({ sending: true, error: null });
     try {
@@ -457,7 +491,7 @@ export function createChatStore(
   return {
     subscribe: inner.subscribe,
 
-    async connect(): Promise<void> {
+    async connect(options?: { turnId?: string | null }): Promise<void> {
       unsubscribeStream?.();
       settled = false;
       const seq = ++readSeq;
@@ -487,6 +521,9 @@ export function createChatStore(
         if (seq !== readSeq) return;
         applySnapshot(resource);
         settled = true;
+        if (options?.turnId) {
+          await loadPagesUntilTurn(options.turnId, seq);
+        }
       } catch (error) {
         if (seq !== readSeq) return;
         patch({ loading: false, error });
@@ -534,6 +571,10 @@ export function createChatStore(
       } catch (error) {
         patch({ loadingOlder: false, error });
       }
+    },
+
+    async loadToTurn(turnId: string): Promise<boolean> {
+      return loadPagesUntilTurn(turnId, readSeq);
     },
 
     setDraft(text: string): void {

@@ -3,6 +3,8 @@ import { get } from 'svelte/store';
 import { apiClient } from '../api/client';
 import { ClientError } from '../api/errors';
 import { createChatStore } from './store';
+import { translateChatMessage } from './messages';
+import { loadMessages } from '../../test/catalogue-fixture';
 import type { ChatResource, ChatTarget } from './types';
 
 function makeChat(overrides: Partial<ChatResource> = {}): ChatResource {
@@ -325,5 +327,100 @@ describe('chat store and follow lifecycle', () => {
     });
     expect(req).toHaveBeenCalledWith('POST', '/api/v1/plans/fix-relay/chat/end', {});
     expect(get(store).chat?.state).toBe('chat.end');
+  });
+
+  it('pages back through ?before= cursors on loadToTurn and stops cleanly when absent', async () => {
+    vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'request').mockImplementation(async (_method, path) => {
+      if (path === '/api/v1/plans/fix-relay/chat') {
+        return makeChat({
+          before: 't-page2',
+          turns: [
+            {
+              turn_id: 't-newest',
+              kind: 'message',
+              author: 'operator',
+              status: 'complete',
+              format: 'plain',
+              untrusted: false,
+              model: null,
+              text: 'Newest',
+              steps: [],
+              refs: [],
+              at: '2026-11-27T10:03:00Z',
+              reason: null,
+              lines: [],
+            },
+          ],
+        });
+      }
+      if (path === '/api/v1/plans/fix-relay/chat?before=t-page2') {
+        return makeChat({
+          before: 't-page1',
+          turns: [
+            {
+              turn_id: 't-target',
+              kind: 'message',
+              author: 'planner',
+              status: 'complete',
+              format: 'markdown',
+              untrusted: false,
+              model: 'sonnet',
+              text: 'Target turn',
+              steps: [],
+              refs: [],
+              at: '2026-11-27T10:01:00Z',
+              reason: null,
+              lines: [],
+            },
+          ],
+        });
+      }
+      return makeChat({ before: null, turns: [] });
+    });
+
+    const store = createChatStore(planTarget);
+    await store.connect({ turnId: 't-target' });
+    expect(get(store).turns.map((turn) => turn.turn_id)).toEqual(['t-target', 't-newest']);
+
+    const foundMissing = await store.loadToTurn('t-does-not-exist');
+    expect(foundMissing).toBe(false);
+  });
+
+  it('preserves named parameters for chat.knows.* and chat.applies.* keys', () => {
+    const messages = loadMessages('en');
+    const t = (key: string, params?: Record<string, string | number>) => {
+      let text = messages[key] ?? key;
+      if (params) {
+        for (const [k, v] of Object.entries(params)) {
+          text = text.replaceAll(`{${k}}`, String(v));
+        }
+      }
+      return text;
+    };
+
+    expect(
+      translateChatMessage(
+        (key, params) => {
+          if (key === 'control.chat.knows.item') {
+            return `${params?.item}:${params?.count}`;
+          }
+          return t(key, params);
+        },
+        { key: 'chat.knows.tasks', args: { count: 7 } },
+      ),
+    ).toBe('tasks:7');
+
+    expect(
+      translateChatMessage(
+        (key, params) => {
+          if (key === 'control.chat.revision_queued') {
+            return `${params?.applies}:${params?.task_id}`;
+          }
+          return t(key, params);
+        },
+        { key: 'chat.applies.after_task', args: { task_id: 'TASK-4' } },
+      ),
+    ).toBe('after_task:TASK-4');
   });
 });

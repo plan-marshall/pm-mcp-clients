@@ -223,7 +223,7 @@
     gap: var(--space-2);
     color: var(--color-text-primary);
     font-size: var(--text-base);
-    line-height: var(--line-height-normal);
+    line-height: var(--line-height-base);
     overflow-wrap: anywhere;
   }
 

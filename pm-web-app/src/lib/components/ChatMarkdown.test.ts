@@ -127,12 +127,19 @@ describe('ChatMarkdown', () => {
     ];
     const md = 'Check TASK-4 in `TASK-4` and edit src/App.svelte:12.';
 
-    const { container } = render(ChatMarkdown, { props: { text: md, refs } });
+    const { container } = render(ChatMarkdown, {
+      props: { text: md, refs, subject: { kind: 'plan', id: 'fix-relay' } },
+    });
 
     const chipLinks = container.querySelectorAll('a.link--chip');
     expect(chipLinks).toHaveLength(2);
     expect(chipLinks[0].textContent).toContain('TASK-4');
+    expect(chipLinks[0]).toHaveAttribute('href', '/plans/fix-relay/tasks/TASK-4?chat=open');
     expect(chipLinks[1].textContent).toContain('src/App.svelte:12');
+    expect(chipLinks[1]).toHaveAttribute(
+      'href',
+      '/plans/fix-relay?tab=changes&file=src%2FApp.svelte&chat=open',
+    );
     expect(container.querySelector('code')?.textContent).toBe('TASK-4');
   });
 });

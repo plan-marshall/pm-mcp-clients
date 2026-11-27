@@ -15,6 +15,7 @@
     hasOlder?: boolean;
     loadingOlder?: boolean;
     announcement?: string;
+    focusTurnId?: string | null;
     onloadolder?: () => Promise<void> | void;
     onretry?: (clientTurnId: string) => void;
     onedit?: (clientTurnId: string) => void;
@@ -29,6 +30,7 @@
     hasOlder = false,
     loadingOlder = false,
     announcement = '',
+    focusTurnId = null,
     onloadolder,
     onretry,
     onedit,
@@ -40,6 +42,7 @@
   let previousTurnCount = 0;
   let previousFirstId: string | null = null;
   let previousLastText = '';
+  let scrolledFocusTurnId = '';
 
   let isBusy = $derived(
     turns.some((turn) => turn.author !== 'operator' && turn.status === 'streaming'),
@@ -102,7 +105,7 @@
     previousFirstId = firstId;
     previousLastText = lastText;
 
-    if (appendedOrUpdated) {
+    if (appendedOrUpdated && (!focusTurnId || scrolledFocusTurnId === focusTurnId)) {
       if (pinnedToBottom) {
         void tick().then(() => {
           if (logEl) {
@@ -112,6 +115,22 @@
       } else {
         hasUnreadReply = true;
       }
+    }
+  });
+
+  $effect(() => {
+    if (!focusTurnId) {
+      scrolledFocusTurnId = '';
+      return;
+    }
+    if (!logEl || focusTurnId === scrolledFocusTurnId) return;
+    const match = Array.from(logEl.querySelectorAll('[data-turn-id]')).find(
+      (node) => node.getAttribute('data-turn-id') === focusTurnId,
+    );
+    if (match instanceof HTMLElement) {
+      scrolledFocusTurnId = focusTurnId;
+      pinnedToBottom = false;
+      match.scrollIntoView?.({ block: 'nearest' });
     }
   });
 </script>

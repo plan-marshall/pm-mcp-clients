@@ -1,5 +1,5 @@
 /** Wire subject kinds from `de.planmarshall.api.chat.ChatSubjectKind`. */
-export type ChatSubjectKind = 'plan' | 'epic' | 'entry' | 'decision' | 'ended';
+export type ChatSubjectKind = 'plan' | 'epic' | 'entry' | 'decision';
 
 /** Wire scope kinds from `de.planmarshall.api.chat.ChatScopeKind`. */
 export type ChatScopeKind =

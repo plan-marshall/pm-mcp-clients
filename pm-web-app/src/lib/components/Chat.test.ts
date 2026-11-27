@@ -64,6 +64,7 @@ describe('Chat', () => {
 
     const chatEl = screen.getByTestId('chat');
     expect(chatEl).toBeInTheDocument();
+    expect(chatEl.querySelector('.compose__label')).toBeNull();
     expect(await screen.findByText('Fix Relay Transport')).toBeInTheDocument();
     expect(screen.getByText('with planner · sonnet')).toBeInTheDocument();
     expect(screen.getByText(/planner knows:.*as of/)).toBeInTheDocument();
@@ -142,7 +143,7 @@ describe('Chat', () => {
 
   it('shows Stop while a role reply streams and keeps focus in composer on stop', async () => {
     vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
-    const req = vi.spyOn(apiClient, 'request').mockImplementation(async (method, path) => {
+    const req = vi.spyOn(apiClient, 'request').mockImplementation(async (method) => {
       if (method === 'GET') {
         return makeChat({
           state: 'chat.reply',
@@ -276,5 +277,42 @@ describe('Chat', () => {
       expect(req).toHaveBeenCalledWith('POST', '/api/v1/plans/fix-relay/chat'),
     );
     expect(onnew).toHaveBeenCalledTimes(1);
+  });
+
+  it('announces completed notice lines cleanly without falsely reporting Stopped', async () => {
+    vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'request').mockResolvedValue(
+      makeChat({
+        turns: [
+          {
+            turn_id: 't-notice',
+            kind: 'notice',
+            author: 'planner',
+            status: 'complete',
+            format: 'plain',
+            untrusted: false,
+            model: null,
+            text: '',
+            steps: [],
+            refs: [],
+            at: '2026-11-27T10:43:00Z',
+            reason: null,
+            lines: [
+              {
+                key: 'chat.line.task_ended',
+                args: { task_id: 'TASK-3', outcome: 'done' },
+                refs: [],
+                at: '2026-11-27T10:43:00Z',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+
+    render(Chat, { props: { subject, scope: 'plan' } });
+    const live = await screen.findByTestId('chat-announcement');
+    await vi.waitFor(() => expect(live.textContent).toContain('TASK-3 done'));
+    expect(live.textContent).not.toContain('Stopped');
   });
 });

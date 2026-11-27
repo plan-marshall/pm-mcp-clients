@@ -142,13 +142,13 @@
       </div>
     {/if}
 
-    {#if isStreaming}
+    {#if isStreaming && !turn.text}
       <div class="chat-turn__working">
         <WaitingMark label={workingLabel} />
       </div>
     {/if}
 
-    {#if isStreaming && !turn.text && turn.steps.length > 0}
+    {#if !turn.text && turn.steps.length > 0}
       <ul class="chat-turn__steps">
         {#each turn.steps as step, idx (idx)}
           <li class="chat-turn__step">{translateChatMessage($t, step)}</li>
@@ -337,7 +337,7 @@
     white-space: pre-wrap;
     overflow-wrap: anywhere;
     font-size: var(--text-base);
-    line-height: var(--line-height-normal);
+    line-height: var(--line-height-base);
   }
 
   .chat-turn__notice-lines {
@@ -425,7 +425,7 @@
     font-size: var(--text-xs);
     color: var(--color-text-muted);
     opacity: 0;
-    transition: opacity 150ms ease;
+    transition: opacity var(--duration-fast) var(--ease-standard);
   }
 
   .chat-turn:hover .chat-turn__meta,

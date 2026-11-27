@@ -67,29 +67,38 @@ export function hrefForTurnRef(ref: TurnRef, fallbackSubject?: ChatSubject | nul
   const id = ref.id ?? '';
   switch (ref.kind) {
     case 'plan':
+      if (fallbackSubject?.kind === 'epic' && id) {
+        return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`plan:${id}`)}&chat=open`;
+      }
       return id ? `/plans/${encodeURIComponent(id)}` : '/overview';
     case 'decision':
+      if (fallbackSubject?.kind === 'plan' && id) {
+        return `/plans/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`decision:${id}`)}&chat=open`;
+      }
+      if (fallbackSubject?.kind === 'epic' && id) {
+        return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`decision:${id}`)}&chat=open`;
+      }
       return id ? `/decisions/${encodeURIComponent(id)}` : '/decisions';
     case 'task':
       if (target?.kind === 'plan' && id) {
-        return `/plans/${encodeURIComponent(target.id)}/tasks/${encodeURIComponent(id)}`;
+        return `/plans/${encodeURIComponent(target.id)}/tasks/${encodeURIComponent(id)}?chat=open`;
       }
       return id ? `/plans?open=${encodeURIComponent(`task:${id}`)}` : '/overview';
     case 'file': {
       const colon = id.lastIndexOf(':');
       const filePath = colon > 0 && /^\d+$/.test(id.slice(colon + 1)) ? id.slice(0, colon) : id;
       if (target?.kind === 'plan' && filePath) {
-        return `/plans/${encodeURIComponent(target.id)}?tab=changes&file=${encodeURIComponent(filePath)}`;
+        return `/plans/${encodeURIComponent(target.id)}?tab=changes&file=${encodeURIComponent(filePath)}&chat=open`;
       }
       return '/overview';
     }
     case 'hold':
     case 'act':
       if (target?.kind === 'plan') {
-        return `/plans/${encodeURIComponent(target.id)}`;
+        return `/plans/${encodeURIComponent(target.id)}?chat=open`;
       }
       if (target?.kind === 'epic') {
-        return `/epics/${encodeURIComponent(target.id)}`;
+        return `/epics/${encodeURIComponent(target.id)}?chat=open`;
       }
       return '/overview';
   }

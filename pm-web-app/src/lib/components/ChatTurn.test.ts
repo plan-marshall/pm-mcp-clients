@@ -143,14 +143,23 @@ describe('ChatTurn', () => {
     );
     expect(TURN_STYLE).toContain('@media (prefers-reduced-motion: reduce)');
 
-    // Once reply text arrives, steps fold to a 3 steps summary toggle.
+    // Once reply text arrives, WaitingMark clears and steps fold to a 3 steps summary toggle.
     await rerender({
       turn: { ...waitingTurn, text: 'Partial answer.' },
       scope: 'plan',
     });
+    expect(screen.queryByTestId('waiting-mark')).toBeNull();
     expect(screen.queryByText('reads Chat.svelte')).toBeNull();
     const foldBtn = screen.getByRole('button', { name: '3 steps' });
     await fireEvent.click(foldBtn);
+    expect(screen.getByText('reads Chat.svelte')).toBeInTheDocument();
+
+    // Stopped before any text keeps steps visible while clearing WaitingMark.
+    await rerender({
+      turn: { ...waitingTurn, status: 'stopped', text: '' },
+      scope: 'plan',
+    });
+    expect(screen.queryByTestId('waiting-mark')).toBeNull();
     expect(screen.getByText('reads Chat.svelte')).toBeInTheDocument();
 
     // Re-announced started turn replaces partial text and steps cleanly.
@@ -313,5 +322,17 @@ describe('ChatTranscript', () => {
     expect(onLoadOlder).toHaveBeenCalledTimes(1);
     await rerender({ turns: currentTurns, hasOlder: false, onloadolder: onLoadOlder });
     expect(log.scrollTop).toBe(260);
+  });
+
+  it('scrolls focusTurnId into view once present', async () => {
+    const turns = [
+      makeTurn({ turn_id: 't-older', text: 'Target turn' }),
+      makeTurn({ turn_id: 't-latest', text: 'Latest turn' }),
+    ];
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    render(ChatTranscript, { props: { turns, focusTurnId: 't-older' } });
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
   });
 });

@@ -113,6 +113,7 @@
     disconnect: () => {},
     openNew: async () => fixtureChat,
     loadOlder: async () => {},
+    loadToTurn: async () => true,
     setDraft: (draft) => inner.update((s) => ({ ...s, draft })),
     send: async () => {},
     retryTurn: async () => {},
@@ -124,10 +125,10 @@
   };
 
   const standaloneTurn: LocalChatTurn = {
-    turn_id: 'dev-t-working',
+    turn_id: 'dev-t-stopped',
     kind: 'message',
     author: 'planner',
-    status: 'streaming',
+    status: 'stopped',
     format: 'markdown',
     untrusted: false,
     model: 'sonnet',
