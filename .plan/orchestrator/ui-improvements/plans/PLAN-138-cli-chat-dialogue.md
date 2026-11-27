@@ -166,6 +166,8 @@ overtaken proposal, the paused plan's chat); `doc/design/terminal-client/04-cons
 - OBSERVED: `doc/Traceability.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/ChoicePrompt.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `doc/design/shared/work-actions.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at HEAD 3f0af941 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java` — present at HEAD 3f0af941 (re-grounding 2026-11-27, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -234,12 +236,76 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 - Standing constraints: the merge rule is `CLAUDE.md`'s (the lane merges its own PR once the gates hold), not "only on the operator's word".
 - Overlaps the removal and seven-phase packages of `doc-review-2026-11-24-001` (`operator.*.properties`, `phase.name.*`): rebase on them.
 
+## Re-Grounding 2026-11-27 (at `3f0af941`)
+
+Re-read by a read-only sub-agent against `3dea04b2..3f0af941` (#582, #587, #589, #591, #594, #599, #600). The key claims were spot-checked by the orchestrator (`PlanCommand.java:1087`, `WorkChatDialogue.java:155-165`, `ChatResource.java:109-111`). **This section binds over the body and every earlier section where they differ.** Size: large. Emitted as a `/plan-marshall` plan, unsplit: 5 deliverables, under the scope guard. A split along the streaming seam stays available if the outline finds it too large: 138a = D1, D2, D4; 138b = D3 and O9.
+
+- **Dependencies met:**
+  - PLAN-132 (#409), PLAN-133 (#424), PLAN-123 (#404).
+  - O8 and O9 are answered (`## Operator Decisions 2026-11-10`).
+  - PLAN-42 (parked; `90757a51` changes `PlanCommand` only at `:27-740`), PLAN-44 and PLAN-48 change no chat region. They are ordering only: the gate "staged behind PLAN-42, 44, 48" is dropped, and whichever lands second rebases.
+- **D1: keep, rescoped.**
+  - **`--message`:**
+    - Remove it from `PlanCommand.java:1087-1089` and `EpicCommand.java:736-738`, and its JSON path from `ActionSupport.java:387-391`.
+    - Rewrite the tests that drive it: `PlanCommandTest:782`, `EpicCommandTest:688`, `OperatorGateScopeTest:122,133`, `PlanChatIT:48,114`.
+  - **`--no-input`:** add it to both chat verbs (today it is an unknown option).
+  - **One-shot outside the console:** settle the `render` path (`ActionSupport.java:393-398`) against `19-actions.adoc:49`.
+  - **Opening:** open the chat (POST `routes.chat()`) before the first turn. `WorkActionsClient.chat:328-330` is GET only, and the mock refuses an unopened chat (`ChatRegistry.java:439,478`).
+  - **`client_turn_id`:** draw it once per message and reuse it on a retry after a failed POST. The mock deduplicates it (`ChatRegistry.java:480-493`).
+- **D2: keep, rescoped.**
+  - Today:
+    - `q` at the message prompt is sent as a message (`WorkChatDialogue.java:155-165`);
+    - `Ctrl+D` and `q` at `Accept?` leave silently (`:82-85`, `:252-253`);
+    - an empty line prints `chat.kept` (`:160-161`).
+  - All of them print `operator.actions.chat.left`.
+  - Add the message of several lines, sent by an empty line (`19-actions.adoc:445`).
+  - `new` needs the end and open calls in `WorkActionsClient`; `ChatRoutes.end()` exists.
+  - Return already reprints the open proposal (`:129-130`).
+- **D3: keep.**
+  - Nothing of it is built. The mock and the events are ready since #589 (`ChatRegistry.java:95-112,695-830`; `ChatTurn{Started,Delta,Progress,Completed}Event`).
+  - Write the O9 sentence first into `19-actions.adoc:448` and `04-console.adoc` `#line-editor` (`:327-336`); it is still absent.
+  - Fold in the `awaitReply` residue: `WorkActionsClient.java:403-420`, where `readChat` throws at `:388-389`.
+- **D4: keep, rescoped.**
+  - Done: Enter and `r`, the applies text, "no change yet" once (`WorkChatDialogue.java:167-173,219-261,339-347`).
+  - **Owed:**
+    - REFUSED, LAPSED, finding and queued handling.
+    - A REFUSED proposal is offered with `r) reject` only, through `proposal.isOpen(false)` (`ChatProposal.java:112-114`, #589). `hasProposal()` is OPEN only (`ChatResource.java:109-111`). This is PLAN-194 L3-14 for the work chat; `ChatDialogue.java:81` stays PLAN-140's.
+    - Print `operator.actions.chat.accepted` and `.applied`, which no code uses yet.
+  - **Ended work:**
+    - Accept through the runtime, then print `control.chat.follow_up.opened` without a way to the entry (the epic's chat contract Open Item, part 2), then leave.
+    - Settle the nullability at `:196-198`.
+    - Delete the dead `startFollowUp` (`WorkActionDialogue.java:343-366`) and `operator.actions.chat.follow_up_started`.
+    - Correct `19-actions.adoc:486` first.
+    - A plan in `sanity-check` is outside the revision window (2026-11-25).
+- **D5: keep, rescoped.**
+  - Add six keys, en and de: `operator.actions.chat_leave`, `.chat.left`, `.chat.new_command`, `.chat.writing`, `.chat.restarted`, `.key.stop`. `.key.open` is PLAN-139's; `.key.chat` exists.
+  - Remove `chat_end` (`operator.en:360`), `chat.kept` (`:375`), `chat.follow_up_started` (`:583`) and the unused `chat.sent` (`:381`).
+  - Name the code-only keys in `22-texts-actions.adoc`, or drop the unused ones: `head`, `scope.*`, `answers`, `applied`, `no_proposal`, `read_only`, `proposed`, `proposed_follow_up`, `applies.*`.
+  - Add no `control.chat.*` key.
+- **Done-whens added:**
+  - **D1:**
+    - the POST open on an unseeded `running-work` plan before the turn;
+    - the same `client_turn_id` after a failed POST;
+    - exit 2 for `--message` on plan and epic;
+    - `--no-input` prints `chat.no_input`.
+  - **D2:** `q` at the message prompt posts nothing.
+  - **D3:**
+    - a line typed while the role writes is held and offered as the next first line;
+    - a failed read after the recorded turn keeps the last snapshot.
+  - **D4:**
+    - a REFUSED proposal is offered with `r) reject` only;
+    - the ended-work accept prints `follow_up.opened` and starts nothing a second time.
+  - Evidence order: `test-first` for all of them.
+- **Surface added** (lines below): `04-console.adoc`, `ScreenCaptureIT.java`. Also, only if changed: `ChatResource.java`, `PtySession.java`. A new stream-follower class in `pm-operator/.../operator/` is created by this plan.
+- **Overlap:** no shared code file with PLAN-62, 135, 70 or 198.
+- **Merge rule:** `CLAUDE.md`'s, as in 2026-11-25. The plan merges its own PR once the gates hold.
+
 ## Hand-Off Command
 
-Lane: `runbook`.
+Lane: `plan-marshall` (large; operator 2026-11-27).
 
 ```text
-/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-138-cli-chat-dialogue.md
+/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-138-cli-chat-dialogue.md"
 ```
 
 ## Write-Boundary

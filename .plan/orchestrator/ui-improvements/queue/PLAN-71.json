@@ -2,10 +2,10 @@
   "id": "PLAN-71",
   "slug": "verify-web-onboarding",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-71-verify-web-onboarding",
+  "pr": "599",
+  "landing": "landings/PLAN-71.md",
   "seq": 71
 }
