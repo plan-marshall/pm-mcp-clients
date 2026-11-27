@@ -349,6 +349,9 @@
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
       if (refreshesEntry(event)) {
         void refresh();
+      } else if (event === 'chat.ended') {
+        void refresh();
+        void refreshChat(id);
       } else if (
         event === 'chat.turn.started' ||
         event === 'chat.turn.completed' ||

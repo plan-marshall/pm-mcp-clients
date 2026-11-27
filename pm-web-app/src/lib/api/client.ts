@@ -3113,6 +3113,26 @@ export class ApiClient {
   }
 
   /**
+   * Subscribes to a path-scoped SSE stream using the client's SSE reader, retry policy, and
+   * revocation handling.
+   *
+   * @param path the API stream path (for example `/api/v1/plans/{planId}/events`)
+   * @param onEvent callback per parsed SSE event
+   * @param signal optional abort signal
+   * @param onState optional stream state callback
+   * @returns unsubscribe callback
+   */
+  public subscribePathEvents(
+    path: string,
+    onEvent: (event: string, data: unknown) => void,
+    signal?: AbortSignal,
+    onState?: (state: EventStreamState) => void,
+  ): () => void {
+    this.assertRequestPath(path);
+    return this.subscribeStream(path, onEvent, signal, onState);
+  }
+
+  /**
    * Records a state of the shared stream and tells the subscriber.
    *
    * @param state the state the stream entered

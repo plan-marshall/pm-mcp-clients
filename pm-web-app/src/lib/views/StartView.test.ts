@@ -151,11 +151,25 @@ describe('StartView', () => {
       expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
     });
 
+    it('re-reads the entry when chat.ended arrives', async () => {
+      arrangeOpen();
+      const { emit } = arrangeEvents();
+      const read = vi
+        .spyOn(apiClient, 'getEntry')
+        .mockResolvedValue(sources({ sources: [source({ title: 'After chat ended' })] }));
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByTestId('source-list');
+
+      emit('chat.ended');
+
+      expect(await screen.findByText('After chat ended')).toBeInTheDocument();
+      expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
+    });
+
     it.each([
       'chat.turn.delta',
       'chat.turn.completed',
       'chat.proposal',
-      'chat.ended',
       'entry.changed',
       'source.changed',
       'chat.turn',

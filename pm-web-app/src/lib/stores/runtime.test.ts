@@ -23,6 +23,7 @@ import {
   navigateTo,
   openAttention,
   openEpicDecomposition,
+  openPlanView,
   openProjectOnboarding,
   openRunningWork,
   openStartPage,
@@ -34,6 +35,8 @@ import {
   retryRuntime,
   routeParamsOf,
   runtimeStore,
+  setChatOpen,
+  setChatTurn,
   startOnboardingAuto,
   stopRuntimeRecovery,
   storeCredential,
@@ -1931,5 +1934,36 @@ describe('the decision announcer', () => {
     adoptRouteFromLocation();
     expect(get(runtimeStore).currentRoute).toBe('project');
     expect(get(runtimeStore).selectedProjectId).toBe('onboard');
+  });
+
+  it('sets chat open, turn, and keeps chat=open across subject targets via replace', () => {
+    window.history.replaceState(null, '', '/plans/fix-relay');
+    adoptRouteFromLocation();
+    const pushSpy = vi.spyOn(window.history, 'pushState');
+    const replaceSpy = vi.spyOn(window.history, 'replaceState');
+
+    setChatOpen(true, 't-42');
+    expect(get(runtimeStore).chatOpen).toBe(true);
+    expect(get(runtimeStore).chatTurn).toBe('t-42');
+    expect(window.location.pathname + window.location.search).toBe(
+      '/plans/fix-relay?chat=open&turn=t-42',
+    );
+    expect(pushSpy).not.toHaveBeenCalled();
+    expect(replaceSpy).toHaveBeenCalled();
+
+    setChatTurn('t-99');
+    expect(get(runtimeStore).chatTurn).toBe('t-99');
+    expect(window.location.search).toBe('?chat=open&turn=t-99');
+
+    // Opening a task of the same plan keeps chat=open
+    openPlanView('fix-relay', 'task-1');
+    expect(get(runtimeStore).chatOpen).toBe(true);
+    expect(window.location.pathname).toBe('/plans/fix-relay/tasks/task-1');
+    expect(window.location.search).toContain('chat=open');
+
+    setChatOpen(false);
+    expect(get(runtimeStore).chatOpen).toBe(false);
+    expect(get(runtimeStore).chatTurn).toBeNull();
+    expect(window.location.search).toBe('');
   });
 });
