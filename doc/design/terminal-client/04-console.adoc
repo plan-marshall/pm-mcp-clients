@@ -470,8 +470,8 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |Plan {plan} steht: {reason}
 
 |`operator.console.notice.overdue`
-|Plan {plan} overdue: the checks of #{number} have not changed for {quiet}
-|Plan {plan} überfällig: die Checks von #{number} haben sich seit {quiet} nicht geändert
+|{cause, select, long_running {Plan {plan} overdue: the checks of #{number} have been running for {elapsed}} other {Plan {plan} overdue: the checks of #{number} have not changed for {quiet}}}
+|{cause, select, long_running {Plan {plan} überfällig: die Checks von #{number} laufen seit {elapsed}} other {Plan {plan} überfällig: die Checks von #{number} haben sich seit {quiet} nicht geändert}}
 
 |`operator.console.notice.condition`
 |Plan {plan} needs a fix: {condition}

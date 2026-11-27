@@ -155,8 +155,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Wartet auf
 
 |`control.hold.awaits.ci`
-|the checks of #{number} · no change for {quiet} · expected {expected}
-|die Checks von #{number} · keine Änderung seit {quiet} · erwartet {expected}
+|{cause, select, long_running {the checks of #{number} · running for {elapsed} · expected {expected}} other {the checks of #{number} · no change for {quiet} · expected {expected}}}
+|{cause, select, long_running {die Checks von #{number} · laufen seit {elapsed} · erwartet {expected}} other {die Checks von #{number} · keine Änderung seit {quiet} · erwartet {expected}}}
 
 |`control.hold.before`
 |What happened before
