@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API] (the plan's figures against their bounds), link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#timeline-resource[The Plan's Timeline], link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/02-plan-pause-and-stalled-plans.adoc#overdue-waits[Overdue Waits]_
 
 Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -51,13 +51,13 @@ A plan of the land lane calls fewer phases; the land lane is a choice of phases,
 
 In the web app the plan is a level of the column chain (link:../web-app/navigation.adoc#levels[Web App, Navigation, Levels as Columns]). As the object column it shows the head above and three tabs below it; as a list column, while one of its tasks is open as the next level, it shows its compact head and the tree (link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]). The list-column form, with the task's own level and its activity column, belongs to `PLAN-190` (`web-plan-task-level`); the tree's rows, the narrative's content and _Jump to now_ belong to `PLAN-62`.
 
-* *The head*: `KindMark`, title, id chip, the pull request chip, the head links (_Process designer_, a waiting plan's _Open the decision_, an ended plan's _Completion report_), the phase and the state with the duration and the task's place in the tree (`execute · running · for 2 h 10 min · task 3 of 5`). Below the head, in the object page's own attention region, the attention strip says what waits (`Waits for your decision`), the plan-level off-track banner where the tree reports an off-track task, and a revision queued in the chat says so (link:../shared/plan-view.adoc#chat-revision[Plan View, A Revision from the Chat]); an ended plan's banner stands there too. The two head links open their object in place beside the plan (`/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report:fix-relay`; link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]).
+* *The head*: `KindMark`, title, id chip, the pull request chip, the head links (_Process designer_, _Timeline_, a waiting plan's _Open the decision_, an ended plan's _Completion report_), the phase and the state with the duration and the task's place in the tree (`execute · running · for 2 h 10 min · task 3 of 5`). Below the head, in the object page's own attention region, the attention strip says what waits (`Waits for your decision`), the plan-level off-track banner where the tree reports an off-track task, and a revision queued in the chat says so (link:../shared/plan-view.adoc#chat-revision[Plan View, A Revision from the Chat]); an ended plan's banner stands there too. The two head links open their object in place beside the plan (`/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report:fix-relay`; link:../web-app/plan-view-interaction.adoc#layout[Web App, Plan View Interaction]).
 
 * *Process* (the default): the levels of this document, the tree beside the narrative of the selected node.
 * *Intent*: the plan's intent record, its builder check and its outline (link:intent-and-outline.adoc#intent[Intent and Outline]); the narrative of `refine` and `outline` links to it. This is the one step from the head the intent design names.
 * *Changes*: the plan's changes (<<changes>>), absent before the first capture; the size line of the head is a link to it.
-* *Not a tab*: the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_, a settings form with one _Save_ and a _changed_ mark per field), and the activity of a worker is the task's own level (<<worker>>; `PLAN-190`).
-* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view: the tree and the changes in link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], the intent's sections in link:intent-and-outline.adoc#terminal[Intent and Outline, The Terminal].
+* *Not a tab*: the timeline is a head link (<<timeline>>), the tokens by phase and by role stay the one-step disclosure of the head's line (<<tokens>>), the plan's settings stay a dialogue (_Plan settings…_, a settings form with one _Save_ and a _changed_ mark per field), and the activity of a worker is the task's own level (<<worker>>; `PLAN-190`).
+* An ended plan has the same tabs, read-only (<<ended>>). The terminal shows the same records as levels and sections of its view: the tree and the changes in link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], the timeline as `plan timeline <plan_id>` (<<timeline>>), the intent's sections in link:intent-and-outline.adoc#terminal[Intent and Outline, The Terminal].
 
 [#states]
 == The State of a Node
@@ -105,7 +105,7 @@ Each node shows its state as a glyph and a word, never as colour alone:
 |===
 
 * A node that contains the plan's current position is _running_ (or _waiting for you_), whatever its earlier runs were; the path from the plan to the current position is marked at every level, and one key or click jumps to it.
-* A node the plan ran more than once (a loop-back, a step that fired again) shows how often and which run it is in: `done ×2`, `running · run 3`.
+* A node the plan ran more than once (a loop-back, a step that fired again) shows how often and which run it is in: `done ×2`, `running · run 3`; where a counter bounds its runs, against that bound: `running · run 3 of 5` (<<bounds>>).
 * A state the plan ran under an earlier version of its composition shows as it was when it ran; when a new version changes what is planned, the view says `The plan changed: <event>` once and shows the new plan.
 
 [#kinds]
@@ -137,8 +137,9 @@ The web app draws the kinds with the icons of its design system; the terminal us
 
 A leaf shows what runs or ran in it:
 
-* *A job*: its kind, its status, since when it runs or how long it ran, its outcome; a job that waits for a build slot says so (`waits for a build slot`).
-* *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt, its status, and its outcome, and `off track` where the server judged its worker so; how many tasks of how many are done; a task opens what its worker does (<<worker>>).
+* *A job*: its kind, its status, since when it runs or how long it ran, a running job against its budget (`running 6 min of 30 min`), its outcome; a job that waits for a build slot says so (`waits for a build slot`).
+* *The CI wait*: since when it waits, against the expected duration of the checks, and their last observed change (`waits for the checks of #214 · 32 min · expected 15 min · last change 14:02`); past its bound the plan is held `overdue` (link:work-actions.adoc#holds[What Holds a Plan]).
+* *Tasks* (a state that hands work to workers): one line per task, with its role, the worker serving it (harness and model), its attempt against its re-offer budget (`attempt 2 of 3`), its status, and its outcome, and `off track` where the server judged its worker so; how many tasks of how many are done; a task opens what its worker does (<<worker>>).
 * *A finalize step*: its outcome and its firings (`fired 2×: failure, then done`).
 * *A state that waits for the operator*: what waits (a decision, a waiver request), and the way into it.
 * Its times: when it was entered and left, for each run.
@@ -203,6 +204,36 @@ The second line of the head says how many tokens the plan has used so far, with 
 * *Only usage*: no limit, no warning, no projection, no money. A re-planning or a waiver stays an event of the plan's history, never a figure of this line.
 * *Live*: the line follows the plan's events and changes when a task's usage is recorded, at most once a second.
 * One step from the line: the same figure by phase and by role, each with its raw components (input, cache read, cache write, output, reasoning) as a detail, as the completion report shows them (link:completion-report.adoc#tokens[Completion Report, Tokens]); for an ended plan the line shows the final figure and leads to its completion report.
+
+[#bounds]
+== Against Its Bound
+
+Where a figure of the plan has a bound, the view shows it against that bound, as the plan's resource serves both (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#local-api[Local API]); the client computes neither.
+
+* *Counts* as `n of m`: the retries and the policy counters of a state and the watch restarts on the node they count (`running · run 3 of 5`), a task's re-offers on its line (`attempt 2 of 3`), the outline's loop-back on the phase `outline`, and the plan's re-planning in the head (`re-planned 1 of 2`).
+* *Times*: a running job against its budget (`running 6 min of 30 min`), and the CI wait against the expected duration of the checks (`32 min · expected 15 min`), so the operator sees it come near `overdue` (<<leaf>>).
+* *Only figures*: the operator's alone, never shown to a model; no warning, no projection, and no colour of their own; nothing is decided by them, and a figure that reaches its bound shows what the plan does then, by its state or its hold.
+* *Live*: the figures follow the plan's events, as the rest of the view does (<<live>>); the times are computed at each redraw like every duration (link:plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]).
+
+[#timeline]
+== The Timeline
+
+What happened in the plan, in order, one line per entry, as the runtime merges it from the plan's records (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#timeline-resource[The Plan's Timeline]); the client joins nothing.
+
+----
+  fix-relay › timeline
+  13:58:02  state      execute.envelope left: done · 41 min
+  13:59:40  job        build · passed · 1 min 38 s of 20 min
+  14:00:05  task       TASK-7 commit-message · attempt 1 of 3 · submitted
+  14:01:12  step       finalize.push fired: done
+  14:02:30  wait       the checks of #214 · expected 15 min
+  14:49:31  hold       overdue · no change of the checks for 47 min
+----
+
+* *The entries*: the plan's history with the duration of each state, the firings of its steps, its jobs, its tasks' attempts, its waits, and its conditions and holds with what was tried, each with its time and its kind; in the order the runtime serves them, the newest last, read a page at a time.
+* *Reached* from the plan's head (in the web app its head link _Timeline_, in the terminal `plan timeline <plan_id>`) and from every hold (_What happened before_, link:work-actions.adoc#holds[What Holds a Plan]), which opens it at the hold's `since`.
+* *Read only*: the timeline offers no act; each entry with a node of the process leads to that node in the tree.
+* *Live*: while it is shown, it follows the plan's events and adds what happens at its end; an ended plan shows its timeline as it ended.
 
 [#position]
 == Where It Is
@@ -305,6 +336,10 @@ Keys of the area `plan`, shared by both clients.
 |running · run {run}
 |läuft · Durchlauf {run}
 
+|`plan.node.state.running_run_of`
+|running · run {run} of {of}
+|läuft · Durchlauf {run} von {of}
+
 |`plan.node.state.waiting`
 |waiting for you
 |wartet auf dich
@@ -358,12 +393,24 @@ Keys of the area `plan`, shared by both clients.
 |{done} von {total} Tasks fertig
 
 |`plan.leaf.task`
-|{role} · {harness} {model} · attempt {attempt} · {status} · {outcome}
-|{role} · {harness} {model} · Versuch {attempt} · {status} · {outcome}
+|{role} · {harness} {model} · attempt {attempt} of {of} · {status} · {outcome}
+|{role} · {harness} {model} · Versuch {attempt} von {of} · {status} · {outcome}
 
 |`plan.leaf.job`
 |{kind} · {status} · {duration} · {outcome}
 |{kind} · {status} · {duration} · {outcome}
+
+|`plan.leaf.job_running`
+|running {elapsed} of {budget}
+|läuft {elapsed} von {budget}
+
+|`plan.leaf.ci_wait`
+|waits for the checks of #{number} · {elapsed} · expected {expected} · last change {time}
+|wartet auf die Checks von #{number} · {elapsed} · erwartet {expected} · letzte Änderung {time}
+
+|`plan.view.replanned`
+|re-planned {count} of {of}
+|{count} von {of} Mal neu geplant
 
 |`plan.leaf.fired`
 |fired {count}×: {outcomes}
@@ -413,6 +460,14 @@ Keys of the area `plan`, shared by both clients.
 |By phase and role
 |Zeige je Phase und Rolle
 
+|`plan.timeline.title`
+|{plan} › timeline
+|{plan} › Verlauf
+
+|`plan.timeline.open`
+|Timeline
+|Verlauf
+
 |`plan.activity.title`
 |{role} · {harness} {model} · attempt {attempt} · {duration}
 |{role} · {harness} {model} · Versuch {attempt} · {duration}
@@ -458,4 +513,4 @@ Keys of the area `plan`, shared by both clients.
 |vom Weg ab: {signal} ({value} von {threshold}): {action}
 |===
 
-The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`. The signals and actions of a worker off track are texts of their closed lists, keys `plan.signal.<signal>` and `plan.signal.action.<action>`. The closed lists are enumerations of `process-contract`, which adds every key of this section, these keys one per value, to the catalogue of `message-catalogue` in English and German; the catalogue's build checks hold both packs complete. The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).
+The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`. The signals and actions of a worker off track are texts of their closed lists, keys `plan.signal.<signal>` and `plan.signal.action.<action>`. The kinds of a timeline entry are texts of their closed list, keys `plan.timeline.kind.<kind>`. The closed lists are enumerations of `process-contract`, which adds every key of this section, these keys one per value, to the catalogue of `message-catalogue` in English and German; the catalogue's build checks hold both packs complete. The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).

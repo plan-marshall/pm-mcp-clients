@@ -331,6 +331,14 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |w
 |u
 
+|`operator.actions.key.observe_now`
+|c
+|p
+
+|`operator.actions.key.cancel_run`
+|i
+|b
+
 |`operator.actions.key.grant`
 |g
 |g
