@@ -238,7 +238,7 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 
 ## Re-Grounding 2026-11-27 (at `3f0af941`)
 
-Re-read by a read-only sub-agent against `3dea04b2..3f0af941` (#582, #587, #589, #591, #594, #599, #600). The key claims were spot-checked by the orchestrator (`PlanCommand.java:1087`, `WorkChatDialogue.java:155-165`, `ChatResource.java:109-111`). **This section binds over the body and every earlier section where they differ.** Size: large. Emitted as a `/plan-marshall` plan, unsplit: 5 deliverables, under the scope guard. A split along the streaming seam stays available if the outline finds it too large: 138a = D1, D2, D4; 138b = D3 and O9.
+Re-read by a read-only sub-agent against `3dea04b2..3f0af941` (#582, #587, #589, #591, #594, #599, #600). The key claims were spot-checked by the orchestrator (`PlanCommand.java:1087`, `WorkChatDialogue.java:155-165`, `ChatResource.java:109-111`). **This section binds over the body and every earlier section where they differ.** Size: large. Emitted unsplit (re-issued as a runbook lane 2026-11-27 late): 5 deliverables, under the scope guard. A split along the streaming seam stays available if the outline finds it too large: 138a = D1, D2, D4; 138b = D3 and O9.
 
 - **Dependencies met:**
   - PLAN-132 (#409), PLAN-133 (#424), PLAN-123 (#404).
@@ -298,14 +298,14 @@ Re-read by a read-only sub-agent against `3dea04b2..3f0af941` (#582, #587, #589,
   - Evidence order: `test-first` for all of them.
 - **Surface added** (lines below): `04-console.adoc`, `ScreenCaptureIT.java`. Also, only if changed: `ChatResource.java`, `PtySession.java`. A new stream-follower class in `pm-operator/.../operator/` is created by this plan.
 - **Overlap:** no shared code file with PLAN-62, 135, 70 or 198.
-- **Merge rule:** `CLAUDE.md`'s, as in 2026-11-25. The plan merges its own PR once the gates hold.
+- **Merge rule:** `CLAUDE.md`'s, as in 2026-11-25. The lane merges its own PR once the gates hold.
 
 ## Hand-Off Command
 
-Lane: `plan-marshall` (large; operator 2026-11-27).
+Lane: `runbook` (the operator, 2026-11-27 late: "From now on again runbook-lane only"; re-issued from the `/plan-marshall` form, whose start was not confirmed).
 
 ```text
-/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-138-cli-chat-dialogue.md"
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-138-cli-chat-dialogue.md
 ```
 
 ## Write-Boundary

@@ -2,10 +2,10 @@
   "id": "PLAN-70",
   "slug": "web-light-theme-pass",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-70-web-light-theme-pass",
+  "pr": "601",
+  "landing": "landings/PLAN-70.md",
   "seq": 70
 }
