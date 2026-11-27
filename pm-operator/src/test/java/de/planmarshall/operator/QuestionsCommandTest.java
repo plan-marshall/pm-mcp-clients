@@ -155,6 +155,30 @@ class QuestionsCommandTest {
     }
 
     @Test
+    @DisplayName("words nothing with the decision's own key and an outside value as unknown")
+    void questionBlockWords() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions".equals(request.target())) {
+                response.json(200, """
+                                    [
+                                      {"id":"Q-1","blocks":"nothing","reversibility":"reversible","title":"Question"},
+                                      {"id":"Q-2","blocks":"landing-train","reversibility":"reversible","title":"Other"}
+                                    ]
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("questions");
+        assertEquals(0, code);
+        var text = out.toString();
+        assertTrue(text.contains("blocks nothing"), text);
+        assertTrue(text.contains("unknown"), text);
+        assertFalse(text.contains("blocks the plan"), text);
+    }
+
+    @Test
     @DisplayName("questions reports no open questions when list is empty")
     void questionsEmpty() throws Exception {
         fixture.start((request, response) -> {

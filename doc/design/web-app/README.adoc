@@ -413,9 +413,9 @@ A colour never carries a meaning alone: every state also has its word and, where
 |A `StatusLabel` with the danger dot, and the reason as a `ReasonBadge` where the runtime lists one, or in the detail line
 |`failed`, `! landing failed`, `the start failed: …`
 
-|Held or stalled
+|Held, stalled, or overdue
 |A `StatusLabel` with the attention dot, and the hold as a `ReasonBadge` (danger for an integrity hold)
-|`held`, `! stalled`, `! integrity hold`
+|`held`, `! stalled`, `! overdue`, `! integrity hold`
 |===
 
 A row carries at most one tag of each type; its reason stands first in its right-hand group, before its phase and its state (link:components-tags.adoc#tag-places[Tags and Kinds, One Fixed Place]). The `! n` in a group head is the operator's one count of what needs them (link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); the reports entry's count is unread reports only, neutral, and never mixes with it. A check that has not run says so; nothing is shown as done that was not checked.

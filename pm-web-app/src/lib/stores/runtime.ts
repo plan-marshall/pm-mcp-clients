@@ -1719,6 +1719,13 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // A tab belongs to the object it was chosen on: a route reached by a push starts without one,
     // so a project never inherits the tab a settings page was left at.
     objectTab: null,
+    // An object opened in place belongs to the address it was opened from: a push to another
+    // route never carries it, so the next view cannot show the previous caller's decision.
+    openObject: null,
+    // A file and a node belong to the plan they were selected in: another plan's Changes tab never
+    // opens with the previous plan's file.
+    changeFile: null,
+    phaseNode: null,
     ...(route === 'start'
       ? {
           startProjectId: params.projectId ?? s.startProjectId ?? null,
@@ -2181,7 +2188,14 @@ export function selectObjectTab(tab: ObjectTab): void {
   if (!current) {
     return;
   }
-  writeAddress(switchTab(current, tab), 'replace');
+  const next = switchTab(current, tab);
+  // The Changes tab writes the file it shows, so a return to it carries `file=` in the address
+  // rather than only in the view's memory (`plan-view-interaction.adoc#addresses`).
+  if (tab === 'changes') {
+    const remembered = get(runtimeStore).changeFile;
+    if (remembered) next.file = remembered;
+  }
+  writeAddress(next, 'replace');
 }
 
 /**

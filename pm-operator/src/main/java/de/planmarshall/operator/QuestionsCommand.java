@@ -135,12 +135,7 @@ public final class QuestionsCommand implements Callable<Integer> {
         var phaseStr = phase != null ? OutputSafety.stripControlSequences(phase.toString()) : "";
 
         var blocks = q.get("blocks");
-        var blocksKey = blocks != null
-                            ? "decision.blocks." + blocks.toString().toLowerCase(Locale.ROOT)
-                            : "decision.blocks.plan";
-        var blocksWord = MessageCatalogue.format(locale,
-                            MessageCatalogue.hasKey(locale, blocksKey) ? blocksKey : COMMON_UNKNOWN,
-                            Map.of());
+        var blocksWord = DecisionBlockWords.text(locale, blocks == null ? null : blocks.toString());
 
         var rev = q.get("reversibility");
         var revKey = rev != null

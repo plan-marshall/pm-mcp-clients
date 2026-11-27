@@ -66,6 +66,11 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`1 stalled` (`operator.console.badge.stalled`)
 |`plan <id>`; `epic <id>` for an epic's
 
+|`overdue`
+|`◆ Plan fix-relay overdue: the checks of #214 have not changed for 47 min` (`operator.console.notice.overdue`)
+|`1 overdue` (`operator.console.badge.overdue`)
+|`plan <id>`, with the acts of the hold (xref:19-actions.adoc#holds[What Holds a Plan])
+
 |`condition`
 |`◆ Plan fix-relay needs a fix: <condition>` (`operator.console.notice.condition`); its acts are those of the hold, never a command as text
 |`1 needs a fix` (`operator.console.badge.conditions`)
@@ -111,7 +116,7 @@ The command in the last column is one derivation: `needs` prints it beside each 
 
 A notice is raised for an item a change adds. What the console's status read at start already showed was badged before and is no addition; an item beyond it — the first credential that arrives after a start whose status read showed none — raises its notice like any later one.
 
-The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
+The holds among the kinds are exactly `stalled`, `overdue`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
 
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
@@ -368,6 +373,10 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{count, plural, one {# stalled} other {# stalled}}
 |{count, plural, one {# steht} other {# stehen}}
 
+|`operator.console.badge.overdue`
+|{count, plural, one {# overdue} other {# overdue}}
+|{count, plural, one {# überfällig} other {# überfällig}}
+
 |`operator.console.badge.conditions`
 |{count, plural, one {# needs a fix} other {# need a fix}}
 |{count, plural, one {# braucht eine Korrektur} other {# brauchen eine Korrektur}}
@@ -459,6 +468,10 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |`operator.console.notice.stalled`
 |Plan {plan} stalled: {reason}
 |Plan {plan} steht: {reason}
+
+|`operator.console.notice.overdue`
+|{cause, select, long_running {Plan {plan} overdue: the checks of #{number} have been running for {elapsed}} other {Plan {plan} overdue: the checks of #{number} have not changed for {quiet}}}
+|{cause, select, long_running {Plan {plan} überfällig: die Checks von #{number} laufen seit {elapsed}} other {Plan {plan} überfällig: die Checks von #{number} haben sich seit {quiet} nicht geändert}}
 
 |`operator.console.notice.condition`
 |Plan {plan} needs a fix: {condition}

@@ -1368,20 +1368,20 @@ final class ChatRegistry {
 
     /**
      * The word a decision line selects its text by: the decision's own {@code blocks} value —
-     * {@code plan}, {@code epic}, {@code setup}, {@code entry} or {@code task} — or {@code no}
+     * {@code plan}, {@code epic}, {@code setup}, {@code entry} or {@code task} — or {@code nothing}
      * where the decision blocks nothing, which the catalogue renders as no text at all.
      *
      * @param payload the event's payload
-     * @return the blocker the line names, as the payload states it ({@code no} when it names none),
-     *         so the catalogue's select can name the place the decision blocks
+     * @return the blocker the line names, as the payload states it ({@code nothing} when it names
+     *         none), so the catalogue's select can name the place the decision blocks
      */
-    private static String blocksOf(Map<String, Object> payload) {
+    static String blocksOf(Map<String, Object> payload) {
         var blocks = JsonTree.string(payload, ARG_BLOCKS);
         if (blocks == null) {
             var decision = JsonTree.asObject(payload.get(KEY_DECISION));
             blocks = decision == null ? null : JsonTree.string(decision, ARG_BLOCKS);
         }
-        return blocks == null || blocks.isBlank() ? "no" : blocks;
+        return blocks == null || blocks.isBlank() ? "nothing" : blocks;
     }
 
     private static NarrativeLine line(String name, Map<String, Object> args, List<TurnRef> refs, String at) {

@@ -166,8 +166,8 @@ class NeedsItemCommandsTest {
                             item(kind, "/api/v1/decisions/" + decisionId, project, epic, plan, "plan"),
                             item(kind, "/api/v1/plans/" + planId, null, null, plan, "plan"),
                             item(kind, "/api/v1/epics/" + epicId, null, epic, null, "epic"),
-                            item(kind, null, project, null, null, null),
-                            item(kind, null, null, null, null, null));
+                            item(kind, null, project, null, null, "nothing"),
+                            item(kind, null, null, null, null, "nothing"));
 
         for (var item : items) {
             var command = OverviewFormatting.formatNeedsItemCommand(item);
@@ -238,9 +238,11 @@ class NeedsItemCommandsTest {
     @Test
     @DisplayName("renders what an item blocks in the operator's words, never the wire token")
     void blocksAreCatalogueWords() {
-        assertEquals(Map.of("en", "blocks: plan", "de", "blockiert: Plan"),
+        assertEquals(Map.of("en", "blocks the plan", "de", "blockiert den Plan"),
                             Map.of("en", OverviewFormatting.formatNeedsItemBlocks("plan", "en"),
                                                 "de", OverviewFormatting.formatNeedsItemBlocks("plan", "de")));
+        assertEquals("blocks nothing", OverviewFormatting.formatNeedsItemBlocks("nothing", "en"));
+        assertEquals("unknown", OverviewFormatting.formatNeedsItemBlocks("landing-train", "en"));
     }
 
     @ParameterizedTest(name = "{0} names its kind in both languages")
@@ -287,7 +289,7 @@ class NeedsItemCommandsTest {
         var epic = place == Place.EPIC || place == Place.PLAN_AND_EPIC ? new WorkLocation(epicId, null) : null;
         var project = place == Place.PROJECT ? new WorkLocation(projectId, null) : null;
         return new NeedsOperatorItem(testCase.kind(), linkOf(testCase, planId, epicId, decisionId), project, epic,
-                            plan, Instant.parse("2026-10-16T15:00:00Z"), null);
+                            plan, Instant.parse("2026-10-16T15:00:00Z"), "nothing");
     }
 
     private static @Nullable String linkOf(Case testCase, String planId, String epicId, String decisionId) {

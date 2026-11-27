@@ -59,21 +59,76 @@
     testid?: string;
     /** The hover explanation, already localized; the label alone does not explain the action. */
     advisory?: string;
+    /**
+     * A same-document action the link performs instead of navigating.
+     *
+     * A plain left click is taken over (the default is prevented) and this runs; the `href` stays
+     * for a middle click, a keyboard follow and assistive technology. A caller uses it where the
+     * address change is the app's own (an object opened in place beside its caller).
+     */
+    onactivate?: () => void;
   }
 
-  let { href, label, look = 'text', icon, testid, advisory }: Props = $props();
+  let { href, label, look = 'text', icon, testid, advisory, onactivate }: Props = $props();
 
   /** The address that was checked and is rendered: the one without the white space around it. */
   const address = $derived(href.trim());
   const known = $derived(isAppPath(address));
+  /** A fragment of this document: the in-page target an outline criterion links to. */
+  const fragment = $derived(/^#[^\s]+$/.test(address));
+
+  /**
+   * @param event the click on the anchor
+   */
+  function activate(event: MouseEvent): void {
+    if (!onactivate || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    event.preventDefault();
+    onactivate();
+  }
+
+  /**
+   * Follows a fragment of this document: the target scrolls into view and the address takes the
+   * fragment by a replace, so a link inside the page is not a history entry of its own — Back keeps
+   * meaning the caller's own step.
+   *
+   * @param event the click on the anchor
+   */
+  function followFragment(event: MouseEvent): void {
+    if (!fragment || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+    const target = document.getElementById(address.slice(1));
+    if (target === null) {
+      return;
+    }
+    event.preventDefault();
+    if (typeof target.scrollIntoView === 'function') {
+      target.scrollIntoView({ block: 'start' });
+    }
+    window.history.replaceState(window.history.state, '', address);
+  }
+
+  /**
+   * @param event the click on the anchor
+   */
+  function onclick(event: MouseEvent): void {
+    if (onactivate) {
+      activate(event);
+      return;
+    }
+    followFragment(event);
+  }
 </script>
 
-{#if known}
+{#if known || fragment}
   <a
     href={address}
     class="link link--{look}"
     data-testid={testid}
     title={advisory}
+    onclick={onclick}
   >
     {#if icon}<span class="link__icon">{@render icon()}</span>{/if}
     <span class="link__label">{label}</span>

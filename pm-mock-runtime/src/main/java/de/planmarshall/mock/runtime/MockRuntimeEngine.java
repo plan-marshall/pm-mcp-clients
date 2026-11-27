@@ -8006,8 +8006,10 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
             }
         }
         items.sort((a, b) -> {
-            if ((a.blocks() != null) != (b.blocks() != null)) {
-                return a.blocks() != null ? -1 : 1;
+            var aBlocks = !"nothing".equals(a.blocks());
+            var bBlocks = !"nothing".equals(b.blocks());
+            if (aBlocks != bBlocks) {
+                return aBlocks ? -1 : 1;
             }
             return sinceOf(a).compareTo(sinceOf(b));
         });

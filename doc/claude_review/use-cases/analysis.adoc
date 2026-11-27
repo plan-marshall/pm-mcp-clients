@@ -9,12 +9,15 @@ link:../README.adoc[Review] » link:README.adoc[Use Cases] » Analysis
 == Result in Short
 
 The main flows of the use cases work in the web app. An operator can onboard the machine, follow a plan, answer a
-decision, start a plan from a description, and clean up. The app falls short in three ways:
+decision, start a plan from a description, and clean up. Three points stand between the app and its review:
 
-. *Variations are absent.* Many use cases list variations (advice, a change link, the steward, a fix action, the
-  intent record). The app shows the happy path and leaves them out.
-. *Raw data replaces the designed screen.* Some states have no designed screen. For them, the app shows a generic
-  card with the state id (`Machine · harness.none`, `Machine · entry.lan-open`) or a raw error code (`plan_not_found`).
+. *The variations are there; the mock leaves two of them unverified.* The onboarding shows the change link, the
+  steward, the field for a harness that cannot list its models, the two protection lines, the fix action, the phase
+  grouping and the meaning of each plan default. The advice's recommendation on `catalogue.select` and the machine
+  settings' conflict notice are drawn but not fed by the mock, so the walk leaves those two clauses `not verified`.
+. *Raw data still reaches the operator.* The onboarding's generic card with the state id is gone: every onboarding
+  state has a screen, and `entry.*` lands on the fallback that names `pm-operator`. What remains is a raw error code on
+  a refused request (`plan_not_found`).
 . *Actions are not offered by state.* The system view offers stop, restart, and upgrade while the runtime drains. The
   plan view offers a completion report for a plan that still runs.
 
@@ -30,58 +33,69 @@ production (link:proposals.adoc#documents[Proposals, Changes to the Use-Case Doc
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
 |Onboard a Machine
-|`partial`
-|Flow and steps present; the full navigation is open before the machine is onboarded (UC-F-01).
+|`conforms`
+|Flow and steps present; no navigation before the machine is onboarded and no step marked on the mode screen
+(UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
 |Onboard Automatically
-|`partial`
-|Result table present; no change link per step (UC-F-02).
+|`conforms`
+|Result table present with a change link per aspect (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]
 |Choose the Languages
-|`partial`
-|Choice correct; the interface language chosen is not applied (UC-F-03).
+|`conforms`
+|Choice correct; after the record step the next screen is German, and a browser's own choice still overrides it
+(UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]
 |Enrol the Harnesses
 |`partial`
-|Consent, choice, blocked state good; no monogram, empty token text, raw state for "none found" (UC-F-04, UC-F-05).
+|Consent, choice, blocked state good; the monogram, the token line and the designed none-found screen are there
+(UC-V-05). What remains is the per-harness failure list the `UC-P-03` row asks for at `harness.none`; the screen
+follows the engine catalogue and shows the install hints, and the per-harness cause and fix sit in
+`harness.blocked`/`harness.probe-failed`.
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]
 |Choose the Models for the Work
-|`partial`
-|Selection present; no advice shown (UC-F-06).
+|`conforms`
+|Selection present; the recommendation block and the "recommended" marker are drawn, and a harness that cannot list
+its models gets a field (UC-V-05). The mock carries no recommendation, so that clause is `not verified`.
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]
 |Assign Models to the Roles
-|`partial`
-|Defaults only; no review of departures, no change per role, no steward (UC-F-07).
+|`conforms`
+|Grouped by phase, departures marked, an advisory and a change per role, steward accept or reject, an empty role
+assignable (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]
 |Choose Where Credentials Are Kept
-|`partial`
-|Choice and recommendation present; no statement of what protects a secret (UC-F-08).
+|`conforms`
+|Choice, recommendation, and both protection lines per option (UC-V-05; the mock reports no values).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-8[UC-ONB-8]
 |Choose the Providers of the Machine
-|`partial`
-|Failure shows cause and fix; no action to fix the credential; wrong label (UC-F-09).
+|`conforms`
+|The label "Provider", the cause and the fix, and the three acts including the credential entry (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
 |Choose How Plans Run by Default
-|`deviates`
-|Raw unit ids, no meaning per axis, no way to change a value (UC-F-10).
+|`conforms`
+|Plain names, one sentence per axis, and a choice per variant (UC-V-05).
 
 |link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
 |Change the Machine's Settings
-|`partial`
-|Aspects and consents present; two settings pages; conflict not shown (UC-F-11, UC-F-12).
+|`conforms`
+|Aspects and consents present; one settings place with its tabs (UC-F-11). The conflict notice is drawn on that page
+when a save conflicts (UC-F-12); the mock's `settings.conflict` state does not feed it, so the clause is
+`not verified`.
 
 |link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
 |Enter and Connect
 |`partial`
-|Pairing works; the listener state has no URL and no QR code, and shows the state id (UC-F-13).
+|Pairing works. The web app shows no listener screen at all, by the operator's decision, so the listener state lands on
+the fallback that names `pm-operator` and prints no state id (UC-V-03); the LAN URL and the QR code are the
+terminal's. The row stays open because the web app shows no listener screen.
 
 |link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
 |Manage Paired Devices
@@ -192,18 +206,28 @@ UC-F-18).
 |Summary, details, selection, three answers present; raw kinds and duplicated words (UC-F-41).
 |===
 
-Totals: 5 `conforms`, 20 `partial`, 3 `deviates`, 1 `missing`, 10 `not verified`.
+Totals: 14 `conforms`, 12 `partial`, 2 `deviates`, 1 `missing`, 10 `not verified`.
+
+Nine rows moved with link:../verification-results/verify-web-onboarding.adoc[Verification Results, The Web
+Onboarding] (`UC-V-05`): the eight `partial` rows of UC-ONB-1, UC-ONB-2, UC-ONB-3, UC-ONB-5, UC-ONB-6, UC-ONB-7,
+UC-ONB-8 and UC-ONB-10, and UC-ONB-9 from `deviates`. Two rows stay where the walk could not clear them: UC-ONB-4
+(`harness.none` does not carry the per-harness failure facts UC-F-05 asks for, and the engine catalogue puts them in
+`harness.blocked`), and UC-ENT-1 (the web app shows no listener screen, by the operator's decision). The rule the walk
+applied: a change the client draws but the mock does not feed is a `not verified` clause and does not hold a row open;
+a screen that contradicts the check's row, or a use case the client answers in another client by decision, keeps it
+open. UC-F-03 is retired by this walk.
 
 [#gaps]
 == Main Gaps
 
-. *The generic state card.* `OnboardingView.svelte` renders any state without a designed screen as a card with the
-  title, the scope, and the state id. The operator sees `Machine · harness.none`. A state without a screen must be a
-  defect the build finds, not a screen the operator sees (link:proposals.adoc#UC-P-01[UC-P-01]).
+. *The generic state card.* The onboarding no longer falls back to it: every state has a screen and `entry.*` shows the
+  terminal fallback (`UC-V-02`). The English state summary that still heads some cards on a German screen is the
+  runtime's text, shown as delivered — a mock/engine observation, not the app's (`UC-V-05`).
 . *Actions not derived from the state.* The use cases say "actions by state" (principle `actions-by-state` of
   `06-controlling-work.adoc`). The app has fixed button sets per view (link:proposals.adoc#UC-P-02[UC-P-02]).
-. *Variations of the onboarding.* Advice, the steward, change links, a fix for a credential, and the meaning of
-  each plan default are absent (link:proposals.adoc#UC-P-03[UC-P-03]).
+. *The variations of the onboarding.* Most are visible now (`UC-V-05`): the change link, the steward, the model-id
+  field, the protection lines, the fix action, the phase grouping. What the mock does not feed, and the walk leaves
+  `not verified`, is the advice's recommendation and the machine settings' conflict notice.
 . *The plan's intent and the phase workflow.* UC-PLN-1 drills from a phase to its workflow, taken and not taken.
   The app stops at the phase (link:proposals.adoc#UC-P-04[UC-P-04]).
 . *Feedback after an act.* The decision answer reports the wrong channel and an index instead of the option

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
+import path from 'node:path';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import FilterInput from './FilterInput.svelte';
+import { styleOf, ruleOf } from '../../test/templateStyle';
 
 describe('FilterInput', () => {
   it('reports what the operator types, under its label, with the count of matches', async () => {
@@ -81,5 +83,10 @@ describe('FilterInput', () => {
     window.dispatchEvent(taken);
 
     expect(screen.getByTestId('filter-input')).not.toHaveFocus();
+  });
+
+  it('draws its input border from --control-border', () => {
+    const style = styleOf(path.resolve(__dirname, './FilterInput.svelte'));
+    expect(ruleOf(style, '.filter__input')).toContain('var(--control-border)');
   });
 });
