@@ -351,9 +351,31 @@ describe('DecisionView component', () => {
       expect(screen.getByTestId('decisions-group')).toHaveTextContent('pm-mcp-clients');
     });
 
+    it('words every block value with the decision words, nothing through blocks nothing', async () => {
+      vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
+        { ...mockDecision, id: 'v-nothing', blocks: 'nothing', delivered_at: '2026-10-01T08:00:00Z' },
+        { ...mockDecision, id: 'v-setup', blocks: 'setup', delivered_at: '2026-10-02T08:00:00Z' },
+        { ...mockDecision, id: 'v-entry', blocks: 'entry', delivered_at: '2026-10-03T08:00:00Z' },
+        { ...mockDecision, id: 'v-task', blocks: 'task', delivered_at: '2026-10-04T08:00:00Z' },
+        { ...mockDecision, id: 'v-epic', blocks: 'epic', delivered_at: '2026-10-05T08:00:00Z' },
+        { ...mockDecision, id: 'v-unknown', blocks: 'landing-train', delivered_at: '2026-10-06T08:00:00Z' },
+      ]);
+      render(DecisionView);
+      await screen.findByText('Decisions');
+
+      expect(rowOf('v-nothing')).toHaveTextContent('blocks nothing');
+      expect(rowOf('v-setup')).toHaveTextContent("blocks the project's setup");
+      expect(rowOf('v-entry')).toHaveTextContent('blocks the start');
+      expect(rowOf('v-task')).toHaveTextContent('blocks one task; the plan goes on');
+      expect(rowOf('v-epic')).toHaveTextContent('blocks the epic');
+      // A value outside the vocabulary shows the unknown word, never a raw key or a plan claim.
+      expect(rowOf('v-unknown')).toHaveTextContent('unknown');
+      expect(rowOf('v-unknown')).not.toHaveTextContent('blocks the plan');
+    });
+
     it('orders the rows blocking first and then oldest', async () => {
       vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([
-        { ...mockWaiver, id: 'WR-1', blocks: 'none', delivered_at: '2026-10-01T08:00:00Z' },
+        { ...mockWaiver, id: 'WR-1', blocks: 'nothing', delivered_at: '2026-10-01T08:00:00Z' },
         { ...mockDecision, id: 'dec-new', delivered_at: '2026-10-20T08:00:00Z' },
         { ...mockDecision, id: 'dec-old', delivered_at: '2026-10-05T08:00:00Z' },
       ]);

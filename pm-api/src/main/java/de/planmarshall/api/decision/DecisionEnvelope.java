@@ -33,7 +33,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param scope         scope category ({@code PLAN}, {@code EPIC}, {@code PROJECT_SETUP}, {@code MACHINE})
  * @param askingPhase   phase or setup step that asked the decision
  * @param askingRole    role asking the question
- * @param blocks        what this decision blocks ({@code "plan"}, {@code "epic"}, {@code "setup"}, {@code "entry"}, {@code "task"}, {@code "none"})
+ * @param blocks        what this decision blocks ({@code "plan"}, {@code "epic"}, {@code "setup"}, {@code "entry"}, {@code "task"}, {@code "nothing"})
  * @param reversibility reversibility rating
  * @param description   full explanation or rationale
  * @param evidence      structured evidence payload (files, lines, diffs, metrics)

@@ -166,7 +166,7 @@ class ChatTextsCatalogueTest {
                 () -> assertEquals(id + " gestellt: blockiert den Plan",
                         MessageCatalogue.format("de", opened, Map.of("id", id, "blocks", "plan"))),
                 () -> assertEquals(id + " opened",
-                        MessageCatalogue.format("en", opened, Map.of("id", id, "blocks", "no")),
+                        MessageCatalogue.format("en", opened, Map.of("id", id, "blocks", "nothing")),
                         "a decision that blocks nothing shows no label"));
     }
 

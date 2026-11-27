@@ -140,7 +140,7 @@ class ProjectsOverviewLevelTest {
                             new WorkLocation("proj-a", "Project Alpha"), null,
                             new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
         var item2 = new NeedsOperatorItem(NeedsOperatorKind.CLEANUP_DUE, null, null, null, null,
-                            baseInstant.minusSeconds(3600), null);
+                            baseInstant.minusSeconds(3600), "nothing");
         var page = new NeedsOperatorPage(1, 1, false, false, 2, List.of(item1, item2));
 
         var p = new ProjectSummary("proj-a", "Project Alpha", 1, 0, 0, null, false, baseInstant);

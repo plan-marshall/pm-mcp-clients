@@ -2,6 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
+  import { blockWordText } from '../display/decisionBlocks';
   import Button from '../components/Button.svelte';
   import Chip from '../components/Chip.svelte';
   import CountBadge from '../components/CountBadge.svelte';
@@ -237,7 +238,7 @@
    * @returns whether it blocks its subject, which the list orders first
    */
   function isBlocking(dec: DecisionEnvelope): boolean {
-    return dec.blocks !== '' && dec.blocks !== 'none' && dec.blocks !== 'task';
+    return dec.blocks !== '' && dec.blocks !== 'nothing' && dec.blocks !== 'task';
   }
 
   /**
@@ -281,7 +282,7 @@
    * @returns the one line under the row: the path, what it blocks, how reversible it is, since when
    */
   function rowDetail(dec: DecisionEnvelope): string {
-    const pieces = [pathOf(dec), $t(`decision.blocks.${dec.blocks}`)];
+    const pieces = [pathOf(dec), blockWordText(dec.blocks, $t)];
     pieces.push($t(`decision.reversibility.${dec.reversibility}`));
     if (dec.delivered_at) {
       pieces.push(
@@ -314,7 +315,7 @@
       dec.asking_phase,
       dec.asking_role,
       dec.blocks,
-      $t(`decision.blocks.${dec.blocks}`),
+      blockWordText(dec.blocks, $t),
       dec.reversibility,
       $t(`decision.reversibility.${dec.reversibility}`),
       dec.description,
@@ -1500,7 +1501,7 @@
     </div>
     <p class="decision-head__path" data-testid="decision-path">{pathOf(dec)}</p>
     <p class="decision-head__why">
-      {$t(`decision.blocks.${dec.blocks}`)} · {$t(`decision.reversibility.${dec.reversibility}`)}
+      {blockWordText(dec.blocks, $t)} · {$t(`decision.reversibility.${dec.reversibility}`)}
     </p>
   </header>
 {/snippet}
