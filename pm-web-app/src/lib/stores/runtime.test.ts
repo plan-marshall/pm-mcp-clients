@@ -11,6 +11,7 @@ import {
 } from '../api/client';
 import { actFailureReason, ClientError } from '../api/errors';
 import {
+  addressOfState,
   adoptRouteFromLocation,
   checkUrlHashForCode,
   createDecisionAnnouncer,
@@ -2069,6 +2070,9 @@ describe('the node of the plan’s process in the address', () => {
     selectObjectTab('process');
 
     expect(nodeInAddress()).toBe('outline');
+    // The layout re-writes the address from the store, so the store must carry the node too.
+    expect(get(runtimeStore).phaseNode).toBe('outline');
+    expect(addressOfState(get(runtimeStore)).node).toBe('outline');
   });
 
   it('drops the remembered node when another plan opens', () => {

@@ -1387,6 +1387,28 @@ describe('PlanView component', () => {
       expect(scrolled.mock.contexts[0]).toBe(screen.getByTestId('node-execute'));
     });
 
+    it('selects a running node without a running task the way a click does', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: mockPlan.nodes.map((node) =>
+          node.node_id === 'execute'
+            ? {
+                ...node,
+                state: 'running',
+                leaf_tasks: node.leaf_tasks.map((task) => ({ ...task, status: 'done' })),
+              }
+            : node,
+        ),
+      });
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      // The store names the node, so the address the layout writes from it carries `node=`.
+      expect(get(runtimeStore).phaseNode).toBe('execute');
+    });
+
     it('opens the path, selects the running task and scrolls to it', async () => {
       render(PlanView);
       await screen.findByTestId('plan-title');

@@ -1082,7 +1082,8 @@
     } else {
       const runningNode = findRunningNode(current.nodes);
       if (runningNode) {
-        selection = { kind: 'node', nodeId: runningNode.node_id };
+        // Through the same path as a click, so the address and the store name the node too.
+        selectNode(runningNode.node_id);
       }
     }
     // The app renders in the browser only (`ssr = false` in the root layout).

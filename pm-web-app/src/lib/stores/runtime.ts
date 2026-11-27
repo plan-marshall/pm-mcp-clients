@@ -2195,8 +2195,16 @@ export function openEpicView(epicId: string): void {
  * @param tab the tab to show
  */
 export function selectObjectTab(tab: ObjectTab): void {
-  runtimeStore.update((s) => ({ ...s, objectTab: tab }));
   const current = currentAddress();
+  // The return to Process restores the remembered node in the store as well as in the address:
+  // the layout re-writes the address from the store on every update, so a node only in the
+  // address would be erased again when a push had cleared `phaseNode`.
+  const rememberedNode = tab === 'process' && current ? rememberedNodeOf(current) : null;
+  runtimeStore.update((s) => ({
+    ...s,
+    objectTab: tab,
+    ...(rememberedNode ? { phaseNode: rememberedNode } : {}),
+  }));
   if (!current) {
     return;
   }
@@ -2208,9 +2216,8 @@ export function selectObjectTab(tab: ObjectTab): void {
     if (remembered) next.file = remembered;
   }
   // The Process tab writes the node it shows back the same way, so a return to it carries `node=`.
-  if (tab === 'process') {
-    const remembered = rememberedNodeOf(current);
-    if (remembered) next.node = remembered;
+  if (rememberedNode) {
+    next.node = rememberedNode;
   }
   writeAddress(next, 'replace');
 }
