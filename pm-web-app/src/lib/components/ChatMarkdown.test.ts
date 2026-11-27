@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { render, screen } from '@testing-library/svelte';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ChatMarkdown from './ChatMarkdown.svelte';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
@@ -141,5 +141,51 @@ describe('ChatMarkdown', () => {
       '/plans/fix-relay?tab=changes&file=src%2FApp.svelte&chat=open',
     );
     expect(container.querySelector('code')?.textContent).toBe('TASK-4');
+  });
+
+  it('renders ordered lists, table alignments, unsafe image source text, and copies code blocks', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const md = [
+      '3. Third',
+      '4. Fourth',
+      '',
+      '| L | C | R |',
+      '| :--- | :---: | ---: |',
+      '| a | b | c |',
+      '',
+      '![bad](javascript:alert(1))',
+      '',
+      '```bash\necho ok\n```',
+    ].join('\n');
+
+    const { container } = render(ChatMarkdown, { props: { text: md } });
+
+    expect(container.querySelector('ol')).toHaveAttribute('start', '3');
+    expect(container.querySelector('.chat-markdown__cell--center')).toBeTruthy();
+    expect(container.querySelector('.chat-markdown__cell--right')).toBeTruthy();
+    expect(container.textContent).toContain('![bad](javascript:alert(1))');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(writeText).toHaveBeenCalledWith('echo ok');
+
+    const extra = render(ChatMarkdown, {
+      props: { text: '1. One\n2. Two\n\n# Heading outside subset\n\n---' },
+    });
+    expect(extra.container.querySelector('ol')).not.toHaveAttribute('start');
+    expect(extra.container.querySelector('h1')).toBeNull();
+    expect(extra.container.textContent).toContain('# Heading outside subset');
+    expect(extra.container.textContent).toContain('---');
+
+    // Covers escape tokens, empty image alt/fallback, line breaks, and unlabelled code fences.
+    const misc = render(ChatMarkdown, {
+      props: {
+        text: '\\*literal\\* and line1  \nline2 and ![](https://example.com/pic.png) and [nested **bold**](https://docs.example.org/x)\n\n```\nplain fence\n```',
+      },
+    });
+    expect(misc.container.textContent).toContain('*literal*');
+    expect(misc.container.querySelector('br')).toBeTruthy();
+    expect(misc.container.querySelectorAll('a')).toHaveLength(2);
+    expect(misc.container.querySelector('.chat-markdown__code-lang')?.textContent).toBe('text');
   });
 });

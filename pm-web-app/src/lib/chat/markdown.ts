@@ -55,6 +55,54 @@ export function formatExternalLabel(label: string, url: URL): string {
   return `${clean} (${host})`;
 }
 
+function openQueryParam(kind: string, id: string): string {
+  const combined = `${kind}:${id}`;
+  return encodeURIComponent(combined);
+}
+
+function planRefHref(id: string, fallbackSubject?: ChatSubject | null): string {
+  if (fallbackSubject?.kind === 'epic' && id) {
+    return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${openQueryParam('plan', id)}&chat=open`;
+  }
+  return id ? `/plans/${encodeURIComponent(id)}` : '/overview';
+}
+
+function decisionRefHref(id: string, fallbackSubject?: ChatSubject | null): string {
+  if (fallbackSubject?.kind === 'plan' && id) {
+    return `/plans/${encodeURIComponent(fallbackSubject.id)}?open=${openQueryParam('decision', id)}&chat=open`;
+  }
+  if (fallbackSubject?.kind === 'epic' && id) {
+    return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${openQueryParam('decision', id)}&chat=open`;
+  }
+  return id ? `/decisions/${encodeURIComponent(id)}` : '/decisions';
+}
+
+function taskRefHref(id: string, target?: ChatSubject | null): string {
+  if (target?.kind === 'plan' && id) {
+    return `/plans/${encodeURIComponent(target.id)}/tasks/${encodeURIComponent(id)}?chat=open`;
+  }
+  return id ? `/plans?open=${openQueryParam('task', id)}` : '/overview';
+}
+
+function fileRefHref(id: string, target?: ChatSubject | null): string {
+  const colon = id.lastIndexOf(':');
+  const filePath = colon > 0 && /^\d+$/.test(id.slice(colon + 1)) ? id.slice(0, colon) : id;
+  if (target?.kind === 'plan' && filePath) {
+    return `/plans/${encodeURIComponent(target.id)}?tab=changes&file=${encodeURIComponent(filePath)}&chat=open`;
+  }
+  return '/overview';
+}
+
+function subjectChatHref(target?: ChatSubject | null): string {
+  if (target?.kind === 'plan') {
+    return `/plans/${encodeURIComponent(target.id)}?chat=open`;
+  }
+  if (target?.kind === 'epic') {
+    return `/epics/${encodeURIComponent(target.id)}?chat=open`;
+  }
+  return '/overview';
+}
+
 /**
  * Computes the route href for a structured `TurnRef` chip (`PrChip`-style `Link`).
  *
@@ -67,41 +115,42 @@ export function hrefForTurnRef(ref: TurnRef, fallbackSubject?: ChatSubject | nul
   const id = ref.id ?? '';
   switch (ref.kind) {
     case 'plan':
-      if (fallbackSubject?.kind === 'epic' && id) {
-        return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`plan:${id}`)}&chat=open`;
-      }
-      return id ? `/plans/${encodeURIComponent(id)}` : '/overview';
+      return planRefHref(id, fallbackSubject);
     case 'decision':
-      if (fallbackSubject?.kind === 'plan' && id) {
-        return `/plans/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`decision:${id}`)}&chat=open`;
-      }
-      if (fallbackSubject?.kind === 'epic' && id) {
-        return `/epics/${encodeURIComponent(fallbackSubject.id)}?open=${encodeURIComponent(`decision:${id}`)}&chat=open`;
-      }
-      return id ? `/decisions/${encodeURIComponent(id)}` : '/decisions';
+      return decisionRefHref(id, fallbackSubject);
     case 'task':
-      if (target?.kind === 'plan' && id) {
-        return `/plans/${encodeURIComponent(target.id)}/tasks/${encodeURIComponent(id)}?chat=open`;
-      }
-      return id ? `/plans?open=${encodeURIComponent(`task:${id}`)}` : '/overview';
-    case 'file': {
-      const colon = id.lastIndexOf(':');
-      const filePath = colon > 0 && /^\d+$/.test(id.slice(colon + 1)) ? id.slice(0, colon) : id;
-      if (target?.kind === 'plan' && filePath) {
-        return `/plans/${encodeURIComponent(target.id)}?tab=changes&file=${encodeURIComponent(filePath)}&chat=open`;
-      }
-      return '/overview';
-    }
+      return taskRefHref(id, target);
+    case 'file':
+      return fileRefHref(id, target);
     case 'hold':
     case 'act':
-      if (target?.kind === 'plan') {
-        return `/plans/${encodeURIComponent(target.id)}?chat=open`;
-      }
-      if (target?.kind === 'epic') {
-        return `/epics/${encodeURIComponent(target.id)}?chat=open`;
-      }
-      return '/overview';
+      return subjectChatHref(target);
   }
+}
+
+type RefWithId = TurnRef & { id: string };
+
+function findEarliestRefMatch(
+  text: string,
+  cursor: number,
+  candidates: readonly RefWithId[],
+): { index: number; ref: RefWithId } | null {
+  let bestIndex = -1;
+  let bestRef: RefWithId | null = null;
+
+  for (const candidate of candidates) {
+    const idx = text.indexOf(candidate.id, cursor);
+    if (idx < 0) continue;
+    const isEarlier = bestIndex === -1 || idx < bestIndex;
+    const isLongerTie =
+      idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length;
+    if (isEarlier || isLongerTie) {
+      bestIndex = idx;
+      bestRef = candidate;
+    }
+  }
+
+  return bestIndex >= 0 && bestRef ? { index: bestIndex, ref: bestRef } : null;
 }
 
 /**
@@ -118,9 +167,7 @@ export function splitTextWithRefs(text: string, refs: readonly TurnRef[]): TextS
   }
 
   const candidates = refs
-    .filter((ref): ref is TurnRef & { id: string } =>
-      Boolean(ref.id && REFERENCE_CHIP_KINDS.has(ref.kind)),
-    )
+    .filter((ref): ref is RefWithId => Boolean(ref.id && REFERENCE_CHIP_KINDS.has(ref.kind)))
     .sort((a, b) => b.id.length - a.id.length);
 
   if (candidates.length === 0) {
@@ -131,32 +178,16 @@ export function splitTextWithRefs(text: string, refs: readonly TurnRef[]): TextS
   let cursor = 0;
 
   while (cursor < text.length) {
-    let bestIndex = -1;
-    let bestRef: (TurnRef & { id: string }) | null = null;
-
-    for (const candidate of candidates) {
-      const idx = text.indexOf(candidate.id, cursor);
-      if (idx < 0) continue;
-      if (
-        bestIndex === -1 ||
-        idx < bestIndex ||
-        (idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length)
-      ) {
-        bestIndex = idx;
-        bestRef = candidate;
-      }
-    }
-
-    if (bestIndex < 0 || !bestRef) {
+    const match = findEarliestRefMatch(text, cursor, candidates);
+    if (!match) {
       segments.push({ kind: 'text', text: text.slice(cursor) });
       break;
     }
-
-    if (bestIndex > cursor) {
-      segments.push({ kind: 'text', text: text.slice(cursor, bestIndex) });
+    if (match.index > cursor) {
+      segments.push({ kind: 'text', text: text.slice(cursor, match.index) });
     }
-    segments.push({ kind: 'ref', text: bestRef.id, ref: bestRef });
-    cursor = bestIndex + bestRef.id.length;
+    segments.push({ kind: 'ref', text: match.ref.id, ref: match.ref });
+    cursor = match.index + match.ref.id.length;
   }
 
   return segments;
@@ -187,6 +218,27 @@ export function renderMermaidBlock(code: string): MermaidRenderResult {
   };
 }
 
+function fenceCharOf(trimmed: string): '`' | '~' | '' {
+  if (trimmed.startsWith('```')) return '`';
+  if (trimmed.startsWith('~~~')) return '~';
+  return '';
+}
+
+function countFenceRun(trimmed: string, ch: string): number {
+  let count = 0;
+  while (count < trimmed.length && trimmed[count] === ch) {
+    count += 1;
+  }
+  return count;
+}
+
+function isClosingFenceLine(trimmed: string, ch: string, openLen: number): boolean {
+  return (
+    trimmed.startsWith(ch.repeat(openLen)) &&
+    trimmed.slice(openLen).replaceAll(ch, '').trim() === ''
+  );
+}
+
 /**
  * Finds the start index of a trailing unclosed code fence (` ``` ` or `~~~`) so streaming turns
  * keep unfinished fences as plain text until closing markers arrive.
@@ -198,29 +250,19 @@ function findUnclosedFenceStart(source: string): number {
   let openChar = '';
   let openLen = 0;
 
-  for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
+  for (const line of lines) {
     const trimmed = line.trimStart();
     if (openStart < 0) {
-      const ch = trimmed.startsWith('```') ? '`' : trimmed.startsWith('~~~') ? '~' : '';
+      const ch = fenceCharOf(trimmed);
       if (ch) {
-        let count = 0;
-        while (count < trimmed.length && trimmed[count] === ch) {
-          count += 1;
-        }
         openStart = offset;
         openChar = ch;
-        openLen = count;
+        openLen = countFenceRun(trimmed, ch);
       }
-    } else {
-      const isClose =
-        trimmed.startsWith(openChar.repeat(openLen)) &&
-        trimmed.slice(openLen).replaceAll(openChar, '').trim() === '';
-      if (isClose) {
-        openStart = -1;
-        openChar = '';
-        openLen = 0;
-      }
+    } else if (isClosingFenceLine(trimmed, openChar, openLen)) {
+      openStart = -1;
+      openChar = '';
+      openLen = 0;
     }
     offset += line.length + 1;
   }

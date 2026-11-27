@@ -18,6 +18,7 @@ import {
   type ChatEndedPayload,
   type ChatProposalPayload,
   type ChatResource,
+  type ChatStatus,
   type ChatTarget,
   type ChatTurn,
   type ChatTurnCompletedPayload,
@@ -25,6 +26,7 @@ import {
   type ChatTurnProgressPayload,
   type ChatTurnStartedPayload,
   type LocalChatTurn,
+  type ProposalState,
 } from './types';
 
 export interface ChatStoreState {
@@ -202,8 +204,33 @@ export function createChatStore(
     }
   }
 
+  function matchingActiveChat(chatId: string): ChatResource | null {
+    return state.chat?.id === chatId ? state.chat : null;
+  }
+
+  function nextStateAfterTurnCompleted(chat: ChatResource): ChatStatus {
+    if (isChatEndedState(chat.state)) {
+      return chat.state;
+    }
+    if (chat.proposal?.state === 'open') {
+      return 'chat.read-back';
+    }
+    return 'chat.open';
+  }
+
+  function nextStateAfterProposalUpdate(
+    currentState: ChatStatus,
+    proposalState: ProposalState,
+  ): ChatStatus {
+    if (proposalState === 'open' || currentState !== 'chat.read-back') {
+      return currentState;
+    }
+    return proposalState === 'accepted' ? 'chat.apply' : 'chat.open';
+  }
+
   function applyTurnStarted(payload: ChatTurnStartedPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
+    const activeChat = matchingActiveChat(payload.chat_id);
+    if (!activeChat) return;
     const timestamp = payload.at ?? new Date().toISOString();
     const nextTurn: LocalChatTurn = {
       turn_id: payload.turn_id,
@@ -254,15 +281,15 @@ export function createChatStore(
     patch({
       turns: nextTurns,
       chat: {
-        ...state.chat,
+        ...activeChat,
         state: payload.author === 'operator' ? 'chat.turn' : 'chat.reply',
-        context: payload.context ?? state.chat.context,
+        context: payload.context ?? activeChat.context,
       },
     });
   }
 
   function applyTurnDelta(payload: ChatTurnDeltaPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
+    if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
     const nextTurns = [...state.turns];
@@ -274,7 +301,7 @@ export function createChatStore(
   }
 
   function applyTurnProgress(payload: ChatTurnProgressPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
+    if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
     const nextTurns = [...state.turns];
@@ -286,7 +313,8 @@ export function createChatStore(
   }
 
   function applyTurnCompleted(payload: ChatTurnCompletedPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
+    const activeChat = matchingActiveChat(payload.chat_id);
+    if (!activeChat) return;
     const nextTurns = [...state.turns];
     const index = nextTurns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index >= 0) {
@@ -304,7 +332,7 @@ export function createChatStore(
       nextTurns.push({
         turn_id: payload.turn_id,
         kind: payload.kind,
-        author: state.chat.role.name,
+        author: activeChat.role.name,
         status: payload.status,
         format: 'plain',
         untrusted: payload.untrusted,
@@ -317,39 +345,29 @@ export function createChatStore(
         lines: payload.lines ?? [],
       });
     }
-    const stillEnded = isChatEndedState(state.chat.state);
     patch({
       turns: nextTurns,
       chat: {
-        ...state.chat,
-        state: stillEnded
-          ? state.chat.state
-          : state.chat.proposal?.state === 'open'
-            ? 'chat.read-back'
-            : 'chat.open',
+        ...activeChat,
+        state: nextStateAfterTurnCompleted(activeChat),
       },
     });
   }
 
   function applyProposalEvent(payload: ChatProposalPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
-    const current = state.chat.proposal;
-    if (!current || current.turn_id !== payload.turn_id) {
+    const activeChat = matchingActiveChat(payload.chat_id);
+    if (!activeChat) return;
+    const current = activeChat.proposal;
+    if (current?.turn_id !== payload.turn_id) {
       // A newly opened proposal's diff/summary lives on the resource, so re-read snapshot.
       void refreshFromReset();
       return;
     }
     const nextProposalState = payload.state;
-    const nextChatState =
-      nextProposalState !== 'open' && state.chat.state === 'chat.read-back'
-        ? nextProposalState === 'accepted'
-          ? 'chat.apply'
-          : 'chat.open'
-        : state.chat.state;
     patch({
       chat: {
-        ...state.chat,
-        state: nextChatState,
+        ...activeChat,
+        state: nextStateAfterProposalUpdate(activeChat.state, nextProposalState),
         proposal: {
           ...current,
           state: nextProposalState,
@@ -360,7 +378,8 @@ export function createChatStore(
   }
 
   function applyEndedEvent(payload: ChatEndedPayload): void {
-    if (!state.chat || payload.chat_id !== state.chat.id) return;
+    const activeChat = matchingActiveChat(payload.chat_id);
+    if (!activeChat) return;
     const nextState = payload.ended_by === 'proposal_carried' ? 'chat.carried' : 'chat.end';
     const nextTurns = state.turns.map((turn) =>
       turn.status === 'streaming' && !turn.delivery
@@ -370,7 +389,7 @@ export function createChatStore(
     patch({
       endedBy: payload,
       turns: nextTurns,
-      chat: { ...state.chat, state: nextState },
+      chat: { ...activeChat, state: nextState },
     });
   }
 
@@ -415,33 +434,39 @@ export function createChatStore(
     return opened;
   }
 
+  async function fetchOlderPage(cursor: string, seq: number): Promise<boolean> {
+    patch({ loadingOlder: true });
+    try {
+      const page = await readChat(target, cursor);
+      if (seq !== readSeq) return false;
+      const existingIds = new Set(state.turns.map((turn) => turn.turn_id));
+      const olderTurns = page.turns.filter((turn) => !existingIds.has(turn.turn_id));
+      const nextCursor = oldestServerTurnId(page);
+      const hasMore = Boolean(nextCursor && nextCursor !== cursor && page.turns.length > 0);
+      patch({
+        turns: [...olderTurns, ...state.turns],
+        hasOlder: hasMore,
+        oldestTurnId: hasMore ? nextCursor : null,
+        loadingOlder: false,
+      });
+      return hasMore;
+    } catch (error) {
+      if (seq === readSeq) {
+        patch({ loadingOlder: false, error });
+      }
+      return false;
+    }
+  }
+
   async function loadPagesUntilTurn(turnId: string, seq: number): Promise<boolean> {
     while (seq === readSeq && !state.turns.some((turn) => turn.turn_id === turnId)) {
       const cursor = state.oldestTurnId;
       if (!cursor) {
         return false;
       }
-      patch({ loadingOlder: true });
-      try {
-        const page = await readChat(target, cursor);
-        if (seq !== readSeq) return false;
-        const existingIds = new Set(state.turns.map((turn) => turn.turn_id));
-        const olderTurns = page.turns.filter((turn) => !existingIds.has(turn.turn_id));
-        const nextCursor = oldestServerTurnId(page);
-        patch({
-          turns: [...olderTurns, ...state.turns],
-          hasOlder: nextCursor !== null && page.turns.length > 0,
-          oldestTurnId: page.turns.length > 0 ? nextCursor : null,
-          loadingOlder: false,
-        });
-        if (!nextCursor || nextCursor === cursor || page.turns.length === 0) {
-          break;
-        }
-      } catch (error) {
-        if (seq === readSeq) {
-          patch({ loadingOlder: false, error });
-        }
-        return false;
+      const advanced = await fetchOlderPage(cursor, seq);
+      if (!advanced) {
+        break;
       }
     }
     return state.turns.some((turn) => turn.turn_id === turnId);

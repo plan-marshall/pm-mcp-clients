@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
-import { apiClient } from '../api/client';
+import { apiClient, type EventStreamState } from '../api/client';
 import { ClientError } from '../api/errors';
-import { createChatStore } from './store';
-import { translateChatMessage } from './messages';
+import {
+  chatRoutesFor,
+  createChatStore,
+  hrefForTurnRef,
+  isMissingChatError,
+  parseSafeWebUrl,
+  formatExternalLabel,
+  rejectChatProposal,
+  storageKeyForDraft,
+  tokenizeMarkdown,
+  translateChatMessage,
+  type ChatResource,
+  type ChatTarget,
+  type ChatTurn,
+} from './index';
+import { currentLocale, messagesStore, t } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import type { ChatResource, ChatTarget } from './types';
 
 function makeChat(overrides: Partial<ChatResource> = {}): ChatResource {
   return {
@@ -388,16 +401,9 @@ describe('chat store and follow lifecycle', () => {
   });
 
   it('preserves named parameters for chat.knows.* and chat.applies.* keys', () => {
-    const messages = loadMessages('en');
-    const t = (key: string, params?: Record<string, string | number>) => {
-      let text = messages[key] ?? key;
-      if (params) {
-        for (const [k, v] of Object.entries(params)) {
-          text = text.replaceAll(`{${k}}`, String(v));
-        }
-      }
-      return text;
-    };
+    currentLocale.set('en');
+    messagesStore.set(loadMessages('en'));
+    const translate = get(t);
 
     expect(
       translateChatMessage(
@@ -405,7 +411,7 @@ describe('chat store and follow lifecycle', () => {
           if (key === 'control.chat.knows.item') {
             return `${params?.item}:${params?.count}`;
           }
-          return t(key, params);
+          return translate(key, params);
         },
         { key: 'chat.knows.tasks', args: { count: 7 } },
       ),
@@ -417,10 +423,411 @@ describe('chat store and follow lifecycle', () => {
           if (key === 'control.chat.revision_queued') {
             return `${params?.applies}:${params?.task_id}`;
           }
-          return t(key, params);
+          return translate(key, params);
         },
         { key: 'chat.applies.after_task', args: { task_id: 'TASK-4' } },
       ),
     ).toBe('after_task:TASK-4');
+
+    expect(
+      translateChatMessage(translate, { key: 'chat.reason.lost', args: { reason: 'timeout' } }),
+    ).toContain('The reply was lost');
+    expect(
+      translateChatMessage(translate, {
+        key: 'chat.finding.changed_since',
+        args: { plan: 'fix-relay', version: 4 },
+      }),
+    ).toContain('fix-relay changed since');
+    expect(
+      translateChatMessage(translate, {
+        key: 'chat.line.decision_answered',
+        args: { id: 'Q-1', channel: 'web' },
+      }),
+    ).toBe('Q-1 answered in the web app');
+    expect(
+      translateChatMessage((key, params) => `${key}:${String(params?.flag)}`, {
+        key: 'custom.raw',
+        args: { flag: true },
+      }),
+    ).toBe('custom.raw:true');
+  });
+
+  it('resolves routes and draft storage keys for every ChatTarget scope', () => {
+    expect(chatRoutesFor({ kind: 'epic', id: 'ui-imp' }).streamPath).toBe(
+      '/api/v1/epics/ui-imp/events',
+    );
+    expect(chatRoutesFor({ kind: 'entry', id: 'ent-1' }).chatPath).toBe(
+      '/api/v1/entries/ent-1/chat',
+    );
+    expect(chatRoutesFor({ kind: 'decision', id: 'Q-1' }).streamPath).toBe('/api/v1/events');
+    expect(
+      chatRoutesFor({ kind: 'decision', id: 'Q-1', scope: { kind: 'plan', id: 'p1' } }).chatPath,
+    ).toBe('/api/v1/plans/p1/decisions/Q-1/chat');
+    expect(
+      chatRoutesFor({ kind: 'decision', id: 'Q-1', scope: { kind: 'epic', id: 'e1' } }).chatPath,
+    ).toBe('/api/v1/epics/e1/decisions/Q-1/chat');
+    expect(
+      chatRoutesFor({ kind: 'decision', id: 'Q-1', scope: { kind: 'entry', id: 'ent-1' } })
+        .chatPath,
+    ).toBe('/api/v1/entries/ent-1/decisions/Q-1/chat');
+    expect(
+      chatRoutesFor({
+        kind: 'decision',
+        id: 'Q-1',
+        scope: { kind: 'workspace', projectId: 'proj-a' },
+      }).streamPath,
+    ).toBe('/api/v1/projects/proj-a/workspace/events');
+    expect(
+      chatRoutesFor({ kind: 'decision', id: 'Q-1', scope: { kind: 'machine' } }).streamPath,
+    ).toBe('/api/v1/machine/events');
+
+    expect(storageKeyForDraft({ kind: 'decision', id: 'Q-1', scope: { kind: 'machine' } })).toBe(
+      'pm_chat_draft:decision:machine:Q-1',
+    );
+    expect(
+      storageKeyForDraft({
+        kind: 'decision',
+        id: 'Q-1',
+        scope: { kind: 'workspace', projectId: 'p' },
+      }),
+    ).toBe('pm_chat_draft:decision:workspace:p:Q-1');
+    expect(
+      storageKeyForDraft({ kind: 'decision', id: 'Q-1', scope: { kind: 'plan', id: 'fix' } }),
+    ).toBe('pm_chat_draft:decision:plan:fix:Q-1');
+  });
+
+  it('handles proposal, ended events, editFailedTurn, rejectProposal, and corrupt storage safely', async () => {
+    localStorage.setItem('pm_chat_draft:plan:fix-relay', '{not-valid-json');
+    let emitEvent: (event: string, data: unknown) => void = () => {};
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation((_path, onEvent) => {
+      emitEvent = onEvent;
+      return () => {};
+    });
+    const req = vi
+      .spyOn(apiClient, 'request')
+      .mockResolvedValueOnce(
+        makeChat({
+          state: 'chat.read-back',
+          proposal: {
+            turn_id: 't-prop',
+            reply_turn_id: 't-1',
+            kind: 'revision',
+            summary: 'Change',
+            applies: null,
+            before: null,
+            after: null,
+            state: 'open',
+            finding: null,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(makeChat({ state: 'chat.open', proposal: null }))
+      .mockRejectedValueOnce(new ClientError('network_offline'));
+
+    const store = createChatStore(planTarget);
+    await store.connect();
+    expect(get(store).draft).toBe('');
+
+    // Notice arrival on unknown turn id creates a notice turn cleanly.
+    emitEvent('chat.turn.completed', {
+      chat_id: 'chat-1',
+      turn_id: 't-notice',
+      kind: 'notice',
+      status: 'complete',
+      untrusted: false,
+      text: '',
+      lines: [],
+    });
+    expect(get(store).turns.some((turn) => turn.turn_id === 't-notice')).toBe(true);
+
+    // Proposal transition moves state out of chat.read-back; unknown proposal triggers refresh.
+    emitEvent('chat.proposal', {
+      chat_id: 'chat-1',
+      turn_id: 't-prop',
+      reply_turn_id: 't-1',
+      kind: 'revision',
+      state: 'accepted',
+    });
+    expect(get(store).chat?.state).toBe('chat.apply');
+
+    emitEvent('chat.proposal', {
+      chat_id: 'chat-1',
+      turn_id: 't-prop-new',
+      reply_turn_id: 't-2',
+      kind: 'revision',
+      state: 'open',
+    });
+    await vi.waitFor(() => expect(req).toHaveBeenCalledTimes(2));
+
+    await rejectChatProposal(planTarget, 't-prop-2').catch(() => {});
+    emitEvent('chat.ended', { chat_id: 'chat-1', ended_by: 'proposal_carried' });
+    expect(get(store).chat?.state).toBe('chat.carried');
+
+    // editFailedTurn + error paths + isMissingChatError non-ClientError path.
+    expect(isMissingChatError(new Error('target_not_found'))).toBe(true);
+    expect(isMissingChatError({ status: 404 })).toBe(true);
+    req.mockRejectedValueOnce(new ClientError('network_offline'));
+    await store.rejectProposal('t-prop-3');
+    expect(get(store).error).toBeInstanceOf(ClientError);
+  });
+
+  it('covers markdown helpers for all ref kinds, tilde fences, and safe external URLs', () => {
+    expect(parseSafeWebUrl('//evil.com')).toBeNull();
+    expect(parseSafeWebUrl('not-a-url')).toBeNull();
+    expect(formatExternalLabel('docs.org/guide', new URL('https://docs.org/guide'))).toBe(
+      'docs.org/guide',
+    );
+    expect(hrefForTurnRef({ kind: 'plan', id: 'p-1' }, { kind: 'epic', id: 'e-1' })).toBe(
+      '/epics/e-1?open=plan%3Ap-1&chat=open',
+    );
+    expect(hrefForTurnRef({ kind: 'decision', id: 'Q-2' }, { kind: 'plan', id: 'p-1' })).toBe(
+      '/plans/p-1?open=decision%3AQ-2&chat=open',
+    );
+    expect(hrefForTurnRef({ kind: 'decision', id: 'Q-2' }, { kind: 'epic', id: 'e-1' })).toBe(
+      '/epics/e-1?open=decision%3AQ-2&chat=open',
+    );
+    expect(hrefForTurnRef({ kind: 'decision', id: 'Q-2' })).toBe('/decisions/Q-2');
+    expect(hrefForTurnRef({ kind: 'hold' }, { kind: 'epic', id: 'e-1' })).toBe(
+      '/epics/e-1?chat=open',
+    );
+    expect(hrefForTurnRef({ kind: 'act' })).toBe('/overview');
+
+    const tokens = tokenizeMarkdown('~~~\nopen fence', true);
+    expect(tokens[0]?.type).toBe('paragraph');
+    expect(tokenizeMarkdown('')).toEqual([]);
+  });
+
+  it('covers store error, archive, and missing-id guard branches cleanly', async () => {
+    vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
+    const boom = new ClientError('network_offline');
+    vi.spyOn(apiClient, 'request')
+      .mockRejectedValueOnce(Object.assign(new Error('target_not_found'), { status: 404 }))
+      .mockResolvedValueOnce(makeChat({ before: 't-prev' }))
+      .mockRejectedValueOnce(boom);
+
+    const archiveStore = createChatStore(planTarget, { archive: true });
+    await archiveStore.connect();
+    expect(get(archiveStore).error).toBeTruthy();
+    await archiveStore.send('ignored in archive');
+
+    const store = createChatStore(planTarget);
+    await store.connect();
+    await store.loadOlder();
+    expect(get(store).error).toBe(boom);
+
+    await store.openNew();
+    expect(get(store).error).toBeTruthy();
+
+    await store.acceptProposal('p-1');
+    expect(get(store).error).toBeTruthy();
+
+    await store.rejectProposal('p-1');
+    expect(get(store).error).toBeTruthy();
+
+    await store.end();
+    expect(get(store).error).toBeTruthy();
+
+    await store.stopReply();
+    await store.stopReply('t-active');
+    expect(get(store).error).toBeTruthy();
+
+    await store.retryTurn('non-existent');
+    store.editFailedTurn('non-existent');
+    await store.send('   ');
+    store.disconnect();
+    await store.loadToTurn('t-none');
+  });
+
+  it('covers missing-chat auto-open, openNew, stopReply, proposal accept/reject, end, stream state, and turn transitions', async () => {
+    let emitEvent: (event: string, data: unknown) => void = () => {};
+    let emitStreamState: (state: EventStreamState) => void = () => {};
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation(
+      (_path, onEvent, _onError, onState) => {
+        emitEvent = onEvent;
+        emitStreamState = onState ?? (() => {});
+        return () => {};
+      },
+    );
+
+    const streamingTurn: ChatTurn = {
+      turn_id: 't-reply-1',
+      kind: 'message',
+      author: 'Planner',
+      status: 'streaming',
+      format: 'markdown',
+      untrusted: false,
+      model: 'claude-sonnet',
+      text: 'Working',
+      steps: [],
+      refs: [],
+      at: '2026-11-27T09:00:01Z',
+      reason: null,
+      lines: [],
+    };
+    const openProposal = {
+      turn_id: 't-prop-1',
+      reply_turn_id: 't-reply-1',
+      kind: 'revision' as const,
+      summary: 'Update scope',
+      applies: null,
+      before: null,
+      after: null,
+      state: 'open' as const,
+      finding: null,
+    };
+
+    const req = vi
+      .spyOn(apiClient, 'request')
+      // connect(): initial read returns target_not_found -> falls back to openChat
+      .mockRejectedValueOnce(Object.assign(new Error('target_not_found'), { status: 404 }))
+      .mockResolvedValueOnce(
+        makeChat({
+          state: 'chat.read-back',
+          turns: [streamingTurn],
+          proposal: openProposal,
+        }),
+      )
+      // acceptProposal -> accepted snapshot
+      .mockResolvedValueOnce(
+        makeChat({
+          state: 'chat.apply',
+          proposal: { ...openProposal, state: 'accepted' },
+        }),
+      )
+      // rejectProposal -> rejected snapshot
+      .mockResolvedValueOnce(
+        makeChat({
+          state: 'chat.open',
+          proposal: { ...openProposal, state: 'rejected' },
+        }),
+      )
+      // stopReply -> stopped snapshot
+      .mockResolvedValueOnce(
+        makeChat({
+          state: 'chat.open',
+          turns: [{ ...streamingTurn, status: 'stopped' }],
+        }),
+      )
+      // end() -> ended snapshot
+      .mockResolvedValueOnce(makeChat({ state: 'chat.end' }))
+      // openNew() from ended state -> skips endChat, calls openChat
+      .mockResolvedValueOnce(makeChat({ id: 'chat-2', state: 'chat.open', turns: [] }))
+      // openNew() from active state -> calls endChat then openChat
+      .mockResolvedValueOnce(makeChat({ id: 'chat-2', state: 'chat.end', turns: [] }))
+      .mockResolvedValueOnce(makeChat({ id: 'chat-3', state: 'chat.open', turns: [] }));
+
+    const store = createChatStore(planTarget);
+    await store.connect();
+    expect(get(store).chat?.id).toBe('chat-1');
+    emitStreamState('connected');
+    expect(get(store).streamState).toBe('connected');
+
+    // Ignored invalid / mismatched / reset-before-settled branches are already safe; test settled reset error & invalid events.
+    emitEvent('unknown.event', { chat_id: 'chat-1' });
+    emitEvent('chat.turn.delta', null);
+    emitEvent('chat.turn.delta', { chat_id: 'wrong-chat', turn_id: 't-reply-1', text: 'x' });
+    emitEvent('chat.turn.delta', { chat_id: 'chat-1', turn_id: 'missing', text: 'x' });
+    emitEvent('chat.turn.progress', {
+      chat_id: 'wrong-chat',
+      turn_id: 't-reply-1',
+      step: { id: 's-1', label: 'No', status: 'done', at: '2026-11-27T09:00:02Z' },
+    });
+    emitEvent('chat.turn.progress', {
+      chat_id: 'chat-1',
+      turn_id: 'missing',
+      step: { id: 's-1', label: 'No', status: 'done', at: '2026-11-27T09:00:02Z' },
+    });
+
+    // Re-announced turn updates existing turn + active operator pending match.
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-1',
+      turn_id: 't-reply-1',
+      kind: 'message',
+      author: 'Planner',
+      format: 'markdown',
+      untrusted: false,
+      text: 'Restarted',
+    });
+    emitEvent('chat.turn.progress', {
+      chat_id: 'chat-1',
+      turn_id: 't-reply-1',
+      step: { id: 's-2', label: 'Scan', status: 'done', at: '2026-11-27T09:00:03Z' },
+    });
+    emitEvent('chat.turn.completed', {
+      chat_id: 'chat-1',
+      turn_id: 't-reply-1',
+      kind: 'message',
+      status: 'complete',
+      untrusted: false,
+      text: 'Done with proposal',
+      lines: [],
+    });
+    expect(get(store).chat?.state).toBe('chat.read-back');
+
+    // Proposal events: open keeps read-back, rejected transitions to chat.open.
+    emitEvent('chat.proposal', {
+      chat_id: 'wrong-chat',
+      turn_id: 't-prop-1',
+      reply_turn_id: 't-reply-1',
+      kind: 'revision',
+      state: 'open',
+    });
+    emitEvent('chat.proposal', {
+      chat_id: 'chat-1',
+      turn_id: 't-prop-1',
+      reply_turn_id: 't-reply-1',
+      kind: 'revision',
+      state: 'open',
+    });
+    expect(get(store).chat?.state).toBe('chat.read-back');
+    emitEvent('chat.proposal', {
+      chat_id: 'chat-1',
+      turn_id: 't-prop-1',
+      reply_turn_id: 't-reply-1',
+      kind: 'revision',
+      state: 'rejected',
+      finding: 'Needs tests',
+    });
+    expect(get(store).chat?.state).toBe('chat.open');
+    expect(get(store).chat?.proposal?.finding).toBe('Needs tests');
+
+    // Success paths for acceptProposal, rejectProposal, stopReply (with auto-found active turn), end, openNew.
+    await store.acceptProposal('t-prop-1');
+    expect(get(store).chat?.state).toBe('chat.apply');
+
+    await store.rejectProposal('t-prop-1');
+    expect(get(store).chat?.state).toBe('chat.open');
+
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-1',
+      turn_id: 't-stream-2',
+      kind: 'message',
+      author: 'Planner',
+      format: 'markdown',
+      untrusted: false,
+    });
+    await store.stopReply();
+    expect(get(store).turns[0]?.status).toBe('stopped');
+
+    emitEvent('chat.ended', { chat_id: 'wrong-chat', ended_by: 'operator' });
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-1',
+      turn_id: 't-stream-3',
+      kind: 'message',
+      author: 'Planner',
+      format: 'markdown',
+      untrusted: false,
+    });
+    emitEvent('chat.ended', { chat_id: 'chat-1', ended_by: 'operator' });
+    expect(get(store).chat?.state).toBe('chat.end');
+    expect(get(store).turns.find((t) => t.turn_id === 't-stream-3')?.status).toBe('stopped');
+
+    await store.end();
+    await store.openNew();
+    expect(get(store).chat?.id).toBe('chat-2');
+
+    await store.openNew();
+    expect(get(store).chat?.id).toBe('chat-3');
+    expect(req).toHaveBeenCalledTimes(9);
   });
 });

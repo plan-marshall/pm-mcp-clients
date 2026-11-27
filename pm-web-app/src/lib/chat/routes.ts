@@ -1,4 +1,4 @@
-import type { ChatTarget } from './types';
+import type { ChatTarget, DecisionScopeTarget } from './types';
 
 export interface ResolvedChatRoutes {
   subjectPath: string;
@@ -99,18 +99,19 @@ export function chatRoutesFor(target: ChatTarget): ResolvedChatRoutes {
   };
 }
 
+function decisionDraftScopeSegment(scope: DecisionScopeTarget): string {
+  if (scope.kind === 'machine') return 'machine';
+  if (scope.kind === 'workspace') return `workspace:${scope.projectId}`;
+  return `${scope.kind}:${scope.id}`;
+}
+
 /**
  * @param target the chat target
  * @returns stable `localStorage` key for holding unsent drafts for that subject's chat
  */
 export function storageKeyForDraft(target: ChatTarget): string {
   if (target.kind === 'decision' && target.scope) {
-    const scopePart =
-      target.scope.kind === 'machine'
-        ? 'machine'
-        : target.scope.kind === 'workspace'
-          ? `workspace:${target.scope.projectId}`
-          : `${target.scope.kind}:${target.scope.id}`;
+    const scopePart = decisionDraftScopeSegment(target.scope);
     return `pm_chat_draft:decision:${scopePart}:${target.id}`;
   }
   return `pm_chat_draft:${target.kind}:${target.id}`;
