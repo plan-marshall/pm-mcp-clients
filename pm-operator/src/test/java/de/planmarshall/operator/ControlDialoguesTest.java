@@ -398,10 +398,10 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("Add SSE\n\n");
+        virtual.type("Add SSE\n\nq\n");
         assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
         assertTrue(out.toString().contains("Yes, I propose a second test."), out.toString());
-        assertTrue(out.toString().contains("The chat is kept with p"), out.toString());
+        assertTrue(out.toString().contains("Left the chat; it stays with p."), out.toString());
     }
 
     @Test
@@ -425,7 +425,7 @@ class ControlDialoguesTest {
         // The point the proposal applies at is read from its runtime key, not printed as one.
         assertTrue(text.contains("applies after the current task"), text);
         assertFalse(text.contains("chat.applies."), text);
-        assertTrue(text.contains("The chat is kept with p"), text);
+        assertTrue(text.contains("Left the chat; it stays with p."), text);
     }
 
     @Test
@@ -470,7 +470,7 @@ class ControlDialoguesTest {
         var text = out.toString();
         // The read-back is drawn once, and the answered proposal is not offered a second time.
         assertEquals(1, times(text, "Proposed change"), text);
-        assertTrue(text.contains("The chat is kept with p"), text);
+        assertTrue(text.contains("Left the chat; it stays with p."), text);
     }
 
     @Test
@@ -1301,7 +1301,7 @@ class ControlDialoguesTest {
         });
         virtual.type("r\n\n");
         assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
-        assertTrue(out.toString().contains("The chat is kept with p"), out.toString());
+        assertTrue(out.toString().contains("Left the chat; it stays with p."), out.toString());
     }
 
     @Test

@@ -348,6 +348,24 @@ public final class WorkActionsClient {
     }
 
     /**
+     * Ends the open chat for a plan or an epic ({@code POST …/chat/end}).
+     *
+     * @param kind the subject kind ({@code plan} or {@code epic})
+     * @param id   the subject id
+     * @return the ended chat
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource endChat(String kind, String id) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.end(), "{}"));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException(kind + CHAT + " end", response);
+        }
+        return ChatResource.fromJson(response.bodyText());
+    }
+
+    /**
      * Sends the operator's message on the chat's turns and follows the reply until its turn ends.
      *
      * @param kind    the subject kind

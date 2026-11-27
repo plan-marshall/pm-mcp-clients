@@ -113,9 +113,9 @@ class PlanChatIT {
         try (var session = PtySession.start(binary.with("plan", "chat", "fix-relay"),
                                  environment, Path.of("").toAbsolutePath(), 120, 30)) {
             assertTrue(session.awaitText("fix-relay", DialogueHarness.TIMEOUT), session.rawOutput());
-            session.send(message + "\n");
+            session.send(message + "\n\n");
             assertTrue(session.awaitText(REPLY, DialogueHarness.TIMEOUT), session.screenText());
-            session.send("\n");
+            session.send("q\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
             assertEquals(0, session.exitCode(), session.rawOutput());
         }

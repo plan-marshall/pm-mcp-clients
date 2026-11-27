@@ -1554,7 +1554,7 @@ class PlanCommandTest {
                     response.send(404, null, "");
                 }
             });
-            var typed = (text + "\ny\n").getBytes(StandardCharsets.UTF_8);
+            var typed = (text + "\n\ny\n").getBytes(StandardCharsets.UTF_8);
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(typed), new ByteArrayOutputStream()),

@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -41,8 +42,15 @@ final class WorkChatDialogue {
 
     private static final String STATE_ID = "control.chat";
     private static final String KEY_SUBJECT = "subject";
-    private static final String KEY_CHAT_KEPT = "operator.actions.chat.kept";
+    private static final String KEY_CHAT_LEFT = "operator.actions.chat.left";
+    private static final String KEY_CHAT_NEW_COMMAND = "operator.actions.chat.new_command";
     private static final String ROLE_OPERATOR = ChatTurn.AUTHOR_OPERATOR;
+
+    private enum ProposalDecision {
+        ACCEPT,
+        REJECT,
+        NEW
+    }
 
     private final StartPrompt prompt;
     private final WorkActionsClient client;
@@ -80,9 +88,14 @@ final class WorkChatDialogue {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), "operator.actions.chat.no_input", Map.of()));
             out.flush();
             return StartDialogue.EXIT_MISSING_INPUT;
-        } catch (StartPrompt.StartLeftException _) {
+        } catch (StartPrompt.InterruptException _) {
             // The chat is one of the view's other dialogues (04-console.adoc#console-dialogue-handoff):
             // q and Ctrl+C both leave it back to the view, and nothing is sent.
+            return 0;
+        } catch (StartPrompt.StartLeftException _) {
+            out.println(MessageCatalogue.format(dialogue.prompt.locale(), KEY_CHAT_LEFT,
+                                Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId))));
+            out.flush();
             return 0;
         }
     }
@@ -131,16 +144,23 @@ final class WorkChatDialogue {
         boolean saidNoProposal = false;
         while (true) {
             if (chat.hasProposal()) {
-                chat = answerProposal(chat, endedChat, seen);
-                if (chat == null) {
+                var proposalOutcome = handleProposal(chat, endedChat, seen);
+                if (proposalOutcome == null) {
                     return 0;
                 }
+                chat = proposalOutcome;
                 seen = lastTurnId(chat);
                 continue;
             }
-            var message = askMessage();
+            var message = askMessageOrNew();
             if (message == null) {
-                return 0;
+                var reset = confirmAndStartNew(null);
+                if (reset != null) {
+                    chat = reset;
+                    seen = lastTurnId(chat);
+                    saidNoProposal = false;
+                }
+                continue;
             }
             var updated = sendTurn(message);
             if (updated == null) {
@@ -175,16 +195,70 @@ final class WorkChatDialogue {
         }
     }
 
-    private @Nullable String askMessage() {
-        var message = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
-                            Map.of()) + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end", Map.of()),
-                            subjectId);
-        if (message.isBlank()) {
-            prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+    /**
+     * Reads one message (one or more non-empty lines, sent on an empty line), or returns
+     * {@code null} when the operator typed {@code new}/{@code neu} on the first line. An empty
+     * first line, the localized leave key, or {@code Ctrl+D} throws
+     * {@link StartPrompt.StartLeftException} so the dialogue leaves without closing the chat.
+     */
+    private @Nullable String askMessageOrNew() {
+        var leaveHint = MessageCatalogue.format(prompt.locale(), "operator.actions.chat_leave", Map.of());
+        var first = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
+                            Map.of()) + StartPrompt.SUFFIX, STATE_ID, leaveHint, subjectId);
+        var trimmed = first.trim();
+        if (first.isBlank() || ChoicePrompt.isLeave(prompt.locale(), trimmed)) {
+            throw new StartPrompt.StartLeftException();
+        }
+        if (isNewCommand(trimmed)) {
             return null;
         }
-        return message;
+        var lines = new ArrayList<String>();
+        lines.add(first);
+        while (true) {
+            var next = prompt.askRaw("", STATE_ID, leaveHint, subjectId);
+            if (next.isBlank()) {
+                return String.join("\n", lines);
+            }
+            lines.add(next);
+        }
+    }
+
+    private boolean isNewCommand(String trimmedInput) {
+        var command = MessageCatalogue.format(prompt.locale(), KEY_CHAT_NEW_COMMAND, Map.of());
+        return command.equalsIgnoreCase(trimmedInput);
+    }
+
+    private @Nullable ChatResource confirmAndStartNew(@Nullable ChatProposal openProposal) throws IOException {
+        if (openProposal != null && openProposal.isOpen()) {
+            var kindText = MessageCatalogue.format(prompt.locale(), "control.chat.proposal.kind",
+                                Map.of("kind", openProposal.kind().wireValue()));
+            prompt.line("control.chat.new_confirm.body", Map.of(
+                                "kind", kindText,
+                                KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId)));
+        }
+        var title = MessageCatalogue.format(prompt.locale(), "control.chat.new_confirm.title", Map.of());
+        var question = title + "   "
+                            + MessageCatalogue.format(prompt.locale(), "operator.actions.yes_no", Map.of())
+                            + " [Enter]";
+        while (true) {
+            var answer = prompt.askRaw(question + StartPrompt.SUFFIX, STATE_ID, title, subjectId);
+            if (Answers.isYes(answer)) {
+                client.endChat(kind, subjectId);
+                var reopened = client.openChat(kind, subjectId);
+                prompt.line("control.chat.ended",
+                                    Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId)));
+                return reopened;
+            }
+            if (answer.isEmpty() || Answers.isNo(answer)) {
+                return null;
+            }
+            if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
+                throw new StartPrompt.StartLeftException();
+            }
+            prompt.line("operator.dialogue.not_offered",
+                                Map.of("input", TerminalSanitizer.sanitizeLine(answer),
+                                                    "offered", "y, n"));
+        }
     }
 
     private boolean reportNoProposalOnce(ChatResource chat, boolean saidNoProposal) {
@@ -204,14 +278,15 @@ final class WorkChatDialogue {
      * @return the chat as the runtime answered it, or {@code null} to leave the chat
      * @throws IOException on transport failure
      */
-    private @Nullable ChatResource answerProposal(ChatResource chat, boolean endedChat, @Nullable String seen)
+    private @Nullable ChatResource handleProposal(ChatResource chat, boolean endedChat, @Nullable String seen)
                         throws IOException {
         var proposal = chat.proposal();
-        var answer = askProposal(chat, endedChat);
-        if (answer == null) {
-            return null;
+        var decision = askProposal(chat, endedChat);
+        if (decision == ProposalDecision.NEW) {
+            var reset = confirmAndStartNew(proposal);
+            return reset != null ? reset : chat;
         }
-        if (answer) {
+        if (decision == ProposalDecision.ACCEPT) {
             if (endedChat) {
                 // The accept opens the start on the runtime; no B1 surface names the entry it
                 // opened, so the operator is told the start is being prepared and the chat is
@@ -219,7 +294,6 @@ final class WorkChatDialogue {
                 var accepted = proposal;
                 var description = accepted == null ? null : followUp(accepted);
                 client.chatProposal(kind, subjectId, accepted.turnId(), true);
-                prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
                 if (description != null) {
                     prompt.line("operator.actions.chat.follow_up_started",
                                         Map.of("description", description));
@@ -228,7 +302,10 @@ final class WorkChatDialogue {
             }
             var acceptedChat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
             showNewTurns(acceptedChat, seen);
-            prompt.line(KEY_CHAT_KEPT, Map.of(KEY_SUBJECT, subjectId));
+            var boundary = proposal != null && proposal.applies() != null
+                                && proposal.applies().key().endsWith("after_task");
+            prompt.line("operator.actions.chat.accepted",
+                                Map.of("when", boundary ? "boundary" : "other"));
             return acceptedChat;
         }
         var rejectedChat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
@@ -237,12 +314,12 @@ final class WorkChatDialogue {
     }
 
     /**
-     * @return {@code true} to accept, {@code false} to reject, or {@code null} to leave the chat
+     * @return the operator's choice at the open proposal
      */
-    private @Nullable Boolean askProposal(ChatResource chat, boolean endedChat) {
+    private ProposalDecision askProposal(ChatResource chat, boolean endedChat) {
         var proposal = chat.proposal();
         if (proposal == null) {
-            return null;
+            throw new StartPrompt.StartLeftException();
         }
         prompt.raw(MessageCatalogue.format(prompt.locale(), endedChat
                             ? "operator.actions.chat.proposed_follow_up"
@@ -267,13 +344,16 @@ final class WorkChatDialogue {
                                 "operator.actions.accept_reject", Map.of("key", rejectKey)),
                                 STATE_ID, question, subjectId);
             if (answer.isEmpty()) {
-                return Boolean.TRUE;
+                return ProposalDecision.ACCEPT;
             }
             if (answer.equalsIgnoreCase(rejectKey)) {
-                return Boolean.FALSE;
+                return ProposalDecision.REJECT;
+            }
+            if (isNewCommand(answer.trim())) {
+                return ProposalDecision.NEW;
             }
             if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
-                return null;
+                throw new StartPrompt.StartLeftException();
             }
             // Any other input is answered with one line and the proposal is asked again; only the leave
             // key leaves the chat (design Dialogues, links as keys).
@@ -297,7 +377,7 @@ final class WorkChatDialogue {
                             Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(chat.subject().id()),
                                                 "role", chat.role().name(),
                                                 "scope", MessageCatalogue.format(prompt.locale(), scope, Map.of())))
-                            + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat_end",
+                            + "   " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat_leave",
                             Map.of()));
         if (endedChat) {
             prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.chat.read_only",
