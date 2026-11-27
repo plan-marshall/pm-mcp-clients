@@ -4,8 +4,8 @@ sender_id=rb-71-verify-web-onboarding
 epic=ui-improvements
 kind=finding
 created=2026-11-26T07:46:07Z
-revision=4
-amended=2026-11-27T11:28:29Z
+revision=5
+amended=2026-11-27T16:15:47Z
 
 # Finding: `UC-V-05` fails on the `harness.none` row of `UC-P-03`
 
@@ -35,10 +35,12 @@ as the install hints and names the per-harness cause and fix under `harness.bloc
 (`harness.probe-failed`: name, cause, fix). Either the check's row or the state's contract has to move; the screen
 follows the catalogue.
 
-**Two further clauses are `not verified`, with their reason:**
+**Three further clauses are `not verified`, with their reason:**
 
 - `catalogue.select`: the advice's recommendation preselected and marked "recommended" is not in the mock — the state
   carries no advice and no recommendation. The text field per harness that cannot list its models is present.
+- `defaults.review`: "variants that need a missing provider disabled with the reason" is drawn by the client
+  (`DefaultsScreen.svelte:151-191`) but no state in the mock carries an unavailable variant.
 - Settings (`UC-ONB-10`): one settings place is present (`/settings` with its tabs; `/settings/machine` resolves into
   it). The conflict notice is drawn on that page when a save conflicts — "Changed meanwhile", the current value, "Your
   value", "Keep the current value", and "Apply yours again" (`SettingsView.svelte:1072-1088`, fed by
