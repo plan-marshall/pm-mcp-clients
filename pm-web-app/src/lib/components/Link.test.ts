@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import path from 'node:path';
 import { createRawSnippet } from 'svelte';
-import { render, screen } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import Link from './Link.svelte';
 import { AUTHORITY_FORM } from '../../test/appPathAuthorityForms';
 import { ruleOf, rulesOf, styleOf } from '../../test/templateStyle';
@@ -96,6 +96,43 @@ describe('Link', () => {
       expect(screen.getByRole('link', { name: 'Place' })).toHaveAttribute('href', href.trim());
     },
   );
+
+  it('draws a fragment of this document as an anchor', () => {
+    render(Link, { props: { href: '#deliverable-2', label: 'Intent tab' } });
+
+    expect(screen.getByRole('link', { name: 'Intent tab' })).toHaveAttribute(
+      'href',
+      '#deliverable-2',
+    );
+  });
+
+  it('follows a fragment by a replace, so the link adds no history entry', async () => {
+    const target = document.createElement('section');
+    target.id = 'deliverable-2';
+    document.body.appendChild(target);
+    const lengthBefore = window.history.length;
+
+    render(Link, { props: { href: '#deliverable-2', label: 'Intent tab' } });
+    await fireEvent.click(screen.getByRole('link', { name: 'Intent tab' }));
+
+    expect(window.location.hash).toBe('#deliverable-2');
+    expect(window.history).toHaveLength(lengthBefore);
+    target.remove();
+  });
+
+  it('takes a plain click over when the caller acts itself and keeps the href for a modified click', async () => {
+    const onactivate = vi.fn();
+    render(Link, { props: { href: '/plans/fix-relay', label: 'Open', onactivate } });
+    const link = screen.getByRole('link', { name: 'Open' });
+
+    // The plain click is cancelled: the caller's push is the only navigation.
+    expect(await fireEvent.click(link)).toBe(false);
+    expect(onactivate).toHaveBeenCalledTimes(1);
+    expect(link).toHaveAttribute('href', '/plans/fix-relay');
+
+    await fireEvent.click(link, { metaKey: true });
+    expect(onactivate).toHaveBeenCalledTimes(1);
+  });
 
   it('puts the icon snippet before the label', () => {
     render(Link, { props: { href: '/designer', label: 'Process designer', icon: ICON } });

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import type { PlanSettingsRecord } from '../api/client';
+  import { displaySettingAspect, displaySettingChoice } from '../display';
   import SelectField from './SelectField.svelte';
   import Button from './Button.svelte';
   import FormStatus from './FormStatus.svelte';
@@ -88,6 +89,19 @@
   /** Drops the plan's own value, so the field reads the inherited one again. */
   function inherit(aspect: string): void {
     chosen = { ...chosen, [aspect]: '' };
+    markEdited(aspect);
+  }
+
+  /**
+   * Marks a field the operator changed: its earlier applied marker goes, so a reseed after a refresh
+   * keeps the new, unapplied edit instead of taking the server value for an applied one.
+   *
+   * @param aspect the aspect the operator edited
+   */
+  function markEdited(aspect: string): void {
+    if (appliedAspects.has(aspect)) {
+      appliedAspects = new Set([...appliedAspects].filter((entry) => entry !== aspect));
+    }
     saved = false;
   }
 
@@ -109,17 +123,23 @@
   }
 
   /**
-   * Applies every changed field with the revision the dialogue opened with, then says it saved.
-   * The runtime answers each field on its own, so a conflict names the field it belongs to.
+   * Applies every changed field with the revision the dialogue's last applied answer carried, then
+   * says it saved. The runtime answers each field on its own, so a conflict names the field it
+   * belongs to.
    */
   async function save(): Promise<void> {
     if (!settings) return;
+    // A conflict is the operator's decision: Save stays out of it until Keep current or Apply again.
+    if (conflict) return;
     const aspects = changedList;
     if (aspects.length === 0) return;
     saved = false;
     appliedAspects = new Set();
     let every = true;
     for (const aspect of aspects) {
+      // Each field's own baseline: a refresh that landed after the field before it must not decide
+      // this field's.
+      const revisionBefore = settings.revision;
       const applied = await onApply({
         aspect,
         value: chosen[aspect] === '' ? null : chosen[aspect],
@@ -129,6 +149,12 @@
         // The dialog stops at the first refusal: its notice and the pending value stay put.
         every = false;
         break;
+      }
+      // The field is the server's now. A record the write refreshed already reseeded the baseline;
+      // only a refresh that did not land leaves it to this line, so a later Save never resends a
+      // write that already landed.
+      if (settings.revision === revisionBefore) {
+        seeded = { ...seeded, [aspect]: chosen[aspect] ?? '' };
       }
       appliedAspects = new Set([...appliedAspects, aspect]);
     }
@@ -153,28 +179,34 @@
             {$t('control.settings.conflict_title')}
           </h3>
           <p>
-            {$t('control.settings.conflict', { value: conflict.currentValue })}
+            {$t('control.settings.conflict', {
+              value: displaySettingChoice(conflict.currentValue, $t),
+            })}
           </p>
           <dl class="settings-modal__conflict-facts">
             <dt>{$t('control.settings.yours')}</dt>
-            <dd data-testid="settings-conflict-yours">{conflict.wantedValue}</dd>
+            <dd data-testid="settings-conflict-yours">
+              {displaySettingChoice(conflict.wantedValue, $t)}
+            </dd>
             <dt>{$t('control.settings.origin', { origin: 'plan' })}</dt>
-            <dd data-testid="settings-conflict-current">{conflict.currentValue}</dd>
+            <dd data-testid="settings-conflict-current">
+              {displaySettingChoice(conflict.currentValue, $t)}
+            </dd>
           </dl>
           <div class="settings-modal__conflict-actions">
-            <button
-              type="button"
-              data-testid="settings-conflict-keep"
+            <Button
+              variant="secondary"
               disabled={busy}
-              on:click={() => keep()}
+              data-testid="settings-conflict-keep"
+              onclick={() => keep()}
             >
               {$t('control.settings.keep_current')}
-            </button>
-            <button
-              type="button"
-              data-testid="settings-conflict-apply-again"
+            </Button>
+            <Button
+              variant="primary"
               disabled={busy}
-              on:click={() =>
+              data-testid="settings-conflict-apply-again"
+              onclick={() =>
                 onApplyAgain({
                   aspect: conflict.aspect,
                   value: conflict.wantedValue === '' ? null : conflict.wantedValue,
@@ -182,7 +214,7 @@
                 })}
             >
               {$t('control.settings.apply_again')}
-            </button>
+            </Button>
           </div>
         </div>
       {/if}
@@ -201,25 +233,30 @@
                     {#if entry.choices && entry.choices.length > 0}
                       <SelectField
                         id={`settings-value-${entry.aspect}`}
-                        label={entry.aspect}
+                        label={displaySettingAspect(entry.aspect, $t)}
                         value={chosen[entry.aspect] ?? ''}
                         options={[
                           ...(entry.origin === 'plan'
                             ? [{ value: '', label: $t('control.settings.drop_own') }]
                             : []),
-                          ...entry.choices.map((choice) => ({ value: choice, label: choice })),
+                          ...entry.choices.map((choice) => ({
+                            value: choice,
+                            label: displaySettingChoice(choice, $t),
+                          })),
                         ]}
                         testid={`settings-value-${entry.aspect}`}
                         disabled={busy}
                         onchange={(value) => {
                           chosen = { ...chosen, [entry.aspect]: value };
-                          saved = false;
+                          markEdited(entry.aspect);
                         }}
                       />
                     {:else}
-                      <span class="settings-modal__aspect">{entry.aspect}</span>
+                      <span class="settings-modal__aspect"
+                        >{displaySettingAspect(entry.aspect, $t)}</span
+                      >
                       <span class="settings-modal__value mono" data-testid={`settings-value-${entry.aspect}`}
-                        >{chosen[entry.aspect]}</span
+                        >{displaySettingChoice(chosen[entry.aspect], $t)}</span
                       >
                     {/if}
                   </div>
@@ -257,11 +294,17 @@
               id="settings-saved"
             />
             <div class="settings-modal__actions">
-              <Button variant="ghost" onclick={() => onClose()}> {$t('control.settings.close')} </Button>
+              <Button
+                variant="ghost"
+                data-testid="settings-close-button"
+                onclick={() => onClose()}
+              >
+                {$t('control.settings.close')}
+              </Button>
               <Button
                 variant="primary"
                 type="submit"
-                disabled={busy || changedList.length === 0}
+                disabled={busy || conflict !== null || changedList.length === 0}
                 data-testid="settings-save"
               >
                 {$t('common.action.save')}
@@ -269,14 +312,15 @@
             </div>
           </div>
         </form>
-
-        <div class="settings-modal__close">
-          <button type="button" data-testid="settings-close-button" on:click={() => onClose()}>
-            {$t('control.settings.close')}
-          </button>
-        </div>
       {:else}
+        <!-- The read that fills the dialogue failed: its Close still stands, so the operator can
+             leave it without reloading the page. -->
         <p class="settings-modal__empty">…</p>
+        <div class="settings-modal__actions">
+          <Button variant="ghost" data-testid="settings-close-button" onclick={() => onClose()}>
+            {$t('control.settings.close')}
+          </Button>
+        </div>
       {/if}
     </div>
   </div>
@@ -340,12 +384,6 @@
     margin-inline-start: auto;
   }
 
-  .settings-modal__close {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: var(--space-2);
-  }
-
   .settings-modal__changed {
     color: var(--color-attention-text);
     font-size: var(--text-xs);
@@ -388,18 +426,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-  }
-
-  .settings-modal__conflict-actions button {
-    min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-  }
-
-  .settings-modal__close button {
-    min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
   }
 
   @media (max-width: 480px) {

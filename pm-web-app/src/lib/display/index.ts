@@ -178,6 +178,56 @@ export function displayUnit(id: string | null | undefined, translate?: Translate
 }
 
 /**
+ * The aspects whose label carries the aspect's own name beside a prefix: `role.implement` reads as
+ * "Role implement", `integration.git` as "Integration git".
+ */
+const PREFIXED_ASPECTS: ReadonlyArray<{ prefix: string; key: string }> = Object.freeze([
+  { prefix: 'role.', key: 'control.aspect.role' },
+  { prefix: 'integration.', key: 'control.aspect.integration' },
+  { prefix: 'provider.', key: 'control.aspect.provider' },
+]);
+
+/**
+ * Names a plan-settings aspect by its display name (`control.aspect.<aspect>`).
+ *
+ * A prefixed aspect names its own suffix (`role.implement` → "Role implement"); an aspect the
+ * catalogue does not name reads as the unknown word, never as the raw id.
+ *
+ * @param aspect the aspect id the runtime carries
+ * @param translate the catalogue look-up a template passes (`$t`)
+ * @returns the aspect's display name
+ */
+export function displaySettingAspect(aspect: string, translate?: Translate): string {
+  const lookup = translator(translate);
+  const normalized = (aspect ?? '').trim();
+  if (!normalized) {
+    return lookup(STATE_UNKNOWN_KEY);
+  }
+  const prefixed = PREFIXED_ASPECTS.find((entry) => normalized.startsWith(entry.prefix));
+  if (prefixed) {
+    return lookup(prefixed.key, { name: normalized.slice(prefixed.prefix.length) });
+  }
+  return word(`control.aspect.${normalized}`, STATE_UNKNOWN_KEY, lookup);
+}
+
+/**
+ * Names one choice of a plan-settings aspect: the shared unit vocabulary's word where it names one,
+ * and the raw choice otherwise, so a choice without a display name still reaches the operator.
+ *
+ * @param choice the choice key the runtime carries (`landing.pull-request`)
+ * @param translate the catalogue look-up a template passes (`$t`)
+ * @returns the choice's display name, or the raw value when it has none
+ */
+export function displaySettingChoice(choice: string, translate?: Translate): string {
+  const lookup = translator(translate);
+  const normalized = (choice ?? '').trim();
+  if (!normalized) {
+    return normalized;
+  }
+  return hasUnitName(normalized) ? displayUnit(normalized, lookup) : normalized;
+}
+
+/**
  * Renders the size of a plan's change as the one line the plan view and its report show
  * (`plan.change.size`): `12 files · +340 −27 · 2 unplanned`, and without the last part when nothing
  * lies beyond the plan's footprint.
