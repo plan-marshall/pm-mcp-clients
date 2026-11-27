@@ -133,7 +133,7 @@ A role's reply (`format: markdown`) is rendered as a closed subset (link:../../s
 * code blocks in the mono face with their language as a label, a _Copy_ act, sideways scroll, and no syntax colours;
 * links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]), the target's host shown beside a link text that does not name it, so a link the role quotes from outside never hides where it goes; an image as a link to it, never loaded;
 * references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, outside inline code and code blocks, as reference chips (inside code a reference stays code): a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), never a copy `Chip`, which opens its target as a status card's _Open it_ does (<<status-cards>>); a decision, a hold and an act the role names (`refs` of the kinds `decision`, `hold`, `act`) also take a status card under the turn;
-* a fenced Mermaid block as a diagram, drawn as every diagram of a model's text (link:../../specification/cli-and-security/03-web-app.adoc#web-diagrams[Diagrams]).
+* a fenced Mermaid block rendered as a fenced code block labelled `mermaid` behind one named function ready for the future Mermaid renderer (link:../../specification/cli-and-security/03-web-app.adoc#web-diagrams[Diagrams]).
 
 Raw HTML and every token outside the subset are shown as their source text. The renderer creates Svelte nodes and holds no HTML string, so it needs no sanitizer (<<renderer-decision>>).
 
