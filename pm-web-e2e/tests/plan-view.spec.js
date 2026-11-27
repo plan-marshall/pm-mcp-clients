@@ -87,10 +87,84 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(entries.nth(1)).toContainText('read');
     await expect(entries.nth(2)).toContainText('bash');
 
-    // Verify Jump button
-    const jumpBtn = page.locator('[data-testid="jump-btn"]');
-    await expect(jumpBtn).toBeVisible();
+    // Jump to now is an icon button named by the catalogue; it brings the running node into view.
+    const jumpBtn = page.getByRole('button', { name: 'to where it is' });
+    await expect(jumpBtn).toHaveAttribute('data-testid', 'jump-btn');
     await jumpBtn.click();
+    await expect(page.getByTestId('node-execute')).toBeInViewport();
+  });
+
+  test('shows taken and not-taken steps, leaf rows without a toggle and the prune reason', async ({
+    page,
+    request,
+  }) => {
+    // The `process.phase.execute` state of the running-work scenario serves the plan in execute.
+    const moved = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/process.phase.execute`);
+    expect(moved.ok()).toBeTruthy();
+
+    await page.goto('/plans/fix-relay');
+    await expect(page.getByTestId('process-tree')).toBeVisible();
+
+    // The taken step runs; the step beside it and the sub-step below the planned sub-workflow are
+    // muted, their state word kept.
+    await expect(page.getByTestId('node-execute.envelope')).toHaveClass(/node-item--running/);
+    const notTakenStep = page.getByTestId('node-execute.remediation');
+    await expect(notTakenStep).toHaveClass(/node-item--not_taken/);
+    await expect(notTakenStep).toContainText('not taken');
+    await expect(page.getByTestId('node-execute.verify')).not.toHaveClass(/node-item--not_taken/);
+    await expect(page.getByTestId('node-execute.verify.integration-tests')).toHaveClass(
+      /node-item--not_taken/,
+    );
+
+    // A leaf has no toggle; a node with something to open keeps it.
+    await expect(page.getByTestId('toggle-node-execute.remediation')).toHaveCount(0);
+    await expect(page.getByTestId('toggle-node-execute.envelope')).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    // The land-lane plan names why its phases were left out in the catalogue's words.
+    const pruned = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/process.pruned-lane`);
+    expect(pruned.ok()).toBeTruthy();
+    await page.goto('/plans/docs-typo');
+    const box = page.getByTestId('not-in-plan-box');
+    await expect(box).toContainText('the land lane');
+    await expect(box).not.toContainText('lane_choice');
+  });
+
+  test('keeps the selected node in the address across the tabs and a fresh load', async ({
+    page,
+  }) => {
+    await openPlan(page, 'Fix Relay Transport');
+
+    await page.getByTestId('select-node-init').click();
+    await expect(page).toHaveURL(/[?&]node=init(&|$)/);
+
+    await page.getByRole('tab', { name: 'Intent' }).click();
+    await expect(page).toHaveURL(/tab=intent/);
+    await expect(page).not.toHaveURL(/node=/);
+
+    await page.getByRole('tab', { name: 'Process' }).click();
+    await expect(page).toHaveURL(/[?&]node=init(&|$)/);
+
+    const freshPage = await page.context().newPage();
+    await freshPage.goto('/plans/fix-relay?node=init');
+    await expect(freshPage.getByTestId('select-node-init')).toHaveAttribute('aria-current', 'true');
+    await expect(freshPage.getByTestId('node-narrative-title')).toContainText('init');
+    await freshPage.close();
+  });
+
+  test('links the narrative of refine to the Intent tab', async ({ page }) => {
+    await openPlan(page, 'Fix Relay Transport');
+
+    await page.getByTestId('select-node-refine').click();
+    const link = page.getByTestId('node-intent-link');
+    await expect(link).toHaveText('Intent');
+    await link.click();
+
+    await expect(page).toHaveURL(/tab=intent/);
+    await expect(page).not.toHaveURL(/node=/);
+    await expect(page.getByTestId('plan-intent-panel-tab')).toBeVisible();
   });
 
   test('draws the attention strip and the decision link of a waiting plan', async ({
