@@ -1269,7 +1269,7 @@
   .control-dialog__field input {
     min-height: 44px;
     padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     background-color: var(--color-bg-surface);
     color: var(--color-text-primary);
