@@ -19,12 +19,18 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
+import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.TaskActivity;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.operator.tui.TuiRow;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 @DisplayName("WorkerActivityLevel")
 class WorkerActivityLevelTest {
@@ -193,5 +199,28 @@ class WorkerActivityLevelTest {
         assertTrue(text(empty).contains("No activity entries yet."));
         var level = level();
         assertTrue(level.lastRowId().startsWith("activity:entry:"));
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("renders the mock's agent_started task with its catalogue word and restart action")
+    void rendersMockAgentStartedTask() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var response = new UnixSocketHttpClient(runtime.socketPath()).send(
+                    HttpRequest.get("/api/v1/plans/storage-v2/tasks/TASK-002/activity")
+                                        .withHeader("Authorization", "Bearer " + runtime.token()));
+            assertEquals(200, response.status(), response.bodyText());
+
+            var activity = TaskActivity.fromJson(response.bodyText());
+            var level = new WorkerActivityLevel("storage-v2", "execute.storage", activity);
+            var enText = level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+            var deText = level.rows("de").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
+
+            assertAll(
+                                () -> assertTrue(enText.contains("agent started"), enText),
+                                () -> assertTrue(enText.contains("restarted"), enText),
+                                () -> assertTrue(deText.contains("Agent gestartet"), deText),
+                                () -> assertTrue(deText.contains("neu gestartet"), deText));
+        }
     }
 }

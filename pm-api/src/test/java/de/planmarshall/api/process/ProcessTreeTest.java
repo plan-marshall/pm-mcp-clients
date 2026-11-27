@@ -654,6 +654,24 @@ class ProcessTreeTest {
     }
 
     @Test
+    @DisplayName("pins OffTrackSignal to the closed set of five and refuses retired or unknown values")
+    void offTrackSignalClosedSetAndRefusals() {
+        assertEquals(
+                List.of("repeating", "no_progress", "failing_again", "edit_churn", "agent_started"),
+                java.util.Arrays.stream(OffTrackSignal.values()).map(OffTrackSignal::value).toList());
+        assertNull(OffTrackSignal.fromValue("over_size"));
+        assertNull(OffTrackSignal.fromValue("outside_footprint"));
+        assertNull(OffTrackSignal.fromValue("unknown"));
+        assertNull(OffTrackSignal.fromValue(null));
+        assertNull(OffTrackSignal.fromValue(" "));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("over_size"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("outside_footprint"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("unknown"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse(null));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse(" "));
+    }
+
+    @Test
     @DisplayName("should serialize and deserialize LeafJob round-trip")
     void shouldRoundTripLeafJob() throws Exception {
         var durationSeconds = (long) Generators.integers(0, 10_000).next();

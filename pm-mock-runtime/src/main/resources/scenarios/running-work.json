@@ -1526,7 +1526,11 @@
                     "status": "running",
                     "duration_seconds": 420,
                     "tokens_so_far": 30000,
-                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-002/activity"
+                    "activity_link": "/api/v1/plans/storage-v2/tasks/TASK-002/activity",
+                    "off_track": {
+                      "signal": "agent_started",
+                      "action": "restart"
+                    }
                   }
                 ]
               }
@@ -1590,6 +1594,10 @@
             "tool_failed": false
           }
         ],
+        "off_track": {
+          "signal": "agent_started",
+          "action": "restart"
+        },
         "server_only": false,
         "gap_count": 0
       }

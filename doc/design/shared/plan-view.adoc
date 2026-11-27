@@ -514,3 +514,30 @@ Keys of the area `plan`, shared by both clients.
 |===
 
 The reasons of _not in this plan_ are texts of the closed prune reasons of the plan instance, keys `plan.prune.<reason>`, and the statuses and outcomes of a job and a task are texts of their closed lists, keys `plan.job.status.<status>`, `plan.job.outcome.<outcome>`, `plan.task.status.<status>`, `plan.task.outcome.<outcome>`. The signals and actions of a worker off track are texts of their closed lists, keys `plan.signal.<signal>` and `plan.signal.action.<action>`. The kinds of a timeline entry are texts of their closed list, keys `plan.timeline.kind.<kind>`. The closed lists are enumerations of `process-contract`, which adds every key of this section, these keys one per value, to the catalogue of `message-catalogue` in English and German; the catalogue's build checks hold both packs complete. The figure of the tokens uses `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]). The plan's state in the head uses the keys `overview.state.*` and an ended plan's outcome `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview]), the kind of a hold `control.hold.kind.*` (link:work-actions-review-texts.adoc#texts[Reviews and Holds, Texts]).
+
+[cols="2,1,1",options="header"]
+|===
+|Key |English |German
+
+|`plan.signal.repeating`
+|repeating
+|wiederholend
+
+|`plan.signal.no_progress`
+|no progress
+|kein Fortschritt
+
+|`plan.signal.failing_again`
+|failing again
+|scheitert erneut
+
+|`plan.signal.edit_churn`
+|edit churn
+|wiederholte Änderung
+
+|`plan.signal.agent_started`
+|agent started
+|Agent gestartet
+|===
+
+`agent_started` (a harness or the operator binary started inside the worker, as at <<worker>>) always takes `restart`. The shared `state.signal.*` family carries the same word per value (link:texts-and-languages.adoc#keys[Texts and Languages, Keys]).

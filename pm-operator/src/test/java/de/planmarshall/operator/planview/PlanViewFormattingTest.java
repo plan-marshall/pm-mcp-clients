@@ -142,7 +142,10 @@ class PlanViewFormattingTest {
     void signals() {
         assertAll(
                             () -> assertEquals("repeating", PlanViewFormatting.signal("en", "repeating")),
-                            () -> assertEquals("outside footprint", PlanViewFormatting.signal("en", "outside_footprint")),
+                            () -> assertEquals("edit churn", PlanViewFormatting.signal("en", "edit_churn")),
+                            () -> assertEquals("wiederholte \u00c4nderung", PlanViewFormatting.signal("de", "edit_churn")),
+                            () -> assertEquals("failing again", PlanViewFormatting.signal("en", "failing_again")),
+                            () -> assertEquals("agent started", PlanViewFormatting.signal("en", "agent_started")),
                             () -> assertEquals("custom", PlanViewFormatting.signal("en", "custom")),
                             () -> assertEquals("", PlanViewFormatting.signal("en", null))
         );

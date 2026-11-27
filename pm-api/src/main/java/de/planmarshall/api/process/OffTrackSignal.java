@@ -9,7 +9,7 @@
  */
 package de.planmarshall.api.process;
 
-import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Diagnostic signal indicating a worker was detected as off track (UC-PLN-1).
@@ -17,8 +17,9 @@ import java.util.Objects;
 public enum OffTrackSignal {
     REPEATING("repeating"),
     NO_PROGRESS("no_progress"),
-    OVER_SIZE("over_size"),
-    OUTSIDE_FOOTPRINT("outside_footprint");
+    FAILING_AGAIN("failing_again"),
+    EDIT_CHURN("edit_churn"),
+    AGENT_STARTED("agent_started");
 
     private final String value;
 
@@ -26,17 +27,42 @@ public enum OffTrackSignal {
         this.value = value;
     }
 
+    /**
+     * @return the wire string value
+     */
     public String value() {
         return value;
     }
 
-    public static OffTrackSignal fromValue(String value) {
-        Objects.requireNonNull(value, "value");
+    /**
+     * Resolves an enum constant from its wire string value.
+     *
+     * @param value wire string
+     * @return enum constant, or {@code null} if unmatched
+     */
+    public static @Nullable OffTrackSignal fromValue(@Nullable String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
         for (var s : values()) {
             if (s.value.equalsIgnoreCase(value) || s.name().equalsIgnoreCase(value)) {
                 return s;
             }
         }
-        return REPEATING;
+        return null;
+    }
+
+    /**
+     * Resolves an enum constant or throws.
+     *
+     * @param value wire string
+     * @return enum constant
+     */
+    public static OffTrackSignal parse(String value) {
+        var signal = fromValue(value);
+        if (signal == null) {
+            throw new IllegalArgumentException("Unknown OffTrackSignal: " + value);
+        }
+        return signal;
     }
 }

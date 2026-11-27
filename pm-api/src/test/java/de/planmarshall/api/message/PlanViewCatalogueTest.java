@@ -232,6 +232,31 @@ class PlanViewCatalogueTest {
     }
 
     @Test
+    @DisplayName("retires the old signal keys and carries failing_again, edit_churn and agent_started in both locales")
+    void signalKeysReflectClosedSetOfFive() {
+        var retired = java.util.List.of(
+                "state.signal.over_size", "state.signal.outside_footprint",
+                "plan.signal.over_size", "plan.signal.outside_footprint");
+        var added = java.util.List.of("failing_again", "edit_churn", "agent_started");
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            var common = MessageCatalogue.getMessages(locale, "common");
+            var planView = MessageCatalogue.getMessages(locale, "plan_view");
+            var all = MessageCatalogue.getMessages(locale, "all");
+            for (var key : retired) {
+                assertFalse(all.containsKey(key), "Retired key must be absent in " + locale + ": " + key);
+            }
+            for (var signal : added) {
+                var stateKey = "state.signal." + signal;
+                var planKey = "plan.signal." + signal;
+                assertTrue(common.containsKey(stateKey), "Missing " + stateKey + " in " + locale);
+                assertFalse(common.get(stateKey).isBlank(), "Blank " + stateKey + " in " + locale);
+                assertTrue(planView.containsKey(planKey), "Missing " + planKey + " in " + locale);
+                assertFalse(planView.get(planKey).isBlank(), "Blank " + planKey + " in " + locale);
+            }
+        }
+    }
+
+    @Test
     @DisplayName("should format parameterized plan and epic messages")
     void shouldFormatParameterizedMessages() {
         var tasksDoneEn = MessageCatalogue.format("en", "plan.leaf.tasks_done", Map.of("done", 2, "total", 5));
