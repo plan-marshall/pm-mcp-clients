@@ -143,6 +143,14 @@ describe('getNodeDisplayName', () => {
     ).toBe('land');
   });
 
+  it('drops the kind word whatever joins its parts: space, underscore or hyphen', () => {
+    for (const title of ['sub-workflow land', 'sub_workflow land', 'Sub-Workflow land']) {
+      expect(
+        getNodeDisplayName(nodeIn('done', { kind: 'sub_workflow', title }), useCatalogue('en')),
+      ).toBe('land');
+    }
+  });
+
   it('keeps a title that carries no kind word unchanged', () => {
     expect(getNodeDisplayName(nodeIn('done', { title: 'execute' }), useCatalogue('en'))).toBe(
       'execute',

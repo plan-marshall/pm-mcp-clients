@@ -90,6 +90,19 @@ describe('NodeNarrative component', () => {
     ],
   };
 
+  it('names the node without the kind word, like the tree row', () => {
+    render(NodeNarrative, {
+      props: {
+        node: { ...execute, title: 'phase execute' },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    expect(screen.getByTestId('node-narrative-title').textContent?.trim()).toBe('execute');
+  });
+
   it('names the node, its state, run count, duration, waits-for, and prune reason', () => {
     render(NodeNarrative, {
       props: {

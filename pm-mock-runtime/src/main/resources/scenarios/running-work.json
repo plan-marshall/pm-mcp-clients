@@ -960,7 +960,7 @@
                 "sub_nodes": [
                   {
                     "node_id": "land.commit",
-                    "title": "land.commit",
+                    "title": "Commit the change",
                     "kind": "state",
                     "state": "done",
                     "run_count": 1,
@@ -971,7 +971,7 @@
                   },
                   {
                     "node_id": "land.push",
-                    "title": "land.push",
+                    "title": "Push the branch",
                     "kind": "state",
                     "state": "running",
                     "run_count": 1,

@@ -42,15 +42,21 @@ export function getNodeKindIcon(node: ProcessNode): WorkflowIconId {
  */
 export function getNodeDisplayName(node: ProcessNode, t: Translate): string {
   const title = stripControlSequences(node.title);
-  const lowered = title.toLowerCase();
   const kindWords = [node.kind ?? '', displayState('node_kind', node.kind, t)]
     .map((candidate) => candidate.trim().toLowerCase())
     .filter((candidate) => candidate.length > 0);
   for (const kindWord of kindWords) {
-    if (!lowered.startsWith(kindWord) || !/\s/.test(title.charAt(kindWord.length))) {
+    // `sub_workflow`, `Sub workflow` and `sub-workflow` name the same kind: the parts of the word
+    // may be joined by a space, an underscore or a hyphen.
+    const pattern = kindWord
+      .split(/[\s_-]+/)
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('[\\s_-]+');
+    const match = new RegExp(`^${pattern}\\s+`, 'i').exec(title);
+    if (match === null) {
       continue;
     }
-    const rest = title.slice(kindWord.length).trimStart();
+    const rest = title.slice(match[0].length);
     if (rest.length > 0) {
       return rest;
     }
