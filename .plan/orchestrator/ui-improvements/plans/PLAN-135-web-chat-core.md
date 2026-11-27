@@ -191,10 +191,8 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/lib/components/Chat.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/Compose.svelte` — present at `dea405d8` (PLAN-147)
 - OBSERVED: `pm-web-app/src/lib/components/Compose.test.ts` — present at `dea405d8` (PLAN-147)
-- OBSERVED: `doc/design/web-app/components.adoc` — present at `dea405d8`
 - OBSERVED: `pm-web-app/src/lib/components/ChatTurn.svelte` — absent at `1cc0e10e`; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/ChatMarkdown.svelte` — absent at `1cc0e10e`; created by this plan
-- OBSERVED: `pm-web-app/src/lib/components/ChatPanel.svelte` — present at `1cc0e10e`; deleted by PLAN-137
 - OBSERVED: `pm-web-app/src/lib/stores/runtime.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/routes.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/api/client.ts` — present at `1cc0e10e`
@@ -203,18 +201,18 @@ Specification: `doc/design/web-app/chat.adoc` (§ `#everywhere`, `#placement`, `
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at `1cc0e10e`; holds the `web.chat.*` keys
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/views/StartView.scenarios.test.ts` — present at `dc811fb3` (added by the cleanup of 2026-11-14)
 - OBSERVED: `pm-web-app/src/lib/api/client.test.ts` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/scripts/vocabulary-lint.mjs` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
-- OBSERVED: `pm-web-app/scripts/vocabulary-baseline.json` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `doc/design/web-app/components-fields.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `doc/design/web-app/chat.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `doc/design/web-app/navigation.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `doc/design/web-app/components-chat.adoc` — present at `da3cafdf` (re-grounding 2026-11-26)
+- OBSERVED: `pm-web-app/src/lib/stores/runtime.test.ts` — present at `da3cafdf` (re-grounding 2026-11-26)
+- OBSERVED: `pm-web-app/src/lib/components/Chat.test.ts` — absent at `da3cafdf`; created by this plan
+- OBSERVED: `pm-web-app/src/lib/components/ChatTurn.test.ts` — absent at `da3cafdf`; created by this plan
+- OBSERVED: `pm-web-app/src/lib/components/ChatMarkdown.test.ts` — absent at `da3cafdf`; created by this plan
 
 ## Dependencies and Sequencing
 
@@ -305,6 +303,39 @@ On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of
 - **Deliverable 5 moved to PLAN-192** `web-chat-on-plan-and-epic-pages` (parked until a template gives the plan and epic pages a side column). This plan is D1–D4: the chat client, store and stream, `ChatMarkdown`, `ChatTurn`, `Chat`; `Chat` is mounted on `/dev/components` and, through PLAN-137, on the start and decision places. The `WorkControlPanel` replacement and `chat.spec.js` go with D5.
 - Its Done-whens and browser checks of D5 do not apply here.
 - Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/components/WorkControlPanel.svelte, pm-web-app/src/lib/components/WorkControlPanel.test.ts, pm-web-e2e/tests/chat.spec.js, pm-web-app/src/lib/templates/TriagePage.svelte.
+
+## Re-Grounding 2026-11-26 (at `da3cafdf`)
+
+Re-read by a read-only sub-agent against `3dea04b2..da3cafdf` (#576 PLAN-55, #582 PLAN-191, #585/#586, #587, #588); `client.ts` (5,273 lines, `sendChatTurn` at `:4635-4639`), `StartView.test.ts:158`, `vocabulary-lint.mjs:9` and the missing `runtime.ts` chat setter re-read by the orchestrator. Operator decision 2026-11-26: "move the StartView chat fixes to PLAN-137". **This section binds over the body and every earlier section where they differ.**
+
+- **Nothing of D1–D4 moved.** Of this surface only `client.ts` (+14 lines at `:438-452`), `PlanView.svelte`, `EpicView.svelte:412-413`, `control.spec.js:259` and `vocabulary-baseline.json` changed, none in the chat core. `lib/chat/`, `Chat`, `ChatTurn` and `ChatMarkdown` are still absent; `marked` is still not in `package.json`.
+- **Line refs at `da3cafdf`:**
+  - `client.ts`: `ChatTurn :1707`, `normaliseChat :1796`, `openEntryChat :3336`, `getEndedChat :3434`, subject chat `:4560-4607`, `sendChatTurn` draws `randomUUID` per send at `:4635-4639`, retry `:4647-4663`, `/api/v1/events` `:3058,4960-4981`, `subscribeStream :5057`.
+  - `StartView.svelte`: event routing `:349-359`.
+  - `Compose.svelte`: name union `:69-81`, `aria-label` `:204`, `send()` `:147-153`.
+  - The task-address rule is at `navigation.adoc:285`.
+- **D1:**
+  - The `chat=`/`turn=` round trip is already tested (`routes.test.ts:220-263`, `runtime.test.ts:806-814`). D1 adds the open/hide setter to `runtime.ts` (none exists; the setters sit at `:2178-2210`), with a no-push test. The setter keeps `chat=open` when a target of the chat's own subject opens (`navigation.adoc:285`).
+  - `lib/chat/` is built **beside** the B1 bridge and does not delete it. The bridge still serves `ChatPanel` in `WorkControlPanel`, `StartView`, `EpicView` and `DecisionView`; deleting it is PLAN-137's job, with PLAN-192.
+  - These still stand: `chat.ended` re-reads the entry (flip `StartView.test.ts:154-174`, `'chat.ended'` at `:158`); Try again keeps the `client_turn_id`; every subject's chat is opened before its first turn (POST-open exists for the entry only, `client.ts:3336-3338`).
+  - **Moved to PLAN-137** (operator, 2026-11-26): the StartView refresh race (`chatGeneration`/`chatReadSeq` `:123-125`, `refreshChat :368-400`) and the decomposition `onChat` that sets `chatOpen` without opening a chat (`:1164`). PLAN-137 rebuilds that place.
+  - The "UNSEEDED subject, e2e/browser" half of the PLAN-161 residue goes to PLAN-192/137, which need PLAN-194's fixtures. D1 proves it in a unit test.
+  - The #432 sub-item "`client.test.ts` lost its EPIC/REJECT rows" is void (`client.test.ts:988,1703,1712`).
+- **D2:**
+  - The `{@html}` guard is a Vitest source scan of `ChatMarkdown.svelte`, following `MascotFigure.test.ts:191` and run by `test:ci` (`pom.xml:86`), proven by a mutation run. A `vocabulary-lint.mjs` rule would not fail the build: it scans outside `components/` only (`:9`) and exits 0 without `--error` (`pom.xml:97`).
+  - Reword `components-chat.adoc:83` ("the lint of the web build fails") to name the test.
+  - The Mermaid interim and its design sentences stand (`chat.adoc:136`, `components-chat.adoc:76`).
+- **D3:** keep the positioned-box assertion (`chat.adoc:191`). "Proposal announced once" (`chat.adoc:147`) is PLAN-136's (`PLAN-136:35-36`); it is dropped here.
+- **D4:**
+  - The Compose contract goes into `components-fields.adoc:140`.
+  - Close `label=''` without `ariaLabel` with a type-level guard (a run-time check amends `:140` in the same PR).
+  - Add the empty-value `onsend` contract (`Compose.svelte:147-153`) to `:140`.
+  - Each gets a failing test first.
+- **Design rows:** reword `chat.adoc:342` and `navigation.adoc:414-415` ("waits for PLAN-142/143" has landed). The adoption places are PLAN-137's and PLAN-192's; this plan mounts `Chat` on `/dev/components` only.
+- **Overlap:**
+  - PLAN-196 (running) shares `runtime.ts` only, adjacent regions (`fieldsOfAddress :647-661` against the setters): one file, under the 5-file rule, so whichever merges second rebases.
+  - PLAN-197 (`client.ts:113`) and PLAN-194 are disjoint.
+  - The unstaged `over_size`/`added_dependencies` removal edits `client.ts:2476-2540,2944,4342`: disjoint.
 
 ## Hand-Off Command
 

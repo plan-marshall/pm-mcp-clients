@@ -27,7 +27,7 @@ function itemOf(overrides: Partial<AttentionItem> = {}): AttentionItem {
     epic: null,
     plan: null,
     since: '2026-10-15T08:00:00Z',
-    blocks: null,
+    blocks: 'nothing',
     ...overrides,
   };
 }
@@ -120,7 +120,35 @@ describe('InboxView component', () => {
     expect(detail).toHaveTextContent('pm-mcp-clients');
     expect(detail).not.toHaveTextContent('pm-mcp-clients ›');
     expect(detail).toHaveTextContent('waits since');
-    expect(detail).toHaveTextContent('blocks: epic');
+    expect(detail).toHaveTextContent('blocks the epic');
+  });
+
+  it('words what an item blocks with the decision words, nothing through blocks nothing', () => {
+    seedList([
+      itemOf({ kind: 'credential', link: '/api/v1/credentials/github', blocks: 'nothing' }),
+      itemOf({
+        kind: 'condition',
+        link: '/api/v1/plans/relay-metrics',
+        plan: { id: 'relay-metrics', title: 'Relay metrics' },
+        blocks: 'landing-train',
+      }),
+      itemOf({
+        kind: 'condition',
+        link: '/api/v1/plans/session-log',
+        plan: { id: 'session-log', title: 'Session log' },
+        blocks: 'constructor',
+      }),
+    ]);
+
+    render(InboxView);
+
+    const rows = screen.getAllByTestId('inbox-row');
+    expect(within(rows[0]).getByTestId('inbox-detail')).toHaveTextContent('blocks nothing');
+    // A value outside the vocabulary shows the unknown word, never a raw key or a plan claim; an
+    // inherited object property is no key either.
+    expect(within(rows[1]).getByTestId('inbox-detail')).toHaveTextContent('unknown');
+    expect(within(rows[1]).getByTestId('inbox-detail')).not.toHaveTextContent('blocks the plan');
+    expect(within(rows[2]).getByTestId('inbox-detail')).toHaveTextContent('unknown');
   });
 
   it('offers the act of each place as a button, and the due cleanup opens the cleanup job', () => {

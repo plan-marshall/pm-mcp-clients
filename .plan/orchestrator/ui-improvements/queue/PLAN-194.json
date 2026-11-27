@@ -2,10 +2,10 @@
   "id": "PLAN-194",
   "slug": "mock-chat-fixtures-and-residue",
   "workstream": "WS-07",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-194-mock-chat-fixtures-and-residue",
+  "pr": "589",
+  "landing": "landings/PLAN-194.md",
   "seq": 194
 }

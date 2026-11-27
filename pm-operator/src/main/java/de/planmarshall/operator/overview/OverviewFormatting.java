@@ -25,6 +25,7 @@ import de.planmarshall.api.overview.NeedsOperatorItem;
 import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectSummary;
 import de.planmarshall.api.overview.WorkLocation;
+import de.planmarshall.operator.DecisionBlockWords;
 import de.planmarshall.operator.OutputSafety;
 
 /**
@@ -50,7 +51,6 @@ public final class OverviewFormatting {
     private static final String KIND_SETUP = "setup";
     private static final String NEEDS_BADGE_KEY = "overview.needs.badge";
     private static final String STATE_UNKNOWN_KEY = "state.unknown";
-    private static final String COMMON_KIND_PREFIX = "common.kind.";
 
     private OverviewFormatting() {
     }
@@ -390,33 +390,16 @@ public final class OverviewFormatting {
     }
 
     /**
-     * @param kind the kind token a row blocks
-     * @return the catalogue key of that kind's word
-     */
-    private static String kindKey(String kind) {
-        return String.format("%s%s", COMMON_KIND_PREFIX, kind);
-    }
-
-    /**
-     * Formats the blocking description of a {@link NeedsOperatorItem}: what it blocks in the
-     * operator's own words ({@code common.kind.*}), never the wire token.
+     * Formats the blocking description of a {@link NeedsOperatorItem}: the decision's own words for
+     * the value ({@code decision.blocks.*}, {@code nothing} through {@code decision.blocks.none}),
+     * never the wire token; a value outside the vocabulary shows the unknown word.
      *
      * @param blocks the blocks target
      * @param locale the target locale
      * @return localized blocking string
      */
     public static String formatNeedsItemBlocks(@Nullable String blocks, String locale) {
-        if (blocks == null || blocks.isBlank()) {
-            return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
-        }
-        var key = kindKey(blocks);
-        String what;
-        if (MessageCatalogue.hasKey(locale, key)) {
-            what = MessageCatalogue.format(locale, key, Map.of());
-        } else {
-            what = MessageCatalogue.format(locale, STATE_UNKNOWN_KEY, Map.of());
-        }
-        return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", what));
+        return DecisionBlockWords.text(locale, blocks);
     }
 
     /**
