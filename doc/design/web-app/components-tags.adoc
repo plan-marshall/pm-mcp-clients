@@ -82,7 +82,7 @@ An 8 px dot in the tone of the state, followed by the state word in `--color-tex
 
 |`attention`
 |`--color-attention`
-|waiting for you, held, stalled
+|waiting for you, held, stalled, overdue
 
 |`danger`
 |`--color-danger`
@@ -115,7 +115,7 @@ A pill (`--radius-full`) that starts with `!` and names why the object needs the
 * *Its tone*: `--color-attention-subtle` with `--color-attention-text` for every reason, and `--color-danger-subtle` with `--color-danger` for the two that mean the work cannot go on as it is: `landing_failed` and `integrity_hold`.
 * *The first reason* stands in the badge, in the order the runtime serves the reasons; the count says how many there are.
 * *A row that is itself the decision* (a row of kind Decision) carries no `! decision`: its kind already says what it is. A waiver request is a Decision row too and carries `! waiver`, so it is told from a decision on the row, without opening it. A plan or an epic that waits for a decision carries `! decision`.
-* *A failed or stalled object* carries its `ReasonBadge` beside its `StatusLabel` wherever the runtime lists a reason, so it stands out although its state is only a dot.
+* *A failed, stalled, or overdue object* carries its `ReasonBadge` beside its `StatusLabel` wherever the runtime lists a reason, so it stands out although its state is only a dot.
 
 Source and surface: `pm-web-app/src/lib/components/ReasonBadge.svelte` (new), tests beside it; the props are `reason`, `count` and `tone` (`attention`, `danger`).
 

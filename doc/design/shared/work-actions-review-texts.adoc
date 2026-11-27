@@ -119,12 +119,16 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Schließe die Prüfung ab
 
 |`control.hold.title`
-|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_hold {{name} holds: an integrity hold} held {{name} holds: a held item} other {{name} holds: a failed landing}}
-|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_hold {{name} wird durch eine Integritätssperre aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
+|{kind, select, stalled {{name} is stalled} overdue {{name} holds: its CI wait is overdue} condition {{name} holds: a condition} integrity_hold {{name} holds: an integrity hold} held {{name} holds: a held item} other {{name} holds: a failed landing}}
+|{kind, select, stalled {{name} steht} overdue {{name} wird aufgehalten: das Warten auf die CI ist überfällig} condition {{name} wird durch eine Bedingung aufgehalten} integrity_hold {{name} wird durch eine Integritätssperre aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
 
 |`control.hold.kind.stalled`
 |stalled
 |steht
+
+|`control.hold.kind.overdue`
+|overdue
+|überfällig
 
 |`control.hold.kind.condition`
 |a condition
@@ -146,6 +150,18 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Cause
 |Ursache
 
+|`control.hold.awaits`
+|Awaits
+|Wartet auf
+
+|`control.hold.awaits.ci`
+|the checks of #{number} · no change for {quiet} · expected {expected}
+|die Checks von #{number} · keine Änderung seit {quiet} · erwartet {expected}
+
+|`control.hold.before`
+|What happened before
+|Was davor geschah
+
 |`control.hold.tried`
 |Tried {count, plural, one {once} other {# times}}, last {time}
 |{count, plural, one {Einmal} other {# Mal}} versucht, zuletzt {time}
@@ -161,6 +177,14 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.hold.act.recycle`
 |Recycle the worker
 |Starte den Worker neu
+
+|`control.hold.act.observe_now`
+|Check again now
+|Prüfe jetzt erneut
+
+|`control.hold.act.cancel_run`
+|Cancel the CI run…
+|Brich den CI-Lauf ab…
 
 |`control.hold.act.grant`
 |Grant read access to {project}…
@@ -229,4 +253,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.hold.cleared`
 |{cause} cleared by itself
 |{cause} hat sich von selbst erledigt
+
+|`control.hold.overdue.changed`
+|the checks of #{number} changed
+|die Checks von #{number} haben sich geändert
 |===
