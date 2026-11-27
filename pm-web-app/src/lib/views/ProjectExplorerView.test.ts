@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import ProjectExplorerView from './ProjectExplorerView.svelte';
@@ -210,10 +210,6 @@ describe('ProjectExplorerView component', () => {
         { step: 1, key: 'identity', status: 'done' },
         { step: 4, key: 'environment', status: 'current' },
       ],
-    });
-    vi.spyOn(apiClient, 'getOverSize').mockResolvedValue({
-      project_id: 'pm-mcp-clients',
-      distributions: [{ project_id: 'pm-mcp-clients', role: 'implementer', current_multiple: 2, buckets: [] }],
     });
   });
 
@@ -618,12 +614,10 @@ describe('the one project page', () => {
       project_id: 'pm-mcp-clients',
       steps: [{ step: 4, summary: 'Build environment', status: 'current' }],
     });
-    vi.spyOn(apiClient, 'getOverSize').mockResolvedValue({
-      project_id: 'pm-mcp-clients',
-      distributions: [
-        { project_id: 'pm-mcp-clients', role: 'implementer', current_multiple: 2, buckets: [] },
-      ],
-    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('shows the head, the acts and the running work of the project', async () => {
@@ -651,7 +645,7 @@ describe('the one project page', () => {
     );
   });
 
-  it('shows the setup values, the setup steps and the over-size spread on the setup tab', async () => {
+  it('shows the setup values and the setup steps on the setup tab', async () => {
     runtimeStore.set(
       state({
         currentRoute: 'project',
@@ -665,7 +659,6 @@ describe('the one project page', () => {
     expect(await screen.findByTestId('project-page-setup')).toBeInTheDocument();
     expect(await screen.findByTestId('setting-input-landing')).toBeInTheDocument();
     expect(await screen.findByTestId('project-setup-steps')).toHaveTextContent('Build environment');
-    expect(await screen.findByTestId('project-oversize')).toHaveTextContent('implementer');
     expect(screen.getByTestId('setup-release-btn')).toBeInTheDocument();
     expect(screen.getByTestId('setup-unenrol-btn')).toBeInTheDocument();
   });
@@ -828,25 +821,6 @@ describe('the one project page', () => {
     expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
   });
 
-  it('says so when the over-size spread cannot be read', async () => {
-    vi.spyOn(apiClient, 'getOverSize').mockRejectedValue(new ClientError('network_offline'));
-    runtimeStore.set(
-      state({
-        currentRoute: 'project',
-        selectedProjectId: 'pm-mcp-clients',
-        objectTab: 'setup',
-      }),
-    );
-
-    render(ProjectExplorerView);
-
-    const setup = await screen.findByTestId('project-page-setup');
-    await waitFor(() =>
-      expect(within(setup).getByText('The machine is not reachable')).toBeInTheDocument(),
-    );
-    expect(screen.getByTestId('setting-input-landing')).toBeInTheDocument();
-  });
-
   it('says so when the running work cannot be read', async () => {
     vi.spyOn(apiClient, 'getProjectDetail').mockRejectedValue(new ClientError('network_offline'));
 
@@ -921,6 +895,37 @@ describe('the one project page', () => {
     const setup = await screen.findByTestId('project-page-setup');
     expect(await within(setup).findByTestId('setup-release-btn')).toBeInTheDocument();
     expect(within(setup).getByTestId('setup-unenrol-btn')).toBeInTheDocument();
+  });
+
+  it('renders no project-oversize section and sends no /metrics/oversize request on the setup tab', async () => {
+    const requestedUrls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      requestedUrls.push(String(input));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          project_id: 'pm-mcp-clients',
+          distributions: [
+            { project_id: 'pm-mcp-clients', role: 'implementer', current_multiple: 2, buckets: [] },
+          ],
+        }),
+      } as Response);
+    });
+    runtimeStore.set(
+      state({
+        currentRoute: 'project',
+        selectedProjectId: 'pm-mcp-clients',
+        objectTab: 'setup',
+      }),
+    );
+
+    render(ProjectExplorerView);
+
+    expect(await screen.findByTestId('project-page-setup')).toBeInTheDocument();
+    expect(await screen.findByTestId('setting-input-landing')).toBeInTheDocument();
+    expect(screen.queryByTestId('project-oversize')).not.toBeInTheDocument();
+    expect(requestedUrls.some((url) => url.includes('/metrics/oversize'))).toBe(false);
   });
 
   it('shows the operator-item marker on a ready project with operator items and no setup word, and setup on a not-ready project', async () => {

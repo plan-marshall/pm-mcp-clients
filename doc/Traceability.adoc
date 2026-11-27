@@ -575,6 +575,6 @@ Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tes
 
 link:../../plan-marshall-documentation/doc/Requirements.adoc#PM-WORK-7[PM-WORK-7]
 
-Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the activity it reads and shows), link:../pm-web-app/[`pm-web-app`], link:../pm-api/src/main/java/de/planmarshall/api/intent/[`pm-api`] (the types of the `over_size` distribution: `OverSizeDistributionsResource`, `OverSizeDistributionResource`, `TokenBucket`)
+Implementation: link:../pm-operator/src/main/java/de/planmarshall/operator/[`pm-operator`] (the activity it reads and shows), link:../pm-web-app/[`pm-web-app`], link:../pm-api/src/main/java/de/planmarshall/api/process/[`pm-api`] (`OffTrackSignal`, `OffTrackInfo`)
 
-Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-web-e2e/[`pm-web-e2e`], link:../pm-api/src/test/java/de/planmarshall/api/intent/IntentContractTest.java[`IntentContractTest`], link:../pm-web-app/src/lib/views/ProjectExplorerView.test.ts[`ProjectExplorerView.test.ts`]
+Verified by: link:../pm-operator/src/test/java/de/planmarshall/operator/[the tests of `pm-operator`], link:../pm-operator/src/test/java/de/planmarshall/operator/planview/PlanViewFormattingTest.java[`PlanViewFormattingTest`], link:../pm-web-e2e/[`pm-web-e2e`]

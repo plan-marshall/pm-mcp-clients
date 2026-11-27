@@ -55,7 +55,6 @@ import de.planmarshall.api.intent.BuilderCheckResource;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
-import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.onboarding.MachineSettingsRecord;
@@ -91,7 +90,7 @@ class FullyOnboardedScenarioTest {
     private static final String AUTH_HEADER = "Authorization";
 
     @Test
-    @DisplayName("serves the grown intent fixtures: the not_run reason and the absent proposal")
+    @DisplayName("serves the grown intent fixtures: the not_run reason")
     void shouldServeGrownIntentFixtures() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.FULLY_ONBOARDED)) {
             var intent = PlanIntentResource.fromJson(
@@ -112,16 +111,6 @@ class FullyOnboardedScenarioTest {
                     intent.decisions().getFirst().adr().relation());
             assertEquals(PlanIntentResource.AdrRelation.CONTRADICTS,
                     intent.decisions().getLast().adr().relation());
-
-            var distribution = OverSizeDistributionsResource.fromJson(
-                    get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText())
-                    .of("implement");
-            assertNotNull(distribution);
-            assertNull(distribution.proposedMultiple());
-            assertEquals(0, distribution.flaggedTasks());
-            assertEquals(0.0, distribution.flaggedShare(), 0.0001);
-            assertTrue(distribution.flaggedBuckets().isEmpty());
-            assertFalse(distribution.flagsMore());
         }
     }
 
@@ -200,8 +189,6 @@ class FullyOnboardedScenarioTest {
                 endpoints.add(new Endpoint("/api/v1/plans/fix-relay/intent", PlanIntentResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/plans/fix-relay/outline", OutlineResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/epics/relay-hardening/intent", EpicIntentResource::fromJson));
-                endpoints.add(new Endpoint("/api/v1/projects/pm-mcp-clients/metrics/oversize",
-                        OverSizeDistributionsResource::fromJson));
                 endpoints.add(new Endpoint("/api/v1/decisions", FullyOnboardedScenarioTest::assertDecisions));
                 endpoints.add(new Endpoint("/api/v1/decisions/Q-007", DecisionEnvelope::fromJson));
                 endpoints.add(new Endpoint("/api/v1/reports", ReportsPage::fromJson));

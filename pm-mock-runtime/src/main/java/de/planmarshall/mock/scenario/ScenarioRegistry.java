@@ -256,7 +256,6 @@ public final class ScenarioRegistry {
             registry.registerLegacyAlias("intent-plan", RUNNING_WORK_ACTIVE);
             registry.registerLegacyAlias("intent-outline", RUNNING_WORK_ACTIVE);
             registry.registerLegacyAlias("intent-epic", RUNNING_WORK_ACTIVE);
-            registry.registerLegacyAlias("intent-oversize", RUNNING_WORK_ACTIVE);
             registry.registerLegacyAlias("decisions", RUNNING_WORK_ACTIVE);
             registry.registerLegacyAlias("decomposition", RUNNING_WORK_ACTIVE);
             registry.registerLegacyAlias("control", RUNNING_WORK_ACTIVE);
