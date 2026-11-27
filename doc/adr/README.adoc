@@ -24,3 +24,7 @@ is ADR link:001-specifications-of-the-clients.adoc[001 The Specifications of the
 specifications and the implementation watch live in the repository that implements them, an implemented section is
 condensed and pointed, the documentation repository keeps the requirements, and the design of the clients links to
 the specification instead of restating it.
+** link:002-tests-read-no-documentation.adoc[002 Tests Read No Documentation]: a test reads only the inputs of a
+module of this repository and never a file below `doc/`; the design text sections link the catalogue files instead of
+restating the keys they carry, and an unbuilt key lives in a "Texts to add" table until the plan that implements it
+lands.

@@ -192,3 +192,7 @@ ADRs of `pm-mcp-core` this decision follows:
 link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/007-specifications-of-the-engine-in-this-repository.adoc[007],
 link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/016-schemas-are-files-of-the-implementing-module.adoc[016],
 link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/027-condense-and-point-the-implemented-specification-parts.adoc[027].
+
+ADR 016's "own inputs only" applies to the tests of this repository through ADR
+link:002-tests-read-no-documentation.adoc[002 Tests Read No Documentation]: a test reads the inputs of a module, never a
+file below `doc/`.
