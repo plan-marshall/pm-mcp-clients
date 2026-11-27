@@ -937,4 +937,27 @@ describe('tokens.css: static scans over the source tree', () => {
     }
     expect(matches).toEqual(['999', '888', '+777', '666']);
   });
+
+  it('draws interactive input and select borders outside the One Field set from --control-border', () => {
+    const srcDir = path.resolve(__dirname, '..');
+    const checks: [string, string][] = [
+      ['lib/components/FilterInput.svelte', '.filter__input'],
+      ['lib/components/BlockPalette.svelte', '.palette__search'],
+      ['lib/components/CredentialEntry.svelte', '.credential-entry__input'],
+      ['lib/views/ProcessDesigner.svelte', '.frontmatter__input'],
+      ['lib/views/ProjectExplorerView.svelte', '.sort-select'],
+      ['lib/views/ProjectExplorerView.svelte', '.field-input'],
+      ['lib/views/SettingsView.svelte', '.rename-input'],
+      ['lib/views/SettingsView.svelte', '.rotate-input'],
+    ];
+    for (const [relPath, selector] of checks) {
+      const content = fs.readFileSync(path.join(srcDir, relPath), 'utf8');
+      const styleMatch = /<style[^>]*>([\s\S]*?)<\/style>/.exec(content);
+      expect(styleMatch, relPath).not.toBeNull();
+      const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const ruleMatch = new RegExp(`${escaped}\\s*\\{[^}]*\\}`).exec(styleMatch![1]);
+      expect(ruleMatch, `${relPath} ${selector}`).not.toBeNull();
+      expect(ruleMatch![0], `${relPath} ${selector}`).toContain('var(--control-border)');
+    }
+  });
 });

@@ -2004,7 +2004,7 @@
     width: 100%;
     padding: var(--space-1);
     font-size: var(--text-xs);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-sm);
     background-color: var(--color-bg-app);
     color: var(--color-text-primary);
