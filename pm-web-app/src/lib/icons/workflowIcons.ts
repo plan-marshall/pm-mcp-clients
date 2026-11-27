@@ -140,7 +140,7 @@ const ICON_URLS: Readonly<Record<WorkflowIconId, string>> = Object.freeze({
 });
 
 /** The bare phase token to icon id. */
-const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   init: 'phase.init',
   refine: 'phase.refine',
   outline: 'phase.outline',
@@ -150,7 +150,7 @@ const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
 });
 
 /** A phase-unit id (`phase-5-execute`) and a bare token both resolve through here. */
-const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   'phase-1-init': 'phase.init',
   'phase-2-refine': 'phase.refine',
   'phase-3-outline': 'phase.outline',
@@ -161,7 +161,7 @@ const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
 });
 
 /** The known unit ids, including the catalogue's separator aliases. */
-const UNIT_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const UNIT_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   land: 'flow.land',
   'git.commit_and_push': 'git.commit',
   'git.commit-and-push': 'git.commit',

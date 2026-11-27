@@ -25,7 +25,6 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -34,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
@@ -193,74 +191,15 @@ class PmOperatorTest {
     class CommandTree {
 
         /**
-         * The verbs the design's command tree (01-commands.adoc#command-tree) declares, read from the
-         * document itself: the top-level {@code pm-operator} lines and the two console blocks.
+         * The registered verbs, stated as the contract expectation: the 24 subcommands of
+         * {@code PmOperator}'s {@code @Command}. The test keeps its own copy rather than reading the
+         * design document (ADR 002), as the specification of the command line asks.
          */
-        private Set<String> designVerbs(List<String> lines) {
-            var verbs = new TreeSet<String>();
-            var inConsoleBlock = false;
-            for (var line : lines) {
-                if (line.startsWith("pm-operator ") && !line.startsWith("pm-operator  ")) {
-                    addVerbs(verbs, line.substring("pm-operator".length()));
-                } else if (line.startsWith("In the console and as direct verbs:")
-                                    || line.startsWith("In the console only:")) {
-                    inConsoleBlock = true;
-                } else if (inConsoleBlock) {
-                    if (line.isBlank() || line.startsWith("----")) {
-                        inConsoleBlock = false;
-                    } else if (line.startsWith("  ") && !line.startsWith("   ")) {
-                        addVerbs(verbs, line);
-                    }
-                }
-            }
-            return verbs;
-        }
-
-        /**
-         * The design's verbs that no registered verb answers yet, read from the open-items bullet of
-         * the same document: the backticked names before " stand in the verb listing above".
-         */
-        private Set<String> documentedUnimplemented(List<String> lines) {
-            var marker = " stand in the verb listing above";
-            for (var line : lines) {
-                var open = line.indexOf(marker);
-                if (open < 0) {
-                    continue;
-                }
-                var verbs = new TreeSet<String>();
-                var matcher = Pattern.compile("`([a-z][a-z-]*)`").matcher(line.substring(0, open));
-                while (matcher.find()) {
-                    verbs.add(matcher.group(1));
-                }
-                return verbs;
-            }
-            throw new IllegalStateException("01-commands.adoc names no open-item verb list");
-        }
-
-        private void addVerbs(Set<String> verbs, String line) {
-            var stripped = line.strip();
-            if (stripped.isEmpty()) {
-                return;
-            }
-            var first = stripped.split("\\s+")[0];
-            for (var verb : first.split("\\|")) {
-                if (verb.matches("[a-z][a-z-]*")) {
-                    verbs.add(verb);
-                }
-            }
-        }
-
-        private Path designDocument() {
-            for (var dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
-                var candidate = dir.resolve("doc/design/terminal-client/01-commands.adoc");
-                if (Files.exists(candidate)) {
-                    return candidate;
-                }
-            }
-            throw new IllegalStateException(
-                                "doc/design/terminal-client/01-commands.adoc is not above "
-                                                    + Path.of("").toAbsolutePath());
-        }
+        private static final Set<String> CONTRACT_VERBS = Set.of(
+                "status", "plans", "web", "runtime", "drain", "config", "credentials",
+                "project", "projects", "client", "plan", "epic", "recipe", "lesson",
+                "questions", "answer", "reports", "system", "cleanup", "enrol-harness",
+                "roles", "accept-edit", "needs", "find");
 
         private List<String> registeredVerbs() {
             return Arrays.stream(PmOperator.class.getAnnotation(Command.class).subcommands())
@@ -268,18 +207,10 @@ class PmOperatorTest {
                                 .toList();
         }
 
-        /** The console's own commands, which the design lists beside the shell verbs. */
-        private static final Set<String> CONSOLE_ONLY = Set.of("help", "exit");
-
         @Test
-        @DisplayName("registers exactly the verbs the design declares, but the console's own and the open items")
-        void registersTheDesignsVerbs() throws Exception {
-            var lines = Files.readAllLines(designDocument());
-            var expected = new TreeSet<>(designVerbs(lines));
-            expected.removeAll(documentedUnimplemented(lines));
-            expected.removeAll(CONSOLE_ONLY);
-
-            assertEquals(expected, new TreeSet<>(registeredVerbs()));
+        @DisplayName("registers exactly the 24 verbs of the contract")
+        void registersTheContractVerbs() {
+            assertEquals(CONTRACT_VERBS, new TreeSet<>(registeredVerbs()));
         }
 
         @ParameterizedTest(name = "{0}")
