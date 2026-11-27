@@ -501,9 +501,11 @@ export function createChatStore(
     },
 
     async openNew(): Promise<ChatResource | null> {
-      if (archive) return state.chat;
       patch({ loading: true, error: null });
       try {
+        if (state.chat && !isChatEndedState(state.chat.state)) {
+          await endChat(target);
+        }
         const opened = await openChat(target);
         patch({ turns: [], endedBy: null });
         applySnapshot(opened);

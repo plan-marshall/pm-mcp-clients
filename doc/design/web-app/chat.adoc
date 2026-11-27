@@ -339,7 +339,7 @@ The chat's shared keys, both clients', are `control.chat.*` (link:../shared/work
 |<<contract>>; the runtime's routes, events and errors as specified (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes], link:../../specification/runtime-model/06-event-catalogue.adoc#chat-events[Event Catalogue, Chat])
 
 |the D4 web chat package
-|<<everywhere>> to <<waiting>>, the pieces of link:components-chat.adoc[Chat Pieces], and <<renderer-decision>>; it adopts the chat on the decomposition, the epic review, the start entry and the project onboarding. It builds no side column of its own and waits for the column engine's (`PLAN-142`); the _Open it_ and reference-chip forms that open a target in place beside the chat (`open=`, <<status-cards>>) wait for the address model (`PLAN-143`), and until it lands a target's pushed address is the only form (the operator, 2026-11-10, D6)
+|<<everywhere>> to <<waiting>>, the pieces of link:components-chat.adoc[Chat Pieces], and <<renderer-decision>>; it adopts the chat on the decomposition, the epic review, the start entry and the project onboarding, using the landed side column (`PLAN-142`) and the landed address model (`PLAN-143`, `open=` beside the chat) rather than building its own column engine or fallback link routing
 
 |the D4 voice package
 |<<voice>>, the speech role in the onboarding and the machine settings, the per-browser choice, and the terminal's part

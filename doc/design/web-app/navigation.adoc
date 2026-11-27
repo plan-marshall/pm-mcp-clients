@@ -412,7 +412,7 @@ Each plan reads the parts named here; a plan that finds them changed is re-scope
 |the phase tree as the plan's list of children (<<levels>>) and in its tab _Process_, `node=` written only with that tab (<<url>>); plain arrows stay with the tree (<<keys>>)
 
 |The web chat packages (`PLAN-135`, `PLAN-136`, `PLAN-137`)
-|<<side-columns>>: no side column of their own; they wait for the engine's side column (`PLAN-142`), and the chat's `open=` forms (a target in place beside the chat) for the address model (`PLAN-143`): until it lands, a target's pushed address is the only form
+|<<side-columns>>: no side column of their own; they render inside the landed side column (`PLAN-142`) and open target references in place beside the chat through the landed address model (`PLAN-143`, `open=`)
 
 |`PLAN-60`, `PLAN-85` (settings)
 |the tabs of the settings as `tab=` (<<url>>), `/settings/machine` and `/settings/browser` replaced by their tabs

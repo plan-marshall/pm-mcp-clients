@@ -9,9 +9,37 @@
 
   /** The number of lines the field grows to before it scrolls, unless the caller names another. */
   export const DEFAULT_MAX_LINES = 8;
+
+  /**
+   * Rejects an empty string literal (`''`) at compile time while keeping plain `string` bindings
+   * accepted.
+   */
+  export type NonEmptyComposeLabel<S extends string> = '' extends S
+    ? string extends S
+      ? S
+      : never
+    : S;
+
+  /**
+   * The name of the field: its visible `label` (which, where given, names it) or the `ariaLabel`
+   * where the frame names the field visually; at least one non-empty name is required.
+   */
+  export type ComposeName<L extends string = string, A extends string = string> =
+    | {
+        /** The visible label of the field. */
+        label: NonEmptyComposeLabel<L>;
+        /** The accessible name where the frame names the field visually; the label wins. */
+        ariaLabel?: A;
+      }
+    | {
+        /** The visible label of the field; without it, `ariaLabel` names the field. */
+        label?: L;
+        /** The accessible name of the field where the frame names it visually. */
+        ariaLabel: NonEmptyComposeLabel<A>;
+      };
 </script>
 
-<script lang="ts">
+<script lang="ts" generics="L extends string = string, A extends string = string">
   import type { Snippet } from 'svelte';
   import Button from './Button.svelte';
   import { isConfirmingEnter } from '../utils/ime';
@@ -62,25 +90,7 @@
     submitTestid?: string;
   }
 
-  /**
-   * The name of the field: its visible `label` (which, where given, names it) or the `ariaLabel`
-   * where the frame names the field visually; at least one of the two.
-   */
-  type ComposeName =
-    | {
-        /** The visible label of the field. */
-        label: string;
-        /** The accessible name where the frame names the field visually; the label wins. */
-        ariaLabel?: string;
-      }
-    | {
-        /** The visible label of the field; without it, `ariaLabel` names the field. */
-        label?: string;
-        /** The accessible name of the field where the frame names it visually. */
-        ariaLabel: string;
-      };
-
-  type Props = ComposeProps & ComposeName;
+  type Props = ComposeProps & ComposeName<L, A>;
 
   let {
     value = $bindable(''),
