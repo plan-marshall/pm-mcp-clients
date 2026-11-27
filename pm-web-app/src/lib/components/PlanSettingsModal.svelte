@@ -120,6 +120,7 @@
     if (conflict) return;
     const aspects = changedList;
     if (aspects.length === 0) return;
+    const openedRevision = settings.revision;
     saved = false;
     appliedAspects = new Set();
     let every = true;
@@ -134,9 +135,12 @@
         every = false;
         break;
       }
-      // The field is the server's now: its baseline moves with it even when the record could not be
-      // re-read, so a later Save never resends a write that already landed.
-      seeded = { ...seeded, [aspect]: chosen[aspect] ?? '' };
+      // The field is the server's now. A record the write refreshed already reseeded the baseline;
+      // only a refresh that did not land leaves it to this line, so a later Save never resends a
+      // write that already landed.
+      if (settings.revision === openedRevision) {
+        seeded = { ...seeded, [aspect]: chosen[aspect] ?? '' };
+      }
       appliedAspects = new Set([...appliedAspects, aspect]);
     }
     saved = every;

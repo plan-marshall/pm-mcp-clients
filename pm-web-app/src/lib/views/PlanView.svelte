@@ -594,9 +594,12 @@
   function openInPlace(kind: 'decision' | 'completion-report', id: string | null): void {
     if (id === null) return;
     runtimeStore.update((s) => ({ ...s, openObject: { kind, id } }));
-    // Only an address the writer actually pushed is closed by Back; one the bar already shows
-    // leaves no entry of its own, so its close replaces the address.
-    inPlacePushed = writeAddress({ ...callerAddress(), open: { kind, id } }, 'push');
+    // Only an address the writer actually pushed is closed by Back. A second activation of the same
+    // link pushes nothing and keeps the flag of the push that opened the entry; one the bar already
+    // showed when it was loaded leaves no entry, so its close replaces the address.
+    if (writeAddress({ ...callerAddress(), open: { kind, id } }, 'push')) {
+      inPlacePushed = true;
+    }
   }
 
   /**
