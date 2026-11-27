@@ -1266,6 +1266,9 @@ describe('PlanView component', () => {
       ).toBeInTheDocument();
       expect(screen.getByTestId('toggle-node-execute')).toHaveAttribute('aria-expanded', 'true');
       expect(screen.getByTestId('node-state-icon-execute')).toBeInTheDocument();
+      // A leaf renders no (empty) children container below its row.
+      expect(screen.getByTestId('node-init').querySelector('.node-children')).toBeNull();
+      expect(screen.getByTestId('node-execute').querySelector('.node-children')).not.toBeNull();
     });
 
     it('draws the kind as an icon named by the kind word and shows no kind word', async () => {

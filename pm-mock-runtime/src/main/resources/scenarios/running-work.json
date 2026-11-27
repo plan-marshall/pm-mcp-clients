@@ -5825,7 +5825,7 @@
                       },
                       {
                         "node_id": "execute.remediation",
-                        "title": "remediation.ci-failure",
+                        "title": "CI failure",
                         "kind": "sub_workflow",
                         "state": "not_taken",
                         "run_count": 0,

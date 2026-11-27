@@ -1752,7 +1752,7 @@
             </div>
 
             <!-- Children (sub-nodes at every depth, then this node's leaf tasks) -->
-            {#if expandedNodes[node.node_id]}
+            {#if expandedNodes[node.node_id] && hasChildren(node)}
               <div class="node-children">
                 {#if node.sub_nodes && node.sub_nodes.length > 0}
                   {#each visibleSubNodes(node) as child (child.node_id)}
