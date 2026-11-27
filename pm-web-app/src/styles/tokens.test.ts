@@ -66,7 +66,7 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-bg-raised': { dark: '#1C2230', light: '#FFFFFF' },
   '--color-bg-subtle': { dark: '#1E2433', light: '#F0F0EC' },
   '--color-border': { dark: '#2A3140', light: '#E3E3DE' },
-  '--color-border-strong': { dark: '#3A4356', light: '#CFCFC8' },
+  '--color-border-strong': { dark: '#65718B', light: '#888880' },
   '--color-text-primary': { dark: '#E6EAF2', light: '#16181D' },
   '--color-text-secondary': { dark: '#AEB6C4', light: '#3E4450' },
   '--color-text-muted': { dark: '#8B95A7', light: '#5F6672' },
@@ -594,6 +594,30 @@ describe('tokens.css: the design system v2 contract', () => {
         expect(failures).toEqual([]);
       },
     );
+
+    it.each(['light', 'dark', 'media-dark'] as const)(
+      'keeps --control-border at or above WCAG 1.4.11 3:1 against --control-bg and control surfaces in the %s palette',
+      (label) => {
+        const block =
+          label === 'light'
+            ? themes.light
+            : label === 'dark'
+              ? themes.dark
+              : themes.mediaDark;
+        const palette = resolveAliases({ ...themes.root, ...block });
+        const grounds = ['--control-bg', '--color-bg-app', '--color-bg-surface', '--color-bg-raised', '--color-bg-subtle'];
+        const failures = belowMinimum(
+          grounds.map((ground) => ({
+            foreground: '--control-border',
+            background: ground,
+            value: contrastRatio(palette['--control-border'], palette[ground]),
+          })),
+          3,
+        );
+
+        expect(failures).toEqual([]);
+      },
+    );
   });
 
   describe('the three kind tints keep clear of every other colour (components-tags.adoc, kind-tints)', () => {
@@ -912,5 +936,205 @@ describe('tokens.css: static scans over the source tree', () => {
       matches.push(match[1]);
     }
     expect(matches).toEqual(['999', '888', '+777', '666']);
+  });
+
+  function readSvelteControlMetadata(template: string): {
+    classes: Set<string>;
+    tags: Set<string>;
+  } {
+    const EXCLUDED_INPUT_TYPES = new Set(['checkbox', 'radio', 'hidden', 'range']);
+    const classes = new Set<string>();
+    const tags = new Set<string>();
+    const tagStart = /<(input|select|textarea)(?=[\s/>])/gi;
+    let m: RegExpExecArray | null;
+    while ((m = tagStart.exec(template)) !== null) {
+      const tagName = m[1].toLowerCase();
+      let idx = m.index + m[0].length;
+      let braceDepth = 0;
+      let quote: string | null = null;
+      while (idx < template.length) {
+        const ch = template[idx];
+        if (quote) {
+          if (ch === quote && template[idx - 1] !== '\\') quote = null;
+        } else if (ch === '"' || ch === "'") {
+          quote = ch;
+        } else if (ch === '{') {
+          braceDepth++;
+        } else if (ch === '}') {
+          braceDepth = Math.max(0, braceDepth - 1);
+        } else if (ch === '>' && braceDepth === 0) {
+          break;
+        }
+        idx++;
+      }
+      const attrs = template.slice(m.index + m[0].length, idx);
+      if (tagName === 'input') {
+        const typeMatch = /\btype\s*=\s*["']([^"']+)["']/i.exec(attrs);
+        if (typeMatch && EXCLUDED_INPUT_TYPES.has(typeMatch[1].toLowerCase())) {
+          continue;
+        }
+      }
+      tags.add(tagName);
+      const classMatch = /\bclass\s*=\s*["']([^"']+)["']/.exec(attrs);
+      if (classMatch) {
+        for (const cls of classMatch[1].trim().split(/\s+/)) {
+          if (cls) classes.add(cls);
+        }
+      }
+      const directiveRegex = /\bclass:([a-zA-Z0-9_-]+)/g;
+      let dm: RegExpExecArray | null;
+      while ((dm = directiveRegex.exec(attrs)) !== null) {
+        classes.add(dm[1]);
+      }
+    }
+    return { classes, tags };
+  }
+
+  function collectStyleRules(cssText: string): { selector: string; body: string }[] {
+    const cleaned = cssText.replace(/\/\*[\s\S]*?\*\//g, '');
+    const rules: { selector: string; body: string }[] = [];
+    let pos = 0;
+    while (pos < cleaned.length) {
+      const open = cleaned.indexOf('{', pos);
+      if (open === -1) break;
+      const selector = cleaned.slice(pos, open).trim();
+      let depth = 1;
+      let i = open + 1;
+      while (i < cleaned.length && depth > 0) {
+        if (cleaned[i] === '{') depth++;
+        else if (cleaned[i] === '}') depth--;
+        i++;
+      }
+      const body = cleaned.slice(open + 1, i - 1);
+      if (selector.startsWith('@media') || selector.startsWith('@supports')) {
+        rules.push(...collectStyleRules(body));
+      } else if (!selector.startsWith('@')) {
+        rules.push({ selector, body });
+      }
+      pos = i;
+    }
+    return rules;
+  }
+
+  function selectorTargetsControl(
+    selector: string,
+    classes: Set<string>,
+    tags: Set<string>,
+  ): boolean {
+    // Explicit exclusions: non-rest state modifiers (disabled, hover, focus, active, pseudo-elements)
+    // and validation-error selectors (`--invalid`, `[aria-invalid`) that override border with `--color-danger`.
+    const STATE_MARKERS = [
+      ':disabled',
+      '[disabled',
+      '[aria-disabled',
+      '--invalid',
+      '[aria-invalid',
+      ':hover',
+      ':focus',
+      ':active',
+      '::',
+    ];
+    return selector.split(',').some((rawPart) => {
+      const part = rawPart.trim();
+      const positivePart = part.replace(/:not\([^)]*\)/gi, '').trim();
+      if (!positivePart || STATE_MARKERS.some((marker) => positivePart.includes(marker))) {
+        return false;
+      }
+      const compound = positivePart.split(/[\s>+~]+/).pop() ?? '';
+      const dotParts = compound.split('.');
+      const tagPart = dotParts[0].split('[')[0].toLowerCase();
+      const clsParts = dotParts.slice(1).map((c) => c.split('[')[0]);
+      if (clsParts.some((c) => classes.has(c))) return true;
+      return clsParts.length === 0 && tags.has(tagPart);
+    });
+  }
+
+  function isBorderlessDeclaration(decl: string): boolean {
+    const ZERO_WIDTH_RE = /^0(?:\.0+)?(?:[a-z%]+)?$/;
+    const colon = decl.indexOf(':');
+    const prop = (colon === -1 ? '' : decl.slice(0, colon)).trim().toLowerCase();
+    const value = (colon === -1 ? decl : decl.slice(colon + 1)).trim().toLowerCase();
+    const tokens = value.split(/\s+/).filter(Boolean);
+    if (prop === 'border-color' || /^border-(?:top|right|bottom|left)-color$/.test(prop)) {
+      return tokens.length > 0 && tokens.every((part) => part === 'transparent');
+    }
+    return tokens.some(
+      (part) => part === 'none' || part === 'transparent' || ZERO_WIDTH_RE.test(part),
+    );
+  }
+
+  function collectBorderDeclarations(ruleBody: string): string[] {
+    const declarations: string[] = [];
+    const borderRegex = /(?:^|;)\s*(border(?:-(?:top|right|bottom|left))?(?:-color)?\s*:\s*[^;]+)/gi;
+    let bm: RegExpExecArray | null;
+    while ((bm = borderRegex.exec(ruleBody)) !== null) {
+      declarations.push(bm[1].trim());
+    }
+    return declarations;
+  }
+
+  it('derives all active bordered inputs and selects from Svelte sources and requires --control-border', () => {
+    const libDir = path.resolve(__dirname, '../lib');
+    const svelteFiles = walkFiles(libDir, ['.svelte']);
+    const STRONG_BORDER_TOKENS = ['var(--control-border)', 'var(--color-border-strong)'];
+    const inspected: { file: string; selector: string }[] = [];
+    const violations: { file: string; selector: string; declaration: string }[] = [];
+
+    for (const file of svelteFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+      const styleMatch = /<style[^>]*>([\s\S]*?)<\/style>/i.exec(content);
+      if (!styleMatch) continue;
+
+      const template = content
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '');
+      const { classes, tags } = readSvelteControlMetadata(template);
+      if (tags.size === 0) continue;
+
+      const relPath = path.relative(libDir, file);
+      for (const rule of collectStyleRules(styleMatch[1])) {
+        if (!selectorTargetsControl(rule.selector, classes, tags)) continue;
+        for (const decl of collectBorderDeclarations(rule.body)) {
+          if (isBorderlessDeclaration(decl)) continue;
+          inspected.push({ file: relPath, selector: rule.selector });
+          if (!STRONG_BORDER_TOKENS.some((tok) => decl.includes(tok))) {
+            violations.push({ file: relPath, selector: rule.selector, declaration: decl });
+          }
+        }
+      }
+    }
+
+    expect(inspected.length).toBeGreaterThanOrEqual(14);
+    expect(violations).toEqual([]);
+  });
+
+  it('flags non-zero decimal widths, partial transparent border-color, negated disabled, and side-specific overrides', () => {
+    expect(isBorderlessDeclaration('border: none')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0px solid var(--color-border)')).toBe(true);
+    expect(isBorderlessDeclaration('border-color: transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border-color: transparent transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border-bottom-color: transparent')).toBe(true);
+    expect(isBorderlessDeclaration('border: 0.0625rem solid var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border: 0.5px solid var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border-color: transparent var(--color-border)')).toBe(false);
+    expect(isBorderlessDeclaration('border-bottom-color: var(--color-border)')).toBe(false);
+
+    const classes = new Set(['field-input']);
+    const tags = new Set(['input']);
+    expect(selectorTargetsControl('input:not(:disabled)', classes, tags)).toBe(true);
+    expect(selectorTargetsControl('.field-input:not([disabled])', classes, tags)).toBe(true);
+    expect(selectorTargetsControl('input:disabled', classes, tags)).toBe(false);
+    expect(selectorTargetsControl('input:not(:disabled):hover', classes, tags)).toBe(false);
+
+    expect(
+      collectBorderDeclarations(
+        'border: 1px solid var(--control-border); border-bottom-color: var(--color-border); border-width: 1px; border-style: solid; border-left: 2px solid var(--color-border)',
+      ),
+    ).toEqual([
+      'border: 1px solid var(--control-border)',
+      'border-bottom-color: var(--color-border)',
+      'border-left: 2px solid var(--color-border)',
+    ]);
   });
 });
