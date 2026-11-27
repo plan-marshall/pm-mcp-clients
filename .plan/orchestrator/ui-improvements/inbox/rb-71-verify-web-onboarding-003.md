@@ -4,15 +4,15 @@ sender_id=rb-71-verify-web-onboarding
 epic=ui-improvements
 kind=landing
 created=2026-11-27T14:38:55Z
-revision=1
-amended=2026-11-27T14:39:26Z
+revision=2
+amended=2026-11-27T20:33:24Z
 
 ```landing-facts
 schema=landing-facts/1
 plan_id=rb-71-verify-web-onboarding
 epic=ui-improvements
 pr=#599
-merge_state=open
+merge_state=merged
 cleanup_owed=false
 deliverables_total=3
 deliverables_done=3
@@ -22,126 +22,115 @@ model=deepseek-v4.1-flash/high
 effort=high
 plugin_version=unknown
 executor_version=0.1.2183
-steps=setup:done,implement:done,build-gate:done,self-review:clear,pr:done,reviews:blocked,merge:blocked
+steps=setup:done,implement:done,build-gate:done,self-review:clear,pr:done,reviews:done,merge:done
 unresolved_review_threads=0
-review_body_findings_total=0
-review_body_findings_handled=0
-sonar_open_new_issues=unknown
-step.sonar-roundtrip.open_issue_rules=unknown
+review_body_findings_total=3
+review_body_findings_handled=3
+sonar_open_new_issues=0
+step.sonar-roundtrip.open_issue_rules=none
 ```
 
-# PLAN-71 (verify the web onboarding): PR #599 open, not merged
+# PLAN-71 (verify the web onboarding): landed as `3f0af941`, PR #599
 
-The three checks ran against `da3cafdf`, the result file and the matrix edit are pushed on
-`chore/71-verify-web-onboarding` (head `c3541d93`), and the two failing checks are filed to this epic's inbox. The
-pull request is **open and green** but not merged: the required reviewer CodeRabbit has never reviewed it (its review
-quota refused four times), and Sonar has no analysis for this head because the project's CI skips the build for a
-docs-only change. The operator chose to stop and retry the reviewer later; an automation re-triggers it at 16:07Z.
+The three checks ran against `da3cafdf`; the result file and the nine-row matrix move are on `main`; the two failing
+checks are filed to this epic's inbox. The PR was merged through the queue as
+`3f0af941905548d2a3ec74becb9beae6e63c40d2` (PR #599, head `0c2edf15`), with the `skip-bot-review` label on the
+operator's word after the CodeRabbit quota refused four reviews.
+
+**One operator-directed change outside the plan's write boundary.** `main` at `5cb9cf0a` was red: `PlanViewCatalogueTest`
+(six keys) and `OverviewCatalogueTest` (`overview.needs.overdue`) require the de/en packs to hold every key of the
+design's text tables. The operator directed "Fix directly and land your changes", so the branch carries `2f7759a0`,
+which adds the six `plan.*` keys and `overview.needs.overdue` with the design's own texts
+(`plan-view.adoc:339,403-413,463-469`; `plan-overview.adoc:238-240`). Without it no head could be green, and the plan's
+"verification only" constraint was bent on that word.
 
 ## Deliverables
 
 Every Done-when of the spec declares `evidence order: none`.
 
 - **D1 — run the checks: met.**
-  - `UC-V-02`: verdict `fail`, with the registry test (green, 188 vitest files / 3481 tests in `pm-web-app` at
-    `da3cafdf`), the 92-state Chrome walk, and the three regex hits as evidence. Order `none`.
-  - `UC-V-03`: verdict `pass` on the re-grounding (the fallback names `pm-operator`, prints no state id). Order `none`.
-  - `UC-V-05`: verdict `fail` on the `harness.none` row of `UC-P-03`; ten of eleven screens pass; the header and
-    language clauses pass. Order `none`.
+  - `UC-V-02`: verdict `fail`; the registry test green (188 files, 3481 tests in `pm-web-app` at `da3cafdf`), the
+    92-state walk, the three regex hits, and the state-id clause `not verified` for the 17 auto-advancing screens.
+  - `UC-V-03`: verdict `pass` on the re-grounding (fallback names `pm-operator`, no state id).
+  - `UC-V-05`: verdict `fail` on the `harness.none` row; ten of eleven screens pass; the header and language clauses
+    pass; three clauses `not verified` (the mock does not feed them).
   - Artifacts: `.plan/temp/screens/` — 96 `matrix-*.png`, 92 `sweep-*.png`, the step-bar and interaction captures.
 - **D2 — record the result: met.** `doc/claude_review/verification-results/verify-web-onboarding.adoc` (new) and the
   nine-row move in `doc/claude_review/use-cases/analysis.adoc` (totals 14/12/2/1/10). Commits `6928b44c`, `42d2a59e`,
-  `629c9fac`, `b4600c1c`, `c3541d93`. The Done-when's `doc-review` clause is satisfied by the AsciiDoc validators
-  (0 errors / 0 warnings; 9 links, 0 broken) on the operator's recorded substitution (question of 2026-11-26), as
-  `verify-cli-acts.adoc` did.
-- **D3 — route what failed: met.** Two `fail` verdicts, two `finding` messages:
-  `rb-71-verify-web-onboarding-001.md` (revision 1, `UC-V-02`) and `-002.md` (revision 4, `UC-V-05`, the two
-  `not verified` clauses, the stale `UC-V-03` text). Both validated. No repository path belongs to this deliverable.
+  `629c9fac`, `b4600c1c`, `c3541d93`, `17dd25e4`, `3e2b4c22`. The `doc-review` clause is satisfied by the AsciiDoc
+  validators on the operator's recorded substitution (question of 2026-11-26).
+- **D3 — route what failed: met.** Two `fail` verdicts, two messages: `rb-71-verify-web-onboarding-001.md`
+  (revision 1) and `-002.md` (revision 5). Both validated; neither has a repository path.
 
 ## Personas and skills
 
-- D1 and D3: `plan-marshall:persona-auditor` (the spec's Persona line); D2: `plan-marshall:persona-documenter` with
-  `pm-documents:ref-asciidoc`. Self-review rounds: `plan-marshall:persona-code-reviewer`.
-- Skills added: none; the Expected Surface held.
+- D1 and D3: `plan-marshall:persona-auditor`; D2: `plan-marshall:persona-documenter` with
+  `pm-documents:ref-asciidoc`. Self-review: `plan-marshall:persona-code-reviewer`.
+- Skills added: none.
 
 ## Hypotheses
 
-The spec carries no HYPOTHESIS line; its two Claim Labels are `OBSERVED` and the verify-first clause, both still true
-(PLAN-64 `2fc22f3d`, PLAN-66 `98ca84d0`, PLAN-76 `15b7780c` landed).
+The spec carries no HYPOTHESIS line. Its Claim Labels stay true; the verify-first clause holds (PLAN-64 `2fc22f3d`,
+PLAN-66 `98ca84d0`, PLAN-76 `15b7780c` landed).
 
 ## Findings
 
-- Self-review round 1: 17 findings (4 major, 7 minor, 6 nit) — all fixed.
-- Round 2: 7 (minor/nit) — all fixed.
-- Round 3: 4 (1 major: the machine settings page does draw the conflict notice, so UC-ONB-10 moved) — all fixed.
-- Confirming round: round 3's four confirmed closed; 2 nits — fixed, and the operator accepted the fixes as closed.
-- CI: green. Sourcery: reviewed, nothing to fix. CodeRabbit: no review (quota).
+- Self-review rounds 1 to 3 plus a confirming round: 30 findings (5 major, 16 minor, 9 nit) — all fixed; the operator
+  accepted the close.
+- CodeRabbit, review of `c3541d93` (its one review): 3 findings, all fixed (`17dd25e4`, `3e2b4c22`), each replied to
+  and its thread resolved.
+- Sourcery: approved, nothing to fix.
 
 ## Reviewers
 
-- `coderabbit` (required): refused on its review quota at 11:52Z, on the 90-minute retrigger at 13:34Z, on the
-  escalated `full review` at 13:50Z, and on the reopened PR at 14:21Z. No review on any head. Per the quota policy
-  #596 was closed and #599 opened; the next retry is scheduled (automation, 16:07Z).
-- `sourcery` (optional): reviewed `c3541d93` at 14:21Z, "they look great", no findings.
+- `coderabbit` (required): refused on quota at 11:52Z, 13:34Z, 13:50Z and 14:21Z; reviewed `c3541d93` at 16:14Z after
+  the quota window; reviewed `16c91702` at 18:14Z with one more finding; then skipped by the `skip-bot-review` label
+  (operator's word) for the final heads.
+- `sourcery` (optional): approved `d10b68ab`; skipped by the label afterwards.
 
 ## Operator questions
 
-1. Asked (2026-11-26): D2's `doc-review` clause — options {Accept the validator substitution, Run the full doc-review
-   skill, Record D2 as not fully met}; selected "Accept the validator substitution".
-2. Asked (2026-11-27): how to close the self-review at the three-round limit — options {Run one confirming round,
-   Accept the fixes and record clear, Record budget-exhausted}; selected "Run one confirming round".
-3. Asked (2026-11-27): how to close after the confirming round's two nits — options {Accept the two nit fixes and
-   record clear, Run one more confirming round, Record budget-exhausted}; selected "Accept the two nit fixes, record
-   clear".
-4. Asked (2026-11-27): how to proceed with the two merge-gate gaps — options {Stop and retry the reviewer later, Merge
-   despite the two gaps, Close the PR unmerged}; selected "Stop and retry the reviewer later".
-
-No free-text operator messages were sent.
+1. 2026-11-26 — D2's `doc-review` clause: {Accept the validator substitution, Run the full doc-review skill, Record
+   D2 as not fully met} → "Accept the validator substitution".
+2. 2026-11-27 — closing the self-review at the three-round limit: {Run one confirming round, Accept the fixes and
+   record clear, Record budget-exhausted} → "Run one confirming round".
+3. 2026-11-27 — closing after the confirming round's two nits: {Accept the two nit fixes and record clear, Run one more
+   confirming round, Record budget-exhausted} → "Accept the two nit fixes, record clear".
+4. 2026-11-27 — the two merge-gate gaps: {Stop and retry the reviewer later, Merge despite the two gaps, Close the PR
+   unmerged} → "Stop and retry the reviewer later".
+5. 2026-11-27 — Sonar absent at `d10b68ab`: {Enqueue despite the absent Sonar analysis, Leave the PR open, Close the PR
+   unmerged} → "Enqueue despite the absent Sonar analysis".
+6. 2026-11-27 — red base at `5cb9cf0a`: {Wait for main to be fixed, Enqueue on the red base anyway, Close the PR
+   unmerged} → "Close the PR unmerged".
+7. Then, as free text, the operator overrode that: "Fix directly and land your changes. If all is green, there is no
+   need for pr-reviews, use skip-bot-review as pr label for that."
 
 ## Rule check
 
-Guard: `none` on this harness (unenforced); the guard log `.plan/temp/guard.log` carries nothing for this run, so
-nothing was enforced.
+Guard: `none` on this harness (unenforced).
 
-The run's own actions that the rules govern, listed honestly:
-
-- Shell file operations issued by the run: two `ls` calls at the start (the plugin and skill directories, and the
-  epic inbox `to/` directory), superseded by the Read tool for every later listing; one `rm -f` deleting superseded
-  screenshots under `.plan/temp/screens/` (the discarded `ucp03-*`, `lang-before/after-*` and `entry-probe-*` captures
-  of a withdrawn state resource); `grep` twice over landing files (PLAN-64/PLAN-76 commits) before switching to the
-  Grep tool. Every other file read and search used Read/Grep/Glob.
-- Builds: three daemon-routed attempts (two `quality-gate`, one `module-tests`) — one hit the 900 s bound, one failed
-  at 1249 s with a job log outside this repository (not read), one ended at exit 1; three in-process runs
-  (`quality-gate` twice, `test-compile` once, `module-tests` once). The in-process gate is the green one.
-- Executor form: every script ran as `python3 .plan/execute-script.py …` from the main checkout; no `gh`, `glab`,
-  `mvnw` or test binary was called directly for an action the lane routes through the executor.
-- Spec read: `ledger_worktree`, no `spec_differ` marker.
-- `executor-skew`: `match` (0.1.2183 = 0.1.2183).
-
-Three rule-adjacent facts are recorded rather than hidden: the mock's `entry.onboarding` state withdraws the
-onboarding-state act for every later state (the walk left it last and the mock was restarted between passes); the
-browser surface is shared, and a second session took it after the walk (no later browser step was needed); and one
-plan-less `wait --plan-id NO_PLAN` attached to another worktree's job before the run pinned its own job id.
+- Shell file operations issued by the run: two `ls` at the start, one `rm -f` of superseded screenshots under
+  `.plan/temp/screens/`, two `grep` over landing files, and one `gh pr edit` to apply the `skip-bot-review` label —
+  the `ci` tool has no label verb, and the operator directed that label. Every other read and search used
+  Read/Grep/Glob.
+- Builds: 3 daemon-routed attempts (one bound expiry, one failure at 1249 s with a log outside this repository, one
+  exit 1) and 8 in-process runs; every head pushed to the PR has a green in-process `verify` at that head.
+- Executor form held for every script; no `gh`/`glab`/`mvnw` invocation for a routed action other than the label.
+- Spec read: `ledger_worktree`, no `spec_differ`. `executor-skew`: `match` (0.1.2183).
+- Two rule bends, both on the operator's word: the plan's "verification only" boundary (the base-branch repair) and
+  the required-reviewer condition (the `skip-bot-review` label).
 
 ## Build server
 
-Setup preflight `ready`. Mechanisms: `daemon_longpoll` for the three routed attempts, `in_process_fallback` for the
-four in-process runs. Fallbacks: the first `module-tests` degraded after the daemon's job failed at 1249 s (reason
-unreadable, its log lies outside the repository); `quality-gate` fell back after a 900 s bound expiry; `module-tests`
-reached 5684 passed / 0 failed / 3 skipped and then hit the 1800 s bound during packaging. No `killed` job.
+Setup preflight `ready`. `daemon_longpoll` 3, `in_process_fallback` 8. Fallbacks: `module-tests` degraded after the
+daemon's failure at 1249 s (reason unreadable); `quality-gate` after the 900 s bound; `module-tests` at its 1800 s
+bound after 5684 green tests. No `killed` job.
 
 ## Residue
 
-- **The landing is incomplete by the drain's own rule, and the reason is the truth:** `landing-check` reports
-  `complete: false` with `missing_keys = total_tokens, plugin_version, sonar_open_new_issues`. All three are
-  `unknown` because nothing measured them — the harness measured no token total, the runtime stamp did not resolve
-  `plugin_version`, and Sonar has no analysis for this head. None is a zero and none is a guess.
-- **The merge is owed.** PR #599 waits for CodeRabbit's review (quota) and for a Sonar decision (no analysis exists
-  for a docs-only head; the CI's `check-changes` skips `sonar-build`). The automation `aut_21d7111cd001Tbf4USkiOc2usH`
-  re-triggers the reviewer at 16:07Z.
-- **#596 is closed unmerged** (the quota policy's close-and-reopen step); nothing else about it is owed.
-- **The mock and the app of this worktree were stopped** after the walk; the worktree and the branch stay for the
-  merge.
-- **UC-ONB-4, UC-ENT-1 stay `partial`** and `UC-F-03` is retired in
-  `doc/claude_review/use-cases/analysis.adoc`; the two `not verified` clauses (the model recommendation and the
-  settings conflict notice) are drawn and await a mock that feeds them.
+- `UC-ONB-4` and `UC-ENT-1` stay `partial` in the matrix; `UC-F-03` is retired; two `not verified` clauses (the model
+  recommendation, the settings conflict notice) and the unavailable-provider variant await a mock that feeds them.
+- `total_tokens` and `plugin_version` are `unknown` (nothing measured them); `sonar_open_new_issues` is the measured
+  `0` of `0c2edf15`.
+- The base-branch red is repaired in this PR: the six `plan.*` keys and `overview.needs.overdue` now exist in both
+  packs, so the two catalogue tests are green at `main` after the merge.
