@@ -1,0 +1,359 @@
+= Verification Results: The Web Onboarding
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../README.adoc[Review] » Verification Results » The Web Onboarding
+
+This document records the three checks of the onboarding's screen registry and its variations against the merged
+code. The checks come from link:../use-cases/verification.adoc[Use Cases, Verification]: `UC-V-02`, `UC-V-03`, and
+`UC-V-05`. Each check ran against the mock runtime in Chrome, in `en` and `de`, dark and light, at 1440 px and
+390 px, and every one of the mock scenario's 92 states was walked. Two checks fail as written and are routed to the
+epic inbox (`rb-71-verify-web-onboarding-001` and `-002`). Nothing that was found was fixed.
+
+The re-grounding of 2026-11-25 binds over the body of the plan where they differ. It retires `UC-V-03`'s
+settings-frame expectation: `entry.*` states have no web screen (operator decision 2026-11-10,
+`doc/design/web-app/onboarding.adoc:45`), so the fallback screen was verified instead and the check's own text is
+stale. It also replaces `UC-V-05`'s reference to `MachineSettingsView.svelte`, which no longer exists, by the
+screens the epic shipped.
+
+[#subject]
+== What Was Verified
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+
+|Commit
+|`da3cafdfcbf6ac044a4231eddf80201f4f604d8a`, `main` of `pm-mcp-clients` (the branch of this plan adds only this file
+and the matrix edit)
+
+|Date
+|2026-11-26
+
+|Machine
+|macOS, `aarch64`, locale `de_DE`, UTF-8
+
+|Mock
+|`pm-mock-runtime/start.sh --scenario onboarding --web-port 20710`, scenario `onboarding`, its 92 states reached with
+`POST /mock/goto/<state>` and a reload. The mock was restarted between passes because a visit to `entry.onboarding`
+withdraws the state resource for every later state (see <<residue,Residue>>).
+
+|App
+|`PM_MOCK_WEB_PORT=20710 ./pm-web-app/start.sh -p 20711`, Vite dev server on `http://localhost:20711`. Ports `20710`
+and `20711` are this plan's block (`AGENTS.md` § Ports); no other process was stopped or reused.
+
+|Browser
+|The Playwright MCP browser (`opencode.json`, `--isolated`), paired per session with a single-use code from the mock.
+Eight arms: `en` and `de`, light and dark, 1440 × 900 and 390 × 844. Screenshots under
+`.plan/temp/screens/`.
+
+|Builds
+|`package -pl pm-web-app -am` (canonical `module-tests`): `BUILD SUCCESS` in-process, vitest 188 files and 3481
+tests, 0 failures (the log's `Total time: 03:03 min`; the tool measured 3:06) — log
+`.plan/local/plans/NO_PLAN/build-results/pm-web-app/maven-2026-11-26-073456.log`. A daemon-routed run of the same
+command failed with exit `1` first; its job log lies outside this repository and was not read, so the in-process run
+is the one this document cites. The build tool reported the earlier scoped run as
+`indeterminate`/`test_run_executed_nothing` (that verdict is the tool's own output, not a line of the log) because the
+module's tests are vitest's, which writes no Surefire or Failsafe report; the same run's log carries the vitest
+summary and `BUILD SUCCESS`, which is the evidence.
+|===
+
+[#dependencies]
+== Verify-First: The Dependency Plans
+
+|===
+|Plan |Landing
+
+|PLAN-64 (`web-onboarding-screen-registry`)
+|merged as `2fc22f3d`, PR of the epic ledger
+
+|PLAN-66 (`web-onboarding-frame-and-roles`, former PLAN-68 and PLAN-69)
+|merged as `98ca84d0` (its subject names #478; the epic ledger records #467), split landing; D5 to D10 continued in
+later plans of the epic
+
+|PLAN-76 (`shared-port-assignment`)
+|merged as `15b7780c` (#243)
+|===
+
+Verdict: `pass`. Every dependency has a landing on `main`; `pm-web-app/src/lib/views/onboarding/screens.registry.test.ts`
+exists at the verified commit.
+
+[#checks]
+== The Checks
+
+[cols="1,1,4,2",options="header"]
+|===
+|Check |Verdict |Evidence |Note
+
+|link:../use-cases/verification.adoc[UC-V-02]
+|`fail`
+|The registry test is green: `screens.registry.test.ts` is one of the 188 vitest files of the run above (8 cases; it
+reads every state of `pm-mock-runtime`'s `onboarding.json` and fails for one no screen claims —
+`screens.registry.test.ts:29-84`). The Chrome walk covered all 92 states of the scenario at 1440 × 900, `en`, dark
+(`.plan/temp/screens/sweep-<state>-en-dark-1440.png`) and the 11 UC-P-03 screens in the eight arms
+(`.plan/temp/screens/matrix-<state>-<locale>-<theme>-<width>.png`). No rendered text contains a state id of the
+scenario in the 75 states the walk captured *as themselves*: the scan searched each page's `innerText` for all 92
+ids and found none. The 17 states that advance by themselves were scanned as the state that followed (see
+<<residue,Residue>>), so the state-id clause is `not verified` for those 17 screens. *Fails as written* on its regex
+clause: three texts that match `/[a-z]+\.[a-z-]+/` sit outside a code block —
+`docs.anthropic.com/en/docs/claude-code/setup` and `opencode.ai/docs/` on `harness.none`, in
+`<span class="harness-install__hint mono">` (not a `<code>` element; `.plan/temp/screens/harness-none-hints-en-dark-1440.png`);
+and the placeholder `e.g. anthropic/claude-sonnet-4-6` of the model-id field on `catalogue.select`
+(`pm-api/src/main/resources/messages/onboarding.en.properties:79`;
+`.plan/temp/screens/matrix-catalogue.select-en-dark-1440.png`).
+|The three texts are install hints and an example model id, not state ids, but the check excludes only *code blocks*.
+The defect is the element or the wording, not the content. The text-node scan cannot see a `placeholder` attribute;
+the screenshot review is what found the third text. The "no state id" result therefore holds for text nodes in the 75
+states captured as themselves, is read off the screenshots for the attribute case, and is `not verified` for the 17
+auto-advancing screens.
+
+|link:../use-cases/verification.adoc[UC-V-03]
+|`pass`
+|The re-grounding replaces the settings-frame check by the fallback. `entry.ready`, `entry.paired`,
+`entry.lan-open`, `entry.unonboarded`, and `entry.onboarding` all draw it:
+"This screen is not available in the web app", "This step is answered in the terminal of this machine. Run
+pm-operator there; it opens the console at this step.", `$ pm-operator`, "Back". No state id, no URL, no QR code, no
+fingerprint — by the operator's decision that `entry.*` belongs to the terminal. Evidence:
+`.plan/temp/screens/sweep-entry.lan-open-en-dark-1440.png`,
+`.plan/temp/screens/matrix-entry.lan-open-{en,de}-{light,dark}-{1440,390}.png`,
+`.plan/temp/screens/sweep-entry.onboarding-en-dark-1440.png`.
+|The check's text is stale (URL, QR code, fingerprint inside the settings frame) and is filed as a note in the
+finding of `UC-V-05`; the fallback is what the app owes here.
+
+|link:../use-cases/verification.adoc[UC-V-05]
+|`fail`
+|The header carries no navigation before onboarding is done: on `onboard.mode` the header is
+`Machine: mock-machine` alone — no breadcrumb, no search, no live indicator; the rail offers no destination and its
+brand is inert (`.plan/temp/screens/stepbar-onboard.mode-en-dark-1440.png`). The step bar marks no step on the mode
+screen, marks step 1 on `language.choose`, step 4 on `roles.review`, and on `onboard.completed` ticks *Done* and marks
+no step current (`.plan/temp/screens/stepbar-<state>-en-dark-1440.png`). After "Use Deutsch for both" the next screen
+is German (`document.documentElement.lang` `en` → `de`;
+`.plan/temp/screens/lang2-before-nochoice-en-dark-1440.png` and
+`lang2-after-nochoice-en-dark-1440.png`). Of the eleven screens of `UC-P-03`, ten show the change; see
+<<variations,The Variations>>. *Fails as written* on `harness.none`: the screen shows the install hints, not "name,
+path, the check that failed, the answer received, and the fix" per harness.
+|The header and language clauses pass in every arm. The `harness.none` clause is the failure; three further clauses
+cannot be seen in the mock (the catalogue advice, the settings conflict, the unavailable-provider variant) and are
+`not verified` with their reason.
+
+|===
+
+[#variations]
+== UC-V-05: The Variations of UC-P-03
+
+Each row names what the screen shows in the eight arms. Screenshots:
+`.plan/temp/screens/matrix-<state>-<locale>-<theme>-<width>.png`.
+
+[cols="2,1,3",options="header"]
+|===
+|Screen of UC-P-03 |Verdict |What was seen
+
+|Frame (UC-ONB-1)
+|`pass`
+|Header: brand, `Machine: mock-machine`, language toggle, theme only. No destination, no search, no path. The step
+bar marks no step on `onboard.mode`.
+
+|`auto.result`
+|`pass`
+|One "Change" per aspect row (Language, Harnesses, Models, Roles, Credentials, Providers, Plans); the Language
+"Change" opens `language.reconfigure` (`.plan/temp/screens/auto-result-change-links-en-dark-1440.png` and
+`auto-result-after-change-en-dark-1440.png`).
+
+|`language.choose`
+|`pass`
+|After "Use Deutsch for both" the app adopts the recorded interface language and the next screen is German. A
+browser that chose its own language keeps it, and the toggle's advisory says so ("Switch the interface language for
+this browser; it overrides the language this machine recorded").
+
+|`harness.choose`
+|`pass`
+|Monograms `CC`, `C`, `O`, `A` where no icon is fetched; the token line reads "usage complete", "usage not reported",
+and on `harness.tokens-partial` "usage partly reported (not reported: cache read, cache write)". `UC-P-03` says
+"usage partial"; the screen says "usage partly reported" — the sample's word differs and the coverage is named.
+
+|`harness.none`
+|`fail`
+|The screen shows "No harness found", the search line, and the install hints (`claude` →
+`docs.anthropic.com/en/docs/claude-code/setup`, `opencode` → `opencode.ai/docs/`), with "Check again" and "Add a
+harness that is not listed". It does not show a per-harness name, path, failed check, answer, and fix. The state
+carries none of those facts; the engine's catalogue describes `harness.none` as the install hints and names the
+per-harness cause and fix under `harness.blocked` — where the screen shows them
+(`harness.probe-failed`: name, cause, fix). The proposal's row is the artefact at odds with the engine catalogue.
+
+|`catalogue.select`
+|`pass`, one clause `not verified`
+|A text field per harness that cannot list its models ("Opencode — cannot list its models", "Model id for Opencode")
+and the chosen models with "Remove"; the field's example placeholder is `e.g. anthropic/claude-sonnet-4-6` (a
+regex hit, routed under `UC-V-02`). The advice's recommendation preselected and marked "recommended" is *not
+verified*: the state's facts carry no recommendation and no advice in the mock.
+
+|`roles.review`
+|`pass`
+|Grouped by phase (Planning, Execution, Review); departures marked ("Departure from the steward", "Proposed: …",
+Accept/Reject); an advisory and a change per role; `screener` shown empty ("no harness") and assignable; "Ask the
+steward to refine…"; "Assign the 1 open role first".
+
+|`store.choose`
+|`pass`
+|Two lines per option: "Protects a secret against: …" and "Does not protect against: …", with the recommendation
+marked. The values read "not reported for this store" — the mock reports none for either option.
+
+|`providers.failed`
+|`pass`
+|Label "Provider"; acts "Enter the token again" (opens the credential entry with a secret field), "Check again",
+"Continue without" (`.plan/temp/screens/providers-failed-after-token-en-dark-1440.png`).
+
+|`defaults.review`
+|`pass`, one clause `not verified`
+|Per axis a name, one sentence of meaning and a choice with plain names (Landing, Method, Asking) as radio options;
+the raw unit ids appear only as form values, never on screen. "Variants that need a missing provider disabled with
+the reason" is *not verified*: no state in the mock carries an unavailable variant. Posture appears on no first-run
+screen, as designed.
+
+|Settings (UC-ONB-10)
+|`pass`, one clause `not verified`
+|One settings place: `/settings` with the tabs Setup, Access, Credentials, Consents, Retention (Process designer is the
+page's own button, not a tab); `/settings/machine` resolves into it. The conflict notice is drawn on that page when a
+save conflicts — "Changed meanwhile", the current value, "Your value", "Keep the current value", and "Apply yours
+again" (`SettingsView.svelte:1072-1088`; `UC-P-03` says "Apply mine again", the plan-settings wording, and the machine
+page says "Apply yours again"). It is *not verified* from the mock: the walk at `settings.conflict` shows the settings
+place without a notice, because the mock's state does not feed a conflicting save (the note on `UC-F-12` says so). The
+unit tests cover the dialog.
+|===
+
+[#matrices]
+== The Verdict Matrices
+
+The walk and the code prove nine rows of link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis]. Eight move from
+`partial` and one from `deviates` to `conforms`:
+
+|===
+|Use case |Before |After |Why
+
+|UC-ONB-1 (Onboard a Machine)
+|`partial` |`conforms` |UC-F-01: no navigation before onboarding, no step marked on the mode screen
+
+|UC-ONB-2 (Onboard Automatically)
+|`partial` |`conforms` |UC-F-02: a "Change" per aspect row, opening that sub-workflow
+
+|UC-ONB-3 (Choose the Languages)
+|`partial` |`conforms` |UC-F-03: after the record step the next screen is German; a browser's own choice still wins
+
+|UC-ONB-5 (Choose the Models for the Work)
+|`partial` |`conforms` |UC-F-06: the recommendation block and the "recommended" marker are drawn
+(`ModelsChoice.svelte:320-323,378-379`), and a field per harness that cannot list its models; the mock carries no
+recommendation, so that clause is `not verified`
+
+|UC-ONB-6 (Assign Models to the Roles)
+|`partial` |`conforms` |UC-F-07: grouping, departures, advisory and change per role, steward accept/reject, empty role
+
+|UC-ONB-7 (Choose Where Credentials Are Kept)
+|`partial` |`conforms` |UC-F-08: both protection lines per option (the mock reports no values)
+
+|UC-ONB-8 (Choose the Providers of the Machine)
+|`partial` |`conforms` |UC-F-09: the label "Provider" and the three acts, the credential entry included
+
+|UC-ONB-9 (Choose How Plans Run by Default)
+|`deviates` |`conforms` |UC-F-10: plain names, a sentence per axis, and a choice per variant
+
+|UC-ONB-10 (Change the Machine's Settings)
+|`partial` |`conforms` |UC-F-11: one settings place. UC-F-12: the machine settings page draws the conflict notice with
+the current value, "Your value", keep, and "Apply yours again" (`SettingsView.svelte:1072-1088`, fed by
+`SettingsView.svelte:721-731`); the mock's `settings.conflict` state does not feed it, so that clause is `not verified`
+|===
+
+Two rows stay, and the rule that separates them from the nine above is the one this walk applied. A change the client
+draws but the mock does not feed is a `not verified` clause and does not hold the row open — this is
+`catalogue.select`'s recommendation, `store.choose`'s protection values, `defaults.review`'s missing-provider variant,
+and the machine settings' conflict notice. A screen whose content contradicts the check's row keeps the row open — this
+is `harness.none`, where the engine catalogue and the proposal disagree. A use case the client answers in another
+client by the operator's decision keeps its row open here — this is `UC-ENT-1`.
+
+`UC-F-03` is retired by this walk: the recorded interface language is adopted, and a browser's own choice overrides it.
+
+**UC-ONB-4** stays `partial`: the monogram and the token line are fixed and the state id is gone, but `harness.none`
+does not show the per-harness failure facts UC-F-05 asks for (they live in `harness.blocked`/`harness.probe-failed`,
+and the engine catalogue puts them there).
+
+**UC-ENT-1** stays `partial`: the web app shows no listener screen at all, by the operator's decision of 2026-11-10;
+it shows the fallback, and the matrix row still grades the web app's showing of the use case.
+
+Totals: 14 `conforms`, 12 `partial`, 2 `deviates`, 1 `missing`, and 10 `not verified` (39 use cases), against
+5, 20, 3, 1, and 10 before.
+
+[#results]
+== What the Checks Found
+
+Two checks fail and are routed, each as one `finding` message to the epic inbox of `ui-improvements`:
+
+. *`UC-V-02`* — three visible texts match the check's regex outside a `<code>` element: the two install-hint hostnames
+on `harness.none` in a `<span class="…mono">`, and the example model id `e.g. anthropic/claude-sonnet-4-6` in the
+model-id field's placeholder on `catalogue.select` (`pm-api/src/main/resources/messages/onboarding.en.properties:79`).
+None is a state id; the fix is the element (or the check's wording). Plan concerned: PLAN-66 (D5, `harness.none`), and
+the catalogue text of `UC-P-03`'s `catalogue.select` row.
+
+. *`UC-V-05`* — `harness.none` does not show the per-harness name, path, failed check, answer, and fix that the
+`UC-P-03` row asks for; the state carries the install hints and the engine's catalogue puts the per-harness cause
+and fix under `harness.blocked`. Either the check's row or the state's contract has to move. The same message
+records the clauses that could not be verified in the mock (the advice's recommendation on `catalogue.select`, the
+conflict notice on the settings place, and the unavailable-provider variant on `defaults.review`) and the stale
+`UC-V-03` text. Plans concerned: PLAN-66 (D5, `harness.none`), and the review documents for the two stale rows.
+
+The messages are `rb-71-verify-web-onboarding-001` and `rb-71-verify-web-onboarding-002`. Nothing was fixed here.
+
+[#residue]
+== Residue
+
+* *A visit to `entry.onboarding` withdraws the state resource.* Once a state that offers
+  `GET /api/v1/onboarding/state` is left, that act answers `409 act_not_available` for every later state
+  (`MockRuntimeEngine.java:3059-3087` keeps the offering state per request key). A walk that visits `entry.onboarding`
+  in the middle therefore cannot draw any later screen. This run walked all 92 states, left `entry.onboarding` last,
+  and restarted the mock between passes. The consequence for the check: no state id leaked even in the error card
+  ("The onboarding state could not be loaded."). What the walk does not provide is a view of the 17 auto-advancing
+  screens as themselves — the reload lands after their advance — so `UC-V-02`'s state-id clause is `not verified` for
+  those 17 and proven for the 75 captured as themselves.
+
+* *Auto-advancing states cannot be held.* Seventeen states carry an `auto` block and advance between 250 and 900 ms
+  (`auto.scan`, `harness.probe`, `harness.enrol`, `harness.install-profile`, `catalogue.models`, `catalogue.advise`,
+  `catalogue.record`, `roles.validate`, `store.check`, `store.record`, `github.check`, `providers.verify`,
+  `providers.record`, `defaults.validate`, `defaults.record`, `settings.record` at 250 to 300 ms, and `wait.check` at
+  900 ms); `harness.probe-failed` additionally fires its events at 100 and 200 ms but stays. A reload after the jump
+  shows the state that followed; the walk records both, and the working screen itself is not screenshotable this way.
+  Every other state was captured as itself.
+
+* *The German arms show the mock's English summaries as the card heading.* The interface chrome, the buttons, the
+  labels and the step bar are German; nine screens carry the state's `facts.summary` as their heading and the mock's
+  summaries are English sentences ("Everything is decided.", "Choose the models plans may use", "Look for harnesses on
+  this machine?"). `AutoResultScreen.svelte:74-78` and the screens beside it render the summary as delivered, the
+  same rule the terminal client applies to runtime text. It is the mock's text, not the app's; the check's language
+  clause is about the app's own texts and passes.
+
+* *The `sessionStorage`/`localStorage` language choice is the browser's, by design.* Setting `pm_locale` by hand
+  suppresses the adoption; the check was run with no stored choice, which is a browser that has not decided yet.
+
+* *The daemon-routed `module-tests` run failed with exit `1` and its job log is outside this repository.* The
+  in-process run of the same command is green and is what this document cites. The Maven guard reports
+  `indeterminate` for the web module because vitest writes no Surefire report; the suite's own summary (188 files,
+  3481 tests) is the evidence.
+
+[#doc-review]
+== The Review of This File
+
+This file was checked with the AsciiDoc validators of `pm-documents:ref-asciidoc`. `asciidoc validate
+--path …/verification-results/verify-web-onboarding.adoc` reports 1 file, 0 errors, 0 warnings.
+`asciidoc verify-links --file …/verification-results/verify-web-onboarding.adoc` reports 9 links, 0 broken, 0
+format violations. The same two checks over the changed link:../use-cases/analysis.adoc[Use Cases, Analysis]:
+`verify-links` reports 40 links, 0 broken; its `validate` reports 4 errors and 7 warnings — the missing attributes
+`:toclevels: 3`, `:toc-title: Table of Contents`, `:sectnums:` and `:source-highlighter: highlight.js`, and seven
+list-formatting warnings in its original text. The file at the verified commit reports the same 4 errors and 7
+warnings, so this plan's edit introduced none of them; the one added link is the reference to this document.
+
+The `doc-review` skill's own phases (its parallel corpus reviewers, its fix pass, and its decision conversation with
+the operator) review the concept corpus of `plan-marshall-documentation`; they do not apply to a verification result
+file and were not run. What `doc-review` checks for a new document — format, links, anchors, and agreement with the
+artefacts it cites — ran as above, as it did for `verify-cli-acts.adoc`. The operator accepted this substitution as the
+evidence for this deliverable (question of 2026-11-26, "Accept the validator substitution").
