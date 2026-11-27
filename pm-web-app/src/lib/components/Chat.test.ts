@@ -124,12 +124,12 @@ describe('Chat', () => {
     await fireEvent.input(field1, { target: { value: 'Persisted question' } });
     first.unmount();
 
-    // Reload mounts a fresh instance and restores draft from localStorage.
+    // Reload mounts a fresh instance and restores draft from localStorage once chat.id resolves.
     render(Chat, { props: { subject, scope: 'plan' } });
     const field2 = (await screen.findByRole('textbox', {
       name: 'Your message',
     })) as HTMLTextAreaElement;
-    expect(field2.value).toBe('Persisted question');
+    await vi.waitFor(() => expect(field2.value).toBe('Persisted question'));
 
     await fireEvent.keyDown(field2, { key: 'Enter' });
     await vi.waitFor(() =>
@@ -222,6 +222,9 @@ describe('Chat', () => {
     expect(screen.queryByText('Refer to')).toBeNull();
     expect(onhide).not.toHaveBeenCalled();
 
+    await fireEvent.input(field, { target: { value: 'Check #ZZZ' } });
+    expect(screen.getByText('Nothing matches.')).toBeInTheDocument();
+
     await fireEvent.input(field, { target: { value: 'Check #TA' } });
     await fireEvent.click(screen.getByRole('option', { name: /TASK-4/ }));
     expect(field.value).toBe('Check TASK-4 ');
@@ -244,12 +247,38 @@ describe('Chat', () => {
         },
       }),
     );
-    const onnew = vi.fn();
-
-    render(Chat, { props: { subject, scope: 'archive', archive: true, onnew } });
+    render(Chat, { props: { subject, scope: 'archive', archive: true } });
 
     expect(await screen.findByText('read only: the archive stays as it is')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Your message' })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'New chat' })).toBeNull();
+    expect(req).not.toHaveBeenCalledWith('POST', '/api/v1/plans/fix-relay/chat');
+  });
+
+  it('asks for confirmation before New chat when a proposal is open on a live chat', async () => {
+    vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
+    const req = vi.spyOn(apiClient, 'request').mockImplementation(async (method) => {
+      if (method === 'GET') {
+        return makeChat({
+          proposal: {
+            turn_id: 't-prop',
+            reply_turn_id: 't-1',
+            kind: 'revision',
+            summary: 'Update tasks',
+            applies: null,
+            before: null,
+            after: null,
+            state: 'open',
+            finding: null,
+          },
+        });
+      }
+      return makeChat();
+    });
+    const onnew = vi.fn();
+
+    render(Chat, { props: { subject, scope: 'plan', onnew } });
+    await screen.findByText('Fix Relay Transport');
 
     await fireEvent.click(screen.getByRole('button', { name: 'New chat' }));
     expect(await screen.findByText('Start a new chat?')).toBeInTheDocument();
@@ -261,6 +290,48 @@ describe('Chat', () => {
       expect(req).toHaveBeenCalledWith('POST', '/api/v1/plans/fix-relay/chat');
     });
     expect(onnew).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers # references from subject props on an empty chat, shows read error with retry, and retries an offline stream', async () => {
+    let onStateCb:
+      ((state: 'connecting' | 'connected' | 'reconnecting' | 'offline') => void) | undefined;
+    const retrySpy = vi.fn();
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation(
+      (_path, _onEvent, _signal, onState, onRetry) => {
+        onStateCb = onState;
+        onRetry?.(retrySpy);
+        return () => {};
+      },
+    );
+    const req = vi
+      .spyOn(apiClient, 'request')
+      .mockRejectedValueOnce(new Error('network_offline'))
+      .mockResolvedValueOnce(makeChat({ turns: [] }));
+
+    render(Chat, {
+      props: {
+        subject,
+        scope: 'plan',
+        references: [{ kind: 'task', id: 'TASK-9', subject: { kind: 'plan', id: 'fix-relay' } }],
+      },
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load the chat.');
+    expect(screen.queryByRole('button', { name: 'What is the riskiest open task?' })).toBeNull();
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    const field = (await screen.findByRole('textbox', {
+      name: 'Your message',
+    })) as HTMLTextAreaElement;
+    await vi.waitFor(() => expect(req).toHaveBeenCalledTimes(2));
+
+    await fireEvent.input(field, { target: { value: '#TASK' } });
+    expect(await screen.findByRole('option', { name: 'TASK-9' })).toBeInTheDocument();
+
+    onStateCb?.('offline');
+    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0]);
+    expect(retrySpy).toHaveBeenCalledTimes(1);
   });
 
   it('starts a new chat immediately without confirmation when no proposal is open', async () => {
@@ -314,5 +385,45 @@ describe('Chat', () => {
     const live = await screen.findByTestId('chat-announcement');
     await vi.waitFor(() => expect(live.textContent).toContain('TASK-3 done'));
     expect(live.textContent).not.toContain('Stopped');
+  });
+
+  it('closes New chat confirmation on cancel and restores failed draft via Edit', async () => {
+    vi.spyOn(apiClient, 'subscribePathEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'request').mockImplementation(async (method, path) => {
+      if (method === 'GET') {
+        return makeChat({
+          proposal: {
+            turn_id: 't-prop',
+            reply_turn_id: 't-1',
+            kind: 'revision',
+            summary: 'Update tasks',
+            applies: null,
+            before: null,
+            after: null,
+            state: 'open',
+            finding: null,
+          },
+        });
+      }
+      if (method === 'POST' && path.endsWith('/turns')) {
+        throw new Error('network_offline');
+      }
+      return makeChat();
+    });
+
+    render(Chat, { props: { subject, scope: 'plan' } });
+    await screen.findByText('Fix Relay Transport');
+
+    await fireEvent.click(screen.getByRole('button', { name: 'New chat' }));
+    await fireEvent.click(await screen.findByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Start a new chat?')).toBeNull();
+
+    const field = screen.getByRole('textbox', { name: 'Your message' }) as HTMLTextAreaElement;
+    await fireEvent.input(field, { target: { value: 'Retry me' } });
+    await fireEvent.keyDown(field, { key: 'Enter' });
+    const editBtn = await screen.findByRole('button', { name: 'Edit the message' });
+    await fireEvent.click(editBtn);
+    expect(field.value).toBe('Retry me');
+    expect(field).toHaveFocus();
   });
 });

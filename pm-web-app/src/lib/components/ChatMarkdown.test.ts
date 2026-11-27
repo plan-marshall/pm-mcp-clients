@@ -116,8 +116,13 @@ describe('ChatMarkdown', () => {
     expect(container.querySelector('pre')).toBeNull();
     expect(container.textContent).toContain('```js');
 
-    await rerender({ text: `${unfinished}\n\`\`\``, streaming: false });
+    await rerender({ text: `${unfinished}\n\`\`\``, streaming: true });
     expect(container.querySelector('pre code')?.textContent).toContain('const x = 1;');
+
+    // A line with backticks separated by whitespace is not a valid closing fence while streaming.
+    const spacedFence = '```js\nconst y = 2;\n``` `';
+    await rerender({ text: spacedFence, streaming: true });
+    expect(container.querySelector('pre')).toBeNull();
   });
 
   it('turns matching turn refs into Link chips outside code, keeping refs inside code plain', () => {
@@ -170,12 +175,15 @@ describe('ChatMarkdown', () => {
     expect(writeText).toHaveBeenCalledWith('echo ok');
 
     const extra = render(ChatMarkdown, {
-      props: { text: '1. One\n2. Two\n\n# Heading outside subset\n\n---' },
+      props: {
+        text: '1. One\n2. Two\n\n# Heading outside subset\n\n---\n\n[Docs](https:/example.org)',
+      },
     });
     expect(extra.container.querySelector('ol')).not.toHaveAttribute('start');
     expect(extra.container.querySelector('h1')).toBeNull();
     expect(extra.container.textContent).toContain('# Heading outside subset');
     expect(extra.container.textContent).toContain('---');
+    expect(extra.container.querySelector('a')).toBeNull();
 
     // Covers escape tokens, empty image alt/fallback, line breaks, and unlabelled code fences.
     const misc = render(ChatMarkdown, {
@@ -186,6 +194,28 @@ describe('ChatMarkdown', () => {
     expect(misc.container.textContent).toContain('*literal*');
     expect(misc.container.querySelector('br')).toBeTruthy();
     expect(misc.container.querySelectorAll('a')).toHaveLength(2);
-    expect(misc.container.querySelector('.chat-markdown__code-lang')?.textContent).toBe('text');
+    expect(misc.container.querySelector('.chat-markdown__code-lang')?.textContent).toBe('Text');
+  });
+
+  it('checks hostname word boundaries, whole reference IDs, and clipboard execCommand fallback', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const execCommand = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: execCommand, configurable: true });
+
+    const { container } = render(ChatMarkdown, {
+      props: {
+        text: 'Compare TASK-42 and TASK-4 and [other-example.org](https://example.org/guide)\n\n```\ncopy me\n```',
+        refs: [{ kind: 'task', id: 'TASK-4', subject: { kind: 'plan', id: 'fix-relay' } }],
+        subject: { kind: 'plan', id: 'fix-relay' },
+      },
+    });
+
+    const chipLinks = container.querySelectorAll('a.link--chip');
+    expect(chipLinks).toHaveLength(1);
+    expect(chipLinks[0].textContent).toContain('TASK-4');
+    expect(container.textContent).toContain('other-example.org (example.org)');
+
+    await fireEvent.click(container.querySelector('.chat-markdown__code-head button')!);
+    expect(execCommand).toHaveBeenCalledWith('copy');
   });
 });

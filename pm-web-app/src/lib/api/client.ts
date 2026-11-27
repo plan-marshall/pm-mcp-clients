@@ -3055,6 +3055,8 @@ export class ApiClient {
   private onOnlineCallback?: () => void;
   /** Called with the state of the shared event stream, for the live indicator. */
   private onStreamStateCallback?: (state: EventStreamState) => void;
+  /** Additional state listeners registered when `subscribePathEvents` reuses `/api/v1/events`. */
+  private readonly pathEventStateListeners = new Set<(state: EventStreamState) => void>();
   /** The listeners of the one shared `/api/v1/events` connection. */
   private readonly eventSubscribers = new Set<(event: string, data: unknown) => void>();
   private eventStreamAbort: (() => void) | null = null;
@@ -3114,12 +3116,13 @@ export class ApiClient {
 
   /**
    * Subscribes to a path-scoped SSE stream using the client's SSE reader, retry policy, and
-   * revocation handling.
+   * revocation handling. Reuses the shared `/api/v1/events` stream when given that path.
    *
    * @param path the API stream path (for example `/api/v1/plans/{planId}/events`)
    * @param onEvent callback per parsed SSE event
    * @param signal optional abort signal
    * @param onState optional stream state callback
+   * @param onRetry optional callback receiving the stream's manual retry trigger
    * @returns unsubscribe callback
    */
   public subscribePathEvents(
@@ -3127,9 +3130,27 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
     onState?: (state: EventStreamState) => void,
+    onRetry?: (retry: () => void) => void,
   ): () => void {
     this.assertRequestPath(path);
-    return this.subscribeStream(path, onEvent, signal, onState);
+    if (path === '/api/v1/events') {
+      if (signal?.aborted) {
+        return () => {};
+      }
+      if (onState) {
+        this.pathEventStateListeners.add(onState);
+        onState(this.streamState);
+      }
+      onRetry?.(() => this.retryEventStream());
+      const unsub = this.subscribeEvents(onEvent, signal);
+      return () => {
+        unsub();
+        if (onState) {
+          this.pathEventStateListeners.delete(onState);
+        }
+      };
+    }
+    return this.subscribeStream(path, onEvent, signal, onState, onRetry);
   }
 
   /**
@@ -3143,6 +3164,7 @@ export class ApiClient {
     }
     this.streamState = state;
     this.onStreamStateCallback?.(state);
+    this.pathEventStateListeners.forEach((listener) => listener(state));
   }
 
   // The app renders in the browser only (`ssr = false` in the root layout), so `localStorage` is
@@ -3950,7 +3972,10 @@ export class ApiClient {
   }
 
   public async getReport(reportId: string): Promise<ReportItem> {
-    const data = await this.request<ReportItem>('GET', `/api/v1/reports/${encodeURIComponent(reportId)}`);
+    const data = await this.request<ReportItem>(
+      'GET',
+      `/api/v1/reports/${encodeURIComponent(reportId)}`,
+    );
     return normaliseReportItem(data);
   }
 

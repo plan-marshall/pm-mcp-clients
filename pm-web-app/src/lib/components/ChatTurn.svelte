@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { copyToClipboard } from '../chat/client';
   import { translateChatMessage } from '../chat/messages';
   import { hrefForTurnRef } from '../chat/markdown';
   import type { ChatScopeKind, ChatSubject, LocalChatTurn } from '../chat/types';
@@ -61,7 +62,7 @@
   let fullTimeTitle = $derived(formatTime(turn.at, 'short', $currentLocale) || turn.at);
 
   function copyText(): void {
-    void navigator.clipboard?.writeText(turn.text);
+    void copyToClipboard(turn.text);
   }
 </script>
 
@@ -99,10 +100,22 @@
         {:else}
           <ul class="chat-turn__notice-lines">
             {#each turn.lines as line, idx (idx)}
+              {@const lineClock = formatTime(line.at, 'clock', $currentLocale)}
+              {@const lineFullTime = formatTime(line.at, 'short', $currentLocale) || line.at}
               <li class="chat-turn__notice-line">
                 <span>
                   {translateChatMessage($t, { key: line.key, args: line.args })}
                 </span>
+                {#if lineClock}
+                  <time
+                    class="chat-turn__line-time"
+                    datetime={line.at}
+                    title={lineFullTime}
+                    aria-label={lineFullTime}
+                  >
+                    {lineClock}
+                  </time>
+                {/if}
                 {#if line.refs && line.refs.length > 0}
                   <span class="chat-turn__line-refs">
                     {#each line.refs as ref, refIdx (refIdx)}
@@ -222,7 +235,7 @@
       >
         {clockText}
       </time>
-      {#if !turn.delivery}
+      {#if turn.delivery !== 'sending' && turn.delivery !== 'not_sent'}
         <Button variant="ghost" size="sm" icon="act.copy" onclick={copyText}>
           {$t('web.common.copy')}
         </Button>
@@ -360,6 +373,12 @@
     display: inline-flex;
     flex-wrap: wrap;
     gap: var(--space-1);
+  }
+
+  .chat-turn__line-time {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+    font-variant-numeric: tabular-nums;
   }
 
   .chat-turn__fold-label {

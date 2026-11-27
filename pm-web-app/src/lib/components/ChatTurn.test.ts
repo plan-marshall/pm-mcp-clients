@@ -216,6 +216,46 @@ describe('ChatTurn', () => {
     expect(timeEl).toHaveAttribute('datetime', '2026-11-27T10:15:00Z');
     expect(screen.getByRole('button', { name: /copy/i })).toBeInTheDocument();
   });
+
+  it('renders notice refs chips, failed reason, and copies turn text cleanly', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const noticeTurn = makeTurn({
+      kind: 'notice',
+      format: 'plain',
+      text: '',
+      lines: [
+        {
+          key: 'chat.line.decision_opened',
+          args: { id: 'Q-7', blocks: 'plan' },
+          refs: [{ kind: 'decision', id: 'Q-7', subject: { kind: 'plan', id: 'fix-relay' } }],
+          at: '2026-11-27T10:10:00Z',
+        },
+      ],
+    });
+    const failedTurn = makeTurn({
+      status: 'failed',
+      text: 'Partial failed',
+      reason: { key: 'chat.reason.too_long', args: {} },
+    });
+
+    const { container, rerender } = render(ChatTurn, {
+      props: { turn: noticeTurn, subject: { kind: 'plan', id: 'fix-relay' } },
+    });
+    expect(screen.getByRole('link', { name: 'Q-7' })).toHaveAttribute(
+      'href',
+      '/plans/fix-relay?open=decision%3AQ-7&chat=open',
+    );
+    expect(container.querySelector('.chat-turn__line-time')).toBeTruthy();
+
+    await rerender({
+      turn: { ...failedTurn, delivery: 'accepted' },
+      subject: { kind: 'plan', id: 'fix-relay' },
+    });
+    expect(screen.getByText(/too long/i)).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(writeText).toHaveBeenCalledWith('Partial failed');
+  });
 });
 
 describe('ChatTranscript', () => {
@@ -225,20 +265,23 @@ describe('ChatTranscript', () => {
   });
 
   it('exposes role="log", sets aria-busy while streaming, groups same-side turns, and separates days', () => {
+    const day1 = new Date(2026, 10, 26, 12, 0, 0).toISOString();
+    const day2a = new Date(2026, 10, 27, 9, 0, 0).toISOString();
+    const day2b = new Date(2026, 10, 27, 10, 0, 0).toISOString();
     const turns: LocalChatTurn[] = [
       makeTurn({
         turn_id: 't-day1',
         author: 'planner',
         model: 'sonnet',
         text: 'Yesterday message',
-        at: '2026-11-26T20:00:00Z',
+        at: day1,
       }),
       makeTurn({
         turn_id: 't-day2-a',
         author: 'planner',
         model: 'sonnet',
         text: 'Today first',
-        at: '2026-11-27T09:00:00Z',
+        at: day2a,
       }),
       makeTurn({
         turn_id: 't-day2-b',
@@ -246,7 +289,7 @@ describe('ChatTranscript', () => {
         model: 'sonnet',
         status: 'streaming',
         text: 'Today grouped reply',
-        at: '2026-11-27T09:01:00Z',
+        at: day2b,
       }),
     ];
 
@@ -299,40 +342,73 @@ describe('ChatTranscript', () => {
 
     const pill = screen.getByRole('button', { name: 'New reply' });
     expect(pill).toBeInTheDocument();
+    await fireEvent.click(pill);
+    expect(screen.queryByRole('button', { name: 'New reply' })).toBeNull();
   });
 
-  it('loads an older page without shifting visible turns in scrollTop', async () => {
+  it('loads an older page without shifting visible turns in scrollTop and loads when scrolled to top', async () => {
     const initialTurns = [makeTurn({ turn_id: 't-2', text: 'Current turn' })];
-    let currentTurns = initialTurns;
-    let height = 400;
+    const controls: {
+      rerender?: (props: {
+        turns: LocalChatTurn[];
+        hasOlder: boolean;
+        onloadolder: () => Promise<void>;
+      }) => Promise<void>;
+    } = {};
+
     const onLoadOlder = vi.fn(async () => {
-      height = 650;
-      currentTurns = [makeTurn({ turn_id: 't-1', text: 'Older turn' }), ...currentTurns];
+      await controls.rerender?.({
+        turns: [makeTurn({ turn_id: 't-1', text: 'Older turn' }), ...initialTurns],
+        hasOlder: false,
+        onloadolder: onLoadOlder,
+      });
     });
 
-    const { rerender } = render(ChatTranscript, {
-      props: { turns: currentTurns, hasOlder: true, onloadolder: onLoadOlder },
+    const rendered = render(ChatTranscript, {
+      props: { turns: initialTurns, hasOlder: true, onloadolder: onLoadOlder },
     });
+    controls.rerender = rendered.rerender;
 
     const log = screen.getByRole('log');
-    Object.defineProperty(log, 'scrollHeight', { get: () => height, configurable: true });
+    Object.defineProperty(log, 'scrollHeight', {
+      get: () => (log.querySelector('[data-turn-id="t-1"]') ? 650 : 400),
+      configurable: true,
+    });
+    Object.defineProperty(log, 'clientHeight', { value: 300, configurable: true });
     Object.defineProperty(log, 'scrollTop', { value: 10, writable: true, configurable: true });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Show it' }));
-    expect(onLoadOlder).toHaveBeenCalledTimes(1);
-    await rerender({ turns: currentTurns, hasOlder: false, onloadolder: onLoadOlder });
-    expect(log.scrollTop).toBe(260);
+    await fireEvent.scroll(log);
+    await vi.waitFor(() => expect(onLoadOlder).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(log.scrollTop).toBe(260));
   });
 
-  it('scrolls focusTurnId into view once present', async () => {
-    const turns = [
-      makeTurn({ turn_id: 't-older', text: 'Target turn' }),
-      makeTurn({ turn_id: 't-latest', text: 'Latest turn' }),
-    ];
+  it('scrolls focusTurnId into view once delayed turns arrive and restores bottom scroll when absent', async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;
 
-    render(ChatTranscript, { props: { turns, focusTurnId: 't-older' } });
+    const { rerender } = render(ChatTranscript, {
+      props: { turns: [], hasOlder: true, focusTurnId: 't-older' },
+    });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+
+    await rerender({
+      turns: [
+        makeTurn({ turn_id: 't-older', text: 'Target turn' }),
+        makeTurn({ turn_id: 't-latest', text: 'Latest turn' }),
+      ],
+      hasOlder: false,
+      focusTurnId: 't-older',
+    });
     await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+
+    const log = screen.getByRole('log');
+    Object.defineProperty(log, 'scrollHeight', { value: 500, configurable: true });
+    Object.defineProperty(log, 'scrollTop', { value: 0, writable: true, configurable: true });
+    await rerender({
+      turns: [makeTurn({ turn_id: 't-latest', text: 'Latest turn' })],
+      hasOlder: false,
+      focusTurnId: 't-missing',
+    });
+    await vi.waitFor(() => expect(log.scrollTop).toBe(500));
   });
 });

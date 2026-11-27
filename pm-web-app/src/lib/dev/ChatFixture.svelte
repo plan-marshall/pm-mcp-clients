@@ -112,6 +112,7 @@
     subscribe: inner.subscribe,
     connect: async () => {},
     disconnect: () => {},
+    retryStream: () => {},
     openNew: async () => fixtureChat,
     loadOlder: async () => {},
     loadToTurn: async () => true,

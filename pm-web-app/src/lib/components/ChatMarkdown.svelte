@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Token, Tokens } from 'marked';
+  import { copyToClipboard } from '../chat/client';
   import {
     formatExternalLabel,
     hrefForTurnRef,
@@ -45,7 +46,7 @@
   }
 
   function copyBlock(code: string): void {
-    void navigator.clipboard?.writeText(code);
+    void copyToClipboard(code);
   }
 </script>
 
@@ -171,7 +172,7 @@
     {@const codeBody = mermaid ? mermaid.code : codeToken.text}
     <div class="chat-markdown__code-block">
       <div class="chat-markdown__code-head">
-        <span class="chat-markdown__code-lang">{langLabel || 'text'}</span>
+        <span class="chat-markdown__code-lang">{langLabel || $t('web.chat.code_text')}</span>
         <Button variant="ghost" size="sm" icon="act.copy" onclick={() => copyBlock(codeBody)}>
           {$t('web.common.copy')}
         </Button>

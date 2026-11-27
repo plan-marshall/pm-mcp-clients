@@ -47,7 +47,7 @@ describe('chat store and follow lifecycle', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens the subject event stream before reading chat, ignores pre-settle events, and applies post-settle deltas in order', async () => {
+  it('opens the subject event stream before reading chat, buffers connect-window events without reverting completed turns, and applies post-settle deltas in order', async () => {
     const order: string[] = [];
     let emitEvent: (event: string, data: unknown) => void = () => {};
     let resolveRead!: (value: ChatResource) => void;
@@ -71,10 +71,10 @@ describe('chat store and follow lifecycle', () => {
     expect(order[0]).toBe('stream:/api/v1/plans/fix-relay/events');
     expect(order[1]).toBe('GET:/api/v1/plans/fix-relay/chat');
 
-    // Event emitted before the read settles must be ignored.
+    // Event for an already-completed snapshot turn stays ignored; a live turn missed by snapshot is buffered and applied.
     emitEvent('chat.turn.started', {
       chat_id: 'chat-1',
-      turn_id: 't-stale',
+      turn_id: 't-done',
       kind: 'message',
       author: 'planner',
       format: 'markdown',
@@ -83,10 +83,44 @@ describe('chat store and follow lifecycle', () => {
       context: { knows: [], as_of: '2026-11-27T10:00:00Z' },
       text: null,
     });
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-1',
+      turn_id: 't-buffered',
+      kind: 'message',
+      author: 'planner',
+      format: 'markdown',
+      untrusted: false,
+      model: 'sonnet',
+      context: { knows: [], as_of: '2026-11-27T10:00:00Z' },
+      text: null,
+    });
+    emitEvent('chat.turn.delta', { chat_id: 'chat-1', turn_id: 't-buffered', text: 'Buffered!' });
 
-    resolveRead(makeChat());
+    resolveRead(
+      makeChat({
+        turns: [
+          {
+            turn_id: 't-done',
+            kind: 'message',
+            author: 'planner',
+            status: 'complete',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'Already in snapshot',
+            steps: [],
+            refs: [],
+            at: '2026-11-27T10:00:00Z',
+            reason: null,
+            lines: [],
+          },
+        ],
+      }),
+    );
     await pendingConnect;
-    expect(get(store).turns).toEqual([]);
+    expect(get(store).turns.find((t) => t.turn_id === 't-done')?.status).toBe('complete');
+    expect(get(store).turns.find((t) => t.turn_id === 't-done')?.text).toBe('Already in snapshot');
+    expect(get(store).turns.find((t) => t.turn_id === 't-buffered')?.text).toBe('Buffered!');
 
     // Post-settle events for another chat are ignored.
     emitEvent('chat.turn.started', {
@@ -100,7 +134,7 @@ describe('chat store and follow lifecycle', () => {
       context: { knows: [], as_of: '2026-11-27T10:00:00Z' },
       text: null,
     });
-    expect(get(store).turns).toEqual([]);
+    expect(get(store).turns.some((t) => t.turn_id === 't-other')).toBe(false);
 
     // Post-settle deltas append in order.
     emitEvent('chat.turn.started', {
@@ -603,7 +637,7 @@ describe('chat store and follow lifecycle', () => {
     vi.spyOn(apiClient, 'request')
       .mockRejectedValueOnce(Object.assign(new Error('target_not_found'), { status: 404 }))
       .mockResolvedValueOnce(makeChat({ before: 't-prev' }))
-      .mockRejectedValueOnce(boom);
+      .mockRejectedValue(boom);
 
     const archiveStore = createChatStore(planTarget, { archive: true });
     await archiveStore.connect();
@@ -829,5 +863,201 @@ describe('chat store and follow lifecycle', () => {
     await store.openNew();
     expect(get(store).chat?.id).toBe('chat-3');
     expect(req).toHaveBeenCalledTimes(9);
+  });
+
+  it('hardens draft isolation, stream-ahead snapshot protection, operator ID reconciliation, retry draft preservation, stale loadOlder rejection, UUID fallback, and archive openNew guard', async () => {
+    let emitEvent: (event: string, data: unknown) => void = () => {};
+    const pathRetry = vi.fn();
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation(
+      (_path, onEvent, _sig, _onState, onRetry) => {
+        emitEvent = onEvent;
+        onRetry?.(pathRetry);
+        return () => {};
+      },
+    );
+
+    // 1. Draft saved under chat-1 must NOT leak into replaced chat-2; retry must NOT overwrite newer draft B.
+    localStorage.setItem(
+      storageKeyForDraft(planTarget),
+      JSON.stringify({ chatId: 'chat-1', text: 'Old draft from chat-1' }),
+    );
+
+    let resolveOlderPage!: (res: ChatResource) => void;
+    let resolveStop!: (res: ChatResource) => void;
+    let resolveSecondSend!: (res: { turn_id: string }) => void;
+
+    const req = vi
+      .spyOn(apiClient, 'request')
+      .mockResolvedValueOnce(makeChat({ id: 'chat-2', before: 't-0' }))
+      // Older page request that stays in flight across openNew()
+      .mockImplementationOnce(
+        () =>
+          new Promise<ChatResource>((resolve) => {
+            resolveOlderPage = resolve;
+          }),
+      )
+      // openNew() ends chat-2 then opens chat-3
+      .mockResolvedValueOnce(makeChat({ id: 'chat-2', state: 'chat.end' }))
+      .mockResolvedValueOnce(makeChat({ id: 'chat-3', state: 'chat.open', turns: [] }))
+      // Retry turn A fails, then second send succeeds; or first send fails, user types B, retries A:
+      .mockRejectedValueOnce(new ClientError('network_offline'))
+      .mockResolvedValueOnce({ turn_id: 't-retried-A' })
+      // Concurrent send of 'Continue' from another device before 202:
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ turn_id: string }>((resolve) => {
+            resolveSecondSend = resolve;
+          }),
+      )
+      // stopReply snapshot resolves slower than a delta arriving after stop started:
+      .mockImplementationOnce(
+        () =>
+          new Promise<ChatResource>((resolve) => {
+            resolveStop = resolve;
+          }),
+      );
+
+    const store = createChatStore(planTarget);
+    await store.connect();
+    expect(get(store).draft).toBe('');
+    expect(localStorage.getItem(storageKeyForDraft(planTarget))).toBeNull();
+
+    // retryStream triggers path retry callback without remounting.
+    store.retryStream();
+    expect(pathRetry).toHaveBeenCalledTimes(1);
+
+    // Stale loadOlder from chat-2 must be ignored after openNew switches to chat-3, and loadingOlder stays false.
+    const staleOlder = store.loadOlder();
+    await store.openNew();
+    expect(get(store).chat?.id).toBe('chat-3');
+    expect(get(store).loadingOlder).toBe(false);
+    resolveOlderPage(
+      makeChat({
+        id: 'chat-2',
+        turns: [
+          {
+            turn_id: 't-leak',
+            kind: 'message',
+            author: 'planner',
+            status: 'complete',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'Leaked from chat-2',
+            steps: [],
+            refs: [],
+            at: '2026-11-27T08:00:00Z',
+            reason: null,
+            lines: [],
+          },
+        ],
+      }),
+    );
+    await staleOlder;
+    expect(get(store).turns.some((t) => t.turn_id === 't-other')).toBe(false);
+
+    // Works when crypto.randomUUID is unavailable (LAN HTTP fallback).
+    const origRandomUUID = crypto.randomUUID;
+    Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+    try {
+      store.setDraft('Failed A');
+      await store.send();
+      const failedA = get(store).turns[0];
+      expect(failedA?.delivery).toBe('not_sent');
+      expect(failedA?.client_turn_id).toMatch(/^[0-9a-f-]{36}$/);
+
+      // User types newer draft B, then clicks Retry on failed A: retry success must preserve draft B.
+      store.setDraft('Draft B stays');
+      await store.retryTurn(failedA!.client_turn_id!);
+      expect(get(store).draft).toBe('Draft B stays');
+      expect(get(store).turns[0]?.turn_id).toBe('t-retried-A');
+      expect(get(store).turns[0]?.delivery).toBe('accepted');
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', { value: origRandomUUID, configurable: true });
+    }
+
+    // Other device sends identical text 'Continue' before local 202: reconciles by ID only, keeping both turns.
+    store.setDraft('Continue');
+    const localContinue = store.send();
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-3',
+      turn_id: 't-other-device',
+      kind: 'message',
+      author: 'operator',
+      format: 'plain',
+      untrusted: false,
+      text: 'Continue',
+    });
+    expect(
+      get(store).turns.some((t) => Boolean(t.client_turn_id && t.delivery === 'sending')),
+    ).toBe(true);
+    await vi.waitFor(() => expect(resolveSecondSend).toBeTypeOf('function'));
+    resolveSecondSend({ turn_id: 't-local-continue' });
+    await localContinue;
+    expect(get(store).turns.filter((t) => t.text === 'Continue')).toHaveLength(2);
+    expect(get(store).turns.find((t) => t.turn_id === 't-local-continue')?.delivery).toBe(
+      'accepted',
+    );
+
+    // Slower stopReply snapshot must NOT overwrite streamed deltas that arrived while stop was in flight.
+    emitEvent('chat.turn.started', {
+      chat_id: 'chat-3',
+      turn_id: 't-stream',
+      kind: 'message',
+      author: 'planner',
+      format: 'markdown',
+      untrusted: false,
+      text: 'Part 1',
+    });
+    const stopPromise = store.stopReply('t-stream');
+    emitEvent('chat.turn.delta', { chat_id: 'chat-3', turn_id: 't-stream', text: ' Part 2' });
+    resolveStop(
+      makeChat({
+        id: 'chat-3',
+        turns: [
+          {
+            turn_id: 't-stream',
+            kind: 'message',
+            author: 'planner',
+            status: 'stopped',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'Part 1',
+            steps: [],
+            refs: [],
+            at: '2026-11-27T10:00:00Z',
+            reason: null,
+            lines: [],
+          },
+        ],
+      }),
+    );
+    await stopPromise;
+    expect(get(store).turns.find((t) => t.turn_id === 't-stream')?.text).toBe('Part 1 Part 2');
+
+    // Archive store blocks openNew completely without calling endChat/openChat.
+    const callsBeforeArchive = req.mock.calls.length;
+    const archiveStore = createChatStore(planTarget, { archive: true });
+    expect(await archiveStore.openNew()).toBeNull();
+    expect(req.mock.calls.length).toBe(callsBeforeArchive);
+  });
+
+  it('reuses shared /api/v1/events connection and wires retry when subscribePathEvents targets /api/v1/events', () => {
+    const states: string[] = [];
+    const retryFns: Array<() => void> = [];
+    const subSpy = vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+
+    const unsub = apiClient.subscribePathEvents(
+      '/api/v1/events',
+      () => {},
+      undefined,
+      (s) => states.push(s),
+      (retry) => retryFns.push(retry),
+    );
+    expect(subSpy).toHaveBeenCalledTimes(1);
+    expect(states[0]).toBe('connecting');
+    retryFns[0]?.();
+    unsub();
   });
 });

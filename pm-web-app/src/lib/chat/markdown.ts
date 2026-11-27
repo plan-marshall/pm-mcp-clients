@@ -1,4 +1,5 @@
 import { marked, type Token, type Tokens } from 'marked';
+import { isWebAddress } from '../components/ExternalLink.svelte';
 import type { ChatSubject, TurnRef } from './types';
 
 export interface TextSegment {
@@ -14,26 +15,43 @@ export interface MermaidRenderResult {
 }
 
 const REFERENCE_CHIP_KINDS = new Set<TurnRef['kind']>(['task', 'file', 'decision', 'plan']);
+const HOST_CHAR_RE = /[a-z0-9.-]/i;
+const IDENTIFIER_CHAR_RE = /[A-Za-z0-9_-]/;
+const FILE_PREFIX_BOUNDARY_RE = /[A-Za-z0-9_./-]/;
 
 /**
- * Checks whether a URL uses an allowed external web protocol (`http:` or `https:`).
+ * Checks whether a URL uses an allowed canonical external web protocol (`http://` or `https://`).
  *
  * @param raw raw address from Markdown link or image token
- * @returns parsed URL when safe, or `null` otherwise
+ * @returns parsed URL when safe and canonical, or `null` otherwise
  */
 export function parseSafeWebUrl(raw: string): URL | null {
-  if (!raw || raw.startsWith('//')) {
+  if (!isWebAddress(raw)) {
     return null;
   }
   try {
-    const url = new URL(raw);
-    if (url.protocol === 'http:' || url.protocol === 'https:') {
-      return url;
-    }
-    return null;
+    return new URL(raw.trim());
   } catch {
     return null;
   }
+}
+
+function labelContainsHost(clean: string, host: string): boolean {
+  const lowerClean = clean.toLowerCase();
+  const lowerHost = host.toLowerCase();
+  let start = 0;
+  while (start < lowerClean.length) {
+    const idx = lowerClean.indexOf(lowerHost, start);
+    if (idx < 0) return false;
+    const before = idx > 0 ? lowerClean[idx - 1] : '';
+    const afterIndex = idx + lowerHost.length;
+    const after = afterIndex < lowerClean.length ? lowerClean[afterIndex] : '';
+    if ((!before || !HOST_CHAR_RE.test(before)) && (!after || !HOST_CHAR_RE.test(after))) {
+      return true;
+    }
+    start = idx + 1;
+  }
+  return false;
 }
 
 /**
@@ -41,7 +59,7 @@ export function parseSafeWebUrl(raw: string): URL | null {
  *
  * @param label visible link or alt label
  * @param url parsed `http:` / `https:` target URL
- * @returns label with `(host)` appended if not already named
+ * @returns label with `(host)` appended if not already named as a distinct hostname
  */
 export function formatExternalLabel(label: string, url: URL): string {
   const clean = label.trim() || url.href;
@@ -49,7 +67,7 @@ export function formatExternalLabel(label: string, url: URL): string {
   if (!host) {
     return clean;
   }
-  if (clean.toLowerCase().includes(host.toLowerCase())) {
+  if (labelContainsHost(clean, host)) {
     return clean;
   }
   return `${clean} (${host})`;
@@ -130,6 +148,32 @@ export function hrefForTurnRef(ref: TurnRef, fallbackSubject?: ChatSubject | nul
 
 type RefWithId = TurnRef & { id: string };
 
+function hasRefBoundaries(
+  text: string,
+  index: number,
+  length: number,
+  kind: TurnRef['kind'],
+): boolean {
+  const before = index > 0 ? text[index - 1] : '';
+  const afterIndex = index + length;
+  const after = afterIndex < text.length ? text[afterIndex] : '';
+  const beforeInvalid =
+    kind === 'file' ? FILE_PREFIX_BOUNDARY_RE.test(before) : IDENTIFIER_CHAR_RE.test(before);
+  if (before && beforeInvalid) {
+    return false;
+  }
+  if (after && IDENTIFIER_CHAR_RE.test(after)) {
+    return false;
+  }
+  if (
+    kind === 'file' &&
+    (after === '/' || (after === '.' && IDENTIFIER_CHAR_RE.test(text[afterIndex + 1] ?? '')))
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function findEarliestRefMatch(
   text: string,
   cursor: number,
@@ -139,14 +183,21 @@ function findEarliestRefMatch(
   let bestRef: RefWithId | null = null;
 
   for (const candidate of candidates) {
-    const idx = text.indexOf(candidate.id, cursor);
-    if (idx < 0) continue;
-    const isEarlier = bestIndex === -1 || idx < bestIndex;
-    const isLongerTie =
-      idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length;
-    if (isEarlier || isLongerTie) {
-      bestIndex = idx;
-      bestRef = candidate;
+    let searchFrom = cursor;
+    while (searchFrom <= text.length - candidate.id.length) {
+      const idx = text.indexOf(candidate.id, searchFrom);
+      if (idx < 0) break;
+      if (hasRefBoundaries(text, idx, candidate.id.length, candidate.kind)) {
+        const isEarlier = bestIndex === -1 || idx < bestIndex;
+        const isLongerTie =
+          idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length;
+        if (isEarlier || isLongerTie) {
+          bestIndex = idx;
+          bestRef = candidate;
+        }
+        break;
+      }
+      searchFrom = idx + 1;
     }
   }
 
@@ -233,10 +284,8 @@ function countFenceRun(trimmed: string, ch: string): number {
 }
 
 function isClosingFenceLine(trimmed: string, ch: string, openLen: number): boolean {
-  return (
-    trimmed.startsWith(ch.repeat(openLen)) &&
-    trimmed.slice(openLen).replaceAll(ch, '').trim() === ''
-  );
+  const run = countFenceRun(trimmed, ch);
+  return run >= openLen && trimmed.slice(run).trim() === '';
 }
 
 /**

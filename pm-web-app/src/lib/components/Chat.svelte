@@ -18,6 +18,8 @@
     turnId?: string | null;
     opener?: HTMLElement | null;
     localDevice?: string | null;
+    /** Optional reference candidates known for the subject (tasks, files, decisions, plans). */
+    references?: TurnRef[];
     onhide?: () => void;
     onnew?: () => void;
     microphone?: Snippet;
@@ -32,6 +34,7 @@
     turnId = null,
     opener = null,
     localDevice = null,
+    references = [],
     onhide,
     onnew,
     microphone,
@@ -164,13 +167,26 @@
   let availableRefs = $derived.by(() => {
     const seen = new Set<string>();
     const list: Array<TurnRef & { id: string }> = [];
+    const pushRef = (ref: TurnRef) => {
+      if (!ref.id) return;
+      const key = `${ref.kind}:${ref.id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      list.push({ ...ref, id: ref.id });
+    };
+    for (const ref of references) {
+      pushRef(ref);
+    }
+    for (const knowsItem of chatState.chat?.context?.knows ?? []) {
+      const idArg = knowsItem.args?.id;
+      const kindArg = knowsItem.args?.item;
+      if (typeof idArg === 'string' && idArg && kindArg === 'decision') {
+        pushRef({ kind: 'decision', id: idArg, subject: chatSubject });
+      }
+    }
     for (const turn of chatState.turns) {
       for (const ref of turn.refs) {
-        if (!ref.id) continue;
-        const key = `${ref.kind}:${ref.id}`;
-        if (seen.has(key)) continue;
-        seen.add(key);
-        list.push({ ...ref, id: ref.id });
+        pushRef(ref);
       }
     }
     return list;
@@ -307,9 +323,11 @@
         <Button variant="ghost" size="sm" onclick={hideChat}>
           {$t('control.chat.hide')}
         </Button>
-        <Button variant="secondary" size="sm" onclick={requestNewChat}>
-          {$t('control.chat.new')}
-        </Button>
+        {#if !archive}
+          <Button variant="secondary" size="sm" onclick={requestNewChat}>
+            {$t('control.chat.new')}
+          </Button>
+        {/if}
       </div>
     </div>
 
@@ -335,10 +353,25 @@
     {#if knowsSummary}
       <p class="chat__knows">{knowsSummary}</p>
     {/if}
+    {#if !archive && chatState.chat && chatState.streamState === 'offline'}
+      <div class="chat__stream-offline" role="status">
+        <span>{$t('web.frame.live.offline')}</span>
+        <Button variant="ghost" size="sm" onclick={() => activeStore.retryStream()}>
+          {$t('web.frame.live.retry')}
+        </Button>
+      </div>
+    {/if}
   </header>
 
   <div class="chat__body">
-    {#if chatState.turns.length === 0 && !chatState.loading}
+    {#if chatState.error && !chatState.loading && !chatState.chat && chatState.turns.length === 0}
+      <div class="chat__error" role="alert">
+        <p class="chat__error-line">{$t('web.chat.load_failed')}</p>
+        <Button variant="secondary" size="sm" onclick={() => void activeStore.connect({ turnId })}>
+          {$t('common.action.retry')}
+        </Button>
+      </div>
+    {:else if chatState.turns.length === 0 && !chatState.loading}
       <div class="chat__empty">
         <p class="chat__empty-line">
           {$t('control.chat.empty', {
@@ -517,11 +550,34 @@
     color: var(--color-text-muted);
   }
 
+  .chat__stream-offline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-danger-text);
+  }
+
   .chat__body {
     flex: 1;
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .chat__error {
+    padding: var(--space-4) var(--space-3);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .chat__error-line {
+    margin: 0;
+    color: var(--color-danger-text);
+    font-size: var(--text-base);
   }
 
   .chat__empty {

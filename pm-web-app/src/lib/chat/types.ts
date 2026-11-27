@@ -180,14 +180,16 @@ export interface ChatEndedPayload {
   device?: string | null;
 }
 
-export const CATALOGUED_CHAT_EVENTS = new Set<string>([
-  'chat.turn.started',
-  'chat.turn.delta',
-  'chat.turn.progress',
-  'chat.turn.completed',
-  'chat.proposal',
-  'chat.ended',
-]);
+export interface ChatEventPayloadMap {
+  'chat.turn.started': ChatTurnStartedPayload;
+  'chat.turn.delta': ChatTurnDeltaPayload;
+  'chat.turn.progress': ChatTurnProgressPayload;
+  'chat.turn.completed': ChatTurnCompletedPayload;
+  'chat.proposal': ChatProposalPayload;
+  'chat.ended': ChatEndedPayload;
+}
+
+export type CataloguedChatEvent = keyof ChatEventPayloadMap;
 
 /**
  * @param state a chat lifecycle state

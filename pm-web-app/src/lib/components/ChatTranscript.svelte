@@ -39,6 +39,8 @@
   let logEl: HTMLElement | undefined = $state();
   let pinnedToBottom = $state(true);
   let hasUnreadReply = $state(false);
+  let focusMissing = $state(false);
+  let topLoading = false;
   let previousTurnCount = 0;
   let previousFirstId: string | null = null;
   let previousLastText = '';
@@ -69,6 +71,9 @@
     if (pinnedToBottom) {
       hasUnreadReply = false;
     }
+    if (logEl.scrollTop <= 16 && hasOlder && !loadingOlder && !topLoading && onloadolder) {
+      void loadOlderPreservingAnchor();
+    }
   }
 
   function jumpToBottom(): void {
@@ -78,14 +83,41 @@
     hasUnreadReply = false;
   }
 
+  function findTurnElement(container: HTMLElement, targetTurnId: string): HTMLElement | null {
+    const nodes = container.querySelectorAll('[data-turn-id]');
+    for (const node of nodes) {
+      if (node instanceof HTMLElement && node.getAttribute('data-turn-id') === targetTurnId) {
+        return node;
+      }
+    }
+    return null;
+  }
+
   async function loadOlderPreservingAnchor(): Promise<void> {
-    if (!logEl || !onloadolder) return;
+    if (!logEl || !onloadolder || topLoading) return;
+    topLoading = true;
     const beforeHeight = logEl.scrollHeight;
     const beforeTop = logEl.scrollTop;
-    await onloadolder();
-    await tick();
-    if (logEl) {
+    const anchorEl = logEl.querySelector('[data-turn-id]');
+    const anchorId = anchorEl instanceof HTMLElement ? anchorEl.getAttribute('data-turn-id') : null;
+    const beforeAnchorTop = anchorEl instanceof HTMLElement ? anchorEl.offsetTop : 0;
+    try {
+      await onloadolder();
+      await tick();
+      if (!logEl) return;
+      if (anchorId) {
+        const afterAnchorEl = findTurnElement(logEl, anchorId);
+        if (afterAnchorEl) {
+          const offsetDelta = afterAnchorEl.offsetTop - beforeAnchorTop;
+          if (offsetDelta > 0) {
+            logEl.scrollTop = beforeTop + offsetDelta;
+            return;
+          }
+        }
+      }
       logEl.scrollTop = beforeTop + (logEl.scrollHeight - beforeHeight);
+    } finally {
+      topLoading = false;
     }
   }
 
@@ -105,7 +137,10 @@
     previousFirstId = firstId;
     previousLastText = lastText;
 
-    if (appendedOrUpdated && (!focusTurnId || scrolledFocusTurnId === focusTurnId)) {
+    if (
+      appendedOrUpdated &&
+      (!focusTurnId || scrolledFocusTurnId === focusTurnId || focusMissing)
+    ) {
       if (pinnedToBottom) {
         void tick().then(() => {
           if (logEl) {
@@ -119,18 +154,25 @@
   });
 
   $effect(() => {
+    // Track turns, hasOlder, and loadingOlder reactively so delayed/paged focus resolution re-runs.
+    const count = turns.length;
+    const morePages = hasOlder;
+    const paging = loadingOlder;
     if (!focusTurnId) {
       scrolledFocusTurnId = '';
+      focusMissing = false;
       return;
     }
-    if (!logEl || focusTurnId === scrolledFocusTurnId) return;
-    const match = Array.from(logEl.querySelectorAll('[data-turn-id]')).find(
-      (node) => node.getAttribute('data-turn-id') === focusTurnId,
-    );
-    if (match instanceof HTMLElement) {
+    if (!logEl || focusTurnId === scrolledFocusTurnId || focusMissing) return;
+    const match = findTurnElement(logEl, focusTurnId);
+    if (match) {
       scrolledFocusTurnId = focusTurnId;
+      focusMissing = false;
       pinnedToBottom = false;
       match.scrollIntoView?.({ block: 'nearest' });
+    } else if (count > 0 && !morePages && !paging) {
+      focusMissing = true;
+      jumpToBottom();
     }
   });
 </script>
@@ -206,6 +248,7 @@
   }
 
   .chat-transcript__log {
+    position: relative;
     flex: 1;
     overflow-y: auto;
     display: flex;

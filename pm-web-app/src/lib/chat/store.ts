@@ -2,6 +2,7 @@ import { writable, type Readable } from 'svelte/store';
 import type { EventStreamState } from '../api/client';
 import {
   acceptChatProposal,
+  createClientTurnId,
   endChat,
   isMissingChatError,
   openChat,
@@ -13,9 +14,10 @@ import {
 } from './client';
 import { storageKeyForDraft } from './routes';
 import {
-  CATALOGUED_CHAT_EVENTS,
   isChatEndedState,
+  type CataloguedChatEvent,
   type ChatEndedPayload,
+  type ChatEventPayloadMap,
   type ChatProposalPayload,
   type ChatResource,
   type ChatStatus,
@@ -49,6 +51,7 @@ export interface ChatStoreState {
 export interface ChatStore extends Readable<ChatStoreState> {
   connect: (options?: { turnId?: string | null }) => Promise<void>;
   disconnect: () => void;
+  retryStream: () => void;
   openNew: () => Promise<ChatResource | null>;
   loadOlder: () => Promise<void>;
   loadToTurn: (turnId: string) => Promise<boolean>;
@@ -66,6 +69,8 @@ interface StoredDraft {
   chatId: string | null;
   text: string;
 }
+
+const MAX_BUFFERED_STREAM_EVENTS = 500;
 
 function readStoredDraft(key: string): StoredDraft {
   try {
@@ -107,19 +112,33 @@ function clearStoredDraft(key: string): void {
 function mergeServerAndPending(
   serverTurns: ChatTurn[],
   previousTurns: LocalChatTurn[],
+  streamTouchedTurns: ReadonlySet<string>,
 ): LocalChatTurn[] {
+  const prevById = new Map<string, LocalChatTurn>();
+  for (const prev of previousTurns) {
+    prevById.set(prev.turn_id, prev);
+  }
+
   const byId = new Map<string, LocalChatTurn>();
   for (const turn of serverTurns) {
-    byId.set(turn.turn_id, { ...turn });
+    const prev = prevById.get(turn.turn_id);
+    if (prev && streamTouchedTurns.has(turn.turn_id)) {
+      byId.set(turn.turn_id, prev);
+    } else {
+      byId.set(turn.turn_id, {
+        ...turn,
+        ...(prev?.client_turn_id ? { client_turn_id: prev.client_turn_id } : {}),
+        ...(prev?.delivery ? { delivery: prev.delivery } : {}),
+      });
+    }
   }
+
   const merged = Array.from(byId.values());
   // Preserve failed ('not_sent') or still-pending local turns not yet reflected in server turns.
   for (const prev of previousTurns) {
     if (!prev.delivery) continue;
-    if (prev.delivery === 'not_sent') {
-      if (!byId.has(prev.turn_id)) {
-        merged.push(prev);
-      }
+    if (prev.delivery === 'not_sent' && !byId.has(prev.turn_id)) {
+      merged.push(prev);
       continue;
     }
     if (prev.delivery === 'sending' && !byId.has(prev.turn_id)) {
@@ -157,8 +176,8 @@ function nextStateAfterProposalUpdate(
  * Creates a self-contained reactive chat store bound to one `ChatTarget`.
  *
  * Follows the ordering rule: subscribes to the subject's event stream before reading chat state,
- * ignores events until the initial read settles, filters events by `chat_id`, and re-reads when the
- * stream emits `reset`.
+ * buffers events until the initial snapshot settles, filters events by `chat_id`, preserves newer
+ * stream updates against slower snapshots, and re-reads when the stream emits `reset`.
  *
  * @param target chat subject
  * @param options `{ archive }` when inspecting ended work read-only
@@ -170,7 +189,11 @@ export function createChatStore(
 ): ChatStore {
   const archive = Boolean(options.archive);
   const draftKey = storageKeyForDraft(target);
-  const initialDraft = readStoredDraft(draftKey);
+  let pendingStoredDraft: StoredDraft | null = readStoredDraft(draftKey);
+  // Pre-open drafts with no bound chatId remain immediately visible until connect() resolves chat.id.
+  const preOpenText = pendingStoredDraft.chatId === null ? pendingStoredDraft.text : '';
+  let draftTouched = false;
+  let draftVersion = 0;
 
   let state: ChatStoreState = {
     target,
@@ -184,7 +207,7 @@ export function createChatStore(
     sending: false,
     proposalBusy: false,
     error: null,
-    draft: initialDraft.text,
+    draft: preOpenText,
     endedBy: null,
     streamState: 'connecting',
   };
@@ -196,28 +219,107 @@ export function createChatStore(
   };
 
   let unsubscribeStream: (() => void) | null = null;
+  let retryStreamFn: (() => void) | null = null;
   let settled = false;
+  let bufferedEvents: Array<{ event: string; data: unknown }> = [];
   let readSeq = 0;
+  let olderReqSeq = 0;
+  let streamSeq = 0;
+  let chatMetaTouchedSeq = 0;
+  const turnTouchedSeq = new Map<string, number>();
 
-  function applySnapshot(resource: ChatResource): void {
-    const turns = mergeServerAndPending(resource.turns, state.turns);
+  function resolveSnapshotDraft(
+    resourceId: string,
+    prevChatId: string | null,
+  ): Partial<ChatStoreState> {
+    if (prevChatId === null) {
+      if (!pendingStoredDraft) return {};
+      const stored = pendingStoredDraft;
+      pendingStoredDraft = null;
+      if (draftTouched) {
+        writeStoredDraft(draftKey, resourceId, state.draft);
+        return {};
+      }
+      if (stored.chatId === null || stored.chatId === resourceId) {
+        if (stored.text && stored.chatId === null) {
+          writeStoredDraft(draftKey, resourceId, stored.text);
+        }
+        if (state.draft !== stored.text) {
+          draftVersion += 1;
+          return { draft: stored.text };
+        }
+        return {};
+      }
+      // Stored draft belongs to an earlier replaced chat: discard without leaking across chats.
+      clearStoredDraft(draftKey);
+      if (state.draft) {
+        draftVersion += 1;
+        return { draft: '' };
+      }
+      return {};
+    }
+
+    if (prevChatId !== resourceId) {
+      pendingStoredDraft = null;
+      draftTouched = false;
+      clearStoredDraft(draftKey);
+      draftVersion += 1;
+      return { draft: '', endedBy: null };
+    }
+
+    return {};
+  }
+
+  function applySnapshot(resource: ChatResource, baselineStreamSeq = streamSeq): void {
+    const prevChatId = state.chat?.id ?? null;
+    const sameChat = prevChatId === resource.id;
+    const streamTouchedTurns = new Set<string>();
+    if (sameChat) {
+      for (const [turnId, seq] of turnTouchedSeq) {
+        if (seq > baselineStreamSeq) {
+          streamTouchedTurns.add(turnId);
+        }
+      }
+    } else {
+      turnTouchedSeq.clear();
+      chatMetaTouchedSeq = 0;
+    }
+
+    const turns = mergeServerAndPending(
+      resource.turns,
+      sameChat ? state.turns : [],
+      streamTouchedTurns,
+    );
     const oldestTurnId = oldestServerTurnId(resource);
+    const keepStreamMeta =
+      sameChat && chatMetaTouchedSeq > baselineStreamSeq && state.chat !== null;
+    const nextChat: ChatResource = keepStreamMeta
+      ? {
+          ...resource,
+          state: state.chat!.state,
+          proposal: state.chat!.proposal,
+        }
+      : resource;
+    const draftPatch = resolveSnapshotDraft(resource.id, prevChatId);
+
     patch({
-      chat: resource,
+      chat: nextChat,
       turns,
       hasOlder: oldestTurnId !== null,
       oldestTurnId,
       loading: false,
       error: null,
+      ...draftPatch,
     });
   }
 
   async function refreshFromReset(): Promise<void> {
     const seq = ++readSeq;
+    const baseline = streamSeq;
     try {
       const resource = await readChat(target);
       if (seq !== readSeq) return;
-      applySnapshot(resource);
+      applySnapshot(resource, baseline);
     } catch (error) {
       if (seq !== readSeq) return;
       patch({ error });
@@ -228,9 +330,15 @@ export function createChatStore(
     return state.chat?.id === chatId ? state.chat : null;
   }
 
+  function markTurnTouched(turnId: string): void {
+    streamSeq += 1;
+    turnTouchedSeq.set(turnId, streamSeq);
+  }
+
   function applyTurnStarted(payload: ChatTurnStartedPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
+    markTurnTouched(payload.turn_id);
     const timestamp = payload.at ?? new Date().toISOString();
     const nextTurn: LocalChatTurn = {
       turn_id: payload.turn_id,
@@ -248,35 +356,16 @@ export function createChatStore(
       lines: [],
     };
     const nextTurns = [...state.turns];
-    const existingIndex = nextTurns.findIndex(
-      (turn) =>
-        turn.turn_id === payload.turn_id ||
-        (payload.author === 'operator' &&
-          turn.delivery === 'accepted' &&
-          turn.turn_id === payload.turn_id),
-    );
+    const existingIndex = nextTurns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (existingIndex >= 0) {
-      // A re-announced turn replaces partial text and steps cleanly.
+      // A re-announced turn replaces partial text and steps cleanly while preserving local ack state.
       nextTurns[existingIndex] = {
         ...nextTurn,
         delivery: nextTurns[existingIndex].delivery,
         client_turn_id: nextTurns[existingIndex].client_turn_id,
       };
     } else {
-      const matchingSending =
-        payload.author === 'operator'
-          ? nextTurns.findIndex(
-              (turn) =>
-                turn.author === 'operator' &&
-                turn.delivery === 'sending' &&
-                turn.text === (payload.text ?? ''),
-            )
-          : -1;
-      if (matchingSending >= 0) {
-        nextTurns[matchingSending] = nextTurn;
-      } else {
-        nextTurns.push(nextTurn);
-      }
+      nextTurns.push(nextTurn);
     }
     patch({
       turns: nextTurns,
@@ -292,6 +381,7 @@ export function createChatStore(
     if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
+    markTurnTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     nextTurns[index] = {
       ...nextTurns[index],
@@ -304,6 +394,7 @@ export function createChatStore(
     if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
+    markTurnTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     nextTurns[index] = {
       ...nextTurns[index],
@@ -315,6 +406,7 @@ export function createChatStore(
   function applyTurnCompleted(payload: ChatTurnCompletedPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
+    markTurnTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     const index = nextTurns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index >= 0) {
@@ -357,6 +449,8 @@ export function createChatStore(
   function applyProposalEvent(payload: ChatProposalPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
+    streamSeq += 1;
+    chatMetaTouchedSeq = streamSeq;
     const current = activeChat.proposal;
     if (current?.turn_id !== payload.turn_id) {
       // A newly opened proposal's diff/summary lives on the resource, so re-read snapshot.
@@ -380,6 +474,8 @@ export function createChatStore(
   function applyEndedEvent(payload: ChatEndedPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
+    streamSeq += 1;
+    chatMetaTouchedSeq = streamSeq;
     const nextState = payload.ended_by === 'proposal_carried' ? 'chat.carried' : 'chat.end';
     const nextTurns = state.turns.map((turn) =>
       turn.status === 'streaming' && !turn.delivery
@@ -393,35 +489,66 @@ export function createChatStore(
     });
   }
 
-  function handleStreamEvent(event: string, data: unknown): void {
+  type ChatEventHandlers = {
+    [K in CataloguedChatEvent]: (payload: ChatEventPayloadMap[K]) => void;
+  };
+
+  const eventHandlers: ChatEventHandlers = {
+    'chat.turn.started': applyTurnStarted,
+    'chat.turn.delta': applyTurnDelta,
+    'chat.turn.progress': applyTurnProgress,
+    'chat.turn.completed': applyTurnCompleted,
+    'chat.proposal': applyProposalEvent,
+    'chat.ended': applyEndedEvent,
+  };
+
+  function dispatchStreamEvent(event: string, data: unknown): void {
     if (event === 'reset') {
-      if (settled) {
-        void refreshFromReset();
+      void refreshFromReset();
+      return;
+    }
+    if (!Object.hasOwn(eventHandlers, event) || !data || typeof data !== 'object') {
+      return;
+    }
+    const handler = eventHandlers[event as CataloguedChatEvent] as (payload: unknown) => void;
+    handler(data);
+  }
+
+  function handleStreamEvent(event: string, data: unknown): void {
+    if (!settled) {
+      if (bufferedEvents.length < MAX_BUFFERED_STREAM_EVENTS) {
+        bufferedEvents.push({ event, data });
       }
       return;
     }
-    if (!settled || !CATALOGUED_CHAT_EVENTS.has(event) || !data || typeof data !== 'object') {
+    dispatchStreamEvent(event, data);
+  }
+
+  function flushBufferedEvents(): void {
+    const queued = bufferedEvents;
+    bufferedEvents = [];
+    if (queued.length === 0) return;
+    if (queued.some((item) => item.event === 'reset')) {
+      void refreshFromReset();
       return;
     }
-    switch (event) {
-      case 'chat.turn.started':
-        applyTurnStarted(data as ChatTurnStartedPayload);
-        break;
-      case 'chat.turn.delta':
-        applyTurnDelta(data as ChatTurnDeltaPayload);
-        break;
-      case 'chat.turn.progress':
-        applyTurnProgress(data as ChatTurnProgressPayload);
-        break;
-      case 'chat.turn.completed':
-        applyTurnCompleted(data as ChatTurnCompletedPayload);
-        break;
-      case 'chat.proposal':
-        applyProposalEvent(data as ChatProposalPayload);
-        break;
-      case 'chat.ended':
-        applyEndedEvent(data as ChatEndedPayload);
-        break;
+    for (const item of queued) {
+      if (
+        (item.event === 'chat.turn.started' ||
+          item.event === 'chat.turn.delta' ||
+          item.event === 'chat.turn.progress') &&
+        item.data &&
+        typeof item.data === 'object' &&
+        'turn_id' in item.data
+      ) {
+        const turnId = (item.data as { turn_id?: unknown }).turn_id;
+        const existing = state.turns.find((t) => t.turn_id === turnId);
+        // Do not revert a turn that the initial snapshot already returned in a terminal state.
+        if (existing && existing.status !== 'streaming') {
+          continue;
+        }
+      }
+      dispatchStreamEvent(item.event, item.data);
     }
   }
 
@@ -429,16 +556,28 @@ export function createChatStore(
     if (state.chat && !isChatEndedState(state.chat.state)) {
       return state.chat;
     }
+    const baseline = streamSeq;
     const opened = await openChat(target);
-    applySnapshot(opened);
+    applySnapshot(opened, baseline);
     return opened;
   }
 
-  async function fetchOlderPage(cursor: string, seq: number): Promise<boolean> {
+  async function fetchOlderPage(
+    cursor: string,
+    seq: number,
+    expectedChatId: string | null,
+  ): Promise<boolean> {
+    const pageSeq = ++olderReqSeq;
     patch({ loadingOlder: true });
     try {
       const page = await readChat(target, cursor);
-      if (seq !== readSeq) return false;
+      if (
+        seq !== readSeq ||
+        pageSeq !== olderReqSeq ||
+        (expectedChatId !== null && state.chat?.id !== expectedChatId)
+      ) {
+        return false;
+      }
       const existingIds = new Set(state.turns.map((turn) => turn.turn_id));
       const olderTurns = page.turns.filter((turn) => !existingIds.has(turn.turn_id));
       const nextCursor = oldestServerTurnId(page);
@@ -451,7 +590,11 @@ export function createChatStore(
       });
       return hasMore;
     } catch (error) {
-      if (seq === readSeq) {
+      if (
+        seq === readSeq &&
+        pageSeq === olderReqSeq &&
+        (expectedChatId === null || state.chat?.id === expectedChatId)
+      ) {
         patch({ loadingOlder: false, error });
       }
       return false;
@@ -459,12 +602,17 @@ export function createChatStore(
   }
 
   async function loadPagesUntilTurn(turnId: string, seq: number): Promise<boolean> {
-    while (seq === readSeq && !state.turns.some((turn) => turn.turn_id === turnId)) {
+    const expectedChatId = state.chat?.id ?? null;
+    while (
+      seq === readSeq &&
+      (expectedChatId === null || state.chat?.id === expectedChatId) &&
+      !state.turns.some((turn) => turn.turn_id === turnId)
+    ) {
       const cursor = state.oldestTurnId;
       if (!cursor) {
         return false;
       }
-      const advanced = await fetchOlderPage(cursor, seq);
+      const advanced = await fetchOlderPage(cursor, seq, expectedChatId);
       if (!advanced) {
         break;
       }
@@ -472,29 +620,58 @@ export function createChatStore(
     return state.turns.some((turn) => turn.turn_id === turnId);
   }
 
-  async function postWithTurnId(text: string, clientTurnId: string): Promise<void> {
+  function reconcileAcceptedTurn(clientTurnId: string, serverTurnId: string): LocalChatTurn[] {
+    const hasStreamedServerTurn = state.turns.some(
+      (turn) => turn.turn_id === serverTurnId && turn.client_turn_id !== clientTurnId,
+    );
+    if (hasStreamedServerTurn) {
+      // Remove optimistic placeholder and attach client_turn_id / delivery to the canonical SSE turn.
+      return state.turns
+        .filter((turn) => !(turn.client_turn_id === clientTurnId && turn.turn_id === clientTurnId))
+        .map((turn) =>
+          turn.turn_id === serverTurnId
+            ? { ...turn, client_turn_id: clientTurnId, delivery: 'accepted' as const }
+            : turn,
+        );
+    }
+    return state.turns.map((turn) =>
+      turn.client_turn_id === clientTurnId
+        ? {
+            ...turn,
+            turn_id: serverTurnId,
+            status: 'complete' as const,
+            delivery: 'accepted' as const,
+          }
+        : turn,
+    );
+  }
+
+  async function postWithTurnId(
+    text: string,
+    clientTurnId: string,
+    ownedDraftVersion: number | null,
+  ): Promise<void> {
     patch({ sending: true, error: null });
     try {
       await ensureChatOpen();
       const accepted = await sendChatTurn(target, text, clientTurnId);
-      clearStoredDraft(draftKey);
-      const nextTurns = state.turns.map((turn) =>
-        turn.client_turn_id === clientTurnId
-          ? {
-              ...turn,
-              turn_id: accepted.turn_id,
-              status: 'complete' as const,
-              delivery: 'accepted' as const,
-            }
-          : turn,
-      );
+      const nextTurns = reconcileAcceptedTurn(clientTurnId, accepted.turn_id);
+      const shouldClearDraft = ownedDraftVersion !== null && ownedDraftVersion === draftVersion;
+      if (shouldClearDraft) {
+        clearStoredDraft(draftKey);
+        draftVersion += 1;
+        draftTouched = false;
+      }
       patch({
         sending: false,
-        draft: '',
+        ...(shouldClearDraft ? { draft: '' } : {}),
         turns: nextTurns,
       });
     } catch (error) {
-      writeStoredDraft(draftKey, state.chat?.id ?? null, text);
+      const shouldRestoreDraft = ownedDraftVersion !== null && ownedDraftVersion === draftVersion;
+      if (shouldRestoreDraft) {
+        writeStoredDraft(draftKey, state.chat?.id ?? null, text);
+      }
       const nextTurns = state.turns.map((turn) =>
         turn.client_turn_id === clientTurnId
           ? {
@@ -507,7 +684,7 @@ export function createChatStore(
       patch({
         sending: false,
         error,
-        draft: text,
+        ...(shouldRestoreDraft ? { draft: text } : {}),
         turns: nextTurns,
       });
     }
@@ -518,9 +695,13 @@ export function createChatStore(
 
     async connect(options?: { turnId?: string | null }): Promise<void> {
       unsubscribeStream?.();
+      retryStreamFn = null;
       settled = false;
+      bufferedEvents = [];
+      olderReqSeq += 1;
       const seq = ++readSeq;
-      patch({ loading: true, error: null });
+      const baseline = streamSeq;
+      patch({ loading: true, loadingOlder: false, error: null });
 
       // Follow rule: open the subject stream strictly before reading the chat.
       unsubscribeStream = subscribeTargetEvents(
@@ -529,6 +710,9 @@ export function createChatStore(
         undefined,
         (streamState) => {
           patch({ streamState });
+        },
+        (retry) => {
+          retryStreamFn = retry;
         },
       );
 
@@ -544,13 +728,15 @@ export function createChatStore(
           }
         }
         if (seq !== readSeq) return;
-        applySnapshot(resource);
+        applySnapshot(resource, baseline);
         settled = true;
+        flushBufferedEvents();
         if (options?.turnId) {
           await loadPagesUntilTurn(options.turnId, seq);
         }
       } catch (error) {
         if (seq !== readSeq) return;
+        bufferedEvents = [];
         patch({ loading: false, error });
       }
     },
@@ -558,19 +744,39 @@ export function createChatStore(
     disconnect(): void {
       unsubscribeStream?.();
       unsubscribeStream = null;
+      retryStreamFn = null;
       settled = false;
+      bufferedEvents = [];
+      olderReqSeq += 1;
       readSeq += 1;
+      patch({ loadingOlder: false });
+    },
+
+    retryStream(): void {
+      if (retryStreamFn) {
+        retryStreamFn();
+        return;
+      }
+      void this.connect();
     },
 
     async openNew(): Promise<ChatResource | null> {
-      patch({ loading: true, error: null });
+      if (archive) return null;
+      olderReqSeq += 1;
+      patch({ loading: true, loadingOlder: false, error: null });
       try {
         if (state.chat && !isChatEndedState(state.chat.state)) {
-          await endChat(target);
+          const endBaseline = streamSeq;
+          const ended = await endChat(target);
+          applySnapshot(ended, endBaseline);
         }
+        const openBaseline = streamSeq;
         const opened = await openChat(target);
-        patch({ turns: [], endedBy: null });
-        applySnapshot(opened);
+        clearStoredDraft(draftKey);
+        draftTouched = false;
+        draftVersion += 1;
+        patch({ turns: [], endedBy: null, draft: '' });
+        applySnapshot(opened, openBaseline);
         settled = true;
         return opened;
       } catch (error) {
@@ -581,9 +787,19 @@ export function createChatStore(
 
     async loadOlder(): Promise<void> {
       if (!state.oldestTurnId || state.loadingOlder) return;
+      const expectedChatId = state.chat?.id ?? null;
+      const seq = readSeq;
+      const pageSeq = ++olderReqSeq;
       patch({ loadingOlder: true });
       try {
         const page = await readChat(target, state.oldestTurnId);
+        if (
+          seq !== readSeq ||
+          pageSeq !== olderReqSeq ||
+          (expectedChatId !== null && state.chat?.id !== expectedChatId)
+        ) {
+          return;
+        }
         const existingIds = new Set(state.turns.map((turn) => turn.turn_id));
         const olderTurns = page.turns.filter((turn) => !existingIds.has(turn.turn_id));
         const oldestTurnId = oldestServerTurnId(page);
@@ -594,7 +810,13 @@ export function createChatStore(
           loadingOlder: false,
         });
       } catch (error) {
-        patch({ loadingOlder: false, error });
+        if (
+          seq === readSeq &&
+          pageSeq === olderReqSeq &&
+          (expectedChatId === null || state.chat?.id === expectedChatId)
+        ) {
+          patch({ loadingOlder: false, error });
+        }
       }
     },
 
@@ -603,6 +825,9 @@ export function createChatStore(
     },
 
     setDraft(text: string): void {
+      draftTouched = true;
+      draftVersion += 1;
+      pendingStoredDraft = null;
       writeStoredDraft(draftKey, state.chat?.id ?? null, text);
       patch({ draft: text });
     },
@@ -611,7 +836,9 @@ export function createChatStore(
       if (archive) return;
       const text = overrideText ?? state.draft;
       if (!text.trim()) return;
-      const clientTurnId = crypto.randomUUID();
+      const ownedDraftVersion =
+        overrideText === undefined || overrideText === state.draft ? draftVersion : null;
+      const clientTurnId = createClientTurnId();
       const optimistic: LocalChatTurn = {
         turn_id: clientTurnId,
         client_turn_id: clientTurnId,
@@ -630,7 +857,7 @@ export function createChatStore(
         lines: [],
       };
       patch({ turns: [...state.turns, optimistic] });
-      await postWithTurnId(text, clientTurnId);
+      await postWithTurnId(text, clientTurnId, ownedDraftVersion);
     },
 
     async retryTurn(clientTurnId: string): Promise<void> {
@@ -642,12 +869,17 @@ export function createChatStore(
           : turn,
       );
       patch({ turns: nextTurns });
-      await postWithTurnId(targetTurn.text, clientTurnId);
+      // Only clear/restore composer draft if it still holds the failed turn's text; preserve any newer draft.
+      const ownedDraftVersion = state.draft === targetTurn.text ? draftVersion : null;
+      await postWithTurnId(targetTurn.text, clientTurnId, ownedDraftVersion);
     },
 
     editFailedTurn(clientTurnId: string): void {
       const targetTurn = state.turns.find((turn) => turn.client_turn_id === clientTurnId);
       if (!targetTurn) return;
+      draftTouched = true;
+      draftVersion += 1;
+      pendingStoredDraft = null;
       writeStoredDraft(draftKey, state.chat?.id ?? null, targetTurn.text);
       patch({
         draft: targetTurn.text,
@@ -662,19 +894,21 @@ export function createChatStore(
           .reverse()
           .find((turn) => turn.author !== 'operator' && turn.status === 'streaming')?.turn_id;
       if (!active) return;
+      const baseline = streamSeq;
       try {
         const updated = await stopChatTurn(target, active);
-        applySnapshot(updated);
+        applySnapshot(updated, baseline);
       } catch (error) {
         patch({ error });
       }
     },
 
     async acceptProposal(turnId: string): Promise<void> {
+      const baseline = streamSeq;
       patch({ proposalBusy: true, error: null });
       try {
         const updated = await acceptChatProposal(target, turnId);
-        applySnapshot(updated);
+        applySnapshot(updated, baseline);
       } catch (error) {
         patch({ error });
       } finally {
@@ -683,10 +917,11 @@ export function createChatStore(
     },
 
     async rejectProposal(turnId: string): Promise<void> {
+      const baseline = streamSeq;
       patch({ proposalBusy: true, error: null });
       try {
         const updated = await rejectChatProposal(target, turnId);
-        applySnapshot(updated);
+        applySnapshot(updated, baseline);
       } catch (error) {
         patch({ error });
       } finally {
@@ -695,9 +930,10 @@ export function createChatStore(
     },
 
     async end(): Promise<void> {
+      const baseline = streamSeq;
       try {
         const closed = await endChat(target);
-        applySnapshot(closed);
+        applySnapshot(closed, baseline);
       } catch (error) {
         patch({ error });
       }

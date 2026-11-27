@@ -93,12 +93,72 @@ export function rejectChatProposal(target: ChatTarget, turnId: string): Promise<
 }
 
 /**
+ * Generates an RFC 4122 UUID v4 client turn identifier, including over non-HTTPS LAN URLs where
+ * `crypto.randomUUID()` is unavailable.
+ *
+ * @returns lower-case UUID v4 string
+ */
+export function createClientTurnId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/**
+ * Copies text to the clipboard with a selection-based `document.execCommand('copy')` fallback when
+ * `navigator.clipboard` is unavailable (for example over plain LAN HTTP) or refuses.
+ *
+ * @param text text to copy
+ * @returns whether copying succeeded
+ */
+export async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to selection copy.
+  }
+  if (typeof document === 'undefined' || !document.body) {
+    return false;
+  }
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.appendChild(field);
+  field.select();
+  try {
+    return document.execCommand('copy');
+  } catch {
+    return false;
+  } finally {
+    field.remove();
+  }
+}
+
+/**
  * Opens the SSE stream of `target`'s subject before reading chat state.
  *
  * @param target the chat's subject
  * @param onEvent event handler
  * @param signal optional abort signal
  * @param onState optional stream state callback
+ * @param onRetry optional manual stream retry registrar
  * @returns unsubscribe handle
  */
 export function subscribeTargetEvents(
@@ -106,8 +166,15 @@ export function subscribeTargetEvents(
   onEvent: (event: string, data: unknown) => void,
   signal?: AbortSignal,
   onState?: (state: EventStreamState) => void,
+  onRetry?: (retry: () => void) => void,
 ): () => void {
-  return apiClient.subscribePathEvents(chatRoutesFor(target).streamPath, onEvent, signal, onState);
+  return apiClient.subscribePathEvents(
+    chatRoutesFor(target).streamPath,
+    onEvent,
+    signal,
+    onState,
+    onRetry,
+  );
 }
 
 /**
