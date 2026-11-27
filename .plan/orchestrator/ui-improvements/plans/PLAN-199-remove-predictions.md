@@ -3,8 +3,8 @@
 epic: ui-improvements
 workstream: WS-01
 
-> Staged plan spec, one shippable unit of work, emitted as a `/plan-marshall` plan (medium; the operator, 2026-11-27: "emit another
-> plan-marshall plan"). Cut from the inbox message `doc-review-2026-11-24-001` § 1 (archived), the rest that PLAN-191 (#582) and
+> Staged plan spec, one shippable unit of work, emitted on the operator's word of 2026-11-27 ("emit another plan-marshall plan"), then re-issued as a
+> runbook lane ("From now on again runbook-lane only"). Cut from the inbox message `doc-review-2026-11-24-001` § 1 (archived), the rest that PLAN-191 (#582) and
 > PLAN-188 (#566) did not take. Grounded by a read-only sub-agent at `origin/main` `51b979ad` (pm-mcp-core read at `11ec6b72`).
 > This spec is SELF-SUFFICIENT. **It adds no dependency.**
 
@@ -188,10 +188,10 @@ Line numbers are at `origin/main` `51b979ad`.
 
 ## Hand-Off Command
 
-Lane: `plan-marshall` (medium; the operator, 2026-11-27).
+Lane: `runbook` (the operator, 2026-11-27 late: "From now on again runbook-lane only"; re-issued from the `/plan-marshall` form, whose start was not confirmed).
 
 ```text
-/plan-marshall task="implement .plan/orchestrator/ui-improvements/plans/PLAN-199-remove-predictions.md"
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-199-remove-predictions.md
 ```
 
 ## Write-Boundary
