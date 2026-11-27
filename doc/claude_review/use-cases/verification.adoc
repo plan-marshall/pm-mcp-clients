@@ -36,12 +36,15 @@ concerns differs from the start state, or the state is declared equal on purpose
 |UC-V-02
 |UC-S-02
 |`screens.registry.test.ts` fails when a state is removed from the registry. No screen in any onboarding or entry state
-shows a text that matches a state id (`/[a-z]+\.[a-z-]+/` outside code blocks).
+shows a state id of the scenario as text (an id of `onboarding.json`, e.g. `harness.none`); URLs, install hints and
+example values that merely contain a dot are not state ids.
 |unit test; Chrome walk over all states of `onboarding`
 
 |UC-V-03
 |UC-S-02
-|`entry.lan-open` shows URL, QR code, and fingerprint inside the settings frame; no step bar.
+|`entry.lan-open` has no web screen (link:../../design/web-app/onboarding.adoc[Onboarding], the `entry.*` states by the
+operator's decision of 2026-11-10): the app shows the error pattern that names `pm-operator`, prints no state id and
+shows no step bar.
 |`onboarding` → `entry.lan-open`
 
 |UC-V-04

@@ -69,7 +69,10 @@ browser only, and says so in its hover advisory.
 "usage complete", "usage partial", or "usage not reported".
 
 |`harness.none` (UC-ONB-4)
-|Per harness found: name, path, the check that failed, the answer received, and the fix.
+|The install hint of each known harness, _Check again_ and _Add a harness that is not listed_
+(link:../../design/web-app/onboarding.adoc#harness-none[Onboarding, None Found]). The per-harness name, path, failed
+check, answer and fix belong to `harness.blocked` (link:../../design/web-app/onboarding.adoc#harness-probe[Onboarding,
+Check]), never to this state.
 
 |`catalogue.select` (UC-ONB-5)
 |The advice's recommendation preselected and marked "recommended", with its reason. A text field per harness that
