@@ -214,10 +214,11 @@ screen, as designed.
 |`pass`, one clause `not verified`
 |One settings place: `/settings` with the tabs Setup, Access, Credentials, Consents, Retention (Process designer is the
 page's own button, not a tab); `/settings/machine` resolves into it. The conflict notice is drawn on that page when a
-save conflicts — the current value, the value "yours", keep, and "Apply mine again"
-(`SettingsView.svelte:1072-1088`). It is *not verified* from the mock: the walk at `settings.conflict` shows the
-settings place without a notice, because the mock's state does not feed a conflicting save (the note on `UC-F-12` says
-so). The unit tests cover the dialog.
+save conflicts — "Changed meanwhile", the current value, "Your value", "Keep the current value", and "Apply yours
+again" (`SettingsView.svelte:1072-1088`; `UC-P-03` says "Apply mine again", the plan-settings wording, and the machine
+page says "Apply yours again"). It is *not verified* from the mock: the walk at `settings.conflict` shows the settings
+place without a notice, because the mock's state does not feed a conflicting save (the note on `UC-F-12` says so). The
+unit tests cover the dialog.
 |===
 
 [#matrices]
@@ -257,7 +258,7 @@ recommendation, so that clause is `not verified`
 
 |UC-ONB-10 (Change the Machine's Settings)
 |`partial` |`conforms` |UC-F-11: one settings place. UC-F-12: the machine settings page draws the conflict notice with
-the current value, the value "yours", keep, and apply again (`SettingsView.svelte:1072-1088`, fed by
+the current value, "Your value", keep, and "Apply yours again" (`SettingsView.svelte:1072-1088`, fed by
 `SettingsView.svelte:721-731`); the mock's `settings.conflict` state does not feed it, so that clause is `not verified`
 |===
 

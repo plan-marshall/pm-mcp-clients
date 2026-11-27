@@ -9,12 +9,12 @@ link:../README.adoc[Review] » link:README.adoc[Use Cases] » Analysis
 == Result in Short
 
 The main flows of the use cases work in the web app. An operator can onboard the machine, follow a plan, answer a
-decision, start a plan from a description, and clean up. The app falls short in three ways:
+decision, start a plan from a description, and clean up. Three points stand between the app and its review:
 
-. *The variations are mostly there, not all of them.* The onboarding shows the change link, the steward, the field
-  for a harness that cannot list its models, the two protection lines, the fix action, the phase grouping and the
-  meaning of each plan default. What the mock does not feed, and the walk therefore leaves `not verified`, is the
-  advice's recommendation on `catalogue.select` and the machine settings' conflict notice — both are drawn.
+. *The variations are there; the mock leaves two of them unverified.* The onboarding shows the change link, the
+  steward, the field for a harness that cannot list its models, the two protection lines, the fix action, the phase
+  grouping and the meaning of each plan default. The advice's recommendation on `catalogue.select` and the machine
+  settings' conflict notice are drawn but not fed by the mock, so the walk leaves those two clauses `not verified`.
 . *Raw data still reaches the operator.* The onboarding's generic card with the state id is gone: every onboarding
   state has a screen, and `entry.*` lands on the fallback that names `pm-operator`. What remains is a raw error code on
   a refused request (`plan_not_found`).
