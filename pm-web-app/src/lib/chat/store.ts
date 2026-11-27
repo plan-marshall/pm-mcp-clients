@@ -133,6 +133,26 @@ function oldestServerTurnId(chat: ChatResource): string | null {
   return chat.before ?? null;
 }
 
+function nextStateAfterTurnCompleted(chat: ChatResource): ChatStatus {
+  if (isChatEndedState(chat.state)) {
+    return chat.state;
+  }
+  if (chat.proposal?.state === 'open') {
+    return 'chat.read-back';
+  }
+  return 'chat.open';
+}
+
+function nextStateAfterProposalUpdate(
+  currentState: ChatStatus,
+  proposalState: ProposalState,
+): ChatStatus {
+  if (proposalState === 'open' || currentState !== 'chat.read-back') {
+    return currentState;
+  }
+  return proposalState === 'accepted' ? 'chat.apply' : 'chat.open';
+}
+
 /**
  * Creates a self-contained reactive chat store bound to one `ChatTarget`.
  *
@@ -206,26 +226,6 @@ export function createChatStore(
 
   function matchingActiveChat(chatId: string): ChatResource | null {
     return state.chat?.id === chatId ? state.chat : null;
-  }
-
-  function nextStateAfterTurnCompleted(chat: ChatResource): ChatStatus {
-    if (isChatEndedState(chat.state)) {
-      return chat.state;
-    }
-    if (chat.proposal?.state === 'open') {
-      return 'chat.read-back';
-    }
-    return 'chat.open';
-  }
-
-  function nextStateAfterProposalUpdate(
-    currentState: ChatStatus,
-    proposalState: ProposalState,
-  ): ChatStatus {
-    if (proposalState === 'open' || currentState !== 'chat.read-back') {
-      return currentState;
-    }
-    return proposalState === 'accepted' ? 'chat.apply' : 'chat.open';
   }
 
   function applyTurnStarted(payload: ChatTurnStartedPayload): void {
