@@ -66,7 +66,7 @@ const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-bg-raised': { dark: '#1C2230', light: '#FFFFFF' },
   '--color-bg-subtle': { dark: '#1E2433', light: '#F0F0EC' },
   '--color-border': { dark: '#2A3140', light: '#E3E3DE' },
-  '--color-border-strong': { dark: '#3A4356', light: '#CFCFC8' },
+  '--color-border-strong': { dark: '#65718B', light: '#888880' },
   '--color-text-primary': { dark: '#E6EAF2', light: '#16181D' },
   '--color-text-secondary': { dark: '#AEB6C4', light: '#3E4450' },
   '--color-text-muted': { dark: '#8B95A7', light: '#5F6672' },
@@ -587,6 +587,30 @@ describe('tokens.css: the design system v2 contract', () => {
             foreground,
             background,
             value: contrastRatio(palette[foreground], palette[background]),
+          })),
+          3,
+        );
+
+        expect(failures).toEqual([]);
+      },
+    );
+
+    it.each(['light', 'dark', 'media-dark'] as const)(
+      'keeps --control-border at or above WCAG 1.4.11 3:1 against --control-bg and control surfaces in the %s palette',
+      (label) => {
+        const block =
+          label === 'light'
+            ? themes.light
+            : label === 'dark'
+              ? themes.dark
+              : themes.mediaDark;
+        const palette = resolveAliases({ ...themes.root, ...block });
+        const grounds = ['--control-bg', '--color-bg-app', '--color-bg-surface', '--color-bg-raised', '--color-bg-subtle'];
+        const failures = belowMinimum(
+          grounds.map((ground) => ({
+            foreground: '--control-border',
+            background: ground,
+            value: contrastRatio(palette['--control-border'], palette[ground]),
           })),
           3,
         );

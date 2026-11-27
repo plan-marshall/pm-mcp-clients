@@ -15,6 +15,8 @@ import {
 } from '../api/client';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
+import { contrastRatio } from '../../test/colourMetrics';
+import { parseThemes, tokenOf } from '../test/stylesheet';
 
 const mockEpic: EpicProcess = {
   epic_id: 'relay-hardening',
@@ -220,23 +222,24 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
         // Verify computed foreground uses the primary action token rather than un-themed black buttontext
         expect(style.color).toBe('var(--color-primary)');
 
-        // Contrast verification: calculate relative luminance and contrast ratio against card surface
-        const themeTokens =
-          theme === 'dark'
-            ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
-            : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
+        // Contrast verification: read the real pair (--color-primary -> --color-brand on --color-bg-surface)
+        // from tokens.css in the active theme palette (and system-dark for dark).
+        const tokensCss = fs.readFileSync(
+          path.resolve(__dirname, '../../styles/tokens.css'),
+          'utf8',
+        );
+        const themes = parseThemes(tokensCss);
+        expect(tokenOf(themes.root, '--color-primary')).toBe('var(--color-brand)');
 
-        const lum = (c: { r: number; g: number; b: number }) => {
-          const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
-            v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4),
+        const palettes =
+          theme === 'dark' ? [themes.dark, themes.mediaDark] : [themes.root, themes.light];
+        for (const palette of palettes) {
+          const contrast = contrastRatio(
+            tokenOf(palette, '--color-brand'),
+            tokenOf(palette, '--color-bg-surface'),
           );
-          return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
-        };
-
-        const l1 = lum(themeTokens.primary);
-        const l2 = lum(themeTokens.surface);
-        const contrast = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-        expect(contrast).toBeGreaterThanOrEqual(4.5);
+          expect(contrast).toBeGreaterThanOrEqual(4.5);
+        }
 
         // Verify the watches review button as well
         const watchesBtn = screen.getByTestId('open-watches-review');

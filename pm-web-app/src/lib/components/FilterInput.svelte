@@ -132,7 +132,7 @@
   .filter__input {
     width: 100%;
     padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-md);
     background-color: var(--color-bg-surface);
     color: var(--color-text-primary);
