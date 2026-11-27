@@ -143,6 +143,10 @@ Specification: `doc/design/terminal-client/28-chat.adoc` (the whole part); `doc/
 - OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/ChatRegistry.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/actions/WorkActionsClient.java` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WorkChatDialogueTest.java` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/planview/PlanViewLevelTest.java` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/overview/ProjectWorkLevelTest.java` — present at HEAD aa0ca871 (re-grounding 2026-11-27, declared surface understated)
 
 ## Dependencies and Sequencing
 
@@ -176,6 +180,55 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
 
 - **Depends on PLAN-194** `mock-chat-fixtures-and-residue` (the narrative and knows fixtures, split out of PLAN-140's D-R134); until it lands, drive the events through `/mock/broadcast`. The PLAN-140 dependency for the fixtures is gone.
+
+## Re-Grounding 2026-11-27 (at `aa0ca871`)
+
+Re-grounded read-only by a sub-agent at `aa0ca871`, after #589 (PLAN-194), #591 (PLAN-197), #587 and #594. **This section binds over the body and the earlier amendments where they differ.**
+
+- **Gate: PLAN-138 has NOT landed.** Its row is `staged`. On main, `ActionSupport.java:388` still prints `--message` as JSON, and `WorkChatDialogue.java:160` still ends the chat on an empty line. D1–D3 and D5 are blocked until it lands. PLAN-134 (#428) and PLAN-194 (#589) are met. **Not emittable.**
+- **Proposed split (the operator's word pending):** D4 could become its own small package now. It needs no PLAN-138 file and no dialogue. D1–D3 and D5 would stay here.
+- **D1: keep.**
+  - Where the knows line comes from:
+    - `context` is on `ChatResource` (`:49`) and on each role turn's `chat.turn.started` (`ChatTurnStartedEvent.java:52`).
+    - Reprint the line from the turn's context, or re-read `context` after the turn.
+  - `older` reads `ChatRoutes.page(before)` (`:152`) through a new `WorkActionsClient` call.
+  - `StartPrompt.read` trims every answer (`:251`). The chat must read its first line untrimmed, or the space-before-a-reserved-word rule cannot hold.
+  - Phase names: still six, no `sanity-check`. Test with a generic phase.
+- **D2: keep, rescoped.**
+  - The blocks words come from `DecisionBlockWords.text` (`DecisionBlockWords.java:54`, `decisions.en.properties:4-9`). `nothing` reads "blocks nothing" and `task` reads "blocks one task; the plan goes on". The words never default to "blocks the plan" (PLAN-197).
+  - `o` leaves the chat through PLAN-138's leave (`operator.actions.chat.left`).
+  - The decision answer's and the hold's `h) chat` belong to PLAN-140. Here the way back to the chat is `plan chat`.
+  - There is no `decision.state.*` key for the status line's state word. Name it at outline.
+- **D3: keep.**
+  - Each ended cause maps to an existing key (mapping per `web-app/chat.adoc:109`):
+    - operator: `control.chat.ended`, or `ended_elsewhere` from another device;
+    - proposal carried: `control.chat.carried`;
+    - answered elsewhere: `decision.chat.closed_elsewhere`;
+    - subject ended: `control.chat.subject_ended`, or for a decision `decision.chat.answered` / `decision.chat.withdrawn`;
+    - entry closed: `control.chat.entry_closed`.
+  - The keys are at `control.en.properties:253,298-301` and `decisions.en.properties:90-92`. The body's `chat.ended.ended_by` key does not exist.
+  - "Never inside a reply being printed" needs PLAN-138's streamed reply.
+- **D4: keep; candidate for the split.**
+  - The plan view reads `ProcessTree.queuedRevision` (`PlanViewLevel.java:91`), and the overview row reads `ActivePlanSummary.queuedRevision`.
+  - Also cover `control.chat.revision_queued_unscheduled` (`:310`, new).
+  - **Drop "version 8 · from the chat".** The terminal plan view has no version line, and no wire field names a version caused by the chat. Open point for the design.
+- **D5: keep.**
+  - SEVEN new operator keys, en and de: the six of `22-texts-actions.adoc:224-244` plus `operator.actions.key.open` (`:402`), which no catalogue has.
+- **Fixtures:**
+  - What `ChatKnowsIT` can take from the scenarios:
+    - `running-work.json` C-0006 `storage-v2`: the full knows line and a 3-line notice;
+    - C-0001 and C-0005: open revision proposals.
+  - Do not use C-0006's `pr_merged #198` line (PLAN-194 L3-1).
+  - These still go through `/mock/broadcast` in `ORDERED` timing:
+    - starters, since no chat is empty;
+    - the fold, since no notice has more than 3 lines;
+    - the decision status line after a notice;
+    - `older` pages, since no chat has more than 50 turns.
+- **Hypothesis settled:** JLine 4.5.0 has `readLine(String, Character, String)`. The prefill needs the prompt passed to `readLine`; today `askInline` prints it to `out` (`StartPrompt.java:206-211`). How it behaves in a PTY is still for the outline.
+- **Surface:**
+  - Added: `actions/WorkActionsClient.java`, `WorkChatDialogueTest.java`, `planview/PlanViewLevelTest.java`, `overview/ProjectWorkLevelTest.java`.
+  - Only if used: `PmConsole.java` and the two scenarios.
+  - Likely untouched: `plan_view.*.properties`, `22-texts-actions.adoc`.
 
 ## Hand-Off Command
 
