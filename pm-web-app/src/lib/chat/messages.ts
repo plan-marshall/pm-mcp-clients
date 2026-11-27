@@ -1,9 +1,15 @@
 import type { MessageText } from './types';
 
-export type ChatTranslator = (
-  key: string,
-  args?: Record<string, string | number | boolean>,
-) => string;
+export type ChatTranslator = (key: string, args?: Record<string, string | number>) => string;
+
+function toTranslatorArgs(
+  args: Record<string, string | number | boolean> | undefined,
+): Record<string, string | number> | undefined {
+  if (!args) return undefined;
+  return Object.fromEntries(
+    Object.entries(args).map(([k, v]) => [k, typeof v === 'boolean' ? String(v) : v]),
+  );
+}
 
 const LINE_PREFIX = 'chat.line.';
 const KNOWS_PREFIX = 'chat.knows.';
@@ -31,7 +37,8 @@ const FINDING_KEYS: Record<string, string> = {
  * @returns translated sentence
  */
 export function translateChatMessage(translate: ChatTranslator, message: MessageText): string {
-  const { key, args } = message;
+  const { key } = message;
+  const args = toTranslatorArgs(message.args);
   if (key in REASON_KEYS) {
     return translate(REASON_KEYS[key], args);
   }
