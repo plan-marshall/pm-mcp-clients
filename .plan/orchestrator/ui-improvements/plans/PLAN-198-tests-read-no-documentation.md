@@ -196,6 +196,16 @@ Line numbers are at `origin/main` `bac0222a`.
   - PLAN-70 and PLAN-71 (running): none.
 - Residue for the plans that implement texts: every key of a "Texts to add" table, as listed in the landing message.
 
+## Amendment 2026-11-27 (PLAN-71 landed, #599 `3f0af941`)
+
+**This section binds over the body where they differ.**
+
+- #599 carried the operator-directed commit `2f7759a0`, which added the 7 #600 keys to `plan_view.{en,de}` and `overview.{en,de}`. `main` is green at `3f0af941`.
+- The HYPOTHESIS "the 7 #600 keys are still absent" is **refuted**.
+- The 7 keys stay in the catalogue files. Their design rows become links like every other key the files carry, not "Texts to add" rows.
+- In the 7 catalogue documents, the only key a tested table names that no file carries is `overview.needs.integrity_hold`. It goes to "Texts to add" in `plan-overview.adoc`. Re-check at the run's base.
+- The standing constraint "`main` may be red when the run starts" is obsolete. The base is green. Rebase on `3f0af941` or later.
+
 ## Hand-Off Command
 
 Lane: `runbook` (the operator, 2026-11-27).
