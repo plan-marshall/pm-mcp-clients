@@ -120,11 +120,13 @@
     if (conflict) return;
     const aspects = changedList;
     if (aspects.length === 0) return;
-    const openedRevision = settings.revision;
     saved = false;
     appliedAspects = new Set();
     let every = true;
     for (const aspect of aspects) {
+      // Each field's own baseline: a refresh that landed after the field before it must not decide
+      // this field's.
+      const revisionBefore = settings.revision;
       const applied = await onApply({
         aspect,
         value: chosen[aspect] === '' ? null : chosen[aspect],
@@ -138,7 +140,7 @@
       // The field is the server's now. A record the write refreshed already reseeded the baseline;
       // only a refresh that did not land leaves it to this line, so a later Save never resends a
       // write that already landed.
-      if (settings.revision === openedRevision) {
+      if (settings.revision === revisionBefore) {
         seeded = { ...seeded, [aspect]: chosen[aspect] ?? '' };
       }
       appliedAspects = new Set([...appliedAspects, aspect]);

@@ -106,6 +106,23 @@ describe('Link', () => {
     );
   });
 
+  it('follows a fragment by a replace, so the link adds no history entry', async () => {
+    const target = document.createElement('section');
+    target.id = 'deliverable-2';
+    document.body.appendChild(target);
+    const lengthBefore = window.history.length;
+
+    try {
+      render(Link, { props: { href: '#deliverable-2', label: 'Intent tab' } });
+      await fireEvent.click(screen.getByRole('link', { name: 'Intent tab' }));
+
+      expect(window.location.hash).toBe('#deliverable-2');
+      expect(window.history.length).toBe(lengthBefore);
+    } finally {
+      target.remove();
+    }
+  });
+
   it('takes a plain click over when the caller acts itself and keeps the href for a modified click', async () => {
     const onactivate = vi.fn();
     render(Link, { props: { href: '/plans/fix-relay', label: 'Open', onactivate } });
