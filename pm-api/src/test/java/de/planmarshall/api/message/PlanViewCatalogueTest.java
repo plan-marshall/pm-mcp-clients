@@ -9,20 +9,16 @@
  */
 package de.planmarshall.api.message;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import de.planmarshall.api.process.JobOutcome;
 import de.planmarshall.api.process.JobStatus;
@@ -34,22 +30,6 @@ import de.planmarshall.api.process.TaskStatus;
 
 @DisplayName("PlanViewCatalogueTest")
 class PlanViewCatalogueTest {
-
-    /** The design of the plan view, whose Texts table is the source of the area's keys. */
-    private static final String PLAN_VIEW_DESIGN = "shared/plan-view.adoc";
-
-    /** The prefix of the changes keys, the area whose pack may hold no key the design does not name. */
-    private static final String CHANGES_PREFIX = "plan.changes.";
-
-    /**
-     * @return the rows of the design's Texts table, one per key
-     * @throws IOException when the design cannot be read
-     */
-    static Stream<Arguments> designRows() throws IOException {
-        return SpecificationTables.rows(PLAN_VIEW_DESIGN, "plan.").stream()
-                .map(row -> Arguments.of(row.key(), row));
-    }
-
 
     @Test
     @DisplayName("should load plan_view and epic_view areas in English and German with identical key sets")
@@ -71,46 +51,35 @@ class PlanViewCatalogueTest {
                 "Keys in English and German epic_view message packs must match exactly");
     }
 
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("designRows")
-    @DisplayName("each key of the design's Texts table is in both packs, and the design's text where this plan adds it")
-    void designKeyIsInBothPacks(String key, SpecificationTables.Row row) {
-        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
-            var pack = MessageCatalogue.getMessages(locale, "plan_view");
-            assertTrue(pack.containsKey(key), "the " + locale + " pack must hold " + key);
-            assertFalse(pack.get(key).isBlank(), "the " + locale + " text of " + key + " must not be blank");
-        }
-        if (key.startsWith(CHANGES_PREFIX)) {
-            // The changes keys are this plan's; their texts are the design's, verbatim.
-            assertEquals(row.english(), MessageCatalogue.getMessages("en", "plan_view").get(key),
-                    "English text of " + key);
-            assertEquals(row.german(), MessageCatalogue.getMessages("de", "plan_view").get(key),
-                    "German text of " + key);
-        }
-    }
-
     @Test
-    @DisplayName("the design's Texts table yields rows, so an unreadable table never passes")
-    void designTableYieldsRows() throws Exception {
-        assertFalse(SpecificationTables.rows(PLAN_VIEW_DESIGN, "plan.").isEmpty(),
-                "no plan.* row read from " + PLAN_VIEW_DESIGN);
-        assertFalse(SpecificationTables.rows(PLAN_VIEW_DESIGN, CHANGES_PREFIX).isEmpty(),
-                "no " + CHANGES_PREFIX + "* row read from " + PLAN_VIEW_DESIGN);
-    }
+    @DisplayName("the changes area carries its seven texts verbatim in English and German")
+    void shouldCarryTheChangesTextsVerbatim() {
+        var en = MessageCatalogue.getMessages("en", "plan_view");
+        var de = MessageCatalogue.getMessages("de", "plan_view");
 
-    @Test
-    @DisplayName("the packs hold no plan.changes.* key the design does not name")
-    void noChangesKeyBeyondTheDesign() throws Exception {
-        var design = new TreeSet<String>();
-        SpecificationTables.rows(PLAN_VIEW_DESIGN, CHANGES_PREFIX).forEach(row -> design.add(row.key()));
-
-        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
-            var pack = new TreeSet<String>();
-            MessageCatalogue.getMessages(locale, "plan_view").keySet().stream()
-                    .filter(packKey -> packKey.startsWith(CHANGES_PREFIX))
-                    .forEach(pack::add);
-            assertEquals(design, pack, "the " + locale + " pack's " + CHANGES_PREFIX + "* keys are the design's");
-        }
+        // The catalogue is the source of the texts (ADR 002), so the contract expectation is stated
+        // here as a literal rather than read from a design document at run time.
+        assertAll(
+                () -> assertEquals("changes \u00b7 at {head} \u00b7 {size}", en.get("plan.changes.title")),
+                () -> assertEquals("\u00c4nderungen \u00b7 bei {head} \u00b7 {size}", de.get("plan.changes.title")),
+                () -> assertEquals("unplanned", en.get("plan.changes.unplanned")),
+                () -> assertEquals("ungeplant", de.get("plan.changes.unplanned")),
+                () -> assertEquals("binary", en.get("plan.changes.binary")),
+                () -> assertEquals("bin\u00e4r", de.get("plan.changes.binary")),
+                () -> assertEquals("{lines, plural, one {# more line not shown} other {# more lines not shown}}",
+                        en.get("plan.changes.truncated")),
+                () -> assertEquals("{lines, plural, one {# weitere Zeile nicht gezeigt} "
+                        + "other {# weitere Zeilen nicht gezeigt}}", de.get("plan.changes.truncated")),
+                () -> assertEquals("No changes captured yet", en.get("plan.changes.not_captured")),
+                () -> assertEquals("Noch keine \u00c4nderungen erfasst", de.get("plan.changes.not_captured")),
+                () -> assertEquals("The changes are no longer in the repository",
+                        en.get("plan.changes.unavailable")),
+                () -> assertEquals("Die \u00c4nderungen sind nicht mehr im Repository",
+                        de.get("plan.changes.unavailable")),
+                () -> assertEquals("No such file in the plan's changes: {path}",
+                        en.get("plan.changes.file_not_found")),
+                () -> assertEquals("Keine solche Datei in den \u00c4nderungen des Plans: {path}",
+                        de.get("plan.changes.file_not_found")));
     }
 
     @Test

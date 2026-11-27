@@ -70,6 +70,82 @@ class MessageCatalogueTest {
     }
 
     @Test
+    @DisplayName("every key of every area carries the same ICU argument names in English and German")
+    void shouldAgreeOnTheIcuArgumentsOfEveryKey() {
+        var mismatches = new TreeSet<String>();
+
+        for (String area : MessageCatalogue.SUPPORTED_AREAS) {
+            var en = MessageCatalogue.getMessages("en", area);
+            var de = MessageCatalogue.getMessages("de", area);
+            for (var entry : en.entrySet()) {
+                var german = de.get(entry.getKey());
+                if (german == null) {
+                    mismatches.add(entry.getKey() + ": missing in de");
+                    continue;
+                }
+                var englishArguments = argumentsOf(entry.getValue());
+                var germanArguments = argumentsOf(german);
+                if (!englishArguments.equals(germanArguments)) {
+                    mismatches.add(entry.getKey() + ": en reads " + englishArguments
+                            + ", de reads " + germanArguments);
+                }
+            }
+        }
+
+        assertTrue(mismatches.isEmpty(), "Both languages must carry the same ICU arguments: " + mismatches);
+    }
+
+    /**
+     * The ICU arguments a message declares: the placeholder heads at message level. A plural's or a
+     * select's branch text is the selector's value, so the words it wraps are not arguments.
+     *
+     * @param template an ICU message
+     * @return the argument names it declares, sorted
+     */
+    private static TreeSet<String> argumentsOf(String template) {
+        var names = new TreeSet<String>();
+        var depth = 0;
+        var index = 0;
+        while (index < template.length()) {
+            var ch = template.charAt(index);
+            if (ch == '{') {
+                if (depth == 0) {
+                    var name = placeholderNameAt(template, index + 1);
+                    if (!name.isEmpty()) {
+                        names.add(name);
+                    }
+                }
+                depth++;
+            } else if (ch == '}') {
+                depth = Math.max(0, depth - 1);
+            }
+            index++;
+        }
+        return names;
+    }
+
+    /**
+     * @param template the ICU message
+     * @param from     the index after an opening brace
+     * @return the placeholder's name, or the empty string when the brace opens a branch value
+     */
+    private static String placeholderNameAt(String template, int from) {
+        var end = from;
+        while (end < template.length() && (Character.isLetter(template.charAt(end))
+                || template.charAt(end) == '_'
+                || (end > from && Character.isDigit(template.charAt(end))))) {
+            end++;
+        }
+        if (end == from) {
+            return "";
+        }
+        if (end < template.length() && template.charAt(end) != '}' && template.charAt(end) != ',') {
+            return "";
+        }
+        return template.substring(from, end);
+    }
+
+    @Test
     void shouldVerifyAreaIsolation() {
         for (String area : MessageCatalogue.SUPPORTED_AREAS) {
             var enArea = MessageCatalogue.getMessages("en", area);
