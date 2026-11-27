@@ -112,15 +112,12 @@ describe('Link', () => {
     document.body.appendChild(target);
     const lengthBefore = window.history.length;
 
-    try {
-      render(Link, { props: { href: '#deliverable-2', label: 'Intent tab' } });
-      await fireEvent.click(screen.getByRole('link', { name: 'Intent tab' }));
+    render(Link, { props: { href: '#deliverable-2', label: 'Intent tab' } });
+    await fireEvent.click(screen.getByRole('link', { name: 'Intent tab' }));
 
-      expect(window.location.hash).toBe('#deliverable-2');
-      expect(window.history.length).toBe(lengthBefore);
-    } finally {
-      target.remove();
-    }
+    expect(window.location.hash).toBe('#deliverable-2');
+    expect(window.history.length).toBe(lengthBefore);
+    target.remove();
   });
 
   it('takes a plain click over when the caller acts itself and keeps the href for a modified click', async () => {
