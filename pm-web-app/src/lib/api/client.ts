@@ -110,8 +110,11 @@ export interface NeedsOperatorItem {
   plan?: NeedsOperatorLocation | null;
   /** When it started to wait, or absent when the runtime measures none. */
   since?: string | null;
-  /** What it blocks: `plan`, `epic` or `project`; absent when it blocks no work. */
-  blocks?: string | null;
+  /**
+   * What it blocks: one value of `plan`, `epic`, `setup`, `entry`, `task` or `nothing`, the same
+   * vocabulary a decision carries (`needs-and-find.adoc`, What It Blocks). Never absent.
+   */
+  blocks: string;
 }
 
 /** One page of the list of what waits (`GET /api/v1/machine/needs-operator`). */

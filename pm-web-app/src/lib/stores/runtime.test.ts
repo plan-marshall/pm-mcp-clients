@@ -38,6 +38,7 @@ import {
   stopRuntimeRecovery,
   storeCredential,
   loadOnboardingState,
+  openPlanView,
   stepOnboarding,
   updateMachineSetting,
   withdrawConsent,
@@ -1931,5 +1932,36 @@ describe('the decision announcer', () => {
     adoptRouteFromLocation();
     expect(get(runtimeStore).currentRoute).toBe('project');
     expect(get(runtimeStore).selectedProjectId).toBe('onboard');
+  });
+});
+
+describe('an object opened in place', () => {
+  it('does not travel with a route the app pushes', () => {
+    runtimeStore.set(
+      makeRuntimeState({
+        currentRoute: 'plan',
+        selectedPlanId: 'fix-relay',
+        openObject: { kind: 'decision', id: 'Q-007' },
+      }),
+    );
+
+    openPlanView('next-plan');
+
+    expect(get(runtimeStore).selectedPlanId).toBe('next-plan');
+    expect(get(runtimeStore).openObject).toBeNull();
+  });
+
+  it('does not carry a plan’s file into the next plan', () => {
+    runtimeStore.set(
+      makeRuntimeState({
+        currentRoute: 'plan',
+        selectedPlanId: 'fix-relay',
+        changeFile: 'pm-relay/pom.xml',
+      }),
+    );
+
+    openPlanView('next-plan');
+
+    expect(get(runtimeStore).changeFile).toBeNull();
   });
 });

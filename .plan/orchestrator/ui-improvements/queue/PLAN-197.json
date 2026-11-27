@@ -2,10 +2,10 @@
   "id": "PLAN-197",
   "slug": "blocks-one-vocabulary",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-197-blocks-one-vocabulary",
+  "pr": "591",
+  "landing": "landings/PLAN-197.md",
   "seq": 197
 }

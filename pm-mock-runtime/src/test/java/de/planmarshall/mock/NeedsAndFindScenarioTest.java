@@ -87,7 +87,7 @@ class NeedsAndFindScenarioTest {
 
                 var firstFree = -1;
                 for (int i = 0; i < parsed.items().size(); i++) {
-                    if (parsed.items().get(i).blocks() == null && firstFree < 0) {
+                    if ("nothing".equals(parsed.items().get(i).blocks()) && firstFree < 0) {
                         firstFree = i;
                     }
                 }

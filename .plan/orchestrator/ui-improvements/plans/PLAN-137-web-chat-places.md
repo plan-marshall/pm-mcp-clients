@@ -235,6 +235,20 @@ On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of
 - Uses PLAN-194's fixtures where they exist; otherwise `/mock/broadcast`.
 - Removed from the Expected Surface (now the split plan's): pm-web-app/src/lib/views/ProjectOnboardingView.svelte, pm-web-app/src/lib/views/ProjectOnboardingView.test.ts, pm-web-app/src/lib/views/EpicDecompositionView.svelte, pm-web-app/src/lib/views/EpicDecompositionView.test.ts, pm-web-app/src/lib/views/DecompositionReviewView.svelte, pm-web-app/src/lib/views/DecompositionReviewView.test.ts, pm-web-app/src/lib/components/ChatPanel.svelte, pm-web-app/src/lib/components/ChatPanel.test.ts, pm-api/src/main/java/de/planmarshall/api/chat/ChatRoutes.java, pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java, pm-web-e2e/tests/control.spec.js, pm-web-e2e/tests/workspace.spec.js, pm-api/src/main/resources/messages/start.en.properties, pm-api/src/main/resources/messages/start.de.properties, pm-web-app/src/lib/components/FindingsReviewModal.svelte.
 
+## Amendment 2026-11-26 (from PLAN-135's re-grounding, operator's word)
+
+On the operator's word of 2026-11-26 ("move them to PLAN-137"), at `da3cafdf`. **This section binds over the body where they differ.**
+
+- **Taken from PLAN-135 D1:**
+  - The StartView chat refresh race: `chatGeneration`/`chatReadSeq` (`StartView.svelte:123-125`) and `refreshChat` (`:368-400`) have no test.
+  - The decomposition `onChat`, which sets `chatOpen` without opening a chat (`StartView.svelte:1164`).
+  - Both are settled when this plan puts `Chat` on the start place and the decomposition, each with a failing test first.
+  - PLAN-135 keeps the `chat.ended` entry re-read.
+- **Also taken:** the "UNSEEDED subject" e2e/browser proof of the PLAN-161 residue, shared with PLAN-192. It needs PLAN-194's fixtures.
+- **Stale after the split:**
+  - `:16-17` "the plan's and the epic's own chat acts were done by PLAN-135": they are PLAN-192's.
+  - PLAN-135 builds `lib/chat/` beside the old bridge. Deleting `ChatPanel` and the bridge stays this plan's, together with PLAN-192.
+
 ## Hand-Off Command
 
 Lane: `runbook`.

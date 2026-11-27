@@ -13,8 +13,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
@@ -32,8 +34,9 @@ import de.planmarshall.api.json.JsonTree;
  * @param epic    the epic it belongs to, or {@code null}
  * @param plan    the plan it belongs to, or {@code null}
  * @param since   when it started to wait, or {@code null} when the runtime measures none
- * @param blocks  what it blocks: {@code plan}, {@code epic}, or {@code project}; absent when it
- *                blocks no work
+ * @param blocks  what it blocks: one value of {@code plan}, {@code epic}, {@code setup},
+ *                {@code entry}, {@code task} or {@code nothing}, never absent; a value this version
+ *                does not know reads as {@link #BLOCKS_OTHER}
  */
 public record NeedsOperatorItem(
         NeedsOperatorKind kind,
@@ -42,11 +45,28 @@ public record NeedsOperatorItem(
         @Nullable WorkLocation epic,
         @Nullable WorkLocation plan,
         @Nullable Instant since,
-        @Nullable String blocks
+        String blocks
 ) {
+
+    /**
+     * The values the one vocabulary of "what it blocks" carries, the same list a decision carries.
+     */
+    public static final Set<String> BLOCKS_VALUES =
+            Set.of("plan", "epic", "setup", "entry", "task", "nothing");
+
+    /**
+     * The word for a value this version does not know: a runtime that serves a value added after
+     * this client was built still renders a row, as an unknown kind does through
+     * {@link NeedsOperatorKind#OTHER}, instead of failing the whole list or claiming the item
+     * blocks no work. No runtime serves this value.
+     */
+    public static final String BLOCKS_OTHER = "other";
+
+    private static final String BLOCKS_KEY = "blocks";
 
     public NeedsOperatorItem {
         Objects.requireNonNull(kind, "kind");
+        Objects.requireNonNull(blocks, BLOCKS_KEY);
     }
 
     /**
@@ -70,9 +90,7 @@ public record NeedsOperatorItem(
         if (since != null) {
             map.put("since", since.toString());
         }
-        if (blocks != null) {
-            map.put("blocks", blocks);
-        }
+        map.put(BLOCKS_KEY, blocks);
         return map;
     }
 
@@ -104,7 +122,25 @@ public record NeedsOperatorItem(
                 WorkLocation.fromValue(map.get("epic")),
                 WorkLocation.fromValue(map.get("plan")),
                 instantOf(JsonTree.string(map, "since")),
-                JsonTree.string(map, "blocks"));
+                blocksOf(map));
+    }
+
+    /**
+     * Reads what the item blocks: an absent value is refused, because the contract carries one; a
+     * value outside the vocabulary reads as {@link #BLOCKS_OTHER}, so a value added after this
+     * version was built never fails the whole list.
+     *
+     * @param map the map representation
+     * @return the value of the vocabulary, or {@link #BLOCKS_OTHER}
+     * @throws JsonFormatException when the item carries no {@code blocks}
+     */
+    private static String blocksOf(Map<String, Object> map) throws JsonFormatException {
+        var wire = JsonTree.string(map, BLOCKS_KEY);
+        if (wire == null || wire.isBlank()) {
+            throw new JsonFormatException("Missing blocks in NeedsOperatorItem");
+        }
+        var value = wire.trim().toLowerCase(Locale.ROOT);
+        return BLOCKS_VALUES.contains(value) ? value : BLOCKS_OTHER;
     }
 
     /**

@@ -1,7 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import { displayError, displayState, displayUnit, hasUnitName } from './index';
+import {
+  displayError,
+  displaySettingAspect,
+  displaySettingChoice,
+  displayState,
+  displayUnit,
+  hasUnitName,
+} from './index';
 import { CLIENT_ERROR_CODES } from '../api/errors';
 
 /**
@@ -167,5 +174,34 @@ describe('displayUnit', () => {
     useCatalogue('de');
     expect(displayUnit('execute.envelope')).toBe('unbekannt');
     expect(displayUnit(null)).toBe('unbekannt');
+  });
+});
+
+describe('displaySettingAspect', () => {
+  it('names an aspect, a prefixed aspect and an unknown one', () => {
+    useCatalogue('en');
+    expect(displaySettingAspect('landing')).toBe('Landing');
+    expect(displaySettingAspect('base')).toBe('Base branch');
+    expect(displaySettingAspect('role.implement')).toBe('Role implement');
+    expect(displaySettingAspect('integration.git')).toBe('Integration git');
+    expect(displaySettingAspect('no.such')).toBe('unknown');
+    expect(displaySettingAspect('')).toBe('unknown');
+
+    useCatalogue('de');
+    expect(displaySettingAspect('landing')).toBe('Landung');
+    expect(displaySettingAspect('role.implement')).toBe('Rolle implement');
+    expect(displaySettingAspect('no.such')).toBe('unbekannt');
+  });
+});
+
+describe('displaySettingChoice', () => {
+  it('names a choice through the unit vocabulary and keeps one without a name raw', () => {
+    useCatalogue('en');
+    expect(displaySettingChoice('landing.pull-request')).toBe('Pull request');
+    expect(displaySettingChoice('method.test-first')).toBe('Test first');
+    // A value the unit vocabulary does not name reaches the operator unchanged, so a setting the
+    // runtime adds is never blank.
+    expect(displaySettingChoice('Claude Code - sonnet-5.5')).toBe('Claude Code - sonnet-5.5');
+    expect(displaySettingChoice('')).toBe('');
   });
 });

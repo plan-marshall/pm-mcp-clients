@@ -313,6 +313,24 @@ class AnswerDirectFormTest {
         }
     }
 
+    @Test
+    @DisplayName("words nothing through the decision's own key, and an unknown value as unknown")
+    void printsBlockWords() throws Exception {
+        serve("Q-31", decisionWithBlocks("nothing"));
+        run("en", "", "answer", "Q-31");
+        assertTrue(out.toString().contains("blocks nothing"), out.toString());
+        assertFalse(out.toString().contains("blocks the plan"), out.toString());
+
+        fixture.close();
+        fixture = RuntimeFixture.create();
+        PmOperatorTest.writeLiveRecord(fixture);
+        out = new StringWriter();
+        serve("Q-31", decisionWithBlocks("landing-train"));
+        run("en", "", "answer", "Q-31");
+        assertTrue(out.toString().contains("unknown"), out.toString());
+        assertFalse(out.toString().contains("blocks the plan"), out.toString());
+    }
+
     private void serve(String id, String envelope) throws IOException {
         fixture.start((request, response) -> {
             var target = request.target();
@@ -411,6 +429,14 @@ class AnswerDirectFormTest {
                              "parts": [{"part_id": "1", "question": "Which?",
                                "options": [{"key": "1", "label": "Rebase"}, {"key": "2", "label": "Keep"}]}]}
                             """.formatted(id);
+    }
+
+    private static String decisionWithBlocks(String blocks) {
+        return """
+                            {"id": "Q-31", "title": "Strategy", "subject": "plan fix-relay", "scope": "plan",
+                             "blocks": "%s", "reversibility": "reversible", "plan": "fix-relay",
+                             "parts": []}
+                            """.formatted(blocks);
     }
 
     private static String decisionWithOption(String id, String key) {

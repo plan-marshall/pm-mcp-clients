@@ -39,6 +39,7 @@
   } from '../api/client';
   import {
     runtimeStore,
+    addressOfState,
     selectObjectTab,
     selectPlanChangeFile,
   } from '../stores/runtime';
@@ -58,7 +59,10 @@
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState, formatChangeSize } from '../display';
   import { buildChain, upOf } from '../navigation/chain';
-  import { PLAN_TABS, type PlanTab } from '../routes';
+  import { formatAddress, PLAN_TABS, type Address, type PlanTab } from '../routes';
+  import { writeAddress } from '../navigation/history';
+  import CompletionReportView from './CompletionReportView.svelte';
+  import DecisionView from './DecisionView.svelte';
   import { narrowLayout } from '../utils/narrowLayout';
   import Icon from '../components/Icon.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -83,6 +87,7 @@
       openDecision = null;
       decisionRequest += 1;
       intentLoading = false;
+      intentSettled = false;
       intentError = null;
       intentRequest += 1;
       intentHasRecord = false;
@@ -225,6 +230,8 @@
   let openDecision = $state<{ planId: string; id: string } | null>(null);
   /** The decision read that owns the link; a superseded answer never writes it. */
   let decisionRequest = 0;
+  /** Whether the last decision read failed, so a process refresh retries it. */
+  let decisionReadFailed = $state(false);
 
   /**
    * The decision's id, when the link belongs to the plan on screen.
@@ -253,17 +260,21 @@
       // project is not this page's.
       const decision = decisions.find((entry) => entry.blocks === 'plan') ?? null;
       openDecision = decision ? { planId: currentId, id: decision.id } : null;
+      decisionReadFailed = false;
     } catch {
       if (request !== decisionRequest) {
         return;
       }
       openDecision = null;
+      decisionReadFailed = true;
     }
   }
 
   $effect(() => {
-    // `waiting` is read here so a plan that stops waiting drops the link and the strip.
-    if (plan !== null && waiting) {
+    // Only the wait itself (and the plan) re-reads the decision: a process reload that leaves the
+    // plan waiting keeps the link, so a refresh never adds a read of its own.
+    const currentId = planId;
+    if (currentId !== '' && waiting) {
       void loadOpenDecision();
     } else {
       decisionRequest += 1;
@@ -295,10 +306,15 @@
     const args = (applies as Record<string, unknown>).args;
     const taskId =
       args && typeof args === 'object' ? textOf((args as Record<string, unknown>).task_id) : null;
-    return {
-      applies: key === 'chat.applies.on_start' ? 'on_start' : 'after_task',
-      taskId,
-    };
+    // Only a point the wire names is a point: an unknown key names no task, never a task boundary
+    // with an empty id that the line would render as "applies after ".
+    if (key === 'chat.applies.on_start') {
+      return { applies: 'on_start', taskId: null };
+    }
+    if (key === 'chat.applies.after_task') {
+      return { applies: 'after_task', taskId };
+    }
+    return { applies: 'unknown', taskId: null };
   }
 
   /**
@@ -364,6 +380,13 @@
 
   /** The intent record the Intent tab needs beyond what its own panel reads, and whether one exists. */
   let intentLoading = $state(false);
+  /**
+   * Whether the Intent read answered at least once for this plan.
+   *
+   * The tab's first paint happens before its effect starts the read, so it must not say "not
+   * written yet" in that moment; it waits in its loading state until the first answer arrives.
+   */
+  let intentSettled = $state(false);
   let intentError = $state<string | null>(null);
   let intentHasRecord = $state(false);
   let intentCheck = $state<BuilderCheckRecord | null>(null);
@@ -397,6 +420,7 @@
       if (record === null) {
         // Nothing exists, so no outline read can change the tab; the empty state stands at once.
         intentLoading = false;
+        intentSettled = true;
         return;
       }
     } catch (err: unknown) {
@@ -406,6 +430,7 @@
       // A failed read is not "refine wrote nothing": it says so and offers the read again.
       intentError = errorCodeOf(err);
       intentLoading = false;
+      intentSettled = true;
       return;
     }
     try {
@@ -422,6 +447,7 @@
     }
     if (request === intentRequest && currentId === planId) {
       intentLoading = false;
+      intentSettled = true;
     }
   }
 
@@ -494,6 +520,105 @@
     plan ? `/designer?project=${encodeURIComponent(plan.project.project_id)}` : '',
   );
 
+  /**
+   * The caller's address: the store's own address for this plan, without the object opened in
+   * place — its mode, tab, node, file, chat and lens context included, so a close returns to
+   * exactly where the plan was opened from.
+   *
+   * @returns the caller's address
+   */
+  function callerAddress(): Address {
+    const address: Address = { ...addressOfState($runtimeStore) };
+    delete address.open;
+    if (ended) address.mode = 'ended';
+    return address;
+  }
+
+  /** The head link that opens the waiting decision in place beside the plan. */
+  const decisionHref = $derived(
+    openDecisionId === null
+      ? ''
+      : (formatAddress({ ...callerAddress(), open: { kind: 'decision', id: openDecisionId } }) ??
+        ''),
+  );
+
+  /** The head link that opens the ended plan's completion report in place beside it. */
+  const completionHref = $derived(
+    ended
+      ? (formatAddress({
+          ...callerAddress(),
+          open: { kind: 'completion-report', id: planId },
+        }) ?? '')
+      : '',
+  );
+
+  /** The decision the address opens in place beside the plan, when it names one. */
+  const inPlaceDecisionId = $derived(
+    $runtimeStore.openObject?.kind === 'decision' ? $runtimeStore.openObject.id : null,
+  );
+
+  /**
+   * The completion report the address opens in place beside this plan, when it names one: another
+   * plan's report is not this page's object.
+   */
+  const inPlaceReportId = $derived(
+    $runtimeStore.openObject?.kind === 'completion-report' &&
+      $runtimeStore.openObject.id === planId
+      ? $runtimeStore.openObject.id
+      : null,
+  );
+
+  /** Whether this document opened the in-place object by a push of its own, so Back closes it. */
+  let inPlacePushed = $state(false);
+  /** Set while a close runs, so two close paths of one update never move the history twice. */
+  let closingInPlace = false;
+
+  // A new in-place object opens the next close again.
+  $effect(() => {
+    if ($runtimeStore.openObject !== null) {
+      closingInPlace = false;
+    } else {
+      // No object is open: a flag from an earlier push must not make a later, loaded object close
+      // by Back.
+      inPlacePushed = false;
+    }
+  });
+
+  /**
+   * Opens one object in place beside the plan by a push of this document, so the history's back
+   * closes it (`navigation.adoc#url`).
+   *
+   * @param kind the object's kind
+   * @param id the object's id
+   */
+  function openInPlace(kind: 'decision' | 'completion-report', id: string | null): void {
+    if (id === null) return;
+    runtimeStore.update((s) => ({ ...s, openObject: { kind, id } }));
+    // Only an address the writer actually pushed is closed by Back. A second activation of the same
+    // link pushes nothing and keeps the flag of the push that opened the entry; one the bar already
+    // showed when it was loaded leaves no entry, so its close replaces the address.
+    if (writeAddress({ ...callerAddress(), open: { kind, id } }, 'push')) {
+      inPlacePushed = true;
+    }
+  }
+
+  /**
+   * Closes the object opened in place: the history's back when this document pushed it, a replacing
+   * write to the caller's address otherwise — an address that was loaded with `open=` has nothing
+   * to go back to (`navigation.adoc#url`).
+   */
+  function closeInPlace(): void {
+    if (closingInPlace) return;
+    closingInPlace = true;
+    if (inPlacePushed) {
+      inPlacePushed = false;
+      window.history.back();
+      return;
+    }
+    runtimeStore.update((s) => ({ ...s, openObject: null }));
+    writeAddress(callerAddress(), 'replace');
+  }
+
   let tokenBreakdown: {
     byPhase: TokenBreakdownItem[];
     byRole: TokenBreakdownItem[];
@@ -549,8 +674,28 @@
   onMount(async () => {
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       // The runtime stream's events that change a plan's process (`EventName`).
+      // A decision of this plan opening, changing or leaving re-reads the head's link. A decision
+      // that opens for this plan is read even before the process reports the wait; one that leaves
+      // matters while the plan waits or while its own decision stands beside it.
+      if (
+        event === 'decision.opened' ||
+        event === 'decision.changed' ||
+        event === 'decision.answered' ||
+        event === 'decision.closed'
+      ) {
+        const payload = data as { plan?: unknown } | null;
+        const namesThisPlan = typeof payload?.plan === 'string' && payload.plan === planId;
+        if (namesThisPlan || waiting || openDecision !== null) {
+          void loadOpenDecision();
+        }
+      }
       if (refreshesPlanProcess(event)) {
         void loadPlanProcess(false);
+        // A read that failed is retried by the next process refresh, so a transient failure never
+        // leaves a waiting plan without its link.
+        if (decisionReadFailed && waiting) {
+          void loadOpenDecision();
+        }
       }
       if (event === 'plan.revision_queued') {
         applyQueuedRevision(data);
@@ -1153,7 +1298,11 @@
   }
 </script>
 
-<div class="plan-view-layout" data-testid="plan-view-layout">
+<div
+  class="plan-view-layout"
+  class:plan-view-layout--with-object={inPlaceDecisionId !== null || inPlaceReportId !== null}
+  data-testid="plan-view-layout"
+>
   {#if planProjectId}
     <WorkListColumn
       projectId={planProjectId}
@@ -1197,7 +1346,7 @@
       <span slot="title" data-testid="plan-title">{stripControlSequences(plan.title)}</span>
       <span slot="id" data-testid="plan-id-chip"><Chip value={plan.plan_id} /></span>
 
-      <div slot="state" class="plan-state-line" data-testid="plan-state-line">
+      <span slot="state" class="plan-state-line" data-testid="plan-state-line">
         {#if plan.pull_request_number}
           <span data-testid="plan-pr-chip">
             <PrChip number={plan.pull_request_number} href={plan.pull_request_url ?? undefined} />
@@ -1216,7 +1365,7 @@
             >{stateSentence}</span
           >
         {/if}
-      </div>
+      </span>
 
       <div slot="primary" class="plan-acts">
         <!-- The plan's own actions, settings, holds, and chats -->
@@ -1239,23 +1388,25 @@
         />
         {#if ended}
           <Link
-            href={`/reports?plan=${encodeURIComponent(plan.plan_id)}`}
+            href={completionHref}
             label={$t('report.action.details')}
             advisory={$t('report.action.details.title')}
             testid="completion-report-link"
+            onactivate={() => openInPlace('completion-report', planId)}
           />
         {/if}
         {#if waiting && openDecisionId}
           <Link
-            href={`/decisions/${encodeURIComponent(openDecisionId)}`}
+            href={decisionHref}
             label={$t('control.plan.decision')}
             advisory={$t('control.plan.decision.title')}
             testid="plan-decision-link"
+            onactivate={() => openInPlace('decision', openDecisionId)}
           />
         {/if}
       </div>
 
-      <div slot="tabs" class="plan-tabstrip">
+      <div slot="attention" class="plan-attention">
         {#if waiting && openDecisionId}
           <div data-testid="plan-attention-strip">
             <AttentionStrip message={$t('plan.view.waits_for_decision')} />
@@ -1274,13 +1425,19 @@
         {/if}
 
         {#if queuedRevision}
-          <p class="plan-revision mono" data-testid="plan-revision-queued">
-            {$t('control.chat.revision_queued', {
-              applies: queuedRevision.applies,
-              plan: plan.plan_id,
-              task_id: queuedRevision.taskId ?? '',
-            })}
-          </p>
+          {#if queuedRevision.applies === 'unknown'}
+            <p class="plan-revision mono" data-testid="plan-revision-queued">
+              {$t('control.chat.revision_queued_unscheduled')}
+            </p>
+          {:else}
+            <p class="plan-revision mono" data-testid="plan-revision-queued">
+              {$t('control.chat.revision_queued', {
+                applies: queuedRevision.applies,
+                plan: plan.plan_id,
+                task_id: queuedRevision.taskId ?? '',
+              })}
+            </p>
+          {/if}
         {/if}
 
         {#if ended}
@@ -1308,7 +1465,9 @@
             </div>
           </div>
         {/if}
+      </div>
 
+      <div slot="tabs" class="plan-tabstrip">
         <!-- Tokens So Far -->
         <div class="plan-tokens mono" data-testid="plan-tokens">
           <span class="tokens-label">{$t('plan.view.tokens')}</span>
@@ -1457,14 +1616,18 @@
             onAct={() => void loadIntent()}
             titleLevel={2}
           />
-        {:else if intentLoading && !intentHasRecord}
-          <div class="plan-intent-panel__loading">
+        {:else if !intentSettled || (intentLoading && !intentHasRecord)}
+          <div class="plan-intent-panel__loading" data-testid="plan-intent-loading">
             <Spinner size="1.5rem" label={$t('intent.tab.title')} />
           </div>
         {:else if !intentHasRecord}
           <p class="text-muted" data-testid="plan-intent-none">{$t('intent.plan.none')}</p>
         {:else}
-          <PlanIntentPanel planId={plan.plan_id} deliverables={intentDeliverables} />
+          <PlanIntentPanel
+            planId={plan.plan_id}
+            deliverables={intentDeliverables}
+            deliverableHref={(number) => `#deliverable-${number}`}
+          />
           <BuilderCheckList check={intentCheck} />
           <OutlinePanel planId={plan.plan_id} />
         {/if}
@@ -1775,6 +1938,28 @@
     </ObjectPage>
   {/if}
 </div>
+  {#if inPlaceDecisionId !== null || inPlaceReportId !== null}
+    <aside class="plan-view-object" data-testid="plan-in-place">
+      <header class="plan-view-object__head">
+        <Button variant="ghost" size="sm" onclick={closeInPlace} data-testid="plan-in-place-close">
+          {$t('common.action.close')}
+        </Button>
+      </header>
+      <div class="plan-view-object__body">
+        {#if inPlaceDecisionId !== null}
+          {#key inPlaceDecisionId}
+            <DecisionView
+              inPlace={{ id: inPlaceDecisionId, planId, onClose: closeInPlace }}
+            />
+          {/key}
+        {:else if inPlaceReportId !== null}
+          {#key inPlaceReportId}
+            <CompletionReportView planId={inPlaceReportId} titleLevel={2} />
+          {/key}
+        {/if}
+      </div>
+    </aside>
+  {/if}
 </div>
 
 <style>
@@ -2405,7 +2590,48 @@
     border-bottom: 1px solid var(--color-border);
   }
 
-  .plan-tabstrip .off-track-banner {
+  .plan-attention .off-track-banner {
     margin: 0;
+  }
+
+  .plan-attention {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  /* The object opened in place beside the plan: its own column, its own scroll. */
+  .plan-view-object {
+    flex: 0 0 auto;
+    inline-size: min(560px, 45vw);
+    min-inline-size: 0;
+    max-block-size: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border-inline-start: 1px solid var(--color-border);
+    background-color: var(--color-bg-app);
+  }
+
+  .plan-view-object__head {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--space-2) var(--space-3) 0;
+  }
+
+  .plan-view-object__body {
+    min-inline-size: 0;
+    padding: var(--space-2) var(--space-3) var(--space-4);
+  }
+
+  /* A phone has room for one column: the object takes the space the plan leaves (`navigation.adoc#window`). */
+  @media (max-width: 767px) {
+    .plan-view-object {
+      inline-size: 100%;
+    }
+
+    .plan-view-layout--with-object .plan-view {
+      display: none;
+    }
   }
 </style>

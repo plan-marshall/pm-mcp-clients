@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
-  import KindMark, { KIND_WORD_KEYS, type Kind } from '../components/KindMark.svelte';
+  import KindMark, { type Kind } from '../components/KindMark.svelte';
   import ReasonBadge from '../components/ReasonBadge.svelte';
   import RowLink from '../components/RowLink.svelte';
   import Button from '../components/Button.svelte';
@@ -12,6 +12,7 @@
   import TriagePage, { type Level } from '../templates/TriagePage.svelte';
   import { apiClient, type ProjectSummary } from '../api/client';
   import { projectCountsText } from '../display/projectCounts';
+  import { blockWordText } from '../display/decisionBlocks';
   import { parseAddress } from '../routes';
   import { openAddress } from '../stores/runtime';
   import {
@@ -42,9 +43,6 @@
 
   /** One item waiting; the levels of the list are one, so the engine draws one column. */
   const LEVELS_KEY = 'what-waits';
-
-  /** The kinds a `blocks` value can name: the three work kinds of the shared vocabulary. */
-  const BLOCK_KINDS: ReadonlySet<string> = new Set(['plan', 'epic', 'project']);
 
   /** The projects with running work, for the empty state. */
   let projects = $state<ProjectSummary[]>([]);
@@ -123,14 +121,10 @@
 
   /**
    * @param item one item of the list
-   * @returns what it blocks, in the shared kind vocabulary, or the words for blocking no work
+   * @returns what it blocks, in the decision's own words
    */
   function blocksOf(item: AttentionItem): string {
-    const blocks = item.blocks ?? '';
-    if (!BLOCK_KINDS.has(blocks)) {
-      return $t('overview.needs.blocks_nothing');
-    }
-    return $t('overview.needs.blocks', { what: $t(KIND_WORD_KEYS[blocks as Kind]) });
+    return blockWordText(item.blocks, $t);
   }
 
   /**

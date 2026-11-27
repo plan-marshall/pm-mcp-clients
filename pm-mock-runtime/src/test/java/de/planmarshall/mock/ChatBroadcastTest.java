@@ -17,8 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
@@ -36,6 +38,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.chat.ChatEndedEvent;
+import de.planmarshall.api.chat.ChatProposal;
 import de.planmarshall.api.chat.ChatProposalEvent;
 import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatRoutes;
@@ -60,6 +63,9 @@ import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.runtime.MockTiming;
+import de.planmarshall.mock.scenario.Scenario;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
+import de.planmarshall.mock.scenario.StateDefinition;
 
 /**
  * A second device played through {@code POST /mock/broadcast}: a chat event names its chat by
@@ -289,6 +295,121 @@ class ChatBroadcastTest {
             assertEquals(ProposalState.OPEN,
                     Objects.requireNonNull(read(runtime, ChatRoutes.plan(SEEDED_PROPOSAL_PLAN)).proposal()).state());
         }
+    }
+
+    @Test
+    @DisplayName("broadcasting ACCEPTED passes through revisionRefusal, never overwrites a queued revision, and refuses missing applies without throwing")
+    void broadcastAcceptedRevisionGuards() throws Exception {
+        try (var runtime = ordered()) {
+            var planRoutes = ChatRoutes.plan(SEEDED_PROPOSAL_PLAN);
+            var decisionRoutes = ChatRoutes.planDecision(SEEDED_PROPOSAL_PLAN, "Q-007");
+            var planChat = read(runtime, planRoutes);
+            var planProposal = Objects.requireNonNull(planChat.proposal());
+            var decisionChat = read(runtime, decisionRoutes);
+            var decisionProposal = Objects.requireNonNull(decisionChat.proposal());
+
+            // 1. Accept decision chat's revision so fix-relay has a queued revision.
+            assertEquals(200, post(runtime, decisionRoutes.accept(),
+                    new ProposalAnswerRequest(decisionProposal.turnId()).toJson()).status());
+
+            // 2. Broadcast ACCEPTED on plan chat: refused conflict, does NOT overwrite queued revision.
+            var conflict = broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(planChat.id(),
+                    planProposal.turnId(), planProposal.replyTurnId(), ProposalKind.REVISION,
+                    ProposalState.ACCEPTED, null).toMap());
+            var process = JsonTree.asObject(JsonTree.parse(new UnixSocketHttpClient(runtime.socketPath())
+                    .send(HttpRequest.get("/api/v1/plans/" + SEEDED_PROPOSAL_PLAN + "/process")
+                            .withHeader(AUTH_HEADER, "Bearer " + runtime.token())).body()));
+            var queued = JsonTree.object(process, "queued_revision");
+            assertAll("conflict does not overwrite queued revision",
+                    () -> assertEquals(409, conflict.status(), conflict.bodyText()),
+                    () -> assertEquals(CONFLICT, JsonTree.string(JsonTree.asObject(JsonTree.parse(conflict.body())), ERROR)),
+                    () -> assertEquals(decisionChat.id(), JsonTree.string(Objects.requireNonNull(queued), "chat_id")),
+                    () -> assertEquals(ProposalState.OPEN,
+                            Objects.requireNonNull(read(runtime, planRoutes).proposal()).state()));
+
+            // 3. After queued revision applies, plan moved to version 2: broadcast ACCEPTED on stale plan proposal is refused.
+            assertEquals(200, broadcast(runtime, "task.ended",
+                    Map.of("plan_id", SEEDED_PROPOSAL_PLAN, "task_id", "TASK-003", "status", "done")).status());
+            var stale = broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(planChat.id(),
+                    planProposal.turnId(), planProposal.replyTurnId(), ProposalKind.REVISION,
+                    ProposalState.ACCEPTED, null).toMap());
+            assertAll("stale version refused",
+                    () -> assertEquals(409, stale.status(), stale.bodyText()),
+                    () -> assertEquals(CONFLICT, JsonTree.string(JsonTree.asObject(JsonTree.parse(stale.body())), ERROR)),
+                    () -> assertEquals(ProposalState.OPEN,
+                            Objects.requireNonNull(read(runtime, planRoutes).proposal()).state()));
+        }
+
+        assertMissingAppliesRefused();
+        assertRefusedProposalAcceptsReject();
+    }
+
+    private void assertMissingAppliesRefused() throws Exception {
+        // Broadcast ACCEPTED on a revision proposal with null applies: refused invalid_arguments (no uncaught NPE).
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                     .initialScenario(withoutAppliesOnFixRelayProposal()).timing(MockTiming.ORDERED).build())) {
+            var planRoutes = ChatRoutes.plan(SEEDED_PROPOSAL_PLAN);
+            var chat = read(runtime, planRoutes);
+            var proposal = Objects.requireNonNull(chat.proposal());
+
+            var missingApplies = broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(chat.id(),
+                    proposal.turnId(), proposal.replyTurnId(), ProposalKind.REVISION, ProposalState.ACCEPTED, null)
+                    .toMap());
+            assertRefused(missingApplies, 400, INVALID_ARGUMENTS);
+        }
+    }
+
+    private void assertRefusedProposalAcceptsReject() throws Exception {
+        // Broadcast REJECTED on a REFUSED proposal moves it cleanly to REJECTED.
+        try (var runtime = ordered()) {
+            var routes = ChatRoutes.plan(id());
+            var opened = openChat(runtime, routes);
+            send(runtime, routes);
+            send(runtime, routes);
+            var proposal = Objects.requireNonNull(read(runtime, routes).proposal());
+            assertEquals(200, broadcast(runtime, "task.ended",
+                    Map.of("plan_id", opened.subject().id(), "task_id", "TASK-4", "status", "done")).status());
+            assertEquals(ProposalState.REFUSED,
+                    Objects.requireNonNull(ChatResource.fromJson(post(runtime, routes.accept(),
+                            new ProposalAnswerRequest(proposal.turnId()).toJson()).bodyText()).proposal()).state());
+
+            var rejected = broadcast(runtime, ChatProposalEvent.EVENT_NAME, new ChatProposalEvent(opened.id(),
+                    proposal.turnId(), proposal.replyTurnId(), ProposalKind.REVISION, ProposalState.REJECTED, null)
+                    .toMap());
+            assertEquals(200, rejected.status(), rejected.bodyText());
+            assertEquals(ProposalState.REJECTED,
+                    Objects.requireNonNull(read(runtime, routes).proposal()).state());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Scenario withoutAppliesOnFixRelayProposal() {
+        var base = new ScenarioRegistry().resolve(StandardScenarios.RUNNING_WORK);
+        var stateId = base.start();
+        var state = Objects.requireNonNull(base.state(stateId));
+        var representation = (Map<String, Object>) copyValue(state.representation());
+        var control = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) representation
+                .get("facts")).get("runtime")).get("control");
+        var chats = (List<Object>) control.get("chats");
+        var fixRelay = (Map<String, Object>) chats.getFirst();
+        ((Map<String, Object>) fixRelay.get("proposal")).remove(ChatProposal.FIELD_APPLIES);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, state.links(), state.events(), state.auto(),
+                state.chatFailures()));
+        return new Scenario(base.formatVersion(), base.name(), base.description(), stateId, base.pairingCode(),
+                base.routes(), states);
+    }
+
+    private static Object copyValue(Object value) {
+        if (value instanceof Map<?, ?> map) {
+            var copy = new LinkedHashMap<String, Object>();
+            map.forEach((key, member) -> copy.put(String.valueOf(key), copyValue(member)));
+            return copy;
+        }
+        if (value instanceof List<?> list) {
+            return new ArrayList<>(list.stream().map(ChatBroadcastTest::copyValue).toList());
+        }
+        return value;
     }
 
     @Test
