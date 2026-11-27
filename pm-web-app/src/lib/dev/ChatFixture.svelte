@@ -3,6 +3,7 @@
   import type { ChatStore, ChatStoreState } from '../chat/store';
   import type { ChatResource, ChatTarget, LocalChatTurn } from '../chat/types';
   import Chat from '../components/Chat.svelte';
+  import ChatMarkdown from '../components/ChatMarkdown.svelte';
   import ChatTurn from '../components/ChatTurn.svelte';
 
   const subject: ChatTarget & { title?: string } = {
@@ -148,6 +149,9 @@
   <div class="chat-fixture__turn">
     <ChatTurn turn={standaloneTurn} scope="plan" subject={fixtureChat.subject} />
   </div>
+  <div class="chat-fixture__markdown">
+    <ChatMarkdown text={'Markdown subset with **bold**, _italic_, and `code`.'} />
+  </div>
 </div>
 
 <style>
@@ -163,7 +167,8 @@
     overflow: hidden;
   }
 
-  .chat-fixture__turn {
+  .chat-fixture__turn,
+  .chat-fixture__markdown {
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     padding: var(--space-2);
