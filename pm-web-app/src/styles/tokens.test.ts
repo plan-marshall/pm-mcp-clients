@@ -947,6 +947,7 @@ describe('tokens.css: static scans over the source tree', () => {
       ['lib/views/ProcessDesigner.svelte', '.frontmatter__input'],
       ['lib/views/ProjectExplorerView.svelte', '.sort-select'],
       ['lib/views/ProjectExplorerView.svelte', '.field-input'],
+      ['lib/views/ProjectOnboardingView.svelte', '.field-input'],
       ['lib/views/SettingsView.svelte', '.rename-input'],
       ['lib/views/SettingsView.svelte', '.rotate-input'],
     ];

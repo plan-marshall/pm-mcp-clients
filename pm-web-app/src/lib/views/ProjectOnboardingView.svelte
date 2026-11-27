@@ -1224,7 +1224,7 @@
   .field-input {
     width: 100%;
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--control-border);
     border-radius: var(--radius-md);
     background-color: var(--color-bg-app);
     color: var(--color-text-primary);
