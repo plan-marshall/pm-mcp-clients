@@ -174,6 +174,29 @@ function hasRefBoundaries(
   return true;
 }
 
+function findNextValidRefIndex(text: string, cursor: number, candidate: RefWithId): number {
+  let searchFrom = cursor;
+  while (searchFrom <= text.length - candidate.id.length) {
+    const idx = text.indexOf(candidate.id, searchFrom);
+    if (idx < 0) return -1;
+    if (hasRefBoundaries(text, idx, candidate.id.length, candidate.kind)) {
+      return idx;
+    }
+    searchFrom = idx + 1;
+  }
+  return -1;
+}
+
+function isPreferredRefMatch(
+  idx: number,
+  candidate: RefWithId,
+  bestIndex: number,
+  bestRef: RefWithId | null,
+): boolean {
+  if (bestIndex === -1 || idx < bestIndex) return true;
+  return idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length;
+}
+
 function findEarliestRefMatch(
   text: string,
   cursor: number,
@@ -183,21 +206,10 @@ function findEarliestRefMatch(
   let bestRef: RefWithId | null = null;
 
   for (const candidate of candidates) {
-    let searchFrom = cursor;
-    while (searchFrom <= text.length - candidate.id.length) {
-      const idx = text.indexOf(candidate.id, searchFrom);
-      if (idx < 0) break;
-      if (hasRefBoundaries(text, idx, candidate.id.length, candidate.kind)) {
-        const isEarlier = bestIndex === -1 || idx < bestIndex;
-        const isLongerTie =
-          idx === bestIndex && bestRef !== null && candidate.id.length > bestRef.id.length;
-        if (isEarlier || isLongerTie) {
-          bestIndex = idx;
-          bestRef = candidate;
-        }
-        break;
-      }
-      searchFrom = idx + 1;
+    const idx = findNextValidRefIndex(text, cursor, candidate);
+    if (idx >= 0 && isPreferredRefMatch(idx, candidate, bestIndex, bestRef)) {
+      bestIndex = idx;
+      bestRef = candidate;
     }
   }
 

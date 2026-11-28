@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type EventStreamState } from '../api/client';
 import { ClientError } from '../api/errors';
+import { createClientTurnId } from './client';
 import {
   chatRoutesFor,
   createChatStore,
@@ -1040,7 +1041,7 @@ describe('chat store and follow lifecycle', () => {
     const callsBeforeArchive = req.mock.calls.length;
     const archiveStore = createChatStore(planTarget, { archive: true });
     expect(await archiveStore.openNew()).toBeNull();
-    expect(req.mock.calls.length).toBe(callsBeforeArchive);
+    expect(req.mock.calls).toHaveLength(callsBeforeArchive);
   });
 
   it('reuses shared /api/v1/events connection and wires retry when subscribePathEvents targets /api/v1/events', () => {
@@ -1059,5 +1060,29 @@ describe('chat store and follow lifecycle', () => {
     expect(states[0]).toBe('connecting');
     retryFns[0]?.();
     unsub();
+  });
+
+  it('generates UUID v4 identifiers across randomUUID, getRandomValues, and fallback modes', () => {
+    const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+    expect(createClientTurnId()).toMatch(uuidRe);
+
+    const getRandomValues = vi.fn((arr: Uint8Array) => {
+      arr.fill(0xab);
+      return arr;
+    });
+    vi.stubGlobal('crypto', { getRandomValues });
+    try {
+      expect(createClientTurnId()).toMatch(uuidRe);
+      expect(getRandomValues).toHaveBeenCalledTimes(1);
+
+      vi.stubGlobal('crypto', {});
+      const idA = createClientTurnId();
+      const idB = createClientTurnId();
+      expect(idA).toMatch(uuidRe);
+      expect(idB).toMatch(uuidRe);
+      expect(idA).not.toBe(idB);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

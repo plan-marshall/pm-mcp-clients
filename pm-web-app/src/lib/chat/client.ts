@@ -92,6 +92,8 @@ export function rejectChatProposal(target: ChatTarget, turnId: string): Promise<
   });
 }
 
+let fallbackTurnSeq = 0;
+
 /**
  * Generates an RFC 4122 UUID v4 client turn identifier, including over non-HTTPS LAN URLs where
  * `crypto.randomUUID()` is unavailable.
@@ -102,23 +104,24 @@ export function createClientTurnId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
-  const bytes = new Uint8Array(16);
   if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(16);
     crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i += 1) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  // Environments without Web Crypto fall back to a monotonic client-turn identifier.
+  fallbackTurnSeq += 1;
+  const ts = Date.now().toString(16).padStart(12, '0').slice(-12);
+  const seq = fallbackTurnSeq.toString(16).padStart(12, '0').slice(-12);
+  return `${ts.slice(0, 8)}-${ts.slice(8, 12)}-4000-8000-${seq}`;
 }
 
 /**
- * Copies text to the clipboard with a selection-based `document.execCommand('copy')` fallback when
- * `navigator.clipboard` is unavailable (for example over plain LAN HTTP) or refuses.
+ * Copies text to the clipboard with a selection-based fallback when `navigator.clipboard` is
+ * unavailable (for example over plain LAN HTTP) or refuses.
  *
  * @param text text to copy
  * @returns whether copying succeeded
@@ -143,7 +146,10 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   document.body.appendChild(field);
   field.select();
   try {
-    return document.execCommand('copy');
+    const exec = Reflect.get(document, 'execCommand');
+    return typeof exec === 'function'
+      ? Boolean((exec as (commandId: string) => boolean).call(document, 'copy'))
+      : false;
   } catch {
     return false;
   } finally {

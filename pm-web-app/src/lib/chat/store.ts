@@ -109,39 +109,39 @@ function clearStoredDraft(key: string): void {
   }
 }
 
+function mergeServerTurn(
+  turn: ChatTurn,
+  prev: LocalChatTurn | undefined,
+  streamTouchedTurns: ReadonlySet<string>,
+): LocalChatTurn {
+  if (prev && streamTouchedTurns.has(turn.turn_id)) {
+    return prev;
+  }
+  return {
+    ...turn,
+    ...(prev?.client_turn_id ? { client_turn_id: prev.client_turn_id } : {}),
+    ...(prev?.delivery ? { delivery: prev.delivery } : {}),
+  };
+}
+
 function mergeServerAndPending(
   serverTurns: ChatTurn[],
   previousTurns: LocalChatTurn[],
   streamTouchedTurns: ReadonlySet<string>,
 ): LocalChatTurn[] {
-  const prevById = new Map<string, LocalChatTurn>();
-  for (const prev of previousTurns) {
-    prevById.set(prev.turn_id, prev);
-  }
+  const prevById = new Map(previousTurns.map((prev) => [prev.turn_id, prev]));
+  const seenIds = new Set<string>();
+  const merged = serverTurns.map((turn) => {
+    seenIds.add(turn.turn_id);
+    return mergeServerTurn(turn, prevById.get(turn.turn_id), streamTouchedTurns);
+  });
 
-  const byId = new Map<string, LocalChatTurn>();
-  for (const turn of serverTurns) {
-    const prev = prevById.get(turn.turn_id);
-    if (prev && streamTouchedTurns.has(turn.turn_id)) {
-      byId.set(turn.turn_id, prev);
-    } else {
-      byId.set(turn.turn_id, {
-        ...turn,
-        ...(prev?.client_turn_id ? { client_turn_id: prev.client_turn_id } : {}),
-        ...(prev?.delivery ? { delivery: prev.delivery } : {}),
-      });
-    }
-  }
-
-  const merged = Array.from(byId.values());
   // Preserve failed ('not_sent') or still-pending local turns not yet reflected in server turns.
   for (const prev of previousTurns) {
-    if (!prev.delivery) continue;
-    if (prev.delivery === 'not_sent' && !byId.has(prev.turn_id)) {
-      merged.push(prev);
-      continue;
-    }
-    if (prev.delivery === 'sending' && !byId.has(prev.turn_id)) {
+    if (
+      (prev.delivery === 'not_sent' || prev.delivery === 'sending') &&
+      !seenIds.has(prev.turn_id)
+    ) {
       merged.push(prev);
     }
   }
@@ -232,42 +232,34 @@ export function createChatStore(
     resourceId: string,
     prevChatId: string | null,
   ): Partial<ChatStoreState> {
-    if (prevChatId === null) {
-      if (!pendingStoredDraft) return {};
-      const stored = pendingStoredDraft;
-      pendingStoredDraft = null;
-      if (draftTouched) {
-        writeStoredDraft(draftKey, resourceId, state.draft);
-        return {};
-      }
-      if (stored.chatId === null || stored.chatId === resourceId) {
-        if (stored.text && stored.chatId === null) {
-          writeStoredDraft(draftKey, resourceId, stored.text);
-        }
-        if (state.draft !== stored.text) {
-          draftVersion += 1;
-          return { draft: stored.text };
-        }
-        return {};
-      }
-      // Stored draft belongs to an earlier replaced chat: discard without leaking across chats.
-      clearStoredDraft(draftKey);
-      if (state.draft) {
-        draftVersion += 1;
-        return { draft: '' };
-      }
-      return {};
-    }
-
-    if (prevChatId !== resourceId) {
+    if (prevChatId === resourceId) return {};
+    if (prevChatId !== null) {
       pendingStoredDraft = null;
       draftTouched = false;
       clearStoredDraft(draftKey);
       draftVersion += 1;
       return { draft: '', endedBy: null };
     }
-
-    return {};
+    const stored = pendingStoredDraft;
+    pendingStoredDraft = null;
+    if (!stored) return {};
+    if (draftTouched) {
+      writeStoredDraft(draftKey, resourceId, state.draft);
+      return {};
+    }
+    if (stored.chatId !== null && stored.chatId !== resourceId) {
+      // Stored draft belongs to an earlier replaced chat: discard without leaking across chats.
+      clearStoredDraft(draftKey);
+      if (!state.draft) return {};
+      draftVersion += 1;
+      return { draft: '' };
+    }
+    if (stored.text && stored.chatId === null) {
+      writeStoredDraft(draftKey, resourceId, stored.text);
+    }
+    if (state.draft === stored.text) return {};
+    draftVersion += 1;
+    return { draft: stored.text };
   }
 
   function applySnapshot(resource: ChatResource, baselineStreamSeq = streamSeq): void {
