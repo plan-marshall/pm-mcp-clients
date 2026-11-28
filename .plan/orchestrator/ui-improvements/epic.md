@@ -717,6 +717,14 @@ plan spec names the plan, proposal and finding documents it comes from.
 - **EMIT PLAN-138 `cli-chat-dialogue` (2026-11-27, same word).**
 - **PLAN-71 findings fixed and PLAN-199 emitted (2026-11-27, the operator: "Fix both and land. after that: emit another plan-marshall plan").**
 - **PLAN-70 landed; emit form reverted to runbook only; PLAN-198 emitted (2026-11-27 late, the operator: "Analyze. I reverted my decision: From now on again runbook-lane only. plan-marshall only if I tell you so. Land the changes and emit").**
+- **PLAN-135 landed (2026-11-28, the operator: "analyze").** Message `rb-135-web-chat-core-001` analysed by a sub-agent in three layers (`landings/PLAN-135.md`; L3-1 re-read by the orchestrator), archived. Row `shipped`, `pr=598`.
+  - #598 `bdaf6f26`: 4 of 4 in scope (D5 went to PLAN-192).
+  - XSS clean: the renderer uses `marked.lexer` only, with text sinks; unsafe links and raw HTML render as text. One dependency, `marked@18.3.0`, as approved.
+  - One major, L3-1: the completed reply is announced twice (an extra `aria-live` region beside `role=log`), also on open, as raw markdown.
+  - Minors: the "other device" label has no contract field; a Send after a lost answer is not idempotent; Try again on an ended chat drops the turn; events dropped before the first read; an `openNew` race; doc rows overclaim the side column.
+  - Positive: the 10 s abort of every SSE stream (since #274) is fixed. No heartbeat exists yet.
+  - Reported, no fix plan. Sonar `main` after `AaIh6Om0wnWyEqGvGte4`: gate OK, 3 open.
+  - PLAN-136's gate is open, but it needs a re-grounding first: parts of D1 and D3 are done, and its notice and browser-check claims are stale.
   - **PLAN-70:** message `rb-70-web-light-theme-pass-001` analysed by a sub-agent in three layers (`landings/PLAN-70.md`; the copied-baseline claim re-checked by md5), archived. Row `shipped`, `pr=601`.
     - #601 `693d0597`: 2 of 2 deliverables. D1(b), the light review, is only partly evidenced: the shots predate `e42c360d`, the DE baseline is a copy of the EN one, and the matrix covers overview only.
     - `--control-border` was retuned in both themes on measured evidence (light 1.57→3.57, dark 1.74→3.53). Side effect: every user of `--color-border-strong` gets a heavier border.
@@ -1164,6 +1172,18 @@ plan spec names the plan, proposal and finding documents it comes from.
 - **PLAN-196 landed (2026-11-27, #594 `aa0ca871`): plan-page residue minors; owner: the operator (no fix plan staged).** `landings/PLAN-196.md`, 7 of 10 Done-whens by reading. D4(b) not met: the 40 state shots predate `63c1e804`/`b68d5956` and the 4 targets predate 8 rendering commits (en-light only) — the second plan with stale screenshots (PLAN-55): the screenshot Done-when needs a mechanical check of shot time against the last visual commit. No `-Pe2e` run at the merge head (last green at `9a1cfa7b`). L3-1 the in-place decision closes itself when the envelope has no `plan` (`DecisionView.svelte:423-424`); L3-2 Close uses `history.back()` and breaks once an in-plan push exists (PLAN-190); L3-4 the Intent loading test cannot see the first paint (`PlanView.test.ts:2753`); L3-5 an unknown aspect renders the unknown word and loses its id, prefixed aspects show raw suffixes (`display/index.ts:204,208`); L3-6 the stale shots. D3(c) literal `git grep` clause unsatisfiable while the ledger on `main` quotes the key (a Done-when authoring defect). Runtime values with no display name (unreported by the run): `main`, `standard`, `native`, `GitHub`, `Claude Code - sonnet-5.5`, `Codex - gpt-5.3`.
 - **PLAN-71 landed (2026-11-27, #599 `3f0af941`): verification record minors and two check-text defects; owner: the operator (no fix plan staged).** `landings/PLAN-71.md`.
 - **PLAN-70 landed (2026-11-27, #601 `693d0597`): light-pass evidence gaps and scanner minors; owner: the operator (no fix plan staged).** `landings/PLAN-70.md`.
+- **PLAN-135 landed (2026-11-28, #598 `bdaf6f26`): web chat core minors and one a11y major; owner: the operator (no fix plan staged).** `landings/PLAN-135.md`.
+  - **L3-1 (major):** a second polite live region announces the finished reply as raw markdown, on top of the `role=log`; it also fires on open (`Chat.svelte:266-281`, `ChatTranscript.svelte:195-197`).
+  - **L3-2:** no device per turn in the contract.
+  - **L3-3:** a Send after a failed send draws a new `client_turn_id`.
+  - **L3-4:** Try again on an ended chat loses the turn.
+  - **L3-5:** more than 500 early events are dropped.
+  - **L3-6:** the `openNew` race.
+  - **L3-7:** `Chat` does not follow a subject change.
+  - **L3-8:** doc overclaims (`chat.adoc:136,342`, `navigation.adoc:415`).
+  - **L3-9:** O(n²) re-lexing.
+  - **L3-10:** `aria-busy` scope and the `planner` literal.
+  - **Transport gap:** no stream heartbeat or idle watchdog. Route it to the transport specification.
   - L3-1: the Svelte scanner's false negatives (`class={}`, `src/routes`, logical border sides).
   - L3-2: a fourth CSS reader, although the Re-Grounding said to reuse one.
   - L3-3: a duplicated brand pair.
