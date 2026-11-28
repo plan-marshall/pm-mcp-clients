@@ -122,8 +122,6 @@ import de.planmarshall.api.event.EventScopeKind;
 import de.planmarshall.api.event.StreamClosedEvent;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.OutlineResource;
-import de.planmarshall.api.intent.OverSizeDistributionResource;
-import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.interaction.OperatorText;
@@ -697,11 +695,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
     private static final String SUFFIX_INTENT = "/intent";
     private static final String SUFFIX_OUTLINE = "/outline";
-    private static final String SEGMENT_METRICS_OVERSIZE = "/metrics/oversize";
     private static final String FIXTURE_PLAN_INTENT = "/api/v1/plans/fix-relay/intent";
     private static final String FIXTURE_PLAN_OUTLINE = "/api/v1/plans/fix-relay/outline";
     private static final String FIXTURE_EPIC_INTENT = "/api/v1/epics/relay-hardening/intent";
-    private static final String FIXTURE_OVERSIZE = "/api/v1/projects/pm-mcp-clients/metrics/oversize";
     private static final String SEGMENT_DECISIONS = "/decisions/";
     private static final String SUFFIX_PROCESS = "/process";
     private static final String CONST_DOMAIN = "domain";
@@ -7268,10 +7264,9 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
     }
 
     /**
-     * Serves the intent and outline records and the {@code over_size} distribution. The fixtures are
-     * static routes of a scenario; a request for another plan, epic, or project id is answered from
-     * the same fixture with its id replaced, so the client's dynamic address is exercised without a
-     * fixture per id.
+     * Serves the intent and outline records. The fixtures are static routes of a scenario; a request
+     * for another plan or epic id is answered from the same fixture with its id replaced, so the
+     * client's dynamic address is exercised without a fixture per id.
      *
      * @param request  the request
      * @param response the response
@@ -7304,11 +7299,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
                     && serveIntentFixture(response, FIXTURE_EPIC_INTENT, EpicIntentResource::fromMap,
                     EpicIntentResource.FIELD_EPIC_ID, epicId);
         }
-        if (hasIdBetween(path, PREFIX_PROJECTS, SEGMENT_METRICS_OVERSIZE)) {
-            var sub = path.substring(PREFIX_PROJECTS.length());
-            var projectId = sub.substring(0, sub.length() - SEGMENT_METRICS_OVERSIZE.length());
-            return !projectId.contains("/") && serveDistributionFixture(response, FIXTURE_OVERSIZE, projectId);
-        }
         return false;
     }
 
@@ -7335,43 +7325,6 @@ public final class MockRuntimeEngine implements AutoCloseable, ChatFacts {
         reader.read(representation);
         var copy = new LinkedHashMap<String, Object>(representation);
         copy.put(idField, id);
-        response.json(200, copy);
-        return true;
-    }
-
-    /**
-     * Serves the {@code over_size} distributions of every role the project sets: the fixture's answer
-     * with the project id replaced at the top and in every distribution, so a client sees one answer
-     * about the project it asked for rather than a half-replaced one.
-     *
-     * @param response    the response
-     * @param fixturePath the scenario's route of the fixture
-     * @param projectId   the project the request named
-     * @return {@code true} if the fixture is active
-     * @throws IOException on write failure
-     */
-    private boolean serveDistributionFixture(MockHttpResponse response, String fixturePath, String projectId)
-            throws IOException {
-        var representation = Optional.ofNullable(activeRoute("GET", fixturePath))
-                .map(RouteDefinition::representation)
-                .map(JsonTree::asObject)
-                .orElse(null);
-        if (representation == null) {
-            return false;
-        }
-        OverSizeDistributionsResource.fromMap(representation);
-        var copy = new LinkedHashMap<String, Object>(representation);
-        copy.put(OverSizeDistributionsResource.FIELD_PROJECT_ID, projectId);
-        copy.put(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS,
-                Optional.ofNullable(
-                        JsonTree.asArray(representation.get(OverSizeDistributionsResource.FIELD_DISTRIBUTIONS)))
-                        .orElseGet(List::of).stream()
-                        .map(element -> {
-                            var distribution = new LinkedHashMap<String, Object>(JsonTree.asObject(element));
-                            distribution.put(OverSizeDistributionResource.FIELD_PROJECT_ID, projectId);
-                            return distribution;
-                        })
-                        .toList());
         response.json(200, copy);
         return true;
     }

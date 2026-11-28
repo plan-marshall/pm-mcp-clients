@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -228,6 +229,31 @@ class PlanViewCatalogueTest {
             var key = "plan.signal.action." + action.value();
             assertTrue(MessageCatalogue.hasKey("en", key), "Missing English key for action: " + key);
             assertTrue(MessageCatalogue.hasKey("de", key), "Missing German key for action: " + key);
+        }
+    }
+
+    @Test
+    @DisplayName("retires the old signal keys and carries failing_again, edit_churn and agent_started in both locales")
+    void signalKeysReflectClosedSetOfFive() {
+        var retired = List.of(
+                "state.signal.over_size", "state.signal.outside_footprint",
+                "plan.signal.over_size", "plan.signal.outside_footprint");
+        var added = List.of("failing_again", "edit_churn", "agent_started");
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            var common = MessageCatalogue.getMessages(locale, "common");
+            var planView = MessageCatalogue.getMessages(locale, "plan_view");
+            var all = MessageCatalogue.getMessages(locale, "all");
+            for (var key : retired) {
+                assertFalse(all.containsKey(key), "Retired key must be absent in " + locale + ": " + key);
+            }
+            for (var signal : added) {
+                var stateKey = "state.signal." + signal;
+                var planKey = "plan.signal." + signal;
+                assertTrue(common.containsKey(stateKey), "Missing " + stateKey + " in " + locale);
+                assertFalse(common.get(stateKey).isBlank(), "Blank " + stateKey + " in " + locale);
+                assertTrue(planView.containsKey(planKey), "Missing " + planKey + " in " + locale);
+                assertFalse(planView.get(planKey).isBlank(), "Blank " + planKey + " in " + locale);
+            }
         }
     }
 

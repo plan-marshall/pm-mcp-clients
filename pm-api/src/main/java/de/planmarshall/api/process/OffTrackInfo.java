@@ -21,7 +21,7 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * Off-track diagnosis and action details for a worker task (UC-PLN-1).
  *
- * @param signal    diagnostic signal (e.g. "repeating", "no_progress", "over_size", "outside_footprint")
+ * @param signal    diagnostic signal (e.g. "repeating", "no_progress", "failing_again", "edit_churn", "agent_started")
  * @param action    action taken (e.g. "show", "nudge", "yield", "restart")
  * @param value     measured metric value, or {@code null}
  * @param threshold configured threshold triggering the signal, or {@code null}

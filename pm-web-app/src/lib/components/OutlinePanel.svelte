@@ -12,8 +12,7 @@
   /**
    * The plan's outline (design `intent-and-outline.adoc#outline`, web part `#web`): the deliverables
    * with their number and title, their gloss, the files they affect with the intent of each, the
-   * deliverables they depend on, the criteria they satisfy and how they are verified, and the added
-   * dependencies with the deliverable that adds each and the reason.
+   * deliverables they depend on, and the criteria they satisfy and how they are verified.
    *
    * A path is never turned into a link, a dependency on a deliverable the record does not carry is
    * shown as `missing deliverable <n>`, and a deliverable that satisfies no criterion says so. The

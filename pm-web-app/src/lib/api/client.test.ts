@@ -2508,10 +2508,10 @@ describe('ApiClient routes', () => {
 });
 
 /**
- * The four records of the intent and outline design (`intent-and-outline.adoc`): a plan's intent, its
- * outline, the epic's intent, and the `over_size` distribution. The client's types are the wire's, so
- * every field the contract carries is pinned against the mock's own record, and a record that does
- * not fit the contract fails closed instead of reaching a panel half read.
+ * The three records of the intent and outline design (`intent-and-outline.adoc`): a plan's intent,
+ * its outline, and the epic's intent. The client's types are the wire's, so every field the contract
+ * carries is pinned against the mock's own record, and a record that does not fit the contract fails
+ * closed instead of reaching a panel half read.
  */
 describe('ApiClient intent and outline records', () => {
   let client: ApiClient;
@@ -2731,15 +2731,25 @@ describe('ApiClient intent and outline records', () => {
           satisfies: ['AC-003'],
         },
       ],
-      added_dependencies: [
-        {
-          name: 'de.cuioss:cui-http',
-          version: '2.1.0',
-          justification: 'The retry adapter carries the backoff policy.',
-          deliverable: 1,
-        },
-      ],
     });
+  });
+
+  it('returns an outline without added_dependencies even when the wire carries one', async () => {
+    // Arrange: a lagging wire response carrying the retired field
+    const wire = {
+      ...(served('running-work', 'GET /api/v1/plans/fix-relay/outline') as Record<string, unknown>),
+      added_dependencies: [
+        { name: 'de.cuioss:cui-http', justification: 'legacy wire lag', deliverable: 1 },
+      ],
+    };
+    answer(wire);
+
+    // Act
+    const record = await client.getPlanOutline('fix-relay');
+
+    // Assert
+    expect(record).not.toBeNull();
+    expect('added_dependencies' in (record as object)).toBe(false);
   });
 
   it('reads the epic intent with its checks, its plans, and the strings it carries', async () => {
@@ -2801,73 +2811,16 @@ describe('ApiClient intent and outline records', () => {
     });
   });
 
-  it('reads the over_size distributions of every role, with their multiples and buckets', async () => {
-    // Arrange
-    answer(served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
-
-    // Act
-    const record = await client.getOverSize('pm-mcp-clients');
-
-    // Assert
-    expect(record).toEqual({
-      project_id: 'pm-mcp-clients',
-      distributions: [
-        {
-          project_id: 'pm-mcp-clients',
-          role: 'implement',
-          current_multiple: 3,
-          proposed_multiple: 2,
-          buckets: [
-            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 8, flagged_tasks: 0 },
-            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 5, flagged_tasks: 0 },
-            { label: '2-3x', from_multiple: 2, to_multiple: 3, task_count: 3, flagged_tasks: 3 },
-            {
-              label: '3x and more',
-              from_multiple: 3,
-              to_multiple: 6,
-              task_count: 4,
-              flagged_tasks: 4,
-            },
-          ],
-        },
-        {
-          project_id: 'pm-mcp-clients',
-          role: 'module-tester',
-          current_multiple: 3,
-          buckets: [
-            { label: '0-1x', from_multiple: 0, to_multiple: 1, task_count: 6, flagged_tasks: 0 },
-            { label: '1-2x', from_multiple: 1, to_multiple: 2, task_count: 2, flagged_tasks: 0 },
-            {
-              label: '3x and more',
-              from_multiple: 3,
-              to_multiple: 6,
-              task_count: 1,
-              flagged_tasks: 0,
-            },
-          ],
-        },
-        {
-          project_id: 'pm-mcp-clients',
-          role: 'architecture',
-          current_multiple: 3,
-          buckets: [],
-        },
-      ],
-    });
-  });
-
   it('sends each request to the record route of its own id', async () => {
     // Arrange: every answer is a valid record of its own kind
     const urls: string[] = [];
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       urls.push(url);
-      const body = url.includes('/metrics/oversize')
-        ? served('running-work', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize')
-        : url.includes('/epics/')
-          ? served('running-work', 'GET /api/v1/epics/relay-hardening/intent')
-          : url.endsWith('/outline')
-            ? served('running-work', 'GET /api/v1/plans/fix-relay/outline')
-            : served('running-work', 'GET /api/v1/plans/fix-relay/intent');
+      const body = url.includes('/epics/')
+        ? served('running-work', 'GET /api/v1/epics/relay-hardening/intent')
+        : url.endsWith('/outline')
+          ? served('running-work', 'GET /api/v1/plans/fix-relay/outline')
+          : served('running-work', 'GET /api/v1/plans/fix-relay/intent');
       return Promise.resolve({ ok: true, status: 200, json: async () => body });
     });
 
@@ -2875,35 +2828,13 @@ describe('ApiClient intent and outline records', () => {
     await client.getPlanIntent('fix relay');
     await client.getPlanOutline('fix relay');
     await client.getEpicIntent('relay hardening');
-    await client.getOverSize('pm mcp clients');
 
     // Assert
     expect(urls).toEqual([
       'http://localhost:7420/api/v1/plans/fix%20relay/intent',
       'http://localhost:7420/api/v1/plans/fix%20relay/outline',
       'http://localhost:7420/api/v1/epics/relay%20hardening/intent',
-      'http://localhost:7420/api/v1/projects/pm%20mcp%20clients/metrics/oversize',
     ]);
-  });
-
-  it('reads distributions the runtime serves without a proposal, as the mock does', async () => {
-    // Arrange: the fully-onboarded scenario serves no proposed multiple
-    answer(served('fully-onboarded', 'GET /api/v1/projects/pm-mcp-clients/metrics/oversize'));
-
-    // Act
-    const record = await client.getOverSize('pm-mcp-clients');
-
-    // Assert
-    const implement = record?.distributions[0];
-    expect(implement?.proposed_multiple).toBeUndefined();
-    expect(implement?.buckets).toHaveLength(4);
-    expect(implement?.buckets[0]).toEqual({
-      label: '0-1x',
-      from_multiple: 0,
-      to_multiple: 1,
-      task_count: 8,
-      flagged_tasks: 0,
-    });
   });
 
   it('reads the explicit nulls the engine writes as absent, as the pm-api contract does', async () => {
@@ -3002,8 +2933,8 @@ describe('ApiClient intent and outline records', () => {
     await expect(client.getPlanIntent('fix-relay')).rejects.toThrow(/invalid_response/);
   });
 
-  it('refuses an unknown closed value and a distribution without buckets', async () => {
-    // Arrange: a verdict outside the closed list, and an empty distribution
+  it('refuses an unknown closed value', async () => {
+    // Arrange: a verdict outside the closed list
     answer({
       epic_id: 'relay-hardening',
       destination: 'd',
@@ -3013,9 +2944,6 @@ describe('ApiClient intent and outline records', () => {
       plans: [],
     });
     await expect(client.getEpicIntent('relay-hardening')).rejects.toThrow(/invalid_response/);
-
-    answer({ project_id: 'p', role: 'implement', current_multiple: 3, buckets: [] });
-    await expect(client.getOverSize('p')).rejects.toThrow(/invalid_response/);
   });
 });
 

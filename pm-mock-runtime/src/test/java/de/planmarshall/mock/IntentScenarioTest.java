@@ -37,11 +37,11 @@ import de.planmarshall.api.intent.DoneWhenCheck;
 import de.planmarshall.api.intent.EpicIntentResource;
 import de.planmarshall.api.intent.IntentDecider;
 import de.planmarshall.api.intent.OutlineResource;
-import de.planmarshall.api.intent.OverSizeDistributionsResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.scenario.ScenarioLoader;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("Intent scenarios")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -142,16 +142,6 @@ class IntentScenarioTest {
                 assertEquals(BuilderCheckResource.Resolution.NOT_RUN, check.resolution());
                 assertEquals("The builder check task was lost before it could start.", check.reason());
                 assertTrue(check.questions().isEmpty());
-
-                var distribution = OverSizeDistributionsResource.fromJson(
-                        get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize").bodyText())
-                        .of("implement");
-                assertNotNull(distribution);
-                assertNull(distribution.proposedMultiple());
-                assertEquals(0, distribution.flaggedTasks());
-                assertEquals(0.0, distribution.flaggedShare(), 0.0001);
-                assertTrue(distribution.flaggedBuckets().isEmpty());
-                assertFalse(distribution.flagsMore());
             }
         }
 
@@ -173,7 +163,6 @@ class IntentScenarioTest {
                 assertEquals(404, get(runtime, "/api/v1/plans/intent").status());
                 assertEquals(404, get(runtime, "/api/v1/plans/outline").status());
                 assertEquals(404, get(runtime, "/api/v1/epics/intent").status());
-                assertEquals(404, get(runtime, "/api/v1/projects/metrics/oversize").status());
             }
         }
     }
@@ -193,9 +182,6 @@ class IntentScenarioTest {
                 assertEquals("fix-relay", outline.planId());
                 assertEquals(2, outline.revision());
                 assertEquals(3, outline.deliverables().size());
-                assertEquals(1, outline.addedDependencies().size());
-                assertEquals("de.cuioss:cui-http", outline.addedDependencies().getFirst().name());
-                assertEquals(1, outline.addedDependencies().getFirst().deliverable());
                 assertEquals(1, outline.satisfying("AC-001").size());
 
                 var second = outline.deliverable(2);
@@ -204,6 +190,22 @@ class IntentScenarioTest {
                 assertEquals(DeliverableRecord.FileIntent.WRITE_NEW,
                         second.affectedFiles().getFirst().intent());
                 assertNull(outline.deliverable(3).verification());
+            }
+        }
+
+        @Test
+        @DisplayName("both scenarios serve the outline without added_dependencies and decode cleanly")
+        void outlineFixturesHaveNoAddedDependencies() throws Exception {
+            for (var scenario : List.of(StandardScenarios.RUNNING_WORK, StandardScenarios.FULLY_ONBOARDED)) {
+                try (var runtime = MockRuntime.start(scenario)) {
+                    var response = get(runtime, "/api/v1/plans/fix-relay/outline");
+                    assertEquals(200, response.status(), scenario + ": " + response.bodyText());
+                    var raw = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                    assertNotNull(raw);
+                    assertFalse(raw.containsKey("added_dependencies"),
+                            scenario + " outline must carry no added_dependencies");
+                    assertNotNull(OutlineResource.fromJson(response.bodyText()));
+                }
             }
         }
     }
@@ -243,71 +245,6 @@ class IntentScenarioTest {
         }
     }
 
-    @Nested
-    @DisplayName("The over-size distribution")
-    class OverSize {
-
-        @Test
-        @DisplayName("serves the token buckets and the share the proposed multiple would flag")
-        void servesDistribution() throws Exception {
-            try (var runtime = MockRuntime.start(STATE)) {
-                var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
-                assertEquals(200, response.status(), response.bodyText());
-
-                var distribution = OverSizeDistributionsResource.fromJson(response.bodyText())
-                        .of("implement");
-                assertNotNull(distribution);
-                assertEquals("pm-mcp-clients", distribution.projectId());
-                assertEquals("implement", distribution.role());
-                assertEquals(3.0, distribution.currentMultiple());
-                assertEquals(2.0, distribution.proposedMultiple().doubleValue());
-                assertEquals(4, distribution.buckets().size());
-                assertEquals(20, distribution.totalTasks());
-                assertEquals(7, distribution.flaggedTasks());
-                assertEquals(0.35, distribution.flaggedShare(), 0.0001);
-                assertEquals(2, distribution.flaggedBuckets().size());
-                assertTrue(distribution.flagsMore());
-
-                var anotherProject = Generators.letterStrings(4, 10).next().toLowerCase();
-                var another = get(runtime, "/api/v1/projects/" + anotherProject + "/metrics/oversize");
-                assertEquals(200, another.status());
-                var answer = OverSizeDistributionsResource.fromJson(another.bodyText());
-                assertEquals(anotherProject, answer.projectId());
-                assertTrue(answer.distributions().stream()
-                                .allMatch(entry -> anotherProject.equals(entry.projectId())),
-                        "every distribution names the project the request asked for: " + another.bodyText());
-            }
-        }
-
-        @Test
-        @DisplayName("serves one distribution per role the project sets, in the fixture's order")
-        void servesEveryRole() throws Exception {
-            try (var runtime = MockRuntime.start(STATE)) {
-                var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
-                assertEquals(200, response.status(), response.bodyText());
-
-                var answer = JsonTree.asObject(JsonTree.parse(response.bodyText()));
-                assertNotNull(answer);
-                var distributions = JsonTree.asArray(answer.get("distributions"));
-                assertNotNull(distributions, "the answer carries the roles' distributions: " + response.bodyText());
-
-                assertEquals(List.of("implement", "module-tester", "architecture"), distributions.stream()
-                                .map(entry -> JsonTree.string(JsonTree.asObject(entry), "role"))
-                                .toList(),
-                        "a distribution per role, in the order the fixture names them");
-
-                var probes = OverSizeDistributionsResource.fromJson(response.bodyText());
-                assertEquals("pm-mcp-clients", probes.projectId());
-                assertEquals(2.0, probes.of("implement").proposedMultiple().doubleValue());
-                assertTrue(probes.of("implement").flagsMore());
-                assertNull(probes.of("module-tester").proposedMultiple());
-                assertTrue(probes.of("architecture").buckets().isEmpty(),
-                        "a role without measured tasks carries no bucket rather than an invented zero bar");
-                assertEquals(0, probes.of("architecture").totalTasks());
-            }
-        }
-    }
-
     @Test
     @DisplayName("every intent fixture is the contract's shape before it is served")
     void fixturesAreContractShaped() {
@@ -315,21 +252,17 @@ class IntentScenarioTest {
         var planIntent = scenario.route("GET", "/api/v1/plans/fix-relay/intent");
         var outline = scenario.route("GET", "/api/v1/plans/fix-relay/outline");
         var epicIntent = scenario.route("GET", "/api/v1/epics/relay-hardening/intent");
-        var oversize = scenario.route("GET", "/api/v1/projects/pm-mcp-clients/metrics/oversize");
 
         assertAll(
                 () -> assertNotNull(planIntent),
                 () -> assertNotNull(outline),
                 () -> assertNotNull(epicIntent),
-                () -> assertNotNull(oversize),
                 () -> assertNotNull(PlanIntentResource.fromMap(
                         JsonTree.asObject(planIntent.representation()))),
                 () -> assertNotNull(OutlineResource.fromMap(
                         JsonTree.asObject(outline.representation()))),
                 () -> assertNotNull(EpicIntentResource.fromMap(
-                        JsonTree.asObject(epicIntent.representation()))),
-                () -> assertNotNull(OverSizeDistributionsResource.fromMap(
-                        JsonTree.asObject(oversize.representation()))));
+                        JsonTree.asObject(epicIntent.representation()))));
     }
 
     @Test
@@ -353,6 +286,23 @@ class IntentScenarioTest {
                 "intent.ready", "decisions.open", "decisions.answered-elsewhere", "decisions.withdrawn",
                 "control.ready", "control.pause", "control.holds", "control.settings", "control.epic",
                 "control.decomposition", "control.chat", "control.review", "control.tokens")));
+    }
+
+    @Test
+    @DisplayName("does not serve the retired metrics/oversize route or resolve intent-oversize")
+    void retiredOverSizeIsAbsent() throws Exception {
+        for (var scenario : List.of(StandardScenarios.RUNNING_WORK, StandardScenarios.FULLY_ONBOARDED)) {
+            try (var runtime = MockRuntime.start(scenario)) {
+                var response = get(runtime, "/api/v1/projects/pm-mcp-clients/metrics/oversize");
+                assertEquals(404, response.status(), scenario + ": " + response.bodyText());
+                var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                assertNotNull(body);
+                assertEquals("mock_no_route", JsonTree.string(body, "error"));
+            }
+        }
+        var registry = new ScenarioRegistry();
+        assertTrue(registry.find("intent-oversize").isEmpty());
+        assertNull(registry.legacyAliases().get("intent-oversize"));
     }
 
     private static HttpResponse get(MockRuntime runtime, String path) throws Exception {

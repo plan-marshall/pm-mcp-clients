@@ -346,7 +346,6 @@ describe('/dev/components page fixture', () => {
           satisfies: ['AC-001'],
         },
       ],
-      added_dependencies: [],
     };
 
     it.each(['en', 'de'] as const)('draws both panels in both themes, in %s', async (locale) => {

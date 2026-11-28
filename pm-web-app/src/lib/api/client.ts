@@ -2462,21 +2462,12 @@ export interface OutlineDeliverableRecord {
   verification?: string;
 }
 
-/** A dependency the outline adds, with the deliverable that adds it and the reason. */
-export interface AddedDependencyRecord {
-  name: string;
-  version?: string;
-  justification: string;
-  deliverable: number;
-}
-
 /** A plan's outline record as the runtime serves it (`OutlineResource` of `pm-api`). */
 export interface OutlineRecord {
   plan_id: string;
   revision: number;
   summary: string;
   deliverables: OutlineDeliverableRecord[];
-  added_dependencies: AddedDependencyRecord[];
 }
 
 /** The closed list of a done-when check's verdicts. */
@@ -2504,38 +2495,6 @@ export interface EpicIntentRecord {
   non_goals: string[];
   not_yet_specified: string[];
   plans: EpicPlanDoneWhenRecord[];
-}
-
-/** One bucket of the `over_size` distribution. */
-export interface OverSizeBucketRecord {
-  label: string;
-  from_multiple: number;
-  to_multiple: number;
-  task_count: number;
-  flagged_tasks: number;
-}
-
-/**
- * The `over_size` distribution of a role, as the runtime serves it
- * (`OverSizeDistributionResource` of `pm-api`): the multiple in force, the proposed one where the
- * runtime serves a proposal, and the measured buckets. A role without measured tasks carries no
- * bucket.
- */
-export interface OverSizeDistributionRecord {
-  project_id: string;
-  role: string;
-  current_multiple: number;
-  proposed_multiple?: number;
-  buckets: OverSizeBucketRecord[];
-}
-
-/**
- * The `over_size` distributions of a project, one per role whose multiple the project sets
- * (`OverSizeDistributionsResource` of `pm-api`), in the runtime's order.
- */
-export interface OverSizeDistributionsRecord {
-  project_id: string;
-  distributions: OverSizeDistributionRecord[];
 }
 
 /**
@@ -2615,24 +2574,6 @@ function recordNumber(record: Record<string, unknown>, field: string, type: stri
     return value;
   }
   throw malformedRecord(type, field);
-}
-
-/**
- * @param record the object
- * @param field the member
- * @param type the record's type name
- * @returns the member's number, or `undefined` where the record does not carry it
- */
-function optionalRecordNumber(
-  record: Record<string, unknown>,
-  field: string,
-  type: string,
-): number | undefined {
-  const value = record[field];
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return recordNumber(record, field, type);
 }
 
 /**
@@ -2944,14 +2885,6 @@ function readOutline(raw: unknown): OutlineRecord {
         verification: optionalRecordText(deliverable, 'verification', 'DeliverableRecord'),
       }),
     ),
-    added_dependencies: recordObjects(record, 'added_dependencies', 'DependencyJustification').map(
-      (dependency) => ({
-        name: recordText(dependency, 'name', 'DependencyJustification'),
-        version: optionalRecordText(dependency, 'version', 'DependencyJustification'),
-        justification: recordText(dependency, 'justification', 'DependencyJustification'),
-        deliverable: recordNumber(dependency, 'deliverable', 'DependencyJustification'),
-      }),
-    ),
   };
 }
 
@@ -2976,42 +2909,6 @@ function readEpicIntent(raw: unknown): EpicIntentRecord {
       plan_id: recordText(plan, 'plan_id', 'PlanDoneWhen'),
       title: recordText(plan, 'title', 'PlanDoneWhen'),
       done_when: recordStrings(plan, 'done_when', 'PlanDoneWhen'),
-    })),
-  };
-}
-
-/**
- * @param raw the record the runtime sent
- * @returns the distributions, every member of the contract read
- */
-function readOverSize(raw: unknown): OverSizeDistributionsRecord {
-  const type = 'OverSizeDistributionsResource';
-  const record = recordObject(raw, type);
-  return {
-    project_id: recordText(record, 'project_id', type),
-    distributions: recordObjects(record, 'distributions', type).map((entry) =>
-      readOverSizeDistribution(entry),
-    ),
-  };
-}
-
-/**
- * @param record one role's distribution of the served set
- * @returns it, every member of the contract read; a role without measured tasks carries no bucket
- */
-function readOverSizeDistribution(record: Record<string, unknown>): OverSizeDistributionRecord {
-  const type = 'OverSizeDistributionResource';
-  return {
-    project_id: recordText(record, 'project_id', type),
-    role: recordText(record, 'role', type),
-    current_multiple: recordNumber(record, 'current_multiple', type),
-    proposed_multiple: optionalRecordNumber(record, 'proposed_multiple', type),
-    buckets: recordObjects(record, 'buckets', type).map((bucket) => ({
-      label: recordText(bucket, 'label', 'TokenBucket'),
-      from_multiple: recordNumber(bucket, 'from_multiple', 'TokenBucket'),
-      to_multiple: recordNumber(bucket, 'to_multiple', 'TokenBucket'),
-      task_count: recordNumber(bucket, 'task_count', 'TokenBucket'),
-      flagged_tasks: recordNumber(bucket, 'flagged_tasks', 'TokenBucket'),
     })),
   };
 }
@@ -4408,21 +4305,6 @@ export class ApiClient {
    */
   public async getEpicIntent(epicId: string): Promise<EpicIntentRecord | null> {
     return this.readRecord(`/api/v1/epics/${encodeURIComponent(epicId)}/intent`, readEpicIntent);
-  }
-
-  /**
-   * Reads the `over_size` distributions of a project, one per role whose multiple it sets (the
-   * `OverSizeDistributionsResource` of `pm-api`).
-   *
-   * @param projectId the project
-   * @returns the roles' distributions, or `null` where the runtime has no such record; a project it
-   *     measures no role of answers an empty `distributions` list
-   */
-  public async getOverSize(projectId: string): Promise<OverSizeDistributionsRecord | null> {
-    return this.readRecord(
-      `/api/v1/projects/${encodeURIComponent(projectId)}/metrics/oversize`,
-      readOverSize,
-    );
   }
 
   /**

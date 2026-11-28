@@ -44,7 +44,6 @@
     type ProjectDetailResponse,
     type EndedWorkPage,
     type ProjectOnboardingState,
-    type OverSizeDistributionsRecord,
   } from '../api/client';
 
   /**
@@ -86,8 +85,8 @@
   let isAbandoning = $state(false);
   let abandonError = $state<string | null>(null);
 
-  // The project page's own reads: what runs, what ended, and — on its setup tab — the values, the
-  // steps of the setup and the over-size spread of its work.
+  // The project page's own reads: what runs, what ended, and — on its setup tab — the values and
+  // the steps of the setup.
   let detail = $state<ProjectDetailResponse | null>(null);
   let isLoadingDetail = $state(false);
   let detailError = $state<string | null>(null);
@@ -119,10 +118,6 @@
   let onboarding = $state<ProjectOnboardingState | null>(null);
   let isLoadingOnboarding = $state(false);
   let onboardingError = $state<string | null>(null);
-
-  let overSize = $state<OverSizeDistributionsRecord | null>(null);
-  let isLoadingOverSize = $state(false);
-  let overSizeError = $state<string | null>(null);
 
   /** The project the setup tab's reads belong to, so a page that is opened anew reads them again. */
   let setupProjectId = $state<string | null>(null);
@@ -219,7 +214,6 @@
     settingsNotice = '';
     settingsRefreshError = null;
     onboarding = null;
-    overSize = null;
     setupProjectId = null;
     if (projectId) {
       void loadProjectPage(projectId);
@@ -256,36 +250,13 @@
   }
 
   /**
-   * Loads the read-only spread of the project's over-size work.
-   *
-   * @param projectId the project
-   */
-  async function loadOverSize(projectId: string): Promise<void> {
-    const generation = pageGeneration;
-    isLoadingOverSize = true;
-    overSizeError = null;
-    try {
-      const loaded = await apiClient.getOverSize(projectId);
-      if (generation !== pageGeneration) return;
-      overSize = loaded;
-    } catch (err: unknown) {
-      if (generation !== pageGeneration) return;
-      overSize = null;
-      overSizeError = errorCodeOf(err);
-    } finally {
-      if (generation === pageGeneration) isLoadingOverSize = false;
-    }
-  }
-
-  /**
-   * Loads the setup tab: the project's own values, the steps of its setup and the over-size spread.
+   * Loads the setup tab: the project's own values and the steps of its setup.
    *
    * @param projectId the project
    */
   async function loadSetup(projectId: string): Promise<void> {
     setupProjectId = projectId;
     const generation = pageGeneration;
-    void loadOverSize(projectId);
     settingsLoading = true;
     settingsLoadError = null;
     settingsError = '';
@@ -914,20 +885,6 @@
       return 'danger';
     }
     return 'neutral';
-  }
-
-  /**
-   * @param entries the distributions the runtime reports
-   * @returns their rows as `role — multiple` text pairs
-   */
-  function overSizeRows(entries: OverSizeDistributionsRecord | null): Array<[string, string]> {
-    if (!entries) return [];
-    return entries.distributions.map((entry) => [
-      entry.role,
-      entry.proposed_multiple === undefined
-        ? `${entry.current_multiple}`
-        : `${entry.current_multiple} → ${entry.proposed_multiple}`,
-    ]);
   }
 
   /**
@@ -1613,29 +1570,6 @@
               </ul>
             {/if}
 
-            <h2 class="section-title">{$t('project.page.oversize')}</h2>
-            {#if isLoadingOverSize}
-              <Skeleton shape="card" rows={2} label={$t('project.page.loading')} />
-            {:else if overSizeError !== null}
-              <div class="alert alert--danger">
-                <ErrorState
-                  code={overSizeError}
-                  actionLabel={$t('common.action.retry')}
-                  onAct={() => requestedProjectId && loadOverSize(requestedProjectId)}
-                  titleLevel={2}
-                />
-              </div>
-            {:else if overSizeRows(overSize).length > 0}
-              <ul class="oversize-rows" data-testid="project-oversize">
-                {#each overSizeRows(overSize) as [role, share] (role)}
-                  <li class="oversize-row">
-                    <span class="oversize-row__role">{role}</span>
-                    <span class="oversize-row__share mono">{share}</span>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-
             <h2 class="section-title">{$t('project.page.end_of_setup')}</h2>
             <div class="project-page__destructive">
               {#if !selectedProject.is_released}
@@ -2046,23 +1980,6 @@
   .setup-step__number {
     font-weight: var(--weight-semibold);
     color: var(--color-text-secondary);
-  }
-
-  .oversize-rows {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0;
-  }
-
-  .oversize-row {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-1) var(--space-2);
-    border-bottom: 1px solid var(--color-border-subtle);
   }
 
   .alert {

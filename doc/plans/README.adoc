@@ -328,7 +328,7 @@ The status of a package is `open`, `in progress`, `blocked`, `done` or `dropped`
 |Milestone 11
 
 |`intent-views`
-|Intent, outline, and their checks in both clients: the plan's intent record and outline record, results per criterion, the epic's intent and its done-when checks, the spread of `over_size`
+|Intent, outline, and their checks in both clients: the plan's intent record and outline record, results per criterion, the epic's intent and its done-when checks
 |`done`
 |`api-contract`
 |Milestones 8, 10, 11, and 12

@@ -8,8 +8,7 @@
  * the root of this repository.
  */
 /**
- * The intent, outline, builder-check, epic-intent, and {@code over_size} distribution records both
- * clients show (UC-PLN-1, UC-PLN-2, UC-PLN-5, UC-STA-6, UC-CTL-2; PM-WF-10, PM-WF-13, PM-WF-15,
- * PM-WORK-7).
+ * The intent, outline, builder-check, and epic-intent records both clients show (UC-PLN-1, UC-PLN-2,
+ * UC-PLN-5, UC-STA-6, UC-CTL-2; PM-WF-10, PM-WF-13, PM-WF-15).
  */
 package de.planmarshall.api.intent;

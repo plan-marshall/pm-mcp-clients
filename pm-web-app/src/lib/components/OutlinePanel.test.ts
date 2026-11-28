@@ -54,14 +54,6 @@ function outline(overrides: Partial<OutlineRecord> = {}): OutlineRecord {
         satisfies: ['AC-002'],
       },
     ],
-    added_dependencies: [
-      {
-        name: 'de.cuioss:cui-http',
-        version: '2.1.0',
-        justification: 'The retry adapter carries the backoff policy.',
-        deliverable: 1,
-      },
-    ],
     ...overrides,
   };
 }

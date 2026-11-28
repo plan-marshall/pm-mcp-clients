@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -651,6 +652,24 @@ class ProcessTreeTest {
         assertEquals(ActivityEntryKind.TOOL_CALL, ActivityEntryKind.fromValue("tool_call"));
         assertEquals(ActivityEntryKind.TOOL_CALL, ActivityEntryKind.fromValue("tool"));
         assertEquals(ActivityEntryKind.FILES_CHANGED, ActivityEntryKind.fromValue("file_changed"));
+    }
+
+    @Test
+    @DisplayName("pins OffTrackSignal to the closed set of five and refuses retired or unknown values")
+    void offTrackSignalClosedSetAndRefusals() {
+        assertEquals(
+                List.of("repeating", "no_progress", "failing_again", "edit_churn", "agent_started"),
+                Arrays.stream(OffTrackSignal.values()).map(OffTrackSignal::value).toList());
+        assertNull(OffTrackSignal.fromValue("over_size"));
+        assertNull(OffTrackSignal.fromValue("outside_footprint"));
+        assertNull(OffTrackSignal.fromValue("unknown"));
+        assertNull(OffTrackSignal.fromValue(null));
+        assertNull(OffTrackSignal.fromValue(" "));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("over_size"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("outside_footprint"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse("unknown"));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse(null));
+        assertThrows(IllegalArgumentException.class, () -> OffTrackSignal.parse(" "));
     }
 
     @Test

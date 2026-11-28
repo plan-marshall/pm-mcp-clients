@@ -420,12 +420,6 @@ public final class StandardScenarios {
     public static final String INTENT_EPIC = "intent-epic";
 
     /**
-     * The {@code over_size} token distribution of a role's past plan tasks against their predicted
-     * size, with the share a changed multiple would flag (PM-WORK-7).
-     */
-    public static final String INTENT_OVERSIZE = "intent-oversize";
-
-    /**
      * Operator verbs of enrolment and store integrity: the project enrol and unenrol, and the digest
      * verification of a store the operator accepts an edit for (PM-EXEC-2, PM-SEC-3).
      */
@@ -488,7 +482,7 @@ public final class StandardScenarios {
                     START_EPIC, START_EPIC_ADOPT, START_REFUSED, START_RECIPE, START_ENTRY_CONTINUE,
                     START_CHAT, START_FOLLOW_UP,
                     LESSON_SOURCE, GIT_SOURCES, DECOMPOSITION, DESIGNER, ENROLMENT,
-                    INTENT_PLAN, INTENT_OUTLINE, INTENT_EPIC, INTENT_OVERSIZE,
+                    INTENT_PLAN, INTENT_OUTLINE, INTENT_EPIC,
                     OPERATOR_INTERACTION, PROJECTS_AND_START, REPORTS_AND_SYSTEM, FULLY_ONBOARDED))
             .flatMap(List::stream)
             .toList();
