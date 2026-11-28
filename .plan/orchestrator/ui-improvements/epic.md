@@ -311,6 +311,13 @@ plan spec names the plan, proposal and finding documents it comes from.
     - the mock scenarios `plan-overdue` and `plan-timeline`.
   Most of it waits for the engine (`pm-mcp-core-m2-m4-v2`). The cut and order are the epic's; nothing is staged yet. Proposed: one contract+mock package first (enums, event fields, the two scenarios), then the web package and the terminal package. The 7 #600 keys are already in the packs (#599).
 
+- 2026-11-28 (the operator: "Do both", then "Analyze landed"):
+  - **PLAN-200** `web-chat-announce-once-send-once` STAGED and emitted as a runbook lane (`launched`, WS-07, ports 22000/22001). It fixes PLAN-135 L3-1 (the reply is read once, by the log alone), L3-3 (Send of an unchanged restored draft reuses the Not-sent turn's `client_turn_id`; an edited text supersedes the turn) and L3-4 (Try again across a chat change keeps the turn). 2 deliverables, 4 code files.
+  - **PLAN-136** re-grounded at `d25d1d76` by a sub-agent (`## Re-Grounding 2026-11-28` binds) and emitted as a runbook lane (`launched`). It has 4 deliverables, unsplit. The fixes PLAN-200 owns are out; D1 owns only the proposal announcement; the browser check runs on `/dev/components`. It shares 4 code files with PLAN-200, and 4 with PLAN-62 (below the block).
+  - **PLAN-199** shipped (#609 `d25d1d76`), `landings/PLAN-199.md`.
+  - **PLAN-198** is RUNNING: a trace, PR #611 open since 11:43Z, based before #609. It must merge `main` and take PLAN-199's new `plan.signal.*` design table into its link form.
+  - Unblocked by PLAN-199: PLAN-179 (re-ground first: its over-size bullets are moot) and PLAN-190 D2 (the fixture is `storage-v2` TASK-002 `agent_started`).
+
 ## Decisions
 
 - 2026-11-22 (`cleanup`, then `handle-open` at threshold 80 on the operator's word "full cleanup, checking against the ground truth; then decide where over 80% and present the others"): **CLEANUP.** All 144 claims of the 25 staged and parked specs (PLAN-24, 29, 41, 42, 44, 48, 50, 55, 62, 63, 65, 70 to 75, 85, 135 to 140, 144) were re-grounded by three read-only leaves against `origin/main` `7b60cec0` and persisted per claim (`corpus set-verdict`, `ui-improvements/cleanup`); every contradicted claim was stamped `rescoped: yes` with the correction written in the same act into a `## Re-Grounding 2026-11-22` section of the spec (PLAN-42, 44, 48, 55, 62, 70, 73, 74, 85, 135, 136, 137, 138, 144), and 63 understated surface paths were added to the specs' `## Expected Surface`. Blocking claims 11 to 1 (the one left is a shipped plan's). `lint-done-whens` 0 findings (170 of 175 specs), `spec-skills` declared and emittable for all 13 staged, `corpus surfaces` 0 indeterminate, `cross-check` 0 duplicates to supersede (the one origin match PLAN-135/147 is the planned split). Compaction invariants OK (175 rows, 175 specs, 22 pointers); NO settled-narrative relocation applied (the judgement half needs the operator's confirmation: proposed in the run's report); archive drain refused as always; restart verdict `not_ready` only because four plans run. **Material findings of the re-grounding:** PLAN-44 D4 and PLAN-74 D1/D3/D4 are already done; PLAN-136 D1's token part is done; PLAN-138's wire half (D1) is done; PLAN-144 D1 is mostly and D3 partly done; PLAN-48's `needs` is hardening, not new; PLAN-135 D5, PLAN-136 and PLAN-137 cannot start before PLAN-144 puts the plan and epic routes on the engine; PLAN-135 D2's `{@html}` eslint clause cannot hold.
@@ -745,6 +752,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   - 5 deliverables, emitted unsplit (under the guard). The 138a (D1, D2, D4) / 138b (D3 streaming and O9) split stays an outline option.
   - 0 code files shared with PLAN-62, 135, 70 or 198. Ports 21380/21381.
   - Row `launched`, lane `plan-marshall`.
+
+- 2026-11-28 (orchestrator, routine, after the operator's "Do both"):
+  - PLAN-135 L3-1/L3-3/L3-4 go to the new PLAN-200. L3-4 was taken in because it lies in the same functions and test file.
+  - PLAN-136's D1 keeps only `control.chat.proposal.announce` in the emptied region.
+  - PLAN-136's browser check moves to `/dev/components`, since no production page hosts `Chat` until PLAN-137/192.
+  - Try again after a lost reply is settled at PLAN-136's outline.
+  - PLAN-198 counts as running on the trace of PR #611.
 
 ## Open Defects
 
@@ -1184,6 +1198,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   - **L3-9:** O(n²) re-lexing.
   - **L3-10:** `aria-busy` scope and the `planner` literal.
   - **Transport gap:** no stream heartbeat or idle watchdog. Route it to the transport specification.
+  → 2026-11-28: L3-1, L3-3 and L3-4 are owned by **PLAN-200** (launched). L3-2, L3-5..L3-10 and the transport gap stay with the operator.
+- **PLAN-199 landed (2026-11-28, #609 `d25d1d76`): removal minors and an unproven build gate at the final head; owner: the operator (no fix plan staged).** `landings/PLAN-199.md`, 3 of 3 deliverables, 8 of 9 Done-whens (D1.3 partly: grep hits in the negative controls). No blocker, no major.
+  - L3-1: `PlanViewCatalogueTest` now reads more design rows through `SpecificationTables`; PLAN-198 (PR #611) must take the new `plan.signal.*` table.
+  - L3-2: the `state.signal.*` words have no design rows, only a sentence.
+  - L3-3 (engine): pm-mcp-core `SignalName`/`RoleArtifact` still send `over_size`/`outside_footprint`, which now render as raw wire words. Route it to pm-mcp-core.
+  - L3-4: pre-commit was not re-proven at the final head (1012 s bound); the e2e last ran at `e839142a` with 2 failures.
+  - L3-5: the PR does not state the chosen en/de words.
+  - **New e2e red:** `chrome.spec.js:31` beside `designer.spec.js:264/272`. CI runs no Playwright. It needs an owner.
   - L3-1: the Svelte scanner's false negatives (`class={}`, `src/routes`, logical border sides).
   - L3-2: a fourth CSS reader, although the Re-Grounding said to reuse one.
   - L3-3: a duplicated brand pair.
