@@ -32,6 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.json.JsonTree;
@@ -39,7 +41,6 @@ import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
-import org.jline.terminal.impl.DumbTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1530,7 +1531,7 @@ class PlanCommandTest {
                                 + "{\"turn_id\":\"T-2\",\"kind\":\"message\",\"author\":\"replan\","
                                 + "\"status\":\"complete\",\"format\":\"markdown\",\"untrusted\":false,\"model\":\"sonnet\","
                                 + "\"text\":\"ok\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:01Z\"}]}";
-            var attempts = new java.util.concurrent.atomic.AtomicInteger();
+            var attempts = new AtomicInteger();
             var opened = new AtomicBoolean();
             fixture.start((request, response) -> {
                 var target = request.target();

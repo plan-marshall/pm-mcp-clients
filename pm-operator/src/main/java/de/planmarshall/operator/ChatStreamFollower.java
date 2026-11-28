@@ -74,10 +74,10 @@ final class ChatStreamFollower implements AutoCloseable {
     }
 
     record Outcome(
-                        boolean completedViaStream,
-                        @Nullable String heldFirstLine,
-                        boolean leftDialogue,
-                        @Nullable ChatEndedEvent endedEvent
+    boolean completedViaStream,
+    @Nullable String heldFirstLine,
+    boolean leftDialogue,
+    @Nullable ChatEndedEvent endedEvent
     ) {
     }
 
@@ -130,6 +130,16 @@ final class ChatStreamFollower implements AutoCloseable {
         return exchange != null && !closed.get();
     }
 
+    void drainQueuedEvents() {
+        while (true) {
+            var next = queue.peek();
+            if (next == null || next.signal() != StreamSignal.EVENT) {
+                return;
+            }
+            queue.poll();
+        }
+    }
+
     Outcome followReply(LineReader reader, String chatId, String operatorTurnId, String fallbackRole,
                         Set<String> printedTurnIds) {
         var stopKey = MessageCatalogue.format(locale, "operator.actions.key.stop", Map.of());
@@ -168,7 +178,7 @@ final class ChatStreamFollower implements AutoCloseable {
                     break;
                 }
                 handleEvent(item.eventName(), item.payload(), chatId, operatorTurnId,
-                                    activeReplyTurnId, stopRequested, state, finished);
+                                    activeReplyTurnId, stopRequested, state, finished, printedTurnIds);
             }
         } finally {
             finished.set(true);
@@ -244,7 +254,8 @@ final class ChatStreamFollower implements AutoCloseable {
 
     private void handleEvent(@Nullable String eventName, @Nullable Map<String, Object> payload, String chatId,
                         String operatorTurnId, AtomicReference<@Nullable String> activeReplyTurnId,
-                        AtomicBoolean stopRequested, ReplyRenderState state, AtomicBoolean finished) {
+                        AtomicBoolean stopRequested, ReplyRenderState state, AtomicBoolean finished,
+                        Set<String> printedTurnIds) {
         if (eventName == null || payload == null) {
             return;
         }
@@ -253,7 +264,7 @@ final class ChatStreamFollower implements AutoCloseable {
             case EVENT_PROGRESS -> onProgress(payload, chatId, activeReplyTurnId.get(), state);
             case EVENT_DELTA -> onDelta(payload, chatId, activeReplyTurnId.get(), state);
             case EVENT_COMPLETED -> onCompleted(payload, chatId, operatorTurnId, activeReplyTurnId,
-                                state, finished);
+                                state, finished, printedTurnIds);
             case EVENT_ENDED -> onEnded(payload, chatId, finished, state);
             default -> {
                 // Other subject events belong to the background tree, not this chat turn.
@@ -275,7 +286,7 @@ final class ChatStreamFollower implements AutoCloseable {
             return;
         }
         var previous = activeReplyTurnId.getAndSet(started.turnId());
-        if (previous != null && !previous.equals(started.turnId())) {
+        if (previous != null) {
             state.resetForReplacement();
             state.printAbove("  " + MessageCatalogue.format(locale, "operator.actions.chat.restarted", Map.of()));
         }
@@ -318,7 +329,7 @@ final class ChatStreamFollower implements AutoCloseable {
 
     private void onCompleted(Map<String, Object> payload, String chatId, String operatorTurnId,
                         AtomicReference<@Nullable String> activeReplyTurnId, ReplyRenderState state,
-                        AtomicBoolean finished) {
+                        AtomicBoolean finished, Set<String> printedTurnIds) {
         ChatTurnCompletedEvent completed;
         try {
             completed = ChatTurnCompletedEvent.fromMap(stripEnvelope(payload));
@@ -330,6 +341,9 @@ final class ChatStreamFollower implements AutoCloseable {
             return;
         }
         var expected = activeReplyTurnId.get();
+        if (expected == null && printedTurnIds.contains(completed.turnId())) {
+            return;
+        }
         if (expected != null && !expected.equals(completed.turnId())) {
             return;
         }
@@ -536,9 +550,9 @@ final class ChatStreamFollower implements AutoCloseable {
         private void printReplyLine(String rawLine, boolean closingQuote) {
             var safeRole = OutputSafety.stripControlSequences(role);
             var safeLine = OutputSafety.stripControlSequences(rawLine);
-            var prefix = !firstLinePrinted
-                                ? "  " + safeRole + "  " + (untrusted ? "\"" : "")
-                                : "  " + " ".repeat(safeRole.length()) + "  ";
+            var prefix = firstLinePrinted
+                                ? "  " + " ".repeat(safeRole.length()) + "  "
+                                : "  " + safeRole + "  " + (untrusted ? "\"" : "");
             firstLinePrinted = true;
             var suffix = closingQuote && untrusted ? "\"" + untrustedTag(locale) : "";
             printAbove(prefix + safeLine + suffix);

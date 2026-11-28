@@ -19,9 +19,12 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -215,7 +219,7 @@ class WorkChatDialogueTest {
                                 () -> assertTrue(text.contains("Left the chat; it stays with " + subject + "."), text),
                                 () -> assertFalse(text.contains("is kept with"), text),
                                 () -> assertTrue(server.requests().stream().noneMatch(
-                                                    req -> req.target().endsWith("/end") || req.target().endsWith("/turns")),
+                                                                        req -> req.target().endsWith("/end") || req.target().endsWith("/turns")),
                                                     "must not end chat or send turn: " + server.requests()));
         }
 
@@ -256,7 +260,7 @@ class WorkChatDialogueTest {
                                 () -> assertTrue(secondOut.toString().contains("Start a plan with it?"),
                                                     secondOut.toString()),
                                 () -> assertTrue(server.requests().stream().noneMatch(
-                                                    req -> req.target().endsWith("/end")),
+                                                                        req -> req.target().endsWith("/end")),
                                                     "must not end chat: " + server.requests()));
         }
 
@@ -497,7 +501,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 } finally {
                     done.countDown();
                 }
@@ -587,7 +591,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 } finally {
                     done.countDown();
                 }
@@ -642,7 +646,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 }
             });
             virtual.type("hi\n\n");
@@ -657,7 +661,7 @@ class WorkChatDialogueTest {
                                 () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
                                                     out.toString()),
                                 () -> assertTrue(server.requests().stream().noneMatch(
-                                                    req -> req.target().endsWith("/end") || req.target().endsWith("/stop")),
+                                                                        req -> req.target().endsWith("/end") || req.target().endsWith("/stop")),
                                                     server.requests().toString()));
         }
 
@@ -730,7 +734,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 } finally {
                     done.countDown();
                 }
@@ -766,7 +770,7 @@ class WorkChatDialogueTest {
                                 + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
                                 + "\"turns\":["
                                 + chatTurnJson("T-1", "operator", "go", "2026-10-16T10:00:00Z") + ","
-                                + chatTurnJson("T-3", "replan", "Fresh full reply", "2026-10-16T10:00:02Z") + "]}";
+                                + chatTurnJson("T-2", "replan", "Fresh full reply", "2026-10-16T10:00:02Z") + "]}";
             fixture.start((request, response) -> {
                 var path = request.target();
                 if (path.equals("/api/v1/plans/" + subject + "/events")) {
@@ -777,10 +781,10 @@ class WorkChatDialogueTest {
                                             eventData("chat.turn.delta", subject,
                                                                 Map.of("chat_id", "C-1", "turn_id", "T-2",
                                                                                     "text", "Old draft\n")));
-                        stream.send("chat.turn.started", startedData(subject, "T-3", false));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
                         stream.send("chat.turn.completed",
                                             eventData("chat.turn.completed", subject,
-                                                                Map.of("chat_id", "C-1", "turn_id", "T-3",
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
                                                                                     "kind", "message", "status", "complete",
                                                                                     "untrusted", false, "text", "Fresh full reply",
                                                                                     "refs", List.of(), "lines", List.of())));
@@ -803,7 +807,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 } finally {
                     done.countDown();
                 }
@@ -869,7 +873,7 @@ class WorkChatDialogueTest {
                 try {
                     exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
                 } catch (IOException e) {
-                    throw new java.io.UncheckedIOException(e);
+                    throw new UncheckedIOException(e);
                 } finally {
                     done.countDown();
                 }
@@ -944,7 +948,7 @@ class WorkChatDialogueTest {
                         exitRef.set(WorkChatDialogue.run(mockContext, new PrintWriter(out),
                                             "plan", "relay-auth-v2", false, false));
                     } catch (IOException e) {
-                        throw new java.io.UncheckedIOException(e);
+                        throw new UncheckedIOException(e);
                     }
                 });
                 virtual.type("Please check\n\n");
@@ -974,7 +978,7 @@ class WorkChatDialogueTest {
         }
 
         private static String eventData(String eventName, String subjectId, Map<String, Object> payload) {
-            var map = new java.util.LinkedHashMap<String, Object>();
+            var map = new LinkedHashMap<String, Object>();
             map.put("event", eventName);
             map.put("at", "2026-10-16T10:00:01Z");
             map.put("scope", Map.of("kind", "plan", "id", subjectId));
@@ -991,7 +995,7 @@ class WorkChatDialogueTest {
             var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
             while (System.nanoTime() < deadline) {
                 var screen = screenText(term);
-                if (java.util.Arrays.stream(expected).allMatch(screen::contains)) {
+                if (Arrays.stream(expected).allMatch(screen::contains)) {
                     return;
                 }
                 Thread.sleep(20);
@@ -1088,7 +1092,7 @@ class WorkChatDialogueTest {
                                 () -> assertEquals(0, exitCode, out.toString()),
                                 () -> assertTrue(lapsedCalled.get()),
                                 () -> assertTrue(out.toString().contains(
-                                                    subject + " left the time for a revision; the proposal no longer applies."),
+                                                                        subject + " left the time for a revision; the proposal no longer applies."),
                                                     out.toString()));
         }
 
@@ -1140,7 +1144,7 @@ class WorkChatDialogueTest {
                                                     "Enter after changed_since must not retry accept"),
                                 () -> assertTrue(rejected.get()),
                                 () -> assertTrue(out.toString().contains(
-                                                    "not applied: " + subject + " changed since (version " + version + ")"),
+                                                                        "not applied: " + subject + " changed since (version " + version + ")"),
                                                     out.toString()),
                                 () -> assertTrue(out.toString().contains("r) reject"), out.toString()));
         }
@@ -1186,7 +1190,7 @@ class WorkChatDialogueTest {
                                 () -> assertEquals(0, exitCode, out.toString()),
                                 () -> assertEquals(2, acceptAttempts.get()),
                                 () -> assertTrue(out.toString().contains(
-                                                    "not applied: a revision of " + subject + " is already queued"),
+                                                                        "not applied: a revision of " + subject + " is already queued"),
                                                     out.toString()),
                                 () -> assertTrue(out.toString().contains("accepted: applies after the current task"),
                                                     out.toString()));
@@ -1242,7 +1246,7 @@ class WorkChatDialogueTest {
                                 () -> assertTrue(rejected.get()),
                                 () -> assertTrue(out.toString().contains("is already queued"), out.toString()),
                                 () -> assertTrue(out.toString().contains(
-                                                    "not applied: " + subject + " changed since (version " + version + ")"),
+                                                                        "not applied: " + subject + " changed since (version " + version + ")"),
                                                     out.toString()));
         }
 
@@ -1295,9 +1299,10 @@ class WorkChatDialogueTest {
 
             assertAll(
                                 () -> assertEquals(0, exitCode, out.toString()),
-                                () -> assertTrue(out.toString().contains("accepted: applied"), out.toString()),
+                                () -> assertTrue(out.toString().contains("applies when the plan starts again"),
+                                                    out.toString()),
                                 () -> assertTrue(out.toString().contains(
-                                                    subject + " changed; the plan's version becomes " + version),
+                                                                        subject + " changed; the plan's version becomes " + version),
                                                     out.toString()));
         }
 
@@ -1324,7 +1329,7 @@ class WorkChatDialogueTest {
                     response.json(200, endedChat);
                 } else if (path.endsWith("/proposal/accept")) {
                     response.json(200, appliedChat);
-                } else if (path.equals("/api/v1/projects")) {
+                } else if ("/api/v1/projects".equals(path)) {
                     response.json(200, "{\"projects\":[{\"project_id\":\"" + project + "\","
                                         + "\"state\":\"ready\",\"favourite\":false}],\"favourites\":[]}");
                 } else if (path.equals("/api/v1/projects/" + project + "/ended?page=1")) {
@@ -1343,12 +1348,12 @@ class WorkChatDialogueTest {
             assertAll(
                                 () -> assertEquals(0, exitCode, out.toString()),
                                 () -> assertTrue(out.toString().contains(
-                                                    "A new plan is being started in " + project + " with this description; go on with its sources."),
+                                                                        "A new plan is being started in " + project + " with this description; go on with its sources."),
                                                     out.toString()),
                                 () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
                                                     out.toString()),
                                 () -> assertTrue(server.requests().stream().noneMatch(
-                                                    req -> req.target().endsWith("/chat/end")),
+                                                                        req -> req.target().endsWith("/chat/end")),
                                                     server.requests().toString()));
         }
 
@@ -1364,7 +1369,7 @@ class WorkChatDialogueTest {
                                                         + self.info().startInstant().orElseThrow() + "\"}");
                 var mockContext = new OperatorContext(env, Files.createTempDirectory("pm-wd4-mock"), true,
                                     ClientEnvironment.capture(env), virtual::terminal, null);
-                var broadcast = mockContext.runtime(true).send(de.planmarshall.api.http.HttpRequest.json(
+                var broadcast = mockContext.runtime(true).send(HttpRequest.json(
                                     "POST", "/mock/broadcast",
                                     "{\"event\":\"phase.changed\",\"data\":{\"plan_id\":\"fix-relay\",\"new_phase\":\"sanity-check\"}}"));
                 assertEquals(200, broadcast.status(), broadcast.bodyText());
@@ -1377,7 +1382,7 @@ class WorkChatDialogueTest {
                                     () -> assertEquals(0, exitCode, out.toString()),
                                     () -> assertFalse(out.toString().contains("[Enter] accept"), out.toString()),
                                     () -> assertTrue(out.toString().contains(
-                                                        "fix-relay left the time for a revision; the proposal no longer applies."),
+                                                                            "fix-relay left the time for a revision; the proposal no longer applies."),
                                                         out.toString()));
             }
         }

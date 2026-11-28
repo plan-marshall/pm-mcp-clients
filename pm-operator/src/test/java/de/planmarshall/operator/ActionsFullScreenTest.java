@@ -293,7 +293,7 @@ class ActionsFullScreenTest {
     }
 
     @Test
-    @DisplayName("h in the plan menu opens the chat and an empty line ends it")
+    @DisplayName("h in the plan menu opens the chat and an empty line leaves it")
     void shouldChatFromTheMenu() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(160, 45)) {
             var context = control.context(virtual);
@@ -305,8 +305,8 @@ class ActionsFullScreenTest {
             virtual.type("h");
             ControlFixture.await(() -> out.toString().contains("The cursor is written late."));
             virtual.type("\r");
-            ControlFixture.await(() -> out.toString().contains("The chat is kept with fix-relay"));
-            assertTrue(out.toString().contains("The chat is kept with fix-relay"), out.toString());
+            ControlFixture.await(() -> out.toString().contains("Left the chat; it stays with fix-relay."));
+            assertTrue(out.toString().contains("Left the chat; it stays with fix-relay."), out.toString());
             ControlFixture.delay(150L);
             virtual.type("q");
             ControlFixture.join(thread);

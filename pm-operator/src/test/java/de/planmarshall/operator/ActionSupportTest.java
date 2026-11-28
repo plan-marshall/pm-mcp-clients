@@ -297,7 +297,7 @@ class ActionSupportTest {
             }
         });
         var virtual = VirtualScreenTerminal.create(80, 24);
-        var env = new java.util.HashMap<>(fixture.environment());
+        var env = new HashMap<>(fixture.environment());
         env.put("LANG", "en_US.UTF-8");
         var shellContext = new OperatorContext(env, fixture.base().getParent(), true,
                             ClientEnvironment.capture(env), virtual::terminal, null);

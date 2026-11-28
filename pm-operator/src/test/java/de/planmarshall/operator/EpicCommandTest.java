@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -689,7 +690,7 @@ class EpicCommandTest {
                 response.send(404, null, "");
             }
         });
-        var typed = "status please\n\n".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        var typed = "status please\n\n".getBytes(StandardCharsets.UTF_8);
         var context = new OperatorContext(
                             fixture.environment(),
                             tempDir,

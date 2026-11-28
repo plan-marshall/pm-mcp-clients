@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import io.nayuki.qrcodegen.QrCode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -31,7 +32,6 @@ import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.runtime.MockTiming;
 import de.planmarshall.operator.PmOperator;
 
-import io.nayuki.qrcodegen.QrCode;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -93,7 +93,7 @@ class ChatDialogueIT {
                                 () -> assertTrue(chatBeforeNew.bodyText().contains(question + "\\nsecond line"),
                                                     chatBeforeNew.bodyText()),
                                 () -> assertTrue(session.screenText().contains(
-                                                    "Left the chat; it stays with " + PLAN_UNSEEDED + "."),
+                                                                        "Left the chat; it stays with " + PLAN_UNSEEDED + "."),
                                                     session.screenText()),
                                 () -> harness.assertAct("POST", "/api/v1/plans/" + PLAN_UNSEEDED + "/chat"),
                                 () -> harness.assertAct("POST", "/api/v1/plans/" + PLAN_UNSEEDED + "/chat/turns"),
@@ -109,8 +109,8 @@ class ChatDialogueIT {
         var binary = BinaryUnderTest.locate("pm-operator", PmOperator.class, MachinePaths.class,
                             CommandLine.class, JsonFactory.class, Terminal.class, LineReader.class, QrCode.class);
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                            .scenario(StandardScenarios.RUNNING_WORK).recordActBodies(true)
-                            .timing(MockTiming.REALISTIC).build())) {
+                                 .scenario(StandardScenarios.RUNNING_WORK).recordActBodies(true)
+                                 .timing(MockTiming.REALISTIC).build())) {
             MockMachine.recordLiveRuntime(runtime);
             var env = new HashMap<>(runtime.environment());
             env.put("USER", "operator");
@@ -120,7 +120,7 @@ class ChatDialogueIT {
             env.put("PATH", "/usr/bin:/bin");
             env.put("XDG_STATE_HOME", runtime.base().resolve("xdg-state").toString());
             try (var session = PtySession.start(binary.with("plan", "chat", PLAN_UNSEEDED), env,
-                                Path.of("").toAbsolutePath(), 120, 30)) {
+                                     Path.of("").toAbsolutePath(), 120, 30)) {
                 assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT),
                                     session.rawOutput());
 
@@ -140,7 +140,7 @@ class ChatDialogueIT {
                                     () -> assertTrue(session.screenText().contains("Stopped; the reply so far is kept."),
                                                         session.screenText()),
                                     () -> assertTrue(acts.stream().anyMatch(
-                                                        act -> "POST".equals(act.method()) && act.path().endsWith("/stop")),
+                                                                            act -> "POST".equals(act.method()) && act.path().endsWith("/stop")),
                                                         acts.toString()));
             }
         }
@@ -157,10 +157,10 @@ class ChatDialogueIT {
                 assertAll(
                                     () -> assertEquals(0, first.exitCode(), first.rawOutput()),
                                     () -> assertTrue(first.screenText().contains(
-                                                        "Left the chat; it stays with " + PLAN_SEEDED + "."),
+                                                                            "Left the chat; it stays with " + PLAN_SEEDED + "."),
                                                         first.screenText()),
                                     () -> assertFalse(harness.acts().stream().anyMatch(
-                                                        act -> act.path().endsWith("/chat/end")),
+                                                                            act -> act.path().endsWith("/chat/end")),
                                                         harness.acts().toString()));
             }
             try (var second = harness.open("plan", "chat", PLAN_SEEDED)) {
@@ -240,15 +240,15 @@ class ChatDialogueIT {
             assertAll(
                                 () -> assertEquals(0, session.exitCode(), session.rawOutput()),
                                 () -> assertTrue(session.screenText().contains(
-                                                    "A new plan is being started in pm-mcp-clients with this description; go on with its sources."),
+                                                                        "A new plan is being started in pm-mcp-clients with this description; go on with its sources."),
                                                     session.screenText()),
                                 () -> assertTrue(session.screenText().contains(
-                                                    "Left the chat; it stays with " + PLAN_ENDED + "."),
+                                                                        "Left the chat; it stays with " + PLAN_ENDED + "."),
                                                     session.screenText()),
                                 () -> harness.assertAct("POST",
                                                     "/api/v1/plans/" + PLAN_ENDED + "/chat/proposal/accept"),
                                 () -> assertFalse(harness.acts().stream().anyMatch(
-                                                    act -> act.path().endsWith("/chat/end")),
+                                                                        act -> act.path().endsWith("/chat/end")),
                                                     harness.acts().toString()));
         }
     }

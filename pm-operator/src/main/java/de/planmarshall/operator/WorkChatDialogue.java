@@ -69,6 +69,7 @@ final class WorkChatDialogue {
     private final String kind;
     private final String subjectId;
     private final boolean ended;
+    private boolean chatReset;
 
     private WorkChatDialogue(OperatorContext context, PrintWriter out, String kind, String subjectId,
                         boolean ended, boolean noInput) {
@@ -146,7 +147,7 @@ final class WorkChatDialogue {
     }
 
     private record TurnSubmission(@Nullable ChatResource updatedChat, @Nullable String heldFirstLine,
-                        boolean endedExternally) {
+    boolean endedExternally) {
     }
 
     private int execute() throws IOException {
@@ -166,6 +167,17 @@ final class WorkChatDialogue {
             boolean saidNoProposal = false;
             @Nullable String heldFirstLine = null;
             while (true) {
+                if (chatReset) {
+                    chatReset = false;
+                    printedTurnIds.clear();
+                    readBackTurnIds.clear();
+                    acceptedProposalTurnIds.clear();
+                    reportedAppliedTurnIds.clear();
+                    reportedLapsedTurnIds.clear();
+                    seedPrintedTurns(chat, printedTurnIds);
+                    seedAcceptedProposal(chat, acceptedProposalTurnIds);
+                    saidNoProposal = false;
+                }
                 reportProposalStateUpdates(chat, endedChat, readBackTurnIds,
                                     acceptedProposalTurnIds, reportedAppliedTurnIds, reportedLapsedTurnIds);
                 var proposal = chat.proposal();
@@ -187,14 +199,6 @@ final class WorkChatDialogue {
                     var reset = confirmAndStartNew(null);
                     if (reset != null) {
                         chat = reset;
-                        printedTurnIds.clear();
-                        readBackTurnIds.clear();
-                        acceptedProposalTurnIds.clear();
-                        reportedAppliedTurnIds.clear();
-                        reportedLapsedTurnIds.clear();
-                        seedPrintedTurns(chat, printedTurnIds);
-                        seedAcceptedProposal(chat, acceptedProposalTurnIds);
-                        saidNoProposal = false;
                     }
                     continue;
                 }
@@ -222,6 +226,7 @@ final class WorkChatDialogue {
         while (true) {
             try {
                 if (follower.isActive()) {
+                    follower.drainQueuedEvents();
                     var accepted = client.postTurn(kind, subjectId, message, clientTurnId);
                     printedTurnIds.add(accepted.turnId());
                     var outcome = follower.followReply(prompt.reader(), currentChat.id(), accepted.turnId(),
@@ -230,9 +235,6 @@ final class WorkChatDialogue {
                         throw new StartPrompt.StartLeftException();
                     }
                     var refreshed = client.readChatQuietly(kind, subjectId, currentChat);
-                    if (!outcome.completedViaStream() && outcome.endedEvent() == null && refreshed != null) {
-                        return new TurnSubmission(refreshed, outcome.heldFirstLine(), false);
-                    }
                     return new TurnSubmission(refreshed, outcome.heldFirstLine(), outcome.endedEvent() != null);
                 }
                 var updated = client.chatTurn(kind, subjectId, message, clientTurnId, currentChat);
@@ -317,6 +319,7 @@ final class WorkChatDialogue {
                 var reopened = client.openChat(kind, subjectId);
                 prompt.line("control.chat.ended",
                                     Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId)));
+                chatReset = true;
                 return reopened;
             }
             if (answer.isEmpty() || Answers.isNo(answer)) {
@@ -327,8 +330,12 @@ final class WorkChatDialogue {
             }
             prompt.line("operator.dialogue.not_offered",
                                 Map.of("input", TerminalSanitizer.sanitizeLine(answer),
-                                                    "offered", "y, n"));
+                                                    "offered", yesNoHint()));
         }
+    }
+
+    private String yesNoHint() {
+        return prompt.locale().toLowerCase(Locale.ROOT).startsWith("de") ? "j, n" : "y, n";
     }
 
     private static void seedAcceptedProposal(ChatResource chat, Set<String> acceptedProposalTurnIds) {
@@ -359,7 +366,8 @@ final class WorkChatDialogue {
 
     private boolean reportNoProposalOnce(ChatResource chat, boolean saidNoProposal) {
         if (!chat.hasProposal() && !saidNoProposal) {
-            prompt.line("operator.actions.chat.no_proposal", Map.of(KEY_SUBJECT, subjectId));
+            prompt.line("operator.actions.chat.no_proposal",
+                                Map.of(KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId)));
             return true;
         }
         return saidNoProposal;
@@ -443,9 +451,16 @@ final class WorkChatDialogue {
             switch (updated.state()) {
                 case ACCEPTED -> {
                     acceptedProposalTurnIds.add(updated.turnId());
-                    var boundary = updated.applies() != null && updated.applies().key().endsWith("after_task");
-                    prompt.line("operator.actions.chat.accepted",
-                                        Map.of("when", boundary ? "boundary" : "other"));
+                    if (updated.applies() != null && updated.applies().key().endsWith("on_start")) {
+                        var onStart = appliesText(updated);
+                        if (onStart != null) {
+                            prompt.raw("  " + OutputSafety.stripControlSequences(onStart));
+                        }
+                    } else {
+                        var boundary = updated.applies() != null && updated.applies().key().endsWith("after_task");
+                        prompt.line("operator.actions.chat.accepted",
+                                            Map.of("when", boundary ? "boundary" : "other"));
+                    }
                 }
                 case APPLIED -> {
                     if (reportedAppliedTurnIds.add(updated.turnId())) {
@@ -520,18 +535,18 @@ final class WorkChatDialogue {
     }
 
     private String resolveVersion(ChatResource chat) {
+        if (!"epic".equals(kind)) {
+            var version = client.planVersion(subjectId);
+            if (version != null) {
+                return String.valueOf(version);
+            }
+        }
         for (var knows : chat.context().knows()) {
             if ("chat.knows.version".equals(knows.key())) {
                 var value = knows.args().get(KEY_VERSION);
                 if (value != null) {
                     return String.valueOf(value);
                 }
-            }
-        }
-        if (!"epic".equals(kind)) {
-            var version = client.planVersion(subjectId);
-            if (version != null) {
-                return String.valueOf(version);
             }
         }
         return "?";
