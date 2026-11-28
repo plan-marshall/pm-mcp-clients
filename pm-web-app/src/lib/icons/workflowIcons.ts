@@ -1,10 +1,12 @@
 /**
  * The delivered workflow icons and the ids that resolve to them.
  *
- * The visual specification in `doc/design/web-app/workflow-visual-language.adoc` is the
- * catalogue's authority; this module is its executable mirror. Every id has one SVG under
- * `workflows/`, named by the id with dots replaced by hyphens. A view resolves an id here and
- * never builds an asset path of its own.
+ * This module is the authority for the ids and the maps: `WORKFLOW_ICON_IDS` is the delivered set,
+ * `PHASE_ICON_IDS` and `UNIT_ICON_IDS` hold the phase and unit mappings. The visual specification
+ * `doc/design/web-app/workflow-visual-language.adoc` records the meaning, family and asset of each
+ * id, and the same mapping as design text. Every id has one SVG under `workflows/`, named by the id
+ * with dots replaced by hyphens. A view resolves an id here and never builds an asset path of its
+ * own.
  */
 
 import axisAskEveryUrl from './workflows/axis-ask-every.svg?url';

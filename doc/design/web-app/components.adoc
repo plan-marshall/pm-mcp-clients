@@ -70,7 +70,7 @@ The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states w
 |<<templates>>
 |===
 
-A component that no view uses is removed from this document in the package that leaves it unused; a component a view needs and this table lacks is added first (<<new-component>>).
+A component that no view uses is removed from this document in the package that leaves it unused; a component a view needs and this table lacks is added first (<<new-component>>). The vocabulary-completeness test carries its own copy of this table as the expectation and reads no document; a component added here is added there in the same change.
 
 [#controls]
 == Interaction Elements
