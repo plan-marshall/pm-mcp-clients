@@ -39,8 +39,10 @@
   let logEl: HTMLElement | undefined = $state();
   let pinnedToBottom = $state(true);
   let hasUnreadReply = $state(false);
-  let focusMissing = $state(false);
+  let missingFocusTurnId = $state<string | null>(null);
   let topLoading = false;
+  let userScrolledDuringLoad = false;
+  let pendingUserTop = 0;
   let previousTurnCount = 0;
   let previousFirstId: string | null = null;
   let previousLastText = '';
@@ -66,6 +68,10 @@
 
   function handleScroll(): void {
     if (!logEl) return;
+    if (topLoading) {
+      userScrolledDuringLoad = true;
+      pendingUserTop = logEl.scrollTop;
+    }
     const distanceFromBottom = logEl.scrollHeight - logEl.scrollTop - logEl.clientHeight;
     pinnedToBottom = distanceFromBottom <= 24;
     if (pinnedToBottom) {
@@ -96,8 +102,10 @@
   async function loadOlderPreservingAnchor(): Promise<void> {
     if (!logEl || !onloadolder || topLoading) return;
     topLoading = true;
+    userScrolledDuringLoad = false;
     const beforeHeight = logEl.scrollHeight;
     const beforeTop = logEl.scrollTop;
+    pendingUserTop = beforeTop;
     const anchorEl = logEl.querySelector('[data-turn-id]');
     const anchorId = anchorEl instanceof HTMLElement ? anchorEl.getAttribute('data-turn-id') : null;
     const beforeAnchorTop = anchorEl instanceof HTMLElement ? anchorEl.offsetTop : 0;
@@ -105,19 +113,21 @@
       await onloadolder();
       await tick();
       if (!logEl) return;
+      const baseTop = userScrolledDuringLoad ? pendingUserTop : beforeTop;
       if (anchorId) {
         const afterAnchorEl = findTurnElement(logEl, anchorId);
         if (afterAnchorEl) {
           const offsetDelta = afterAnchorEl.offsetTop - beforeAnchorTop;
           if (offsetDelta > 0) {
-            logEl.scrollTop = beforeTop + offsetDelta;
+            logEl.scrollTop = baseTop + offsetDelta;
             return;
           }
         }
       }
-      logEl.scrollTop = beforeTop + (logEl.scrollHeight - beforeHeight);
+      logEl.scrollTop = baseTop + (logEl.scrollHeight - beforeHeight);
     } finally {
       topLoading = false;
+      userScrolledDuringLoad = false;
     }
   }
 
@@ -139,7 +149,9 @@
 
     if (
       appendedOrUpdated &&
-      (!focusTurnId || scrolledFocusTurnId === focusTurnId || focusMissing)
+      (!focusTurnId ||
+        scrolledFocusTurnId === focusTurnId ||
+        missingFocusTurnId === focusTurnId)
     ) {
       if (pinnedToBottom) {
         void tick().then(() => {
@@ -160,18 +172,20 @@
     const paging = loadingOlder;
     if (!focusTurnId) {
       scrolledFocusTurnId = '';
-      focusMissing = false;
+      missingFocusTurnId = null;
       return;
     }
-    if (!logEl || focusTurnId === scrolledFocusTurnId || focusMissing) return;
+    if (!logEl || focusTurnId === scrolledFocusTurnId || focusTurnId === missingFocusTurnId) {
+      return;
+    }
     const match = findTurnElement(logEl, focusTurnId);
     if (match) {
       scrolledFocusTurnId = focusTurnId;
-      focusMissing = false;
+      missingFocusTurnId = null;
       pinnedToBottom = false;
       match.scrollIntoView?.({ block: 'nearest' });
     } else if (count > 0 && !morePages && !paging) {
-      focusMissing = true;
+      missingFocusTurnId = focusTurnId;
       jumpToBottom();
     }
   });

@@ -45,8 +45,11 @@
     return 'chat-markdown__cell--left';
   }
 
-  function copyBlock(code: string): void {
-    void copyToClipboard(code);
+  let copyFailedBlock = $state<string | null>(null);
+
+  async function copyBlock(code: string): Promise<void> {
+    const ok = await copyToClipboard(code);
+    copyFailedBlock = ok ? null : code;
   }
 </script>
 
@@ -173,6 +176,9 @@
     <div class="chat-markdown__code-block">
       <div class="chat-markdown__code-head">
         <span class="chat-markdown__code-lang">{langLabel || $t('web.chat.code_text')}</span>
+        {#if copyFailedBlock === codeBody}
+          <span class="chat-markdown__copy-error" role="status">{$t('web.chat.copy_failed')}</span>
+        {/if}
         <Button variant="ghost" size="sm" icon="act.copy" onclick={() => copyBlock(codeBody)}>
           {$t('web.common.copy')}
         </Button>
@@ -279,6 +285,11 @@
     font-family: var(--font-mono);
     font-size: var(--text-xs);
     color: var(--color-text-muted);
+  }
+
+  .chat-markdown__copy-error {
+    font-size: var(--text-xs);
+    color: var(--color-danger-text);
   }
 
   .chat-markdown__pre {

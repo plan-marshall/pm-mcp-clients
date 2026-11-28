@@ -92,11 +92,9 @@ export function rejectChatProposal(target: ChatTarget, turnId: string): Promise<
   });
 }
 
-let fallbackTurnSeq = 0;
-
 /**
  * Generates an RFC 4122 UUID v4 client turn identifier, including over non-HTTPS LAN URLs where
- * `crypto.randomUUID()` is unavailable.
+ * `crypto.randomUUID()` is unavailable. Requires Web Crypto (`randomUUID` or `getRandomValues`).
  *
  * @returns lower-case UUID v4 string
  */
@@ -112,11 +110,7 @@ export function createClientTurnId(): string {
     const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
-  // Environments without Web Crypto fall back to a monotonic client-turn identifier.
-  fallbackTurnSeq += 1;
-  const ts = Date.now().toString(16).padStart(12, '0').slice(-12);
-  const seq = fallbackTurnSeq.toString(16).padStart(12, '0').slice(-12);
-  return `${ts.slice(0, 8)}-${ts.slice(8, 12)}-4000-8000-${seq}`;
+  throw new Error('Web Crypto random source unavailable for client_turn_id');
 }
 
 /**

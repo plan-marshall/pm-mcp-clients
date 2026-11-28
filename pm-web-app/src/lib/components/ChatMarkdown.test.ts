@@ -79,11 +79,10 @@ describe('ChatMarkdown', () => {
     expect(container.querySelector('script')).toBeNull();
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('b')).toBeNull();
-    expect(container.querySelectorAll('a')).toSatisfy((links: NodeListOf<HTMLAnchorElement>) =>
-      Array.from(links).every(
-        (link) => link.href.startsWith('https://') || link.href.startsWith('http://'),
-      ),
+    const hrefs = Array.from(container.querySelectorAll('a')).map((link) =>
+      link.getAttribute('href'),
     );
+    expect(hrefs).toEqual(['https://example.com/pic.png', 'https://docs.example.org/guide']);
     expect(container.textContent).toContain('javascript:alert(1)');
     expect(container.textContent).toContain('<script>alert("xss")</script>');
     expect(container.textContent).toContain('<div><span><b>nested</b></span></div>');
@@ -217,5 +216,42 @@ describe('ChatMarkdown', () => {
 
     await fireEvent.click(container.querySelector('.chat-markdown__code-head button')!);
     expect(execCommand).toHaveBeenCalledWith('copy');
+  });
+
+  it('keeps unfinished container fences literal, ignores 4-space indented fences, and reports failed code copy', async () => {
+    const refs: TurnRef[] = [
+      { kind: 'task', id: 'TASK-4', subject: { kind: 'plan', id: 'fix-relay' } },
+    ];
+    // Unfinished blockquote fence must remain raw text without reference chips.
+    const { container, rerender } = render(ChatMarkdown, {
+      props: {
+        text: '> ```js\n> // TASK-4 stays literal\n>   const a = 1;',
+        refs,
+        subject: { kind: 'plan', id: 'fix-relay' },
+        streaming: true,
+      },
+    });
+    expect(container.querySelector('pre')).toBeNull();
+    expect(container.querySelector('a.link--chip')).toBeNull();
+    expect(container.querySelector('.chat-markdown__raw')?.textContent).toContain(
+      '>   const a = 1;',
+    );
+
+    // 4-space indented code is not a fence; closed block after it still renders and reports copy errors.
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(false),
+      configurable: true,
+    });
+    await rerender({
+      text: '    ```sh\n\n```sh\necho hi\n```',
+      refs,
+      streaming: true,
+    });
+    await fireEvent.click(container.querySelector('.chat-markdown__code-head button')!);
+    expect(container.querySelector('[role="status"]')?.textContent).toContain('Could not copy');
   });
 });

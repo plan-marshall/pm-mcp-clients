@@ -1,8 +1,11 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type EventStreamState } from '../api/client';
 import { ClientError } from '../api/errors';
 import { createClientTurnId } from './client';
+import { CHAT_SCOPE_KINDS, CHAT_STATUSES, CHAT_SUBJECT_KINDS } from './types';
 import {
   chatRoutesFor,
   createChatStore,
@@ -628,7 +631,7 @@ describe('chat store and follow lifecycle', () => {
     expect(hrefForTurnRef({ kind: 'act' })).toBe('/overview');
 
     const tokens = tokenizeMarkdown('~~~\nopen fence', true);
-    expect(tokens[0]?.type).toBe('paragraph');
+    expect(tokens[0]?.type).toBe('code_pending');
     expect(tokenizeMarkdown('')).toEqual([]);
   });
 
@@ -736,11 +739,17 @@ describe('chat store and follow lifecycle', () => {
           proposal: { ...openProposal, state: 'rejected' },
         }),
       )
-      // stopReply -> stopped snapshot
+      // stopReply -> stopped snapshot containing t-stream-2
       .mockResolvedValueOnce(
         makeChat({
           state: 'chat.open',
-          turns: [{ ...streamingTurn, status: 'stopped' }],
+          turns: [
+            {
+              ...streamingTurn,
+              turn_id: 't-stream-2',
+              status: 'stopped',
+            },
+          ],
         }),
       )
       // end() -> ended snapshot
@@ -821,10 +830,13 @@ describe('chat store and follow lifecycle', () => {
       reply_turn_id: 't-reply-1',
       kind: 'revision',
       state: 'rejected',
-      finding: 'Needs tests',
+      finding: { key: 'proposal.needs_tests', args: { count: 2 } },
     });
     expect(get(store).chat?.state).toBe('chat.open');
-    expect(get(store).chat?.proposal?.finding).toBe('Needs tests');
+    expect(get(store).chat?.proposal?.finding).toEqual({
+      key: 'proposal.needs_tests',
+      args: { count: 2 },
+    });
 
     // Success paths for acceptProposal, rejectProposal, stopReply (with auto-found active turn), end, openNew.
     await store.acceptProposal('t-prop-1');
@@ -842,7 +854,8 @@ describe('chat store and follow lifecycle', () => {
       untrusted: false,
     });
     await store.stopReply();
-    expect(get(store).turns[0]?.status).toBe('stopped');
+    expect(req.mock.calls.some(([m, u]) => m === 'POST' && String(u).endsWith('/turns/t-stream-2/stop'))).toBe(true);
+    expect(get(store).turns.find((t) => t.turn_id === 't-stream-2')?.status).toBe('stopped');
 
     emitEvent('chat.ended', { chat_id: 'wrong-chat', ended_by: 'operator' });
     emitEvent('chat.turn.started', {
@@ -1036,11 +1049,18 @@ describe('chat store and follow lifecycle', () => {
     );
     await stopPromise;
     expect(get(store).turns.find((t) => t.turn_id === 't-stream')?.text).toBe('Part 1 Part 2');
+    expect(get(store).turns.find((t) => t.turn_id === 't-stream')?.status).toBe('stopped');
 
-    // Archive store blocks openNew completely without calling endChat/openChat.
+    // Archive store blocks mutating actions cleanly without firing requests.
     const callsBeforeArchive = req.mock.calls.length;
     const archiveStore = createChatStore(planTarget, { archive: true });
     expect(await archiveStore.openNew()).toBeNull();
+    await archiveStore.stopReply('t-stream');
+    await archiveStore.acceptProposal('t-prop');
+    await archiveStore.rejectProposal('t-prop');
+    await archiveStore.end();
+    await archiveStore.retryTurn('missing');
+    archiveStore.editFailedTurn('missing');
     expect(req.mock.calls).toHaveLength(callsBeforeArchive);
   });
 
@@ -1062,7 +1082,7 @@ describe('chat store and follow lifecycle', () => {
     unsub();
   });
 
-  it('generates UUID v4 identifiers across randomUUID, getRandomValues, and fallback modes', () => {
+  it('generates UUID v4 identifiers across randomUUID and getRandomValues, and refuses missing crypto on send', async () => {
     const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
     expect(createClientTurnId()).toMatch(uuidRe);
 
@@ -1076,13 +1096,143 @@ describe('chat store and follow lifecycle', () => {
       expect(getRandomValues).toHaveBeenCalledTimes(1);
 
       vi.stubGlobal('crypto', {});
-      const idA = createClientTurnId();
-      const idB = createClientTurnId();
-      expect(idA).toMatch(uuidRe);
-      expect(idB).toMatch(uuidRe);
-      expect(idA).not.toBe(idB);
+      expect(() => createClientTurnId()).toThrow();
+
+      const store = createChatStore(planTarget);
+      store.setDraft('Keep this draft');
+      await store.send();
+      expect(get(store).draft).toBe('Keep this draft');
+      expect(get(store).error).toBeInstanceOf(Error);
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('keeps optimistic first turn on send before chat opens, retries initial read on retryStream, and invalidates stale reads on openNew', async () => {
+    let emitStream: (event: string, data: unknown) => void = () => {};
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation((_path, onEvent) => {
+      emitStream = onEvent;
+      return () => {};
+    });
+
+    let resolveResetRead!: (chat: ChatResource) => void;
+    const req = vi
+      .spyOn(apiClient, 'request')
+      // connect() fails initial read; retryStream() retries initial read -> chat-a
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(makeChat({ id: 'chat-a', state: 'chat.open', turns: [] }))
+      // reset triggers slower read for chat-a
+      .mockImplementationOnce(
+        () =>
+          new Promise<ChatResource>((resolve) => {
+            resolveResetRead = resolve;
+          }),
+      )
+      // openNew -> ends chat-a, opens chat-b
+      .mockResolvedValueOnce(makeChat({ id: 'chat-a', state: 'chat.end', turns: [] }))
+      .mockResolvedValueOnce(makeChat({ id: 'chat-b', state: 'chat.open', turns: [] }));
+
+    const store = createChatStore(planTarget);
+    await store.connect();
+    expect(get(store).chat).toBeNull();
+    expect(get(store).error).toBeInstanceOf(Error);
+
+    // Buffered event arriving before retry succeeds still replays after initial read settles.
+    emitStream('chat.turn.started', {
+      chat_id: 'chat-a',
+      turn_id: 't-buf',
+      kind: 'message',
+      author: 'planner',
+      format: 'markdown',
+      untrusted: false,
+      text: 'Buffered reply',
+    });
+    store.retryStream();
+    await vi.waitFor(() => expect(get(store).chat?.id).toBe('chat-a'));
+    expect(get(store).turns.some((t) => t.turn_id === 't-buf')).toBe(true);
+
+    // Trigger reset read for chat-a, then openNew -> chat-b before reset settles.
+    emitStream('reset', {});
+    await vi.waitFor(() => expect(resolveResetRead).toBeTypeOf('function'));
+    await store.openNew();
+    expect(get(store).chat?.id).toBe('chat-b');
+    store.setDraft('Typed in chat B');
+
+    resolveResetRead(makeChat({ id: 'chat-a', state: 'chat.open', turns: [] }));
+    await Promise.resolve();
+    expect(get(store).chat?.id).toBe('chat-b');
+    expect(get(store).draft).toBe('Typed in chat B');
+
+    // First send without an open chat keeps optimistic turn across openChat() and reconciles 202.
+    req.mockReset();
+    req
+      .mockResolvedValueOnce(makeChat({ id: 'chat-fresh', state: 'chat.open', turns: [] }))
+      .mockResolvedValueOnce({ turn_id: 't-first-202' });
+    const freshStore = createChatStore({ kind: 'plan', id: 'fresh-plan' });
+    freshStore.setDraft('Hello first send');
+    await freshStore.send();
+    expect(get(freshStore).chat?.id).toBe('chat-fresh');
+    expect(get(freshStore).turns).toHaveLength(1);
+    expect(get(freshStore).turns[0]).toMatchObject({
+      turn_id: 't-first-202',
+      delivery: 'accepted',
+      text: 'Hello first send',
+    });
+
+    // applyEndedEvent protects stopped turn status from a slower snapshot reporting streaming.
+    let resolveSlowRefresh!: (chat: ChatResource) => void;
+    req.mockImplementationOnce(
+      () =>
+        new Promise<ChatResource>((resolve) => {
+          resolveSlowRefresh = resolve;
+        }),
+    );
+    emitStream('chat.turn.started', {
+      chat_id: 'chat-b',
+      turn_id: 't-live',
+      kind: 'message',
+      author: 'planner',
+      format: 'markdown',
+      untrusted: false,
+      text: 'Working',
+    });
+    emitStream('reset', {});
+    emitStream('chat.ended', { chat_id: 'chat-b', ended_by: 'operator' });
+    resolveSlowRefresh(
+      makeChat({
+        id: 'chat-b',
+        state: 'chat.open',
+        turns: [
+          {
+            turn_id: 't-live',
+            kind: 'message',
+            author: 'planner',
+            status: 'streaming',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'Working',
+            steps: [],
+            refs: [],
+            at: '2026-11-27T10:00:00Z',
+            reason: null,
+            lines: [],
+          },
+        ],
+      }),
+    );
+    await Promise.resolve();
+    expect(get(store).turns.find((t) => t.turn_id === 't-live')?.status).toBe('stopped');
+  });
+
+  it('keeps ChatSubjectKind, ChatScopeKind, and ChatStatus aligned with pm-api Java enums', () => {
+    const javaDir = path.resolve(__dirname, '../../../../pm-api/src/main/java/de/planmarshall/api/chat');
+    const extractWireValues = (file: string): string[] => {
+      const src = fs.readFileSync(path.join(javaDir, file), 'utf-8');
+      return Array.from(src.matchAll(/^[ \t]+[A-Z][A-Z0-9_]*\("([^"]+)"\)/gm), (m) => m[1]);
+    };
+    expect(CHAT_SUBJECT_KINDS).toEqual(extractWireValues('ChatSubjectKind.java'));
+    expect(CHAT_SCOPE_KINDS).toEqual(extractWireValues('ChatScopeKind.java'));
+    expect(CHAT_STATUSES).toEqual(extractWireValues('ChatStatus.java'));
   });
 });

@@ -300,6 +300,27 @@ function isClosingFenceLine(trimmed: string, ch: string, openLen: number): boole
   return run >= openLen && trimmed.slice(run).trim() === '';
 }
 
+function countLeadingSpaces(text: string): number {
+  let spaces = 0;
+  while (spaces < text.length && text[spaces] === ' ') {
+    spaces += 1;
+  }
+  return spaces;
+}
+
+function stripFenceContainerPrefix(line: string): string | null {
+  let rest = line;
+  while (true) {
+    const spaces = countLeadingSpaces(rest);
+    if (spaces > 3) return null;
+    const trimmed = rest.slice(spaces);
+    if (!trimmed.startsWith('>')) {
+      return trimmed;
+    }
+    rest = trimmed.startsWith('> ') ? trimmed.slice(2) : trimmed.slice(1);
+  }
+}
+
 /**
  * Finds the start index of a trailing unclosed code fence (` ``` ` or `~~~`) so streaming turns
  * keep unfinished fences as plain text until closing markers arrive.
@@ -312,18 +333,20 @@ function findUnclosedFenceStart(source: string): number {
   let openLen = 0;
 
   for (const line of lines) {
-    const trimmed = line.trimStart();
-    if (openStart < 0) {
-      const ch = fenceCharOf(trimmed);
-      if (ch) {
-        openStart = offset;
-        openChar = ch;
-        openLen = countFenceRun(trimmed, ch);
+    const candidate = stripFenceContainerPrefix(line);
+    if (candidate !== null) {
+      if (openStart < 0) {
+        const ch = fenceCharOf(candidate);
+        if (ch) {
+          openStart = offset;
+          openChar = ch;
+          openLen = countFenceRun(candidate, ch);
+        }
+      } else if (isClosingFenceLine(candidate, openChar, openLen)) {
+        openStart = -1;
+        openChar = '';
+        openLen = 0;
       }
-    } else if (isClosingFenceLine(trimmed, openChar, openLen)) {
-      openStart = -1;
-      openChar = '';
-      openLen = 0;
     }
     offset += line.length + 1;
   }
@@ -351,12 +374,11 @@ export function tokenizeMarkdown(source: string, streaming = false): Token[] {
       const prefixTokens = completedPrefix
         ? Array.from(marked.lexer(completedPrefix, { gfm: true, breaks: false }))
         : [];
-      const tailToken: Tokens.Paragraph = {
-        type: 'paragraph',
+      const tailToken = {
+        type: 'code_pending',
         raw: pendingTail,
         text: pendingTail,
-        tokens: [{ type: 'text', raw: pendingTail, text: pendingTail }],
-      };
+      } as unknown as Token;
       return [...prefixTokens, tailToken];
     }
   }

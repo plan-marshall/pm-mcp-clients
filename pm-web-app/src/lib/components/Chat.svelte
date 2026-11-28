@@ -107,17 +107,7 @@
   }
 
   function starterScopeKey(currentScope: ChatScopeKind): string {
-    switch (currentScope) {
-      case 'plan':
-      case 'epic':
-      case 'decision':
-      case 'entry':
-      case 'archive':
-      case 'draft':
-      case 'item':
-      case 'register':
-        return `control.chat.starter.${currentScope}`;
-    }
+    return `control.chat.starter.${currentScope}`;
   }
 
   function formatKnowsItem(msg: MessageText): string {

@@ -115,6 +115,13 @@ function mergeServerTurn(
   streamTouchedTurns: ReadonlySet<string>,
 ): LocalChatTurn {
   if (prev && streamTouchedTurns.has(turn.turn_id)) {
+    if (prev.status === 'streaming' && turn.status !== 'streaming') {
+      return {
+        ...prev,
+        status: turn.status,
+        reason: turn.reason ?? prev.reason,
+      };
+    }
     return prev;
   }
   return {
@@ -220,6 +227,7 @@ export function createChatStore(
 
   let unsubscribeStream: (() => void) | null = null;
   let retryStreamFn: (() => void) | null = null;
+  let initialTurnTarget: string | null = null;
   let settled = false;
   let bufferedEvents: Array<{ event: string; data: unknown }> = [];
   let readSeq = 0;
@@ -469,11 +477,13 @@ export function createChatStore(
     streamSeq += 1;
     chatMetaTouchedSeq = streamSeq;
     const nextState = payload.ended_by === 'proposal_carried' ? 'chat.carried' : 'chat.end';
-    const nextTurns = state.turns.map((turn) =>
-      turn.status === 'streaming' && !turn.delivery
-        ? { ...turn, status: 'stopped' as const }
-        : turn,
-    );
+    const nextTurns = state.turns.map((turn) => {
+      if (turn.status === 'streaming' && !turn.delivery) {
+        turnTouchedSeq.set(turn.turn_id, streamSeq);
+        return { ...turn, status: 'stopped' as const };
+      }
+      return turn;
+    });
     patch({
       endedBy: payload,
       turns: nextTurns,
@@ -544,13 +554,19 @@ export function createChatStore(
     }
   }
 
-  async function ensureChatOpen(): Promise<ChatResource> {
+  async function ensureChatOpen(pendingTurn?: LocalChatTurn): Promise<ChatResource> {
     if (state.chat && !isChatEndedState(state.chat.state)) {
       return state.chat;
     }
     const baseline = streamSeq;
     const opened = await openChat(target);
     applySnapshot(opened, baseline);
+    if (
+      pendingTurn &&
+      !state.turns.some((turn) => turn.client_turn_id === pendingTurn.client_turn_id)
+    ) {
+      patch({ turns: [...state.turns, pendingTurn] });
+    }
     return opened;
   }
 
@@ -638,14 +654,45 @@ export function createChatStore(
     );
   }
 
+  async function loadInitialSnapshot(
+    seq: number,
+    baseline: number,
+    turnId?: string | null,
+  ): Promise<void> {
+    try {
+      let resource: ChatResource;
+      try {
+        resource = await readChat(target);
+      } catch (error) {
+        if (!archive && isMissingChatError(error)) {
+          resource = await openChat(target);
+        } else {
+          throw error;
+        }
+      }
+      if (seq !== readSeq) return;
+      applySnapshot(resource, baseline);
+      settled = true;
+      flushBufferedEvents();
+      if (turnId) {
+        await loadPagesUntilTurn(turnId, seq);
+      }
+    } catch (error) {
+      if (seq !== readSeq) return;
+      bufferedEvents = [];
+      patch({ loading: false, error });
+    }
+  }
+
   async function postWithTurnId(
     text: string,
     clientTurnId: string,
     ownedDraftVersion: number | null,
+    pendingTurn?: LocalChatTurn,
   ): Promise<void> {
     patch({ sending: true, error: null });
     try {
-      await ensureChatOpen();
+      await ensureChatOpen(pendingTurn);
       const accepted = await sendChatTurn(target, text, clientTurnId);
       const nextTurns = reconcileAcceptedTurn(clientTurnId, accepted.turn_id);
       const shouldClearDraft = ownedDraftVersion !== null && ownedDraftVersion === draftVersion;
@@ -688,6 +735,7 @@ export function createChatStore(
     async connect(options?: { turnId?: string | null }): Promise<void> {
       unsubscribeStream?.();
       retryStreamFn = null;
+      initialTurnTarget = options?.turnId ?? null;
       settled = false;
       bufferedEvents = [];
       olderReqSeq += 1;
@@ -708,29 +756,7 @@ export function createChatStore(
         },
       );
 
-      try {
-        let resource: ChatResource;
-        try {
-          resource = await readChat(target);
-        } catch (error) {
-          if (!archive && isMissingChatError(error)) {
-            resource = await openChat(target);
-          } else {
-            throw error;
-          }
-        }
-        if (seq !== readSeq) return;
-        applySnapshot(resource, baseline);
-        settled = true;
-        flushBufferedEvents();
-        if (options?.turnId) {
-          await loadPagesUntilTurn(options.turnId, seq);
-        }
-      } catch (error) {
-        if (seq !== readSeq) return;
-        bufferedEvents = [];
-        patch({ loading: false, error });
-      }
+      await loadInitialSnapshot(seq, baseline, initialTurnTarget);
     },
 
     disconnect(): void {
@@ -745,11 +771,17 @@ export function createChatStore(
     },
 
     retryStream(): void {
-      if (retryStreamFn) {
-        retryStreamFn();
+      retryStreamFn?.();
+      if (!settled && unsubscribeStream) {
+        const seq = ++readSeq;
+        const baseline = streamSeq;
+        patch({ loading: true, error: null });
+        void loadInitialSnapshot(seq, baseline, initialTurnTarget);
         return;
       }
-      void this.connect();
+      if (!retryStreamFn && !unsubscribeStream) {
+        void this.connect({ turnId: initialTurnTarget });
+      }
     },
 
     async openNew(): Promise<ChatResource | null> {
@@ -764,6 +796,7 @@ export function createChatStore(
         }
         const openBaseline = streamSeq;
         const opened = await openChat(target);
+        readSeq += 1;
         clearStoredDraft(draftKey);
         draftTouched = false;
         draftVersion += 1;
@@ -828,9 +861,15 @@ export function createChatStore(
       if (archive) return;
       const text = overrideText ?? state.draft;
       if (!text.trim()) return;
+      let clientTurnId: string;
+      try {
+        clientTurnId = createClientTurnId();
+      } catch (error) {
+        patch({ error });
+        return;
+      }
       const ownedDraftVersion =
         overrideText === undefined || overrideText === state.draft ? draftVersion : null;
-      const clientTurnId = createClientTurnId();
       const optimistic: LocalChatTurn = {
         turn_id: clientTurnId,
         client_turn_id: clientTurnId,
@@ -849,10 +888,11 @@ export function createChatStore(
         lines: [],
       };
       patch({ turns: [...state.turns, optimistic] });
-      await postWithTurnId(text, clientTurnId, ownedDraftVersion);
+      await postWithTurnId(text, clientTurnId, ownedDraftVersion, optimistic);
     },
 
     async retryTurn(clientTurnId: string): Promise<void> {
+      if (archive) return;
       const targetTurn = state.turns.find((turn) => turn.client_turn_id === clientTurnId);
       if (!targetTurn) return;
       const nextTurns = state.turns.map((turn) =>
@@ -867,6 +907,7 @@ export function createChatStore(
     },
 
     editFailedTurn(clientTurnId: string): void {
+      if (archive) return;
       const targetTurn = state.turns.find((turn) => turn.client_turn_id === clientTurnId);
       if (!targetTurn) return;
       draftTouched = true;
@@ -880,6 +921,7 @@ export function createChatStore(
     },
 
     async stopReply(turnId?: string): Promise<void> {
+      if (archive) return;
       const active =
         turnId ??
         [...state.turns]
@@ -896,6 +938,7 @@ export function createChatStore(
     },
 
     async acceptProposal(turnId: string): Promise<void> {
+      if (archive) return;
       const baseline = streamSeq;
       patch({ proposalBusy: true, error: null });
       try {
@@ -909,6 +952,7 @@ export function createChatStore(
     },
 
     async rejectProposal(turnId: string): Promise<void> {
+      if (archive) return;
       const baseline = streamSeq;
       patch({ proposalBusy: true, error: null });
       try {
@@ -922,6 +966,7 @@ export function createChatStore(
     },
 
     async end(): Promise<void> {
+      if (archive) return;
       const baseline = streamSeq;
       try {
         const closed = await endChat(target);

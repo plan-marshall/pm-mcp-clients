@@ -3145,13 +3145,21 @@ export class ApiClient {
         onState(this.streamState);
       }
       onRetry?.(() => this.retryEventStream());
-      const unsub = this.subscribeEvents(onEvent, signal);
-      return () => {
-        unsub();
+      const unsub = this.subscribeEvents(onEvent);
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
         if (onState) {
           this.pathEventStateListeners.delete(onState);
         }
+        signal?.removeEventListener('abort', cleanup);
+        unsub();
       };
+      if (signal) {
+        signal.addEventListener('abort', cleanup, { once: true });
+      }
+      return cleanup;
     }
     return this.subscribeStream(path, onEvent, signal, onState, onRetry);
   }
@@ -3167,7 +3175,13 @@ export class ApiClient {
     }
     this.streamState = state;
     this.onStreamStateCallback?.(state);
-    this.pathEventStateListeners.forEach((listener) => listener(state));
+    this.pathEventStateListeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch {
+        // Isolate subscriber errors so one broken listener does not block others or fail connect.
+      }
+    });
   }
 
   // The app renders in the browser only (`ssr = false` in the root layout), so `localStorage` is
@@ -5205,6 +5219,7 @@ export class ApiClient {
           },
           signal: AbortSignal.any([internalController.signal, attempt.signal]),
         });
+        clearTimeout(deadline);
 
         if (res.status === 401) {
           // The stream always carries the secret (connect returns without one), so this is a

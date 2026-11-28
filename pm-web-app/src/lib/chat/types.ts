@@ -1,20 +1,32 @@
 /** Wire subject kinds from `de.planmarshall.api.chat.ChatSubjectKind`. */
-export type ChatSubjectKind = 'plan' | 'epic' | 'entry' | 'decision';
+export const CHAT_SUBJECT_KINDS = ['plan', 'epic', 'entry', 'decision'] as const;
+export type ChatSubjectKind = (typeof CHAT_SUBJECT_KINDS)[number];
 
 /** Wire scope kinds from `de.planmarshall.api.chat.ChatScopeKind`. */
-export type ChatScopeKind =
-  'plan' | 'epic' | 'draft' | 'item' | 'decision' | 'entry' | 'archive' | 'register';
+export const CHAT_SCOPE_KINDS = [
+  'plan',
+  'epic',
+  'draft',
+  'item',
+  'decision',
+  'entry',
+  'archive',
+  'register',
+] as const;
+export type ChatScopeKind = (typeof CHAT_SCOPE_KINDS)[number];
 
 /** Wire lifecycle states from `de.planmarshall.api.chat.ChatStatus`. */
-export type ChatStatus =
-  | 'chat.open'
-  | 'chat.turn'
-  | 'chat.reply'
-  | 'chat.route'
-  | 'chat.read-back'
-  | 'chat.apply'
-  | 'chat.end'
-  | 'chat.carried';
+export const CHAT_STATUSES = [
+  'chat.open',
+  'chat.turn',
+  'chat.reply',
+  'chat.route',
+  'chat.read-back',
+  'chat.apply',
+  'chat.end',
+  'chat.carried',
+] as const;
+export type ChatStatus = (typeof CHAT_STATUSES)[number];
 
 export type TurnKind = 'message' | 'proposal' | 'notice';
 export type TurnStatus = 'streaming' | 'complete' | 'stopped' | 'failed';

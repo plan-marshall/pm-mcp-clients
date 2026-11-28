@@ -61,8 +61,11 @@
   let clockText = $derived(formatTime(turn.at, 'clock', $currentLocale));
   let fullTimeTitle = $derived(formatTime(turn.at, 'short', $currentLocale) || turn.at);
 
-  function copyText(): void {
-    void copyToClipboard(turn.text);
+  let copyFailed = $state(false);
+
+  async function copyText(): Promise<void> {
+    const ok = await copyToClipboard(turn.text);
+    copyFailed = !ok;
   }
 </script>
 
@@ -241,6 +244,11 @@
         </Button>
       {/if}
     </footer>
+    {#if copyFailed}
+      <p class="chat-turn__status chat-turn__status--error" role="status">
+        {$t('web.chat.copy_failed')}
+      </p>
+    {/if}
   {/if}
 </article>
 

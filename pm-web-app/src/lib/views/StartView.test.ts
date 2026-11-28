@@ -253,6 +253,34 @@ describe('StartView', () => {
       expect(screen.getByText('Committed by action')).toBeInTheDocument();
     });
 
+    it('does not let a slower act response overwrite an entry read started after it that already applied', async () => {
+      arrangeOpen(sources({ sources: [source({ title: 'Initial source' })] }));
+      const { emit } = arrangeEvents();
+      let finishAct: (resource: ReturnType<typeof sources>) => void = () => {};
+      const slowAct = new Promise<ReturnType<typeof sources>>((resolve) => {
+        finishAct = resolve;
+      });
+      vi.spyOn(apiClient, 'actEntry').mockReturnValueOnce(slowAct);
+      vi.spyOn(apiClient, 'getEntry').mockResolvedValueOnce(
+        sources({ sources: [source({ title: 'Newer refresh after chat.ended' })] }),
+      );
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByText('Initial source');
+
+      // Click remove to start slow act, then chat.ended triggers refresh which settles first.
+      const actClick = fireEvent.click(screen.getByTestId('remove-src-1'));
+      emit('chat.ended');
+      expect(await screen.findByText('Newer refresh after chat.ended')).toBeInTheDocument();
+
+      // Resolving the slower act must not replace the newer refresh state.
+      finishAct(sources({ sources: [source({ title: 'Stale action source' })] }));
+      await actClick;
+      await Promise.resolve();
+      expect(screen.queryByText('Stale action source')).toBeNull();
+      expect(screen.getByText('Newer refresh after chat.ended')).toBeInTheDocument();
+    });
+
     it('keeps what it shows when the re-read fails', async () => {
       arrangeOpen(sources({ sources: [source({ title: 'Shown before' })] }));
       const { emit } = arrangeEvents();

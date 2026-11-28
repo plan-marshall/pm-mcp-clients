@@ -469,10 +469,10 @@
     actionError = '';
     try {
       const resource = await apiClient.actEntry(target, link, body);
-      if (!accepts(resource, target, generation)) {
+      if (!accepts(resource, target, generation) || read < appliedEntryRead) {
         return null;
       }
-      appliedEntryRead = Math.max(appliedEntryRead, read);
+      appliedEntryRead = read;
       apply(resource);
       return resource.start;
     } catch (e) {

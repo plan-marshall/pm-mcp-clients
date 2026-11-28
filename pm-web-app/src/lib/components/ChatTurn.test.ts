@@ -410,5 +410,75 @@ describe('ChatTranscript', () => {
       focusTurnId: 't-missing',
     });
     await vi.waitFor(() => expect(log.scrollTop).toBe(500));
+
+    // Switching focusTurnId after a missing ID resolves cleanly to the new turn.
+    scrollIntoView.mockClear();
+    await rerender({
+      turns: [makeTurn({ turn_id: 't-latest', text: 'Latest turn' })],
+      hasOlder: false,
+      focusTurnId: 't-latest',
+    });
+    await vi.waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+  });
+
+  it('reports turn copy failures and preserves user scroll made during an older-page load', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      configurable: true,
+    });
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(false),
+      configurable: true,
+    });
+    render(ChatTurn, { props: { turn: makeTurn({ text: 'Manual copy needed' }) } });
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Could not copy');
+
+    let resolvePage!: () => void;
+    const controls: {
+      rerender?: (props: {
+        turns: LocalChatTurn[];
+        hasOlder: boolean;
+        onloadolder: () => Promise<void>;
+      }) => Promise<void>;
+    } = {};
+    const initialTurns = [
+      makeTurn({ turn_id: 't-2', text: 'Second turn' }),
+      makeTurn({ turn_id: 't-3', text: 'Latest turn' }),
+    ];
+    const onLoadOlder = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePage = async () => {
+            await controls.rerender?.({
+              turns: [makeTurn({ turn_id: 't-1', text: 'Older turn' }), ...initialTurns],
+              hasOlder: false,
+              onloadolder: onLoadOlder,
+            });
+            resolve();
+          };
+        }),
+    );
+
+    const rendered = render(ChatTranscript, {
+      props: { turns: initialTurns, hasOlder: true, onloadolder: onLoadOlder },
+    });
+    controls.rerender = rendered.rerender;
+    const log = screen.getByRole('log');
+    Object.defineProperty(log, 'scrollHeight', {
+      get: () => (log.querySelector('[data-turn-id="t-1"]') ? 650 : 400),
+      configurable: true,
+    });
+    Object.defineProperty(log, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(log, 'scrollTop', { value: 10, writable: true, configurable: true });
+
+    await fireEvent.scroll(log);
+    await vi.waitFor(() => expect(onLoadOlder).toHaveBeenCalledTimes(1));
+
+    // User scrolls down to bottom (100) before the page settles; anchor shift (+250) moves to 350.
+    log.scrollTop = 100;
+    await fireEvent.scroll(log);
+    resolvePage();
+    await vi.waitFor(() => expect(log.scrollTop).toBe(350));
   });
 });
