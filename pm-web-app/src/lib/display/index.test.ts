@@ -3,6 +3,7 @@ import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import {
   displayError,
+  displayPruneReason,
   displaySettingAspect,
   displaySettingChoice,
   displayState,
@@ -100,6 +101,41 @@ describe('displayState', () => {
     useCatalogue('de');
     expect(displayState('plan', 'hyperdrive')).toBe('unbekannt');
     expect(displayState('plan', undefined)).toBe('unbekannt');
+  });
+});
+
+describe('displayPruneReason', () => {
+  it.each([
+    ['lane_choice', 'the land lane', 'die Land-Lane'],
+    ['unneeded_step', 'step not needed', 'Schritt nicht benötigt'],
+    ['not_in_plan', 'not in this plan', 'nicht in diesem Plan'],
+  ])('names the closed reason %s through plan.prune.*', (reason, english, german) => {
+    useCatalogue('en');
+    expect(displayPruneReason(reason)).toBe(english);
+
+    useCatalogue('de');
+    expect(displayPruneReason(reason)).toBe(german);
+  });
+
+  it('reads a reason without regard to its case', () => {
+    useCatalogue('en');
+    expect(displayPruneReason('LANE_CHOICE')).toBe('the land lane');
+  });
+
+  it('answers a reason outside the closed list with the unknown word, never the raw value', () => {
+    useCatalogue('en');
+    expect(displayPruneReason('the land lane')).toBe('unknown');
+    expect(displayPruneReason('hyperdrive')).toBe('unknown');
+
+    useCatalogue('de');
+    expect(displayPruneReason('hyperdrive')).toBe('unbekannt');
+  });
+
+  it('answers an empty reason with the unknown word', () => {
+    useCatalogue('en');
+    expect(displayPruneReason('')).toBe('unknown');
+    expect(displayPruneReason(null)).toBe('unknown');
+    expect(displayPruneReason(undefined)).toBe('unknown');
   });
 });
 

@@ -3,7 +3,12 @@ import { currentLocale, messagesStore, translate } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import type { ProcessNode } from '../api/client';
 import type { Translate } from './processNode';
-import { getNodeStateIcon, getNodeStateText } from './processNode';
+import {
+  getNodeDisplayName,
+  getNodeKindIcon,
+  getNodeStateIcon,
+  getNodeStateText,
+} from './processNode';
 
 /**
  * The words of a process state come from the catalogue, and every value of the runtime's
@@ -79,5 +84,106 @@ describe('getNodeStateIcon', () => {
   it('marks the waiting state with the alert glyph, whichever name it arrives under', () => {
     expect(getNodeStateIcon('waiting_for_operator')).toBe('state.alert');
     expect(getNodeStateIcon('waiting_for_you')).toBe('state.alert');
+  });
+});
+
+describe('getNodeKindIcon', () => {
+  it('draws a phase with its phase icon', () => {
+    expect(getNodeKindIcon(nodeIn('done'))).toBe('phase.execute');
+    expect(getNodeKindIcon(nodeIn('done', { node_id: 'refine', title: 'refine' }))).toBe(
+      'phase.refine',
+    );
+  });
+
+  it('draws a sub-workflow with the icon of its unit, by id and else by title', () => {
+    expect(
+      getNodeKindIcon(
+        nodeIn('planned', {
+          node_id: 'remediation.ci-failure',
+          title: 'CI failure',
+          kind: 'sub_workflow',
+        }),
+      ),
+    ).toBe('remediation.ci');
+    expect(
+      getNodeKindIcon(nodeIn('planned', { node_id: '', title: 'land', kind: 'sub_workflow' })),
+    ).toBe('flow.land');
+  });
+
+  it.each([
+    ['a state', { node_id: 'execute.envelope', title: 'execute.envelope', kind: 'state' }],
+    ['the sanity-check root', { node_id: 'sanity-check', title: 'sanity-check', kind: 'state' }],
+    ['a phase outside the six', { node_id: 'sanity-check', title: 'sanity-check', kind: 'phase' }],
+    ['an unknown sub-workflow', { node_id: 'no-such-unit', title: 'x', kind: 'sub_workflow' }],
+  ])('draws %s with the neutral workflow icon', (_case, overrides) => {
+    expect(getNodeKindIcon(nodeIn('planned', overrides))).toBe('workflow.default');
+  });
+});
+
+describe('getNodeDisplayName', () => {
+  it('drops the raw kind word in front of the name', () => {
+    expect(getNodeDisplayName(nodeIn('done'), useCatalogue('en'))).toBe('execute');
+    expect(
+      getNodeDisplayName(nodeIn('done', { title: 'PHASE   execute' }), useCatalogue('en')),
+    ).toBe('execute');
+  });
+
+  it('drops the localized kind word in front of the name, in either language', () => {
+    expect(
+      getNodeDisplayName(
+        nodeIn('done', { kind: 'sub_workflow', title: 'Sub workflow land' }),
+        useCatalogue('en'),
+      ),
+    ).toBe('land');
+    expect(
+      getNodeDisplayName(
+        nodeIn('done', { kind: 'sub_workflow', title: 'Teilablauf land' }),
+        useCatalogue('de'),
+      ),
+    ).toBe('land');
+  });
+
+  it('drops the kind word whatever joins its parts: space, underscore or hyphen', () => {
+    for (const title of ['sub-workflow land', 'sub_workflow land', 'Sub-Workflow land']) {
+      expect(
+        getNodeDisplayName(nodeIn('done', { kind: 'sub_workflow', title }), useCatalogue('en')),
+      ).toBe('land');
+    }
+  });
+
+  it('keeps a title that carries no kind word unchanged', () => {
+    expect(getNodeDisplayName(nodeIn('done', { title: 'execute' }), useCatalogue('en'))).toBe(
+      'execute',
+    );
+    expect(getNodeDisplayName(nodeIn('done', { title: 'phaseout' }), useCatalogue('en'))).toBe(
+      'phaseout',
+    );
+  });
+
+  it('keeps a title that is the kind word alone, so the name is never empty', () => {
+    expect(getNodeDisplayName(nodeIn('done', { title: 'phase' }), useCatalogue('en'))).toBe(
+      'phase',
+    );
+    expect(getNodeDisplayName(nodeIn('done', { title: 'phase   ' }), useCatalogue('en'))).toBe(
+      'phase   ',
+    );
+  });
+
+  it('strips control sequences from the name it shows', () => {
+    expect(
+      getNodeDisplayName(
+        nodeIn('done', { title: '\u001b[31mphase execute\u001b[0m' }),
+        useCatalogue('en'),
+      ),
+    ).toBe('execute');
+  });
+
+  it('names the sanity-check root by its title', () => {
+    expect(
+      getNodeDisplayName(
+        nodeIn('planned', { node_id: 'sanity-check', title: 'sanity-check', kind: 'state' }),
+        useCatalogue('en'),
+      ),
+    ).toBe('sanity-check');
   });
 });

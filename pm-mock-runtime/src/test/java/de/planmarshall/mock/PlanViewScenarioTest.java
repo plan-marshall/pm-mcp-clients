@@ -11,6 +11,7 @@ package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,8 +38,10 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.OffTrackSignal;
+import de.planmarshall.api.process.ProcessNode;
 import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.api.process.PruneReason;
@@ -118,6 +121,46 @@ class PlanViewScenarioTest {
                     assertEquals(NodeState.RUNNING, NodeState.fromValue(current.state()), phase);
                 }
             }
+        }
+
+        @Test
+        @DisplayName("keeps the envelope first among the sub-nodes of execute in a plan in execute")
+        void executeEnvelopeStaysFirst() throws Exception {
+            var execute = executeOfPhaseExecute();
+
+            var first = execute.subNodes().getFirst();
+            assertEquals("execute.envelope", first.nodeId());
+            assertEquals(NodeState.RUNNING, NodeState.fromValue(first.state()));
+            assertEquals(List.of("TASK-001"),
+                    first.leafTasks().stream().map(LeafTask::taskId).toList());
+        }
+
+        @Test
+        @DisplayName("serves a step of execute the process did not take")
+        void executeNotTakenStep() throws Exception {
+            var execute = executeOfPhaseExecute();
+
+            var notTaken = execute.subNodes().stream()
+                    .filter(node -> NodeState.NOT_TAKEN == NodeState.fromValue(node.state()))
+                    .toList();
+            assertEquals(List.of("execute.remediation"),
+                    notTaken.stream().map(ProcessNode::nodeId).toList());
+        }
+
+        @Test
+        @DisplayName("serves a sub-step the process did not take below a sub-workflow it takes")
+        void executeNotTakenSubStep() throws Exception {
+            var execute = executeOfPhaseExecute();
+
+            var verify = execute.subNodes().stream()
+                    .filter(node -> "execute.verify".equals(node.nodeId()))
+                    .findFirst().orElseThrow();
+            assertNotEquals(NodeState.NOT_TAKEN, NodeState.fromValue(verify.state()));
+            var notTaken = verify.subNodes().stream()
+                    .filter(node -> NodeState.NOT_TAKEN == NodeState.fromValue(node.state()))
+                    .map(ProcessNode::nodeId)
+                    .toList();
+            assertEquals(List.of("execute.verify.integration-tests"), notTaken);
         }
 
         @Test
@@ -360,6 +403,20 @@ class PlanViewScenarioTest {
             assertEquals(404, unknownEpicProcess.status());
             assertTrue(unknownEpicProcess.bodyText().contains("scope_not_found"),
                     "an unknown epic id answers scope_not_found");
+        }
+    }
+
+    /**
+     * @return the execute node of the plan the {@code process.phase.execute} state serves
+     * @throws Exception when the mock runtime cannot serve the process
+     */
+    private static ProcessNode executeOfPhaseExecute() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#process.phase.execute")) {
+            var tree = ProcessTree.fromJson(get(runtime, "/api/v1/plans/fix-relay/process").bodyText());
+            assertEquals(List.of("execute", "execute.envelope", "TASK-001"), tree.currentPositionPath());
+            return tree.nodes().stream()
+                    .filter(node -> "execute".equals(node.nodeId()))
+                    .findFirst().orElseThrow();
         }
     }
 

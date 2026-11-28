@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
 import {
   apiClient,
@@ -488,7 +488,7 @@ describe('PlanView component', () => {
           title: 'refine',
           kind: 'phase',
           state: 'not_in_plan',
-          prune_reason: 'the land lane',
+          prune_reason: 'lane_choice',
           run_count: 0,
           current_run: 0,
           duration_seconds: 0,
@@ -500,7 +500,7 @@ describe('PlanView component', () => {
           title: 'outline',
           kind: 'phase',
           state: 'not_in_plan',
-          prune_reason: 'the land lane',
+          prune_reason: 'lane_choice',
           run_count: 0,
           current_run: 0,
           duration_seconds: 0,
@@ -514,7 +514,9 @@ describe('PlanView component', () => {
     render(PlanView);
 
     const prunedBox = await screen.findByTestId('not-in-plan-box');
+    // The reason reaches the screen as its catalogue word, never as the raw wire value.
     expect(prunedBox).toHaveTextContent('not in this plan: refine, outline (the land lane)');
+    expect(prunedBox).not.toHaveTextContent('lane_choice');
   });
 
   it('does not render an in-page back button (D3)', async () => {
@@ -1007,7 +1009,7 @@ describe('PlanView component', () => {
               run_count: 0,
               current_run: 0,
               duration_seconds: 0,
-              prune_reason: 'not needed',
+              prune_reason: 'unneeded_step',
               sub_nodes: [],
               leaf_tasks: [prunedTask],
             },
@@ -1023,7 +1025,8 @@ describe('PlanView component', () => {
 
     expect(screen.queryByTestId('select-node-execute.pruned')).not.toBeInTheDocument();
     expect(screen.getByTestId('not-in-plan-box')).toHaveTextContent('removed step');
-    expect(screen.getByTestId('not-in-plan-box')).toHaveTextContent('not needed');
+    expect(screen.getByTestId('not-in-plan-box')).toHaveTextContent('step not needed');
+    expect(screen.getByTestId('not-in-plan-box')).not.toHaveTextContent('unneeded_step');
 
     const narrative = await screen.findByTestId('node-narrative');
     expect(narrative).not.toHaveTextContent('removed step');
@@ -1215,11 +1218,11 @@ describe('PlanView component', () => {
     render(PlanView);
     await screen.findByTestId('plan-title');
 
-    const select = screen.getByTestId('select-node-init');
-    const toggle = screen.getByTestId('toggle-node-init');
+    const select = screen.getByTestId('select-node-execute');
+    const toggle = screen.getByTestId('toggle-node-execute');
 
     expect(select.tagName).toBe('BUTTON');
-    expect(select).toHaveAccessibleName(/init/);
+    expect(select).toHaveAccessibleName(/execute/);
     expect(select.querySelector('button')).toBeNull();
     expect(toggle).toHaveAccessibleName('Toggle node');
 
@@ -1230,12 +1233,180 @@ describe('PlanView component', () => {
     expect(select.closest('.node-row')).toHaveClass('node-row--selected');
   });
 
+  describe('the rows of the tree', () => {
+    /**
+     * @param overrides the fields of the node that differ from a planned phase
+     * @returns a process node of the tree
+     */
+    function nodeOf(
+      overrides: Partial<ProcessTree['nodes'][number]>,
+    ): ProcessTree['nodes'][number] {
+      return {
+        node_id: 'plan',
+        title: 'plan',
+        kind: 'phase',
+        state: 'planned',
+        run_count: 0,
+        current_run: 0,
+        duration_seconds: 0,
+        sub_nodes: [],
+        leaf_tasks: [],
+        ...overrides,
+      };
+    }
+
+    it('gives a leaf no toggle and keeps its state icon, and keeps the toggle of a parent', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(screen.queryByTestId('toggle-node-init')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('toggle-node-finalize')).not.toBeInTheDocument();
+      expect(
+        screen.getByTestId('node-state-icon-init').querySelector('[data-icon="state.check"]'),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('toggle-node-execute')).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByTestId('node-state-icon-execute')).toBeInTheDocument();
+      // A leaf renders no (empty) children container below its row.
+      expect(screen.getByTestId('node-init').querySelector('.node-children')).toBeNull();
+      expect(screen.getByTestId('node-execute').querySelector('.node-children')).not.toBeNull();
+    });
+
+    it('draws the kind as an icon named by the kind word and shows no kind word', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      const row = screen.getByTestId('select-node-init');
+      const kind = within(row).getByRole('img', { name: 'Phase' });
+      expect(kind).toHaveAttribute('data-workflow-icon', 'phase.init');
+      expect(row.textContent).not.toMatch(/phase/i);
+      expect(screen.getByTestId('process-tree').textContent).not.toContain('↳');
+    });
+
+    it('shows a phase titled "phase execute" as "execute"', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: [{ ...mockPlan.nodes[1], title: 'phase execute' }],
+      });
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      const title = screen.getByTestId('select-node-execute').querySelector('.node-title');
+      expect(title?.textContent).toBe('execute');
+    });
+
+    it('mutes a not-taken child and keeps its state word', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: [
+          mockPlan.nodes[0],
+          {
+            ...mockPlan.nodes[1],
+            sub_nodes: [
+              nodeOf({
+                node_id: 'execute.skipped',
+                title: 'execute.skipped',
+                kind: 'sub_workflow',
+                state: 'not_taken',
+              }),
+            ],
+          },
+          mockPlan.nodes[2],
+        ],
+      });
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      const child = screen.getByTestId('node-execute.skipped');
+      expect(child).toHaveClass('node-item--not_taken');
+      expect(child).toHaveTextContent('not taken');
+    });
+
+    it('renders a sanity-check root with its title, state word and the neutral icon', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: [
+          ...mockPlan.nodes.slice(0, 2),
+          nodeOf({ node_id: 'sanity-check', title: 'sanity-check', kind: 'state' }),
+          mockPlan.nodes[2],
+        ],
+      });
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      const row = screen.getByTestId('select-node-sanity-check');
+      expect(row.querySelector('.node-title')?.textContent).toBe('sanity-check');
+      expect(row).toHaveTextContent('planned');
+      expect(row.querySelector('[data-workflow-icon]')).toHaveAttribute(
+        'data-workflow-icon',
+        'workflow.default',
+      );
+    });
+  });
+
   describe('the jump to the current position', () => {
     let scrolled: ReturnType<typeof vi.fn>;
 
     beforeEach(() => {
       scrolled = vi.fn();
       Element.prototype.scrollIntoView = scrolled as unknown as Element['scrollIntoView'];
+    });
+
+    it('is an icon button named by the catalogue, with no visible label', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      const jump = screen.getByRole('button', { name: 'to where it is' });
+      expect(jump).toHaveAttribute('data-testid', 'jump-btn');
+      expect(jump).toHaveClass('icon-btn');
+      expect(jump.querySelector('[data-icon="nav.running"]')).toBeInTheDocument();
+      expect(jump.textContent?.trim()).toBe('');
+    });
+
+    it('scrolls a node that waits for the operator into view', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: mockPlan.nodes.map((node) =>
+          node.node_id === 'execute'
+            ? {
+                ...node,
+                state: 'waiting_for_operator',
+                leaf_tasks: node.leaf_tasks.map((task) => ({ ...task, status: 'done' })),
+              }
+            : node,
+        ),
+      });
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      expect(scrolled).toHaveBeenCalledTimes(1);
+      expect(scrolled.mock.contexts[0]).toBe(screen.getByTestId('node-execute'));
+    });
+
+    it('selects a running node without a running task the way a click does', async () => {
+      vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+        ...mockPlan,
+        nodes: mockPlan.nodes.map((node) =>
+          node.node_id === 'execute'
+            ? {
+                ...node,
+                state: 'running',
+                leaf_tasks: node.leaf_tasks.map((task) => ({ ...task, status: 'done' })),
+              }
+            : node,
+        ),
+      });
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      await fireEvent.click(screen.getByTestId('jump-btn'));
+
+      // The store names the node, so the address the layout writes from it carries `node=`.
+      expect(get(runtimeStore).phaseNode).toBe('execute');
     });
 
     it('opens the path, selects the running task and scrolls to it', async () => {
@@ -1526,6 +1697,168 @@ describe('PlanView’s Changes tab', () => {
     vi.spyOn(apiClient, 'getPlanChangeFile').mockResolvedValue(transportFile);
   });
 
+  describe('the node in the address', () => {
+    /** @returns the `node=` the address bar names, or `null` */
+    function nodeInAddress(): string | null {
+      return new URLSearchParams(window.location.search).get('node');
+    }
+
+    it('opens on the node a load names with node=', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=execute');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'node');
+      expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('execute');
+      expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('falls back to the default selection when node= names no node the tree shows', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'no-such-node' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=no-such-node');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'task');
+      expect(screen.getByTestId('task-TASK-003')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('writes the selected node as node= by a replace, and a task selection writes none', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      const push = vi.spyOn(window.history, 'pushState');
+
+      await fireEvent.click(screen.getByTestId('task-TASK-003'));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+
+      expect(nodeInAddress()).toBe('execute');
+      expect(window.location.pathname).toBe('/plans/fix-relay');
+      expect(push).not.toHaveBeenCalled();
+      push.mockRestore();
+    });
+
+    it('drops the node from the address and the memory when a task is selected after it', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+      expect(nodeInAddress()).toBe('execute');
+
+      await fireEvent.click(screen.getByTestId('task-TASK-003'));
+
+      expect(nodeInAddress()).toBeNull();
+      expect(get(runtimeStore).phaseNode).toBeNull();
+      expect(get(runtimeStore).rememberedNode).toBeNull();
+    });
+
+    it('keeps the Intent tab when a load names it beside node=', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute', objectTab: 'intent' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?tab=intent&node=execute');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(new URLSearchParams(window.location.search).get('tab')).toBe('intent');
+      expect(get(runtimeStore).objectTab).toBe('intent');
+      // The node is recorded, so a return to Process writes it back.
+      expect(get(runtimeStore).rememberedNode).toEqual({ planId: 'fix-relay', nodeId: 'execute' });
+    });
+
+    it('applies the node of the address when a process event supersedes the initial read', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=execute');
+      let onEvent: ((event: string, data?: unknown) => void) | undefined;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+        onEvent = callback;
+        return () => {};
+      });
+      let releaseInitial: (tree: ProcessTree) => void = () => {};
+      const getPlanProcess = vi
+        .spyOn(apiClient, 'getPlanProcess')
+        .mockImplementationOnce(
+          () =>
+            new Promise<ProcessTree>((resolve) => {
+              releaseInitial = resolve;
+            }),
+        )
+        .mockResolvedValue(capturedPlan);
+
+      render(PlanView);
+      await waitFor(() => expect(onEvent).toBeDefined());
+      // The event starts a newer read while the initial one is in flight; the newer one wins.
+      onEvent?.('activity.changed');
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(2));
+      await screen.findByTestId('plan-title');
+      releaseInitial(capturedPlan);
+
+      expect(await screen.findByTestId('task-inspector')).toHaveAttribute(
+        'data-selected-kind',
+        'node',
+      );
+      expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
+    });
+
+    it('applies the node of the address when an event supersedes the initial read of another plan', async () => {
+      let onEvent: ((event: string, data?: unknown) => void) | undefined;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+        onEvent = callback;
+        return () => {};
+      });
+      const nextPlan: ProcessTree = { ...capturedPlan, plan_id: 'next-plan' };
+      let releaseSecond: (tree: ProcessTree) => void = () => {};
+      const getPlanProcess = vi
+        .spyOn(apiClient, 'getPlanProcess')
+        .mockResolvedValueOnce(capturedPlan)
+        .mockImplementationOnce(
+          () =>
+            new Promise<ProcessTree>((resolve) => {
+              releaseSecond = resolve;
+            }),
+        )
+        .mockResolvedValue(nextPlan);
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      // The view stays mounted and opens another plan in place, whose address names a node.
+      window.history.replaceState({}, '', '/plans/next-plan?node=execute');
+      runtimeStore.update((state) => ({
+        ...state,
+        selectedPlanId: 'next-plan',
+        phaseNode: 'execute',
+      }));
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(2));
+      // An event starts a newer read while the other plan's initial read is in flight.
+      onEvent?.('activity.changed');
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(3));
+      releaseSecond(nextPlan);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true'),
+      );
+    });
+
+    it('drops node= on Intent and Changes and writes it back on Process', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+      expect(nodeInAddress()).toBe('execute');
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Intent' }));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Changes' }));
+      expect(nodeInAddress()).toBeNull();
+
+      await fireEvent.click(screen.getByRole('tab', { name: 'Process' }));
+      expect(nodeInAddress()).toBe('execute');
+      expect(await screen.findByTestId('node-narrative-title')).toHaveTextContent('execute');
+    });
+  });
+
   it('shows no Changes tab and no size line before the first capture', async () => {
     // Arrange
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithoutCapture());
@@ -1770,7 +2103,6 @@ describe('PlanView’s Changes tab', () => {
     expect(screen.getByTestId('plan-change-size').textContent).toBe(sizeBefore);
     expect(readList).toHaveBeenCalledTimes(readsBefore);
   });
-
 });
 
 describe('PlanView head on the object page (PLAN-55 D1)', () => {
@@ -1876,9 +2208,7 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     await screen.findByTestId('plan-title');
 
     expect(screen.getByTestId('object-page')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('plan-kind').querySelector('[data-kind="plan"]'),
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('plan-kind').querySelector('[data-kind="plan"]')).toBeInTheDocument();
     expect(screen.getByTestId('object-page-title')).toHaveTextContent('Fix Relay Transport');
     expect(screen.getByTestId('plan-id-chip')).toHaveTextContent('fix-relay');
     expect(screen.getByTestId('plan-pr-chip')).toHaveTextContent('PR #214');
@@ -2148,7 +2478,11 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(headPlan());
     runtimeStore.update((state) => ({
       ...state,
-      selectedPlanEnded: { plan_id: 'fix-relay', outcome: 'merged', ended_at: '2026-10-16T11:20:00Z' },
+      selectedPlanEnded: {
+        plan_id: 'fix-relay',
+        outcome: 'merged',
+        ended_at: '2026-10-16T11:20:00Z',
+      },
     }));
 
     render(PlanView);
@@ -2294,9 +2628,9 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
 
   it('reads the waiting plan’s decision once across two process refreshes', async () => {
     const getDecisions = vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([decision]);
-    const getPlanProcess = vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(
-      headPlan({ phase_state: 'waiting_for_you', needs_operator: true }),
-    );
+    const getPlanProcess = vi
+      .spyOn(apiClient, 'getPlanProcess')
+      .mockResolvedValue(headPlan({ phase_state: 'waiting_for_you', needs_operator: true }));
     let onEvent: ((event: string, data?: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
       onEvent = callback;
@@ -2360,7 +2694,11 @@ describe('PlanView head on the object page (PLAN-55 D1)', () => {
     } as unknown as PlanCompletionReport);
     runtimeStore.update((s) => ({
       ...s,
-      selectedPlanEnded: { plan_id: 'fix-relay', outcome: 'merged', ended_at: '2026-10-16T11:20:00Z' },
+      selectedPlanEnded: {
+        plan_id: 'fix-relay',
+        outcome: 'merged',
+        ended_at: '2026-10-16T11:20:00Z',
+      },
     }));
 
     render(PlanView);
@@ -2427,9 +2765,7 @@ describe('PlanView activity rows (PLAN-55 D3)', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set(
-      makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }),
-    );
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }));
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(activityPlan);
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
       project_id: 'pm-mcp-clients',
@@ -2566,9 +2902,7 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set(
-      makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }),
-    );
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }));
     vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(capturedPlan);
     vi.spyOn(apiClient, 'getProjectDetail').mockResolvedValue({
       project_id: 'pm-mcp-clients',
@@ -2636,7 +2970,9 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     const outline = await screen.findByTestId('outline-panel');
 
     expect(intent.compareDocumentPosition(builder) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(builder.compareDocumentPosition(outline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      builder.compareDocumentPosition(outline) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('says the intent is not written and shows no panel when refine wrote no record', async () => {
@@ -2790,9 +3126,7 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
   it('stops the activity feed when Intent hides the inspector and restarts it on Process', async () => {
     runtimeStore.update((state) => ({ ...state, selectedTaskId: 'TASK-003' }));
     const unsubscribe = vi.fn();
-    const subscribe = vi
-      .spyOn(apiClient, 'subscribeTaskActivity')
-      .mockReturnValue(unsubscribe);
+    const subscribe = vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(unsubscribe);
 
     render(PlanView);
     await screen.findByTestId('activity-feed');

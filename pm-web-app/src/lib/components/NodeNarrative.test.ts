@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { get } from 'svelte/store';
+import { tick } from 'svelte';
 import NodeNarrative from './NodeNarrative.svelte';
 import type { ProcessNode, ProcessTree } from '../api/client';
+import { runtimeStore } from '../stores/runtime';
+import { makeRuntimeState } from '../test/runtimeState';
 
 describe('NodeNarrative component', () => {
   const plan: ProcessTree = {
@@ -48,7 +52,7 @@ describe('NodeNarrative component', () => {
     current_run: 1,
     duration_seconds: 1800,
     waits_for: 'Q-031',
-    prune_reason: 'the land lane',
+    prune_reason: 'lane_choice',
     sub_nodes: [
       {
         node_id: 'execute.session-log',
@@ -87,6 +91,19 @@ describe('NodeNarrative component', () => {
     ],
   };
 
+  it('names the node without the kind word, like the tree row', () => {
+    render(NodeNarrative, {
+      props: {
+        node: { ...execute, title: 'phase execute' },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    expect(screen.getByTestId('node-narrative-title').textContent?.trim()).toBe('execute');
+  });
+
   it('names the node, its state, run count, duration, waits-for, and prune reason', () => {
     render(NodeNarrative, {
       props: {
@@ -102,7 +119,59 @@ describe('NodeNarrative component', () => {
     expect(screen.getByTestId('node-narrative-duration')).toHaveTextContent('30 min');
     expect(screen.getByTestId('node-narrative-waits')).toHaveTextContent('Q-031');
     expect(screen.getByTestId('node-narrative-prune')).toHaveTextContent('the land lane');
+    expect(screen.getByTestId('node-narrative-prune')).not.toHaveTextContent('lane_choice');
     expect(screen.getByTestId('node-narrative')).toHaveTextContent('2 runs');
+  });
+
+  it('draws the kind as an icon named by the kind word, as the tree does', () => {
+    render(NodeNarrative, {
+      props: { node: execute, plan, onSelectTask: vi.fn(), onSelectNode: vi.fn() },
+    });
+
+    const kind = screen.getByTestId('node-narrative-kind');
+    expect(kind.querySelector('[data-workflow-icon="phase.execute"]')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Phase' })).toBeInTheDocument();
+    expect(kind.textContent?.trim()).toBe('');
+  });
+
+  it('names a prune reason outside the closed list with the unknown word, never raw', () => {
+    render(NodeNarrative, {
+      props: {
+        node: { ...donePhase, prune_reason: 'not_a_reason' },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    expect(screen.getByTestId('node-narrative-prune')).toHaveTextContent('unknown');
+    expect(screen.getByTestId('node-narrative-prune')).not.toHaveTextContent('not_a_reason');
+  });
+
+  it('names a task status through the catalogue, and an unknown one with the unknown word', () => {
+    render(NodeNarrative, {
+      props: {
+        node: {
+          ...execute,
+          leaf_tasks: [
+            { ...execute.leaf_tasks[0], status: 'running' },
+            { ...execute.leaf_tasks[1], status: 'hyperdrive' },
+          ],
+        },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    const statusOf = (taskId: string): string | undefined =>
+      screen
+        .getByTestId(`node-child-task-${taskId}`)
+        .querySelector('.child-task__status')
+        ?.textContent?.trim();
+    expect(statusOf('TASK-001')).toBe('running');
+    expect(statusOf('TASK-002')).toBe('unknown');
+    expect(screen.getByTestId('node-child-task-TASK-002')).not.toHaveTextContent('hyperdrive');
   });
 
   it('says one run in the singular', () => {
@@ -125,7 +194,7 @@ describe('NodeNarrative component', () => {
     expect(first).toHaveTextContent('implement');
     expect(first).toHaveTextContent('claude sonnet');
     expect(first).toHaveTextContent('attempt 1');
-    expect(first).toHaveTextContent('done');
+    expect(first.querySelector('.child-task__status')?.textContent?.trim()).toBe('done');
     expect(first).toHaveTextContent('4 min');
     expect(first).toHaveTextContent('22 k');
     expect(screen.getByTestId('node-child-task-activity-TASK-001')).toHaveTextContent(
@@ -203,11 +272,97 @@ describe('NodeNarrative component', () => {
     expect(screen.queryByTestId('node-child-tasks')).not.toBeInTheDocument();
   });
 
+  describe('the link to the plan’s intent', () => {
+    beforeEach(() => {
+      runtimeStore.set(makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'session-log' }));
+      window.history.replaceState({}, '', '/plans/session-log?node=refine');
+    });
+
+    it.each(['refine', 'outline'])('leads from %s to the Intent tab without node=', (nodeId) => {
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: nodeId, title: nodeId },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+
+      const link = screen.getByTestId('node-intent-link');
+      expect(link).toHaveTextContent('Intent');
+      const href = new URL(link.getAttribute('href') ?? '', 'http://app.invalid');
+      expect(href.pathname).toBe('/plans/session-log');
+      expect(href.searchParams.get('tab')).toBe('intent');
+      expect(href.searchParams.has('node')).toBe(false);
+    });
+
+    it('drops a key from its href once the address drops it', async () => {
+      runtimeStore.update((s) => ({ ...s, openObject: { kind: 'decision', id: 'Q-031' } }));
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: 'refine', title: 'refine' },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+      const hrefOf = () =>
+        new URL(
+          screen.getByTestId('node-intent-link').getAttribute('href') ?? '',
+          'http://app.invalid',
+        );
+      expect(hrefOf().searchParams.get('open')).toBe('decision:Q-031');
+
+      runtimeStore.update((s) => ({ ...s, openObject: null }));
+      await tick();
+
+      expect(hrefOf().searchParams.has('open')).toBe(false);
+      expect(hrefOf().searchParams.get('tab')).toBe('intent');
+    });
+
+    it.each(['init', 'plan', 'execute', 'finalize', 'execute.session-log'])(
+      'is absent from %s',
+      (nodeId) => {
+        render(NodeNarrative, {
+          props: {
+            node: { ...donePhase, node_id: nodeId, title: nodeId },
+            plan,
+            onSelectTask: vi.fn(),
+            onSelectNode: vi.fn(),
+          },
+        });
+
+        expect(screen.queryByTestId('node-intent-link')).not.toBeInTheDocument();
+      },
+    );
+
+    it('selects the Intent tab and replaces the address with tab=intent, without node=', async () => {
+      const push = vi.spyOn(window.history, 'pushState');
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: 'refine', title: 'refine' },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+
+      await fireEvent.click(screen.getByTestId('node-intent-link'));
+
+      expect(get(runtimeStore).objectTab).toBe('intent');
+      const address = new URLSearchParams(window.location.search);
+      expect(address.get('tab')).toBe('intent');
+      expect(address.has('node')).toBe(false);
+      expect(push).not.toHaveBeenCalled();
+      push.mockRestore();
+    });
+  });
+
   it('strips control sequences from every free-text field it shows', () => {
     const unsafe: ProcessNode = {
       ...donePhase,
       title: '\u001b[31minit\u001b[0m',
-      prune_reason: '\u001b[33mthe land lane\u001b[0m',
+      prune_reason: '\u001b[33mlane_choice\u001b[0m',
       waits_for: '\u001b[36mQ-031\u001b[0m',
     };
 
@@ -216,7 +371,8 @@ describe('NodeNarrative component', () => {
     });
 
     expect(screen.getByTestId('node-narrative-title').textContent).toBe('init');
-    expect(screen.getByTestId('node-narrative-prune').textContent).toContain('the land lane');
+    // A reason garbled by control sequences is no reason of the closed list: it reads as unknown.
+    expect(screen.getByTestId('node-narrative-prune').textContent).toContain('unknown');
     expect(screen.getByTestId('node-narrative-prune').textContent).not.toContain('\u001b');
     expect(screen.getByTestId('node-narrative-waits').textContent).toContain('Q-031');
     expect(screen.getByTestId('node-narrative-waits').textContent).not.toContain('\u001b');

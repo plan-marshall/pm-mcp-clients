@@ -26,6 +26,7 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
   ├─ ✓ phase  outline                         done · 31 min
   ├─ ✓ phase  plan                            done · 9 min
   ├─ ▶ phase  execute                         running · 25 min
+  ├─ ○ phase  sanity-check                    planned
   └─ ○ phase  finalize                        planned
 ----
 
@@ -116,7 +117,7 @@ Each node shows its state as a glyph and a word, never as colour alone:
 |Kind |Shown as |Opens
 
 |Phase
-|the word `phase` and the phase's name
+|in the terminal the word `phase` and the phase's name; in the web app the phase's icon and the name alone
 |the phase's workflow
 
 |Sub-workflow

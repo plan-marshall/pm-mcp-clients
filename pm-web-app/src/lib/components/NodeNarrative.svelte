@@ -3,9 +3,19 @@
   import type { LeafTask, ProcessNode, ProcessTree } from '../api/client';
   import { formatDuration, formatTokens } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
-  import { displayState } from '../display';
+  import {
+    getNodeDisplayName,
+    getNodeKindIcon,
+    getNodeStateIcon,
+    getNodeStateText,
+  } from '../utils/processNode';
+  import { displayPruneReason, displayState } from '../display';
   import Icon from './Icon.svelte';
+  import Link from './Link.svelte';
+  import WorkflowIcon from './WorkflowIcon.svelte';
+  import { formatAddress } from '../routes';
+  import { switchTab } from '../navigation/history';
+  import { addressOfState, runtimeStore, selectObjectTab } from '../stores/runtime';
 
   interface Props {
     node: ProcessNode;
@@ -35,6 +45,29 @@
     return tasks;
   }
 
+  /** The parts of the process whose result the Intent tab shows: refine writes it, outline extends it. */
+  const INTENT_NODES: ReadonlySet<string> = new Set(['refine', 'outline']);
+
+  /**
+   * The address of the plan's Intent tab: the open address with the tab switched, which drops
+   * `node=`; the plan's own address with that tab when the store names no plan address.
+   *
+   * It derives from the store — the same state the layout writes the address from — so a key the
+   * address drops later (a closed in-place object's `open=`) leaves the href as well.
+   */
+  let intentHref = $derived(
+    INTENT_NODES.has(node.node_id)
+      ? (formatAddress(
+          switchTab(
+            $runtimeStore.currentRoute === 'plan'
+              ? addressOfState($runtimeStore)
+              : { route: 'plan', planId: plan.plan_id },
+            'intent',
+          ),
+        ) ?? '')
+      : '',
+  );
+
   let childTasks = $derived(collectLeafTasks(node));
   let subNodes = $derived((node.sub_nodes ?? []).filter((child) => child.state !== 'not_in_plan'));
 </script>
@@ -44,9 +77,15 @@
     <p class="node-narrative__eyebrow text-muted">{$t('plan.node.narrative')}</p>
     <div class="node-narrative__title-line">
       <h3 class="node-narrative__title font-semibold" data-testid="node-narrative-title">
-        {stripControlSequences(node.title)}
+        {getNodeDisplayName(node, $t)}
       </h3>
-      <span class="node-narrative__kind">{displayState('node_kind', node.kind, $t)}</span>
+      <span class="node-narrative__kind" data-testid="node-narrative-kind"
+        ><WorkflowIcon
+          id={getNodeKindIcon(node)}
+          size={16}
+          label={displayState('node_kind', node.kind, $t)}
+        /></span
+      >
       <span class="node-narrative__state" data-testid="node-narrative-state">
         {getNodeStateText(node, $t)}
       </span>
@@ -62,6 +101,16 @@
       {/if}
     </div>
 
+    {#if intentHref}
+      <p class="node-narrative__detail" data-testid="node-narrative-intent">
+        <Link
+          href={intentHref}
+          label={$t('intent.tab.title')}
+          testid="node-intent-link"
+          onactivate={() => selectObjectTab('intent')}
+        />
+      </p>
+    {/if}
     {#if node.waits_for}
       <p class="node-narrative__detail" data-testid="node-narrative-waits">
         <span class="node-narrative__label">{$t('plan.node.waits_for')}</span>
@@ -71,7 +120,7 @@
     {#if node.prune_reason}
       <p class="node-narrative__detail" data-testid="node-narrative-prune">
         <span class="node-narrative__label">{$t('plan.node.prune_reason')}</span>
-        <span>{stripControlSequences(node.prune_reason)}</span>
+        <span>{displayPruneReason(node.prune_reason, $t)}</span>
       </p>
     {/if}
   </header>
@@ -106,7 +155,7 @@
               {$t('plan.node.attempt', { attempt: task.attempt })}
             </span>
             <span class="child-task__status badge badge--state badge--state-{task.status}"
-              >{task.status}</span
+              >{displayState('task', task.status, $t)}</span
             >
             {#if task.duration_seconds > 0}
               <span class="child-task__duration mono">
@@ -140,13 +189,13 @@
               type="button"
               class="child-node"
               onclick={() => onSelectNode(subNode.node_id)}
-              aria-label={`${stripControlSequences(subNode.title)} — ${$t('plan.node.select')}`}
+              aria-label={`${getNodeDisplayName(subNode, $t)} — ${$t('plan.node.select')}`}
               data-testid="node-child-node-{subNode.node_id}"
             >
               <span class="child-node__glyph" aria-hidden="true"
                 ><Icon name={getNodeStateIcon(subNode.state)} size={16} /></span
               >
-              <span class="child-node__title">{stripControlSequences(subNode.title)}</span>
+              <span class="child-node__title">{getNodeDisplayName(subNode, $t)}</span>
               <span class="child-node__kind">{displayState('node_kind', subNode.kind, $t)}</span>
               <span class="child-node__state">{getNodeStateText(subNode, $t)}</span>
             </button>
@@ -192,9 +241,9 @@
   }
 
   .node-narrative__kind {
-    font-size: var(--text-xs);
+    display: inline-flex;
+    align-items: center;
     color: var(--color-text-muted);
-    font-weight: 500;
   }
 
   .node-narrative__state,

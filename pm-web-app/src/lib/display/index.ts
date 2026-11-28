@@ -94,6 +94,29 @@ export function displayState(
   return word(`state.${kind}.${aliased}`, STATE_UNKNOWN_KEY, lookup);
 }
 
+/**
+ * Names why the process left a part out of the plan, through `plan.prune.<reason>`.
+ *
+ * The catalogue is the one list of the reasons it names (`PruneReason` carries the wire values): a
+ * reason the catalogue has no word for, or none, reads as the unknown word, so a raw reason never
+ * reaches the operator and no second list has to follow the runtime's.
+ *
+ * @param reason the prune reason the node carries
+ * @param translate the catalogue look-up a template passes (`$t`)
+ * @returns the reason's word
+ */
+export function displayPruneReason(
+  reason: string | null | undefined,
+  translate?: Translate,
+): string {
+  const lookup = translator(translate);
+  const normalized = (reason ?? '').trim().toLowerCase();
+  if (!normalized) {
+    return lookup(STATE_UNKNOWN_KEY);
+  }
+  return word(`plan.prune.${normalized}`, STATE_UNKNOWN_KEY, lookup);
+}
+
 /** The three texts of an error, as the operator reads them. */
 export interface DisplayErrorText {
   /** What happened. */
@@ -250,4 +273,3 @@ export function formatChangeSize(
     unplanned: size.unplanned ?? 0,
   });
 }
-

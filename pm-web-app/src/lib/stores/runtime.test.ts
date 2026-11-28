@@ -11,6 +11,7 @@ import {
 } from '../api/client';
 import { actFailureReason, ClientError } from '../api/errors';
 import {
+  addressOfState,
   adoptRouteFromLocation,
   checkUrlHashForCode,
   createDecisionAnnouncer,
@@ -41,6 +42,8 @@ import {
   stopRuntimeRecovery,
   storeCredential,
   loadOnboardingState,
+  selectObjectTab,
+  selectPlanNode,
   stepOnboarding,
   updateMachineSetting,
   withdrawConsent,
@@ -1996,5 +1999,119 @@ describe('an object opened in place', () => {
     openPlanView('next-plan');
 
     expect(get(runtimeStore).changeFile).toBeNull();
+  });
+});
+
+describe('the node of the plan’s process in the address', () => {
+  /** @returns the `node=` the address bar names, or `null` */
+  function nodeInAddress(): string | null {
+    return new URLSearchParams(window.location.search).get('node');
+  }
+
+  /** @returns the `tab=` the address bar names, or `null` */
+  function tabInAddress(): string | null {
+    return new URLSearchParams(window.location.search).get('tab');
+  }
+
+  beforeEach(() => {
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'plan', selectedPlanId: 'fix-relay' }));
+    window.history.replaceState({}, '', '/plans/fix-relay');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('writes the selected node as node= by a replace, never a push', () => {
+    const push = vi.spyOn(window.history, 'pushState');
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    selectPlanNode('execute');
+
+    expect(nodeInAddress()).toBe('execute');
+    expect(window.location.pathname).toBe('/plans/fix-relay');
+    expect(push).not.toHaveBeenCalled();
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(get(runtimeStore).phaseNode).toBe('execute');
+  });
+
+  it('records the node without leaving the tab it is asked to keep', () => {
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    selectPlanNode('refine', { keepTab: true });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(tabInAddress()).toBe('intent');
+    expect(get(runtimeStore).phaseNode).toBe('refine');
+    expect(get(runtimeStore).rememberedNode).toEqual({ planId: 'fix-relay', nodeId: 'refine' });
+  });
+
+  it('writes the node a kept tab recorded back on the return to Process', () => {
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+    selectPlanNode('refine', { keepTab: true });
+
+    selectObjectTab('process');
+
+    expect(nodeInAddress()).toBe('refine');
+  });
+
+  it('drops node= when nothing is selected', () => {
+    selectPlanNode('execute');
+
+    selectPlanNode(null);
+
+    expect(nodeInAddress()).toBeNull();
+    expect(get(runtimeStore).rememberedNode).toBeNull();
+  });
+
+  it.each(['intent', 'changes'] as const)('drops node= on the %s tab', (tab) => {
+    selectPlanNode('execute');
+
+    selectObjectTab(tab);
+
+    expect(tabInAddress()).toBe(tab);
+    expect(nodeInAddress()).toBeNull();
+  });
+
+  it('writes the remembered node back on the return to Process', () => {
+    selectPlanNode('refine');
+    selectObjectTab('intent');
+
+    selectObjectTab('process');
+
+    expect(nodeInAddress()).toBe('refine');
+  });
+
+  it('keeps the remembered node when a push clears the address’s node', () => {
+    selectPlanNode('outline');
+    pushRoute('plan', { planId: 'fix-relay' });
+    expect(nodeInAddress()).toBeNull();
+
+    selectObjectTab('process');
+
+    expect(nodeInAddress()).toBe('outline');
+    // The layout re-writes the address from the store, so the store must carry the node too.
+    expect(get(runtimeStore).phaseNode).toBe('outline');
+    expect(addressOfState(get(runtimeStore)).node).toBe('outline');
+  });
+
+  it('drops the remembered node when another plan opens', () => {
+    selectPlanNode('execute');
+
+    openPlanView('next-plan');
+    selectObjectTab('process');
+
+    expect(get(runtimeStore).rememberedNode).toBeNull();
+    expect(nodeInAddress()).toBeNull();
+  });
+
+  it('writes no node outside the plan’s address', () => {
+    window.history.replaceState({}, '', '/overview');
+
+    selectPlanNode('execute');
+
+    expect(nodeInAddress()).toBeNull();
+    expect(get(runtimeStore).rememberedNode).toBeNull();
   });
 });

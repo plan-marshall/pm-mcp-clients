@@ -960,7 +960,7 @@
                 "sub_nodes": [
                   {
                     "node_id": "land.commit",
-                    "title": "land.commit",
+                    "title": "Commit the change",
                     "kind": "state",
                     "state": "done",
                     "run_count": 1,
@@ -971,7 +971,7 @@
                   },
                   {
                     "node_id": "land.push",
-                    "title": "land.push",
+                    "title": "Push the branch",
                     "kind": "state",
                     "state": "running",
                     "run_count": 1,
@@ -5822,6 +5822,51 @@
                             "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-001/activity"
                           }
                         ]
+                      },
+                      {
+                        "node_id": "execute.remediation",
+                        "title": "CI failure",
+                        "kind": "sub_workflow",
+                        "state": "not_taken",
+                        "run_count": 0,
+                        "current_run": 0,
+                        "duration_seconds": 0,
+                        "sub_nodes": [],
+                        "leaf_tasks": []
+                      },
+                      {
+                        "node_id": "execute.verify",
+                        "title": "Verify the change",
+                        "kind": "sub_workflow",
+                        "state": "planned",
+                        "run_count": 0,
+                        "current_run": 0,
+                        "duration_seconds": 0,
+                        "sub_nodes": [
+                          {
+                            "node_id": "execute.verify.module-tests",
+                            "title": "Run the module tests",
+                            "kind": "state",
+                            "state": "planned",
+                            "run_count": 0,
+                            "current_run": 0,
+                            "duration_seconds": 0,
+                            "sub_nodes": [],
+                            "leaf_tasks": []
+                          },
+                          {
+                            "node_id": "execute.verify.integration-tests",
+                            "title": "Run the integration tests",
+                            "kind": "state",
+                            "state": "not_taken",
+                            "run_count": 0,
+                            "current_run": 0,
+                            "duration_seconds": 0,
+                            "sub_nodes": [],
+                            "leaf_tasks": []
+                          }
+                        ],
+                        "leaf_tasks": []
                       }
                     ],
                     "leaf_tasks": []
