@@ -83,7 +83,7 @@ class PlanViewCatalogueTest {
     }
 
     @Test
-    @DisplayName("should contain all specification keys from plan-view.adoc#texts")
+    @DisplayName("should contain the area's literal key set in the English pack")
     void shouldContainAllSpecificationKeys() {
         var en = MessageCatalogue.getMessages("en", "plan_view");
 

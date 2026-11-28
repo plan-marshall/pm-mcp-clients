@@ -144,7 +144,7 @@ class OverviewCatalogueTest {
                         MessageCatalogue.getMessages("en", "overview").get("overview.needs.completion_review")),
                 () -> assertEquals("Abschlussprüfung",
                         MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")),
-                // The badge template is not in a text table of the overview documents; it is pinned here.
+                // The badge template is not among the literal keys above; it is pinned here.
                 () -> assertTrue(MessageCatalogue.getMessages("en", "overview").containsKey("overview.needs.badge")),
                 () -> assertTrue(MessageCatalogue.getMessages("de", "overview").containsKey("overview.needs.badge")));
     }
