@@ -753,6 +753,14 @@
   });
 
   let processLoadGeneration = 0;
+  /**
+   * Whether the plan's first accepted read is still to come.
+   *
+   * A process event can start a read while the initial one is in flight, and the newer read wins:
+   * the initial answer is discarded. The first read that is accepted then owes what the initial one
+   * carried — the expansion and the node the address names — so the address still takes effect.
+   */
+  let initialReadPending = true;
   async function loadPlanProcess(initial = false) {
     if (!planId) return;
     const currentId = planId;
@@ -764,6 +772,8 @@
     try {
       const res = await apiClient.getPlanProcess(currentId);
       if (gen !== processLoadGeneration) return;
+      const first = initial || initialReadPending;
+      initialReadPending = false;
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
       // The resource carries the queued revision too, so a reload while one waits shows its line.
@@ -778,7 +788,7 @@
       }
 
       // Expand all nodes by default or ensure active path is expanded
-      if (initial && res.nodes) {
+      if (first && res.nodes) {
         const initExpanded: Record<string, boolean> = {};
         function expand(nodes: ProcessNode[]) {
           for (const n of nodes) {
@@ -794,10 +804,11 @@
 
       // A load whose address names a node the tree shows opens on that node, ahead of the default
       // order (`plan-view-interaction.adoc#addresses`).
-      const addressed = initial && res.nodes ? addressedNode(res.nodes) : null;
+      const addressed = first && res.nodes ? addressedNode(res.nodes) : null;
       if (addressed !== null) {
         selection = { kind: 'node', nodeId: addressed };
-        selectPlanNode(addressed);
+        // An address that names another tab keeps it; the node waits for the return to Process.
+        selectPlanNode(addressed, { keepTab: activeTab !== 'process' });
       } else if (res.nodes && !isSelectionValid(res.nodes, selection)) {
         // Keep the inspected subject while it still exists; otherwise fall back deliberately, so a
         // refresh never leaves the inspector on an item the tree no longer shows.
@@ -1078,7 +1089,8 @@
 
     const running = findRunningTask(current.nodes);
     if (running) {
-      selection = { kind: 'task', taskId: running.task_id };
+      // Through the same path as a click on the task row, so no earlier node stays in the address.
+      selectTask(running.task_id);
     } else {
       const runningNode = findRunningNode(current.nodes);
       if (runningNode) {
@@ -1282,8 +1294,16 @@
     return value === null ? '—' : formatBreakdownValue(value);
   }
 
+  /**
+   * Inspects a task. A task selection writes no `node=`, so a node selected earlier is dropped from
+   * the address and from the memory of the open plan: a reload then opens on the task's own
+   * default, not on the earlier node.
+   *
+   * @param taskId the task a row selected
+   */
   function selectTask(taskId: string) {
     selection = { kind: 'task', taskId };
+    selectPlanNode(null);
   }
 
   /**

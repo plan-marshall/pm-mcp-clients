@@ -38,6 +38,7 @@ import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.process.ActivityEntryKind;
 import de.planmarshall.api.process.EpicProcess;
+import de.planmarshall.api.process.LeafTask;
 import de.planmarshall.api.process.NodeState;
 import de.planmarshall.api.process.OffTrackSignal;
 import de.planmarshall.api.process.ProcessNode;
@@ -131,7 +132,7 @@ class PlanViewScenarioTest {
             assertEquals("execute.envelope", first.nodeId());
             assertEquals(NodeState.RUNNING, NodeState.fromValue(first.state()));
             assertEquals(List.of("TASK-001"),
-                    first.leafTasks().stream().map(task -> task.taskId()).toList());
+                    first.leafTasks().stream().map(LeafTask::taskId).toList());
         }
 
         @Test
@@ -143,7 +144,7 @@ class PlanViewScenarioTest {
                     .filter(node -> NodeState.NOT_TAKEN == NodeState.fromValue(node.state()))
                     .toList();
             assertEquals(List.of("execute.remediation"),
-                    notTaken.stream().map(node -> node.nodeId()).toList());
+                    notTaken.stream().map(ProcessNode::nodeId).toList());
         }
 
         @Test
@@ -157,7 +158,7 @@ class PlanViewScenarioTest {
             assertNotEquals(NodeState.NOT_TAKEN, NodeState.fromValue(verify.state()));
             var notTaken = verify.subNodes().stream()
                     .filter(node -> NodeState.NOT_TAKEN == NodeState.fromValue(node.state()))
-                    .map(node -> node.nodeId())
+                    .map(ProcessNode::nodeId)
                     .toList();
             assertEquals(List.of("execute.verify.integration-tests"), notTaken);
         }

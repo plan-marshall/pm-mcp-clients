@@ -2035,6 +2035,27 @@ describe('the node of the plan’s process in the address', () => {
     expect(get(runtimeStore).phaseNode).toBe('execute');
   });
 
+  it('records the node without leaving the tab it is asked to keep', () => {
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+    const replace = vi.spyOn(window.history, 'replaceState');
+
+    selectPlanNode('refine', { keepTab: true });
+
+    expect(replace).not.toHaveBeenCalled();
+    expect(tabInAddress()).toBe('intent');
+    expect(get(runtimeStore).phaseNode).toBe('refine');
+    expect(get(runtimeStore).rememberedNode).toEqual({ planId: 'fix-relay', nodeId: 'refine' });
+  });
+
+  it('writes the node a kept tab recorded back on the return to Process', () => {
+    window.history.replaceState({}, '', '/plans/fix-relay?tab=intent');
+    selectPlanNode('refine', { keepTab: true });
+
+    selectObjectTab('process');
+
+    expect(nodeInAddress()).toBe('refine');
+  });
+
   it('drops node= when nothing is selected', () => {
     selectPlanNode('execute');
 

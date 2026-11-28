@@ -2279,9 +2279,14 @@ function rememberedNodeOf(address: Address): string | null {
  * leaves the plan rather than walking through its nodes (`navigation.adoc#url`). The node is also
  * remembered for the open plan, so a return to Process from Intent or Changes writes it back.
  *
+ * A load whose address names a node on another tab (`tab=intent&node=…`) records the node without
+ * leaving that tab: such a caller passes `keepTab`, and only the store and its memory change, so
+ * the address keeps the tab it was opened on.
+ *
  * @param nodeId the node's id, or `null` when nothing is selected
+ * @param options `keepTab` leaves the address and its tab as they are
  */
-export function selectPlanNode(nodeId: string | null): void {
+export function selectPlanNode(nodeId: string | null, options: { keepTab?: boolean } = {}): void {
   const current = currentAddress();
   const planId = current?.route === 'plan' ? (current.planId ?? null) : null;
   runtimeStore.update((s) => ({
@@ -2289,7 +2294,7 @@ export function selectPlanNode(nodeId: string | null): void {
     phaseNode: nodeId,
     rememberedNode: nodeId && planId ? { planId, nodeId } : null,
   }));
-  if (current === null || current.route !== 'plan') {
+  if (current?.route !== 'plan' || options.keepTab) {
     return;
   }
   const address: Address = switchTab(current, 'process');

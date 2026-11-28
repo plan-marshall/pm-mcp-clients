@@ -50,9 +50,9 @@ export function getNodeDisplayName(node: ProcessNode, t: Translate): string {
     // may be joined by a space, an underscore or a hyphen.
     const pattern = kindWord
       .split(/[\s_-]+/)
-      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-      .join('[\\s_-]+');
-    const match = new RegExp(`^${pattern}\\s+`, 'i').exec(title);
+      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`))
+      .join(String.raw`[\s_-]+`);
+    const match = new RegExp(String.raw`^${pattern}\s+`, 'i').exec(title);
     if (match === null) {
       continue;
     }

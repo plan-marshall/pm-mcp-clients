@@ -1742,6 +1742,66 @@ describe('PlanView’s Changes tab', () => {
       push.mockRestore();
     });
 
+    it('drops the node from the address and the memory when a task is selected after it', async () => {
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      await fireEvent.click(screen.getByTestId('select-node-execute'));
+      expect(nodeInAddress()).toBe('execute');
+
+      await fireEvent.click(screen.getByTestId('task-TASK-003'));
+
+      expect(nodeInAddress()).toBeNull();
+      expect(get(runtimeStore).phaseNode).toBeNull();
+      expect(get(runtimeStore).rememberedNode).toBeNull();
+    });
+
+    it('keeps the Intent tab when a load names it beside node=', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute', objectTab: 'intent' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?tab=intent&node=execute');
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+
+      expect(new URLSearchParams(window.location.search).get('tab')).toBe('intent');
+      expect(get(runtimeStore).objectTab).toBe('intent');
+      // The node is recorded, so a return to Process writes it back.
+      expect(get(runtimeStore).rememberedNode).toEqual({ planId: 'fix-relay', nodeId: 'execute' });
+    });
+
+    it('applies the node of the address when a process event supersedes the initial read', async () => {
+      runtimeStore.update((state) => ({ ...state, phaseNode: 'execute' }));
+      window.history.replaceState({}, '', '/plans/fix-relay?node=execute');
+      let onEvent: ((event: string, data?: unknown) => void) | undefined;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+        onEvent = callback;
+        return () => {};
+      });
+      let releaseInitial: (tree: ProcessTree) => void = () => {};
+      const getPlanProcess = vi
+        .spyOn(apiClient, 'getPlanProcess')
+        .mockImplementationOnce(
+          () =>
+            new Promise<ProcessTree>((resolve) => {
+              releaseInitial = resolve;
+            }),
+        )
+        .mockResolvedValue(capturedPlan);
+
+      render(PlanView);
+      await waitFor(() => expect(onEvent).toBeDefined());
+      // The event starts a newer read while the initial one is in flight; the newer one wins.
+      onEvent?.('activity.changed');
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(2));
+      await screen.findByTestId('plan-title');
+      releaseInitial(capturedPlan);
+
+      expect(await screen.findByTestId('task-inspector')).toHaveAttribute(
+        'data-selected-kind',
+        'node',
+      );
+      expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
+    });
+
     it('drops node= on Intent and Changes and writes it back on Process', async () => {
       render(PlanView);
       await screen.findByTestId('plan-title');
