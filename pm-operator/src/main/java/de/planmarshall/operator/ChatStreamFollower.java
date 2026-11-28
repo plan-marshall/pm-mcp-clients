@@ -146,126 +146,137 @@ final class ChatStreamFollower implements AutoCloseable {
         var leaveKey = leaveKey(locale);
         var writingPrompt = MessageCatalogue.format(locale, "operator.actions.chat.writing",
                             Map.of("stop", stopKey, "leave", leaveKey)) + StartPrompt.SUFFIX;
-        var finished = new AtomicBoolean(false);
-        var leftDuringReply = new AtomicBoolean(false);
-        var interruptedByUser = new AtomicBoolean(false);
-        var stopRequested = new AtomicBoolean(false);
-        var heldFirstLine = new AtomicReference<@Nullable String>();
-        var activeReplyTurnId = new AtomicReference<@Nullable String>();
+        var session = new FollowSession(reader, writingPrompt, stopKey, chatId, operatorTurnId,
+                            new ReplyRenderState(reader, fallbackRole, printedTurnIds));
 
         var terminal = reader.getTerminal();
         var previousInt = terminal.handle(Terminal.Signal.INT, Terminal.SignalHandler.SIG_IGN);
-        var inputThread = Thread.ofPlatform().daemon(true).name("chat-writing-input").start(() ->
-                            readWritingInput(reader, writingPrompt, stopKey, finished, leftDuringReply,
-                                                interruptedByUser, stopRequested, heldFirstLine, activeReplyTurnId));
+        var inputThread = Thread.ofPlatform().daemon(true).name("chat-writing-input")
+                            .start(() -> readWritingInput(session));
 
-        var state = new ReplyRenderState(reader, fallbackRole, printedTurnIds);
         try {
-            while (!finished.get()) {
-                StreamItem item;
-                try {
-                    item = queue.take();
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
-                    finished.set(true);
-                    break;
-                }
-                if (item.signal() == StreamSignal.WAKEUP) {
-                    break;
-                }
-                if (item.signal() == StreamSignal.STREAM_CLOSED) {
-                    state.flushPendingPartial();
-                    break;
-                }
-                handleEvent(item.eventName(), item.payload(), chatId, operatorTurnId,
-                                    activeReplyTurnId, stopRequested, state, finished, printedTurnIds);
-            }
+            drainReplyEvents(session);
         } finally {
-            finished.set(true);
-            var intDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(150);
-            var deadline = System.nanoTime() + INTERRUPT_JOIN_TIMEOUT_NANOS;
-            while (inputThread.isAlive() && System.nanoTime() < deadline) {
-                terminal.raise(Terminal.Signal.INT);
-                if (System.nanoTime() >= intDeadline) {
-                    inputThread.interrupt();
-                }
-                LockSupport.parkNanos(INTERRUPT_POLL_NANOS);
-            }
-            terminal.handle(Terminal.Signal.INT, previousInt);
+            session.finished.set(true);
+            joinInputThread(terminal, inputThread, previousInt);
         }
 
-        if (interruptedByUser.get()) {
+        if (session.interruptedByUser.get()) {
             throw new StartPrompt.InterruptException();
         }
-        return new Outcome(state.completed, heldFirstLine.get(), leftDuringReply.get(), state.endedEvent);
+        return new Outcome(session.state.completed, session.heldFirstLine.get(),
+                            session.leftDuringReply.get(), session.state.endedEvent);
     }
 
-    private void readWritingInput(LineReader reader, String writingPrompt, String stopKey,
-                        AtomicBoolean finished, AtomicBoolean leftDuringReply, AtomicBoolean interruptedByUser,
-                        AtomicBoolean stopRequested, AtomicReference<@Nullable String> heldFirstLine,
-                        AtomicReference<@Nullable String> activeReplyTurnId) {
-        while (!finished.get()) {
-            String line;
+    private void drainReplyEvents(FollowSession session) {
+        while (!session.finished.get()) {
+            StreamItem item;
             try {
-                line = reader.readLine(writingPrompt);
-            } catch (UserInterruptException _) {
-                if (!finished.get()) {
-                    interruptedByUser.set(true);
-                    finished.set(true);
-                    queue.offer(StreamItem.WAKEUP);
-                }
-                return;
-            } catch (EndOfFileException _) {
-                if (!finished.get()) {
-                    leftDuringReply.set(true);
-                    finished.set(true);
-                    queue.offer(StreamItem.WAKEUP);
-                }
-                return;
-            } catch (IOError _) {
-                if (!finished.get()) {
-                    leftDuringReply.set(true);
-                    finished.set(true);
-                    queue.offer(StreamItem.WAKEUP);
-                }
+                item = queue.take();
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                session.finished.set(true);
                 return;
             }
-            if (line == null) {
-                continue;
-            }
-            var trimmed = line.trim();
-            if (trimmed.equalsIgnoreCase(stopKey)) {
-                var replyTurnId = activeReplyTurnId.get();
-                if (replyTurnId != null) {
-                    stopQuietly(replyTurnId);
-                } else {
-                    stopRequested.set(true);
-                }
-            } else if (ChoicePrompt.isLeave(locale, trimmed)) {
-                leftDuringReply.set(true);
-                finished.set(true);
-                queue.offer(StreamItem.WAKEUP);
+            if (!processNextItem(item, session)) {
                 return;
-            } else if (!line.isBlank()) {
-                heldFirstLine.compareAndSet(null, line);
             }
         }
     }
 
-    private void handleEvent(@Nullable String eventName, @Nullable Map<String, Object> payload, String chatId,
-                        String operatorTurnId, AtomicReference<@Nullable String> activeReplyTurnId,
-                        AtomicBoolean stopRequested, ReplyRenderState state, AtomicBoolean finished,
-                        Set<String> printedTurnIds) {
+    private boolean processNextItem(StreamItem item, FollowSession session) {
+        if (item.signal() == StreamSignal.WAKEUP) {
+            return false;
+        }
+        if (item.signal() == StreamSignal.STREAM_CLOSED) {
+            session.state.flushPendingPartial();
+            return false;
+        }
+        handleEvent(item.eventName(), item.payload(), session);
+        return true;
+    }
+
+    private static void joinInputThread(Terminal terminal, Thread inputThread,
+                        Terminal.SignalHandler previousInt) {
+        var intDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(150);
+        var deadline = System.nanoTime() + INTERRUPT_JOIN_TIMEOUT_NANOS;
+        while (inputThread.isAlive() && System.nanoTime() < deadline) {
+            terminal.raise(Terminal.Signal.INT);
+            if (System.nanoTime() >= intDeadline) {
+                inputThread.interrupt();
+            }
+            LockSupport.parkNanos(INTERRUPT_POLL_NANOS);
+        }
+        terminal.handle(Terminal.Signal.INT, previousInt);
+    }
+
+    private void readWritingInput(FollowSession session) {
+        while (!session.finished.get()) {
+            var line = readWritingLine(session);
+            if (line == null) {
+                if (session.finished.get()) {
+                    return;
+                }
+                continue;
+            }
+            if (!handleWritingLine(line, session)) {
+                return;
+            }
+        }
+    }
+
+    private @Nullable String readWritingLine(FollowSession session) {
+        try {
+            return session.reader.readLine(session.writingPrompt);
+        } catch (UserInterruptException _) {
+            if (session.finished.compareAndSet(false, true)) {
+                session.interruptedByUser.set(true);
+                enqueue(StreamItem.WAKEUP);
+            }
+            return null;
+        } catch (EndOfFileException | IOError _) {
+            if (session.finished.compareAndSet(false, true)) {
+                session.leftDuringReply.set(true);
+                enqueue(StreamItem.WAKEUP);
+            }
+            return null;
+        }
+    }
+
+    private boolean handleWritingLine(String line, FollowSession session) {
+        var trimmed = line.trim();
+        if (trimmed.equalsIgnoreCase(session.stopKey)) {
+            var replyTurnId = session.activeReplyTurnId.get();
+            if (replyTurnId != null) {
+                stopQuietly(replyTurnId);
+            } else {
+                session.stopRequested.set(true);
+            }
+        } else if (ChoicePrompt.isLeave(locale, trimmed)) {
+            session.leftDuringReply.set(true);
+            session.finished.set(true);
+            enqueue(StreamItem.WAKEUP);
+            return false;
+        } else if (!line.isBlank()) {
+            session.heldFirstLine.compareAndSet(null, line);
+        }
+        return true;
+    }
+
+    private void handleEvent(@Nullable String eventName, @Nullable Map<String, Object> payload,
+                        FollowSession session) {
         if (eventName == null || payload == null) {
             return;
         }
         switch (eventName) {
-            case EVENT_STARTED -> onStarted(payload, chatId, activeReplyTurnId, stopRequested, state);
-            case EVENT_PROGRESS -> onProgress(payload, chatId, activeReplyTurnId.get(), state);
-            case EVENT_DELTA -> onDelta(payload, chatId, activeReplyTurnId.get(), state);
-            case EVENT_COMPLETED -> onCompleted(payload, chatId, operatorTurnId, activeReplyTurnId,
-                                state, finished, printedTurnIds);
-            case EVENT_ENDED -> onEnded(payload, chatId, finished, state);
+            case EVENT_STARTED -> onStarted(payload, session.chatId, session.activeReplyTurnId,
+                                session.stopRequested, session.state);
+            case EVENT_PROGRESS -> onProgress(payload, session.chatId, session.activeReplyTurnId.get(), session.state);
+            case EVENT_DELTA -> onDelta(payload, session.chatId, session.activeReplyTurnId.get(), session.state);
+            case EVENT_COMPLETED -> onCompleted(payload, session.chatId, session.operatorTurnId,
+                                session.activeReplyTurnId, session.state, session.finished,
+                                session.state.printedTurnIds);
+            case EVENT_ENDED -> onEnded(payload, session.chatId, session.finished, session.state);
             default -> {
                 // Other subject events belong to the background tree, not this chat turn.
             }
@@ -388,12 +399,18 @@ final class ChatStreamFollower implements AutoCloseable {
                 var name = event.event() != null && !event.event().isBlank()
                                     ? event.event()
                                     : stringMember(parsed, EventEnvelope.FIELD_EVENT);
-                queue.offer(new StreamItem(StreamSignal.EVENT, name, parsed));
+                enqueue(new StreamItem(StreamSignal.EVENT, name, parsed));
             }
         } catch (IOException _) {
             // Stream closed or broken; signal completion loop below.
         } finally {
-            queue.offer(StreamItem.CLOSED);
+            enqueue(StreamItem.CLOSED);
+        }
+    }
+
+    private void enqueue(StreamItem item) {
+        if (!queue.offer(item)) {
+            closed.set(true);
         }
     }
 
@@ -442,7 +459,33 @@ final class ChatStreamFollower implements AutoCloseable {
             if (sseThread != null) {
                 sseThread.interrupt();
             }
-            queue.offer(StreamItem.CLOSED);
+            enqueue(StreamItem.CLOSED);
+        }
+    }
+
+    private static final class FollowSession {
+
+        private final LineReader reader;
+        private final String writingPrompt;
+        private final String stopKey;
+        private final String chatId;
+        private final String operatorTurnId;
+        private final ReplyRenderState state;
+        private final AtomicBoolean finished = new AtomicBoolean(false);
+        private final AtomicBoolean leftDuringReply = new AtomicBoolean(false);
+        private final AtomicBoolean interruptedByUser = new AtomicBoolean(false);
+        private final AtomicBoolean stopRequested = new AtomicBoolean(false);
+        private final AtomicReference<@Nullable String> heldFirstLine = new AtomicReference<>();
+        private final AtomicReference<@Nullable String> activeReplyTurnId = new AtomicReference<>();
+
+        private FollowSession(LineReader reader, String writingPrompt, String stopKey, String chatId,
+                            String operatorTurnId, ReplyRenderState state) {
+            this.reader = reader;
+            this.writingPrompt = writingPrompt;
+            this.stopKey = stopKey;
+            this.chatId = chatId;
+            this.operatorTurnId = operatorTurnId;
+            this.state = state;
         }
     }
 
@@ -503,7 +546,7 @@ final class ChatStreamFollower implements AutoCloseable {
         }
 
         private void flushPendingPartial() {
-            if (pendingLine.length() > 0) {
+            if (!pendingLine.isEmpty()) {
                 var tail = pendingLine.toString();
                 pendingLine.setLength(0);
                 printReplyLine(tail, untrusted);
@@ -521,7 +564,7 @@ final class ChatStreamFollower implements AutoCloseable {
                     printReplyLine(lines[i], isUntrusted && i == lines.length - 1);
                 }
             } else if (sawDelta) {
-                if (pendingLine.length() > 0) {
+                if (!pendingLine.isEmpty()) {
                     var tail = pendingLine.toString();
                     pendingLine.setLength(0);
                     printReplyLine(tail, isUntrusted);
@@ -530,10 +573,11 @@ final class ChatStreamFollower implements AutoCloseable {
                     printAbove("  " + indent + "  \"" + untrustedTag(activeLocale));
                 }
             }
+            var reason = event.reason();
             if (event.status() == TurnStatus.STOPPED) {
                 printAbove("  " + MessageCatalogue.format(activeLocale, "control.chat.stopped", Map.of()));
-            } else if (event.status() == TurnStatus.FAILED && event.reason() != null) {
-                printFailureReason(event.reason(), activeLocale);
+            } else if (event.status() == TurnStatus.FAILED && reason != null) {
+                printFailureReason(reason, activeLocale);
             }
             completed = true;
         }
@@ -550,9 +594,10 @@ final class ChatStreamFollower implements AutoCloseable {
         private void printReplyLine(String rawLine, boolean closingQuote) {
             var safeRole = OutputSafety.stripControlSequences(role);
             var safeLine = OutputSafety.stripControlSequences(rawLine);
+            var openQuote = untrusted ? "\"" : "";
             var prefix = firstLinePrinted
                                 ? "  " + " ".repeat(safeRole.length()) + "  "
-                                : "  " + safeRole + "  " + (untrusted ? "\"" : "");
+                                : "  " + safeRole + "  " + openQuote;
             firstLinePrinted = true;
             var suffix = closingQuote && untrusted ? "\"" + untrustedTag(locale) : "";
             printAbove(prefix + safeLine + suffix);

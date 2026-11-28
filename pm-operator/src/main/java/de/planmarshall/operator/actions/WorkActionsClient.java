@@ -624,53 +624,65 @@ public final class WorkActionsClient {
      * @return the owning project id, or {@code null} when not found
      */
     public @Nullable String endedProject(String kind, String subjectId) {
-        if ("epic".equals(kind)) {
-            try {
-                return epic(subjectId).projectId();
-            } catch (IOException _) {
-                // Fall back to ended-work scan below when the live epic resource is gone.
-            }
-        } else {
-            try {
-                var planResp = context.runtime(true).send(HttpRequest.get(PLANS + path(subjectId) + "/process"));
-                if (planResp.status() == 200) {
-                    var project = ProcessTree.fromJson(planResp.bodyText()).project();
-                    if (project != null) {
-                        return project.projectId();
-                    }
-                }
-            } catch (IOException _) {
-                // Fall back to ended-work scan below when the process resource is gone.
-            }
+        var live = liveSubjectProject(kind, subjectId);
+        if (live != null) {
+            return live;
         }
+        return findEndedWorkProject(subjectId);
+    }
+
+    private @Nullable String liveSubjectProject(String kind, String subjectId) {
+        try {
+            if ("epic".equals(kind)) {
+                return epic(subjectId).projectId();
+            }
+            var planResp = context.runtime(true).send(HttpRequest.get(PLANS + path(subjectId) + "/process"));
+            if (planResp.status() == 200) {
+                var project = ProcessTree.fromJson(planResp.bodyText()).project();
+                if (project != null) {
+                    return project.projectId();
+                }
+            }
+        } catch (IOException _) {
+            // Fall back to ended-work scan below when the live resource is gone.
+        }
+        return null;
+    }
+
+    private @Nullable String findEndedWorkProject(String subjectId) {
         try {
             var projectsResp = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
             if (projectsResp.status() != 200) {
                 return null;
             }
-            var projects = ProjectExplorer.fromJson(projectsResp.bodyText()).allProjects();
-            for (var project : projects) {
-                int pageNumber = 1;
-                while (true) {
-                    var endedResp = context.runtime(true).send(HttpRequest.get(
-                                        "/api/v1/projects/" + path(project.projectId()) + "/ended?page=" + pageNumber));
-                    if (endedResp.status() != 200) {
-                        break;
-                    }
-                    var page = EndedWorkPage.fromJson(endedResp.bodyText());
-                    if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
-                        return project.projectId();
-                    }
-                    if (!page.hasOlder() || page.items().isEmpty()) {
-                        break;
-                    }
-                    pageNumber++;
+            for (var project : ProjectExplorer.fromJson(projectsResp.bodyText()).allProjects()) {
+                if (projectContainsEndedWork(project.projectId(), subjectId)) {
+                    return project.projectId();
                 }
             }
         } catch (IOException _) {
             return null;
         }
         return null;
+    }
+
+    private boolean projectContainsEndedWork(String projectId, String subjectId) throws IOException {
+        int pageNumber = 1;
+        while (true) {
+            var endedResp = context.runtime(true).send(HttpRequest.get(
+                                "/api/v1/projects/" + path(projectId) + "/ended?page=" + pageNumber));
+            if (endedResp.status() != 200) {
+                return false;
+            }
+            var page = EndedWorkPage.fromJson(endedResp.bodyText());
+            if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
+                return true;
+            }
+            if (!page.hasOlder() || page.items().isEmpty()) {
+                return false;
+            }
+            pageNumber++;
+        }
     }
 
     /**

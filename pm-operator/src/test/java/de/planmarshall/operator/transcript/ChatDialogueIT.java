@@ -20,6 +20,9 @@ import io.nayuki.qrcodegen.QrCode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
+import java.util.function.Predicate;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -69,19 +72,19 @@ class ChatDialogueIT {
 
             DialogueHarness.type(session, question + "\nsecond line\n\n");
             assertTrue(session.awaitText("replan answers", DialogueHarness.TIMEOUT), session.rawOutput());
-            assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitAfter(session, "proposes no change yet", "you  ›");
             var chatBeforeNew = harness.send(HttpRequest.get("/api/v1/plans/" + PLAN_UNSEEDED + "/chat"));
 
             DialogueHarness.type(session, "new\n");
-            assertTrue(session.awaitText("Start a new chat?", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitAfter(session, "proposes no change yet", "Start a new chat?");
             DialogueHarness.type(session, "n\n");
-            assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitAfter(session, "Start a new chat?", "you  ›");
             DialogueHarness.type(session, "new\n");
-            assertTrue(session.awaitText("Start a new chat?", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitLatestAfter(session, "you  ›", "Start a new chat?");
             DialogueHarness.type(session, "y\n");
             assertTrue(session.awaitText("The earlier chat is kept with " + PLAN_UNSEEDED + ".",
                                 DialogueHarness.TIMEOUT), session.rawOutput());
-            assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitAfter(session, "The earlier chat is kept with " + PLAN_UNSEEDED + ".", "you  ›");
             DialogueHarness.type(session, "q\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -129,7 +132,7 @@ class ChatDialogueIT {
                 session.send("s\n");
                 assertTrue(session.awaitText("Stopped; the reply so far is kept.", DialogueHarness.TIMEOUT),
                                     session.rawOutput());
-                assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
+                awaitAfter(session, "Stopped; the reply so far is kept.", "you  ›");
                 session.send("q\n");
                 assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -184,7 +187,7 @@ class ChatDialogueIT {
              var session = harness.open("plan", "chat", PLAN_SEEDED)) {
             assertTrue(session.awaitText("Accept?", DialogueHarness.TIMEOUT), session.rawOutput());
             DialogueHarness.type(session, "\n");
-            assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
+            awaitAfter(session, "accepted: applies after the current task", "you  ›");
             DialogueHarness.type(session, "q\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -251,5 +254,37 @@ class ChatDialogueIT {
                                                                         act -> act.path().endsWith("/chat/end")),
                                                     harness.acts().toString()));
         }
+    }
+
+    private static void awaitAfter(PtySession session, String earlier, String expected)
+                        throws InterruptedException {
+        awaitScreen(session, screen -> {
+            var idx = screen.indexOf(earlier);
+            return idx >= 0 && screen.indexOf(expected, idx + earlier.length()) >= 0;
+        });
+    }
+
+    private static void awaitLatestAfter(PtySession session, String earlier, String expected)
+                        throws InterruptedException {
+        awaitScreen(session, screen -> {
+            var earlierIdx = screen.lastIndexOf(earlier);
+            var expectedIdx = screen.lastIndexOf(expected);
+            return earlierIdx >= 0 && expectedIdx > earlierIdx;
+        });
+    }
+
+    private static void awaitScreen(PtySession session, Predicate<String> condition)
+                        throws InterruptedException {
+        var deadline = System.nanoTime() + DialogueHarness.TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (condition.test(session.screenText())) {
+                return;
+            }
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(25));
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        assertTrue(condition.test(session.screenText()), session.rawOutput());
     }
 }

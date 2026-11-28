@@ -54,6 +54,9 @@ final class WorkChatDialogue {
     private static final String KEY_PROJECT = "project";
     private static final String KEY_CHAT_LEFT = "operator.actions.chat.left";
     private static final String KEY_CHAT_NEW_COMMAND = "operator.actions.chat.new_command";
+    private static final String KEY_NOT_OFFERED = "operator.dialogue.not_offered";
+    private static final String KEY_INPUT = "input";
+    private static final String KEY_OFFERED = "offered";
     private static final String FINDING_CHANGED_SINCE = "chat.finding.changed_since";
     private static final String FINDING_ALREADY_QUEUED = "chat.finding.already_queued";
     private static final String ROLE_OPERATOR = ChatTurn.AUTHOR_OPERATOR;
@@ -62,6 +65,33 @@ final class WorkChatDialogue {
         ACCEPT,
         REJECT,
         NEW
+    }
+
+    private static final class ChatLoopState {
+
+        private final boolean endedChat;
+        private final Set<String> printedTurnIds = new HashSet<>();
+        private final Set<String> readBackTurnIds = new HashSet<>();
+        private final Set<String> acceptedProposalTurnIds = new HashSet<>();
+        private final Set<String> reportedAppliedTurnIds = new HashSet<>();
+        private final Set<String> reportedLapsedTurnIds = new HashSet<>();
+        private boolean saidNoProposal;
+        private @Nullable String heldFirstLine;
+
+        private ChatLoopState(boolean endedChat) {
+            this.endedChat = endedChat;
+        }
+
+        private void reset(ChatResource chat) {
+            printedTurnIds.clear();
+            readBackTurnIds.clear();
+            acceptedProposalTurnIds.clear();
+            reportedAppliedTurnIds.clear();
+            reportedLapsedTurnIds.clear();
+            seedPrintedTurns(chat, printedTurnIds);
+            seedAcceptedProposal(chat, acceptedProposalTurnIds);
+            saidNoProposal = false;
+        }
     }
 
     private final StartPrompt prompt;
@@ -156,68 +186,54 @@ final class WorkChatDialogue {
         }
         try (var follower = ChatStreamFollower.open(client, kind, subjectId, prompt.locale())) {
             var chat = client.openChat(kind, subjectId);
-            boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
-            var printedTurnIds = new HashSet<String>();
-            showTranscript(chat, endedChat, printedTurnIds);
-            var readBackTurnIds = new HashSet<String>();
-            var acceptedProposalTurnIds = new HashSet<String>();
-            var reportedAppliedTurnIds = new HashSet<String>();
-            var reportedLapsedTurnIds = new HashSet<String>();
-            seedAcceptedProposal(chat, acceptedProposalTurnIds);
-            boolean saidNoProposal = false;
-            @Nullable String heldFirstLine = null;
+            var loop = new ChatLoopState(ended || chat.scope() == ChatScopeKind.ARCHIVE);
+            showTranscript(chat, loop.endedChat, loop.printedTurnIds);
+            seedAcceptedProposal(chat, loop.acceptedProposalTurnIds);
             while (true) {
                 if (chatReset) {
                     chatReset = false;
-                    printedTurnIds.clear();
-                    readBackTurnIds.clear();
-                    acceptedProposalTurnIds.clear();
-                    reportedAppliedTurnIds.clear();
-                    reportedLapsedTurnIds.clear();
-                    seedPrintedTurns(chat, printedTurnIds);
-                    seedAcceptedProposal(chat, acceptedProposalTurnIds);
-                    saidNoProposal = false;
+                    loop.reset(chat);
                 }
-                reportProposalStateUpdates(chat, endedChat, readBackTurnIds,
-                                    acceptedProposalTurnIds, reportedAppliedTurnIds, reportedLapsedTurnIds);
-                var proposal = chat.proposal();
-                if (proposal != null && proposal.isOpen(false)) {
-                    var proposalOutcome = handleProposal(chat, endedChat, printedTurnIds, readBackTurnIds,
-                                        acceptedProposalTurnIds, reportedAppliedTurnIds, reportedLapsedTurnIds);
-                    if (proposalOutcome == null) {
-                        return 0;
-                    }
-                    chat = proposalOutcome;
-                    if (chat.turns().isEmpty()) {
-                        printedTurnIds.clear();
-                    }
-                    continue;
-                }
-                var message = askMessageOrNew(heldFirstLine);
-                heldFirstLine = null;
-                if (message == null) {
-                    var reset = confirmAndStartNew(null);
-                    if (reset != null) {
-                        chat = reset;
-                    }
-                    continue;
-                }
-                var submission = sendTurn(message, follower, chat, printedTurnIds);
-                if (submission == null) {
-                    continue;
-                }
-                heldFirstLine = submission.heldFirstLine();
-                var updated = submission.updatedChat();
-                if (updated != null) {
-                    chat = updated;
-                    showUnprintedTurns(chat, printedTurnIds);
-                }
-                if (submission.endedExternally()) {
+                reportProposalStateUpdates(chat, loop);
+                var next = runSingleStep(chat, follower, loop);
+                if (next == null) {
                     return 0;
                 }
-                saidNoProposal = reportNoProposalOnce(chat, saidNoProposal);
+                chat = next;
             }
         }
+    }
+
+    private @Nullable ChatResource runSingleStep(ChatResource chat, ChatStreamFollower follower,
+                        ChatLoopState loop) throws IOException {
+        var proposal = chat.proposal();
+        if (proposal != null && proposal.isOpen(false)) {
+            var proposalOutcome = handleProposal(chat, proposal, loop);
+            if (proposalOutcome != null && proposalOutcome.turns().isEmpty()) {
+                loop.printedTurnIds.clear();
+            }
+            return proposalOutcome;
+        }
+        var message = askMessageOrNew(loop.heldFirstLine);
+        loop.heldFirstLine = null;
+        if (message == null) {
+            var reset = confirmAndStartNew(null);
+            return reset != null ? reset : chat;
+        }
+        var submission = sendTurn(message, follower, chat, loop.printedTurnIds);
+        if (submission == null) {
+            return chat;
+        }
+        loop.heldFirstLine = submission.heldFirstLine();
+        var updated = submission.updatedChat() != null ? submission.updatedChat() : chat;
+        if (submission.updatedChat() != null) {
+            showUnprintedTurns(updated, loop.printedTurnIds);
+        }
+        if (submission.endedExternally()) {
+            return null;
+        }
+        loop.saidNoProposal = reportNoProposalOnce(updated, loop.saidNoProposal);
+        return updated;
     }
 
     private @Nullable TurnSubmission sendTurn(String message, ChatStreamFollower follower, ChatResource currentChat,
@@ -328,9 +344,9 @@ final class WorkChatDialogue {
             if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 throw new StartPrompt.StartLeftException();
             }
-            prompt.line("operator.dialogue.not_offered",
-                                Map.of("input", TerminalSanitizer.sanitizeLine(answer),
-                                                    "offered", yesNoHint()));
+            prompt.line(KEY_NOT_OFFERED,
+                                Map.of(KEY_INPUT, TerminalSanitizer.sanitizeLine(answer),
+                                                    KEY_OFFERED, yesNoHint()));
         }
     }
 
@@ -345,20 +361,18 @@ final class WorkChatDialogue {
         }
     }
 
-    private void reportProposalStateUpdates(ChatResource chat, boolean endedChat, Set<String> readBackTurnIds,
-                        Set<String> acceptedProposalTurnIds, Set<String> reportedAppliedTurnIds,
-                        Set<String> reportedLapsedTurnIds) {
+    private void reportProposalStateUpdates(ChatResource chat, ChatLoopState loop) {
         var proposal = chat.proposal();
         if (proposal == null) {
             return;
         }
         var cleanSubject = OutputSafety.stripControlSequences(subjectId);
-        if (proposal.state() == ProposalState.LAPSED && reportedLapsedTurnIds.add(proposal.turnId())) {
-            printProposalReadBack(proposal, endedChat, readBackTurnIds);
+        if (proposal.state() == ProposalState.LAPSED && loop.reportedLapsedTurnIds.add(proposal.turnId())) {
+            printProposalReadBack(proposal, loop.endedChat, loop.readBackTurnIds);
             prompt.line("control.chat.lapsed", Map.of(KEY_PLAN, cleanSubject));
-        } else if (!endedChat && proposal.state() == ProposalState.APPLIED
-                            && acceptedProposalTurnIds.contains(proposal.turnId())
-                            && reportedAppliedTurnIds.add(proposal.turnId())) {
+        } else if (!loop.endedChat && proposal.state() == ProposalState.APPLIED
+                            && loop.acceptedProposalTurnIds.contains(proposal.turnId())
+                            && loop.reportedAppliedTurnIds.add(proposal.turnId())) {
             prompt.line("operator.actions.chat.applied",
                                 Map.of(KEY_SUBJECT, cleanSubject, KEY_VERSION, resolveVersion(chat)));
         }
@@ -376,49 +390,36 @@ final class WorkChatDialogue {
     /**
      * Answers the proposal the chat holds, as the operator answered it.
      *
-     * @param chat                    the chat with an open or refused proposal
-     * @param endedChat               {@code true} for the read-only chat about ended work
-     * @param printedTurnIds          ids of turns already printed on screen
-     * @param readBackTurnIds         ids of proposals whose diff block has already been printed
-     * @param acceptedProposalTurnIds ids of proposals accepted in this chat
-     * @param reportedAppliedTurnIds  ids of proposals whose applied line has already been printed
-     * @param reportedLapsedTurnIds   ids of proposals whose lapsed line has already been printed
+     * @param chat     the chat with an open or refused proposal
+     * @param proposal the open or refused proposal
+     * @param loop     the active chat loop state
      * @return the chat as the runtime answered it, or {@code null} to leave the chat
      * @throws IOException on transport failure
      */
-    private @Nullable ChatResource handleProposal(ChatResource chat, boolean endedChat,
-                        Set<String> printedTurnIds, Set<String> readBackTurnIds,
-                        Set<String> acceptedProposalTurnIds, Set<String> reportedAppliedTurnIds,
-                        Set<String> reportedLapsedTurnIds) throws IOException {
-        var proposal = chat.proposal();
-        if (proposal == null) {
-            return chat;
-        }
-        printProposalReadBack(proposal, endedChat, readBackTurnIds);
+    private @Nullable ChatResource handleProposal(ChatResource chat, ChatProposal proposal,
+                        ChatLoopState loop) throws IOException {
+        printProposalReadBack(proposal, loop.endedChat, loop.readBackTurnIds);
         if (proposal.state() == ProposalState.REFUSED) {
             printFinding(chat, proposal.finding());
-            return handleRejectOnlyProposal(chat, proposal, endedChat, printedTurnIds);
+            return handleRejectOnlyProposal(chat, proposal, loop.endedChat, loop.printedTurnIds);
         }
-        var decision = askProposal(endedChat);
+        var decision = askProposal(loop.endedChat);
         if (decision == ProposalDecision.NEW) {
             var reset = confirmAndStartNew(proposal);
             return reset != null ? reset : chat;
         }
         if (decision == ProposalDecision.ACCEPT) {
-            return acceptProposal(chat, proposal, endedChat, printedTurnIds, readBackTurnIds,
-                                acceptedProposalTurnIds, reportedAppliedTurnIds, reportedLapsedTurnIds);
+            return acceptProposal(chat, proposal, loop);
         }
         var rejectedChat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
-        showUnprintedTurns(rejectedChat, printedTurnIds);
+        showUnprintedTurns(rejectedChat, loop.printedTurnIds);
         return rejectedChat;
     }
 
-    private @Nullable ChatResource acceptProposal(ChatResource chat, ChatProposal proposal, boolean endedChat,
-                        Set<String> printedTurnIds, Set<String> readBackTurnIds,
-                        Set<String> acceptedProposalTurnIds, Set<String> reportedAppliedTurnIds,
-                        Set<String> reportedLapsedTurnIds) throws IOException {
+    private @Nullable ChatResource acceptProposal(ChatResource chat, ChatProposal proposal,
+                        ChatLoopState loop) throws IOException {
         var cleanSubject = OutputSafety.stripControlSequences(subjectId);
-        if (endedChat) {
+        if (loop.endedChat) {
             client.chatProposal(kind, subjectId, proposal.turnId(), true);
             var resolvedProject = client.endedProject(kind, subjectId);
             var project = OutputSafety.stripControlSequences(
@@ -431,59 +432,83 @@ final class WorkChatDialogue {
         try {
             answered = client.chatProposal(kind, subjectId, proposal.turnId(), true);
         } catch (OperatorRefusedException refusal) {
-            if (refusal.code() == ApiErrorCode.CONFLICT) {
-                var serverMessage = refusal.serverMessage();
-                if (FINDING_CHANGED_SINCE.equals(serverMessage)) {
-                    prompt.line("control.chat.changed_since",
-                                        Map.of(KEY_PLAN, cleanSubject, KEY_VERSION, resolveVersion(chat)));
-                    return handleRejectOnlyProposal(chat, proposal, false, printedTurnIds);
-                }
-                if (FINDING_ALREADY_QUEUED.equals(serverMessage)) {
-                    prompt.line("control.chat.already_queued", Map.of(KEY_PLAN, cleanSubject));
-                    return chat;
-                }
+            var refused = handleAcceptConflict(chat, proposal, refusal, loop.printedTurnIds, cleanSubject);
+            if (refused != null) {
+                return refused;
             }
             throw refusal;
         }
-        showUnprintedTurns(answered, printedTurnIds);
+        showUnprintedTurns(answered, loop.printedTurnIds);
         var updated = answered.proposal();
         if (updated != null) {
-            switch (updated.state()) {
-                case ACCEPTED -> {
-                    acceptedProposalTurnIds.add(updated.turnId());
-                    if (updated.applies() != null && updated.applies().key().endsWith("on_start")) {
-                        var onStart = appliesText(updated);
-                        if (onStart != null) {
-                            prompt.raw("  " + OutputSafety.stripControlSequences(onStart));
-                        }
-                    } else {
-                        var boundary = updated.applies() != null && updated.applies().key().endsWith("after_task");
-                        prompt.line("operator.actions.chat.accepted",
-                                            Map.of("when", boundary ? "boundary" : "other"));
-                    }
-                }
-                case APPLIED -> {
-                    if (reportedAppliedTurnIds.add(updated.turnId())) {
-                        prompt.line("operator.actions.chat.applied",
-                                            Map.of(KEY_SUBJECT, cleanSubject, KEY_VERSION, resolveVersion(answered)));
-                    }
-                }
-                case LAPSED -> {
-                    if (reportedLapsedTurnIds.add(updated.turnId())) {
-                        readBackTurnIds.add(updated.turnId());
-                        prompt.line("control.chat.lapsed", Map.of(KEY_PLAN, cleanSubject));
-                    }
-                }
-                case REFUSED -> {
-                    // Remains ProposalState.REFUSED: the next loop iteration prints the finding and
-                    // offers r) reject only without repeating the read-back diff.
-                }
-                default -> {
-                    // Other states need no accept confirmation line.
-                }
-            }
+            reportAcceptedOutcome(answered, updated, loop, cleanSubject);
         }
         return answered;
+    }
+
+    private @Nullable ChatResource handleAcceptConflict(ChatResource chat, ChatProposal proposal,
+                        OperatorRefusedException refusal, Set<String> printedTurnIds, String cleanSubject)
+                        throws IOException {
+        if (refusal.code() != ApiErrorCode.CONFLICT) {
+            return null;
+        }
+        var serverMessage = refusal.serverMessage();
+        if (FINDING_CHANGED_SINCE.equals(serverMessage)) {
+            prompt.line("control.chat.changed_since",
+                                Map.of(KEY_PLAN, cleanSubject, KEY_VERSION, resolveVersion(chat)));
+            return handleRejectOnlyProposal(chat, proposal, false, printedTurnIds);
+        }
+        if (FINDING_ALREADY_QUEUED.equals(serverMessage)) {
+            prompt.line("control.chat.already_queued", Map.of(KEY_PLAN, cleanSubject));
+            return chat;
+        }
+        return null;
+    }
+
+    private void reportAcceptedOutcome(ChatResource answered, ChatProposal updated, ChatLoopState loop,
+                        String cleanSubject) {
+        switch (updated.state()) {
+            case ACCEPTED -> printAcceptedNotice(updated, loop);
+            case APPLIED -> reportAppliedOutcome(answered, updated, loop, cleanSubject);
+            case LAPSED -> reportLapsedOutcome(updated, loop, cleanSubject);
+            case REFUSED -> {
+                // Remains ProposalState.REFUSED: the next loop iteration prints the finding and
+                // offers r) reject only without repeating the read-back diff.
+            }
+            default -> {
+                // Other states need no accept confirmation line.
+            }
+        }
+    }
+
+    private void reportAppliedOutcome(ChatResource answered, ChatProposal updated, ChatLoopState loop,
+                        String cleanSubject) {
+        if (loop.reportedAppliedTurnIds.add(updated.turnId())) {
+            prompt.line("operator.actions.chat.applied",
+                                Map.of(KEY_SUBJECT, cleanSubject, KEY_VERSION, resolveVersion(answered)));
+        }
+    }
+
+    private void reportLapsedOutcome(ChatProposal updated, ChatLoopState loop, String cleanSubject) {
+        if (loop.reportedLapsedTurnIds.add(updated.turnId())) {
+            loop.readBackTurnIds.add(updated.turnId());
+            prompt.line("control.chat.lapsed", Map.of(KEY_PLAN, cleanSubject));
+        }
+    }
+
+    private void printAcceptedNotice(ChatProposal updated, ChatLoopState loop) {
+        loop.acceptedProposalTurnIds.add(updated.turnId());
+        var applies = updated.applies();
+        if (applies != null && applies.key().endsWith("on_start")) {
+            var onStart = appliesText(updated);
+            if (onStart != null) {
+                prompt.raw("  " + OutputSafety.stripControlSequences(onStart));
+            }
+            return;
+        }
+        var boundary = applies != null && applies.key().endsWith("after_task");
+        prompt.line("operator.actions.chat.accepted",
+                            Map.of("when", boundary ? "boundary" : "other"));
     }
 
     private @Nullable ChatResource handleRejectOnlyProposal(ChatResource chat, ChatProposal proposal,
@@ -578,8 +603,8 @@ final class WorkChatDialogue {
             }
             // Any other input is answered with one line and the proposal is asked again; only the leave
             // key leaves the chat (design Dialogues, links as keys).
-            prompt.line("?".equals(answer) ? "operator.dialogue.no_explanation" : "operator.dialogue.not_offered",
-                                Map.of("input", TerminalSanitizer.sanitizeLine(answer), "offered",
+            prompt.line("?".equals(answer) ? "operator.dialogue.no_explanation" : KEY_NOT_OFFERED,
+                                Map.of(KEY_INPUT, TerminalSanitizer.sanitizeLine(answer), KEY_OFFERED,
                                                     rejectKey + ", " + leaveKey() + ", ?"));
         }
     }
@@ -602,8 +627,8 @@ final class WorkChatDialogue {
             if (ChoicePrompt.isLeave(prompt.locale(), answer)) {
                 throw new StartPrompt.StartLeftException();
             }
-            prompt.line("?".equals(answer) ? "operator.dialogue.no_explanation" : "operator.dialogue.not_offered",
-                                Map.of("input", TerminalSanitizer.sanitizeLine(answer), "offered",
+            prompt.line("?".equals(answer) ? "operator.dialogue.no_explanation" : KEY_NOT_OFFERED,
+                                Map.of(KEY_INPUT, TerminalSanitizer.sanitizeLine(answer), KEY_OFFERED,
                                                     rejectKey + ", " + leaveKey() + ", ?"));
         }
     }

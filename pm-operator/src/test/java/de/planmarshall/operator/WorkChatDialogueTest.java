@@ -33,13 +33,16 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 
+import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -498,8 +501,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 } finally {
@@ -588,8 +591,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 } finally {
@@ -643,8 +646,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -731,8 +734,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 } finally {
@@ -804,8 +807,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 } finally {
@@ -870,8 +873,8 @@ class WorkChatDialogueTest {
             var out = new StringWriter();
             var exitRef = new AtomicInteger(-1);
             var runner = Thread.ofPlatform().start(() -> {
-                try {
-                    exitRef.set(WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false));
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 } finally {
@@ -944,8 +947,8 @@ class WorkChatDialogueTest {
                 var out = new StringWriter();
                 var exitRef = new AtomicInteger(-1);
                 var runner = Thread.ofPlatform().start(() -> {
-                    try {
-                        exitRef.set(WorkChatDialogue.run(mockContext, new PrintWriter(out),
+                    try (var writer = new PrintWriter(out)) {
+                        exitRef.set(WorkChatDialogue.run(mockContext, writer,
                                             "plan", "relay-auth-v2", false, false));
                     } catch (IOException e) {
                         throw new UncheckedIOException(e);
@@ -963,6 +966,68 @@ class WorkChatDialogueTest {
                                     () -> assertTrue(combined.contains("Left the chat; it stays with relay-auth-v2."),
                                                         combined));
             }
+        }
+
+        @Test
+        @DisplayName("chat.ended SSE event ends followReply cleanly and pre-start s stops on turn.started")
+        void chatEndedAndEarlyStopBeforeStarted() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var eventsReady = new CountDownLatch(1);
+            var turnPosted = new CountDownLatch(1);
+            var allowStarted = new CountDownLatch(1);
+            var stopCalled = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        eventsReady.countDown();
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        assertTrue(allowStarted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        assertTrue(stopCalled.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.ended", eventData("chat.ended", subject,
+                                            Map.of("chat_id", "C-1", "reason", "operator")));
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns/T-2/stop")) {
+                    response.json(200, emptyChat);
+                    stopCalled.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            assertTrue(eventsReady.await(5, TimeUnit.SECONDS));
+            virtual.type("go\n\n");
+            awaitScreenContains(virtual, "s) stop the reply");
+            virtual.type("s\n");
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(120));
+            allowStarted.countDown();
+            assertTrue(stopCalled.await(5, TimeUnit.SECONDS));
+            virtual.endOfInput();
+            runner.join(5000);
+
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), out.toString()),
+                                () -> assertEquals(0L, stopCalled.getCount(), "stop should fire once started arrives"));
         }
 
         private static String startedData(String subjectId, String turnId, boolean untrusted) {
@@ -998,7 +1063,10 @@ class WorkChatDialogueTest {
                 if (Arrays.stream(expected).allMatch(screen::contains)) {
                     return;
                 }
-                Thread.sleep(20);
+                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
             }
         }
     }
@@ -1385,6 +1453,73 @@ class WorkChatDialogueTest {
                                                                             "fix-relay left the time for a revision; the proposal no longer applies."),
                                                         out.toString()));
             }
+        }
+
+        @Test
+        @DisplayName("ended epic accept resolves project via epic endpoint and handles reject-only help and new")
+        void endedEpicAndRejectOnlyBranches() throws Exception {
+            var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var project = "proj-" + Generators.letterStrings(4, 6).next().toLowerCase();
+            var refusedChat = archiveProposalChat(epic, "refused", true);
+            var openArchiveChat = archiveProposalChat(epic, "open", false);
+            var acceptedArchiveChat = archiveProposalChat(epic, "accepted", false);
+            var plan = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/epics/" + epic + "/chat")) {
+                    response.json(200, "POST".equals(request.method()) ? openArchiveChat : refusedChat);
+                } else if (path.equals("/api/v1/epics/" + epic + "/chat/proposal/accept")) {
+                    response.json(200, acceptedArchiveChat);
+                } else if (path.equals("/api/v1/epics/" + epic)) {
+                    response.json(200, "{\"epic_id\":\"" + epic + "\",\"project_id\":\"" + project
+                                        + "\",\"display_name\":\"" + project + "\",\"state\":\"running\","
+                                        + "\"auto_start\":true,\"overlap_max_files\":0,\"scope\":2,"
+                                        + "\"running\":0,\"workstreams\":[]}");
+                } else if ("/api/v1/projects".equals(path)) {
+                    response.json(200, "{\"projects\":[{\"project_id\":\"" + project
+                                        + "\",\"state\":\"ready\",\"favourite\":false}],\"favourites\":[]}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=1")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"other\","
+                                        + "\"kind\":\"plan\",\"title\":\"other\",\"outcome\":\"done\","
+                                        + "\"ended_at\":\"2026-10-16T08:00:00Z\"}],\"has_older\":true}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=2")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"" + plan
+                                        + "\",\"kind\":\"plan\",\"title\":\"" + plan + "\",\"outcome\":\"cancelled\","
+                                        + "\"ended_at\":\"2026-10-16T09:00:00Z\"}],\"has_older\":false}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "epic", epic, true, false);
+            var client = new WorkActionsClient(context);
+            var pagedProject = client.endedProject("plan", plan);
+            var rendered = new StringWriter();
+            WorkChatDialogue.render(context, new PrintWriter(rendered),
+                                ChatResource.fromJson(openArchiveChat));
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "A new plan is being started in " + project + " with this description"),
+                                                    out.toString()),
+                                () -> assertEquals(project, pagedProject),
+                                () -> assertTrue(rendered.toString().contains("Proposed follow-up plan"),
+                                                    rendered.toString()));
+        }
+
+        private static String archiveProposalChat(String epic, String state, boolean withFinding) {
+            var finding = withFinding
+                                ? ",\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"no\"}}"
+                                : "";
+            return "{\"id\":\"C-1\",\"subject\":{\"kind\":\"epic\",\"id\":\"" + epic
+                                + "\"},\"role\":{\"name\":\"plan-orchestrator\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\","
+                                + "\"kind\":\"follow_up\",\"summary\":\"Next\",\"applies\":{\"key\":\"chat.applies.on_start\","
+                                + "\"args\":{\"kind\":\"plan\",\"subject\":\"next\"}},\"before\":\"a\",\"after\":\"b\","
+                                + "\"state\":\"" + state + "\"" + finding + "}}";
         }
     }
 }

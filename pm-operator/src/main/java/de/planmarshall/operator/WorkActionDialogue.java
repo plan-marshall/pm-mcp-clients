@@ -170,7 +170,7 @@ final class WorkActionDialogue {
             case "pause" -> pause(actions);
             case "start" -> start();
             case ACTION_CANCEL, ACTION_ABANDON -> EPIC.equals(kind) ? endEpic() : end(action, actions);
-            case "chat" -> chat(epic);
+            case "chat" -> chat();
             case "settings" -> settings();
             case "next" -> next(epic);
             case "auto" -> auto(epic);
@@ -339,7 +339,7 @@ final class WorkActionDialogue {
     }
 
 
-    private int chat(@Nullable EpicResource epic) throws IOException {
+    private int chat() throws IOException {
         return WorkChatDialogue.run(context, out, kind, id, false, !prompt.asks());
     }
 
