@@ -31,7 +31,7 @@ How the texts of the web app and the command-line binaries are written, kept, an
 |the instructions of the units and roles, which stay in English
 |===
 
-The few texts of `pm-mcp` (the relay's errors, which the harness and its model read) follow the interface language like those of `pm-operator` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]); their keys live in the area `relay`.
+The few texts of `pm-mcp` (the relay's errors, which the harness and its model read) follow the interface language like those of `pm-operator` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]); they are the relay's own texts, not a pack of this catalogue.
 
 A question a model asks the operator is in the model language; the frame around it (buttons, what it blocks, the recommendation label) is in the interface language.
 
@@ -110,7 +110,7 @@ A word not in the glossary is translated. A new domain word is added here before
 == Keys and Packs
 
 * *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in. Four families are exempt, because both clients read them everywhere and none belongs to one view: `state.<kind>.<value>`, the display word of a server value; `unit.<id>`, a workflow unit's plain name (<<titles>>); and `phase.name.<phase>` and `role.name.<role>`, the word of a phase and of a role (<<phases>>). They live in `common`, their leading parts name a kind and a value rather than a view, a display word carries no argument because it is a tag, and a unit id with no dot of its own keeps the two-part key (`unit.epic`). The packs are the source of the texts (ADR link:../../adr/002-tests-read-no-documentation.adoc[002 Tests Read No Documentation]): a design text section keeps its anchor and names and links its en/de files instead of restating the rows, a key the design names that no pack carries yet lives in that section's "Texts to add" table until the plan that implements it adds the key, and no test reads a design document.
-* *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
+* *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` at start and every other area when it first opens a view of it. The list below names the areas the design's sections name:
 ** `common`: texts every view uses, among them the texts of the consent states (link:consents.adoc#texts[Consents, Texts]) and of a setting changed meanwhile (link:work-actions-texts.adoc#texts-conflict[Changed Meanwhile]);
 ** `error`: the texts of every error code of the local API, a title, a cause and a fix per code, and the unknown fallback both clients show for a code they do not know;
 ** `onboarding`: the onboarding of the machine and its later changes in the machine settings (`onboard.settings.*`, link:../terminal-client/23-texts-settings.adoc#texts-settings[Terminal Client, Texts: Machine Settings]);
@@ -126,8 +126,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `reports`: the reports to the operator and a plan's completion report (link:reports.adoc#texts[Reports], link:completion-report.adoc#texts[Completion Report]);
 ** `system`: the system view, the acts on the runtime, and the cleanup (link:system-texts.adoc#texts[System, Texts], link:cleanup-texts.adoc#texts[Cleanup, Texts]);
 ** `designer`: the process designer, loaded by the web app only (link:../web-app/process-designer-texts.adoc#texts[Process Designer, Texts]);
-** `operator`: the verbs of `pm-operator`;
-** `relay`: `pm-mcp`.
+** `operator`: the verbs of `pm-operator`.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural` with `one`, `other`, exact `=n` cases and `#`, `select` with `other`), which `pm-api` evaluates itself; no formatting library is used. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then — except a variant that gives the state a point the chip cannot carry (`overview.state.pausing` names the task or the phase it stops after); that one stays an area key beside the shared word. A value has one word in each language: _held_ is "aufgehalten" in German wherever it stands, a state or a reason.
 * *One key per concept*, in both clients (link:../web-app/components-tags.adoc#tag-words[Web App, Tags and Kinds, One Word per Value]); a second key for one of these is merged into the one named here and removed, in English and in German alike:
