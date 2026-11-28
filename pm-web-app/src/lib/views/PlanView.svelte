@@ -767,7 +767,12 @@
     const gen = ++processLoadGeneration;
     // A revision event that arrives while this read is in flight is newer than its answer.
     const queuedEventsAtStart = queuedRevisionEvent;
-    if (initial) isLoading = true;
+    if (initial) {
+      isLoading = true;
+      // Every initial read owes the expansion and the addressed node, including the read of
+      // another plan the view opens in place: a superseding read must still honour it.
+      initialReadPending = true;
+    }
     errorCode = null;
     try {
       const res = await apiClient.getPlanProcess(currentId);

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { get } from 'svelte/store';
+import { tick } from 'svelte';
 import NodeNarrative from './NodeNarrative.svelte';
 import type { ProcessNode, ProcessTree } from '../api/client';
 import { runtimeStore } from '../stores/runtime';
@@ -293,6 +294,30 @@ describe('NodeNarrative component', () => {
       expect(href.pathname).toBe('/plans/session-log');
       expect(href.searchParams.get('tab')).toBe('intent');
       expect(href.searchParams.has('node')).toBe(false);
+    });
+
+    it('drops a key from its href once the address drops it', async () => {
+      runtimeStore.update((s) => ({ ...s, openObject: { kind: 'decision', id: 'Q-031' } }));
+      render(NodeNarrative, {
+        props: {
+          node: { ...donePhase, node_id: 'refine', title: 'refine' },
+          plan,
+          onSelectTask: vi.fn(),
+          onSelectNode: vi.fn(),
+        },
+      });
+      const hrefOf = () =>
+        new URL(
+          screen.getByTestId('node-intent-link').getAttribute('href') ?? '',
+          'http://app.invalid',
+        );
+      expect(hrefOf().searchParams.get('open')).toBe('decision:Q-031');
+
+      runtimeStore.update((s) => ({ ...s, openObject: null }));
+      await tick();
+
+      expect(hrefOf().searchParams.has('open')).toBe(false);
+      expect(hrefOf().searchParams.get('tab')).toBe('intent');
     });
 
     it.each(['init', 'plan', 'execute', 'finalize', 'execute.session-log'])(

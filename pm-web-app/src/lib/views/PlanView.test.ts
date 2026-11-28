@@ -1802,6 +1802,45 @@ describe('PlanView’s Changes tab', () => {
       expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true');
     });
 
+    it('applies the node of the address when an event supersedes the initial read of another plan', async () => {
+      let onEvent: ((event: string, data?: unknown) => void) | undefined;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+        onEvent = callback;
+        return () => {};
+      });
+      const nextPlan: ProcessTree = { ...capturedPlan, plan_id: 'next-plan' };
+      let releaseSecond: (tree: ProcessTree) => void = () => {};
+      const getPlanProcess = vi
+        .spyOn(apiClient, 'getPlanProcess')
+        .mockResolvedValueOnce(capturedPlan)
+        .mockImplementationOnce(
+          () =>
+            new Promise<ProcessTree>((resolve) => {
+              releaseSecond = resolve;
+            }),
+        )
+        .mockResolvedValue(nextPlan);
+
+      render(PlanView);
+      await screen.findByTestId('plan-title');
+      // The view stays mounted and opens another plan in place, whose address names a node.
+      window.history.replaceState({}, '', '/plans/next-plan?node=execute');
+      runtimeStore.update((state) => ({
+        ...state,
+        selectedPlanId: 'next-plan',
+        phaseNode: 'execute',
+      }));
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(2));
+      // An event starts a newer read while the other plan's initial read is in flight.
+      onEvent?.('activity.changed');
+      await waitFor(() => expect(getPlanProcess).toHaveBeenCalledTimes(3));
+      releaseSecond(nextPlan);
+
+      await waitFor(() =>
+        expect(screen.getByTestId('select-node-execute')).toHaveAttribute('aria-current', 'true'),
+      );
+    });
+
     it('drops node= on Intent and Changes and writes it back on Process', async () => {
       render(PlanView);
       await screen.findByTestId('plan-title');

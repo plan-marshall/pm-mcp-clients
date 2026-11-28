@@ -14,8 +14,8 @@
   import Link from './Link.svelte';
   import WorkflowIcon from './WorkflowIcon.svelte';
   import { formatAddress } from '../routes';
-  import { currentAddress, switchTab } from '../navigation/history';
-  import { selectObjectTab } from '../stores/runtime';
+  import { switchTab } from '../navigation/history';
+  import { addressOfState, runtimeStore, selectObjectTab } from '../stores/runtime';
 
   interface Props {
     node: ProcessNode;
@@ -50,12 +50,20 @@
 
   /**
    * The address of the plan's Intent tab: the open address with the tab switched, which drops
-   * `node=`; the plan's own address with that tab when the bar names no address of the app.
+   * `node=`; the plan's own address with that tab when the store names no plan address.
+   *
+   * It derives from the store — the same state the layout writes the address from — so a key the
+   * address drops later (a closed in-place object's `open=`) leaves the href as well.
    */
   let intentHref = $derived(
     INTENT_NODES.has(node.node_id)
       ? (formatAddress(
-          switchTab(currentAddress() ?? { route: 'plan', planId: plan.plan_id }, 'intent'),
+          switchTab(
+            $runtimeStore.currentRoute === 'plan'
+              ? addressOfState($runtimeStore)
+              : { route: 'plan', planId: plan.plan_id },
+            'intent',
+          ),
         ) ?? '')
       : '',
   );
