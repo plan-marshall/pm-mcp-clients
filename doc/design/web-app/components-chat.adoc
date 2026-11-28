@@ -73,14 +73,14 @@ Source and surface: `pm-web-app/src/lib/components/ChatStatusCard.svelte` (new),
 
 _New._ Renders a role's reply as the subset of link:chat.adoc#markdown[Chat and Voice, The Role's Text]. It splits the text into tokens with the lexer of `marked` and creates one Svelte element per token of the subset, its text always a text node; it holds no HTML string and uses no `{@html}`, `innerHTML` or other raw sink, so it needs no sanitizer.
 
-* *Subset*: paragraph, emphasis, strong, inline code, block quote, list, table (sideways scroll), code block (mono, language label, _Copy_, no colours), link, reference; a fenced Mermaid block goes to the app's diagram renderer, as every Mermaid block of a model's text.
+* *Subset*: paragraph, emphasis, strong, inline code, block quote, list, table (sideways scroll), code block (mono, language label, _Copy_, no colours), link, reference; a fenced Mermaid block renders as a fenced code block labelled `mermaid` behind one function ready for the future Mermaid renderer.
 * *Outside the subset*: an `html` token and every other token are rendered as their source text.
 * *Links*: only `http` and `https`, through `ExternalLink`; any other scheme (`javascript:`, `data:`, `file:`) is shown as text. An image is a link to its address and is never loaded.
 * *References*: a task id, a file with its line, a decision or a plan the turn's `refs` name becomes a reference chip — a `Link` in the chip look of `PrChip`, never a copy `Chip`, opening its target in the object column beside the chat; a decision, a hold and an act also get a `ChatStatusCard` under the turn.
 * *While streaming*: it renders the text so far; an unfinished block shows as its text until it completes.
 * *Never* given the operator's text, an untrusted turn or a notice.
 
-Source and surface: `pm-web-app/src/lib/components/ChatMarkdown.svelte` (new), tests in `ChatMarkdown.test.ts` with fixtures of hostile input (a `javascript:` link, a raw `<script>`, nested HTML, an image, an over-long table); the prop is `text` with `refs`. The lint of the web build fails on `{@html}` in it.
+Source and surface: `pm-web-app/src/lib/components/ChatMarkdown.svelte` (new), tests in `ChatMarkdown.test.ts` with fixtures of hostile input (a `javascript:` link, a raw `<script>`, nested HTML, an image, an over-long table); the prop is `text` with `refs`. A Vitest source-scan test fails on `{@html` in `ChatMarkdown.svelte`.
 
 [#voice-input]
 == VoiceInput

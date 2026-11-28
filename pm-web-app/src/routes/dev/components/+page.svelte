@@ -45,6 +45,7 @@
   import EpicIntentPanel from '../../../lib/components/EpicIntentPanel.svelte';
   import { refreshesIntentView } from '../../../lib/components/intentEvents';
   import ColumnEngineFixture from '../../../lib/dev/ColumnEngineFixture.svelte';
+  import ChatFixture from '../../../lib/dev/ChatFixture.svelte';
   import DemoFormFixture from '../../../lib/dev/DemoFormFixture.svelte';
   import EscapingKeyForm from '../../../lib/dev/EscapingKeyForm.svelte';
   import TextField from '../../../lib/components/TextField.svelte';
@@ -978,6 +979,12 @@
           <EscapingKeyForm />
         </Card>
 
+      </div>
+
+      <div class="dev__stack" data-testid="chat-fixture">
+        <Card title={$t('control.chat.title', { subject: 'fix-relay', role: 'planner' })}>
+          <ChatFixture />
+        </Card>
       </div>
 
       <div class="dev__stack">

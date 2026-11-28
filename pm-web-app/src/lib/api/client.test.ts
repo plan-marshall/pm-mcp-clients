@@ -1343,6 +1343,83 @@ describe('ApiClient', () => {
       offHealthy();
     });
 
+    it('keeps live path streams open past connect timeout and isolates shared path listener errors on abort', async () => {
+      vi.useFakeTimers();
+      let signalRef: AbortSignal | undefined;
+      let streamClosed = false;
+      globalThis.fetch = vi.fn((_url, init?: RequestInit) => {
+        signalRef = init?.signal ?? undefined;
+        const body = new ReadableStream<Uint8Array>({
+          start() {},
+          cancel() {
+            streamClosed = true;
+          },
+        });
+        return Promise.resolve({ ok: true, status: 200, body } as Response);
+      }) as unknown as typeof fetch;
+
+      const states: string[] = [];
+      const offPath = client.subscribePathEvents('/api/v1/plans/p-1/events', () => {}, undefined, (s) =>
+        states.push(s),
+      );
+      await vi.advanceTimersByTimeAsync(25_000);
+      expect(signalRef?.aborted).toBe(false);
+      expect(streamClosed).toBe(false);
+      expect(states).toContain('connected');
+      offPath();
+
+      // Shared /api/v1/events state listeners isolate errors, support duplicate callbacks, and clean up on abort.
+      let resolveFetch!: (res: Response) => void;
+      let sharedSignalRef: AbortSignal | undefined;
+      globalThis.fetch = vi.fn((_url, init?: RequestInit) => {
+        sharedSignalRef = init?.signal ?? undefined;
+        return new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        });
+      }) as unknown as typeof fetch;
+
+      const runtimeStates: string[] = [];
+      client.setOnStreamState((s) => runtimeStates.push(s));
+      let shouldThrow = false;
+      const brokenStates = vi.fn(() => {
+        if (shouldThrow) throw new Error('state boom');
+      });
+      const sharedEventCb = vi.fn();
+      const sharedStateCb = vi.fn();
+      const abortCtl = new AbortController();
+      const unsubBroken = client.subscribePathEvents(
+        '/api/v1/events',
+        sharedEventCb,
+        abortCtl.signal,
+        brokenStates,
+      );
+      const unsubOk = client.subscribePathEvents('/api/v1/events', sharedEventCb, undefined, sharedStateCb);
+
+      // An onRetry callback that aborts immediately during setup prevents lingering listener registration.
+      const abortDuringSetup = new AbortController();
+      client.subscribePathEvents('/api/v1/events', () => {}, abortDuringSetup.signal, undefined, () => {
+        abortDuringSetup.abort();
+      });
+
+      shouldThrow = true;
+      resolveFetch({
+        ok: true,
+        status: 200,
+        body: new ReadableStream<Uint8Array>({ start() {} }),
+      } as Response);
+      await vi.waitFor(() => expect(sharedStateCb).toHaveBeenCalledWith('connected'));
+      expect(brokenStates).toHaveBeenCalledWith('connected');
+
+      abortCtl.abort();
+      brokenStates.mockClear();
+      unsubOk();
+      expect(sharedSignalRef?.aborted).toBe(true);
+      expect(runtimeStates.at(-1)).toBe('offline');
+      expect(brokenStates).not.toHaveBeenCalled();
+      unsubBroken();
+      vi.useRealTimers();
+    });
+
     it('reads the activity of one task from its own route and stops on unsubscribe', async () => {
       // Arrange
       const fetchMock = vi.fn().mockResolvedValue({
