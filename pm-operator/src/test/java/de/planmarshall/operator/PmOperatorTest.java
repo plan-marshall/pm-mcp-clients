@@ -226,7 +226,7 @@ class PmOperatorTest {
 
         @Test
         @DisplayName("--help lists every registered verb and none of the folded ones")
-        void helpListsTheDesignVerbs() {
+        void helpListsEveryRegisteredVerb() {
             assertEquals(0, run("--help"));
 
             var help = out.toString();

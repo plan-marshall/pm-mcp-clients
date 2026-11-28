@@ -593,7 +593,8 @@ pm ›
 [#overview-texts]
 == Texts of the Terminal
 
-The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]; the terminal adds these, of the area `operator`.
+The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]; the terminal adds the
+texts of the area `operator`.
 
 The texts are in the packs
 link:../../../pm-api/src/main/resources/messages/operator.en.properties[`operator.en.properties`] and

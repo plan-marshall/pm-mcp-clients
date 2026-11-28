@@ -23,9 +23,10 @@ import picocli.CommandLine.Command;
  * console's completer and its {@code help} text both read this list, so a verb is added or removed
  * in one place and nowhere else.
  * <p>
- * The design's command tree ({@code doc/design/terminal-client/01-commands.adoc}) stays the
- * contract: the test compares this list with the verbs the design declares, so a verb registered
- * here without the design fails, and the console's {@code help} names every verb registered here.
+ * The design's command tree ({@code doc/design/terminal-client/01-commands.adoc}) documents the
+ * verbs; the test keeps its own literal set of the 24 registered ones (ADR 002), so no test reads
+ * that document. A verb registered here without a place in the design is a documentation gap, not
+ * a test failure.
  */
 final class OperatorVerbs {
 
