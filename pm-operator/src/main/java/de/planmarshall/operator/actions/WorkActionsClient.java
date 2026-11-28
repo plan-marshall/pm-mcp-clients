@@ -36,6 +36,9 @@ import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.EndedWorkPage;
+import de.planmarshall.api.process.ProcessTree;
+import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -592,6 +595,63 @@ public final class WorkActionsClient {
      */
     private static ChatRoutes chatRoutes(String kind, String id) {
         return "epic".equals(kind) ? ChatRoutes.epic(id) : ChatRoutes.plan(id);
+    }
+
+    /**
+     * Looks up a plan's current composition instance version, or {@code null} when unavailable.
+     *
+     * @param planId the plan id
+     * @return the instance version, or {@code null} when the plan read does not answer with one
+     */
+    public @Nullable Integer planVersion(String planId) {
+        try {
+            var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId)));
+            if (response.status() == 200) {
+                return ProcessTree.fromJson(response.bodyText()).instanceVersion();
+            }
+        } catch (IOException _) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the project of an ended subject from the explorer and each project's ended-work list,
+     * returning {@code null} when unavailable.
+     *
+     * @param kind      {@code plan} or {@code epic}
+     * @param subjectId the ended subject id
+     * @return the owning project id, or {@code null} when not found
+     */
+    public @Nullable String endedProject(String kind, String subjectId) {
+        if ("epic".equals(kind)) {
+            try {
+                return epic(subjectId).projectId();
+            } catch (IOException _) {
+                // Fall back to ended-work scan below when the live epic resource is gone.
+            }
+        }
+        try {
+            var projectsResp = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
+            if (projectsResp.status() != 200) {
+                return null;
+            }
+            var projects = ProjectExplorer.fromJson(projectsResp.bodyText()).allProjects();
+            for (var project : projects) {
+                var endedResp = context.runtime(true).send(HttpRequest.get(
+                                    "/api/v1/projects/" + path(project.projectId()) + "/ended?page=1"));
+                if (endedResp.status() != 200) {
+                    continue;
+                }
+                var page = EndedWorkPage.fromJson(endedResp.bodyText());
+                if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
+                    return project.projectId();
+                }
+            }
+        } catch (IOException _) {
+            return null;
+        }
+        return null;
     }
 
     /**

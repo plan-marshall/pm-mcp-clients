@@ -448,7 +448,7 @@ class ControlDialoguesTest {
         // The accept reaches the runtime, which opens the start; the terminal says so once.
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
         assertTrue(out.toString().contains("read only"), out.toString());
-        assertTrue(out.toString().contains("A new plan is being started with this description"),
+        assertTrue(out.toString().contains("A new plan is being started in docs-typo with this description; go on with its sources."),
                             out.toString());
     }
 

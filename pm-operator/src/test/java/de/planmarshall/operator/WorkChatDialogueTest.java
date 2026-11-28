@@ -998,4 +998,388 @@ class WorkChatDialogueTest {
             }
         }
     }
+
+    @Nested
+    @DisplayName("D4 proposal refusals, overtaken proposals, applied notice, and ended work")
+    @EnableGeneratorController
+    class ProposalRefusalsAndEndedWork {
+
+        @Test
+        @DisplayName("refused proposal prints its finding and offers r) reject only")
+        void refusedProposalOffersRejectOnlyAndPrintsFinding() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var acceptCalled = new AtomicBoolean();
+            var rejectCalled = new AtomicBoolean();
+            var refusedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"refused\","
+                                + "\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"boundary check failed\"}}}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejectCalled.get() ? rejectedChat : refusedChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    acceptCalled.set(true);
+                    response.json(200, refusedChat);
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejectCalled.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertFalse(acceptCalled.get(), "REFUSED proposal must not allow Enter accept"),
+                                () -> assertTrue(rejectCalled.get(), "REFUSED proposal must allow r) reject"),
+                                () -> assertTrue(out.toString().contains("not applied: boundary check failed"), out.toString()),
+                                () -> assertTrue(out.toString().contains("r) reject"), out.toString()),
+                                () -> assertFalse(out.toString().contains("[Enter] accept"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("lapsed proposal prints control.chat.lapsed in place of Accept? and continues to turn prompt")
+        void lapsedProposalPrintsLapsedReplacingAccept() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var lapsedCalled = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var lapsedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"lapsed\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, lapsedCalled.get() ? lapsedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    lapsedCalled.set(true);
+                    response.json(200, lapsedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(lapsedCalled.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                    subject + " left the time for a revision; the proposal no longer applies."),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("changed_since conflict prints versioned finding and drops to r) reject only")
+        void changedSinceConflictPrintsFindingAndOffersRejectOnly() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(2, 9).next();
+            var acceptCount = new AtomicInteger();
+            var rejected = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":["
+                                + "{\"key\":\"chat.knows.version\",\"args\":{\"version\":" + version + "}}],"
+                                + "\"as_of\":\"2026-10-16T10:00:00Z\"},\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejected.get() ? rejectedChat : openChat);
+                } else if (path.equals("/api/v1/plans/" + subject)) {
+                    response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
+                                        + ",\"root_groups\":[],\"phases\":[]}");
+                } else if (path.endsWith("/proposal/accept")) {
+                    acceptCount.incrementAndGet();
+                    response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.changed_since\"}");
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(1, acceptCount.get(),
+                                                    "Enter after changed_since must not retry accept"),
+                                () -> assertTrue(rejected.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                    "not applied: " + subject + " changed since (version " + version + ")"),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("r) reject"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("already_queued prints finding, re-offers Accept?, and succeeds when queued revision clears unapplied")
+        void alreadyQueuedClearedUnappliedReoffersAcceptAndSucceeds() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var acceptAttempts = new AtomicInteger();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var acceptedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"state\":\"accepted\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, acceptAttempts.get() > 1 ? acceptedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    if (acceptAttempts.incrementAndGet() == 1) {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.already_queued\"}");
+                    } else {
+                        response.json(200, acceptedChat);
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(2, acceptAttempts.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                    "not applied: a revision of " + subject + " is already queued"),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("accepted: applies after the current task"),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("already_queued followed by queued revision applying transitions to changed_since and reject only")
+        void alreadyQueuedAppliedTransitionsToChangedSince() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(3, 8).next();
+            var acceptAttempts = new AtomicInteger();
+            var rejected = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejected.get() ? rejectedChat : openChat);
+                } else if (path.equals("/api/v1/plans/" + subject)) {
+                    response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
+                                        + ",\"root_groups\":[],\"phases\":[]}");
+                } else if (path.endsWith("/proposal/accept")) {
+                    if (acceptAttempts.incrementAndGet() == 1) {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.already_queued\"}");
+                    } else {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.changed_since\"}");
+                    }
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(2, acceptAttempts.get()),
+                                () -> assertTrue(rejected.get()),
+                                () -> assertTrue(out.toString().contains("is already queued"), out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                    "not applied: " + subject + " changed since (version " + version + ")"),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("accepted revision applied later prints applied notice with new plan version")
+        void acceptedProposalAppliedPrintsAppliedMessage() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(2, 9).next();
+            var turnPosted = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var acceptedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"state\":\"accepted\"}}";
+            var appliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[{\"key\":\"chat.knows.version\",\"args\":{\"version\":" + version + "}}],"
+                                + "\"as_of\":\"2026-10-16T10:00:02Z\"},"
+                                + "\"turns\":[{\"turn_id\":\"T-4\",\"kind\":\"message\",\"author\":\"operator\","
+                                + "\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\"ok\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:02Z\"},"
+                                + "{\"turn_id\":\"T-5\",\"kind\":\"message\",\"author\":\"replan\","
+                                + "\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\"noted\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:03Z\"}],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"applied\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, turnPosted.get() ? appliedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    response.json(200, acceptedChat);
+                } else if (path.endsWith("/chat/turns")) {
+                    turnPosted.set(true);
+                    response.json(202, "{\"turn_id\":\"T-4\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nok\n\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains("accepted: applied"), out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                    subject + " changed; the plan's version becomes " + version),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("ended work accept prints control.chat.follow_up.opened with resolved project and leaves without ending chat")
+        void endedWorkAcceptPrintsFollowUpOpenedAndLeavesWithoutEnding() throws Exception {
+            var project = "proj-" + Generators.letterStrings(4, 7).next().toLowerCase();
+            var subject = "ended-" + Generators.letterStrings(4, 7).next().toLowerCase();
+            var endedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"follow_up\","
+                                + "\"summary\":\"Follow-up plan\",\"after\":\"Next try\",\"state\":\"open\"}}";
+            var appliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"follow_up\","
+                                + "\"summary\":\"Follow-up plan\",\"after\":\"Next try\",\"state\":\"applied\"}}";
+            var server = fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, endedChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    response.json(200, appliedChat);
+                } else if (path.equals("/api/v1/projects")) {
+                    response.json(200, "{\"projects\":[{\"project_id\":\"" + project + "\","
+                                        + "\"state\":\"ready\",\"favourite\":false}],\"favourites\":[]}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=1")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"" + subject
+                                        + "\",\"kind\":\"plan\",\"title\":\"" + subject
+                                        + "\",\"outcome\":\"cancelled\",\"ended_at\":\"2026-10-16T09:00:00Z\"}],"
+                                        + "\"has_older\":false}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, true, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                    "A new plan is being started in " + project + " with this description; go on with its sources."),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
+                                                    out.toString()),
+                                () -> assertTrue(server.requests().stream().noneMatch(
+                                                    req -> req.target().endsWith("/chat/end")),
+                                                    server.requests().toString()));
+        }
+
+        @Test
+        @DisplayName("plan in sanity-check on MockRuntime is outside revision window and lapses on accept")
+        void sanityCheckOutsideRevisionWindowLapsesOnMockRuntime() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var env = new HashMap<>(runtime.environment());
+                env.put("LANG", "en_US.UTF-8");
+                var self = ProcessHandle.current();
+                Files.writeString(runtime.paths().runtimeRecord(),
+                                    "{\"pid\":" + self.pid() + ",\"start_instant\":\""
+                                                        + self.info().startInstant().orElseThrow() + "\"}");
+                var mockContext = new OperatorContext(env, Files.createTempDirectory("pm-wd4-mock"), true,
+                                    ClientEnvironment.capture(env), virtual::terminal, null);
+                var broadcast = mockContext.runtime(true).send(de.planmarshall.api.http.HttpRequest.json(
+                                    "POST", "/mock/broadcast",
+                                    "{\"event\":\"phase.changed\",\"data\":{\"plan_id\":\"fix-relay\",\"new_phase\":\"sanity-check\"}}"));
+                assertEquals(200, broadcast.status(), broadcast.bodyText());
+                var out = new StringWriter();
+                virtual.type("q\n");
+                int exitCode = WorkChatDialogue.run(mockContext, new PrintWriter(out),
+                                    "plan", "fix-relay", false, false);
+
+                assertAll(
+                                    () -> assertEquals(0, exitCode, out.toString()),
+                                    () -> assertFalse(out.toString().contains("[Enter] accept"), out.toString()),
+                                    () -> assertTrue(out.toString().contains(
+                                                        "fix-relay left the time for a revision; the proposal no longer applies."),
+                                                        out.toString()));
+            }
+        }
+    }
 }

@@ -139,7 +139,7 @@ class ActionSupportTest {
         var code = ActionSupport.chat(activeContext, spec, "plan", "p-1", false);
         assertEquals(0, code, "the chat leaves back with 0");
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
-        assertTrue(out.toString().contains("A new plan is being started with this description"),
+        assertTrue(out.toString().contains("A new plan is being started in p-1 with this description; go on with its sources."),
                             out.toString());
     }
 
@@ -196,6 +196,8 @@ class ActionSupportTest {
         var code = OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1");
         assertEquals(0, code, "the ended work chat leaves back with 0");
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
+        assertTrue(out.toString().contains("A new plan is being started in p-1 with this description; go on with its sources."),
+                            out.toString());
     }
 
     @Test
