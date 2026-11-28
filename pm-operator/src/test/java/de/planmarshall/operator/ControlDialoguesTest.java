@@ -389,7 +389,7 @@ class ControlDialoguesTest {
         var answered = new AtomicBoolean();
         serve((request, response) -> {
             var path = request.target();
-            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+            if (path.endsWith("/chat") && ("GET".equals(request.method()) || "POST".equals(request.method()))) {
                 response.json(200, answered.get() ? CHAT_ANSWERED : CHAT);
             } else if (path.endsWith("/chat/turns")) {
                 answered.set(true);
@@ -398,10 +398,10 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("Add SSE\n\n");
-        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        virtual.type("Add SSE\n\nq\n");
+        assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
         assertTrue(out.toString().contains("Yes, I propose a second test."), out.toString());
-        assertTrue(out.toString().contains("The chat is kept with p"), out.toString());
+        assertTrue(out.toString().contains("Left the chat; it stays with p."), out.toString());
     }
 
     @Test
@@ -418,14 +418,14 @@ class ControlDialoguesTest {
             }
         });
         virtual.type("\n\n");
-        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
         var text = out.toString();
         assertTrue(text.contains("Proposed change"), text);
         assertTrue(text.contains("websocket and SSE"), text);
         // The point the proposal applies at is read from its runtime key, not printed as one.
         assertTrue(text.contains("applies after the current task"), text);
         assertFalse(text.contains("chat.applies."), text);
-        assertTrue(text.contains("The chat is kept with p"), text);
+        assertTrue(text.contains("Left the chat; it stays with p."), text);
     }
 
     @Test
@@ -444,11 +444,11 @@ class ControlDialoguesTest {
             }
         });
         virtual.type("\n");
-        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false));
+        assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "docs-typo", true, false));
         // The accept reaches the runtime, which opens the start; the terminal says so once.
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
         assertTrue(out.toString().contains("read only"), out.toString());
-        assertTrue(out.toString().contains("A new plan is being started with this description"),
+        assertTrue(out.toString().contains("A new plan is being started in docs-typo with this description; go on with its sources."),
                             out.toString());
     }
 
@@ -466,11 +466,11 @@ class ControlDialoguesTest {
             }
         });
         virtual.type("\n\n");
-        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
         var text = out.toString();
         // The read-back is drawn once, and the answered proposal is not offered a second time.
         assertEquals(1, times(text, "Proposed change"), text);
-        assertTrue(text.contains("The chat is kept with p"), text);
+        assertTrue(text.contains("Left the chat; it stays with p."), text);
     }
 
     @Test
@@ -1300,8 +1300,8 @@ class ControlDialoguesTest {
             }
         });
         virtual.type("r\n\n");
-        assertNull(WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
-        assertTrue(out.toString().contains("The chat is kept with p"), out.toString());
+        assertEquals(0, WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false));
+        assertTrue(out.toString().contains("Left the chat; it stays with p."), out.toString());
     }
 
     @Test

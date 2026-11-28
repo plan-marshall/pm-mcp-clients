@@ -183,7 +183,7 @@ class OverviewActionsMenuTest {
 
             run(entryFor(menu, "chat"));
 
-            assertFalse(callsContaining("GET /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
+            assertFalse(callsContaining("POST /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
             assertNull(app.buildScreen().menu(), "the entry closes the menu");
             assertEquals(TuiLevel.Kind.ENDED, app.stack().level().kind());
         }
@@ -196,7 +196,7 @@ class OverviewActionsMenuTest {
 
             run(entryFor(openMenu(), "chat"));
 
-            assertFalse(callsContaining("GET /api/v1/epics/" + epic + "/chat").isEmpty(), calls.toString());
+            assertFalse(callsContaining("POST /api/v1/epics/" + epic + "/chat").isEmpty(), calls.toString());
             assertEquals(List.of(), callsContaining("/api/v1/plans/"));
         }
 
@@ -213,7 +213,7 @@ class OverviewActionsMenuTest {
             assertEquals(1, menu.entries().size(), menu.entries().toString());
             assertEquals(List.of(), callsContaining("/actions"), "an ended plan has no actions to read");
             run(entryFor(menu, "chat"));
-            assertFalse(callsContaining("GET /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
+            assertFalse(callsContaining("POST /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
         }
     }
 
@@ -250,7 +250,7 @@ class OverviewActionsMenuTest {
         assertEquals(1, menu.entries().size(), menu.entries().toString());
         assertTrue(menu.entries().getFirst().label().contains(plan), menu.entries().toString());
         run(entryFor(menu, "chat"));
-        assertFalse(callsContaining("GET /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
+        assertFalse(callsContaining("POST /api/v1/plans/" + plan + "/chat").isEmpty(), calls.toString());
         assertEquals(TuiLevel.Kind.PLAN_COMPLETION, app.stack().level().kind());
     }
 

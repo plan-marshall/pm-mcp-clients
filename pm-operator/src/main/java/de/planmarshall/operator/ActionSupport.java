@@ -375,27 +375,15 @@ final class ActionSupport {
      * @param spec    the picocli command specification
      * @param kind    "plan" or "epic"
      * @param id      the work item ID
-     * @param message the chat message to send, or {@code null} to read the chat and run its dialogue
+     * @param noInput whether the verb may ask nothing
      * @return exit code
      * @throws IOException on network or runtime error
      */
     static int chat(OperatorContext context, CommandSpec spec, String kind, String id,
-                        @Nullable String message) throws IOException {
+                        boolean noInput) throws IOException {
         context.gate().verify();
         var out = spec.commandLine().getOut();
-        var client = new WorkActionsClient(context);
-        if (message != null && !message.isBlank()) {
-            out.println(client.chatTurn(kind, id, message).toJson());
-            out.flush();
-            return 0;
-        }
-
-        if (context.isConsoleActive()) {
-            WorkChatDialogue.run(context, out, kind, id, false, false);
-            return 0;
-        }
-        WorkChatDialogue.render(context, out, client.chat(kind, id));
-        return 0;
+        return WorkChatDialogue.run(context, out, kind, id, false, noInput);
     }
 
     /**

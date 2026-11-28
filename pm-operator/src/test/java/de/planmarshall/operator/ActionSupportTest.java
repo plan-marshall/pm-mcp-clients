@@ -103,7 +103,8 @@ class ActionSupportTest {
         var accepted = new AtomicBoolean();
         runtime((request, response) -> {
             var path = request.target();
-            if ("/api/v1/plans/p-1/chat".equals(path) && "GET".equals(request.method())) {
+            if ("/api/v1/plans/p-1/chat".equals(path)
+                                && ("POST".equals(request.method()) || "GET".equals(request.method()))) {
                 response.json(200, """
                                     {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
                                      "role":{"name":"replan","model":"sonnet"},"scope":"archive",
@@ -135,10 +136,10 @@ class ActionSupportTest {
         activeContext.setConsoleActive(true);
 
         virtual.type("\n");
-        var code = ActionSupport.chat(activeContext, spec, "plan", "p-1", null);
+        var code = ActionSupport.chat(activeContext, spec, "plan", "p-1", false);
         assertEquals(0, code, "the chat leaves back with 0");
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
-        assertTrue(out.toString().contains("A new plan is being started with this description"),
+        assertTrue(out.toString().contains("A new plan is being started in p-1 with this description; go on with its sources."),
                             out.toString());
     }
 
@@ -160,7 +161,8 @@ class ActionSupportTest {
         var accepted = new AtomicBoolean();
         runtime((request, response) -> {
             var path = request.target();
-            if ("/api/v1/plans/p-1/chat".equals(path) && "GET".equals(request.method())) {
+            if ("/api/v1/plans/p-1/chat".equals(path)
+                                && ("POST".equals(request.method()) || "GET".equals(request.method()))) {
                 response.json(200, """
                                     {"id":"c-1","subject":{"kind":"plan","id":"p-1"},
                                      "role":{"name":"replan","model":"sonnet"},"scope":"archive",
@@ -194,6 +196,8 @@ class ActionSupportTest {
         var code = OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1");
         assertEquals(0, code, "the ended work chat leaves back with 0");
         assertTrue(accepted.get(), "the follow-up proposal was not accepted on the runtime");
+        assertTrue(out.toString().contains("A new plan is being started in p-1 with this description; go on with its sources."),
+                            out.toString());
     }
 
     @Test
@@ -260,42 +264,21 @@ class ActionSupportTest {
     }
 
     @Test
-    @DisplayName("chat posts message when provided")
-    void chatPostMessage() throws Exception {
-        runtime((request, response) -> {
-            if ("/api/v1/plans/p-1/chat/turns".equals(request.target())) {
-                assertTrue(request.bodyText().contains("\"text\":\"hello plan\""), request.bodyText());
-                assertTrue(request.bodyText().contains("client_turn_id"), request.bodyText());
-                response.json(202, "{\"turn_id\":\"T-1\"}");
-            } else if ("/api/v1/plans/p-1/chat".equals(request.target())) {
-                response.json(200, """
-                                    {"id":"C-1","subject":{"kind":"plan","id":"p-1"},
-                                     "role":{"name":"replan","model":"sonnet"},"scope":"plan",
-                                     "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
-                                     "turns":[{"turn_id":"T-1","kind":"message","author":"operator",
-                                               "status":"complete","format":"plain","untrusted":false,
-                                               "text":"hello plan","steps":[],"refs":[],
-                                               "at":"2026-10-16T10:00:00Z"},
-                                              {"turn_id":"T-2","kind":"message","author":"replan",
-                                               "status":"complete","format":"markdown","untrusted":false,
-                                               "model":"sonnet","text":"delivered","steps":[],"refs":[],
-                                               "at":"2026-10-16T10:00:01Z"}]}
-                                    """);
-            } else {
-                response.send(404, null, "");
-            }
-        });
+    @DisplayName("chat with --no-input refuses before contacting the runtime")
+    void chatNoInputRefuses() throws Exception {
+        var server = runtime((request, response) -> response.send(500, null, ""));
 
-        var code = ActionSupport.chat(context, spec, "plan", "p-1", "hello plan");
-        assertEquals(0, code);
-        assertTrue(out.toString().contains("delivered"), out.toString());
+        var code = ActionSupport.chat(context, spec, "plan", "p-1", true);
+        assertEquals(StartDialogue.EXIT_MISSING_INPUT, code);
+        assertTrue(out.toString().contains("--no-input"), out.toString());
+        assertTrue(server.requests().isEmpty(), server.requests().toString());
     }
 
     @Test
-    @DisplayName("chat fetches history when message is null or blank")
-    void chatGetHistory() throws Exception {
+    @DisplayName("chat runs interactive dialogue even outside the console")
+    void chatRunsDialogueOutsideConsole() throws Exception {
         runtime((request, response) -> {
-            if ("/api/v1/epics/e-1/chat".equals(request.target()) && "GET".equals(request.method())) {
+            if ("/api/v1/epics/e-1/chat".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, """
                                     {"id":"C-1","subject":{"kind":"epic","id":"e-1"},
                                      "role":{"name":"decompose","model":"sonnet"},"scope":"epic",
@@ -313,8 +296,14 @@ class ActionSupportTest {
                 response.send(404, null, "");
             }
         });
+        var virtual = VirtualScreenTerminal.create(80, 24);
+        var env = new HashMap<>(fixture.environment());
+        env.put("LANG", "en_US.UTF-8");
+        var shellContext = new OperatorContext(env, fixture.base().getParent(), true,
+                            ClientEnvironment.capture(env), virtual::terminal, null);
+        virtual.type("\n");
 
-        var code = ActionSupport.chat(context, spec, "epic", "e-1", "   ");
+        var code = ActionSupport.chat(shellContext, spec, "epic", "e-1", false);
         assertEquals(0, code);
         assertTrue(out.toString().contains("hello from the epic"), out.toString());
     }
@@ -325,9 +314,7 @@ class ActionSupportTest {
         runtime((request, response) -> response.json(404, "{\"code\":\"not_found\"}"));
 
         assertThrows(OperatorRefusedException.class, () ->
-                            ActionSupport.chat(context, spec, "plan", "p-1", "hello"));
-        assertThrows(OperatorRefusedException.class, () ->
-                            ActionSupport.chat(context, spec, "plan", "p-1", null));
+                            ActionSupport.chat(context, spec, "plan", "p-1", false));
     }
 
     @Test

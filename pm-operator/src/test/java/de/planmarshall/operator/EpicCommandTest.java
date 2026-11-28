@@ -22,6 +22,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -662,6 +663,11 @@ class EpicCommandTest {
     @DisplayName("epic chat communicates with epic")
     void epicChat() throws Exception {
         var answered = new AtomicBoolean();
+        var emptyChat = """
+                            {"id":"C-2","subject":{"kind":"epic","id":"ep-001"},
+                             "role":{"name":"decompose","model":"sonnet"},"scope":"epic","state":"chat.turn",
+                             "context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},"turns":[]}
+                            """;
         var chat = """
                             {"id":"C-2","subject":{"kind":"epic","id":"ep-001"},
                              "role":{"name":"decompose","model":"sonnet"},"scope":"epic","state":"chat.turn",
@@ -679,14 +685,24 @@ class EpicCommandTest {
                 answered.set(true);
                 response.json(202, "{\"turn_id\":\"T-1\"}");
             } else if ("/api/v1/epics/ep-001/chat".equals(request.target())) {
-                response.json(200, chat);
+                response.json(200, "POST".equals(request.method()) ? emptyChat : chat);
             } else {
                 response.send(404, null, "");
             }
         });
+        var typed = "status please\n\n".getBytes(StandardCharsets.UTF_8);
+        var context = new OperatorContext(
+                            fixture.environment(),
+                            tempDir,
+                            true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(typed), new ByteArrayOutputStream()),
+                            null
+        );
 
-        int code = execute("epic", "chat", "ep-001", "--message", "status please");
-        assertEquals(0, code);
+        int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                            "epic", "chat", "ep-001");
+        assertEquals(0, code, err.toString());
         assertTrue(answered.get(), "the message was not sent as a chat turn");
         assertTrue(out.toString().contains("the epic runs two plans"), out.toString());
     }
@@ -781,6 +797,34 @@ class EpicCommandTest {
                                 () -> assertEquals(0, code, err.toString()),
                                 () -> assertTrue(body.contains("\"with_plans\":false"), body)
             );
+        }
+    }
+
+    @Nested
+    @DisplayName("epic chat (D1 wire contract)")
+    class EpicChatWire {
+
+        @Test
+        @DisplayName("epic chat rejects --message with exit code 2")
+        void rejectsMessageFlag() {
+            var epicId = Generators.letterStrings(5, 10).next().toLowerCase();
+            var msg = Generators.letterStrings(5, 10).next();
+
+            int code = execute("epic", "chat", epicId, "--message", msg);
+
+            assertEquals(2, code, err.toString());
+        }
+
+        @Test
+        @DisplayName("epic chat --no-input refuses with exit code 3 and operator.actions.chat.no_input")
+        void noInputRefuses() {
+            var epicId = Generators.letterStrings(5, 10).next().toLowerCase();
+
+            int code = execute("epic", "chat", epicId, "--no-input");
+
+            assertAll(
+                                () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, code, out + "\n" + err),
+                                () -> assertTrue(out.toString().contains("--no-input"), out.toString()));
         }
     }
 }

@@ -33,8 +33,12 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.EndedWorkPage;
+import de.planmarshall.api.process.ProcessTree;
+import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.operator.OperatorContext;
 import de.planmarshall.operator.OperatorRefusedException;
@@ -330,12 +334,72 @@ public final class WorkActionsClient {
     }
 
     /**
-     * Sends the operator's message on the chat's turns and follows the reply until its turn ends.
+     * Reads the chat after a turn or stream ended, falling back to {@code fallback} when a read
+     * fails after the turn was already recorded.
      *
-     * <p>The message carries the client's own {@code client_turn_id}, drawn once per message: the
-     * runtime records the turn and answers {@code 202 turn_id} before the role writes, and a repeat
-     * with the same id records nothing again. The reply is followed by its turn id and status, never
-     * by a count of turns, because the transcript is paged and the reply is written into it.
+     * @param kind     the subject kind
+     * @param id       the subject id
+     * @param fallback snapshot to keep when reading fails, or {@code null}
+     * @return the updated chat, or {@code fallback} if the read failed
+     */
+    public @Nullable ChatResource readChatQuietly(String kind, String id, @Nullable ChatResource fallback) {
+        try {
+            return chat(kind, id);
+        } catch (IOException _) {
+            return fallback;
+        }
+    }
+
+    /**
+     * Opens the subject's SSE event stream ({@code /api/v1/{plans|epics}/{id}/events}).
+     *
+     * @param kind the subject kind
+     * @param id   the subject id
+     * @return the open HTTP exchange
+     * @throws IOException on connection failure
+     */
+    public HttpExchange openEvents(String kind, String id) throws IOException {
+        return context.runtime(false).open(HttpRequest.get(prefix(kind) + path(id) + "/events"));
+    }
+
+    /**
+     * Opens or returns the chat for a plan or an epic ({@code POST …/chat}).
+     *
+     * @param kind the subject kind ({@code plan} or {@code epic})
+     * @param id   the subject id
+     * @return the chat, opened if it did not exist yet
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource openChat(String kind, String id) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.chat(), "{}"));
+        if (response.status() != 200 && response.status() != 201) {
+            throw new OperatorRefusedException(kind + CHAT, response);
+        }
+        return ChatResource.fromJson(response.bodyText());
+    }
+
+    /**
+     * Ends the open chat for a plan or an epic ({@code POST …/chat/end}).
+     *
+     * @param kind the subject kind ({@code plan} or {@code epic})
+     * @param id   the subject id
+     * @return the ended chat
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource endChat(String kind, String id) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.end(), "{}"));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException(kind + CHAT + " end", response);
+        }
+        return ChatResource.fromJson(response.bodyText());
+    }
+
+    /**
+     * Sends the operator's message on the chat's turns and follows the reply until its turn ends.
      *
      * @param kind    the subject kind
      * @param id      the subject id
@@ -344,16 +408,83 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ChatResource chatTurn(String kind, String id, String message) throws IOException {
+        return chatTurn(kind, id, message, UUID.randomUUID().toString());
+    }
+
+    /**
+     * Sends the operator's message with a caller-supplied {@code client_turn_id} so retries reuse
+     * the same id and the runtime deduplicates repeats.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @return the chat after the reply, or as it stands when the wait runs out
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource chatTurn(String kind, String id, String message, String clientTurnId)
+                        throws IOException {
+        return chatTurn(kind, id, message, clientTurnId, null);
+    }
+
+    /**
+     * Sends the operator's message with a caller-supplied {@code client_turn_id} and waits via
+     * polling, keeping {@code fallback} if a read fails after the turn was recorded.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @param fallback     last known chat snapshot before this turn, or {@code null}
+     * @return the chat after the reply, or the last snapshot when a read fails or wait runs out
+     * @throws IOException when posting the turn is refused or fails
+     */
+    public ChatResource chatTurn(String kind, String id, String message, String clientTurnId,
+                        @Nullable ChatResource fallback) throws IOException {
+        var accepted = postTurn(kind, id, message, clientTurnId);
+        return awaitReply(chatRoutes(kind, id), accepted.turnId(), kind, fallback);
+    }
+
+    /**
+     * Posts an operator chat turn ({@code POST …/chat/turns}) and returns the {@code 202} ack.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @return the recorded turn ack
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatTurnAccepted postTurn(String kind, String id, String message, String clientTurnId)
+                        throws IOException {
         context.gate().verifyAct();
         var routes = chatRoutes(kind, id);
-        var request = new ChatTurnRequest(message, UUID.randomUUID().toString());
+        var request = new ChatTurnRequest(message, clientTurnId);
         var response = context.runtime(true).send(
                             HttpRequest.json("POST", routes.turns(), JsonTree.write(request.toMap())));
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
             throw new OperatorRefusedException(kind + CHAT + " turn", response);
         }
-        var accepted = ChatTurnAccepted.fromJson(response.bodyText());
-        return awaitReply(routes, accepted.turnId(), kind);
+        return ChatTurnAccepted.fromJson(response.bodyText());
+    }
+
+    /**
+     * Requests stopping an in-progress role reply ({@code POST …/chat/turns/{turnId}/stop}).
+     *
+     * @param kind   the subject kind
+     * @param id     the subject id
+     * @param turnId the role's reply turn id
+     * @return the chat as the runtime left it
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource stopReply(String kind, String id, String turnId) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.stop(turnId), "{}"));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException(kind + CHAT + " stop", response);
+        }
+        return ChatResource.fromJson(response.bodyText());
     }
 
     /**
@@ -400,10 +531,18 @@ public final class WorkActionsClient {
      * @return the chat once the reply settled, or as it stands at the bound or on an interrupt
      * @throws IOException when the runtime refuses or cannot be reached
      */
-    private ChatResource awaitReply(ChatRoutes routes, String operatorTurnId, String kind)
-                        throws IOException {
+    private ChatResource awaitReply(ChatRoutes routes, String operatorTurnId, String kind,
+                        @Nullable ChatResource fallback) throws IOException {
         var bound = System.nanoTime() + CHAT_REPLY_BOUND.toNanos();
-        var chat = readChat(routes, kind + CHAT);
+        ChatResource chat;
+        try {
+            chat = readChat(routes, kind + CHAT);
+        } catch (IOException failure) {
+            if (fallback != null) {
+                return fallback;
+            }
+            throw failure;
+        }
         while (!replySettled(chat, operatorTurnId) && System.nanoTime() < bound) {
             if (Thread.currentThread().isInterrupted()) {
                 return chat;
@@ -414,7 +553,11 @@ public final class WorkActionsClient {
                 Thread.currentThread().interrupt();
                 return chat;
             }
-            chat = readChat(routes, kind + CHAT);
+            try {
+                chat = readChat(routes, kind + CHAT);
+            } catch (IOException _) {
+                return chat;
+            }
         }
         return chat;
     }
@@ -452,6 +595,94 @@ public final class WorkActionsClient {
      */
     private static ChatRoutes chatRoutes(String kind, String id) {
         return "epic".equals(kind) ? ChatRoutes.epic(id) : ChatRoutes.plan(id);
+    }
+
+    /**
+     * Looks up a plan's current composition instance version, or {@code null} when unavailable.
+     *
+     * @param planId the plan id
+     * @return the instance version, or {@code null} when the plan read does not answer with one
+     */
+    public @Nullable Integer planVersion(String planId) {
+        try {
+            var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId) + "/process"));
+            if (response.status() == 200) {
+                return ProcessTree.fromJson(response.bodyText()).instanceVersion();
+            }
+        } catch (IOException _) {
+            return null;
+        }
+        return null;
+    }
+
+    /**
+     * Resolves the project of an ended subject from the explorer and each project's ended-work list,
+     * returning {@code null} when unavailable.
+     *
+     * @param kind      {@code plan} or {@code epic}
+     * @param subjectId the ended subject id
+     * @return the owning project id, or {@code null} when not found
+     */
+    public @Nullable String endedProject(String kind, String subjectId) {
+        var live = liveSubjectProject(kind, subjectId);
+        if (live != null) {
+            return live;
+        }
+        return findEndedWorkProject(subjectId);
+    }
+
+    private @Nullable String liveSubjectProject(String kind, String subjectId) {
+        try {
+            if ("epic".equals(kind)) {
+                return epic(subjectId).projectId();
+            }
+            var planResp = context.runtime(true).send(HttpRequest.get(PLANS + path(subjectId) + "/process"));
+            if (planResp.status() == 200) {
+                var project = ProcessTree.fromJson(planResp.bodyText()).project();
+                if (project != null) {
+                    return project.projectId();
+                }
+            }
+        } catch (IOException _) {
+            // Fall back to ended-work scan below when the live resource is gone.
+        }
+        return null;
+    }
+
+    private @Nullable String findEndedWorkProject(String subjectId) {
+        try {
+            var projectsResp = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
+            if (projectsResp.status() != 200) {
+                return null;
+            }
+            for (var project : ProjectExplorer.fromJson(projectsResp.bodyText()).allProjects()) {
+                if (projectContainsEndedWork(project.projectId(), subjectId)) {
+                    return project.projectId();
+                }
+            }
+        } catch (IOException _) {
+            return null;
+        }
+        return null;
+    }
+
+    private boolean projectContainsEndedWork(String projectId, String subjectId) throws IOException {
+        int pageNumber = 1;
+        while (true) {
+            var endedResp = context.runtime(true).send(HttpRequest.get(
+                                "/api/v1/projects/" + path(projectId) + "/ended?page=" + pageNumber));
+            if (endedResp.status() != 200) {
+                return false;
+            }
+            var page = EndedWorkPage.fromJson(endedResp.bodyText());
+            if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
+                return true;
+            }
+            if (!page.hasOlder() || page.items().isEmpty()) {
+                return false;
+            }
+            pageNumber++;
+        }
     }
 
     /**

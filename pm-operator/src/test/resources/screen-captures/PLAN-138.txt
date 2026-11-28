@@ -1,0 +1,24 @@
+# Screen captures for PLAN-138: The Chat Dialogue in the Terminal (D5)
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys | broadcast | expected-exit
+#
+# Four captures in en and de:
+# 1. A streamed reply: opens unseeded plan relay-auth-v2, sends a question, captures `.after.txt`
+#    once the reply has streamed, and leaves with q / v.
+# 2. The s prompt: sends a question and immediately leaves/captures `.stdout.txt` showing the
+#    `s) stop the reply   q) leave: the reply goes on` prompt while the role writes.
+# 3. Left the chat: opens fix-relay and leaves with q / v; `.stdout.txt` shows `Left the chat`.
+# 4. An overtaken proposal: opens fix-relay, broadcasts `instance.changed` (version 9), presses
+#    Enter so accept hits `changed_since` and drops to `r) reject` (`l) lehne ab`), captured in
+#    `.after.txt` before rejecting and leaving.
+
+chat-streamed-reply-120x30-en | running-work | - | plan chat relay-auth-v2 | q\n | 120x30 | en_US.UTF-8 | - | How does relay-auth-v2 work?\n\n
+chat-streamed-reply-120x30-de | running-work | - | plan chat relay-auth-v2 | v\n | 120x30 | de_DE.UTF-8 | - | Wie arbeitet relay-auth-v2?\n\n
+
+chat-stop-prompt-120x30-en | running-work | - | plan chat relay-auth-v2 | How does relay-auth-v2 work?\n\nq\n | 120x30 | en_US.UTF-8 | -
+chat-stop-prompt-120x30-de | running-work | - | plan chat relay-auth-v2 | Wie arbeitet relay-auth-v2?\n\nv\n | 120x30 | de_DE.UTF-8 | -
+
+chat-left-120x30-en | running-work | - | plan chat fix-relay | q\n | 120x30 | en_US.UTF-8 | -
+chat-left-120x30-de | running-work | - | plan chat fix-relay | v\n | 120x30 | de_DE.UTF-8 | -
+
+chat-overtaken-120x30-en | running-work | - | plan chat fix-relay | r\nq\n | 120x30 | en_US.UTF-8 | - | \n | {"event":"instance.changed","data":{"plan_id":"fix-relay","instance_version":9,"cause":"replan"}}
+chat-overtaken-120x30-de | running-work | - | plan chat fix-relay | l\nv\n | 120x30 | de_DE.UTF-8 | - | \n | {"event":"instance.changed","data":{"plan_id":"fix-relay","instance_version":9,"cause":"replan"}}

@@ -93,6 +93,54 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |The reply starts again.
 |Die Antwort beginnt neu.
 
+|`operator.actions.chat.head`
+|Chat · {subject} · with {role} · {scope}
+|Chat · {subject} · mit {role} · {scope}
+
+|`operator.actions.chat.scope.plan`
+|the whole plan
+|der ganze Plan
+
+|`operator.actions.chat.scope.epic`
+|the whole epic
+|das ganze Epic
+
+|`operator.actions.chat.scope.archive`
+|its archived record
+|sein archivierter Eintrag
+
+|`operator.actions.chat.answers`
+|{role} answers
+|{role} antwortet
+
+|`operator.actions.chat.applied`
+|✓ {subject} changed; the plan's version becomes {version}
+|✓ {subject} geändert; die Version des Plans wird {version}
+
+|`operator.actions.chat.no_proposal`
+|{subject} proposes no change yet: a revision comes in execute or in finalize, until its merge
+|{subject} schlägt noch keine Änderung vor: eine Revision kommt in execute oder in finalize, bis zum Merge
+
+|`operator.actions.chat.read_only`
+|read only: the archive stays as it is
+|nur lesen: das Archiv bleibt, wie es ist
+
+|`operator.actions.chat.proposed`
+|Proposed change
+|Vorgeschlagene Änderung
+
+|`operator.actions.chat.proposed_follow_up`
+|Proposed follow-up plan
+|Vorgeschlagener Folgeplan
+
+|`operator.actions.chat.applies.after_task`
+|applies after the current task
+|gilt nach dem laufenden Task
+
+|`operator.actions.chat.applies.on_start`
+|applies when the plan starts again
+|gilt, wenn der Plan wieder startet
+
 |`operator.actions.settings.which`
 |Which settings of {plan}?
 |Welche Einstellungen von {plan}?

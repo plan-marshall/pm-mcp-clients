@@ -12,7 +12,6 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -20,20 +19,42 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 
+import de.planmarshall.api.chat.ChatResource;
+import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * The chat's proposal prompt answers an input it does not offer instead of leaving the chat: only
@@ -83,7 +104,8 @@ class WorkChatDialogueTest {
     @DisplayName("an input the proposal does not offer is answered, and q leaves with nothing sent")
     void unofferedInputAtTheProposal() throws Exception {
         FakeRuntimeServer server = fixture.start((request, response) -> {
-            if ("GET".equals(request.method()) && request.target().endsWith("/chat")) {
+            if (("GET".equals(request.method()) || "POST".equals(request.method()))
+                                && request.target().endsWith("/chat")) {
                 response.json(200, CHAT_PROPOSAL);
             } else {
                 response.send(500, null, "");
@@ -94,17 +116,19 @@ class WorkChatDialogueTest {
         virtual.endOfInput();
         var out = new StringWriter();
 
-        var followUp = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false);
+        var exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", "p", false, false);
 
         var text = out.toString();
         assertAll(
-                            () -> assertNull(followUp),
+                            () -> assertEquals(0, exitCode),
                             () -> assertTrue(text.contains(input + " is not offered here: r, q, ?"), text),
                             () -> assertTrue(text.contains("Nothing more is explained here"), text),
                             () -> assertFalse(text.contains("is kept with"), text),
                             () -> assertEquals(0, server.requests().stream()
-                                                                    .filter(recorded -> !"GET".equals(recorded.method())).count(),
-                                                "nothing is sent: " + server.requests()));
+                                                                    .filter(recorded -> !"GET".equals(recorded.method())
+                                                                                        && !"POST".equals(recorded.method()))
+                                                                    .count(),
+                                                "nothing else is sent: " + server.requests()));
     }
 
     @Test
@@ -128,7 +152,7 @@ class WorkChatDialogueTest {
         var afterSecond = base + "\"turns\":[" + t1 + "," + t2 + "," + t3 + "," + t4 + "]}";
         fixture.start((request, response) -> {
             var path = request.target();
-            if (path.endsWith("/chat") && "GET".equals(request.method())) {
+            if (path.endsWith("/chat") && ("GET".equals(request.method()) || "POST".equals(request.method()))) {
                 int post = posts.get();
                 response.json(200, post == 0 ? initial : (post == 1 ? afterFirst : afterSecond));
             } else if (path.endsWith("/chat/turns")) {
@@ -138,27 +162,1401 @@ class WorkChatDialogueTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type(msg1 + "\n" + msg2 + "\n\n");
+        virtual.type(msg1 + "\n\n" + msg2 + "\n\nq\n");
         virtual.endOfInput();
         var out = new StringWriter();
 
-        var followUp = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+        var exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
 
         var text = out.toString();
         var notice = subject + " proposes no change yet";
         var firstIdx = text.indexOf(notice);
         assertAll(
-                            () -> assertNull(followUp),
+                            () -> assertEquals(0, exitCode),
                             () -> assertTrue(text.contains(reply1), text),
                             () -> assertTrue(text.contains(reply2), text),
                             () -> assertTrue(firstIdx >= 0, text),
                             () -> assertEquals(-1, text.indexOf(notice, firstIdx + notice.length()), text),
-                            () -> assertTrue(text.contains("The chat is kept with " + subject), text));
+                            () -> assertTrue(text.contains("Left the chat; it stays with " + subject + "."), text));
     }
 
     private static String chatTurnJson(String id, String author, String text, String at) {
         return "{\"turn_id\":\"" + id + "\",\"kind\":\"message\",\"author\":\"" + author
                             + "\",\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\""
                             + text + "\",\"steps\":[],\"refs\":[],\"at\":\"" + at + "\"}";
+    }
+
+    @Nested
+    @DisplayName("leaving, multi-line composition, and new (D2)")
+    class LeavingCompositionAndNew {
+
+        @ParameterizedTest(name = "leave via {0}")
+        @ValueSource(strings = {"empty", "q", "eof"})
+        @DisplayName("empty first line, q, and Ctrl+D leave without ending and print chat.left")
+        void messagePromptLeaveVariants(String variant) throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var chatJson = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var server = fixture.start((request, response) -> {
+                if (request.target().endsWith("/chat") && "POST".equals(request.method())) {
+                    response.json(200, chatJson);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            if ("empty".equals(variant)) {
+                virtual.type("\n");
+            } else if ("q".equals(variant)) {
+                virtual.type("q\n");
+            }
+            virtual.endOfInput();
+            var out = new StringWriter();
+
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            var text = out.toString();
+            assertAll(
+                                () -> assertEquals(0, exitCode),
+                                () -> assertTrue(text.contains("Left the chat; it stays with " + subject + "."), text),
+                                () -> assertFalse(text.contains("is kept with"), text),
+                                () -> assertTrue(server.requests().stream().noneMatch(
+                                                                        req -> req.target().endsWith("/end") || req.target().endsWith("/turns")),
+                                                    "must not end chat or send turn: " + server.requests()));
+        }
+
+        @ParameterizedTest(name = "leave proposal via {0}")
+        @ValueSource(strings = {"q", "eof"})
+        @DisplayName("q and Ctrl+D at Accept? leave printing chat.left without ending, and returning reprints proposal")
+        void proposalLeaveAndReturn(String variant) throws Exception {
+            var server = fixture.start((request, response) -> {
+                if (request.target().endsWith("/chat") && ("POST".equals(request.method()) || "GET".equals(request.method()))) {
+                    response.json(200, CHAT_PROPOSAL);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            if ("q".equals(variant)) {
+                virtual.type("q\n");
+            }
+            virtual.endOfInput();
+            var firstOut = new StringWriter();
+
+            int firstExit = WorkChatDialogue.run(context, new PrintWriter(firstOut), "plan", "p", false, false);
+
+            var secondOut = new StringWriter();
+            try (var secondTerminal = VirtualScreenTerminal.create(120, 30)) {
+                var env = new HashMap<>(fixture.environment());
+                env.put("LANG", "en_US.UTF-8");
+                var secondContext = new OperatorContext(env, Files.createTempDirectory("pm-wd2"), true,
+                                    ClientEnvironment.capture(env), secondTerminal::terminal, null);
+                secondTerminal.type("q\n");
+                secondTerminal.endOfInput();
+                WorkChatDialogue.run(secondContext, new PrintWriter(secondOut), "plan", "p", false, false);
+            }
+
+            assertAll(
+                                () -> assertEquals(0, firstExit),
+                                () -> assertTrue(firstOut.toString().contains("Left the chat; it stays with p."),
+                                                    firstOut.toString()),
+                                () -> assertTrue(secondOut.toString().contains("Start a plan with it?"),
+                                                    secondOut.toString()),
+                                () -> assertTrue(server.requests().stream().noneMatch(
+                                                                        req -> req.target().endsWith("/end")),
+                                                    "must not end chat: " + server.requests()));
+        }
+
+        @Test
+        @DisplayName("multi-line composition joins non-empty lines and sends on blank line")
+        void multiLineComposition() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var line1 = Generators.letterStrings(5, 9).next();
+            var line2 = Generators.letterStrings(5, 9).next();
+            var turnTexts = new ArrayList<String>();
+            var posts = new AtomicInteger();
+            var base = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},";
+            var initial = base + "\"turns\":[]}";
+            var replied = base + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", line1 + "\\n" + line2, "2026-10-16T10:01:00Z") + ","
+                                + chatTurnJson("T-2", "replan", "received", "2026-10-16T10:01:01Z") + "]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, posts.get() == 0 ? initial : replied);
+                } else if (path.endsWith("/chat/turns")) {
+                    posts.incrementAndGet();
+                    var parsed = JsonTree.parse(request.bodyText());
+                    if (parsed instanceof Map<?, ?> map && map.get("text") instanceof String txt) {
+                        turnTexts.add(txt);
+                    }
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            virtual.type(line1 + "\n" + line2 + "\n\nq\n");
+            virtual.endOfInput();
+            var out = new StringWriter();
+
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode),
+                                () -> assertEquals(List.of(line1 + "\n" + line2), turnTexts, turnTexts.toString()));
+        }
+
+        @Test
+        @DisplayName("new followed by y ends the current chat, opens a fresh one, and prints control.chat.ended")
+        void newConfirmed() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var calls = new ArrayList<String>();
+            fixture.start((request, response) -> {
+                calls.add(request.method() + " " + request.target());
+                if (request.target().endsWith("/chat/end") && "POST".equals(request.method())) {
+                    response.json(200, emptyChat);
+                } else if (request.target().endsWith("/chat") && "POST".equals(request.method())) {
+                    response.json(200, emptyChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            virtual.type("new\ny\nq\n");
+            virtual.endOfInput();
+            var out = new StringWriter();
+
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            var text = out.toString();
+            assertAll(
+                                () -> assertEquals(0, exitCode),
+                                () -> assertTrue(text.contains("Start a new chat?"), text),
+                                () -> assertTrue(text.contains("y) yes   n) no [Enter]"), text),
+                                () -> assertTrue(text.contains("The earlier chat is kept with " + subject + "."), text),
+                                () -> assertTrue(calls.contains("POST /api/v1/plans/" + subject + "/chat/end"),
+                                                    calls.toString()),
+                                () -> assertEquals(2, calls.stream()
+                                                    .filter(c -> c.equals("POST /api/v1/plans/" + subject + "/chat"))
+                                                    .count(), calls.toString()),
+                                () -> assertTrue(calls.stream().noneMatch(c -> c.endsWith("/chat/turns")),
+                                                    calls.toString()));
+        }
+
+        @ParameterizedTest(name = "new decline via {0}")
+        @ValueSource(strings = {"n", "enter"})
+        @DisplayName("new followed by n or Enter calls neither end nor open")
+        void newDeclined(String reply) throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var calls = new ArrayList<String>();
+            fixture.start((request, response) -> {
+                calls.add(request.method() + " " + request.target());
+                if (request.target().endsWith("/chat") && "POST".equals(request.method())) {
+                    response.json(200, emptyChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            virtual.type("new\n" + ("enter".equals(reply) ? "\n" : "n\n") + "q\n");
+            virtual.endOfInput();
+            var out = new StringWriter();
+
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode),
+                                () -> assertTrue(out.toString().contains("Start a new chat?"), out.toString()),
+                                () -> assertFalse(out.toString().contains("earlier chat is kept"), out.toString()),
+                                () -> assertEquals(List.of("POST /api/v1/plans/" + subject + "/chat"),
+                                                    calls.stream().filter(c -> !c.endsWith("/events")).toList()));
+        }
+
+        @Test
+        @DisplayName("neu while a proposal is open in German prints the drop body naming kind and subject")
+        void germanNeuWithOpenProposalShowsBody() throws Exception {
+            var endedCalls = new AtomicBoolean();
+            var openProposal = """
+                                {"id":"C-1","subject":{"kind":"plan","id":"p"},
+                                 "role":{"name":"replan","model":"sonnet"},"scope":"plan",
+                                 "state":"chat.read-back","context":{"knows":[],"as_of":"2026-10-16T10:00:00Z"},
+                                 "turns":[],
+                                 "proposal":{"turn_id":"T-3","reply_turn_id":"T-2","kind":"revision",
+                                   "summary":"revise","state":"open"}}
+                                """;
+            var fresh = """
+                                {"id":"C-2","subject":{"kind":"plan","id":"p"},
+                                 "role":{"name":"replan","model":"sonnet"},"scope":"plan",
+                                 "state":"chat.turn","context":{"knows":[],"as_of":"2026-10-16T10:00:01Z"},
+                                 "turns":[]}
+                                """;
+            fixture.start((request, response) -> {
+                if (request.target().endsWith("/chat/end") && "POST".equals(request.method())) {
+                    endedCalls.set(true);
+                    response.json(200, fresh);
+                } else if (request.target().endsWith("/chat") && "POST".equals(request.method())) {
+                    response.json(200, endedCalls.get() ? fresh : openProposal);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            try (var germanTerminal = VirtualScreenTerminal.create(120, 30)) {
+                var env = new HashMap<>(fixture.environment());
+                env.put("LANG", "de_DE.UTF-8");
+                var deContext = new OperatorContext(env, Files.createTempDirectory("pm-wd2-de"), true,
+                                    ClientEnvironment.capture(env), germanTerminal::terminal, null);
+                germanTerminal.type("neu\nj\nv\n");
+                germanTerminal.endOfInput();
+
+                int exitCode = WorkChatDialogue.run(deContext, new PrintWriter(out), "plan", "p", false, false);
+                var text = out.toString();
+                assertAll(
+                                    () -> assertEquals(0, exitCode),
+                                    () -> assertTrue(endedCalls.get()),
+                                    () -> assertTrue(text.contains("Einen neuen Chat beginnen?"), text),
+                                    () -> assertTrue(text.contains("Der offene Vorschlag (Änderung des Plans) wird verworfen"),
+                                                        text),
+                                    () -> assertTrue(text.contains("Chat verlassen; er bleibt bei p."), text));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("streaming reply, s stop, and O9 line input (D3)")
+    class StreamingReplyAndStop {
+
+        @Test
+        @DisplayName("opens SSE stream before reading chat and streams steps and lines above writing prompt")
+        void streamOpenedBeforeChatAndSanitizesUntrusted() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var requestTargets = new CopyOnWriteArrayList<String>();
+            var eventsReady = new CountDownLatch(1);
+            var turnPosted = new CountDownLatch(1);
+            var done = new CountDownLatch(1);
+            var streamHolder = new AtomicReference<FakeRuntimeServer.EventStream>();
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var repliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", "hello", "2026-10-16T10:00:00Z") + ","
+                                + chatTurnJson("T-2", "replan", "Line one\\nPart two", "2026-10-16T10:00:02Z")
+                                + "]}";
+            fixture.start((request, response) -> {
+                requestTargets.add(request.method() + " " + request.target());
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        streamHolder.set(stream);
+                        eventsReady.countDown();
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", true));
+                        stream.send("chat.turn.progress",
+                                            eventData("chat.turn.progress", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "step", Map.of("key", "chat.step.read",
+                                                                                                        "args", Map.of("target", "the outline")))));
+                        stream.send("chat.turn.delta",
+                                            eventData("chat.turn.delta", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "text", "Line one\nPart")));
+                        awaitScreenContains(virtual, "s) stop the reply", "Line one");
+                        assertFalse(screenText(virtual).contains("Part"),
+                                            "partial line must not render before newline: " + screenText(virtual));
+                        stream.send("chat.turn.delta",
+                                            eventData("chat.turn.delta", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "text", " two \u001b[31mred\u001b[0m\n")));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "kind", "message", "status", "complete",
+                                                                                    "untrusted", true, "text", "Line one\nPart two red",
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        done.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, turnPosted.getCount() == 0 ? repliedChat : emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                } finally {
+                    done.countDown();
+                }
+            });
+            virtual.type("hello\n\n");
+            assertTrue(eventsReady.await(5, TimeUnit.SECONDS));
+            awaitScreenContains(virtual, "Line one", "Part two red");
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+
+            var screen = screenText(virtual);
+            var combined = out + "\n" + screen;
+            int eventsIdx = requestTargets.indexOf("GET /api/v1/plans/" + subject + "/events");
+            int openIdx = requestTargets.indexOf("POST /api/v1/plans/" + subject + "/chat");
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), combined),
+                                () -> assertTrue(eventsIdx >= 0 && openIdx > eventsIdx,
+                                                    "SSE must open before chat: " + requestTargets),
+                                () -> assertTrue(combined.contains("replan answers"), combined),
+                                () -> assertTrue(combined.contains("reads the outline"), combined),
+                                () -> assertTrue(screen.contains("Part two red"), screen),
+                                () -> assertFalse(screen.contains("\u001b["), screen),
+                                () -> assertTrue(screen.contains("\""), "untrusted turn must be quoted: " + screen),
+                                () -> assertTrue(combined.contains("Left the chat; it stays with " + subject + "."),
+                                                    combined));
+        }
+
+        @Test
+        @DisplayName("s + Enter stops the reply and prints control.chat.stopped")
+        void sKeyStopsReply() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var stopped = new AtomicBoolean();
+            var stopCalled = new CountDownLatch(1);
+            var turnPosted = new CountDownLatch(1);
+            var done = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var stoppedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", "hi", "2026-10-16T10:00:00Z") + ","
+                                + "{\"turn_id\":\"T-2\",\"kind\":\"message\",\"author\":\"replan\",\"status\":\"stopped\","
+                                + "\"format\":\"markdown\",\"untrusted\":false,\"text\":\"Partial answer\",\"steps\":[],\"refs\":[],"
+                                + "\"at\":\"2026-10-16T10:00:01Z\"}]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        stream.send("chat.turn.delta",
+                                            eventData("chat.turn.delta", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "text", "Partial answer\n")));
+                        assertTrue(stopCalled.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "kind", "message", "status", "stopped",
+                                                                                    "untrusted", false, "text", "Partial answer",
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        done.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns/T-2/stop")
+                                    && "POST".equals(request.method())) {
+                    stopped.set(true);
+                    response.json(200, stoppedChat);
+                    stopCalled.countDown();
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, stopped.get() ? stoppedChat : emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                } finally {
+                    done.countDown();
+                }
+            });
+            virtual.type("hi\n\n");
+            awaitScreenContains(virtual, "s) stop the reply", "Partial answer");
+            virtual.type("s\n");
+            awaitScreenContains(virtual, "Stopped; the reply so far is kept.");
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+
+            var combined = out + "\n" + screenText(virtual);
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), combined),
+                                () -> assertTrue(stopped.get(), "stop route should be called"),
+                                () -> assertTrue(combined.contains("Stopped; the reply so far is kept."), combined));
+        }
+
+        @Test
+        @DisplayName("q + Enter while writing leaves without ending or stopping")
+        void qWhileWritingLeavesImmediately() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var turnPosted = new CountDownLatch(1);
+            var left = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var server = fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        left.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            virtual.type("hi\n\n");
+            awaitScreenContains(virtual, "s) stop the reply");
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+            left.countDown();
+
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), out.toString()),
+                                () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
+                                                    out.toString()),
+                                () -> assertTrue(server.requests().stream().noneMatch(
+                                                                        req -> req.target().endsWith("/end") || req.target().endsWith("/stop")),
+                                                    server.requests().toString()));
+        }
+
+        @Test
+        @DisplayName("another line entered while writing is held and offered as the next first line")
+        void heldLineOfferedAsNextFirstLine() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var heldMessage = "held-" + Generators.letterStrings(5, 9).next();
+            var turnTexts = new CopyOnWriteArrayList<String>();
+            var firstPosted = new CountDownLatch(1);
+            var heldTyped = new CountDownLatch(1);
+            var secondPosted = new CountDownLatch(1);
+            var done = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var secondChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", "first", "2026-10-16T10:00:00Z") + ","
+                                + chatTurnJson("T-2", "replan", "done1", "2026-10-16T10:00:01Z") + "]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        assertTrue(firstPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        assertTrue(heldTyped.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "kind", "message", "status", "complete",
+                                                                                    "untrusted", false, "text", "done1",
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        assertTrue(secondPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-4", false));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-4",
+                                                                                    "kind", "message", "status", "complete",
+                                                                                    "untrusted", false, "text", "done2",
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        done.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, turnTexts.isEmpty() ? emptyChat : secondChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    var parsed = JsonTree.parse(request.bodyText());
+                    if (parsed instanceof Map<?, ?> map && map.get("text") instanceof String txt) {
+                        turnTexts.add(txt);
+                    }
+                    if (turnTexts.size() == 1) {
+                        response.json(202, "{\"turn_id\":\"T-1\"}");
+                        firstPosted.countDown();
+                    } else {
+                        response.json(202, "{\"turn_id\":\"T-3\"}");
+                        secondPosted.countDown();
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                } finally {
+                    done.countDown();
+                }
+            });
+            virtual.type("first\n\n");
+            awaitScreenContains(virtual, "s) stop the reply");
+            virtual.type(heldMessage + "\n");
+            heldTyped.countDown();
+            awaitScreenContains(virtual, "done1", heldMessage);
+            virtual.type("\n\n");
+            awaitScreenContains(virtual, "done2");
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), out.toString()),
+                                () -> assertEquals(List.of("first", heldMessage), turnTexts, turnTexts.toString()));
+        }
+
+        @Test
+        @DisplayName("worker replacement prints restarted notice, and no-delta harness prints full reply on completion")
+        void workerReplacementAndNoDeltas() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var turnPosted = new CountDownLatch(1);
+            var done = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            var repliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", "go", "2026-10-16T10:00:00Z") + ","
+                                + chatTurnJson("T-2", "replan", "Fresh full reply", "2026-10-16T10:00:02Z") + "]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        stream.send("chat.turn.delta",
+                                            eventData("chat.turn.delta", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "text", "Old draft\n")));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "kind", "message", "status", "complete",
+                                                                                    "untrusted", false, "text", "Fresh full reply",
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        done.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, turnPosted.getCount() == 0 ? repliedChat : emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                } finally {
+                    done.countDown();
+                }
+            });
+            virtual.type("go\n\n");
+            awaitScreenContains(virtual, "The reply starts again.", "Fresh full reply");
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+
+            var combined = out + "\n" + screenText(virtual);
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), combined),
+                                () -> assertTrue(combined.contains("The reply starts again."), combined),
+                                () -> assertTrue(combined.contains("Fresh full reply"), combined));
+        }
+
+        @ParameterizedTest(name = "failed reply {0} prints {1}")
+        @CsvSource({
+                            "chat.reason.infeasible, cannot change that",
+                            "chat.reason.lost, The reply was lost",
+                            "chat.reason.too_long, too long"
+        })
+        @DisplayName("failed reply prints infeasible, lost, or too_long notice")
+        void failedReplyPrintsNotice(String reasonKey, String expectedText) throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var turnPosted = new CountDownLatch(1);
+            var done = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        stream.send("chat.turn.completed",
+                                            eventData("chat.turn.completed", subject,
+                                                                Map.of("chat_id", "C-1", "turn_id", "T-2",
+                                                                                    "kind", "message", "status", "failed",
+                                                                                    "untrusted", false, "text", "",
+                                                                                    "reason", Map.of("key", reasonKey,
+                                                                                                        "args", Map.of("role", "replan", "reason", "busy")),
+                                                                                    "refs", List.of(), "lines", List.of())));
+                        done.await(5, TimeUnit.SECONDS);
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                } finally {
+                    done.countDown();
+                }
+            });
+            virtual.type("try\n\n");
+            awaitScreenContains(virtual, expectedText);
+            virtual.type("q\n");
+            virtual.endOfInput();
+            runner.join(5000);
+
+            var combined = out + "\n" + screenText(virtual);
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), combined),
+                                () -> assertTrue(combined.contains(expectedText), combined));
+        }
+
+        @Test
+        @DisplayName("failing readChat after turn was recorded keeps the last snapshot instead of throwing")
+        void failingReadChatAfterTurnKeepsLastSnapshot() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var gets = new AtomicInteger();
+            var snapshot = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":["
+                                + chatTurnJson("T-1", "operator", "hi", "2026-10-16T10:00:00Z") + ","
+                                + "{\"turn_id\":\"T-2\",\"kind\":\"message\",\"author\":\"replan\",\"status\":\"streaming\","
+                                + "\"format\":\"markdown\",\"untrusted\":false,\"text\":\"still writing\",\"steps\":[],\"refs\":[],"
+                                + "\"at\":\"2026-10-16T10:00:01Z\"}]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                } else if (path.endsWith("/chat")) {
+                    if ("POST".equals(request.method()) || gets.incrementAndGet() == 1) {
+                        response.json(200, snapshot);
+                    } else {
+                        response.json(503, "{\"error\":\"unavailable\"}");
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            virtual.type("hi\n\nq\n");
+            virtual.endOfInput();
+            var out = new StringWriter();
+
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("running-work mock runtime streams ordered reply over SSE")
+        void mockRuntimeOrderedStreamsReply() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var env = new HashMap<>(runtime.environment());
+                env.put("LANG", "en_US.UTF-8");
+                var self = ProcessHandle.current();
+                Files.writeString(runtime.paths().runtimeRecord(),
+                                    "{\"pid\":" + self.pid() + ",\"start_instant\":\""
+                                                        + self.info().startInstant().orElseThrow() + "\"}");
+                var mockContext = new OperatorContext(env, Files.createTempDirectory("pm-wd3-mock"), true,
+                                    ClientEnvironment.capture(env), virtual::terminal, null);
+                var out = new StringWriter();
+                var exitRef = new AtomicInteger(-1);
+                var runner = Thread.ofPlatform().start(() -> {
+                    try (var writer = new PrintWriter(out)) {
+                        exitRef.set(WorkChatDialogue.run(mockContext, writer,
+                                            "plan", "relay-auth-v2", false, false));
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+                virtual.type("Please check\n\n");
+                awaitScreenContains(virtual, "answers");
+                virtual.type("q\n");
+                virtual.endOfInput();
+                runner.join(5000);
+
+                var combined = out + "\n" + screenText(virtual);
+                assertAll(
+                                    () -> assertEquals(0, exitRef.get(), combined),
+                                    () -> assertTrue(combined.contains("Left the chat; it stays with relay-auth-v2."),
+                                                        combined));
+            }
+        }
+
+        @Test
+        @DisplayName("chat.ended SSE event ends followReply cleanly and pre-start s stops on turn.started")
+        void chatEndedAndEarlyStopBeforeStarted() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var eventsReady = new CountDownLatch(1);
+            var turnPosted = new CountDownLatch(1);
+            var allowStarted = new CountDownLatch(1);
+            var stopCalled = new CountDownLatch(1);
+            var emptyChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/plans/" + subject + "/events")) {
+                    try (var stream = response.events(200)) {
+                        eventsReady.countDown();
+                        assertTrue(turnPosted.await(5, TimeUnit.SECONDS));
+                        assertTrue(allowStarted.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.turn.started", startedData(subject, "T-2", false));
+                        assertTrue(stopCalled.await(5, TimeUnit.SECONDS));
+                        stream.send("chat.ended", eventData("chat.ended", subject,
+                                            Map.of("chat_id", "C-1", "reason", "operator")));
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat")) {
+                    response.json(200, emptyChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns")) {
+                    response.json(202, "{\"turn_id\":\"T-1\"}");
+                    turnPosted.countDown();
+                } else if (path.equals("/api/v1/plans/" + subject + "/chat/turns/T-2/stop")) {
+                    response.json(200, emptyChat);
+                    stopCalled.countDown();
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            var exitRef = new AtomicInteger(-1);
+            var runner = Thread.ofPlatform().start(() -> {
+                try (var writer = new PrintWriter(out)) {
+                    exitRef.set(WorkChatDialogue.run(context, writer, "plan", subject, false, false));
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+            assertTrue(eventsReady.await(5, TimeUnit.SECONDS));
+            virtual.type("go\n\n");
+            awaitScreenContains(virtual, "s) stop the reply");
+            virtual.type("s\n");
+            LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(120));
+            allowStarted.countDown();
+            assertTrue(stopCalled.await(5, TimeUnit.SECONDS));
+            virtual.endOfInput();
+            runner.join(5000);
+
+            assertAll(
+                                () -> assertEquals(0, exitRef.get(), out.toString()),
+                                () -> assertEquals(0L, stopCalled.getCount(), "stop should fire once started arrives"));
+        }
+
+        private static String startedData(String subjectId, String turnId, boolean untrusted) {
+            return eventData("chat.turn.started", subjectId, Map.of(
+                                "chat_id", "C-1",
+                                "turn_id", turnId,
+                                "kind", "message",
+                                "author", "replan",
+                                "format", "markdown",
+                                "untrusted", untrusted,
+                                "model", "sonnet",
+                                "context", Map.of("knows", List.of(), "as_of", "2026-10-16T10:00:00Z")));
+        }
+
+        private static String eventData(String eventName, String subjectId, Map<String, Object> payload) {
+            var map = new LinkedHashMap<String, Object>();
+            map.put("event", eventName);
+            map.put("at", "2026-10-16T10:00:01Z");
+            map.put("scope", Map.of("kind", "plan", "id", subjectId));
+            map.putAll(payload);
+            return JsonTree.write(map);
+        }
+
+        private static String screenText(VirtualScreenTerminal term) {
+            return String.join("\n", term.screen().lines());
+        }
+
+        private static void awaitScreenContains(VirtualScreenTerminal term, String... expected)
+                            throws InterruptedException {
+            var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (System.nanoTime() < deadline) {
+                var screen = screenText(term);
+                if (Arrays.stream(expected).allMatch(screen::contains)) {
+                    return;
+                }
+                LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(20));
+                if (Thread.interrupted()) {
+                    throw new InterruptedException();
+                }
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("D4 proposal refusals, overtaken proposals, applied notice, and ended work")
+    @EnableGeneratorController
+    class ProposalRefusalsAndEndedWork {
+
+        @Test
+        @DisplayName("refused proposal prints its finding and offers r) reject only")
+        void refusedProposalOffersRejectOnlyAndPrintsFinding() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var acceptCalled = new AtomicBoolean();
+            var rejectCalled = new AtomicBoolean();
+            var refusedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"refused\","
+                                + "\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"boundary check failed\"}}}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejectCalled.get() ? rejectedChat : refusedChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    acceptCalled.set(true);
+                    response.json(200, refusedChat);
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejectCalled.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertFalse(acceptCalled.get(), "REFUSED proposal must not allow Enter accept"),
+                                () -> assertTrue(rejectCalled.get(), "REFUSED proposal must allow r) reject"),
+                                () -> assertTrue(out.toString().contains("not applied: boundary check failed"), out.toString()),
+                                () -> assertTrue(out.toString().contains("r) reject"), out.toString()),
+                                () -> assertFalse(out.toString().contains("[Enter] accept"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("lapsed proposal prints control.chat.lapsed in place of Accept? and continues to turn prompt")
+        void lapsedProposalPrintsLapsedReplacingAccept() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var lapsedCalled = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var lapsedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"lapsed\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, lapsedCalled.get() ? lapsedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    lapsedCalled.set(true);
+                    response.json(200, lapsedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(lapsedCalled.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        subject + " left the time for a revision; the proposal no longer applies."),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("changed_since conflict prints versioned finding and drops to r) reject only")
+        void changedSinceConflictPrintsFindingAndOffersRejectOnly() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(2, 9).next();
+            var acceptCount = new AtomicInteger();
+            var rejected = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":["
+                                + "{\"key\":\"chat.knows.version\",\"args\":{\"version\":" + version + "}}],"
+                                + "\"as_of\":\"2026-10-16T10:00:00Z\"},\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejected.get() ? rejectedChat : openChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/process")) {
+                    response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
+                                        + ",\"root_groups\":[],\"phases\":[]}");
+                } else if (path.endsWith("/proposal/accept")) {
+                    acceptCount.incrementAndGet();
+                    response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.changed_since\"}");
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(1, acceptCount.get(),
+                                                    "Enter after changed_since must not retry accept"),
+                                () -> assertTrue(rejected.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "not applied: " + subject + " changed since (version " + version + ")"),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("r) reject"), out.toString()));
+        }
+
+        @Test
+        @DisplayName("already_queued prints finding, re-offers Accept?, and succeeds when queued revision clears unapplied")
+        void alreadyQueuedClearedUnappliedReoffersAcceptAndSucceeds() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var acceptAttempts = new AtomicInteger();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var acceptedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.after_task\",\"args\":{\"task_id\":\"TASK-4\"}},"
+                                + "\"state\":\"accepted\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, acceptAttempts.get() > 1 ? acceptedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    if (acceptAttempts.incrementAndGet() == 1) {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.already_queued\"}");
+                    } else {
+                        response.json(200, acceptedChat);
+                    }
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(2, acceptAttempts.get()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "not applied: a revision of " + subject + " is already queued"),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("accepted: applies after the current task"),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("already_queued followed by queued revision applying transitions to changed_since and reject only")
+        void alreadyQueuedAppliedTransitionsToChangedSince() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(3, 8).next();
+            var acceptAttempts = new AtomicInteger();
+            var rejected = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var rejectedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"rejected\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, rejected.get() ? rejectedChat : openChat);
+                } else if (path.equals("/api/v1/plans/" + subject + "/process")) {
+                    response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
+                                        + ",\"root_groups\":[],\"phases\":[]}");
+                } else if (path.endsWith("/proposal/accept")) {
+                    if (acceptAttempts.incrementAndGet() == 1) {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.already_queued\"}");
+                    } else {
+                        response.json(409, "{\"error\":\"conflict\",\"message\":\"chat.finding.changed_since\"}");
+                    }
+                } else if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, rejectedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n\nr\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertEquals(2, acceptAttempts.get()),
+                                () -> assertTrue(rejected.get()),
+                                () -> assertTrue(out.toString().contains("is already queued"), out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "not applied: " + subject + " changed since (version " + version + ")"),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("accepted revision applied later prints applied notice with new plan version")
+        void acceptedProposalAppliedPrintsAppliedMessage() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var version = Generators.integers(2, 9).next();
+            var turnPosted = new AtomicBoolean();
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"before\":\"old\",\"after\":\"new\",\"state\":\"open\"}}";
+            var acceptedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"applies\":{\"key\":\"chat.applies.on_start\",\"args\":{\"plan\":\"" + subject + "\"}},"
+                                + "\"state\":\"accepted\"}}";
+            var appliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[{\"key\":\"chat.knows.version\",\"args\":{\"version\":" + version + "}}],"
+                                + "\"as_of\":\"2026-10-16T10:00:02Z\"},"
+                                + "\"turns\":[{\"turn_id\":\"T-4\",\"kind\":\"message\",\"author\":\"operator\","
+                                + "\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\"ok\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:02Z\"},"
+                                + "{\"turn_id\":\"T-5\",\"kind\":\"message\",\"author\":\"replan\","
+                                + "\"status\":\"complete\",\"format\":\"plain\",\"untrusted\":false,\"text\":\"noted\",\"steps\":[],\"refs\":[],\"at\":\"2026-10-16T10:00:03Z\"}],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"revision\","
+                                + "\"summary\":\"Add fallback\",\"state\":\"applied\"}}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, turnPosted.get() ? appliedChat : openChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    response.json(200, acceptedChat);
+                } else if (path.endsWith("/chat/turns")) {
+                    turnPosted.set(true);
+                    response.json(202, "{\"turn_id\":\"T-4\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\nok\n\nq\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains("applies when the plan starts again"),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        subject + " changed; the plan's version becomes " + version),
+                                                    out.toString()));
+        }
+
+        @Test
+        @DisplayName("ended work accept prints control.chat.follow_up.opened with resolved project and leaves without ending chat")
+        void endedWorkAcceptPrintsFollowUpOpenedAndLeavesWithoutEnding() throws Exception {
+            var project = "proj-" + Generators.letterStrings(4, 7).next().toLowerCase();
+            var subject = "ended-" + Generators.letterStrings(4, 7).next().toLowerCase();
+            var endedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"follow_up\","
+                                + "\"summary\":\"Follow-up plan\",\"after\":\"Next try\",\"state\":\"open\"}}";
+            var appliedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[],"
+                                + "\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\",\"kind\":\"follow_up\","
+                                + "\"summary\":\"Follow-up plan\",\"after\":\"Next try\",\"state\":\"applied\"}}";
+            var server = fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/chat")) {
+                    response.json(200, endedChat);
+                } else if (path.endsWith("/proposal/accept")) {
+                    response.json(200, appliedChat);
+                } else if ("/api/v1/projects".equals(path)) {
+                    response.json(200, "{\"projects\":[{\"project_id\":\"" + project + "\","
+                                        + "\"state\":\"ready\",\"favourite\":false}],\"favourites\":[]}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=1")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"" + subject
+                                        + "\",\"kind\":\"plan\",\"title\":\"" + subject
+                                        + "\",\"outcome\":\"cancelled\",\"ended_at\":\"2026-10-16T09:00:00Z\"}],"
+                                        + "\"has_older\":false}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, true, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "A new plan is being started in " + project + " with this description; go on with its sources."),
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("Left the chat; it stays with " + subject + "."),
+                                                    out.toString()),
+                                () -> assertTrue(server.requests().stream().noneMatch(
+                                                                        req -> req.target().endsWith("/chat/end")),
+                                                    server.requests().toString()));
+        }
+
+        @Test
+        @DisplayName("plan in sanity-check on MockRuntime is outside revision window and lapses on accept")
+        void sanityCheckOutsideRevisionWindowLapsesOnMockRuntime() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var env = new HashMap<>(runtime.environment());
+                env.put("LANG", "en_US.UTF-8");
+                var self = ProcessHandle.current();
+                Files.writeString(runtime.paths().runtimeRecord(),
+                                    "{\"pid\":" + self.pid() + ",\"start_instant\":\""
+                                                        + self.info().startInstant().orElseThrow() + "\"}");
+                var mockContext = new OperatorContext(env, Files.createTempDirectory("pm-wd4-mock"), true,
+                                    ClientEnvironment.capture(env), virtual::terminal, null);
+                var broadcast = mockContext.runtime(true).send(HttpRequest.json(
+                                    "POST", "/mock/broadcast",
+                                    "{\"event\":\"phase.changed\",\"data\":{\"plan_id\":\"fix-relay\",\"new_phase\":\"sanity-check\"}}"));
+                assertEquals(200, broadcast.status(), broadcast.bodyText());
+                var out = new StringWriter();
+                virtual.type("q\n");
+                int exitCode = WorkChatDialogue.run(mockContext, new PrintWriter(out),
+                                    "plan", "fix-relay", false, false);
+
+                assertAll(
+                                    () -> assertEquals(0, exitCode, out.toString()),
+                                    () -> assertFalse(out.toString().contains("[Enter] accept"), out.toString()),
+                                    () -> assertTrue(out.toString().contains(
+                                                                            "fix-relay left the time for a revision; the proposal no longer applies."),
+                                                        out.toString()));
+            }
+        }
+
+        @Test
+        @DisplayName("ended epic accept resolves project via epic endpoint and handles reject-only help and new")
+        void endedEpicAndRejectOnlyBranches() throws Exception {
+            var epic = "epic-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var project = "proj-" + Generators.letterStrings(4, 6).next().toLowerCase();
+            var refusedChat = archiveProposalChat(epic, "refused", true);
+            var openArchiveChat = archiveProposalChat(epic, "open", false);
+            var acceptedArchiveChat = archiveProposalChat(epic, "accepted", false);
+            var plan = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.equals("/api/v1/epics/" + epic + "/chat")) {
+                    response.json(200, "POST".equals(request.method()) ? openArchiveChat : refusedChat);
+                } else if (path.equals("/api/v1/epics/" + epic + "/chat/proposal/accept")) {
+                    response.json(200, acceptedArchiveChat);
+                } else if (path.equals("/api/v1/epics/" + epic)) {
+                    response.json(200, "{\"epic_id\":\"" + epic + "\",\"project_id\":\"" + project
+                                        + "\",\"display_name\":\"" + project + "\",\"state\":\"running\","
+                                        + "\"auto_start\":true,\"overlap_max_files\":0,\"scope\":2,"
+                                        + "\"running\":0,\"workstreams\":[]}");
+                } else if ("/api/v1/projects".equals(path)) {
+                    response.json(200, "{\"projects\":[{\"project_id\":\"" + project
+                                        + "\",\"state\":\"ready\",\"favourite\":false}],\"favourites\":[]}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=1")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"other\","
+                                        + "\"kind\":\"plan\",\"title\":\"other\",\"outcome\":\"done\","
+                                        + "\"ended_at\":\"2026-10-16T08:00:00Z\"}],\"has_older\":true}");
+                } else if (path.equals("/api/v1/projects/" + project + "/ended?page=2")) {
+                    response.json(200, "{\"project_id\":\"" + project + "\",\"items\":[{\"id\":\"" + plan
+                                        + "\",\"kind\":\"plan\",\"title\":\"" + plan + "\",\"outcome\":\"cancelled\","
+                                        + "\"ended_at\":\"2026-10-16T09:00:00Z\"}],\"has_older\":false}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("\n");
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "epic", epic, true, false);
+            var client = new WorkActionsClient(context);
+            var pagedProject = client.endedProject("plan", plan);
+            var rendered = new StringWriter();
+            WorkChatDialogue.render(context, new PrintWriter(rendered),
+                                ChatResource.fromJson(openArchiveChat));
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(out.toString().contains(
+                                                                        "A new plan is being started in " + project + " with this description"),
+                                                    out.toString()),
+                                () -> assertEquals(project, pagedProject),
+                                () -> assertTrue(rendered.toString().contains("Proposed follow-up plan"),
+                                                    rendered.toString()));
+        }
+
+        @Test
+        @DisplayName("reject-only answers ?, unoffered keys, and new before rejecting; confirm new handles invalid input")
+        void rejectOnlyAndConfirmNewInvalidInputs() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var rejected = new AtomicBoolean();
+            var refusedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\","
+                                + "\"kind\":\"revision\",\"summary\":\"Next\",\"state\":\"refused\","
+                                + "\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"no\"}}}}";
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, openChat);
+                } else if (path.endsWith("/chat")) {
+                    response.json(200, refusedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("?\nbogus\nnew\nbad\nn\nr\nq\n");
+            virtual.endOfInput();
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(rejected.get(), out.toString()),
+                                () -> assertTrue(out.toString().contains("Start a new chat?"), out.toString()));
+        }
+
+        private static String archiveProposalChat(String epic, String state, boolean withFinding) {
+            var finding = withFinding
+                                ? ",\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"no\"}}"
+                                : "";
+            return "{\"id\":\"C-1\",\"subject\":{\"kind\":\"epic\",\"id\":\"" + epic
+                                + "\"},\"role\":{\"name\":\"plan-orchestrator\",\"model\":\"sonnet\"},\"scope\":\"archive\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\","
+                                + "\"kind\":\"follow_up\",\"summary\":\"Next\",\"applies\":{\"key\":\"chat.applies.on_start\","
+                                + "\"args\":{\"kind\":\"plan\",\"subject\":\"next\"}},\"before\":\"a\",\"after\":\"b\","
+                                + "\"state\":\"" + state + "\"" + finding + "}}";
+        }
     }
 }
