@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
@@ -174,7 +175,7 @@ class IntentContractTest {
                             + "\"satisfies\":[]}],\"added_dependencies\":[]}"));
             assertTrue(thrown.getMessage().contains("added_dependencies"), thrown.getMessage());
             assertEquals(
-                    java.util.Set.of("plan_id", "revision", "summary", "deliverables"),
+                    Set.of("plan_id", "revision", "summary", "deliverables"),
                     outline().toMap().keySet());
         }
 

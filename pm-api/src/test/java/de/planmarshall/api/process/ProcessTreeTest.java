@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -658,7 +659,7 @@ class ProcessTreeTest {
     void offTrackSignalClosedSetAndRefusals() {
         assertEquals(
                 List.of("repeating", "no_progress", "failing_again", "edit_churn", "agent_started"),
-                java.util.Arrays.stream(OffTrackSignal.values()).map(OffTrackSignal::value).toList());
+                Arrays.stream(OffTrackSignal.values()).map(OffTrackSignal::value).toList());
         assertNull(OffTrackSignal.fromValue("over_size"));
         assertNull(OffTrackSignal.fromValue("outside_footprint"));
         assertNull(OffTrackSignal.fromValue("unknown"));

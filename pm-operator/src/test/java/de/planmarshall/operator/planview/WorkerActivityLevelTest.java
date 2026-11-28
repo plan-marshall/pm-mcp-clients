@@ -207,8 +207,8 @@ class WorkerActivityLevelTest {
     void rendersMockAgentStartedTask() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var response = new UnixSocketHttpClient(runtime.socketPath()).send(
-                    HttpRequest.get("/api/v1/plans/storage-v2/tasks/TASK-002/activity")
-                                        .withHeader("Authorization", "Bearer " + runtime.token()));
+                                HttpRequest.get("/api/v1/plans/storage-v2/tasks/TASK-002/activity")
+                                                    .withHeader("Authorization", "Bearer " + runtime.token()));
             assertEquals(200, response.status(), response.bodyText());
 
             var activity = TaskActivity.fromJson(response.bodyText());

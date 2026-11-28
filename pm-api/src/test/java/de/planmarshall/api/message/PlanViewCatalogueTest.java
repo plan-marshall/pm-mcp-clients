@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import java.util.stream.Stream;
@@ -234,10 +235,10 @@ class PlanViewCatalogueTest {
     @Test
     @DisplayName("retires the old signal keys and carries failing_again, edit_churn and agent_started in both locales")
     void signalKeysReflectClosedSetOfFive() {
-        var retired = java.util.List.of(
+        var retired = List.of(
                 "state.signal.over_size", "state.signal.outside_footprint",
                 "plan.signal.over_size", "plan.signal.outside_footprint");
-        var added = java.util.List.of("failing_again", "edit_churn", "agent_started");
+        var added = List.of("failing_again", "edit_churn", "agent_started");
         for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
             var common = MessageCatalogue.getMessages(locale, "common");
             var planView = MessageCatalogue.getMessages(locale, "plan_view");
