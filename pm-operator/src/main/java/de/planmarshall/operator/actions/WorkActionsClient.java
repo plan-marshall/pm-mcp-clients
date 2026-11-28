@@ -605,7 +605,7 @@ public final class WorkActionsClient {
      */
     public @Nullable Integer planVersion(String planId) {
         try {
-            var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId)));
+            var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId) + "/process"));
             if (response.status() == 200) {
                 return ProcessTree.fromJson(response.bodyText()).instanceVersion();
             }
@@ -630,6 +630,18 @@ public final class WorkActionsClient {
             } catch (IOException _) {
                 // Fall back to ended-work scan below when the live epic resource is gone.
             }
+        } else {
+            try {
+                var planResp = context.runtime(true).send(HttpRequest.get(PLANS + path(subjectId) + "/process"));
+                if (planResp.status() == 200) {
+                    var project = ProcessTree.fromJson(planResp.bodyText()).project();
+                    if (project != null) {
+                        return project.projectId();
+                    }
+                }
+            } catch (IOException _) {
+                // Fall back to ended-work scan below when the process resource is gone.
+            }
         }
         try {
             var projectsResp = context.runtime(true).send(HttpRequest.get("/api/v1/projects"));
@@ -638,14 +650,21 @@ public final class WorkActionsClient {
             }
             var projects = ProjectExplorer.fromJson(projectsResp.bodyText()).allProjects();
             for (var project : projects) {
-                var endedResp = context.runtime(true).send(HttpRequest.get(
-                                    "/api/v1/projects/" + path(project.projectId()) + "/ended?page=1"));
-                if (endedResp.status() != 200) {
-                    continue;
-                }
-                var page = EndedWorkPage.fromJson(endedResp.bodyText());
-                if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
-                    return project.projectId();
+                int pageNumber = 1;
+                while (true) {
+                    var endedResp = context.runtime(true).send(HttpRequest.get(
+                                        "/api/v1/projects/" + path(project.projectId()) + "/ended?page=" + pageNumber));
+                    if (endedResp.status() != 200) {
+                        break;
+                    }
+                    var page = EndedWorkPage.fromJson(endedResp.bodyText());
+                    if (page.items().stream().anyMatch(item -> subjectId.equals(item.id()))) {
+                        return project.projectId();
+                    }
+                    if (!page.hasOlder() || page.items().isEmpty()) {
+                        break;
+                    }
+                    pageNumber++;
                 }
             }
         } catch (IOException _) {

@@ -112,7 +112,7 @@ class PlanChatIT {
         environment.put("XDG_STATE_HOME", tempDir.resolve("xdg-state").toString());
         try (var session = PtySession.start(binary.with("plan", "chat", "fix-relay"),
                                  environment, Path.of("").toAbsolutePath(), 120, 30)) {
-            assertTrue(session.awaitText("fix-relay", DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText("you  ›", DialogueHarness.TIMEOUT), session.rawOutput());
             session.send(message + "\n\n");
             assertTrue(session.awaitText(REPLY, DialogueHarness.TIMEOUT), session.screenText());
             session.send("q\n");

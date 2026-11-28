@@ -1117,7 +1117,7 @@ class WorkChatDialogueTest {
                 var path = request.target();
                 if (path.endsWith("/chat")) {
                     response.json(200, rejected.get() ? rejectedChat : openChat);
-                } else if (path.equals("/api/v1/plans/" + subject)) {
+                } else if (path.equals("/api/v1/plans/" + subject + "/process")) {
                     response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
                                         + ",\"root_groups\":[],\"phases\":[]}");
                 } else if (path.endsWith("/proposal/accept")) {
@@ -1216,7 +1216,7 @@ class WorkChatDialogueTest {
                 var path = request.target();
                 if (path.endsWith("/chat")) {
                     response.json(200, rejected.get() ? rejectedChat : openChat);
-                } else if (path.equals("/api/v1/plans/" + subject)) {
+                } else if (path.equals("/api/v1/plans/" + subject + "/process")) {
                     response.json(200, "{\"plan_id\":\"" + subject + "\",\"instance_version\":" + version
                                         + ",\"root_groups\":[],\"phases\":[]}");
                 } else if (path.endsWith("/proposal/accept")) {
