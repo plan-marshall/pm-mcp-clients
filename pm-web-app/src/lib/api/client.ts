@@ -2580,24 +2580,6 @@ function recordNumber(record: Record<string, unknown>, field: string, type: stri
  * @param record the object
  * @param field the member
  * @param type the record's type name
- * @returns the member's number, or `undefined` where the record does not carry it
- */
-function optionalRecordNumber(
-  record: Record<string, unknown>,
-  field: string,
-  type: string,
-): number | undefined {
-  const value = record[field];
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-  return recordNumber(record, field, type);
-}
-
-/**
- * @param record the object
- * @param field the member
- * @param type the record's type name
  * @returns the member's flag
  */
 function recordBoolean(record: Record<string, unknown>, field: string, type: string): boolean {
