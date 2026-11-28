@@ -777,7 +777,7 @@
     try {
       const res = await apiClient.getPlanProcess(currentId);
       if (gen !== processLoadGeneration) return;
-      const first = initial || initialReadPending;
+      const first = initialReadPending;
       initialReadPending = false;
       const previousPlanId = plan?.plan_id ?? null;
       plan = res;
