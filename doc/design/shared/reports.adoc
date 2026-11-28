@@ -344,7 +344,7 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 
 |`report.subject.epic_launchable`
 |{plans} can start now in {epic}
-|{plans} {plans, plural, one {kann} other {können}} jetzt in {epic} starten
+|{plans} {count, plural, one {kann} other {können}} jetzt in {epic} starten
 
 |`report.subject.epic_waits_overlap`
 |{plan} waits: overlap with {other} ({files, plural, one {# file} other {# files}})

@@ -70,6 +70,15 @@ class MessageCatalogueTest {
         assertTrue(extraneousInDe.isEmpty(), "Keys in German but missing in English: " + extraneousInDe);
     }
 
+    /**
+     * The keys whose arguments differ between the packs by contract. The {@code epic.launchable}
+     * event carries {@code plans} (the plan ids the subject names) and {@code count} (their number);
+     * German needs the number for the verb's agreement, English names the list alone. The event's
+     * contract fixes the arguments, so the packs are not made to agree here.
+     */
+    private static final Set<String> ASYMMETRIC_ARGUMENTS =
+            Set.of("report.subject.epic_launchable");
+
     @Test
     @DisplayName("every key of every area carries the same ICU argument names in English and German")
     void shouldAgreeOnTheIcuArgumentsOfEveryKey() {
@@ -79,6 +88,9 @@ class MessageCatalogueTest {
             var en = MessageCatalogue.getMessages("en", area);
             var de = MessageCatalogue.getMessages("de", area);
             for (var entry : en.entrySet()) {
+                if (ASYMMETRIC_ARGUMENTS.contains(entry.getKey())) {
+                    continue;
+                }
                 var german = de.get(entry.getKey());
                 if (german == null) {
                     mismatches.add(entry.getKey() + ": missing in de");
@@ -145,14 +157,18 @@ class MessageCatalogueTest {
     private static void addPlaceholderArguments(String content, Set<String> names) {
         var trimmed = content.strip();
         var nameEnd = identifierEnd(trimmed);
-        if (nameEnd == 0 || (nameEnd < trimmed.length() && trimmed.charAt(nameEnd) != ',')) {
+        var commaAt = nameEnd;
+        while (commaAt < trimmed.length() && Character.isWhitespace(trimmed.charAt(commaAt))) {
+            commaAt++;
+        }
+        if (nameEnd == 0 || (commaAt < trimmed.length() && trimmed.charAt(commaAt) != ',')) {
             return;
         }
         names.add(trimmed.substring(0, nameEnd));
-        if (nameEnd == trimmed.length()) {
+        if (commaAt == trimmed.length()) {
             return;
         }
-        var rest = trimmed.substring(nameEnd + 1).strip();
+        var rest = trimmed.substring(commaAt + 1).strip();
         var typeEnd = identifierEnd(rest);
         var type = rest.substring(0, typeEnd);
         if (type.equals("plural") || type.equals("select") || type.equals("selectordinal")) {
