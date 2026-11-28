@@ -594,10 +594,11 @@ pm ›
 == Texts of the Terminal
 
 The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]; the terminal adds the
-`operator.overview.*` and `operator.status.*` texts, which are in the packs
+`operator.overview.*` and `operator.status.*` texts. All of them are in the packs
 link:../../../pm-api/src/main/resources/messages/overview.en.properties[`overview.en.properties`] and
-link:../../../pm-api/src/main/resources/messages/overview.de.properties[`overview.de.properties`], and the
-`operator.overview.keys.more` and `operator.overview.help.*` texts, which are in
+link:../../../pm-api/src/main/resources/messages/overview.de.properties[`overview.de.properties`] except
+`operator.overview.keys.more`, `operator.overview.help.close`, `operator.overview.help.title` and
+`operator.overview.help.views`, which are in
 link:../../../pm-api/src/main/resources/messages/operator.en.properties[`operator.en.properties`] and
 link:../../../pm-api/src/main/resources/messages/operator.de.properties[`operator.de.properties`]; the packs are the
 source of these texts, and this design does not repeat them.
