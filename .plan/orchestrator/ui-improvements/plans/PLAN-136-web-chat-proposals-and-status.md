@@ -162,7 +162,6 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 - OBSERVED: `pm-web-app/src/lib/views/OverviewView.svelte` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/lib/views/OverviewView.test.ts` — present at `1cc0e10e`
 - OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at `1cc0e10e`
-- OBSERVED: `pm-web-e2e/tests/chat.spec.js` — created by PLAN-135; extended here
 - OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at `1cc0e10e`
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at `1cc0e10e`
 - OBSERVED: `doc/design/web-app/components-chat.adoc` — present at `1cc0e10e`
@@ -181,6 +180,26 @@ Specification: `doc/design/web-app/chat.adoc` § `#proposal`, `#notices`, `#subj
 - OBSERVED: `pm-web-app/src/lib/components/PlanChanges.svelte` — present at HEAD 7b60cec0 (cleanup 2026-11-22, declared surface understated)
 - OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
 - OBSERVED: `pm-web-app/src/lib/components/intentEvents.ts` — present at HEAD 3dea04b2 (cleanup 2026-11-25, declared surface understated)
+- OBSERVED: `pm-web-app/src/lib/components/ChatTranscript.svelte` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/components/Chat.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/components/ChatTurn.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/chat/store.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/chat/store.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/chat/messages.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/chat/markdown.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/chat/types.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/dev/ChatFixture.svelte` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/routes/dev/components/+page.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/vocabulary.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/utils/lineDiff.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/utils/lineDiff.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.test.ts` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `doc/design/shared/work-actions.adoc` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `doc/design/web-app/components-tags.adoc` — present at d25d1d76 (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/components/ProposalCard.test.ts` — absent at d25d1d76; created by this plan (re-grounding 2026-11-28)
+- OBSERVED: `pm-web-app/src/lib/components/ChatStatusCard.test.ts` — absent at d25d1d76; created by this plan (re-grounding 2026-11-28)
 
 ## Dependencies and Sequencing
 
@@ -234,6 +253,126 @@ Re-grounded by the cleanup of 2026-11-25 (read-only sub-agent, contradictions sp
 On the operator's word of 2026-11-25 ("split as proposed"), after the cleanup of 2026-11-25. **This section binds over the body and the earlier amendments where they differ.**
 
 - The fixtures this plan's checks use (a plan decision chat with a revision proposal, the narrative) come from PLAN-194 (split out of PLAN-140's D-R134); until it lands, `/mock/broadcast`.
+
+## Re-Grounding 2026-11-28 (at `d25d1d76`)
+
+Re-grounded by a read-only sub-agent at origin/main `d25d1d76`. It follows these merges:
+- PLAN-135 (#598 `bdaf6f26`);
+- PLAN-194 (#589 `4fde136a`);
+- PLAN-55 (#576 `163e2a49`, #594 `aa0ca871`);
+- PLAN-70 (#601), PLAN-71 (#599), PLAN-196 and PLAN-199 (#609).
+
+Emitted on the operator's word of 2026-11-28 ("Do both"). **This section binds over the body and the earlier amendments where they differ.**
+
+**Facts at `d25d1d76`**
+- **Where `Chat` runs:**
+  - Only `lib/dev/ChatFixture.svelte:5` mounts the new `Chat`, on `/dev/components` (`routes/dev/components/+page.svelte:48,986`), with a static injected store.
+  - Every production host still uses the old `ChatPanel`: `WorkControlPanel.svelte:9`, `StartView.svelte:27`, `DecisionView.svelte:20`, `EpicView.svelte:12`.
+  - `Chat` sits in no side column; PLAN-137 and PLAN-192 place it.
+  - `pm-web-e2e/tests/chat.spec.js` is absent: PLAN-192 creates it.
+- **Dependencies:**
+  - "Through PLAN-135, PLAN-142" is stale.
+  - PLAN-143 is shipped:
+    - the `open=` forms are parsed and written (`routes.ts:628,718`);
+    - the chips write them already (`chat/markdown.ts:83,90,93`).
+  - PLAN-194 is shipped (#589):
+    - plan chat C-0006 with notice lines (`running-work.json:2857`);
+    - decision revision chat C-0005 `fix-relay/Q-007` with an open revision (`:2750`);
+    - REFUSED stays rejectable (`ChatProposal.isOpen(boolean)`).
+  - Avoid C-0006's `pr_merged #198` line: that fixture contradicts itself (PLAN-194 L3-1).
+- **Done by PLAN-135:**
+  - accept and reject by `turn_id` (`chat/store.ts:1005-1031`, `chat/client.ts:76-91`);
+  - `proposalBusy`, and a re-read on a new proposal `turn_id` (`store.ts:510-533`);
+  - the New-chat confirmation while a proposal is open (`Chat.svelte:245-258,452-468`);
+  - the notice-line fold above 3 lines (`ChatTurn.svelte:43,82-138`);
+  - the knows line (`Chat.svelte:144-150,343`; `store.ts:435`);
+  - finding and reason keys (`chat/messages.ts:19-30`).
+- **Done by PLAN-55:** the plan head's queued-revision line (`PlanView.svelte:1427-1441`), fed by `plan.revision_queued` (`:326-336,700`) and the resource (`:754-764`). Its tests are `PlanView.test.ts:2047,2078,2201`.
+- **Not done:**
+  - No `ProposalCard` or `ChatStatusCard` (both still in `vocabulary.test.ts:23` `PENDING_LIST`).
+  - `Chat` renders no proposal and no client notice. `endedBy` is kept (`store.ts:535-553`) but not rendered.
+  - Lost, too-long, infeasible and stopped show as a status inside the role's turn (`ChatTurn.svelte:224-229`). Lost has no Try again.
+  - Every `refs` kind is a chip (`ChatTurn.svelte:122-131`).
+  - No `revision_origin` or `from_chat` exists.
+  - The overview row type has no `queued_revision`.
+
+**Decisions of the orchestrator (routine, logged)**
+- **The double announcement is PLAN-200's:**
+  - PLAN-135 L3-1, the reply and the notice read twice and the historic turn announced on open, is fixed by PLAN-200, launched with this plan.
+  - PLAN-200 empties the effect (`Chat.svelte:266-281`) and leaves the polite region of `ChatTranscript.svelte:195-197` empty.
+  - This plan writes into that region only `control.chat.proposal.announce`: once per new proposal `turn_id`, seeded from the first snapshot, so nothing is announced on open.
+  - Nothing else goes into the region; the log reads the reply (`chat.adoc:147,191`, `components-chat.adoc:55`).
+  - Whichever plan merges second merges `main`. The shared code files are `Chat.svelte`, `Chat.test.ts`, `store.ts` and `store.test.ts` (4, below the block).
+- **The browser check runs on `/dev/components`:** no production page hosts `Chat` until PLAN-137 or PLAN-192.
+- **Try again after a lost reply is settled at the outline:** the turn was already accepted, so a re-send with the same `client_turn_id` is de-duplicated. Read pm-mcp-core `state-catalogue.adoc:144,198` first, and state the choice in the pull request.
+
+**D1 `ProposalCard`**
+- **Stale:**
+  - the token and contrast part (done by PLAN-164);
+  - accept and reject by `turn_id` in the store (done).
+- **Remains:**
+  - `ProposalCard.svelte` and its test: the kind's title, the summary, the applies line, and the diff (reuse `utils/lineDiff.ts`, add the word marks).
+  - `ChatTranscript` renders the card at its turn.
+  - The pinned copy above the composer.
+  - The folds: decided, replaced, lapsed, accepted-not-yet-applied.
+  - The refusals: `changed_since`, `lapsed`, `at_boundary`/`at_start`, and already-queued N2 with its four exits. A refused proposal stays rejectable.
+  - The applies line maps `chat.applies.*` to `control.chat.at_boundary`/`at_start`, not to `revision_queued` (`messages.ts:58-61`).
+- **Docs:**
+  - The stale restriction of the diff tokens is still at `chat.adoc:144`, `components-chat.adoc:51` and `web-app/README.adoc:387`; fix it against `components-tags.adoc:321`.
+  - The already-queued variant is still missing at `components-chat.adoc:53`.
+
+**D2 Notices**
+- **What "never a turn" means:** `chat.adoc:99` means a notice is never a role or operator turn: no head, no Copy, no grouping. The wire's `kind: notice` turn stays (`chat.adoc:114`).
+  - The notice branch of `ChatTurn` becomes centred and muted (`components-chat.adoc:36`); today it is left-bordered (`ChatTurn.svelte:278-284`).
+  - The client's own notices are drawn as centred lines in the log:
+    - replaced, applied, rejected, check_failed, at_boundary, changed_since, lapsed, already_queued;
+    - the five `chat.ended` causes from `endedBy`;
+    - stopped, lost with Try again, too_long_reply, infeasible.
+- **N6:**
+  - The bridge shows `follow_up.opened` (`WorkControlPanel.svelte:794`).
+  - `chat.adoc` § notices still lacks the line.
+  - In `Chat` the line follows Start a plan with it.
+- **PLAN-161 residue:** a notice with neither text nor lines draws nothing. Today it draws an empty `<article>`.
+- **PLAN-132 residue:** only the absent device remains (`DecisionView.svelte:535,642` print `—`). It is a Done-when line here.
+
+**D3 Subject notices, status cards, placement**
+- **Done:** the fold and the knows line.
+- **Remains:**
+  - tests: 3 lines and no fold; the knows line after a turn;
+  - `ChatStatusCard.svelte` and its test for `refs` decision, hold, act and the queued revision (holds through `getPlanHolds`).
+- **Fix the chip addresses:**
+  - `decisionRefHref` uses the chat's subject instead of `ref.subject` (`chat/markdown.ts:88-96`);
+  - a task without a plan subject writes `/plans?open=task:…` (`:102`);
+  - the one-column "pushed without `chat`" rule is missing.
+- **Dropped:**
+  - "without PLAN-143 no `open=`";
+  - the close-replaces-the-address rule (PLAN-143 D2 residue);
+  - the CountBadge rule, which moves to PLAN-137/PLAN-192, since it needs a host's opener.
+
+**D4 Queued revision**
+- **Done by PLAN-55:** the head line and its events. Drop "add `plan.revision_queued` to the refresh events" (`PlanView.svelte:700`).
+- **Remains:**
+  - the way to the proposing chat, or `control.chat.revision_origin` where `chat_open` is false (`QueuedRevisionRecord`, `client.ts:449-455`);
+  - the overview row line (`queued_revision` added to the row type);
+  - `version N · from the chat` (`control.chat.from_chat`);
+  - a test for each exit.
+- **Overlap:** PLAN-62 (running) shares `PlanView.svelte`, `PlanView.test.ts`, `runtime.ts` and `plan-view.spec.js` (4, below the block). Whichever merges second merges `main`.
+
+**Browser check (replaces D4's)**
+- The proposal card, the notices, the fold and the status card are checked on `/dev/components` through `ChatFixture.svelte`. Extend the fixture with:
+  - an open proposal and each refusal;
+  - a decided card and a lapsed card;
+  - client notices;
+  - a 5-line notice;
+  - a decision ref.
+- The plan head's line and the row are checked on `running-work`: accept C-0006's revision while a task runs, or use `/mock/broadcast`.
+- Matrix: German and English, light and dark, `1440` and `390` px. The screenshots are taken after the last visual commit and named with that commit's SHA.
+
+- `pm-web-e2e/tests/chat.spec.js` is dropped from the Expected Surface: it is absent, and PLAN-192 creates it.
+
+**Count:** 4 deliverables, unsplit. D4 may be split out by the outline if D1's size calls for it, with the reason stated in the pull request.
+
+**Ports:** mock web port `21360`, app port `21361` (as in the body).
 
 ## Hand-Off Command
 

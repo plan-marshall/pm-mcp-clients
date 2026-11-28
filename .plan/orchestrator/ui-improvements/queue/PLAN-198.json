@@ -2,10 +2,10 @@
   "id": "PLAN-198",
   "slug": "tests-read-no-documentation",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "running",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
+  "pr": "611",
   "landing": "",
   "seq": 198
 }

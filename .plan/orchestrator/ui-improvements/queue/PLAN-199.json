@@ -2,10 +2,10 @@
   "id": "PLAN-199",
   "slug": "remove-predictions",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "pr": "609",
+  "landing": "landings/PLAN-199.md",
   "seq": 199
 }
