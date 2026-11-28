@@ -9,7 +9,15 @@ import { ENTRY_REFRESH_EVENTS } from '../stores/refreshEvents';
 import { makeRuntimeState } from '../test/runtimeState';
 import { messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import { PROJECT, RECIPES, entry, offersFor, representation, source, sources } from './startFixtures';
+import {
+  PROJECT,
+  RECIPES,
+  entry,
+  offersFor,
+  representation,
+  source,
+  sources,
+} from './startFixtures';
 
 /**
  * The start view's two patterns: the error block of a failed read with its act, the skeletons of a
@@ -111,7 +119,7 @@ describe('StartView', () => {
     expect(get(runtimeStore).startProjectId).toBe(PROJECT);
   });
 
-  it("closes the abandon question when another entry is addressed", async () => {
+  it('closes the abandon question when another entry is addressed', async () => {
     arrangeOpen(sources());
     const rendered = render(StartView, { projectId: PROJECT, kind: 'plan' });
     await screen.findByTestId('source-list');
@@ -136,18 +144,36 @@ describe('StartView', () => {
       return { emit: (event) => listener?.(event, {}) };
     }
 
-    it.each(ENTRY_REFRESH_EVENTS)('re-reads the entry on %s and shows what changed', async (event) => {
+    it.each(ENTRY_REFRESH_EVENTS)(
+      're-reads the entry on %s and shows what changed',
+      async (event) => {
+        arrangeOpen();
+        const { emit } = arrangeEvents();
+        const read = vi
+          .spyOn(apiClient, 'getEntry')
+          .mockResolvedValue(sources({ sources: [source({ title: 'Read by the event' })] }));
+        render(StartView, { projectId: PROJECT, kind: 'plan' });
+        await screen.findByTestId('source-list');
+
+        emit(event);
+
+        expect(await screen.findByText('Read by the event')).toBeInTheDocument();
+        expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
+      },
+    );
+
+    it('re-reads the entry when chat.ended arrives', async () => {
       arrangeOpen();
       const { emit } = arrangeEvents();
       const read = vi
         .spyOn(apiClient, 'getEntry')
-        .mockResolvedValue(sources({ sources: [source({ title: 'Read by the event' })] }));
+        .mockResolvedValue(sources({ sources: [source({ title: 'After chat ended' })] }));
       render(StartView, { projectId: PROJECT, kind: 'plan' });
       await screen.findByTestId('source-list');
 
-      emit(event);
+      emit('chat.ended');
 
-      expect(await screen.findByText('Read by the event')).toBeInTheDocument();
+      expect(await screen.findByText('After chat ended')).toBeInTheDocument();
       expect(read).toHaveBeenCalledWith('ent-3f9a2c41');
     });
 
@@ -155,7 +181,6 @@ describe('StartView', () => {
       'chat.turn.delta',
       'chat.turn.completed',
       'chat.proposal',
-      'chat.ended',
       'entry.changed',
       'source.changed',
       'chat.turn',
@@ -197,6 +222,63 @@ describe('StartView', () => {
       await Promise.resolve();
       expect(screen.queryByText('Restored by the older read')).toBeNull();
       expect(screen.getByText('After the removal')).toBeInTheDocument();
+    });
+
+    it('advances appliedEntryRead on act so an earlier in-flight refresh does not overwrite the action state', async () => {
+      arrangeOpen(sources({ sources: [source({ title: 'Initial source' })] }));
+      const { emit } = arrangeEvents();
+      let finishRefresh: (resource: ReturnType<typeof sources>) => void = () => {};
+      const staleRefresh = new Promise<ReturnType<typeof sources>>((resolve) => {
+        finishRefresh = resolve;
+      });
+      vi.spyOn(apiClient, 'getEntry').mockReturnValueOnce(staleRefresh);
+      vi.spyOn(apiClient, 'actEntry').mockResolvedValueOnce(
+        sources({ sources: [source({ title: 'Committed by action' })] }),
+      );
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByText('Initial source');
+
+      // Start an async refresh before triggering an act (removing a source calls actEntry).
+      emit('source.added');
+      const removeBtn = screen.getByTestId('remove-src-1');
+      await fireEvent.click(removeBtn);
+      expect(await screen.findByText('Committed by action')).toBeInTheDocument();
+
+      // Resolving the older refresh must not revert the action result.
+      finishRefresh(sources({ sources: [source({ title: 'Stale refresh source' })] }));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(screen.queryByText('Stale refresh source')).toBeNull();
+      expect(screen.getByText('Committed by action')).toBeInTheDocument();
+    });
+
+    it('does not let a slower act response overwrite an entry read started after it that already applied', async () => {
+      arrangeOpen(sources({ sources: [source({ title: 'Initial source' })] }));
+      const { emit } = arrangeEvents();
+      let finishAct: (resource: ReturnType<typeof sources>) => void = () => {};
+      const slowAct = new Promise<ReturnType<typeof sources>>((resolve) => {
+        finishAct = resolve;
+      });
+      vi.spyOn(apiClient, 'actEntry').mockReturnValueOnce(slowAct);
+      vi.spyOn(apiClient, 'getEntry').mockResolvedValueOnce(
+        sources({ sources: [source({ title: 'Newer refresh after chat.ended' })] }),
+      );
+
+      render(StartView, { projectId: PROJECT, kind: 'plan' });
+      await screen.findByText('Initial source');
+
+      // Click remove to start slow act, then chat.ended triggers refresh which settles first.
+      const actClick = fireEvent.click(screen.getByTestId('remove-src-1'));
+      emit('chat.ended');
+      expect(await screen.findByText('Newer refresh after chat.ended')).toBeInTheDocument();
+
+      // Resolving the slower act must not replace the newer refresh state.
+      finishAct(sources({ sources: [source({ title: 'Stale action source' })] }));
+      await actClick;
+      await Promise.resolve();
+      expect(screen.queryByText('Stale action source')).toBeNull();
+      expect(screen.getByText('Newer refresh after chat.ended')).toBeInTheDocument();
     });
 
     it('keeps what it shows when the re-read fails', async () => {
@@ -375,7 +457,9 @@ describe('StartView', () => {
       render(StartView, { projectId: PROJECT, kind: 'plan' });
 
       const cause = await screen.findByTestId('start-gate-cause');
-      expect(cause.textContent?.trim()).toBe("The project's setup did not answer within 20 seconds.");
+      expect(cause.textContent?.trim()).toBe(
+        "The project's setup did not answer within 20 seconds.",
+      );
       // One live region for one event: the error block announces, the sentence beside it does not.
       expect(
         screen.getByTestId('start-error').querySelectorAll('[role="status"], [role="alert"]'),
@@ -487,9 +571,7 @@ describe('StartView', () => {
 
   describe('the recipe and ready steps (D1)', () => {
     it('offers one primary act on the recipe step, and it chooses the recipe', async () => {
-      arrangeOpen(
-        representation({ entry: entry({ state: 'start.recipe' }), recipes: RECIPES }),
-      );
+      arrangeOpen(representation({ entry: entry({ state: 'start.recipe' }), recipes: RECIPES }));
       const act = vi
         .spyOn(apiClient, 'actEntry')
         .mockResolvedValue(
@@ -581,9 +663,7 @@ describe('StartView', () => {
         description: 'A recipe the project offers',
         origin: 'project',
         takes_request: false,
-        parameters: [
-          { name: 'target', options: [], proposed: false, available: true },
-        ],
+        parameters: [{ name: 'target', options: [], proposed: false, available: true }],
       };
       arrangeOpen(
         representation({

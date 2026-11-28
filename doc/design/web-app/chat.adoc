@@ -133,7 +133,7 @@ A role's reply (`format: markdown`) is rendered as a closed subset (link:../../s
 * code blocks in the mono face with their language as a label, a _Copy_ act, sideways scroll, and no syntax colours;
 * links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]), the target's host shown beside a link text that does not name it, so a link the role quotes from outside never hides where it goes; an image as a link to it, never loaded;
 * references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, outside inline code and code blocks, as reference chips (inside code a reference stays code): a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), never a copy `Chip`, which opens its target as a status card's _Open it_ does (<<status-cards>>); a decision, a hold and an act the role names (`refs` of the kinds `decision`, `hold`, `act`) also take a status card under the turn;
-* a fenced Mermaid block as a diagram, drawn as every diagram of a model's text (link:../../specification/cli-and-security/03-web-app.adoc#web-diagrams[Diagrams]).
+* a fenced Mermaid block rendered as a fenced code block labelled `mermaid` behind one named function ready for the future Mermaid renderer (link:../../specification/cli-and-security/03-web-app.adoc#web-diagrams[Diagrams]).
 
 Raw HTML and every token outside the subset are shown as their source text. The renderer creates Svelte nodes and holds no HTML string, so it needs no sanitizer (<<renderer-decision>>).
 
@@ -339,7 +339,7 @@ The chat's shared keys, both clients', are `control.chat.*` (link:../shared/work
 |<<contract>>; the runtime's routes, events and errors as specified (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#chat-routes[The Chat's Routes], link:../../specification/runtime-model/06-event-catalogue.adoc#chat-events[Event Catalogue, Chat])
 
 |the D4 web chat package
-|<<everywhere>> to <<waiting>>, the pieces of link:components-chat.adoc[Chat Pieces], and <<renderer-decision>>; it adopts the chat on the decomposition, the epic review, the start entry and the project onboarding. It builds no side column of its own and waits for the column engine's (`PLAN-142`); the _Open it_ and reference-chip forms that open a target in place beside the chat (`open=`, <<status-cards>>) wait for the address model (`PLAN-143`), and until it lands a target's pushed address is the only form (the operator, 2026-11-10, D6)
+|<<everywhere>> to <<waiting>>, the pieces of link:components-chat.adoc[Chat Pieces], and <<renderer-decision>>; it adopts the chat on the decomposition, the epic review, the start entry and the project onboarding, using the landed side column (`PLAN-142`) and the landed address model (`PLAN-143`, `open=` beside the chat) rather than building its own column engine or fallback link routing
 
 |the D4 voice package
 |<<voice>>, the speech role in the onboarding and the machine settings, the per-browser choice, and the terminal's part

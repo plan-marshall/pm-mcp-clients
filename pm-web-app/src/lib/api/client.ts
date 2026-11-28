@@ -3058,6 +3058,8 @@ export class ApiClient {
   private onOnlineCallback?: () => void;
   /** Called with the state of the shared event stream, for the live indicator. */
   private onStreamStateCallback?: (state: EventStreamState) => void;
+  /** Additional state listeners registered when `subscribePathEvents` reuses `/api/v1/events`. */
+  private readonly pathEventStateListeners = new Set<(state: EventStreamState) => void>();
   /** The listeners of the one shared `/api/v1/events` connection. */
   private readonly eventSubscribers = new Set<(event: string, data: unknown) => void>();
   private eventStreamAbort: (() => void) | null = null;
@@ -3116,6 +3118,63 @@ export class ApiClient {
   }
 
   /**
+   * Subscribes to a path-scoped SSE stream using the client's SSE reader, retry policy, and
+   * revocation handling. Reuses the shared `/api/v1/events` stream when given that path.
+   *
+   * @param path the API stream path (for example `/api/v1/plans/{planId}/events`)
+   * @param onEvent callback per parsed SSE event
+   * @param signal optional abort signal
+   * @param onState optional stream state callback
+   * @param onRetry optional callback receiving the stream's manual retry trigger
+   * @returns unsubscribe callback
+   */
+  public subscribePathEvents(
+    path: string,
+    onEvent: (event: string, data: unknown) => void,
+    signal?: AbortSignal,
+    onState?: (state: EventStreamState) => void,
+    onRetry?: (retry: () => void) => void,
+  ): () => void {
+    this.assertRequestPath(path);
+    if (path === '/api/v1/events') {
+      if (signal?.aborted) {
+        return () => {};
+      }
+      let stateWrapper: ((state: EventStreamState) => void) | null = null;
+      if (onState) {
+        stateWrapper = (state: EventStreamState) => onState(state);
+        this.pathEventStateListeners.add(stateWrapper);
+        try {
+          stateWrapper(this.streamState);
+        } catch {
+          // Isolate initial subscriber errors cleanly just like subsequent transitions.
+        }
+      }
+      onRetry?.(() => this.retryEventStream());
+      const unsub = this.subscribeEvents(onEvent);
+      let cleaned = false;
+      const cleanup = () => {
+        if (cleaned) return;
+        cleaned = true;
+        if (stateWrapper) {
+          this.pathEventStateListeners.delete(stateWrapper);
+        }
+        signal?.removeEventListener('abort', cleanup);
+        unsub();
+      };
+      if (signal) {
+        signal.addEventListener('abort', cleanup, { once: true });
+        if (signal.aborted) {
+          cleanup();
+          return () => {};
+        }
+      }
+      return cleanup;
+    }
+    return this.subscribeStream(path, onEvent, signal, onState, onRetry);
+  }
+
+  /**
    * Records a state of the shared stream and tells the subscriber.
    *
    * @param state the state the stream entered
@@ -3126,6 +3185,13 @@ export class ApiClient {
     }
     this.streamState = state;
     this.onStreamStateCallback?.(state);
+    this.pathEventStateListeners.forEach((listener) => {
+      try {
+        listener(state);
+      } catch {
+        // Isolate subscriber errors so one broken listener does not block others or fail connect.
+      }
+    });
   }
 
   // The app renders in the browser only (`ssr = false` in the root layout), so `localStorage` is
@@ -3933,7 +3999,10 @@ export class ApiClient {
   }
 
   public async getReport(reportId: string): Promise<ReportItem> {
-    const data = await this.request<ReportItem>('GET', `/api/v1/reports/${encodeURIComponent(reportId)}`);
+    const data = await this.request<ReportItem>(
+      'GET',
+      `/api/v1/reports/${encodeURIComponent(reportId)}`,
+    );
     return normaliseReportItem(data);
   }
 
@@ -4972,13 +5041,14 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
-    this.eventSubscribers.add(onEvent);
+    const wrapper = (event: string, data: unknown) => onEvent(event, data);
+    this.eventSubscribers.add(wrapper);
     if (signal) {
       if (signal.aborted) {
-        this.eventSubscribers.delete(onEvent);
+        this.eventSubscribers.delete(wrapper);
         return () => {};
       }
-      signal.addEventListener('abort', () => this.unsubscribeEvent(onEvent), { once: true });
+      signal.addEventListener('abort', () => this.unsubscribeEvent(wrapper), { once: true });
     }
     this.eventStreamAbort ??= this.subscribeStream(
       '/api/v1/events',
@@ -4997,7 +5067,7 @@ export class ApiClient {
         this.eventStreamRetry = retry;
       },
     );
-    return () => this.unsubscribeEvent(onEvent);
+    return () => this.unsubscribeEvent(wrapper);
   }
 
   /**
@@ -5160,6 +5230,7 @@ export class ApiClient {
           },
           signal: AbortSignal.any([internalController.signal, attempt.signal]),
         });
+        clearTimeout(deadline);
 
         if (res.status === 401) {
           // The stream always carries the secret (connect returns without one), so this is a
