@@ -1,4 +1,4 @@
-import { marked, type Token, type Tokens } from 'marked';
+import { marked, type Token } from 'marked';
 import { isWebAddress } from '../components/ExternalLink.svelte';
 import type { ChatSubject, TurnRef } from './types';
 
