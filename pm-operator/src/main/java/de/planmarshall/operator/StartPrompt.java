@@ -204,11 +204,27 @@ public final class StartPrompt {
      * @return the trimmed answer
      */
     String askInline(String rendered, String state, String need, @Nullable String entryId) {
+        return askInline(rendered, state, need, entryId, null);
+    }
+
+    /**
+     * Prints {@code rendered} and reads one trimmed line, optionally prefilling the editor
+     * buffer with a line held from an earlier prompt.
+     *
+     * @param rendered the prompt text
+     * @param state    the state id
+     * @param need     what the state needs
+     * @param entryId  the entry
+     * @param prefill  optional initial line buffer, or {@code null}
+     * @return the trimmed line
+     */
+    String askInline(String rendered, String state, String need, @Nullable String entryId,
+                        @Nullable String prefill) {
         requireAsk(state, need, entryId);
         var lineReader = reader();
         out.print(rendered);
         out.flush();
-        return read(lineReader);
+        return read(lineReader, prefill);
     }
 
     /**
@@ -247,8 +263,15 @@ public final class StartPrompt {
      * @return the trimmed answer
      */
     private static String read(LineReader reader) {
+        return read(reader, null);
+    }
+
+    private static String read(LineReader reader, @Nullable String prefill) {
         try {
-            return Objects.requireNonNullElse(reader.readLine(), EMPTY).trim();
+            var line = prefill != null && !prefill.isEmpty()
+                                ? reader.readLine("", null, (Character) null, prefill)
+                                : reader.readLine();
+            return Objects.requireNonNullElse(line, EMPTY).trim();
         } catch (UserInterruptException _) {
             throw new InterruptException();
         } catch (EndOfFileException _) {

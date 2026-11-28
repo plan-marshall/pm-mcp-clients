@@ -33,6 +33,7 @@ import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.http.HttpExchange;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.ApiErrorCode;
@@ -330,6 +331,35 @@ public final class WorkActionsClient {
     }
 
     /**
+     * Reads the chat after a turn or stream ended, falling back to {@code fallback} when a read
+     * fails after the turn was already recorded.
+     *
+     * @param kind     the subject kind
+     * @param id       the subject id
+     * @param fallback snapshot to keep when reading fails, or {@code null}
+     * @return the updated chat, or {@code fallback} if the read failed
+     */
+    public @Nullable ChatResource readChatQuietly(String kind, String id, @Nullable ChatResource fallback) {
+        try {
+            return chat(kind, id);
+        } catch (IOException _) {
+            return fallback;
+        }
+    }
+
+    /**
+     * Opens the subject's SSE event stream ({@code /api/v1/{plans|epics}/{id}/events}).
+     *
+     * @param kind the subject kind
+     * @param id   the subject id
+     * @return the open HTTP exchange
+     * @throws IOException on connection failure
+     */
+    public HttpExchange openEvents(String kind, String id) throws IOException {
+        return context.runtime(false).open(HttpRequest.get(prefix(kind) + path(id) + "/events"));
+    }
+
+    /**
      * Opens or returns the chat for a plan or an epic ({@code POST …/chat}).
      *
      * @param kind the subject kind ({@code plan} or {@code epic})
@@ -391,6 +421,39 @@ public final class WorkActionsClient {
      */
     public ChatResource chatTurn(String kind, String id, String message, String clientTurnId)
                         throws IOException {
+        return chatTurn(kind, id, message, clientTurnId, null);
+    }
+
+    /**
+     * Sends the operator's message with a caller-supplied {@code client_turn_id} and waits via
+     * polling, keeping {@code fallback} if a read fails after the turn was recorded.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @param fallback     last known chat snapshot before this turn, or {@code null}
+     * @return the chat after the reply, or the last snapshot when a read fails or wait runs out
+     * @throws IOException when posting the turn is refused or fails
+     */
+    public ChatResource chatTurn(String kind, String id, String message, String clientTurnId,
+                        @Nullable ChatResource fallback) throws IOException {
+        var accepted = postTurn(kind, id, message, clientTurnId);
+        return awaitReply(chatRoutes(kind, id), accepted.turnId(), kind, fallback);
+    }
+
+    /**
+     * Posts an operator chat turn ({@code POST …/chat/turns}) and returns the {@code 202} ack.
+     *
+     * @param kind         the subject kind
+     * @param id           the subject id
+     * @param message      the operator's message
+     * @param clientTurnId the client's own id of this message
+     * @return the recorded turn ack
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatTurnAccepted postTurn(String kind, String id, String message, String clientTurnId)
+                        throws IOException {
         context.gate().verifyAct();
         var routes = chatRoutes(kind, id);
         var request = new ChatTurnRequest(message, clientTurnId);
@@ -399,8 +462,26 @@ public final class WorkActionsClient {
         if (response.status() != ChatTurnAccepted.HTTP_STATUS) {
             throw new OperatorRefusedException(kind + CHAT + " turn", response);
         }
-        var accepted = ChatTurnAccepted.fromJson(response.bodyText());
-        return awaitReply(routes, accepted.turnId(), kind);
+        return ChatTurnAccepted.fromJson(response.bodyText());
+    }
+
+    /**
+     * Requests stopping an in-progress role reply ({@code POST …/chat/turns/{turnId}/stop}).
+     *
+     * @param kind   the subject kind
+     * @param id     the subject id
+     * @param turnId the role's reply turn id
+     * @return the chat as the runtime left it
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public ChatResource stopReply(String kind, String id, String turnId) throws IOException {
+        context.gate().verifyAct();
+        var routes = chatRoutes(kind, id);
+        var response = context.runtime(true).send(HttpRequest.json("POST", routes.stop(turnId), "{}"));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException(kind + CHAT + " stop", response);
+        }
+        return ChatResource.fromJson(response.bodyText());
     }
 
     /**
@@ -447,10 +528,18 @@ public final class WorkActionsClient {
      * @return the chat once the reply settled, or as it stands at the bound or on an interrupt
      * @throws IOException when the runtime refuses or cannot be reached
      */
-    private ChatResource awaitReply(ChatRoutes routes, String operatorTurnId, String kind)
-                        throws IOException {
+    private ChatResource awaitReply(ChatRoutes routes, String operatorTurnId, String kind,
+                        @Nullable ChatResource fallback) throws IOException {
         var bound = System.nanoTime() + CHAT_REPLY_BOUND.toNanos();
-        var chat = readChat(routes, kind + CHAT);
+        ChatResource chat;
+        try {
+            chat = readChat(routes, kind + CHAT);
+        } catch (IOException failure) {
+            if (fallback != null) {
+                return fallback;
+            }
+            throw failure;
+        }
         while (!replySettled(chat, operatorTurnId) && System.nanoTime() < bound) {
             if (Thread.currentThread().isInterrupted()) {
                 return chat;
@@ -461,7 +550,11 @@ public final class WorkActionsClient {
                 Thread.currentThread().interrupt();
                 return chat;
             }
-            chat = readChat(routes, kind + CHAT);
+            try {
+                chat = readChat(routes, kind + CHAT);
+            } catch (IOException _) {
+                return chat;
+            }
         }
         return chat;
     }

@@ -12,8 +12,10 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -22,7 +24,6 @@ import de.planmarshall.api.chat.ChatResource;
 import de.planmarshall.api.chat.ChatScopeKind;
 import de.planmarshall.api.chat.ChatTurn;
 import de.planmarshall.api.chat.TurnKind;
-import de.planmarshall.api.chat.TurnStatus;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
@@ -112,7 +113,7 @@ final class WorkChatDialogue {
         var dialogue = new WorkChatDialogue(context, out, chat.subject().kind().wireValue(), chat.subject().id(),
                             false, true);
         boolean endedChat = chat.scope() == ChatScopeKind.ARCHIVE;
-        dialogue.showTranscript(chat, endedChat);
+        dialogue.showTranscript(chat, endedChat, new HashSet<>());
         var proposal = chat.proposal();
         if (proposal != null && chat.hasProposal()) {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), endedChat
@@ -133,51 +134,84 @@ final class WorkChatDialogue {
         out.flush();
     }
 
+    private record TurnSubmission(@Nullable ChatResource updatedChat, @Nullable String heldFirstLine,
+                        boolean endedExternally) {
+    }
+
     private int execute() throws IOException {
         if (!prompt.asks()) {
             throw new StartPrompt.MissingInputException(STATE_ID, "turn", subjectId);
         }
-        var chat = client.openChat(kind, subjectId);
-        boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
-        showTranscript(chat, endedChat);
-        var seen = lastTurnId(chat);
-        boolean saidNoProposal = false;
-        while (true) {
-            if (chat.hasProposal()) {
-                var proposalOutcome = handleProposal(chat, endedChat, seen);
-                if (proposalOutcome == null) {
+        try (var follower = ChatStreamFollower.open(client, kind, subjectId, prompt.locale())) {
+            var chat = client.openChat(kind, subjectId);
+            boolean endedChat = ended || chat.scope() == ChatScopeKind.ARCHIVE;
+            var printedTurnIds = new HashSet<String>();
+            showTranscript(chat, endedChat, printedTurnIds);
+            boolean saidNoProposal = false;
+            @Nullable String heldFirstLine = null;
+            while (true) {
+                if (chat.hasProposal()) {
+                    var proposalOutcome = handleProposal(chat, endedChat, printedTurnIds);
+                    if (proposalOutcome == null) {
+                        return 0;
+                    }
+                    chat = proposalOutcome;
+                    if (chat.turns().isEmpty()) {
+                        printedTurnIds.clear();
+                    }
+                    continue;
+                }
+                var message = askMessageOrNew(heldFirstLine);
+                heldFirstLine = null;
+                if (message == null) {
+                    var reset = confirmAndStartNew(null);
+                    if (reset != null) {
+                        chat = reset;
+                        printedTurnIds.clear();
+                        seedPrintedTurns(chat, printedTurnIds);
+                        saidNoProposal = false;
+                    }
+                    continue;
+                }
+                var submission = sendTurn(message, follower, chat, printedTurnIds);
+                if (submission == null) {
+                    continue;
+                }
+                heldFirstLine = submission.heldFirstLine();
+                var updated = submission.updatedChat();
+                if (updated != null) {
+                    chat = updated;
+                    showUnprintedTurns(chat, printedTurnIds);
+                }
+                if (submission.endedExternally()) {
                     return 0;
                 }
-                chat = proposalOutcome;
-                seen = lastTurnId(chat);
-                continue;
+                saidNoProposal = reportNoProposalOnce(chat, saidNoProposal);
             }
-            var message = askMessageOrNew();
-            if (message == null) {
-                var reset = confirmAndStartNew(null);
-                if (reset != null) {
-                    chat = reset;
-                    seen = lastTurnId(chat);
-                    saidNoProposal = false;
-                }
-                continue;
-            }
-            var updated = sendTurn(message);
-            if (updated == null) {
-                continue;
-            }
-            chat = updated;
-            showNewTurns(chat, seen);
-            seen = lastTurnId(chat);
-            saidNoProposal = reportNoProposalOnce(chat, saidNoProposal);
         }
     }
 
-    private @Nullable ChatResource sendTurn(String message) throws IOException {
+    private @Nullable TurnSubmission sendTurn(String message, ChatStreamFollower follower, ChatResource currentChat,
+                        Set<String> printedTurnIds) throws IOException {
         var clientTurnId = UUID.randomUUID().toString();
         while (true) {
             try {
-                return client.chatTurn(kind, subjectId, message, clientTurnId);
+                if (follower.isActive()) {
+                    var accepted = client.postTurn(kind, subjectId, message, clientTurnId);
+                    printedTurnIds.add(accepted.turnId());
+                    var outcome = follower.followReply(prompt.reader(), currentChat.id(), accepted.turnId(),
+                                        currentChat.role().name(), printedTurnIds);
+                    if (outcome.leftDialogue()) {
+                        throw new StartPrompt.StartLeftException();
+                    }
+                    var refreshed = client.readChatQuietly(kind, subjectId, currentChat);
+                    if (!outcome.completedViaStream() && outcome.endedEvent() == null && refreshed != null) {
+                        return new TurnSubmission(refreshed, outcome.heldFirstLine(), false);
+                    }
+                    return new TurnSubmission(refreshed, outcome.heldFirstLine(), outcome.endedEvent() != null);
+                }
+                var updated = client.chatTurn(kind, subjectId, message, clientTurnId, currentChat);
+                return new TurnSubmission(updated, null, false);
             } catch (IOException failure) {
                 prompt.raw(OperatorRefusedException.screenText(failure, prompt.locale()));
                 var retryTitle = MessageCatalogue.format(prompt.locale(), "common.action.retry", Map.of()) + "?";
@@ -188,10 +222,17 @@ final class WorkChatDialogue {
         }
     }
 
-    private void showTranscript(ChatResource chat, boolean endedChat) {
+    private void showTranscript(ChatResource chat, boolean endedChat, Set<String> printedTurnIds) {
         showHead(chat, endedChat);
         for (var turn : chat.turns()) {
+            printedTurnIds.add(turn.turnId());
             showTurn(turn);
+        }
+    }
+
+    private static void seedPrintedTurns(ChatResource chat, Set<String> printedTurnIds) {
+        for (var turn : chat.turns()) {
+            printedTurnIds.add(turn.turnId());
         }
     }
 
@@ -201,10 +242,10 @@ final class WorkChatDialogue {
      * first line, the localized leave key, or {@code Ctrl+D} throws
      * {@link StartPrompt.StartLeftException} so the dialogue leaves without closing the chat.
      */
-    private @Nullable String askMessageOrNew() {
+    private @Nullable String askMessageOrNew(@Nullable String prefill) {
         var leaveHint = MessageCatalogue.format(prompt.locale(), "operator.actions.chat_leave", Map.of());
         var first = prompt.askInline(MessageCatalogue.format(prompt.locale(), "operator.actions.chat.you",
-                            Map.of()) + StartPrompt.SUFFIX, STATE_ID, leaveHint, subjectId);
+                            Map.of()) + StartPrompt.SUFFIX, STATE_ID, leaveHint, subjectId, prefill);
         var trimmed = first.trim();
         if (first.isBlank() || ChoicePrompt.isLeave(prompt.locale(), trimmed)) {
             throw new StartPrompt.StartLeftException();
@@ -223,6 +264,12 @@ final class WorkChatDialogue {
         }
     }
 
+    private String newConfirmPrompt(String title) {
+        return title + "   "
+                            + MessageCatalogue.format(prompt.locale(), "operator.actions.yes_no", Map.of())
+                            + " [Enter]";
+    }
+
     private boolean isNewCommand(String trimmedInput) {
         var command = MessageCatalogue.format(prompt.locale(), KEY_CHAT_NEW_COMMAND, Map.of());
         return command.equalsIgnoreCase(trimmedInput);
@@ -237,9 +284,7 @@ final class WorkChatDialogue {
                                 KEY_SUBJECT, OutputSafety.stripControlSequences(subjectId)));
         }
         var title = MessageCatalogue.format(prompt.locale(), "control.chat.new_confirm.title", Map.of());
-        var question = title + "   "
-                            + MessageCatalogue.format(prompt.locale(), "operator.actions.yes_no", Map.of())
-                            + " [Enter]";
+        var question = newConfirmPrompt(title);
         while (true) {
             var answer = prompt.askRaw(question + StartPrompt.SUFFIX, STATE_ID, title, subjectId);
             if (Answers.isYes(answer)) {
@@ -272,14 +317,14 @@ final class WorkChatDialogue {
     /**
      * Answers the proposal the chat holds, as the operator answered it.
      *
-     * @param chat      the chat with an open proposal
-     * @param endedChat {@code true} for the read-only chat about ended work
-     * @param seen      the id of the last turn shown, or {@code null}
+     * @param chat           the chat with an open proposal
+     * @param endedChat      {@code true} for the read-only chat about ended work
+     * @param printedTurnIds ids of turns already printed on screen
      * @return the chat as the runtime answered it, or {@code null} to leave the chat
      * @throws IOException on transport failure
      */
-    private @Nullable ChatResource handleProposal(ChatResource chat, boolean endedChat, @Nullable String seen)
-                        throws IOException {
+    private @Nullable ChatResource handleProposal(ChatResource chat, boolean endedChat,
+                        Set<String> printedTurnIds) throws IOException {
         var proposal = chat.proposal();
         var decision = askProposal(chat, endedChat);
         if (decision == ProposalDecision.NEW) {
@@ -301,7 +346,7 @@ final class WorkChatDialogue {
                 return null;
             }
             var acceptedChat = client.chatProposal(kind, subjectId, proposal.turnId(), true);
-            showNewTurns(acceptedChat, seen);
+            showUnprintedTurns(acceptedChat, printedTurnIds);
             var boundary = proposal != null && proposal.applies() != null
                                 && proposal.applies().key().endsWith("after_task");
             prompt.line("operator.actions.chat.accepted",
@@ -309,7 +354,7 @@ final class WorkChatDialogue {
             return acceptedChat;
         }
         var rejectedChat = client.chatProposal(kind, subjectId, proposal.turnId(), false);
-        showNewTurns(rejectedChat, seen);
+        showUnprintedTurns(rejectedChat, printedTurnIds);
         return rejectedChat;
     }
 
@@ -385,37 +430,12 @@ final class WorkChatDialogue {
         }
     }
 
-    private void showNewTurns(ChatResource chat, @Nullable String seenTurnId) {
-        var turns = chat.turns();
-        var seen = -1;
-        if (seenTurnId != null) {
-            for (int index = 0; index < turns.size(); index++) {
-                if (turns.get(index).turnId().equals(seenTurnId)) {
-                    seen = index;
-                    break;
-                }
+    private void showUnprintedTurns(ChatResource chat, Set<String> printedTurnIds) {
+        for (var turn : chat.turns()) {
+            if (printedTurnIds.add(turn.turnId())) {
+                showTurn(turn);
             }
         }
-        // A page that no longer holds the last turn shown is printed whole: a re-print is recoverable,
-        // a turn silently left out is not.
-        for (int index = seen + 1; index < turns.size(); index++) {
-            showTurn(turns.get(index));
-        }
-    }
-
-    /**
-     * @param chat the chat as read
-     * @return the id of its last turn that is no longer being written, or {@code null} where it has
-     *         none: a streaming turn stays unseen so its finished text is printed once, whole
-     */
-    private static @Nullable String lastTurnId(ChatResource chat) {
-        var turns = chat.turns();
-        for (int index = turns.size() - 1; index >= 0; index--) {
-            if (turns.get(index).status() != TurnStatus.STREAMING) {
-                return turns.get(index).turnId();
-            }
-        }
-        return null;
     }
 
     private void showTurn(ChatTurn turn) {
