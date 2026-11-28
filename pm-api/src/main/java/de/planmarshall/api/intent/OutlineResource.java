@@ -26,31 +26,28 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * A plan's outline record as both clients show it (Store Schemas, Outline Record; design
  * <em>Intent and Outline</em>): the deliverables with the files they affect and the criteria they
- * satisfy, and the added dependencies with their justification.
+ * satisfy.
  *
- * @param planId            the plan's id
- * @param revision          the outline record's revision, from 1
- * @param summary           the outline's summary
- * @param deliverables      the deliverables, at least one
- * @param addedDependencies the dependencies the outline adds
+ * @param planId       the plan's id
+ * @param revision     the outline record's revision, from 1
+ * @param summary      the outline's summary
+ * @param deliverables the deliverables, at least one
  */
 public record OutlineResource(
         String planId,
         int revision,
         String summary,
-        List<DeliverableRecord> deliverables,
-        List<DependencyJustification> addedDependencies
+        List<DeliverableRecord> deliverables
 ) {
 
     public static final String FIELD_PLAN_ID = "plan_id";
     public static final String FIELD_REVISION = "revision";
     public static final String FIELD_SUMMARY = "summary";
     public static final String FIELD_DELIVERABLES = "deliverables";
-    public static final String FIELD_ADDED_DEPENDENCIES = "added_dependencies";
 
     private static final String TYPE = "OutlineResource";
     private static final Set<String> KNOWN_FIELDS = Set.of(
-            FIELD_PLAN_ID, FIELD_REVISION, FIELD_SUMMARY, FIELD_DELIVERABLES, FIELD_ADDED_DEPENDENCIES);
+            FIELD_PLAN_ID, FIELD_REVISION, FIELD_SUMMARY, FIELD_DELIVERABLES);
 
     public OutlineResource {
         Objects.requireNonNull(planId, FIELD_PLAN_ID);
@@ -67,7 +64,6 @@ public record OutlineResource(
         deliverables = requireDeliverables(deliverables);
         var numbers = new HashSet<>(deliverables.stream().map(DeliverableRecord::number).toList());
         validateDependencies(deliverables, numbers);
-        addedDependencies = requireDependencies(addedDependencies, numbers);
     }
 
     private static void validateDependencies(List<DeliverableRecord> deliverables, Set<Integer> numbers) {
@@ -93,18 +89,6 @@ public record OutlineResource(
             }
         }
         return records;
-    }
-
-    private static List<DependencyJustification> requireDependencies(List<DependencyJustification> value,
-                                                                     Set<Integer> numbers) {
-        var dependencies = value == null ? List.<DependencyJustification>of() : List.copyOf(value);
-        for (var dependency : dependencies) {
-            if (!numbers.contains(dependency.deliverable())) {
-                throw new IllegalArgumentException(
-                        "added dependency " + dependency.name() + " names no deliverable");
-            }
-        }
-        return dependencies;
     }
 
     /**
@@ -140,8 +124,6 @@ public record OutlineResource(
         map.put(FIELD_REVISION, revision);
         map.put(FIELD_SUMMARY, summary);
         map.put(FIELD_DELIVERABLES, deliverables.stream().map(DeliverableRecord::toMap).toList());
-        map.put(FIELD_ADDED_DEPENDENCIES,
-                addedDependencies.stream().map(DependencyJustification::toMap).toList());
         return map;
     }
 
@@ -164,8 +146,6 @@ public record OutlineResource(
         generator.writeNumberField(FIELD_REVISION, revision);
         generator.writeStringField(FIELD_SUMMARY, summary);
         IntentJson.writeArray(generator, FIELD_DELIVERABLES, deliverables, DeliverableRecord::writeTo);
-        IntentJson.writeArray(generator, FIELD_ADDED_DEPENDENCIES, addedDependencies,
-                DependencyJustification::writeTo);
         generator.writeEndObject();
     }
 
@@ -183,9 +163,7 @@ public record OutlineResource(
                     IntentJson.requireInt(map, FIELD_REVISION, 1, Integer.MAX_VALUE, TYPE),
                     IntentJson.requireText(map, FIELD_SUMMARY, TYPE),
                     IntentJson.readEach(IntentJson.readObjects(map, FIELD_DELIVERABLES),
-                            DeliverableRecord::fromMap),
-                    IntentJson.readEach(IntentJson.readObjects(map, FIELD_ADDED_DEPENDENCIES),
-                            DependencyJustification::fromMap));
+                            DeliverableRecord::fromMap));
         } catch (IllegalArgumentException e) {
             throw new JsonFormatException("Invalid " + TYPE + ": " + e.getMessage(), e);
         }

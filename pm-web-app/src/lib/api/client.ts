@@ -2462,21 +2462,12 @@ export interface OutlineDeliverableRecord {
   verification?: string;
 }
 
-/** A dependency the outline adds, with the deliverable that adds it and the reason. */
-export interface AddedDependencyRecord {
-  name: string;
-  version?: string;
-  justification: string;
-  deliverable: number;
-}
-
 /** A plan's outline record as the runtime serves it (`OutlineResource` of `pm-api`). */
 export interface OutlineRecord {
   plan_id: string;
   revision: number;
   summary: string;
   deliverables: OutlineDeliverableRecord[];
-  added_dependencies: AddedDependencyRecord[];
 }
 
 /** The closed list of a done-when check's verdicts. */
@@ -2910,14 +2901,6 @@ function readOutline(raw: unknown): OutlineRecord {
         depends_on: recordNumbers(deliverable, 'depends_on', 'DeliverableRecord'),
         satisfies: recordStrings(deliverable, 'satisfies', 'DeliverableRecord'),
         verification: optionalRecordText(deliverable, 'verification', 'DeliverableRecord'),
-      }),
-    ),
-    added_dependencies: recordObjects(record, 'added_dependencies', 'DependencyJustification').map(
-      (dependency) => ({
-        name: recordText(dependency, 'name', 'DependencyJustification'),
-        version: optionalRecordText(dependency, 'version', 'DependencyJustification'),
-        justification: recordText(dependency, 'justification', 'DependencyJustification'),
-        deliverable: recordNumber(dependency, 'deliverable', 'DependencyJustification'),
       }),
     ),
   };

@@ -1039,14 +1039,6 @@
               "AC-003"
             ]
           }
-        ],
-        "added_dependencies": [
-          {
-            "name": "de.cuioss:cui-http",
-            "version": "2.1.0",
-            "justification": "The retry adapter carries the backoff policy.",
-            "deliverable": 1
-          }
         ]
       }
     },

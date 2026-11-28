@@ -126,9 +126,6 @@ class IntentContractTest {
                     () -> verify(deliverable(), DeliverableRecord::toJson, DeliverableRecord::toMap,
                             DeliverableRecord::fromJson, DeliverableRecord::fromMap,
                             DeliverableRecord::readFrom, DeliverableRecord::writeTo),
-                    () -> verify(dependency(), DependencyJustification::toJson, DependencyJustification::toMap,
-                            DependencyJustification::fromJson, DependencyJustification::fromMap,
-                            DependencyJustification::readFrom, DependencyJustification::writeTo),
                     () -> verify(epicIntent(), EpicIntentResource::toJson, EpicIntentResource::toMap,
                             EpicIntentResource::fromJson, EpicIntentResource::fromMap,
                             EpicIntentResource::readFrom, EpicIntentResource::writeTo),
@@ -166,6 +163,19 @@ class IntentContractTest {
             assertEquals(1, parsed.satisfying("AC-001").size());
             assertEquals(3, parsed.affectedFiles().size());
             assertEquals(2, parsed.deliverable(1).writtenFiles().size());
+        }
+
+        @Test
+        @DisplayName("the outline refuses added_dependencies as an unknown field and toMap carries the four keys")
+        void outlineRefusesAddedDependencies() {
+            var thrown = assertThrows(JsonFormatException.class, () -> OutlineResource.fromJson(
+                    "{\"plan_id\":\"p\",\"revision\":1,\"summary\":\"s\",\"deliverables\":[{"
+                            + "\"number\":1,\"title\":\"t\",\"intent_gloss\":\"g\",\"depends_on\":[],"
+                            + "\"satisfies\":[]}],\"added_dependencies\":[]}"));
+            assertTrue(thrown.getMessage().contains("added_dependencies"), thrown.getMessage());
+            assertEquals(
+                    java.util.Set.of("plan_id", "revision", "summary", "deliverables"),
+                    outline().toMap().keySet());
         }
 
         @Test
@@ -256,14 +266,8 @@ class IntentContractTest {
             var first = deliverable();
             var second = deliverable();
             var duplicates = List.of(first, second);
-            var one = List.of(first);
-            var orphan = new DependencyJustification("x", null, "needed", 7);
-            var orphans = List.of(orphan);
-            List<DependencyJustification> noDependencies = List.of();
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", duplicates, noDependencies));
-            assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", one, orphans));
+                    () -> new OutlineResource("p", 1, "summary", duplicates));
             var orphanedDeliverable = new DeliverableRecord(1, "t", "g", List.of(), List.of(7),
                     List.of(), null);
             var selfDependent = new DeliverableRecord(1, "t", "g", List.of(), List.of(1),
@@ -271,9 +275,9 @@ class IntentContractTest {
             var orphaned = List.of(orphanedDeliverable);
             var self = List.of(selfDependent);
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", orphaned, noDependencies));
+                    () -> new OutlineResource("p", 1, "summary", orphaned));
             assertThrows(IllegalArgumentException.class,
-                    () -> new OutlineResource("p", 1, "summary", self, noDependencies));
+                    () -> new OutlineResource("p", 1, "summary", self));
         }
 
         @Test
@@ -921,19 +925,13 @@ class IntentContractTest {
                 List.of(), List.of("AC-001"), "The reconnection tests.");
     }
 
-    private static DependencyJustification dependency() {
-        return new DependencyJustification("de.cuioss:cui-http", "2.1.0",
-                "The HTTP client carries the reconnect policy.", 1);
-    }
-
     private static OutlineResource outline() {
         return new OutlineResource("fix-relay", 2, "Reconnect the relay and keep the queue on disk.",
                 List.of(deliverable(),
                         new DeliverableRecord(2, "Keep the queue", "Persist the queue.",
                                 List.of(new DeliverableRecord.AffectedFile("pm-relay/src/main/java/Queue.java",
                                         DeliverableRecord.FileIntent.WRITE_NEW)),
-                                List.of(1), List.of("AC-003"), null)),
-                List.of(dependency()));
+                                List.of(1), List.of("AC-003"), null)));
     }
 
     private static DoneWhenCheck doneWhen() {

@@ -2562,7 +2562,6 @@ describe('PlanView tab set and column layout (PLAN-55 D2)', () => {
     revision: 2,
     summary: 'The relay reconnects.',
     deliverables: [],
-    added_dependencies: [],
   };
 
   beforeEach(() => {

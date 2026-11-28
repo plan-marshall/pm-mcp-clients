@@ -2654,15 +2654,25 @@ describe('ApiClient intent and outline records', () => {
           satisfies: ['AC-003'],
         },
       ],
-      added_dependencies: [
-        {
-          name: 'de.cuioss:cui-http',
-          version: '2.1.0',
-          justification: 'The retry adapter carries the backoff policy.',
-          deliverable: 1,
-        },
-      ],
     });
+  });
+
+  it('returns an outline without added_dependencies even when the wire carries one', async () => {
+    // Arrange: a lagging wire response carrying the retired field
+    const wire = {
+      ...(served('running-work', 'GET /api/v1/plans/fix-relay/outline') as Record<string, unknown>),
+      added_dependencies: [
+        { name: 'de.cuioss:cui-http', justification: 'legacy wire lag', deliverable: 1 },
+      ],
+    };
+    answer(wire);
+
+    // Act
+    const record = await client.getPlanOutline('fix-relay');
+
+    // Assert
+    expect(record).not.toBeNull();
+    expect('added_dependencies' in (record as object)).toBe(false);
   });
 
   it('reads the epic intent with its checks, its plans, and the strings it carries', async () => {

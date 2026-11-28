@@ -182,9 +182,6 @@ class IntentScenarioTest {
                 assertEquals("fix-relay", outline.planId());
                 assertEquals(2, outline.revision());
                 assertEquals(3, outline.deliverables().size());
-                assertEquals(1, outline.addedDependencies().size());
-                assertEquals("de.cuioss:cui-http", outline.addedDependencies().getFirst().name());
-                assertEquals(1, outline.addedDependencies().getFirst().deliverable());
                 assertEquals(1, outline.satisfying("AC-001").size());
 
                 var second = outline.deliverable(2);
@@ -193,6 +190,22 @@ class IntentScenarioTest {
                 assertEquals(DeliverableRecord.FileIntent.WRITE_NEW,
                         second.affectedFiles().getFirst().intent());
                 assertNull(outline.deliverable(3).verification());
+            }
+        }
+
+        @Test
+        @DisplayName("both scenarios serve the outline without added_dependencies and decode cleanly")
+        void outlineFixturesHaveNoAddedDependencies() throws Exception {
+            for (var scenario : List.of(StandardScenarios.RUNNING_WORK, StandardScenarios.FULLY_ONBOARDED)) {
+                try (var runtime = MockRuntime.start(scenario)) {
+                    var response = get(runtime, "/api/v1/plans/fix-relay/outline");
+                    assertEquals(200, response.status(), scenario + ": " + response.bodyText());
+                    var raw = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                    assertNotNull(raw);
+                    assertFalse(raw.containsKey("added_dependencies"),
+                            scenario + " outline must carry no added_dependencies");
+                    assertNotNull(OutlineResource.fromJson(response.bodyText()));
+                }
             }
         }
     }
