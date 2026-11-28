@@ -251,7 +251,24 @@ describe('ChatMarkdown', () => {
       refs,
       streaming: true,
     });
-    await fireEvent.click(container.querySelector('.chat-markdown__code-head button')!);
-    expect(container.querySelector('[role="status"]')?.textContent).toContain('Could not copy');
+    // Blank line ends blockquote fence, inline triple-backtick spans are not openers,
+    // duplicate code blocks scope copy failures independently, and stale copy failures ignore newer successes.
+    await rerender({
+      text: '> ~~~js\n> in quote\n\n**outside**\n\n```inline``` and\n\n```sh\necho one\n```\n\n```sh\necho one\n```',
+      refs,
+      streaming: true,
+    });
+    expect(container.querySelector('strong')?.textContent).toBe('outside');
+    expect(container.querySelector('.chat-markdown__inline-code')?.textContent).toBe('inline');
+    const copyButtons = container.querySelectorAll('.chat-markdown__code-head button');
+    expect(copyButtons).toHaveLength(3);
+    await fireEvent.click(copyButtons[1]!);
+    expect(container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(
+      copyButtons[1]!.closest('.chat-markdown__code-head')?.querySelector('[role="status"]'),
+    ).toBeTruthy();
+    expect(
+      copyButtons[2]!.closest('.chat-markdown__code-head')?.querySelector('[role="status"]'),
+    ).toBeNull();
   });
 });

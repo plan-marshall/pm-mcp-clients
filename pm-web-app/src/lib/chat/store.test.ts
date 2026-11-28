@@ -1223,6 +1223,147 @@ describe('chat store and follow lifecycle', () => {
     );
     await Promise.resolve();
     expect(get(store).turns.find((t) => t.turn_id === 't-live')?.status).toBe('stopped');
+
+    // Progress-only update preserves steps while applying terminal text/refs/lines from snapshot.
+    let resolveProgressRefresh!: (chat: ChatResource) => void;
+    req.mockImplementationOnce(
+      () =>
+        new Promise<ChatResource>((resolve) => {
+          resolveProgressRefresh = resolve;
+        }),
+    );
+    emitStream('chat.turn.started', {
+      chat_id: 'chat-b',
+      turn_id: 't-prog',
+      kind: 'message',
+      author: 'planner',
+      format: 'markdown',
+      untrusted: false,
+      text: '',
+    });
+    emitStream('reset', {});
+    emitStream('chat.turn.progress', {
+      chat_id: 'chat-b',
+      turn_id: 't-prog',
+      step: { key: 'chat.step.inspect', args: { target: 'src/lib' } },
+    });
+    resolveProgressRefresh(
+      makeChat({
+        id: 'chat-b',
+        turns: [
+          {
+            turn_id: 't-prog',
+            kind: 'message',
+            author: 'planner',
+            status: 'complete',
+            format: 'markdown',
+            untrusted: false,
+            model: 'sonnet',
+            text: 'Final reply',
+            steps: [],
+            refs: [{ kind: 'task', id: 'TASK-9', subject: { kind: 'plan', id: 'fix-relay' } }],
+            at: '2026-11-27T10:00:00Z',
+            reason: null,
+            lines: [
+              {
+                key: 'chat.line.task_ended',
+                args: { task_id: 'TASK-9', outcome: 'done' },
+                refs: [],
+                at: '2026-11-27T10:01:05Z',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(get(store).turns.find((t) => t.turn_id === 't-prog')?.status).toBe('complete'),
+    );
+    const progTurn = get(store).turns.find((t) => t.turn_id === 't-prog');
+    expect(progTurn?.text).toBe('Final reply');
+    expect(progTurn?.steps.some((s) => s.key === 'chat.step.inspect')).toBe(true);
+    expect(progTurn?.refs).toHaveLength(1);
+    expect(progTurn?.lines).toHaveLength(1);
+
+    // Accepted send stays visible across a stale snapshot started before 202.
+    let resolveStaleSnap!: (chat: ChatResource) => void;
+    req
+      .mockImplementationOnce(
+        () =>
+          new Promise<ChatResource>((resolve) => {
+            resolveStaleSnap = resolve;
+          }),
+      )
+      .mockResolvedValueOnce({ turn_id: 't-accepted-202' });
+    emitStream('reset', {});
+    store.setDraft('Accepted turn kept');
+    await store.send();
+    resolveStaleSnap(makeChat({ id: 'chat-b', turns: [] }));
+    await Promise.resolve();
+    expect(get(store).turns.some((t) => t.turn_id === 't-accepted-202')).toBe(true);
+
+    // Deep-link pagination resumes after buffered reset, and obsolete 404 after disconnect skips openChat.
+    let resolveInitRead!: (chat: ChatResource) => void;
+    let emitDeepStream: (event: string, data: unknown) => void = () => {};
+    vi.spyOn(apiClient, 'subscribePathEvents').mockImplementation((_p, onEvent) => {
+      emitDeepStream = onEvent;
+      return () => {};
+    });
+    req.mockReset();
+    req
+      .mockImplementationOnce(
+        () =>
+          new Promise<ChatResource>((resolve) => {
+            resolveInitRead = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(makeChat({ id: 'chat-deep', before: 'cur-1', turns: [] }))
+      .mockResolvedValueOnce(
+        makeChat({
+          id: 'chat-deep',
+          before: null,
+          turns: [
+            {
+              turn_id: 't-deep-target',
+              kind: 'message',
+              author: 'planner',
+              status: 'complete',
+              format: 'plain',
+              untrusted: false,
+              model: null,
+              text: 'Found deep',
+              steps: [],
+              refs: [],
+              at: '2026-11-27T09:00:00Z',
+              reason: null,
+              lines: [],
+            },
+          ],
+        }),
+      );
+    const deepStore = createChatStore(planTarget);
+    const deepPromise = deepStore.connect({ turnId: 't-deep-target' });
+    emitDeepStream('reset', {});
+    resolveInitRead(makeChat({ id: 'chat-deep', before: 'cur-1', turns: [] }));
+    await deepPromise;
+    await vi.waitFor(() =>
+      expect(get(deepStore).turns.some((t) => t.turn_id === 't-deep-target')).toBe(true),
+    );
+
+    let rejectAbandoned!: (err: unknown) => void;
+    req.mockReset();
+    req.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectAbandoned = reject;
+        }),
+    );
+    const abandonedStore = createChatStore(planTarget);
+    const abandonedPromise = abandonedStore.connect();
+    abandonedStore.disconnect();
+    rejectAbandoned(Object.assign(new Error('target_not_found'), { status: 404 }));
+    await abandonedPromise;
+    expect(req).toHaveBeenCalledTimes(1);
   });
 
   it('keeps ChatSubjectKind, ChatScopeKind, and ChatStatus aligned with pm-api Java enums', () => {

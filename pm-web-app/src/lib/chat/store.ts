@@ -109,46 +109,88 @@ function clearStoredDraft(key: string): void {
   }
 }
 
+function collectIdsAfter(seqMap: ReadonlyMap<string, number>, baseline: number): Set<string> {
+  const result = new Set<string>();
+  for (const [id, seq] of seqMap) {
+    if (seq > baseline) {
+      result.add(id);
+    }
+  }
+  return result;
+}
+
+function localDeliveryFields(prev: LocalChatTurn | undefined): Partial<LocalChatTurn> {
+  if (!prev) return {};
+  return {
+    ...(prev.client_turn_id ? { client_turn_id: prev.client_turn_id } : {}),
+    ...(prev.delivery ? { delivery: prev.delivery } : {}),
+  };
+}
+
 function mergeServerTurn(
   turn: ChatTurn,
   prev: LocalChatTurn | undefined,
-  streamTouchedTurns: ReadonlySet<string>,
+  contentTouchedTurns: ReadonlySet<string>,
+  progressTouchedTurns: ReadonlySet<string>,
 ): LocalChatTurn {
-  if (prev && streamTouchedTurns.has(turn.turn_id)) {
+  if (prev && contentTouchedTurns.has(turn.turn_id)) {
     if (prev.status === 'streaming' && turn.status !== 'streaming') {
       return {
         ...prev,
         status: turn.status,
         reason: turn.reason ?? prev.reason,
+        refs: turn.refs.length > 0 ? turn.refs : prev.refs,
+        lines: (turn.lines?.length ?? 0) > 0 ? turn.lines : prev.lines,
       };
     }
     return prev;
   }
+  if (prev && progressTouchedTurns.has(turn.turn_id)) {
+    const steps = prev.steps.length >= turn.steps.length ? prev.steps : turn.steps;
+    return {
+      ...turn,
+      steps,
+      ...localDeliveryFields(prev),
+    };
+  }
   return {
     ...turn,
-    ...(prev?.client_turn_id ? { client_turn_id: prev.client_turn_id } : {}),
-    ...(prev?.delivery ? { delivery: prev.delivery } : {}),
+    ...localDeliveryFields(prev),
   };
+}
+
+function shouldRetainPendingTurn(
+  turn: LocalChatTurn,
+  seenIds: ReadonlySet<string>,
+  retainedAcceptedTurns: ReadonlySet<string>,
+): boolean {
+  if (seenIds.has(turn.turn_id)) return false;
+  if (turn.delivery === 'not_sent' || turn.delivery === 'sending') return true;
+  return turn.delivery === 'accepted' && retainedAcceptedTurns.has(turn.turn_id);
 }
 
 function mergeServerAndPending(
   serverTurns: ChatTurn[],
   previousTurns: LocalChatTurn[],
-  streamTouchedTurns: ReadonlySet<string>,
+  contentTouchedTurns: ReadonlySet<string>,
+  progressTouchedTurns: ReadonlySet<string>,
+  retainedAcceptedTurns: ReadonlySet<string>,
 ): LocalChatTurn[] {
   const prevById = new Map(previousTurns.map((prev) => [prev.turn_id, prev]));
   const seenIds = new Set<string>();
   const merged = serverTurns.map((turn) => {
     seenIds.add(turn.turn_id);
-    return mergeServerTurn(turn, prevById.get(turn.turn_id), streamTouchedTurns);
+    return mergeServerTurn(
+      turn,
+      prevById.get(turn.turn_id),
+      contentTouchedTurns,
+      progressTouchedTurns,
+    );
   });
 
-  // Preserve failed ('not_sent') or still-pending local turns not yet reflected in server turns.
+  // Preserve pending/failed/unconfirmed accepted local turns not yet reflected in server turns.
   for (const prev of previousTurns) {
-    if (
-      (prev.delivery === 'not_sent' || prev.delivery === 'sending') &&
-      !seenIds.has(prev.turn_id)
-    ) {
+    if (shouldRetainPendingTurn(prev, seenIds, retainedAcceptedTurns)) {
       merged.push(prev);
     }
   }
@@ -234,7 +276,9 @@ export function createChatStore(
   let olderReqSeq = 0;
   let streamSeq = 0;
   let chatMetaTouchedSeq = 0;
-  const turnTouchedSeq = new Map<string, number>();
+  const turnContentTouchedSeq = new Map<string, number>();
+  const turnProgressTouchedSeq = new Map<string, number>();
+  const acceptedAtSeq = new Map<string, number>();
 
   function resolveSnapshotDraft(
     resourceId: string,
@@ -273,22 +317,29 @@ export function createChatStore(
   function applySnapshot(resource: ChatResource, baselineStreamSeq = streamSeq): void {
     const prevChatId = state.chat?.id ?? null;
     const sameChat = prevChatId === resource.id;
-    const streamTouchedTurns = new Set<string>();
+    let contentTouchedTurns = new Set<string>();
+    let progressTouchedTurns = new Set<string>();
+    let retainedAcceptedTurns = new Set<string>();
     if (sameChat) {
-      for (const [turnId, seq] of turnTouchedSeq) {
-        if (seq > baselineStreamSeq) {
-          streamTouchedTurns.add(turnId);
-        }
+      contentTouchedTurns = collectIdsAfter(turnContentTouchedSeq, baselineStreamSeq);
+      progressTouchedTurns = collectIdsAfter(turnProgressTouchedSeq, baselineStreamSeq);
+      for (const turn of resource.turns) {
+        acceptedAtSeq.delete(turn.turn_id);
       }
+      retainedAcceptedTurns = collectIdsAfter(acceptedAtSeq, baselineStreamSeq);
     } else {
-      turnTouchedSeq.clear();
+      turnContentTouchedSeq.clear();
+      turnProgressTouchedSeq.clear();
+      acceptedAtSeq.clear();
       chatMetaTouchedSeq = 0;
     }
 
     const turns = mergeServerAndPending(
       resource.turns,
       sameChat ? state.turns : [],
-      streamTouchedTurns,
+      contentTouchedTurns,
+      progressTouchedTurns,
+      retainedAcceptedTurns,
     );
     const oldestTurnId = oldestServerTurnId(resource);
     const keepStreamMeta =
@@ -313,13 +364,16 @@ export function createChatStore(
     });
   }
 
-  async function refreshFromReset(): Promise<void> {
+  async function refreshFromReset(turnId?: string | null): Promise<void> {
     const seq = ++readSeq;
     const baseline = streamSeq;
     try {
       const resource = await readChat(target);
       if (seq !== readSeq) return;
       applySnapshot(resource, baseline);
+      if (turnId) {
+        await loadPagesUntilTurn(turnId, seq);
+      }
     } catch (error) {
       if (seq !== readSeq) return;
       patch({ error });
@@ -330,15 +384,21 @@ export function createChatStore(
     return state.chat?.id === chatId ? state.chat : null;
   }
 
-  function markTurnTouched(turnId: string): void {
+  function markTurnContentTouched(turnId: string): void {
     streamSeq += 1;
-    turnTouchedSeq.set(turnId, streamSeq);
+    turnContentTouchedSeq.set(turnId, streamSeq);
+  }
+
+  function markTurnProgressTouched(turnId: string): void {
+    streamSeq += 1;
+    turnProgressTouchedSeq.set(turnId, streamSeq);
   }
 
   function applyTurnStarted(payload: ChatTurnStartedPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
-    markTurnTouched(payload.turn_id);
+    acceptedAtSeq.delete(payload.turn_id);
+    markTurnContentTouched(payload.turn_id);
     const timestamp = payload.at ?? new Date().toISOString();
     const nextTurn: LocalChatTurn = {
       turn_id: payload.turn_id,
@@ -381,7 +441,7 @@ export function createChatStore(
     if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
-    markTurnTouched(payload.turn_id);
+    markTurnContentTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     nextTurns[index] = {
       ...nextTurns[index],
@@ -394,7 +454,7 @@ export function createChatStore(
     if (!matchingActiveChat(payload.chat_id)) return;
     const index = state.turns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index < 0) return;
-    markTurnTouched(payload.turn_id);
+    markTurnProgressTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     nextTurns[index] = {
       ...nextTurns[index],
@@ -406,7 +466,8 @@ export function createChatStore(
   function applyTurnCompleted(payload: ChatTurnCompletedPayload): void {
     const activeChat = matchingActiveChat(payload.chat_id);
     if (!activeChat) return;
-    markTurnTouched(payload.turn_id);
+    acceptedAtSeq.delete(payload.turn_id);
+    markTurnContentTouched(payload.turn_id);
     const nextTurns = [...state.turns];
     const index = nextTurns.findIndex((turn) => turn.turn_id === payload.turn_id);
     if (index >= 0) {
@@ -479,7 +540,7 @@ export function createChatStore(
     const nextState = payload.ended_by === 'proposal_carried' ? 'chat.carried' : 'chat.end';
     const nextTurns = state.turns.map((turn) => {
       if (turn.status === 'streaming' && !turn.delivery) {
-        turnTouchedSeq.set(turn.turn_id, streamSeq);
+        turnContentTouchedSeq.set(turn.turn_id, streamSeq);
         return { ...turn, status: 'stopped' as const };
       }
       return turn;
@@ -526,13 +587,13 @@ export function createChatStore(
     dispatchStreamEvent(event, data);
   }
 
-  function flushBufferedEvents(): void {
+  function flushBufferedEvents(turnId?: string | null): boolean {
     const queued = bufferedEvents;
     bufferedEvents = [];
-    if (queued.length === 0) return;
+    if (queued.length === 0) return false;
     if (queued.some((item) => item.event === 'reset')) {
-      void refreshFromReset();
-      return;
+      void refreshFromReset(turnId);
+      return true;
     }
     for (const item of queued) {
       if (
@@ -543,8 +604,8 @@ export function createChatStore(
         typeof item.data === 'object' &&
         'turn_id' in item.data
       ) {
-        const turnId = (item.data as { turn_id?: unknown }).turn_id;
-        const existing = state.turns.find((t) => t.turn_id === turnId);
+        const queuedTurnId = (item.data as { turn_id?: unknown }).turn_id;
+        const existing = state.turns.find((t) => t.turn_id === queuedTurnId);
         // Do not revert a turn that the initial snapshot already returned in a terminal state.
         if (existing && existing.status !== 'streaming') {
           continue;
@@ -552,6 +613,7 @@ export function createChatStore(
       }
       dispatchStreamEvent(item.event, item.data);
     }
+    return false;
   }
 
   async function ensureChatOpen(pendingTurn?: LocalChatTurn): Promise<ChatResource> {
@@ -642,6 +704,8 @@ export function createChatStore(
             : turn,
         );
     }
+    streamSeq += 1;
+    acceptedAtSeq.set(serverTurnId, streamSeq);
     return state.turns.map((turn) =>
       turn.client_turn_id === clientTurnId
         ? {
@@ -664,6 +728,7 @@ export function createChatStore(
       try {
         resource = await readChat(target);
       } catch (error) {
+        if (seq !== readSeq) return;
         if (!archive && isMissingChatError(error)) {
           resource = await openChat(target);
         } else {
@@ -673,8 +738,8 @@ export function createChatStore(
       if (seq !== readSeq) return;
       applySnapshot(resource, baseline);
       settled = true;
-      flushBufferedEvents();
-      if (turnId) {
+      const recoveringFromReset = flushBufferedEvents(turnId);
+      if (turnId && !recoveringFromReset) {
         await loadPagesUntilTurn(turnId, seq);
       }
     } catch (error) {

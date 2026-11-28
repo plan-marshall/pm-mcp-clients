@@ -3140,9 +3140,15 @@ export class ApiClient {
       if (signal?.aborted) {
         return () => {};
       }
+      let stateWrapper: ((state: EventStreamState) => void) | null = null;
       if (onState) {
-        this.pathEventStateListeners.add(onState);
-        onState(this.streamState);
+        stateWrapper = (state: EventStreamState) => onState(state);
+        this.pathEventStateListeners.add(stateWrapper);
+        try {
+          stateWrapper(this.streamState);
+        } catch {
+          // Isolate initial subscriber errors cleanly just like subsequent transitions.
+        }
       }
       onRetry?.(() => this.retryEventStream());
       const unsub = this.subscribeEvents(onEvent);
@@ -3150,14 +3156,18 @@ export class ApiClient {
       const cleanup = () => {
         if (cleaned) return;
         cleaned = true;
-        if (onState) {
-          this.pathEventStateListeners.delete(onState);
+        if (stateWrapper) {
+          this.pathEventStateListeners.delete(stateWrapper);
         }
         signal?.removeEventListener('abort', cleanup);
         unsub();
       };
       if (signal) {
         signal.addEventListener('abort', cleanup, { once: true });
+        if (signal.aborted) {
+          cleanup();
+          return () => {};
+        }
       }
       return cleanup;
     }
@@ -5031,13 +5041,14 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
-    this.eventSubscribers.add(onEvent);
+    const wrapper = (event: string, data: unknown) => onEvent(event, data);
+    this.eventSubscribers.add(wrapper);
     if (signal) {
       if (signal.aborted) {
-        this.eventSubscribers.delete(onEvent);
+        this.eventSubscribers.delete(wrapper);
         return () => {};
       }
-      signal.addEventListener('abort', () => this.unsubscribeEvent(onEvent), { once: true });
+      signal.addEventListener('abort', () => this.unsubscribeEvent(wrapper), { once: true });
     }
     this.eventStreamAbort ??= this.subscribeStream(
       '/api/v1/events',
@@ -5056,7 +5067,7 @@ export class ApiClient {
         this.eventStreamRetry = retry;
       },
     );
-    return () => this.unsubscribeEvent(onEvent);
+    return () => this.unsubscribeEvent(wrapper);
   }
 
   /**

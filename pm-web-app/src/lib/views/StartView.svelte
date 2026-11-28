@@ -469,11 +469,13 @@
     actionError = '';
     try {
       const resource = await apiClient.actEntry(target, link, body);
-      if (!accepts(resource, target, generation) || read < appliedEntryRead) {
+      if (!accepts(resource, target, generation)) {
         return null;
       }
-      appliedEntryRead = read;
-      apply(resource);
+      if (read >= appliedEntryRead) {
+        appliedEntryRead = read;
+        apply(resource);
+      }
       return resource.start;
     } catch (e) {
       actionError = messageOf(e);

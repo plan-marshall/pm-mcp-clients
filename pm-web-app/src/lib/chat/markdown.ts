@@ -308,17 +308,48 @@ function countLeadingSpaces(text: string): number {
   return spaces;
 }
 
-function stripFenceContainerPrefix(line: string): string | null {
+function stripFenceContainerPrefix(
+  line: string,
+): { depth: number; trimmed: string } | null {
   let rest = line;
+  let depth = 0;
   while (true) {
     const spaces = countLeadingSpaces(rest);
     if (spaces > 3) return null;
     const trimmed = rest.slice(spaces);
     if (!trimmed.startsWith('>')) {
-      return trimmed;
+      return { depth, trimmed };
     }
+    depth += 1;
     rest = trimmed.startsWith('> ') ? trimmed.slice(2) : trimmed.slice(1);
   }
+}
+
+function validOpeningFence(trimmed: string): { ch: string; len: number } | null {
+  const ch = fenceCharOf(trimmed);
+  if (!ch) return null;
+  const len = countFenceRun(trimmed, ch);
+  // CommonMark rejects backtick fence info strings that contain another backtick (inline spans).
+  if (ch === '`' && trimmed.slice(len).includes('`')) {
+    return null;
+  }
+  return { ch, len };
+}
+
+function didCloseFence(
+  candidate: { depth: number; trimmed: string } | null,
+  openQuoteDepth: number,
+  openChar: string,
+  openLen: number,
+): boolean {
+  if (openQuoteDepth > 0 && (!candidate || candidate.depth < openQuoteDepth)) {
+    return true;
+  }
+  return (
+    candidate !== null &&
+    candidate.depth === openQuoteDepth &&
+    isClosingFenceLine(candidate.trimmed, openChar, openLen)
+  );
 }
 
 /**
@@ -331,21 +362,22 @@ function findUnclosedFenceStart(source: string): number {
   let openStart = -1;
   let openChar = '';
   let openLen = 0;
+  let openQuoteDepth = 0;
 
   for (const line of lines) {
     const candidate = stripFenceContainerPrefix(line);
-    if (candidate !== null) {
-      if (openStart < 0) {
-        const ch = fenceCharOf(candidate);
-        if (ch) {
-          openStart = offset;
-          openChar = ch;
-          openLen = countFenceRun(candidate, ch);
-        }
-      } else if (isClosingFenceLine(candidate, openChar, openLen)) {
-        openStart = -1;
-        openChar = '';
-        openLen = 0;
+    if (openStart >= 0 && didCloseFence(candidate, openQuoteDepth, openChar, openLen)) {
+      openStart = -1;
+      openChar = '';
+      openLen = 0;
+      openQuoteDepth = 0;
+    } else if (openStart < 0 && candidate !== null) {
+      const opened = validOpeningFence(candidate.trimmed);
+      if (opened) {
+        openStart = offset;
+        openChar = opened.ch;
+        openLen = opened.len;
+        openQuoteDepth = candidate.depth;
       }
     }
     offset += line.length + 1;
