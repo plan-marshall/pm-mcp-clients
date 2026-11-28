@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import path from 'node:path';
 import { createRawSnippet, tick } from 'svelte';
 import { fireEvent, render, screen } from '@testing-library/svelte';
-import Compose, { DEFAULT_MAX_LINES } from './Compose.svelte';
+import Compose, { DEFAULT_MAX_LINES, type ComposeName } from './Compose.svelte';
 import { ruleOf, styleOf } from '../../test/templateStyle';
 
 /**
@@ -384,5 +384,16 @@ describe('Compose', () => {
     (component as unknown as { focus: () => void }).focus();
 
     expect(field).toHaveFocus();
+  });
+
+  it('rejects empty label without ariaLabel at the type level and forwards value as-is unless disabled', async () => {
+    // @ts-expect-error empty label with no ariaLabel must be rejected
+    const invalidEmpty: ComposeName<''> = { label: '' };
+    const validWithAria: ComposeName<'', 'Message'> = { label: '', ariaLabel: 'Message' };
+    expect([invalidEmpty.label, validWithAria.ariaLabel]).toEqual(['', 'Message']);
+
+    const { field, onsend } = renderCompose({ value: '   ' });
+    await fireEvent.keyDown(field, { key: 'Enter' });
+    expect(onsend).toHaveBeenCalledWith('   ');
   });
 });

@@ -349,6 +349,9 @@
     unsubscribeEntry = apiClient.subscribeEntryEvents(id, (event) => {
       if (refreshesEntry(event)) {
         void refresh();
+      } else if (event === 'chat.ended') {
+        void refresh();
+        void refreshChat(id);
       } else if (
         event === 'chat.turn.started' ||
         event === 'chat.turn.completed' ||
@@ -461,6 +464,7 @@
     const target = entry?.entry_id;
     if (!target || (entryId !== null && target !== entryId)) return null;
     const generation = entryGeneration;
+    const read = ++entryReadSeq;
     busy = true;
     actionError = '';
     try {
@@ -468,7 +472,10 @@
       if (!accepts(resource, target, generation)) {
         return null;
       }
-      apply(resource);
+      if (read >= appliedEntryRead) {
+        appliedEntryRead = read;
+        apply(resource);
+      }
       return resource.start;
     } catch (e) {
       actionError = messageOf(e);
@@ -1111,11 +1118,11 @@
         </p>
         <div class="start-view__actions">
           {#if epic}
-          <Button
-            variant="secondary"
-            data-testid="started-decompose"
-            on:click={loadDecomposition}
-          >
+            <Button
+              variant="secondary"
+              data-testid="started-decompose"
+              on:click={loadDecomposition}
+            >
               {$t('start.step.decomposition')}
             </Button>
           {/if}
@@ -1158,8 +1165,7 @@
             }
           }}
           onDiscard={discardReadBack}
-          onDraftAgain={(instruction) =>
-            void instructDecomposition(null, instruction, 'rewrite')}
+          onDraftAgain={(instruction) => void instructDecomposition(null, instruction, 'rewrite')}
           onAgree={commitDecomposition}
           onChat={() => (chatOpen = true)}
         />
@@ -1414,11 +1420,7 @@
     </div>
 
     <div slot="secondary">
-      {#if step === 'choose' ||
-        step === 'sources' ||
-        step === 'recipe' ||
-        step === 'parameters' ||
-        step === 'ready'}
+      {#if step === 'choose' || step === 'sources' || step === 'recipe' || step === 'parameters' || step === 'ready'}
         <RowMenu
           label={$t('web.common.more')}
           advisory={$t('web.common.more.title')}
@@ -1478,11 +1480,13 @@
         </Button>
       {:else if step === 'ready'}
         <Button variant="primary" data-testid="ready-start" disabled={busy} on:click={create}>
-          {$t(ready?.recipe
-            ? 'start.recipe.run'
-            : epic
-              ? 'start.ready.start_epic'
-              : 'start.ready.start_plan')}
+          {$t(
+            ready?.recipe
+              ? 'start.recipe.run'
+              : epic
+                ? 'start.ready.start_epic'
+                : 'start.ready.start_plan',
+          )}
         </Button>
       {:else if step === 'started'}
         <Button variant="primary" data-testid="started-follow" on:click={follow}>

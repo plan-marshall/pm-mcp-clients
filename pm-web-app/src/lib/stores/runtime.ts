@@ -2199,6 +2199,43 @@ export function selectObjectTab(tab: ObjectTab): void {
 }
 
 /**
+ * Shows or hides the chat column and writes `?chat=open` (with optional `turn=`) by replacing the
+ * current history entry.
+ *
+ * @param open whether the chat column is shown
+ * @param turnId optional turn id to focus while the chat is open
+ */
+export function setChatOpen(open: boolean, turnId: string | null = null): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    chatOpen: open,
+    chatTurn: open ? (turnId ?? s.chatTurn ?? null) : null,
+  }));
+  const current = currentAddress();
+  if (!current) {
+    return;
+  }
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
+/**
+ * Sets or clears `?turn=` in the address bar without pushing a history entry.
+ *
+ * @param turnId the turn id to focus, or `null` to clear it
+ */
+export function setChatTurn(turnId: string | null): void {
+  runtimeStore.update((s) => ({
+    ...s,
+    chatTurn: s.chatOpen ? turnId : null,
+  }));
+  const current = currentAddress();
+  if (!current) {
+    return;
+  }
+  writeAddress(addressOfState(get(runtimeStore)), 'replace');
+}
+
+/**
  * Opens one file of the plan's changes, or drops the file when a caller passes `null`, and writes
  * the file into the address beside the tab.
  *

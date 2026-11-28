@@ -18,16 +18,9 @@ const DEV_DIR = path.resolve(__dirname, 'dev');
 
 /**
  * Components built by other packages, pending their landing.
- * MascotFigure and TriagePage have landed and are active components.
+ * Chat, ChatTurn, ChatMarkdown, MascotFigure, and TriagePage have landed and are active components.
  */
-export const PENDING_LIST = new Set([
-  'Chat',
-  'ChatTurn',
-  'ProposalCard',
-  'ChatStatusCard',
-  'ChatMarkdown',
-  'VoiceInput',
-]);
+export const PENDING_LIST = new Set(['ProposalCard', 'ChatStatusCard', 'VoiceInput']);
 
 /**
  * Validates that PENDING_LIST names only components that do NOT exist yet.
@@ -43,9 +36,7 @@ export function validatePendingList(
     const inComponents = path.join(componentsDir, `${name}.svelte`);
     const inTemplates = path.join(templatesDir, `${name}.svelte`);
     if (fs.existsSync(inComponents) || fs.existsSync(inTemplates)) {
-      errors.push(
-        `Pending component ${name} already exists on disk — remove it from PENDING_LIST`,
-      );
+      errors.push(`Pending component ${name} already exists on disk — remove it from PENDING_LIST`);
     }
   }
   return errors;
@@ -101,7 +92,9 @@ export function hasComponentFixture(name: string, templateSource: string): boole
  * @param {string} adocContent
  * @returns {Array<{ group: string, name: string }>}
  */
-export function extractVocabularyComponents(adocContent: string): Array<{ group: string; name: string }> {
+export function extractVocabularyComponents(
+  adocContent: string,
+): Array<{ group: string; name: string }> {
   const vocabIndex = adocContent.indexOf('[#vocabulary]');
   if (vocabIndex === -1) {
     throw new Error('Could not find [#vocabulary] in components.adoc');
@@ -192,7 +185,7 @@ describe('vocabulary completeness', () => {
     // components.adoc § #vocabulary defines exactly 60 components across 8 groups
     expect(vocabulary).toHaveLength(60);
 
-    // 6 components pending landing (Chat, ChatTurn, ProposalCard, ChatStatusCard, ChatMarkdown, VoiceInput)
+    // 3 components pending landing (ProposalCard, ChatStatusCard, VoiceInput)
     const activeComponents = vocabulary.filter((c) => !PENDING_LIST.has(c.name));
     expect(activeComponents).toHaveLength(60 - PENDING_LIST.size);
 
