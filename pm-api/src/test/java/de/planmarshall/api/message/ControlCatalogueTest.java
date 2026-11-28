@@ -13,9 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
@@ -40,37 +37,22 @@ class ControlCatalogueTest {
     }
 
     /**
-     * The keys of {@code doc/design/shared/work-actions-texts.adoc}, read from the repository: every
-     * key cell of both of its tables, the {@code control} keys of {@code #texts} and the
-     * {@code common.conflict.*} keys of {@code #texts-conflict}, which that document defines.
+     * The prefix rule the text tables rest on, checked over the packs instead of the document: the
+     * control area's keys are {@code control} keys, and the shared conflict words the tables named
+     * live in the {@code common} area under {@code common.conflict.}.
      */
-    private static List<String> specificationKeys() throws IOException {
-        return SpecificationTables.keyCells("shared/work-actions-texts.adoc");
-    }
-
     @Test
-    @DisplayName("should contain every key of the work-actions text tables in both packs")
-    void shouldContainAllSpecificationKeys() throws Exception {
-        var keys = specificationKeys();
-        var control = keys.stream().filter(key -> key.startsWith("control.")).toList();
-        var common = keys.stream().filter(key -> key.startsWith("common.")).toList();
-
-        assertTrue(control.size() > 50, "the control table of work-actions-texts.adoc must be read: " + control);
-        assertTrue(common.size() >= 5, "the common.conflict table of work-actions-texts.adoc must be read: " + common);
-        assertEquals(keys.size(), control.size() + common.size(), "a key of another area in the tables: " + keys);
-        assertTrue(control.contains("control.epic.next_invalid"), control.toString());
-        assertTrue(common.contains("common.conflict.no_input"), common.toString());
-        var missing = new ArrayList<String>();
-        for (var locale : List.of("en", "de")) {
-            var messages = MessageCatalogue.getMessages(locale, "all");
-            for (String key : keys) {
-                var value = messages.get(key);
-                if (value == null || value.isBlank()) {
-                    missing.add(locale + ":" + key);
-                }
-            }
+    @DisplayName("the control area's keys are control.* keys and the conflict words are common.* keys")
+    void shouldKeepThePrefixRuleOverThePacks() {
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            var controlKeys = MessageCatalogue.getMessages(locale, "control").keySet();
+            assertFalse(controlKeys.isEmpty(), locale + ": the control pack must carry its texts");
+            assertTrue(controlKeys.stream().allMatch(key -> key.startsWith("control.")),
+                    locale + ": a key outside control.* in the control pack: " + controlKeys);
+            assertTrue(MessageCatalogue.getMessages(locale, "common").keySet().stream()
+                            .anyMatch(key -> key.startsWith("common.conflict.")),
+                    locale + ": the common.conflict.* words the tables named are gone");
         }
-        assertTrue(missing.isEmpty(), "keys of work-actions-texts.adoc missing or blank in a pack: " + missing);
     }
 
     @Test

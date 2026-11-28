@@ -1,0 +1,103 @@
+= ADR 002: Tests Read No Documentation
+:nofooter:
+
+== Status
+
+Accepted
+
+== Date
+
+2026-11-28
+
+== Context
+
+Eight test classes of this repository open design documents below `doc/design/` at run time and parse them:
+
+* `pm-api`: `PlanViewCatalogueTest`, `OverviewCatalogueTest` and `ControlCatalogueTest`, which share the helper
+  `SpecificationTables`; `ChatTextsCatalogueTest` and `IntentCatalogueTest`, which carry readers of their own.
+* `pm-operator`: `PmOperatorTest.CommandTree`.
+* `pm-web-app`: `workflowIcons.test.ts` and `vocabulary.test.ts`.
+
+The organisation's reusable build skips `build` for a pull request that changes only documentation
+(`skip-on-docs-only`, the default of the workflow). A documentation-only change to a table these tests read therefore
+merges without a build and leaves `main` red. That happened twice: #570 (`20f971fe`, 2026-11-25) and #600
+(`7e5382c8`, 2026-11-27), the second adding 7 keys to tested tables (6 `plan.*`, 1 `overview.*`) and none to the
+catalogue files, after which every code pull request that merged `main` failed.
+
+`pm-mcp-core` solved the same break with
+link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/016-schemas-are-files-of-the-implementing-module.adoc[ADR 016],
+"own inputs only": a test reads the inputs of the module that implements it and nothing else. ADR 001 of this
+repository names ADR 016 but never applied its rule to the tests.
+
+== Decision
+
+Core ADR 016's "own inputs only" applies to this repository's tests:
+
+* A test reads files of a module of this repository: its class path, or the `src/` of another module, as
+  `catalogue-fixture.ts` reads the catalogue files of `pm-api`.
+* A test never reads a file below `doc/`.
+
+The operator decisions of 2026-11-27 bind, and this ADR records them:
+
+. **Source of the texts:** the catalogue `.properties` files are the single source of the texts.
+. **Link, not include:** the design text sections link their en/de catalogue files and stop restating the keys those
+  files carry. There is no `include::`, no `tag=` region and no UTF-8 normalisation of the files.
+. **Texts to add:** a key the design names that no catalogue file carries yet lives in a *Texts to add* table
+  (Key | English | German) of its document. No test reads that table, and the plan that adds a key to a catalogue file
+  deletes its row.
+
+Two things stay as they are: the scope of the change is the 10 documents the tests read, and the documentation-only
+build skip of the CI stays in place.
+
+The eight readers retired by this decision:
+
+. `PlanViewCatalogueTest` (`pm-api`), and with it the shared helper `SpecificationTables`.
+. `OverviewCatalogueTest` (`pm-api`).
+. `ControlCatalogueTest` (`pm-api`).
+. `ChatTextsCatalogueTest` (`pm-api`).
+. `IntentCatalogueTest` (`pm-api`).
+. `PmOperatorTest.CommandTree` (`pm-operator`).
+. `workflowIcons.test.ts` (`pm-web-app`).
+. `vocabulary.test.ts` (`pm-web-app`).
+
+What the tests keep is what they can check without a document: the en/de key parity of a catalogue area, the verbatim
+texts the test states as literal expectations, the registered verb names of a CLI, the icon ids of the code, and the
+grouped vocabulary of the web app. The one check that would otherwise be lost — that every key of every catalogue area
+carries the same ICU argument names in en and de — moves from `IntentCatalogueTest`, where it covered one area from the
+document, into `MessageCatalogueTest` as a check over the packs.
+
+== Alternatives Considered
+
+* **Count `doc/**` as code for the CI change filter** (`paths-code-extra`, core ADR 015). Rejected by the operator on
+  2026-11-27: core ADR 016 calls it "a consequence of the tests reading documentation, not a cure". The tests would
+  still read documents, and every documentation-only pull request would pay for a full build.
+* **Keep the documents as test input and add missing keys to the catalogue files first.** Rejected by the same
+  decision: the cart would keep standing before the horse, because a later documentation-only edit breaks `main`
+  again. The *Texts to add* table carries the residue instead.
+
+== Consequences
+
+The only inputs a test may read are the files of this repository's modules. A change to a design document can no
+longer break `main` through a test, and the documentation-only build skip stays honest: it skips a build that no test
+needs.
+
+What a later change has to respect:
+
+* a new test that wants a text as expectation carries it literally, or reads it from a module's `.properties` file;
+* a design text section that names keys links its catalogue files instead of restating them, and an unbuilt key goes
+  to the document's *Texts to add* table until the plan that implements it moves it;
+* no test is added below `doc/`, and no `doc/` path appears in a test's input.
+
+Residue: the keys listed in the *Texts to add* tables are owned by the plans that implement them. Until one of those
+plans lands, the key is design text alone and no test asserts it.
+
+== Source
+
+Staged spec: `PLAN-198` of the epic `ui-improvements`, `.plan/orchestrator/ui-improvements/plans/PLAN-198-tests-read-no-documentation.md`.
+
+The incidents: pull requests #570 (`20f971fe`) and #600 (`7e5382c8`).
+
+ADRs this decision follows: core ADR 015 (documentation changes count as code for the build filter, which this
+decision does not adopt) and
+link:https://github.com/plan-marshall/pm-mcp-core/blob/main/doc/adr/016-schemas-are-files-of-the-implementing-module.adoc[016].
+ADR link:001-specifications-of-the-clients.adoc[001] of this repository names that pair as well.

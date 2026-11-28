@@ -4,13 +4,66 @@ import path from 'node:path';
 import { parse } from 'svelte/compiler';
 
 /**
- * Vocabulary completeness guard (PLAN-151, PLAN-170, components.adoc § #vocabulary).
+ * Vocabulary completeness guard (PLAN-151, PLAN-170, ADR 002).
  *
- * Asserts that every component of the design vocabulary (not on the pending list)
+ * Asserts that every component of the literal vocabulary (not on the pending list)
  * has its component source, its unit test, and a fixture on /dev/components.
  */
 
-const DOCS_PATH = path.resolve(__dirname, '../../../doc/design/web-app/components.adoc');
+/**
+ * The component vocabulary, carried here as the expectation (ADR 002): 8 groups, 60 names, as the
+ * design's `components.adoc#vocabulary` describes them. The test reads no document; a component the
+ * design adds is added here with the view that needs it.
+ */
+export const VOCABULARY = Object.freeze({
+  Tags: [
+    'StatusLabel',
+    'ReasonBadge',
+    'CountBadge',
+    'Chip',
+    'PrChip',
+    'KindMark',
+    'PhaseLabel',
+    'Marker',
+  ],
+  Interaction: [
+    'Button',
+    'IconButton',
+    'ActionBar',
+    'RowMenu',
+    'Link',
+    'ExternalLink',
+    'RowLink',
+    'SegmentedControl',
+    'Toggle',
+    'Tabs',
+    'Breadcrumb',
+    'Dialog',
+    'ConfirmDialog',
+  ],
+  Fields: [
+    'Field',
+    'TextField',
+    'TextArea',
+    'NumberField',
+    'SecretField',
+    'CodeField',
+    'SelectField',
+    'RadioGroup',
+    'CheckField',
+    'CheckGroup',
+    'FilterInput',
+    'Compose',
+    'FieldError',
+    'FormStatus',
+  ],
+  Containers: ['Card', 'KeyValueList', 'Toast', 'AttentionStrip'],
+  Data: ['DataTable', 'EmptyState', 'ErrorState', 'EvidenceView', 'Skeleton'],
+  Supporting: ['Icon', 'Spinner', 'StepBar', 'BrandMark', 'MascotFigure', 'WaitingMark'],
+  Chat: ['Chat', 'ChatTurn', 'ProposalCard', 'ChatStatusCard', 'ChatMarkdown', 'VoiceInput'],
+  Templates: ['TriagePage', 'ObjectPage', 'WizardPage', 'DashboardPage'],
+} as const);
+
 const COMPONENTS_DIR = path.resolve(__dirname, 'components');
 const TEMPLATES_DIR = path.resolve(__dirname, 'templates');
 const DEV_PAGE_PATH = path.resolve(__dirname, '../routes/dev/components/+page.svelte');
@@ -84,52 +137,6 @@ export function hasComponentFixture(name: string, templateSource: string): boole
   return found;
 }
 
-/**
- * Extracts component names from the AsciiDoc vocabulary table.
- * Splits on blank lines separating AsciiDoc table rows to prevent splitting
- * on capital letters within cells.
- *
- * @param {string} adocContent
- * @returns {Array<{ group: string, name: string }>}
- */
-export function extractVocabularyComponents(
-  adocContent: string,
-): Array<{ group: string; name: string }> {
-  const vocabIndex = adocContent.indexOf('[#vocabulary]');
-  if (vocabIndex === -1) {
-    throw new Error('Could not find [#vocabulary] in components.adoc');
-  }
-
-  const section = adocContent.slice(vocabIndex);
-  const tableStart = section.indexOf('|===');
-  const tableEnd = section.indexOf('|===', tableStart + 4);
-  const tableText = section.slice(tableStart + 4, tableEnd).trim();
-
-  const results: Array<{ group: string; name: string }> = [];
-  // AsciiDoc table rows are separated by blank lines
-  const rows = tableText.split(/\n\s*\n/);
-
-  for (const row of rows) {
-    const trimmedRow = row.trim();
-    if (!trimmedRow || trimmedRow.startsWith('|Group')) continue;
-
-    // First cell holds group name: |Group
-    const cellMatch = trimmedRow.match(/^\|([^\n|]+)/);
-    if (!cellMatch) continue;
-    const group = cellMatch[1].trim();
-    if (!group) continue;
-
-    // Extract component names enclosed in backticks
-    const matches = trimmedRow.matchAll(/`([A-Z][A-Za-z0-9]+)`/g);
-    for (const match of matches) {
-      const name = match[1];
-      results.push({ group, name });
-    }
-  }
-
-  return results;
-}
-
 describe('vocabulary completeness', () => {
   it('fails completeness when a pending component already exists on disk', () => {
     const fixturePending = new Set(['Button']);
@@ -167,11 +174,9 @@ describe('vocabulary completeness', () => {
     expect(errors).toEqual([]);
   });
 
-  it('every component in the vocabulary table has source, test, and dev fixture', () => {
-    expect(fs.existsSync(DOCS_PATH)).toBe(true);
+  it('every component of the literal vocabulary has source, test, and dev fixture', () => {
     expect(fs.existsSync(DEV_PAGE_PATH)).toBe(true);
 
-    const docContent = fs.readFileSync(DOCS_PATH, 'utf-8');
     const devSources: string[] = [fs.readFileSync(DEV_PAGE_PATH, 'utf-8')];
     if (fs.existsSync(DEV_DIR)) {
       for (const file of fs.readdirSync(DEV_DIR)) {
@@ -181,8 +186,11 @@ describe('vocabulary completeness', () => {
       }
     }
 
-    const vocabulary = extractVocabularyComponents(docContent);
-    // components.adoc § #vocabulary defines exactly 60 components across 8 groups
+    const vocabulary = Object.entries(VOCABULARY).flatMap(([group, names]) =>
+      names.map((name) => ({ group, name })),
+    );
+    // The vocabulary carries exactly 60 components across 8 groups.
+    expect(Object.keys(VOCABULARY)).toHaveLength(8);
     expect(vocabulary).toHaveLength(60);
 
     // 3 components pending landing (ProposalCard, ChatStatusCard, VoiceInput)

@@ -9,96 +9,57 @@
  */
 package de.planmarshall.api.message;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Verifies the texts of the intent and outline design (design {@code intent-and-outline-texts.adoc}):
- * the area {@code intent} carries every key of the document in English and German, with the same
- * arguments, and the seven verdict words of the document's verdict table live in {@code common}.
- * <p>
- * The document is the specification, so the test reads it rather than repeating it: a key the document
- * gains fails here until the packs carry it, and a key a pack carries that the document does not name
- * fails too.
+ * Verifies the texts of the intent and outline area: the area {@code intent} carries the same keys in
+ * English and German, and the seven verdict words live in {@code common}. The catalogue is the source
+ * of the texts (ADR 002), so the expectations are stated here as literals; the test reads no document.
  */
 @DisplayName("IntentCatalogueTest")
 class IntentCatalogueTest {
 
-    /** The texts and verdict documents, from the module's own directory. */
-    private static final Path DOCUMENT = Path.of("", "..", "doc", "design", "shared",
-            "intent-and-outline-texts.adoc").toAbsolutePath().normalize();
-
-    /** One key row of a table, as {@code |`intent.tab.title`}. */
-    private static final Pattern KEY_ROW = Pattern.compile("^\\|`([a-z0-9_.]+)`$");
-
-    /** One argument name of an ICU message, as {@code {name}} or the head of {@code {name, type, …}}. */
-    private static final Pattern ARGUMENT = Pattern.compile("\\{\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*[,}]");
-
     @Test
-    @DisplayName("should carry exactly the document's keys in English and German")
-    void shouldCarryExactlyTheDocumentKeys() throws Exception {
-        var documented = documentTexts();
-        var intentKeys = keyFamily(documented, "intent.");
-
-        assertTrue(Files.isReadable(DOCUMENT), "The texts document must be readable: " + DOCUMENT);
-        assertFalse(intentKeys.isEmpty(), "The document names the area's keys");
-        assertEquals(intentKeys, new TreeSet<>(MessageCatalogue.getMessages("en", "intent").keySet()),
-                "The English pack must carry exactly the document's keys");
-        assertEquals(intentKeys, new TreeSet<>(MessageCatalogue.getMessages("de", "intent").keySet()),
-                "The German pack must carry exactly the document's keys");
-    }
-
-    @Test
-    @DisplayName("should translate every key as the document writes it, in both languages")
-    void shouldTranslateEveryKeyAsTheDocumentWritesIt() throws Exception {
+    @DisplayName("the intent area carries equal, non-empty key sets in English and German")
+    void shouldKeepTheIntentAreaKeySetsEqual() {
         var en = MessageCatalogue.getMessages("en", "intent");
         var de = MessageCatalogue.getMessages("de", "intent");
-        var mismatches = new TreeSet<String>();
 
-        documentTexts().forEach((key, texts) -> {
-            if (!key.startsWith("intent.")) {
-                return;
-            }
-            if (!texts[0].equals(en.get(key))) {
-                mismatches.add("en " + key + ": expected <" + texts[0] + "> but was <" + en.get(key) + ">");
-            }
-            if (!texts[1].equals(de.get(key))) {
-                mismatches.add("de " + key + ": expected <" + texts[1] + "> but was <" + de.get(key) + ">");
-            }
-        });
-
-        assertTrue(mismatches.isEmpty(), "Every text must be the document's own: " + mismatches);
+        assertAll(
+                () -> assertFalse(en.isEmpty(), "The English intent pack must carry its texts"),
+                () -> assertFalse(de.isEmpty(), "The German intent pack must carry its texts"),
+                () -> assertEquals(new TreeSet<>(en.keySet()), new TreeSet<>(de.keySet()),
+                        "The English and German intent packs must carry the same keys"));
     }
 
     @Test
-    @DisplayName("should agree on the arguments of every key, one language with the other")
-    void shouldAgreeOnEveryArgument() throws Exception {
-        var mismatches = new TreeSet<String>();
+    @DisplayName("common carries the seven verdict words in both languages")
+    void shouldCarryTheSevenVerdictWords() {
+        var en = MessageCatalogue.getMessages("en", "common");
+        var de = MessageCatalogue.getMessages("de", "common");
 
-        documentTexts().forEach((key, texts) -> {
-            var english = argumentsOf(texts[0]);
-            var german = argumentsOf(texts[1]);
-            if (!english.equals(german)) {
-                mismatches.add(key + ": en reads " + english + ", de reads " + german);
-            }
-        });
-
-        assertTrue(mismatches.isEmpty(), "Both languages must carry the same arguments: " + mismatches);
+        assertAll(
+                () -> assertEquals("met", en.get("state.criterion.met")),
+                () -> assertEquals("erf\u00fcllt", de.get("state.criterion.met")),
+                () -> assertEquals("not met", en.get("state.criterion.not_met")),
+                () -> assertEquals("nicht erf\u00fcllt", de.get("state.criterion.not_met")),
+                () -> assertEquals("not verified", en.get("state.criterion.not_verified")),
+                () -> assertEquals("nicht verifiziert", de.get("state.criterion.not_verified")),
+                () -> assertEquals("not reviewed yet", en.get("state.criterion.not_reviewed")),
+                () -> assertEquals("noch nicht bewertet", de.get("state.criterion.not_reviewed")),
+                () -> assertEquals("pending", en.get("state.check.pending")),
+                () -> assertEquals("ausstehend", de.get("state.check.pending")),
+                () -> assertEquals("met", en.get("state.check.met")),
+                () -> assertEquals("erf\u00fcllt", de.get("state.check.met")),
+                () -> assertEquals("not met", en.get("state.check.not_met")),
+                () -> assertEquals("nicht erf\u00fcllt", de.get("state.check.not_met")));
     }
 
     @Test
@@ -193,90 +154,6 @@ class IntentCatalogueTest {
         assertEquals("Destination", format("en", "intent.epic.destination", Map.of()));
         assertEquals("Endziel", format("de", "intent.epic.destination", Map.of()));
         assertEquals("Fertig-wenn jedes Plans", format("de", "intent.epic.plans", Map.of()));
-    }
-
-    @Test
-    @DisplayName("should carry the document's verdict words in common, in both languages")
-    void shouldCarryTheSevenVerdictWords() throws Exception {
-        var en = MessageCatalogue.getMessages("en", "common");
-        var de = MessageCatalogue.getMessages("de", "common");
-        var words = new LinkedHashMap<String, String[]>();
-        documentTexts().forEach((key, texts) -> {
-            if (key.startsWith("state.criterion.") || key.startsWith("state.check.")) {
-                words.put(key, texts);
-            }
-        });
-
-        assertEquals(7, words.size(), "The document names seven verdict words");
-        var mismatches = new TreeSet<String>();
-        words.forEach((key, texts) -> {
-            assertNotNull(en.get(key), "English verdict word of " + key);
-            assertNotNull(de.get(key), "German verdict word of " + key);
-            if (!texts[0].equals(en.get(key)) || !texts[1].equals(de.get(key))) {
-                mismatches.add(key + ": en <" + en.get(key) + ">, de <" + de.get(key) + ">");
-            }
-        });
-        assertTrue(mismatches.isEmpty(), "The verdict words must be as the document writes them: " + mismatches);
-    }
-
-    /**
-     * @return every table row of the document, by key, the English at index 0 and the German at 1
-     * @throws IOException if the document cannot be read
-     */
-    private static Map<String, String[]> documentTexts() throws IOException {
-        var lines = Files.readAllLines(DOCUMENT, StandardCharsets.UTF_8);
-        var rows = new LinkedHashMap<String, String[]>();
-        for (var index = 0; index < lines.size(); index++) {
-            Matcher keyRow = KEY_ROW.matcher(lines.get(index).strip());
-            if (keyRow.matches()) {
-                rows.put(keyRow.group(1), new String[]{valueAfter(lines, index + 1),
-                        valueAfter(lines, index + 2)});
-            }
-        }
-        return rows;
-    }
-
-    /**
-     * @param lines  the document's lines
-     * @param from   the line after the key row
-     * @return the next table cell's text, in either language
-     */
-    private static String valueAfter(List<String> lines, int from) {
-        for (var index = from; index < lines.size(); index++) {
-            var line = lines.get(index).strip();
-            if (line.startsWith("|") && !"|===".equals(line)) {
-                return line.substring(1).strip();
-            }
-        }
-        return "";
-    }
-
-    /**
-     * @param rows   the document's rows
-     * @param prefix the key prefix of one family
-     * @return that family's keys, sorted
-     */
-    private static TreeSet<String> keyFamily(Map<String, String[]> rows, String prefix) {
-        var keys = new TreeSet<String>();
-        rows.keySet().forEach(key -> {
-            if (key.startsWith(prefix)) {
-                keys.add(key);
-            }
-        });
-        return keys;
-    }
-
-    /**
-     * @param template an ICU message
-     * @return the argument names it reads, in the order they appear
-     */
-    private static TreeSet<String> argumentsOf(String template) {
-        var names = new TreeSet<String>();
-        Matcher matcher = ARGUMENT.matcher(template);
-        while (matcher.find()) {
-            names.add(matcher.group(1));
-        }
-        return names;
     }
 
     /**

@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -67,6 +68,126 @@ class MessageCatalogueTest {
 
         assertTrue(missingInDe.isEmpty(), "Keys missing in German translation: " + missingInDe);
         assertTrue(extraneousInDe.isEmpty(), "Keys in German but missing in English: " + extraneousInDe);
+    }
+
+    @Test
+    @DisplayName("every key of every area carries the same ICU argument names in English and German")
+    void shouldAgreeOnTheIcuArgumentsOfEveryKey() {
+        var mismatches = new TreeSet<String>();
+
+        for (String area : MessageCatalogue.SUPPORTED_AREAS) {
+            var en = MessageCatalogue.getMessages("en", area);
+            var de = MessageCatalogue.getMessages("de", area);
+            for (var entry : en.entrySet()) {
+                var german = de.get(entry.getKey());
+                if (german == null) {
+                    mismatches.add(entry.getKey() + ": missing in de");
+                    continue;
+                }
+                var englishArguments = argumentsOf(entry.getValue());
+                var germanArguments = argumentsOf(german);
+                if (!englishArguments.equals(germanArguments)) {
+                    mismatches.add(entry.getKey() + ": en reads " + englishArguments
+                            + ", de reads " + germanArguments);
+                }
+            }
+        }
+
+        assertTrue(mismatches.isEmpty(), "Both languages must carry the same ICU arguments: " + mismatches);
+    }
+
+    /**
+     * The ICU arguments a message declares: the message's own placeholders and the placeholders
+     * inside the branch texts of a plural or select. A selector's value is literal text, a
+     * placeholder inside it is not.
+     *
+     * @param template an ICU message
+     * @return the argument names it declares, sorted
+     */
+    private static TreeSet<String> argumentsOf(String template) {
+        var names = new TreeSet<String>();
+        addMessageArguments(template, 0, template.length(), names);
+        return names;
+    }
+
+    /** Scans one message — a template or a branch text — for the placeholders it declares. */
+    private static void addMessageArguments(String message, int from, int to, Set<String> names) {
+        var index = from;
+        while (index < to) {
+            if (message.charAt(index) != '{') {
+                index++;
+                continue;
+            }
+            var close = matchingBrace(message, index, to);
+            if (close < 0) {
+                return;
+            }
+            addPlaceholderArguments(message.substring(index + 1, close), names);
+            index = close + 1;
+        }
+    }
+
+    /** @return the index of the brace closing the one at {@code open}, or {@code -1} */
+    private static int matchingBrace(String message, int open, int to) {
+        var depth = 0;
+        for (var index = open; index < to; index++) {
+            var ch = message.charAt(index);
+            if (ch == '{') {
+                depth++;
+            } else if (ch == '}' && --depth == 0) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /** Adds one placeholder's own name and, for a plural or select, its branches' arguments. */
+    private static void addPlaceholderArguments(String content, Set<String> names) {
+        var trimmed = content.strip();
+        var nameEnd = identifierEnd(trimmed);
+        if (nameEnd == 0 || (nameEnd < trimmed.length() && trimmed.charAt(nameEnd) != ',')) {
+            return;
+        }
+        names.add(trimmed.substring(0, nameEnd));
+        if (nameEnd == trimmed.length()) {
+            return;
+        }
+        var rest = trimmed.substring(nameEnd + 1).strip();
+        var typeEnd = identifierEnd(rest);
+        var type = rest.substring(0, typeEnd);
+        if (type.equals("plural") || type.equals("select") || type.equals("selectordinal")) {
+            addBranchArguments(rest.substring(typeEnd), names);
+        }
+    }
+
+    /** Scans a plural's or select's {@code selector {message}} list for its messages' arguments. */
+    private static void addBranchArguments(String selectors, Set<String> names) {
+        var index = 0;
+        while (index < selectors.length()) {
+            if (selectors.charAt(index) != '{') {
+                index++;
+                continue;
+            }
+            var close = matchingBrace(selectors, index, selectors.length());
+            if (close < 0) {
+                return;
+            }
+            addMessageArguments(selectors, index + 1, close, names);
+            index = close + 1;
+        }
+    }
+
+    /** @return the index after the identifier at the start of {@code text}, or {@code 0} */
+    private static int identifierEnd(String text) {
+        if (text.isEmpty() || !(Character.isLetter(text.charAt(0)) || text.charAt(0) == '_')) {
+            return 0;
+        }
+        var end = 1;
+        while (end < text.length()
+                && (Character.isLetterOrDigit(text.charAt(end)) || text.charAt(end) == '_')) {
+            end++;
+        }
+        return end;
     }
 
     @Test

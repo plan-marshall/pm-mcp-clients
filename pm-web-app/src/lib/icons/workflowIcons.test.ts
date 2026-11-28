@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import {
+  PHASE_ICON_IDS,
+  PHASE_TOKENS,
+  UNIT_ICON_IDS,
   WORKFLOW_ICON_IDS,
   isWorkflowIconId,
   phaseIconId,
@@ -14,37 +17,11 @@ const projectRoot = existsSync(join(process.cwd(), 'src/lib/icons/workflows'))
   ? process.cwd()
   : join(process.cwd(), 'pm-web-app');
 const iconDirectory = join(projectRoot, 'src/lib/icons/workflows');
-const cataloguePath = join(
-  dirname(projectRoot),
-  'doc/design/web-app/workflow-visual-language.adoc',
-);
-
-/**
- * @param text the visual specification
- * @param start the opening marker
- * @param end the closing marker
- * @returns the marked section
- */
-function markedSection(text: string, start: string, end: string): string {
-  const from = text.indexOf(start);
-  const to = text.indexOf(end, from + start.length);
-  if (from < 0 || to < 0) throw new Error(`missing section ${start}..${end}`);
-  return text.slice(from, to);
-}
 
 /** @param id an icon id @returns its delivered file name */
 function assetName(id: string): string {
   return `${id.replaceAll('.', '-')}.svg`;
 }
-
-const specification = readFileSync(cataloguePath, 'utf8');
-const catalogue = markedSection(specification, '// icon-catalogue:start', '// icon-catalogue:end');
-const catalogueIds = [...catalogue.matchAll(/^\|`([a-z0-9._-]+)`$/gm)].map((match) => match[1]);
-
-const mapping = markedSection(specification, '// unit-icon-map:start', '// unit-icon-map:end');
-const mappingRows = [
-  ...mapping.matchAll(/^\|`([^`]+)`\n\|`([^`]+)`\n\|`(phaseIconId|unitIconId)`/gm),
-].map((match) => ({ subject: match[1], icon: match[2], resolver: match[3] }));
 
 describe('workflow icon registry', () => {
   it('delivers one unique asset for every id and none beside the registry', () => {
@@ -62,19 +39,20 @@ describe('workflow icon registry', () => {
     }
   });
 
-  it('agrees with the catalogue table in the visual specification', () => {
-    expect(catalogueIds.length).toBeGreaterThan(0);
-    expect([...new Set(catalogueIds)].sort()).toEqual([...WORKFLOW_ICON_IDS].sort());
-  });
+  it('maps only delivered ids, and every mapping resolves through its resolver', () => {
+    for (const [token, icon] of Object.entries(PHASE_TOKENS)) {
+      expect(isWorkflowIconId(icon), `${token} maps to a delivered id`).toBe(true);
+      expect(phaseIconId(token), `${token} resolves through phaseIconId`).toBe(icon);
+    }
 
-  it('resolves every unit and phase mapping the catalogue records', () => {
-    expect(mappingRows.length).toBeGreaterThan(0);
+    for (const [unitId, icon] of Object.entries(PHASE_ICON_IDS)) {
+      expect(isWorkflowIconId(icon), `${unitId} maps to a delivered id`).toBe(true);
+      expect(phaseIconId(unitId), `${unitId} resolves through phaseIconId`).toBe(icon);
+    }
 
-    for (const row of mappingRows) {
-      const resolved =
-        row.resolver === 'phaseIconId' ? phaseIconId(row.subject) : unitIconId(row.subject);
-      expect(resolved, `${row.subject} resolves through ${row.resolver}`).toBe(row.icon);
-      expect(isWorkflowIconId(row.icon)).toBe(true);
+    for (const [unitId, icon] of Object.entries(UNIT_ICON_IDS)) {
+      expect(isWorkflowIconId(icon), `${unitId} maps to a delivered id`).toBe(true);
+      expect(unitIconId(unitId), `${unitId} resolves through unitIconId`).toBe(icon);
     }
   });
 

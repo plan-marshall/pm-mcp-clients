@@ -1,10 +1,12 @@
 /**
  * The delivered workflow icons and the ids that resolve to them.
  *
- * The visual specification in `doc/design/web-app/workflow-visual-language.adoc` is the
- * catalogue's authority; this module is its executable mirror. Every id has one SVG under
- * `workflows/`, named by the id with dots replaced by hyphens. A view resolves an id here and
- * never builds an asset path of its own.
+ * This module is the authority for the ids and the maps: `WORKFLOW_ICON_IDS` is the delivered set,
+ * `PHASE_ICON_IDS` and `UNIT_ICON_IDS` hold the phase and unit mappings. The visual specification
+ * `doc/design/web-app/workflow-visual-language.adoc` records the meaning, family and asset of each
+ * id, and the same mapping as design text. Every id has one SVG under `workflows/`, named by the id
+ * with dots replaced by hyphens. A view resolves an id here and never builds an asset path of its
+ * own.
  */
 
 import axisAskEveryUrl from './workflows/axis-ask-every.svg?url';
@@ -140,7 +142,7 @@ const ICON_URLS: Readonly<Record<WorkflowIconId, string>> = Object.freeze({
 });
 
 /** The bare phase token to icon id. */
-const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   init: 'phase.init',
   refine: 'phase.refine',
   outline: 'phase.outline',
@@ -150,7 +152,7 @@ const PHASE_TOKENS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
 });
 
 /** A phase-unit id (`phase-5-execute`) and a bare token both resolve through here. */
-const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   'phase-1-init': 'phase.init',
   'phase-2-refine': 'phase.refine',
   'phase-3-outline': 'phase.outline',
@@ -161,7 +163,7 @@ const PHASE_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
 });
 
 /** The known unit ids, including the catalogue's separator aliases. */
-const UNIT_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
+export const UNIT_ICON_IDS: Readonly<Record<string, WorkflowIconId>> = Object.freeze({
   land: 'flow.land',
   'git.commit_and_push': 'git.commit',
   'git.commit-and-push': 'git.commit',

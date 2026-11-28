@@ -593,132 +593,15 @@ pm ›
 [#overview-texts]
 == Texts of the Terminal
 
-The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]; the terminal adds these, of the area `operator`:
-
-[cols="3,3,3",options="header"]
-|===
-|Key |English |German
-
-|`operator.overview.keys.move`
-|move
-|bewege
-
-|`operator.overview.keys.open`
-|open
-|öffne
-
-|`operator.overview.keys.back`
-|back
-|zurück
-
-|`operator.overview.keys.filter`
-|filter
-|filtere
-
-|`operator.overview.keys.epic`
-|epic
-|Epic
-
-|`operator.overview.keys.waits`
-|what waits
-|was wartet
-
-|`operator.overview.keys.switch_view`
-|{view}
-|{view}
-
-|`operator.overview.keys.help`
-|help
-|Hilfe
-
-|`operator.overview.keys.leave`
-|leave
-|verlasse
-
-|`operator.overview.keys.more`
-|more
-|mehr
-
-|`operator.overview.help.close`
-|close
-|schließen
-
-|`operator.overview.help.title`
-|keys
-|Tasten
-
-|`operator.overview.help.views`
-|views
-|Ansichten
-
-|`operator.overview.keys.reload`
-|reload
-|neu laden
-
-|`operator.overview.keys.system`
-|system
-|System
-
-|`operator.overview.more_above`
-|{count} more
-|{count} weitere
-
-|`operator.overview.more_below`
-|{count} more
-|{count} weitere
-
-|`operator.overview.connected`
-|connected
-|verbunden
-
-|`operator.overview.meanwhile`
-|While {where} was open: {events}.
-|Während {where} offen war: {events}.
-
-|`operator.overview.meanwhile.nothing`
-|nothing arrived
-|nichts kam
-
-|`operator.overview.where.overview`
-|the overview
-|die Übersicht
-
-|`operator.overview.too_narrow`
-|The terminal is too narrow for the overview; here is the tree.
-|Das Terminal ist zu schmal für die Übersicht; hier ist der Baum.
-
-|`operator.overview.keys.actions`
-|actions
-|Aktionen
-
-|`operator.overview.keys.ended`
-|ended work
-|beendete Arbeit
-
-|`operator.overview.keys.reports`
-|{count, plural, =0 {reports} one {# report} other {# reports}}
-|{count, plural, =0 {Berichte} one {# Bericht} other {# Berichte}}
-
-|`operator.overview.ended_view_chat`
-|{name} has ended: its view, and a chat about it
-|{name} ist beendet: seine Ansicht und ein Chat darüber
-
-|`operator.status.ended_title`
-|{project} · ended work
-|{project} · beendete Arbeit
-
-|`operator.status.pull_request`
-|pull request #{number} {url}
-|Pull Request #{number} {url}
-
-|`operator.status.reason`
-|reason: {reason}
-|Grund: {reason}
-
-|`operator.status.runtime`
-|Runtime {version}, running since {time} · {workers, plural, one {# worker} other {# workers}} · {slots} of {total} build slots in use
-|Runtime {version}, läuft seit {time} · {workers, plural, one {# Worker} other {# Worker}} · {slots} von {total} Build-Slots belegt
-|===
+The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan Overview, Texts]; the terminal adds the
+`operator.overview.*` and `operator.status.*` texts. All of them are in the packs
+link:../../../pm-api/src/main/resources/messages/overview.en.properties[`overview.en.properties`] and
+link:../../../pm-api/src/main/resources/messages/overview.de.properties[`overview.de.properties`] except
+`operator.overview.keys.more`, `operator.overview.help.close`, `operator.overview.help.title` and
+`operator.overview.help.views`, which are in
+link:../../../pm-api/src/main/resources/messages/operator.en.properties[`operator.en.properties`] and
+link:../../../pm-api/src/main/resources/messages/operator.de.properties[`operator.de.properties`]; the packs are the
+source of these texts, and this design does not repeat them.
 
 Two values above are fragments rather than lines: `operator.overview.where.overview` is the
 `{where}` of `operator.overview.meanwhile` when the operator left the overview itself, and

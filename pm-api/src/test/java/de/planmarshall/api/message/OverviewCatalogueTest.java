@@ -14,11 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -79,59 +77,6 @@ class OverviewCatalogueTest {
         }
 
         assertTrue(present.isEmpty(), "a retired overview key survives: " + present);
-    }
-
-    /**
-     * The keys {@code doc/design/shared/plan-overview.adoc#texts} names but the catalogue
-     * deliberately does not carry yet: the integrity hold's word, which the design already names
-     * under its new kind, while the code and the catalogue still serve {@code integrity_pause}
-     * until the work package {@code harness-decision-log-hold-names} (doc/plans) renames it. Each
-     * entry must still be absent from both packs, so the exclusion goes once the rename lands.
-     */
-    private static final Set<String> PENDING_RENAME = Set.of("overview.needs.integrity_hold");
-
-    /**
-     * @return the keys of every text table of the two documents that define the overview's texts
-     */
-    private static List<String> specificationKeys() throws IOException {
-        var keys = new ArrayList<>(SpecificationTables.keyCells("shared/plan-overview.adoc"));
-        keys.addAll(SpecificationTables.keyCells("terminal-client/15-overview.adoc"));
-        return keys;
-    }
-
-    @Test
-    @DisplayName("should contain every key of the text tables of plan-overview.adoc and 15-overview.adoc in both packs")
-    void shouldContainAllSpecificationKeys() throws Exception {
-        var keys = specificationKeys();
-
-        assertTrue(keys.size() > 70, "the text tables of both documents must be read: " + keys);
-        assertTrue(keys.contains("overview.running.title"), keys.toString());
-        assertTrue(keys.contains("operator.status.runtime"), keys.toString());
-        // A key that is the final cell of a table: the reader must not need a translation row after
-        // it (terminal-client/15-overview.adoc's refusal table ends with it).
-        assertTrue(keys.contains("operator.tui.unavailable.too_narrow"),
-                "the key in the last cell of a table is read: " + keys);
-        assertTrue(keys.containsAll(PENDING_RENAME), "a pending key no document names any more: " + PENDING_RENAME);
-        var missing = new ArrayList<String>();
-        var stillPending = new ArrayList<String>();
-        for (var locale : List.of("en", "de")) {
-            var messages = MessageCatalogue.getMessages(locale, "all");
-            for (String key : keys) {
-                var value = messages.get(key);
-                if (PENDING_RENAME.contains(key)) {
-                    if (value != null) {
-                        stillPending.add(locale + ":" + key);
-                    }
-                } else if (value == null || value.isBlank()) {
-                    missing.add(locale + ":" + key);
-                }
-            }
-        }
-        assertAll(
-                () -> assertTrue(missing.isEmpty(), "keys of the overview documents missing or blank in a pack: " + missing),
-                () -> assertTrue(stillPending.isEmpty(),
-                        "the rename landed; remove these keys from PENDING_RENAME: " + stillPending)
-        );
     }
 
     @Test
@@ -199,7 +144,7 @@ class OverviewCatalogueTest {
                         MessageCatalogue.getMessages("en", "overview").get("overview.needs.completion_review")),
                 () -> assertEquals("Abschlussprüfung",
                         MessageCatalogue.getMessages("de", "overview").get("overview.needs.completion_review")),
-                // The badge template is not in a text table of the overview documents; it is pinned here.
+                // The badge template is not among the literal keys above; it is pinned here.
                 () -> assertTrue(MessageCatalogue.getMessages("en", "overview").containsKey("overview.needs.badge")),
                 () -> assertTrue(MessageCatalogue.getMessages("de", "overview").containsKey("overview.needs.badge")));
     }
