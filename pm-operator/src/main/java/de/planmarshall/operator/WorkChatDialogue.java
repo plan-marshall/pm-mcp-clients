@@ -92,6 +92,12 @@ final class WorkChatDialogue {
             seedAcceptedProposal(chat, acceptedProposalTurnIds);
             saidNoProposal = false;
         }
+
+        private static void seedPrintedTurns(ChatResource chat, Set<String> printedTurnIds) {
+            for (var turn : chat.turns()) {
+                printedTurnIds.add(turn.turnId());
+            }
+        }
     }
 
     private final StartPrompt prompt;
@@ -225,9 +231,11 @@ final class WorkChatDialogue {
             return chat;
         }
         loop.heldFirstLine = submission.heldFirstLine();
-        var updated = submission.updatedChat() != null ? submission.updatedChat() : chat;
-        if (submission.updatedChat() != null) {
-            showUnprintedTurns(updated, loop.printedTurnIds);
+        ChatResource updated = chat;
+        var submissionChat = submission.updatedChat();
+        if (submissionChat != null) {
+            updated = submissionChat;
+            showUnprintedTurns(submissionChat, loop.printedTurnIds);
         }
         if (submission.endedExternally()) {
             return null;
@@ -270,12 +278,6 @@ final class WorkChatDialogue {
         for (var turn : chat.turns()) {
             printedTurnIds.add(turn.turnId());
             showTurn(turn);
-        }
-    }
-
-    private static void seedPrintedTurns(ChatResource chat, Set<String> printedTurnIds) {
-        for (var turn : chat.turns()) {
-            printedTurnIds.add(turn.turnId());
         }
     }
 

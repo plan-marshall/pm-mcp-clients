@@ -1509,6 +1509,43 @@ class WorkChatDialogueTest {
                                                     rendered.toString()));
         }
 
+        @Test
+        @DisplayName("reject-only answers ?, unoffered keys, and new before rejecting; confirm new handles invalid input")
+        void rejectOnlyAndConfirmNewInvalidInputs() throws Exception {
+            var subject = "plan-" + Generators.letterStrings(4, 8).next().toLowerCase();
+            var rejected = new AtomicBoolean();
+            var refusedChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.read-back\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:00Z\"},"
+                                + "\"turns\":[],\"proposal\":{\"turn_id\":\"T-3\",\"reply_turn_id\":\"T-2\","
+                                + "\"kind\":\"revision\",\"summary\":\"Next\",\"state\":\"refused\","
+                                + "\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"no\"}}}}";
+            var openChat = "{\"id\":\"C-1\",\"subject\":{\"kind\":\"plan\",\"id\":\"" + subject
+                                + "\"},\"role\":{\"name\":\"replan\",\"model\":\"sonnet\"},\"scope\":\"plan\","
+                                + "\"state\":\"chat.turn\",\"context\":{\"knows\":[],\"as_of\":\"2026-10-16T10:00:01Z\"},"
+                                + "\"turns\":[]}";
+            fixture.start((request, response) -> {
+                var path = request.target();
+                if (path.endsWith("/proposal/reject")) {
+                    rejected.set(true);
+                    response.json(200, openChat);
+                } else if (path.endsWith("/chat")) {
+                    response.json(200, refusedChat);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var out = new StringWriter();
+            virtual.type("?\nbogus\nnew\nbad\nn\nr\nq\n");
+            virtual.endOfInput();
+            int exitCode = WorkChatDialogue.run(context, new PrintWriter(out), "plan", subject, false, false);
+
+            assertAll(
+                                () -> assertEquals(0, exitCode, out.toString()),
+                                () -> assertTrue(rejected.get(), out.toString()),
+                                () -> assertTrue(out.toString().contains("Start a new chat?"), out.toString()));
+        }
+
         private static String archiveProposalChat(String epic, String state, boolean withFinding) {
             var finding = withFinding
                                 ? ",\"finding\":{\"key\":\"chat.finding.check_failed\",\"args\":{\"reason\":\"no\"}}"
